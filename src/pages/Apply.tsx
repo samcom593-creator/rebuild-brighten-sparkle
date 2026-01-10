@@ -156,7 +156,13 @@ export default function Apply() {
       if (error) throw error;
 
       toast.success("Application submitted successfully!");
-      navigate("/apply/success");
+      
+      // Redirect based on license status
+      if (data.licenseStatus === "licensed") {
+        navigate("/apply/success/licensed");
+      } else {
+        navigate("/apply/success/unlicensed");
+      }
     } catch (error) {
       console.error("Error submitting application:", error);
       toast.error("Failed to submit application. Please try again.");

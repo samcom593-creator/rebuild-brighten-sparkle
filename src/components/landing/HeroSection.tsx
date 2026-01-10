@@ -65,6 +65,24 @@ export function HeroSection() {
             With APEX
           </motion.h1>
 
+          {/* Video Section */}
+          <motion.div
+            className="w-full max-w-2xl mx-auto px-4 mb-8"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.15 }}
+          >
+            <div className="aspect-video rounded-xl overflow-hidden glass border border-primary/20 shadow-2xl">
+              <iframe
+                src="https://www.youtube.com/embed/oVHWCv4MvNw"
+                title="APEX Video"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="w-full h-full"
+              />
+            </div>
+          </motion.div>
+
           {/* Subheadline */}
           <motion.p
             className="text-lg md:text-xl text-muted-foreground max-w-3xl mx-auto mb-8"
@@ -122,23 +140,6 @@ export function HeroSection() {
         </div>
       </div>
 
-      {/* Video Section */}
-      <motion.div
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.5 }}
-      >
-        <div className="aspect-video rounded-xl overflow-hidden glass border border-primary/20 shadow-2xl">
-          <iframe
-            src="https://www.youtube.com/embed/oVHWCv4MvNw"
-            title="APEX Video"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-            className="w-full h-full"
-          />
-        </div>
-      </motion.div>
     </section>
   );
 }

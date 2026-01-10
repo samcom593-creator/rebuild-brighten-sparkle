@@ -105,8 +105,8 @@ export function HeroSection() {
             transition={{ duration: 0.5, delay: 0.4 }}
           >
             {[
-              { icon: TrendingUp, label: "Top 1% Commission Rates", value: "140-160%" },
-              { icon: Users, label: "Exclusive Warm Leads", value: "50-100/week" },
+              { icon: TrendingUp, label: "Top 1% Commission Rates", value: "50%-145%" },
+              { icon: Users, label: "Warm Leads Ready to Call", value: "166,000 Ready" },
               { icon: Shield, label: "No Experience Required", value: "We Train You" },
             ].map((item, index) => (
               <div

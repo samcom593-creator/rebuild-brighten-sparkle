@@ -155,6 +155,29 @@ export default function Apply() {
 
       if (error) throw error;
 
+      // Send email notifications (don't block on this)
+      supabase.functions.invoke("send-application-notification", {
+        body: {
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: data.email,
+          phone: data.phone,
+          city: data.city,
+          state: data.state,
+          licenseStatus: data.licenseStatus,
+          hasInsuranceExperience: data.hasInsuranceExperience,
+          yearsExperience: data.yearsExperience,
+          previousCompany: data.previousCompany,
+          desiredIncome: data.desiredIncome,
+          availability: data.availability,
+          referralSource: data.referralSource,
+        },
+      }).then(({ error: emailError }) => {
+        if (emailError) {
+          console.error("Failed to send notification email:", emailError);
+        }
+      });
+
       toast.success("Application submitted successfully!");
       
       // Redirect based on license status

@@ -6,19 +6,13 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 
 const earningsData = {
-  partTime: {
-    label: "Part-Time",
-    description: "10-15 hours/week",
-    monthly: 8500,
-    yearly: 102000,
-    policiesPerMonth: 8,
-  },
   fullTime: {
     label: "Full-Time",
-    description: "30-40 hours/week",
-    monthly: 18500,
-    yearly: 222000,
-    policiesPerMonth: 18,
+    description: "30-60 hours/week",
+    monthly: 20833,
+    yearly: 250000,
+    policiesPerMonth: 30,
+    commissionRate: "50%-145%",
   },
   topProducer: {
     label: "Top Producer",
@@ -26,14 +20,15 @@ const earningsData = {
     monthly: 42000,
     yearly: 504000,
     policiesPerMonth: 35,
+    commissionRate: "80%-145%",
   },
 };
 
 const milestones = [
-  { icon: Clock, label: "First Sale", value: "< 2 weeks", description: "Average time to first close" },
-  { icon: TrendingUp, label: "Break Even", value: "30 days", description: "Time to profitability" },
-  { icon: Award, label: "Six Figures", value: "6-12 months", description: "To reach $100K+ pace" },
-  { icon: Users, label: "Build Team", value: "Year 2+", description: "Earn manager overrides" },
+  { icon: Clock, label: "First Sale", value: "First Day", description: "Average time to first close" },
+  { icon: TrendingUp, label: "Break Even", value: "Immediate", description: "Time to profitability" },
+  { icon: Award, label: "Six Figures", value: "4-6 months", description: "To reach $100K+ pace" },
+  { icon: Users, label: "Build Team", value: "Year One", description: "Earn manager overrides" },
 ];
 
 export function EarningsSection() {
@@ -102,7 +97,7 @@ export function EarningsSection() {
               </div>
               <div className="text-center">
                 <div className="text-3xl font-bold text-primary">
-                  140-160%
+                  {data.commissionRate}
                 </div>
                 <p className="text-sm text-muted-foreground">Commission Rate</p>
               </div>

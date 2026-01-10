@@ -8,8 +8,8 @@ const benefits = [
   "Free training & mentorship",
   "Exclusive warm leads provided",
   "Work from anywhere",
-  "Weekly pay",
-  "6-figure income potential",
+  "Daily pay",
+  "7-figure income potential",
 ];
 
 export function CTASection() {

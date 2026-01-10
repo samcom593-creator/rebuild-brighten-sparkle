@@ -16,12 +16,12 @@ const benefits = [
   {
     icon: DollarSign,
     title: "Industry-Leading Commissions",
-    description: "Earn 140-160% commission rates with bonuses up to $25K per month. Our agents consistently out-earn the competition.",
+    description: "Earn 50%-145% commission rates with bonuses up to $25K per month. Our agents consistently out-earn the competition.",
   },
   {
     icon: Target,
     title: "Exclusive Lead Program",
-    description: "Receive 50-100 warm, exclusive leads weekly. No cold calling—only pre-qualified prospects ready to buy.",
+    description: "Receive unlimited exclusive leads. No cold calling—only prospects ready to buy.",
   },
   {
     icon: GraduationCap,
@@ -41,7 +41,7 @@ const benefits = [
   {
     icon: Trophy,
     title: "Career Advancement",
-    description: "Clear path to management. Build your own team and earn overrides. Many managers earn $300K+ annually.",
+    description: "Clear path to management. Build your own team and earn overrides. Many managers earn $300K+ annually in their first year.",
   },
   {
     icon: Zap,

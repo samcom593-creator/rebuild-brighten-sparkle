@@ -4,13 +4,10 @@ import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
-// API key for protecting this endpoint
-const APPLICATION_API_KEY = Deno.env.get("APPLICATION_API_KEY");
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-api-key",
+    "authorization, x-client-info, apikey, content-type",
 };
 
 // Input validation schema
@@ -71,19 +68,6 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    // Check API key authentication
-    const apiKey = req.headers.get("x-api-key");
-    if (!APPLICATION_API_KEY || apiKey !== APPLICATION_API_KEY) {
-      console.error("Unauthorized: Invalid or missing API key");
-      return new Response(
-        JSON.stringify({ error: "Unauthorized" }),
-        {
-          status: 401,
-          headers: { "Content-Type": "application/json", ...corsHeaders },
-        }
-      );
-    }
-
     // Rate limiting check
     const clientIP = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 
                      req.headers.get("cf-connecting-ip") || 

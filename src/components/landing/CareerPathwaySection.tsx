@@ -44,6 +44,13 @@ interface Step {
   benefit: string;
 }
 
+// Phase connector colors for the animated lines
+const phaseConnectorColors = [
+  "from-orange-500 to-blue-500",
+  "from-blue-500 to-primary",
+  "from-primary to-purple-500",
+];
+
 const phases: Phase[] = [
   {
     name: "Phase 1: Foundation",
@@ -309,70 +316,148 @@ export function CareerPathwaySection() {
         />
 
         {/* Career Phases */}
-        <div className="mt-16 space-y-12">
+        <div className="mt-16 space-y-4">
           {phases.map((phase, phaseIndex) => (
-            <motion.div
-              key={phaseIndex}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-50px" }}
-              transition={{ duration: 0.5, delay: phaseIndex * 0.1 }}
-            >
-              {/* Phase Header */}
-              <div className={`mb-6 pl-4 border-l-4 ${phase.borderColor}`}>
-                <h3 className={`text-xl md:text-2xl font-bold ${phase.color}`}>
-                  {phase.name}
-                </h3>
-                <p className="text-muted-foreground">{phase.subtitle}</p>
-              </div>
+            <div key={phaseIndex}>
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.5, delay: phaseIndex * 0.1 }}
+              >
+                {/* Phase Header */}
+                <div className={`mb-6 pl-4 border-l-4 ${phase.borderColor}`}>
+                  <h3 className={`text-xl md:text-2xl font-bold ${phase.color}`}>
+                    {phase.name}
+                  </h3>
+                  <p className="text-muted-foreground">{phase.subtitle}</p>
+                </div>
 
-              {/* Steps Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {phase.steps.map((step, stepIndex) => {
-                  stepNumber++;
-                  return (
-                    <motion.div
-                      key={stepIndex}
-                      variants={itemVariants}
-                      initial="hidden"
-                      whileInView="visible"
-                      viewport={{ once: true }}
-                      transition={{ delay: stepIndex * 0.05 }}
-                    >
-                      <GlassCard
-                        className="h-full p-5 group hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300"
-                        hoverEffect={false}
+                {/* Steps Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {phase.steps.map((step, stepIndex) => {
+                    stepNumber++;
+                    return (
+                      <motion.div
+                        key={stepIndex}
+                        variants={itemVariants}
+                        initial="hidden"
+                        whileInView="visible"
+                        viewport={{ once: true }}
+                        transition={{ delay: stepIndex * 0.05 }}
                       >
-                        <div className="flex gap-4">
-                          {/* Step Number Circle */}
-                          <div className={`flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br ${phase.bgColor} flex items-center justify-center border border-white/10`}>
-                            <span className={`text-sm font-bold ${phase.color}`}>
-                              {stepNumber}
-                            </span>
-                          </div>
-
-                          {/* Content */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start gap-2 mb-2">
-                              <step.icon className={`h-5 w-5 ${phase.color} flex-shrink-0 mt-0.5`} />
-                              <h4 className="font-semibold text-foreground leading-tight group-hover:text-primary transition-colors">
-                                {step.title}
-                              </h4>
+                        <GlassCard
+                          className="h-full p-5 group hover:-translate-y-1 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300"
+                          hoverEffect={false}
+                        >
+                          <div className="flex gap-4">
+                            {/* Step Number Circle */}
+                            <div className={`flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br ${phase.bgColor} flex items-center justify-center border border-white/10`}>
+                              <span className={`text-sm font-bold ${phase.color}`}>
+                                {stepNumber}
+                              </span>
                             </div>
-                            <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
-                              {step.description}
-                            </p>
-                            <span className={`inline-block text-xs font-medium ${phase.color} bg-white/5 px-2 py-1 rounded-full`}>
-                              {step.benefit}
-                            </span>
+
+                            {/* Content */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start gap-2 mb-2">
+                                <step.icon className={`h-5 w-5 ${phase.color} flex-shrink-0 mt-0.5`} />
+                                <h4 className="font-semibold text-foreground leading-tight group-hover:text-primary transition-colors">
+                                  {step.title}
+                                </h4>
+                              </div>
+                              <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
+                                {step.description}
+                              </p>
+                              <span className={`inline-block text-xs font-medium ${phase.color} bg-white/5 px-2 py-1 rounded-full`}>
+                                {step.benefit}
+                              </span>
+                            </div>
                           </div>
-                        </div>
-                      </GlassCard>
+                        </GlassCard>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </motion.div>
+
+              {/* Animated Connector Line between phases */}
+              {phaseIndex < phases.length - 1 && (
+                <motion.div
+                  className="flex justify-center py-8"
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                >
+                  <div className="relative flex flex-col items-center">
+                    {/* Animated gradient line */}
+                    <div className="relative w-1 h-16 rounded-full overflow-hidden bg-border/30">
+                      <motion.div
+                        className={`absolute inset-0 w-full bg-gradient-to-b ${phaseConnectorColors[phaseIndex]}`}
+                        initial={{ y: "-100%" }}
+                        whileInView={{ y: "0%" }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
+                      />
+                      {/* Animated pulse effect */}
+                      <motion.div
+                        className={`absolute inset-0 w-full bg-gradient-to-b ${phaseConnectorColors[phaseIndex]} opacity-50`}
+                        animate={{
+                          y: ["-100%", "100%"],
+                        }}
+                        transition={{
+                          duration: 2,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                          repeatDelay: 1,
+                        }}
+                      />
+                    </div>
+                    
+                    {/* Animated arrow */}
+                    <motion.div
+                      className="mt-2"
+                      animate={{ y: [0, 4, 0] }}
+                      transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                    >
+                      <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        className="text-primary"
+                      >
+                        <motion.path
+                          d="M12 5L12 19M12 19L6 13M12 19L18 13"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          initial={{ pathLength: 0, opacity: 0 }}
+                          whileInView={{ pathLength: 1, opacity: 1 }}
+                          viewport={{ once: true }}
+                          transition={{ duration: 0.6, delay: 0.5 }}
+                        />
+                      </svg>
                     </motion.div>
-                  );
-                })}
-              </div>
-            </motion.div>
+
+                    {/* Glowing dot at transition */}
+                    <motion.div
+                      className={`absolute top-0 w-3 h-3 rounded-full bg-gradient-to-r ${phaseConnectorColors[phaseIndex]}`}
+                      animate={{
+                        boxShadow: [
+                          "0 0 10px 2px rgba(45, 212, 191, 0.3)",
+                          "0 0 20px 4px rgba(45, 212, 191, 0.5)",
+                          "0 0 10px 2px rgba(45, 212, 191, 0.3)",
+                        ],
+                      }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    />
+                  </div>
+                </motion.div>
+              )}
+            </div>
           ))}
         </div>
 

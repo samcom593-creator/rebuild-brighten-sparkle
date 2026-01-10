@@ -1,4 +1,5 @@
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useRef } from "react";
 import {
   BookOpen,
   ClipboardCheck,
@@ -22,6 +23,7 @@ import {
   Clock,
   MapPin,
   Zap,
+  ChevronUp,
 } from "lucide-react";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -192,6 +194,14 @@ const phases: Phase[] = [
   },
 ];
 
+// Phase indicator data for the floating sidebar
+const phaseIndicators = [
+  { id: "phase-0", label: "Foundation", shortLabel: "1", color: "bg-orange-500", textColor: "text-orange-400" },
+  { id: "phase-1", label: "Structure", shortLabel: "2", color: "bg-blue-500", textColor: "text-blue-400" },
+  { id: "phase-2", label: "Production", shortLabel: "3", color: "bg-primary", textColor: "text-primary" },
+  { id: "phase-3", label: "Scale", shortLabel: "4", color: "bg-purple-500", textColor: "text-purple-400" },
+];
+
 const whyAgentsChoose = [
   {
     icon: DollarSign,
@@ -246,6 +256,55 @@ const itemVariants = {
 
 export function CareerPathwaySection() {
   const { count, isLoading } = useLeadCounter();
+  const [activePhase, setActivePhase] = useState(0);
+  const [isInView, setIsInView] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
+  const phaseRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  // Track scroll position to determine active phase
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!sectionRef.current) return;
+
+      const sectionRect = sectionRef.current.getBoundingClientRect();
+      const sectionTop = sectionRect.top;
+      const sectionBottom = sectionRect.bottom;
+      const viewportHeight = window.innerHeight;
+
+      // Check if section is in view
+      setIsInView(sectionTop < viewportHeight * 0.8 && sectionBottom > viewportHeight * 0.2);
+
+      // Determine which phase is most visible
+      phaseRefs.current.forEach((ref, index) => {
+        if (ref) {
+          const rect = ref.getBoundingClientRect();
+          const elementCenter = rect.top + rect.height / 2;
+          const viewportCenter = viewportHeight / 2;
+
+          if (Math.abs(elementCenter - viewportCenter) < rect.height / 2) {
+            setActivePhase(index);
+          }
+        }
+      });
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll(); // Initial check
+
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const scrollToPhase = (index: number) => {
+    const phaseElement = phaseRefs.current[index];
+    if (phaseElement) {
+      const offset = 100; // Account for navbar
+      const elementPosition = phaseElement.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({
+        top: elementPosition - offset,
+        behavior: "smooth",
+      });
+    }
+  };
 
   const stats = [
     { value: "$150M+", label: "Premium Generated" },
@@ -257,7 +316,97 @@ export function CareerPathwaySection() {
   let stepNumber = 0;
 
   return (
-    <section id="career" className="py-24 relative overflow-hidden">
+    <section id="career" ref={sectionRef} className="py-24 relative overflow-hidden">
+      {/* Floating Progress Sidebar */}
+      <AnimatePresence>
+        {isInView && (
+          <motion.div
+            className="fixed right-4 md:right-8 top-1/2 -translate-y-1/2 z-40 hidden md:flex flex-col items-center gap-3"
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 50 }}
+            transition={{ duration: 0.3 }}
+          >
+            {/* Glass container */}
+            <div className="glass-strong rounded-full p-2 flex flex-col items-center gap-2">
+              {phaseIndicators.map((phase, index) => (
+                <motion.button
+                  key={phase.id}
+                  onClick={() => scrollToPhase(index)}
+                  className="relative group"
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  {/* Phase dot */}
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
+                      activePhase === index
+                        ? `${phase.color} shadow-lg`
+                        : "bg-muted/50 hover:bg-muted"
+                    }`}
+                  >
+                    <span
+                      className={`text-xs font-bold ${
+                        activePhase === index ? "text-background" : "text-muted-foreground"
+                      }`}
+                    >
+                      {phase.shortLabel}
+                    </span>
+                  </div>
+
+                  {/* Active indicator ring */}
+                  {activePhase === index && (
+                    <motion.div
+                      className={`absolute inset-0 rounded-full border-2 ${phase.color.replace("bg-", "border-")}`}
+                      initial={{ scale: 1 }}
+                      animate={{ scale: [1, 1.3, 1] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                      style={{ opacity: 0.5 }}
+                    />
+                  )}
+
+                  {/* Tooltip */}
+                  <div className="absolute right-full mr-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                    <div className="glass-strong px-3 py-1.5 rounded-lg whitespace-nowrap">
+                      <span className={`text-sm font-medium ${phase.textColor}`}>
+                        {phase.label}
+                      </span>
+                    </div>
+                  </div>
+                </motion.button>
+              ))}
+
+              {/* Connecting line between dots */}
+              <div className="absolute inset-y-2 left-1/2 -translate-x-1/2 w-0.5 bg-border/50 -z-10" />
+              
+              {/* Progress line */}
+              <motion.div
+                className="absolute top-2 left-1/2 -translate-x-1/2 w-0.5 bg-gradient-to-b from-orange-500 via-blue-500 to-purple-500 -z-10 origin-top"
+                style={{
+                  height: `${((activePhase + 1) / phases.length) * 100}%`,
+                }}
+                transition={{ duration: 0.3 }}
+              />
+            </div>
+
+            {/* Scroll to top button */}
+            <motion.button
+              onClick={() => {
+                const section = document.getElementById("career");
+                if (section) {
+                  section.scrollIntoView({ behavior: "smooth" });
+                }
+              }}
+              className="glass-strong p-2 rounded-full hover:bg-primary/20 transition-colors group"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <ChevronUp className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Background Effects */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(168_84%_42%/0.08)_0%,transparent_60%)]" />
       
@@ -318,7 +467,7 @@ export function CareerPathwaySection() {
         {/* Career Phases */}
         <div className="mt-16 space-y-4">
           {phases.map((phase, phaseIndex) => (
-            <div key={phaseIndex}>
+            <div key={phaseIndex} ref={(el) => (phaseRefs.current[phaseIndex] = el)}>
               <motion.div
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}

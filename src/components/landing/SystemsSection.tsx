@@ -342,11 +342,27 @@ function StatCard({ value, suffix, description, gradient, decimals = 0 }: StatCa
       className={`
         relative overflow-hidden rounded-xl p-6 text-white
         bg-gradient-to-br ${gradient}
+        before:absolute before:inset-0 before:bg-gradient-to-r before:from-white/0 before:via-white/20 before:to-white/0
+        before:translate-x-[-200%] before:animate-[shimmer_3s_ease-in-out_infinite]
       `}
+      style={{
+        backgroundSize: '200% 200%',
+        animation: 'gradientShift 4s ease infinite',
+      }}
     >
+      <style>{`
+        @keyframes shimmer {
+          0% { transform: translateX(-200%); }
+          100% { transform: translateX(200%); }
+        }
+        @keyframes gradientShift {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+      `}</style>
       {/* Decorative overlay */}
       <div className="absolute inset-0 bg-black/10" />
-      <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+      <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 animate-pulse" />
       
       <div className="relative">
         <div className="text-4xl md:text-5xl font-bold mb-2">

@@ -15,8 +15,8 @@ export function Navbar() {
     href: "#testimonials",
     label: "Success Stories"
   }, {
-    href: "#faq",
-    label: "FAQ"
+    href: "#systems",
+    label: "Systems"
   }];
   return <motion.nav className="fixed top-0 left-0 right-0 z-50 glass-strong" initial={{
     y: -100
@@ -40,7 +40,15 @@ export function Navbar() {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">
-            {navLinks.map(link => {})}
+            {navLinks.map(link => (
+              <a
+                key={link.href}
+                href={link.href}
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {link.label}
+              </a>
+            ))}
           </div>
 
           {/* Desktop CTA */}

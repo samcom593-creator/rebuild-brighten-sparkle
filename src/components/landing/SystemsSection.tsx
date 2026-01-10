@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Globe, 
@@ -95,17 +95,21 @@ const features = {
 
 const stats = [
   {
-    value: "92%",
+    value: 92,
+    suffix: "%",
     description: "of agents report increased production after implementing APEX platform",
     gradient: "from-orange-500 to-red-400",
   },
   {
-    value: "14.3",
+    value: 14.3,
+    suffix: "",
     description: "hours saved per agent each week through automated workflows",
     gradient: "from-blue-500 to-indigo-500",
+    decimals: 1,
   },
   {
-    value: "3x",
+    value: 3,
+    suffix: "x",
     description: "faster agent onboarding compared to industry standard processes",
     gradient: "from-purple-500 to-violet-400",
   },
@@ -272,24 +276,77 @@ function FeatureCard({ icon: Icon, title, description }: FeatureCardProps) {
 }
 
 interface StatCardProps {
-  value: string;
+  value: number;
+  suffix: string;
   description: string;
   gradient: string;
+  decimals?: number;
 }
 
-function StatCard({ value, description, gradient }: StatCardProps) {
+function StatCard({ value, suffix, description, gradient, decimals = 0 }: StatCardProps) {
+  const [count, setCount] = useState(0);
+  const [hasStarted, setHasStarted] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !hasStarted) {
+          setHasStarted(true);
+        }
+      },
+      { threshold: 0.3 }
+    );
+
+    if (ref.current) {
+      observer.observe(ref.current);
+    }
+
+    return () => observer.disconnect();
+  }, [hasStarted]);
+
+  useEffect(() => {
+    if (!hasStarted) return;
+
+    const duration = 2000;
+    let startTime: number;
+    let animationFrame: number;
+
+    const animate = (timestamp: number) => {
+      if (!startTime) startTime = timestamp;
+      const progress = Math.min((timestamp - startTime) / duration, 1);
+      
+      // Easing function for smooth animation
+      const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+      const currentValue = easeOutQuart * value;
+      
+      setCount(decimals > 0 ? parseFloat(currentValue.toFixed(decimals)) : Math.floor(currentValue));
+
+      if (progress < 1) {
+        animationFrame = requestAnimationFrame(animate);
+      }
+    };
+
+    animationFrame = requestAnimationFrame(animate);
+
+    return () => cancelAnimationFrame(animationFrame);
+  }, [value, hasStarted, decimals]);
+
   return (
-    <div className={`
-      relative overflow-hidden rounded-xl p-6 text-white
-      bg-gradient-to-br ${gradient}
-    `}>
+    <div 
+      ref={ref}
+      className={`
+        relative overflow-hidden rounded-xl p-6 text-white
+        bg-gradient-to-br ${gradient}
+      `}
+    >
       {/* Decorative overlay */}
       <div className="absolute inset-0 bg-black/10" />
       <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
       
       <div className="relative">
         <div className="text-4xl md:text-5xl font-bold mb-2">
-          {value}
+          {decimals > 0 ? count.toFixed(decimals) : count}{suffix}
         </div>
         <p className="text-sm text-white/90 leading-relaxed">
           {description}

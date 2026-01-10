@@ -1,12 +1,16 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Crown, Play, ExternalLink, CheckCircle2 } from "lucide-react";
+import { Crown, Play, CheckCircle2, Calendar } from "lucide-react";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { GlassCard } from "@/components/ui/glass-card";
+import { CalendlyEmbed } from "@/components/landing/CalendlyEmbed";
 
 export default function ApplySuccessLicensed() {
+  // Replace with your actual Calendly URL
+  const calendlyUrl = "https://calendly.com/your-apex-licensed-onboarding";
+
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background py-8 px-4">
       {/* Background Effects */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(var(--primary)/0.1)_0%,transparent_50%)]" />
       
@@ -14,7 +18,7 @@ export default function ApplySuccessLicensed() {
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-4xl relative z-10"
+        className="w-full max-w-5xl mx-auto relative z-10"
       >
         <GlassCard className="p-6 md:p-10">
           {/* Header */}
@@ -90,29 +94,40 @@ export default function ApplySuccessLicensed() {
             ))}
           </motion.div>
 
-          {/* CTA */}
+          {/* Calendly Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
+            className="mb-8"
+          >
+            <div className="text-center mb-6">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <Calendar className="h-5 w-5 text-primary" />
+                <h2 className="text-xl font-bold">Schedule Your Onboarding Call</h2>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Pick a time that works for you to meet with your dedicated onboarding specialist.
+              </p>
+            </div>
+            
+            <div className="rounded-xl overflow-hidden border border-border/50 bg-background/50">
+              <CalendlyEmbed url={calendlyUrl} />
+            </div>
+          </motion.div>
+
+          {/* Back Button */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
             className="text-center"
           >
-            <p className="text-sm text-muted-foreground mb-4">
-              After watching the video, click below to schedule your onboarding call:
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/">
-                <GradientButton variant="outline">
-                  Back to Home
-                </GradientButton>
-              </Link>
-              <a href="https://calendly.com" target="_blank" rel="noopener noreferrer">
-                <GradientButton>
-                  Schedule Onboarding Call
-                  <ExternalLink className="h-4 w-4 ml-2" />
-                </GradientButton>
-              </a>
-            </div>
+            <Link to="/">
+              <GradientButton variant="outline">
+                Back to Home
+              </GradientButton>
+            </Link>
           </motion.div>
         </GlassCard>
       </motion.div>

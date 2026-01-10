@@ -1,0 +1,607 @@
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { 
+  Crown, 
+  ArrowLeft, 
+  ArrowRight, 
+  User, 
+  FileText, 
+  Briefcase, 
+  CheckCircle2,
+  Loader2
+} from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { GradientButton } from "@/components/ui/gradient-button";
+import { GlassCard } from "@/components/ui/glass-card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { US_STATES, AVAILABILITY_OPTIONS, REFERRAL_SOURCES } from "@/lib/constants";
+
+const applicationSchema = z.object({
+  // Step 1: Personal Info
+  firstName: z.string().min(2, "First name is required").max(50),
+  lastName: z.string().min(2, "Last name is required").max(50),
+  email: z.string().email("Valid email is required"),
+  phone: z.string().min(10, "Valid phone number is required").max(20),
+  city: z.string().min(2, "City is required").max(100),
+  state: z.string().min(2, "State is required"),
+  
+  // Step 2: Experience
+  hasInsuranceExperience: z.boolean().default(false),
+  yearsExperience: z.number().min(0).max(50).optional(),
+  previousCompany: z.string().max(100).optional(),
+  previousProduction: z.number().min(0).optional(),
+  
+  // Step 3: Licensing
+  licenseStatus: z.enum(["licensed", "unlicensed", "pending"]),
+  niprNumber: z.string().max(20).optional(),
+  licensedStates: z.array(z.string()).optional(),
+  
+  // Step 4: Goals
+  desiredIncome: z.number().min(0).optional(),
+  availability: z.string().min(1, "Availability is required"),
+  startDate: z.string().optional(),
+  referralSource: z.string().optional(),
+  notes: z.string().max(1000).optional(),
+});
+
+type ApplicationFormData = z.infer<typeof applicationSchema>;
+
+const steps = [
+  { id: 1, title: "Personal Info", icon: User },
+  { id: 2, title: "Experience", icon: Briefcase },
+  { id: 3, title: "Licensing", icon: FileText },
+  { id: 4, title: "Goals", icon: CheckCircle2 },
+];
+
+export default function Apply() {
+  const navigate = useNavigate();
+  const [currentStep, setCurrentStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedStates, setSelectedStates] = useState<string[]>([]);
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    trigger,
+    formState: { errors },
+  } = useForm<ApplicationFormData>({
+    resolver: zodResolver(applicationSchema),
+    defaultValues: {
+      hasInsuranceExperience: false,
+      licenseStatus: "unlicensed",
+      licensedStates: [],
+    },
+  });
+
+  const hasExperience = watch("hasInsuranceExperience");
+  const licenseStatus = watch("licenseStatus");
+
+  const validateStep = async (step: number): Promise<boolean> => {
+    let fieldsToValidate: (keyof ApplicationFormData)[] = [];
+    
+    switch (step) {
+      case 1:
+        fieldsToValidate = ["firstName", "lastName", "email", "phone", "city", "state"];
+        break;
+      case 2:
+        fieldsToValidate = ["hasInsuranceExperience"];
+        break;
+      case 3:
+        fieldsToValidate = ["licenseStatus"];
+        break;
+      case 4:
+        fieldsToValidate = ["availability"];
+        break;
+    }
+    
+    return await trigger(fieldsToValidate);
+  };
+
+  const nextStep = async () => {
+    const isValid = await validateStep(currentStep);
+    if (isValid && currentStep < 4) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const onSubmit = async (data: ApplicationFormData) => {
+    setIsSubmitting(true);
+    
+    try {
+      const { error } = await supabase.from("applications").insert({
+        first_name: data.firstName,
+        last_name: data.lastName,
+        email: data.email,
+        phone: data.phone,
+        city: data.city,
+        state: data.state,
+        has_insurance_experience: data.hasInsuranceExperience,
+        years_experience: data.yearsExperience,
+        previous_company: data.previousCompany,
+        previous_production: data.previousProduction,
+        license_status: data.licenseStatus,
+        nipr_number: data.niprNumber,
+        licensed_states: selectedStates,
+        desired_income: data.desiredIncome,
+        availability: data.availability,
+        start_date: data.startDate,
+        referral_source: data.referralSource,
+        notes: data.notes,
+        status: "new",
+      });
+
+      if (error) throw error;
+
+      toast.success("Application submitted successfully!");
+      navigate("/apply/success");
+    } catch (error) {
+      console.error("Error submitting application:", error);
+      toast.error("Failed to submit application. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const toggleState = (stateValue: string) => {
+    setSelectedStates(prev => 
+      prev.includes(stateValue) 
+        ? prev.filter(s => s !== stateValue)
+        : [...prev, stateValue]
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="glass-strong border-b border-border">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <Link to="/" className="flex items-center gap-2">
+              <Crown className="h-8 w-8 text-primary" />
+              <span className="text-xl font-bold gradient-text">APEX Financial</span>
+            </Link>
+            <Link to="/" className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Home
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      <main className="container mx-auto px-4 py-12">
+        <div className="max-w-3xl mx-auto">
+          {/* Progress Steps */}
+          <div className="mb-12">
+            <div className="flex items-center justify-between relative">
+              <div className="absolute top-5 left-0 right-0 h-0.5 bg-border" />
+              <div 
+                className="absolute top-5 left-0 h-0.5 bg-primary transition-all duration-500"
+                style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
+              />
+              
+              {steps.map((step) => (
+                <div key={step.id} className="relative z-10 flex flex-col items-center">
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
+                      currentStep >= step.id
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    <step.icon className="h-5 w-5" />
+                  </div>
+                  <span className={`text-xs mt-2 font-medium ${
+                    currentStep >= step.id ? "text-foreground" : "text-muted-foreground"
+                  }`}>
+                    {step.title}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentStep}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+              >
+                <GlassCard className="p-8">
+                  {/* Step 1: Personal Info */}
+                  {currentStep === 1 && (
+                    <div className="space-y-6">
+                      <div>
+                        <h2 className="text-2xl font-bold mb-2">Personal Information</h2>
+                        <p className="text-muted-foreground">Tell us a bit about yourself.</p>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="firstName">First Name *</Label>
+                          <Input
+                            id="firstName"
+                            {...register("firstName")}
+                            placeholder="John"
+                            className="bg-input"
+                          />
+                          {errors.firstName && (
+                            <p className="text-sm text-destructive">{errors.firstName.message}</p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="lastName">Last Name *</Label>
+                          <Input
+                            id="lastName"
+                            {...register("lastName")}
+                            placeholder="Smith"
+                            className="bg-input"
+                          />
+                          {errors.lastName && (
+                            <p className="text-sm text-destructive">{errors.lastName.message}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Email Address *</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          {...register("email")}
+                          placeholder="john@example.com"
+                          className="bg-input"
+                        />
+                        {errors.email && (
+                          <p className="text-sm text-destructive">{errors.email.message}</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="phone">Phone Number *</Label>
+                        <Input
+                          id="phone"
+                          type="tel"
+                          {...register("phone")}
+                          placeholder="(555) 123-4567"
+                          className="bg-input"
+                        />
+                        {errors.phone && (
+                          <p className="text-sm text-destructive">{errors.phone.message}</p>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="city">City *</Label>
+                          <Input
+                            id="city"
+                            {...register("city")}
+                            placeholder="Atlanta"
+                            className="bg-input"
+                          />
+                          {errors.city && (
+                            <p className="text-sm text-destructive">{errors.city.message}</p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="state">State *</Label>
+                          <Select onValueChange={(value) => setValue("state", value)}>
+                            <SelectTrigger className="bg-input">
+                              <SelectValue placeholder="Select state" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {US_STATES.map((state) => (
+                                <SelectItem key={state.value} value={state.value}>
+                                  {state.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {errors.state && (
+                            <p className="text-sm text-destructive">{errors.state.message}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Step 2: Experience */}
+                  {currentStep === 2 && (
+                    <div className="space-y-6">
+                      <div>
+                        <h2 className="text-2xl font-bold mb-2">Your Experience</h2>
+                        <p className="text-muted-foreground">No experience? No problem! We train everyone.</p>
+                      </div>
+
+                      <div className="flex items-center space-x-3 p-4 rounded-lg border border-border">
+                        <Checkbox
+                          id="hasExperience"
+                          checked={hasExperience}
+                          onCheckedChange={(checked) => setValue("hasInsuranceExperience", checked === true)}
+                        />
+                        <Label htmlFor="hasExperience" className="cursor-pointer">
+                          I have previous insurance industry experience
+                        </Label>
+                      </div>
+
+                      {hasExperience && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          className="space-y-4"
+                        >
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="yearsExperience">Years of Experience</Label>
+                              <Input
+                                id="yearsExperience"
+                                type="number"
+                                {...register("yearsExperience", { valueAsNumber: true })}
+                                placeholder="0"
+                                className="bg-input"
+                              />
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="previousCompany">Previous Company</Label>
+                              <Input
+                                id="previousCompany"
+                                {...register("previousCompany")}
+                                placeholder="Company name"
+                                className="bg-input"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="previousProduction">Annual Premium Production ($)</Label>
+                            <Input
+                              id="previousProduction"
+                              type="number"
+                              {...register("previousProduction", { valueAsNumber: true })}
+                              placeholder="100000"
+                              className="bg-input"
+                            />
+                          </div>
+                        </motion.div>
+                      )}
+
+                      {!hasExperience && (
+                        <div className="p-6 rounded-lg bg-primary/10 border border-primary/20">
+                          <h3 className="font-semibold text-primary mb-2">Great news!</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Many of our top producers came to APEX with zero insurance experience. 
+                            Our comprehensive training program will teach you everything you need to know 
+                            to succeed. Most new agents close their first sale within 2 weeks of training.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Step 3: Licensing */}
+                  {currentStep === 3 && (
+                    <div className="space-y-6">
+                      <div>
+                        <h2 className="text-2xl font-bold mb-2">Licensing Status</h2>
+                        <p className="text-muted-foreground">We help unlicensed candidates get their license.</p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Current License Status *</Label>
+                        <Select 
+                          value={licenseStatus}
+                          onValueChange={(value: "licensed" | "unlicensed" | "pending") => setValue("licenseStatus", value)}
+                        >
+                          <SelectTrigger className="bg-input">
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="licensed">Currently Licensed</SelectItem>
+                            <SelectItem value="pending">License Pending</SelectItem>
+                            <SelectItem value="unlicensed">Not Yet Licensed</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {licenseStatus === "licensed" && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          className="space-y-4"
+                        >
+                          <div className="space-y-2">
+                            <Label htmlFor="niprNumber">NIPR Number (optional)</Label>
+                            <Input
+                              id="niprNumber"
+                              {...register("niprNumber")}
+                              placeholder="Your NIPR number"
+                              className="bg-input"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Licensed States (select all that apply)</Label>
+                            <div className="grid grid-cols-4 md:grid-cols-6 gap-2 max-h-48 overflow-y-auto p-2 rounded-lg border border-border">
+                              {US_STATES.map((state) => (
+                                <button
+                                  key={state.value}
+                                  type="button"
+                                  onClick={() => toggleState(state.value)}
+                                  className={`px-3 py-2 text-sm rounded-md transition-colors ${
+                                    selectedStates.includes(state.value)
+                                      ? "bg-primary text-primary-foreground"
+                                      : "bg-muted hover:bg-muted/80"
+                                  }`}
+                                >
+                                  {state.value}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+
+                      {licenseStatus === "unlicensed" && (
+                        <div className="p-6 rounded-lg bg-primary/10 border border-primary/20">
+                          <h3 className="font-semibold text-primary mb-2">We've got you covered!</h3>
+                          <p className="text-sm text-muted-foreground">
+                            APEX will guide you through the entire licensing process. We provide study materials, 
+                            exam prep courses, and even reimburse your licensing fees once you're contracted. 
+                            Most candidates get licensed within 2-3 weeks.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Step 4: Goals */}
+                  {currentStep === 4 && (
+                    <div className="space-y-6">
+                      <div>
+                        <h2 className="text-2xl font-bold mb-2">Your Goals</h2>
+                        <p className="text-muted-foreground">Help us understand what you're looking for.</p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="desiredIncome">Target Annual Income ($)</Label>
+                        <Input
+                          id="desiredIncome"
+                          type="number"
+                          {...register("desiredIncome", { valueAsNumber: true })}
+                          placeholder="150000"
+                          className="bg-input"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Availability *</Label>
+                        <Select onValueChange={(value) => setValue("availability", value)}>
+                          <SelectTrigger className="bg-input">
+                            <SelectValue placeholder="Select availability" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {AVAILABILITY_OPTIONS.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {errors.availability && (
+                          <p className="text-sm text-destructive">{errors.availability.message}</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="startDate">Desired Start Date</Label>
+                        <Input
+                          id="startDate"
+                          type="date"
+                          {...register("startDate")}
+                          className="bg-input"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>How did you hear about us?</Label>
+                        <Select onValueChange={(value) => setValue("referralSource", value)}>
+                          <SelectTrigger className="bg-input">
+                            <SelectValue placeholder="Select source" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {REFERRAL_SOURCES.map((source) => (
+                              <SelectItem key={source.value} value={source.value}>
+                                {source.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="notes">Anything else you'd like us to know?</Label>
+                        <Textarea
+                          id="notes"
+                          {...register("notes")}
+                          placeholder="Tell us about your goals, questions, or anything else..."
+                          className="bg-input min-h-[100px]"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Navigation Buttons */}
+                  <div className="flex items-center justify-between mt-8 pt-6 border-t border-border">
+                    {currentStep > 1 ? (
+                      <GradientButton
+                        type="button"
+                        variant="outline"
+                        onClick={prevStep}
+                      >
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        Previous
+                      </GradientButton>
+                    ) : (
+                      <div />
+                    )}
+
+                    {currentStep < 4 ? (
+                      <GradientButton type="button" onClick={nextStep}>
+                        Next Step
+                        <ArrowRight className="h-4 w-4 ml-2" />
+                      </GradientButton>
+                    ) : (
+                      <GradientButton type="submit" disabled={isSubmitting}>
+                        {isSubmitting ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Submitting...
+                          </>
+                        ) : (
+                          <>
+                            Submit Application
+                            <CheckCircle2 className="h-4 w-4 ml-2" />
+                          </>
+                        )}
+                      </GradientButton>
+                    )}
+                  </div>
+                </GlassCard>
+              </motion.div>
+            </AnimatePresence>
+          </form>
+        </div>
+      </main>
+    </div>
+  );
+}

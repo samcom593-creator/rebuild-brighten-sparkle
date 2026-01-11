@@ -15,6 +15,8 @@ import {
   Clock,
   CheckCircle,
   XCircle,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -79,10 +81,75 @@ export default function DashboardAdmin() {
   const [needsAttention, setNeedsAttention] = useState<AgentStats[]>([]);
   const [fastestGrowers, setFastestGrowers] = useState<{ rank: number; name: string; value: number }[]>([]);
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
 
   useEffect(() => {
     fetchAdminData();
     fetchPendingAgents();
+
+    // Set up real-time subscriptions for agents
+    const agentsChannel = supabase
+      .channel('admin-agents-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'agents',
+        },
+        (payload) => {
+          console.log('Agent change received:', payload);
+          fetchPendingAgents();
+          fetchAdminData();
+          
+          if (payload.eventType === 'INSERT') {
+            toast.info('New agent registration received!', {
+              description: 'Check the pending approvals section.',
+            });
+          }
+        }
+      )
+      .subscribe((status) => {
+        setIsRealtimeConnected(status === 'SUBSCRIBED');
+      });
+
+    // Set up real-time subscriptions for applications
+    const applicationsChannel = supabase
+      .channel('admin-applications-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'applications',
+        },
+        (payload) => {
+          console.log('New application received:', payload);
+          fetchAdminData();
+          
+          const newApp = payload.new as { first_name?: string; last_name?: string };
+          toast.success('New application received!', {
+            description: `${newApp.first_name} ${newApp.last_name} just applied.`,
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'applications',
+        },
+        () => {
+          fetchAdminData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(agentsChannel);
+      supabase.removeChannel(applicationsChannel);
+    };
   }, []);
 
   const fetchPendingAgents = async () => {
@@ -318,13 +385,36 @@ export default function DashboardAdmin() {
         animate={{ opacity: 1, y: 0 }}
         className="mb-8"
       >
-        <div className="flex items-center gap-2 mb-2">
-          <Shield className="h-6 w-6 text-primary" />
-          <h1 className="text-3xl font-bold">Admin Panel</h1>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Shield className="h-6 w-6 text-primary" />
+              <h1 className="text-3xl font-bold">Admin Panel</h1>
+            </div>
+            <p className="text-muted-foreground">
+              Manage team members and oversee all recruiting activity
+            </p>
+          </div>
+          {/* Real-time connection indicator */}
+          <div className={cn(
+            "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium",
+            isRealtimeConnected 
+              ? "bg-emerald-500/20 text-emerald-400" 
+              : "bg-amber-500/20 text-amber-400"
+          )}>
+            {isRealtimeConnected ? (
+              <>
+                <Wifi className="h-3.5 w-3.5" />
+                Live Updates
+              </>
+            ) : (
+              <>
+                <WifiOff className="h-3.5 w-3.5" />
+                Connecting...
+              </>
+            )}
+          </div>
         </div>
-        <p className="text-muted-foreground">
-          Manage team members and oversee all recruiting activity
-        </p>
       </motion.div>
 
       {/* Pending Agents Approval Section */}

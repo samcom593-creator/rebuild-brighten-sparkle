@@ -227,6 +227,8 @@ export type Database = {
           total_premium: number | null
           updated_at: string
           user_id: string | null
+          verified_at: string | null
+          verified_by: string | null
         }
         Insert: {
           agent_code?: string | null
@@ -244,6 +246,8 @@ export type Database = {
           total_premium?: number | null
           updated_at?: string
           user_id?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Update: {
           agent_code?: string | null
@@ -261,6 +265,8 @@ export type Database = {
           total_premium?: number | null
           updated_at?: string
           user_id?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
         }
         Relationships: [
           {

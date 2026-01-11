@@ -40,7 +40,7 @@ export default function Signup() {
     setIsLoading(true);
     
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data: authData, error } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
         options: {
@@ -53,8 +53,23 @@ export default function Signup() {
 
       if (error) throw error;
 
-      toast.success("Account created! Welcome to APEX!");
-      navigate("/dashboard");
+      // Create agent record with pending status
+      if (authData.user) {
+        const { error: agentError } = await supabase
+          .from("agents")
+          .insert({
+            user_id: authData.user.id,
+            status: "pending",
+            license_status: "unlicensed",
+          });
+
+        if (agentError) {
+          console.error("Error creating agent record:", agentError);
+        }
+      }
+
+      toast.success("Account created! Awaiting admin approval.");
+      navigate("/pending-approval");
     } catch (error: any) {
       console.error("Signup error:", error);
       toast.error(error.message || "Failed to create account");

@@ -5,13 +5,14 @@ import {
   Crown,
   LayoutDashboard,
   Users,
-  BookOpen,
+  Shield,
   LogOut,
   Menu,
   X,
   ChevronRight,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -19,23 +20,17 @@ interface DashboardLayoutProps {
   children: ReactNode;
 }
 
-const navItems = [
-  { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
-  { icon: Users, label: "Leads", href: "/dashboard/leads" },
-  { icon: BookOpen, label: "Training", href: "/dashboard/training" },
-];
-
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, isAdmin, isManager } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [user, setUser] = useState<any>(null);
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user);
-    });
-  }, []);
+  const navItems = [
+    { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
+    { icon: Users, label: "Applicants", href: "/dashboard/applicants" },
+    ...(isAdmin || isManager ? [{ icon: Shield, label: "Admin Panel", href: "/dashboard/admin" }] : []),
+  ];
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

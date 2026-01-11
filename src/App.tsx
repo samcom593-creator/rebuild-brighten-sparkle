@@ -13,8 +13,8 @@ import ApplySuccessUnlicensed from "./pages/ApplySuccessUnlicensed";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
-import DashboardLeads from "./pages/DashboardLeads";
-import DashboardTraining from "./pages/DashboardTraining";
+import DashboardApplicants from "./pages/DashboardApplicants";
+import DashboardAdmin from "./pages/DashboardAdmin";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -43,21 +43,23 @@ const App = () => (
             }
           />
           <Route
-            path="/dashboard/leads"
+            path="/dashboard/applicants"
             element={
               <ProtectedRoute>
-                <DashboardLeads />
+                <DashboardApplicants />
               </ProtectedRoute>
             }
           />
           <Route
-            path="/dashboard/training"
+            path="/dashboard/admin"
             element={
               <ProtectedRoute>
-                <DashboardTraining />
+                <DashboardAdmin />
               </ProtectedRoute>
             }
           />
+          {/* Legacy redirect */}
+          <Route path="/dashboard/leads" element={<DashboardApplicants />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

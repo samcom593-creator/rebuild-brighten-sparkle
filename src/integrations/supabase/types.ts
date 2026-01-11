@@ -110,6 +110,56 @@ export type Database = {
           },
         ]
       }
+      agent_lead_stats: {
+        Row: {
+          agent_id: string
+          closed: number | null
+          contacted: number | null
+          created_at: string
+          id: string
+          licensed_count: number | null
+          period_date: string
+          period_type: string
+          qualified: number | null
+          total_leads: number | null
+          unlicensed_count: number | null
+        }
+        Insert: {
+          agent_id: string
+          closed?: number | null
+          contacted?: number | null
+          created_at?: string
+          id?: string
+          licensed_count?: number | null
+          period_date: string
+          period_type: string
+          qualified?: number | null
+          total_leads?: number | null
+          unlicensed_count?: number | null
+        }
+        Update: {
+          agent_id?: string
+          closed?: number | null
+          contacted?: number | null
+          created_at?: string
+          id?: string
+          licensed_count?: number | null
+          period_date?: string
+          period_type?: string
+          qualified?: number | null
+          total_leads?: number | null
+          unlicensed_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_lead_stats_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_metrics: {
         Row: {
           agent_id: string
@@ -267,14 +317,18 @@ export type Database = {
       }
       applications: {
         Row: {
+          assigned_agent_id: string | null
           availability: string | null
           city: string | null
+          closed_at: string | null
+          contacted_at: string | null
           created_at: string
           desired_income: number | null
           email: string
           first_name: string
           has_insurance_experience: boolean | null
           id: string
+          instagram_handle: string | null
           last_name: string
           license_doc_url: string | null
           license_status: Database["public"]["Enums"]["license_status"]
@@ -284,25 +338,31 @@ export type Database = {
           phone: string
           previous_company: string | null
           previous_production: number | null
+          qualified_at: string | null
           referral_source: string | null
           resume_url: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           start_date: string | null
+          started_training: boolean | null
           state: string | null
           status: Database["public"]["Enums"]["application_status"]
           updated_at: string
           years_experience: number | null
         }
         Insert: {
+          assigned_agent_id?: string | null
           availability?: string | null
           city?: string | null
+          closed_at?: string | null
+          contacted_at?: string | null
           created_at?: string
           desired_income?: number | null
           email: string
           first_name: string
           has_insurance_experience?: boolean | null
           id?: string
+          instagram_handle?: string | null
           last_name: string
           license_doc_url?: string | null
           license_status?: Database["public"]["Enums"]["license_status"]
@@ -312,25 +372,31 @@ export type Database = {
           phone: string
           previous_company?: string | null
           previous_production?: number | null
+          qualified_at?: string | null
           referral_source?: string | null
           resume_url?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           start_date?: string | null
+          started_training?: boolean | null
           state?: string | null
           status?: Database["public"]["Enums"]["application_status"]
           updated_at?: string
           years_experience?: number | null
         }
         Update: {
+          assigned_agent_id?: string | null
           availability?: string | null
           city?: string | null
+          closed_at?: string | null
+          contacted_at?: string | null
           created_at?: string
           desired_income?: number | null
           email?: string
           first_name?: string
           has_insurance_experience?: boolean | null
           id?: string
+          instagram_handle?: string | null
           last_name?: string
           license_doc_url?: string | null
           license_status?: Database["public"]["Enums"]["license_status"]
@@ -340,17 +406,27 @@ export type Database = {
           phone?: string
           previous_company?: string | null
           previous_production?: number | null
+          qualified_at?: string | null
           referral_source?: string | null
           resume_url?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           start_date?: string | null
+          started_training?: boolean | null
           state?: string | null
           status?: Database["public"]["Enums"]["application_status"]
           updated_at?: string
           years_experience?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "applications_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lead_counter: {
         Row: {

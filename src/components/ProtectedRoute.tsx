@@ -75,15 +75,7 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // If agent status is pending and user is not admin, redirect to pending approval
-  if (agentStatus === "pending" && !isAdmin) {
-    return <Navigate to="/pending-approval" replace />;
-  }
-
-  // If agent doesn't exist yet (newly signed up), also redirect to pending
-  if (!agentStatus && !isAdmin) {
-    return <Navigate to="/pending-approval" replace />;
-  }
-
+  // Allow all authenticated users to access the dashboard
+  // Admins/managers can see agent management; agents see their own dashboard
   return <>{children}</>;
 }

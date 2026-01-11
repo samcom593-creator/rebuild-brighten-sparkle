@@ -1,192 +1,330 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
-  DollarSign,
   Users,
-  TrendingUp,
+  Phone,
+  UserCheck,
+  CheckCircle,
   Award,
-  Target,
-  FileCheck,
+  GraduationCap,
+  Percent,
+  Clock,
+  MapPin,
+  BarChart3,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
-import { MetricsCard } from "@/components/dashboard/MetricsCard";
-import { VSLSection } from "@/components/dashboard/VSLSection";
-import { GlassCard } from "@/components/ui/glass-card";
+import { StatCard } from "@/components/dashboard/StatCard";
+import { LeaderboardCard } from "@/components/dashboard/LeaderboardCard";
+import { AIInsightsCard } from "@/components/dashboard/AIInsightsCard";
+import { GrowthChart } from "@/components/dashboard/GrowthChart";
+import { AnalyticsPieChart } from "@/components/dashboard/AnalyticsPieChart";
+import { EarningsPotentialCard } from "@/components/dashboard/EarningsPotentialCard";
+import { useAuth } from "@/hooks/useAuth";
 
-interface AgentMetrics {
-  earnings: number;
-  leadsGenerated: number;
-  policiesSold: number;
+interface DashboardStats {
+  totalLeads: number;
+  contacted: number;
+  qualified: number;
+  closed: number;
+  licensed: number;
+  unlicensed: number;
   closeRate: number;
+  avgWaitTime: number;
+  growthPercent: number;
+  staleLeads: number;
+}
+
+interface LeaderboardEntry {
+  rank: number;
+  name: string;
+  value: number;
+  isCurrentUser?: boolean;
 }
 
 export default function Dashboard() {
-  const [metrics, setMetrics] = useState<AgentMetrics>({
-    earnings: 0,
-    leadsGenerated: 0,
-    policiesSold: 0,
+  const { profile, user } = useAuth();
+  const [stats, setStats] = useState<DashboardStats>({
+    totalLeads: 0,
+    contacted: 0,
+    qualified: 0,
+    closed: 0,
+    licensed: 0,
+    unlicensed: 0,
     closeRate: 0,
+    avgWaitTime: 0,
+    growthPercent: 0,
+    staleLeads: 0,
   });
   const [userName, setUserName] = useState("");
+  const [leaderboardApplicants, setLeaderboardApplicants] = useState<LeaderboardEntry[]>([]);
+  const [leaderboardClosed, setLeaderboardClosed] = useState<LeaderboardEntry[]>([]);
+
+  // Demo data for charts
+  const dailyData = [
+    { label: "Mon", leads: 3, closed: 1 },
+    { label: "Tue", leads: 5, closed: 2 },
+    { label: "Wed", leads: 4, closed: 1 },
+    { label: "Thu", leads: 7, closed: 3 },
+    { label: "Fri", leads: 6, closed: 2 },
+    { label: "Sat", leads: 2, closed: 1 },
+    { label: "Sun", leads: 1, closed: 0 },
+  ];
+
+  const weeklyData = [
+    { label: "Week 1", leads: 12, closed: 4 },
+    { label: "Week 2", leads: 18, closed: 6 },
+    { label: "Week 3", leads: 22, closed: 8 },
+    { label: "Week 4", leads: 28, closed: 10 },
+  ];
+
+  const monthlyData = [
+    { label: "Jan", leads: 45, closed: 12 },
+    { label: "Feb", leads: 52, closed: 18 },
+    { label: "Mar", leads: 68, closed: 24 },
+    { label: "Apr", leads: 75, closed: 28 },
+    { label: "May", leads: 82, closed: 32 },
+    { label: "Jun", leads: 95, closed: 38 },
+  ];
+
+  const sourceData = [
+    { name: "Social Media", value: 35, color: "hsl(168, 84%, 42%)" },
+    { name: "Referrals", value: 28, color: "hsl(160, 84%, 39%)" },
+    { name: "Job Boards", value: 20, color: "hsl(45, 93%, 58%)" },
+    { name: "Google", value: 12, color: "hsl(222, 47%, 40%)" },
+    { name: "Other", value: 5, color: "hsl(220, 15%, 50%)" },
+  ];
+
+  const licenseData = [
+    { name: "Licensed", value: stats.licensed, color: "hsl(168, 84%, 42%)" },
+    { name: "Unlicensed", value: stats.unlicensed, color: "hsl(222, 47%, 40%)" },
+  ];
 
   useEffect(() => {
     const fetchData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        setUserName(user.user_metadata?.full_name || user.email?.split("@")[0] || "Agent");
+        setUserName(profile?.full_name || user.email?.split("@")[0] || "Agent");
         
-        // Fetch agent metrics if available
+        // Fetch agent's assigned applications
         const { data: agentData } = await supabase
           .from("agents")
-          .select("total_earnings, total_policies, total_premium")
+          .select("id")
           .eq("user_id", user.id)
           .single();
-        
+
         if (agentData) {
-          setMetrics({
-            earnings: agentData.total_earnings || 0,
-            leadsGenerated: 45, // Demo data
-            policiesSold: agentData.total_policies || 0,
-            closeRate: 32, // Demo data
+          // Fetch applications assigned to this agent
+          const { data: applications } = await supabase
+            .from("applications")
+            .select("*")
+            .eq("assigned_agent_id", agentData.id);
+
+          if (applications) {
+            const totalLeads = applications.length;
+            const contacted = applications.filter(a => a.contacted_at).length;
+            const qualified = applications.filter(a => a.qualified_at).length;
+            const closed = applications.filter(a => a.closed_at).length;
+            const licensed = applications.filter(a => a.license_status === "licensed").length;
+            const unlicensed = applications.filter(a => a.license_status === "unlicensed").length;
+            
+            // Calculate stale leads (not contacted in 48+ hours)
+            const now = new Date();
+            const staleLeads = applications.filter(a => {
+              if (a.contacted_at) return false;
+              const createdAt = new Date(a.created_at);
+              const hoursDiff = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+              return hoursDiff > 48;
+            }).length;
+
+            // Calculate average wait time
+            let totalWaitTime = 0;
+            let countWithContact = 0;
+            applications.forEach(a => {
+              if (a.contacted_at) {
+                const created = new Date(a.created_at);
+                const contacted = new Date(a.contacted_at);
+                totalWaitTime += (contacted.getTime() - created.getTime()) / (1000 * 60 * 60);
+                countWithContact++;
+              }
+            });
+
+            setStats({
+              totalLeads,
+              contacted,
+              qualified,
+              closed,
+              licensed,
+              unlicensed,
+              closeRate: totalLeads > 0 ? (closed / totalLeads) * 100 : 0,
+              avgWaitTime: countWithContact > 0 ? totalWaitTime / countWithContact : 0,
+              growthPercent: 15, // Demo data
+              staleLeads,
+            });
+          }
+        } else {
+          // Demo data for agents without assigned leads
+          setStats({
+            totalLeads: 45,
+            contacted: 32,
+            qualified: 18,
+            closed: 12,
+            licensed: 30,
+            unlicensed: 15,
+            closeRate: 26.7,
+            avgWaitTime: 2.4,
+            growthPercent: 15,
+            staleLeads: 3,
           });
         }
+
+        // Demo leaderboard data
+        setLeaderboardApplicants([
+          { rank: 1, name: "Marcus T.", value: 78 },
+          { rank: 2, name: userName || "You", value: 45, isCurrentUser: true },
+          { rank: 3, name: "Jessica R.", value: 42 },
+          { rank: 4, name: "David K.", value: 38 },
+          { rank: 5, name: "Sarah M.", value: 35 },
+        ]);
+
+        setLeaderboardClosed([
+          { rank: 1, name: "Sarah M.", value: 24 },
+          { rank: 2, name: "Marcus T.", value: 22 },
+          { rank: 3, name: userName || "You", value: 12, isCurrentUser: true },
+          { rank: 4, name: "Jessica R.", value: 10 },
+          { rank: 5, name: "David K.", value: 8 },
+        ]);
       }
     };
     
     fetchData();
-  }, []);
-
-  const recentActivity = [
-    { id: 1, type: "lead", message: "New lead assigned: John D.", time: "2 hours ago" },
-    { id: 2, type: "policy", message: "Policy #A2847 approved", time: "5 hours ago" },
-    { id: 3, type: "training", message: "Completed: Objection Handling", time: "1 day ago" },
-    { id: 4, type: "achievement", message: "Earned: First Sale Badge", time: "2 days ago" },
-  ];
+  }, [user, profile, userName]);
 
   return (
     <DashboardLayout>
-      {/* VSL Section */}
-      <VSLSection />
-
       {/* Welcome Message */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
         className="mb-8"
       >
         <h2 className="text-2xl font-bold">Welcome back, {userName}! 👋</h2>
-        <p className="text-muted-foreground">Here's your performance overview</p>
+        <p className="text-muted-foreground">Here's your recruiting performance overview</p>
       </motion.div>
 
-      {/* Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <MetricsCard
-          title="Total Earnings"
-          value={`$${metrics.earnings.toLocaleString()}`}
-          icon={DollarSign}
-          trend={{ value: 12, isPositive: true }}
-        />
-        <MetricsCard
-          title="Leads Generated"
-          value={metrics.leadsGenerated}
+      {/* Primary Stats Row */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+        <StatCard
+          title="Total Leads"
+          value={stats.totalLeads}
           icon={Users}
-          trend={{ value: 8, isPositive: true }}
+          variant="primary"
         />
-        <MetricsCard
-          title="Policies Sold"
-          value={metrics.policiesSold}
-          icon={FileCheck}
-          trend={{ value: 15, isPositive: true }}
+        <StatCard
+          title="Contacted"
+          value={stats.contacted}
+          icon={Phone}
+          variant="default"
         />
-        <MetricsCard
-          title="Close Rate"
-          value={`${metrics.closeRate}%`}
-          icon={Target}
+        <StatCard
+          title="Qualified"
+          value={stats.qualified}
+          icon={UserCheck}
+          variant="default"
+        />
+        <StatCard
+          title="Closed"
+          value={stats.closed}
+          icon={CheckCircle}
+          variant="success"
+        />
+        <StatCard
+          title="Licensed"
+          value={stats.licensed}
+          icon={Award}
+          variant="primary"
+        />
+        <StatCard
+          title="Unlicensed"
+          value={stats.unlicensed}
+          icon={GraduationCap}
+          variant="default"
         />
       </div>
 
-      {/* Two Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Activity */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <GlassCard className="p-6">
-            <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
-            <div className="space-y-4">
-              {recentActivity.map((activity) => (
-                <div
-                  key={activity.id}
-                  className="flex items-start gap-3 p-3 rounded-lg bg-muted/50"
-                >
-                  <div className="p-2 rounded-full bg-primary/10">
-                    {activity.type === "lead" && <Users className="h-4 w-4 text-primary" />}
-                    {activity.type === "policy" && <FileCheck className="h-4 w-4 text-primary" />}
-                    {activity.type === "training" && <TrendingUp className="h-4 w-4 text-primary" />}
-                    {activity.type === "achievement" && <Award className="h-4 w-4 text-primary" />}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{activity.message}</p>
-                    <p className="text-xs text-muted-foreground">{activity.time}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </GlassCard>
-        </motion.div>
+      {/* Secondary Stats Row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <StatCard
+          title="Close Rate"
+          value={`${stats.closeRate.toFixed(1)}%`}
+          icon={Percent}
+          variant="success"
+        />
+        <StatCard
+          title="Avg Wait Time"
+          value={`${stats.avgWaitTime.toFixed(1)}h`}
+          icon={Clock}
+          variant={stats.avgWaitTime > 24 ? "warning" : "default"}
+        />
+        <StatCard
+          title="Growth"
+          value={`+${stats.growthPercent}%`}
+          icon={BarChart3}
+          trend={{ value: stats.growthPercent, isPositive: true }}
+          variant="success"
+        />
+        <EarningsPotentialCard leadCount={stats.totalLeads} />
+      </div>
 
-        {/* Quick Stats */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
-          <GlassCard className="p-6">
-            <h3 className="text-lg font-semibold mb-4">This Month's Goals</h3>
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between mb-2">
-                  <span className="text-sm font-medium">Lead Conversion</span>
-                  <span className="text-sm text-muted-foreground">8/15</span>
-                </div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div className="h-full bg-primary rounded-full" style={{ width: "53%" }} />
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between mb-2">
-                  <span className="text-sm font-medium">Revenue Target</span>
-                  <span className="text-sm text-muted-foreground">$12K / $20K</span>
-                </div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div className="h-full bg-primary rounded-full" style={{ width: "60%" }} />
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between mb-2">
-                  <span className="text-sm font-medium">Training Progress</span>
-                  <span className="text-sm text-muted-foreground">7/10 modules</span>
-                </div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div className="h-full bg-primary rounded-full" style={{ width: "70%" }} />
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between mb-2">
-                  <span className="text-sm font-medium">Appointments Set</span>
-                  <span className="text-sm text-muted-foreground">12/25</span>
-                </div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div className="h-full bg-primary rounded-full" style={{ width: "48%" }} />
-                </div>
-              </div>
-            </div>
-          </GlassCard>
-        </motion.div>
+      {/* AI Suggestions */}
+      <div className="mb-8">
+        <AIInsightsCard 
+          stats={{
+            totalLeads: stats.totalLeads,
+            contacted: stats.contacted,
+            qualified: stats.qualified,
+            closed: stats.closed,
+            closeRate: stats.closeRate,
+            avgWaitTime: stats.avgWaitTime,
+            staleLeads: stats.staleLeads,
+            teamAvgCloseRate: 25,
+          }}
+        />
+      </div>
+
+      {/* Growth Analytics */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <GrowthChart
+          dailyData={dailyData}
+          weeklyData={weeklyData}
+          monthlyData={monthlyData}
+          currentPeriodTotal={stats.totalLeads}
+          previousPeriodTotal={Math.round(stats.totalLeads * 0.87)}
+          className="lg:col-span-2"
+        />
+        <AnalyticsPieChart
+          title="Lead Sources"
+          icon={<MapPin className="h-5 w-5 text-primary" />}
+          data={sourceData}
+        />
+      </div>
+
+      {/* Quick Analytics & License Distribution */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <AnalyticsPieChart
+          title="License Status"
+          icon={<Award className="h-5 w-5 text-primary" />}
+          data={licenseData}
+        />
+        <LeaderboardCard
+          title="Total Applicants"
+          entries={leaderboardApplicants}
+          valueLabel="leads"
+        />
+        <LeaderboardCard
+          title="Total Closed"
+          entries={leaderboardClosed}
+          valueLabel="closed"
+        />
       </div>
     </DashboardLayout>
   );

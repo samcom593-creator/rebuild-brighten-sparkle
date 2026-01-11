@@ -4,13 +4,17 @@ import {
   Users,
   TrendingUp,
   AlertTriangle,
-  Clock,
   Search,
   Eye,
   BarChart3,
   Shield,
   Trophy,
   ChevronRight,
+  UserCheck,
+  UserX,
+  Clock,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -30,6 +34,7 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { Navigate } from "react-router-dom";
+import { toast } from "sonner";
 
 interface AgentStats {
   id: string;
@@ -37,11 +42,18 @@ interface AgentStats {
   email: string;
   totalLeads: number;
   contacted: number;
-  qualified: number;
   closed: number;
   closeRate: number;
   staleLeads: number;
   lastActive: string;
+}
+
+interface PendingAgent {
+  id: string;
+  userId: string;
+  name: string;
+  email: string;
+  createdAt: string;
 }
 
 interface TeamOverview {
@@ -49,27 +61,143 @@ interface TeamOverview {
   totalLeads: number;
   totalClosed: number;
   teamCloseRate: number;
+  pendingAgents: number;
 }
 
 export default function DashboardAdmin() {
-  const { isAdmin, isManager, isLoading: authLoading } = useAuth();
+  const { isAdmin, isManager, isLoading: authLoading, user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [agents, setAgents] = useState<AgentStats[]>([]);
+  const [pendingAgents, setPendingAgents] = useState<PendingAgent[]>([]);
   const [teamOverview, setTeamOverview] = useState<TeamOverview>({
     totalAgents: 0,
     totalLeads: 0,
     totalClosed: 0,
     teamCloseRate: 0,
+    pendingAgents: 0,
   });
   const [needsAttention, setNeedsAttention] = useState<AgentStats[]>([]);
   const [fastestGrowers, setFastestGrowers] = useState<{ rank: number; name: string; value: number }[]>([]);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAdminData();
+    fetchPendingAgents();
   }, []);
 
+  const fetchPendingAgents = async () => {
+    const { data: pendingData, error } = await supabase
+      .from("agents")
+      .select(`
+        id,
+        user_id,
+        created_at,
+        profiles!agents_profile_id_fkey (
+          full_name,
+          email
+        )
+      `)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching pending agents:", error);
+      return;
+    }
+
+    // Also fetch by user_id for agents without profile_id
+    const { data: pendingByUserId } = await supabase
+      .from("agents")
+      .select("id, user_id, created_at")
+      .eq("status", "pending");
+
+    if (pendingByUserId && pendingByUserId.length > 0) {
+      // Get profile info for these users
+      const userIds = pendingByUserId.map(a => a.user_id).filter(Boolean);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, full_name, email")
+        .in("user_id", userIds);
+
+      const pending = pendingByUserId.map(agent => {
+        const profile = profiles?.find(p => p.user_id === agent.user_id);
+        return {
+          id: agent.id,
+          userId: agent.user_id || "",
+          name: profile?.full_name || "Unknown",
+          email: profile?.email || "Unknown",
+          createdAt: agent.created_at,
+        };
+      });
+
+      setPendingAgents(pending);
+      setTeamOverview(prev => ({ ...prev, pendingAgents: pending.length }));
+    }
+  };
+
+  const handleApproveAgent = async (agentId: string) => {
+    if (!user) return;
+    setApprovingId(agentId);
+
+    try {
+      const { error } = await supabase
+        .from("agents")
+        .update({
+          status: "active",
+          verified_at: new Date().toISOString(),
+          verified_by: user.id,
+        })
+        .eq("id", agentId);
+
+      if (error) throw error;
+
+      toast.success("Agent approved successfully!");
+      fetchPendingAgents();
+      fetchAdminData();
+    } catch (error: any) {
+      console.error("Error approving agent:", error);
+      toast.error("Failed to approve agent");
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
+  const handleRejectAgent = async (agentId: string) => {
+    setApprovingId(agentId);
+
+    try {
+      const { error } = await supabase
+        .from("agents")
+        .update({ status: "terminated" })
+        .eq("id", agentId);
+
+      if (error) throw error;
+
+      toast.success("Agent rejected");
+      fetchPendingAgents();
+    } catch (error: any) {
+      console.error("Error rejecting agent:", error);
+      toast.error("Failed to reject agent");
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
   const fetchAdminData = async () => {
-    // Demo data for admin panel
+    // Fetch all active agents
+    const { data: activeAgents } = await supabase
+      .from("agents")
+      .select(`
+        id,
+        user_id,
+        profiles!agents_profile_id_fkey (
+          full_name,
+          email
+        )
+      `)
+      .eq("status", "active");
+
+    // For now, use demo data for agent stats since we need to aggregate applications
     const demoAgents: AgentStats[] = [
       {
         id: "1",
@@ -77,7 +205,6 @@ export default function DashboardAdmin() {
         email: "marcus.t@apex.com",
         totalLeads: 78,
         contacted: 65,
-        qualified: 42,
         closed: 22,
         closeRate: 28.2,
         staleLeads: 2,
@@ -89,7 +216,6 @@ export default function DashboardAdmin() {
         email: "sarah.k@apex.com",
         totalLeads: 65,
         contacted: 58,
-        qualified: 38,
         closed: 24,
         closeRate: 36.9,
         staleLeads: 0,
@@ -101,7 +227,6 @@ export default function DashboardAdmin() {
         email: "jessica.r@apex.com",
         totalLeads: 42,
         contacted: 35,
-        qualified: 18,
         closed: 10,
         closeRate: 23.8,
         staleLeads: 5,
@@ -113,7 +238,6 @@ export default function DashboardAdmin() {
         email: "david.c@apex.com",
         totalLeads: 38,
         contacted: 28,
-        qualified: 15,
         closed: 8,
         closeRate: 21.1,
         staleLeads: 8,
@@ -125,7 +249,6 @@ export default function DashboardAdmin() {
         email: "emily.w@apex.com",
         totalLeads: 55,
         contacted: 48,
-        qualified: 28,
         closed: 15,
         closeRate: 27.3,
         staleLeads: 3,
@@ -138,12 +261,13 @@ export default function DashboardAdmin() {
     // Calculate team overview
     const totalLeads = demoAgents.reduce((sum, a) => sum + a.totalLeads, 0);
     const totalClosed = demoAgents.reduce((sum, a) => sum + a.closed, 0);
-    setTeamOverview({
+    setTeamOverview(prev => ({
+      ...prev,
       totalAgents: demoAgents.length,
       totalLeads,
       totalClosed,
       teamCloseRate: totalLeads > 0 ? (totalClosed / totalLeads) * 100 : 0,
-    });
+    }));
 
     // Agents needing attention (low close rate or many stale leads)
     setNeedsAttention(
@@ -199,19 +323,82 @@ export default function DashboardAdmin() {
           <h1 className="text-3xl font-bold">Admin Panel</h1>
         </div>
         <p className="text-muted-foreground">
-          Oversee team performance and manage all agents
+          Manage team members and oversee all recruiting activity
         </p>
       </motion.div>
+
+      {/* Pending Agents Approval Section */}
+      {pendingAgents.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="mb-8"
+        >
+          <GlassCard className="p-6 border-2 border-amber-500/30 bg-amber-500/5">
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Clock className="h-5 w-5 text-amber-400" />
+              Pending Agent Approvals
+              <Badge variant="outline" className="bg-amber-500/20 text-amber-400 border-amber-500/30 ml-2">
+                {pendingAgents.length}
+              </Badge>
+            </h3>
+            <div className="space-y-3">
+              {pendingAgents.map((agent) => (
+                <div
+                  key={agent.id}
+                  className="flex items-center justify-between p-4 rounded-lg bg-background/50 border border-border"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                      <UserCheck className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium">{agent.name}</p>
+                      <p className="text-sm text-muted-foreground">{agent.email}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground mr-4">
+                      Applied {new Date(agent.createdAt).toLocaleDateString()}
+                    </span>
+                    <Button
+                      size="sm"
+                      onClick={() => handleApproveAgent(agent.id)}
+                      disabled={approvingId === agent.id}
+                      className="bg-emerald-600 hover:bg-emerald-700"
+                    >
+                      <CheckCircle className="h-4 w-4 mr-1" />
+                      Approve
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleRejectAgent(agent.id)}
+                      disabled={approvingId === agent.id}
+                      className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                    >
+                      <XCircle className="h-4 w-4 mr-1" />
+                      Reject
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </GlassCard>
+        </motion.div>
+      )}
 
       {/* Team Overview */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"
+        className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8"
       >
         {[
-          { label: "Total Agents", value: teamOverview.totalAgents, icon: Users, color: "text-primary" },
+          { label: "Active Agents", value: teamOverview.totalAgents, icon: Users, color: "text-primary" },
+          { label: "Pending Approval", value: teamOverview.pendingAgents, icon: Clock, color: "text-amber-400" },
           { label: "Total Leads", value: teamOverview.totalLeads, icon: BarChart3, color: "text-blue-400" },
           { label: "Total Closed", value: teamOverview.totalClosed, icon: Trophy, color: "text-emerald-400" },
           { label: "Team Close Rate", value: `${teamOverview.teamCloseRate.toFixed(1)}%`, icon: TrendingUp, color: "text-primary" },
@@ -248,7 +435,7 @@ export default function DashboardAdmin() {
         </div>
       </motion.div>
 
-      {/* Agent Management Table */}
+      {/* Agent Management Table - Removed Qualified column */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -267,7 +454,6 @@ export default function DashboardAdmin() {
                   <TableHead>Agent</TableHead>
                   <TableHead className="text-center">Leads</TableHead>
                   <TableHead className="text-center">Contacted</TableHead>
-                  <TableHead className="text-center">Qualified</TableHead>
                   <TableHead className="text-center">Closed</TableHead>
                   <TableHead className="text-center">Close Rate</TableHead>
                   <TableHead className="text-center">Stale</TableHead>
@@ -286,7 +472,6 @@ export default function DashboardAdmin() {
                     </TableCell>
                     <TableCell className="text-center font-medium">{agent.totalLeads}</TableCell>
                     <TableCell className="text-center">{agent.contacted}</TableCell>
-                    <TableCell className="text-center">{agent.qualified}</TableCell>
                     <TableCell className="text-center font-medium text-emerald-400">{agent.closed}</TableCell>
                     <TableCell className="text-center">
                       <Badge 

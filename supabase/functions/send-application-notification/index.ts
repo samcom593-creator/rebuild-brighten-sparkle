@@ -126,7 +126,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send notification email to APEX team
     const adminEmailResponse = await resend.emails.send({
-      from: "APEX Applications <onboarding@resend.dev>",
+      from: "APEX Applications <applications@kingofsales.net>",
       to: ["info@kingofsales.net"],
       subject: `New Application: ${sanitized.firstName} ${sanitized.lastName} (${licenseStatusDisplay})`,
       html: `
@@ -226,7 +226,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send confirmation email to applicant
     const applicantEmailResponse = await resend.emails.send({
-      from: "APEX Financial <onboarding@resend.dev>",
+      from: "APEX Financial <noreply@kingofsales.net>",
       to: [data.email],
       subject: "Application Received - APEX Financial",
       html: `

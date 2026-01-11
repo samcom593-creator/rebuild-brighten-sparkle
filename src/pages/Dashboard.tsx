@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import {
   Users,
   Phone,
-  UserCheck,
   CheckCircle,
   Award,
   GraduationCap,
@@ -25,7 +24,6 @@ import { useAuth } from "@/hooks/useAuth";
 interface DashboardStats {
   totalLeads: number;
   contacted: number;
-  qualified: number;
   closed: number;
   licensed: number;
   unlicensed: number;
@@ -47,7 +45,6 @@ export default function Dashboard() {
   const [stats, setStats] = useState<DashboardStats>({
     totalLeads: 0,
     contacted: 0,
-    qualified: 0,
     closed: 0,
     licensed: 0,
     unlicensed: 0,
@@ -122,7 +119,6 @@ export default function Dashboard() {
           if (applications) {
             const totalLeads = applications.length;
             const contacted = applications.filter(a => a.contacted_at).length;
-            const qualified = applications.filter(a => a.qualified_at).length;
             const closed = applications.filter(a => a.closed_at).length;
             const licensed = applications.filter(a => a.license_status === "licensed").length;
             const unlicensed = applications.filter(a => a.license_status === "unlicensed").length;
@@ -136,22 +132,21 @@ export default function Dashboard() {
               return hoursDiff > 48;
             }).length;
 
-            // Calculate average wait time
+            // Calculate average wait time ONLY for licensed leads
             let totalWaitTime = 0;
             let countWithContact = 0;
-            applications.forEach(a => {
-              if (a.contacted_at) {
+            applications
+              .filter(a => a.license_status === "licensed" && a.contacted_at)
+              .forEach(a => {
                 const created = new Date(a.created_at);
-                const contacted = new Date(a.contacted_at);
+                const contacted = new Date(a.contacted_at!);
                 totalWaitTime += (contacted.getTime() - created.getTime()) / (1000 * 60 * 60);
                 countWithContact++;
-              }
-            });
+              });
 
             setStats({
               totalLeads,
               contacted,
-              qualified,
               closed,
               licensed,
               unlicensed,
@@ -166,7 +161,6 @@ export default function Dashboard() {
           setStats({
             totalLeads: 45,
             contacted: 32,
-            qualified: 18,
             closed: 12,
             licensed: 30,
             unlicensed: 15,
@@ -211,8 +205,8 @@ export default function Dashboard() {
         <p className="text-muted-foreground">Here's your recruiting performance overview</p>
       </motion.div>
 
-      {/* Primary Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+      {/* Primary Stats Row - Removed Qualified */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
         <StatCard
           title="Total Leads"
           value={stats.totalLeads}
@@ -223,12 +217,6 @@ export default function Dashboard() {
           title="Contacted"
           value={stats.contacted}
           icon={Phone}
-          variant="default"
-        />
-        <StatCard
-          title="Qualified"
-          value={stats.qualified}
-          icon={UserCheck}
           variant="default"
         />
         <StatCard
@@ -260,7 +248,7 @@ export default function Dashboard() {
           variant="success"
         />
         <StatCard
-          title="Avg Wait Time"
+          title="Avg Wait Time (Licensed)"
           value={`${stats.avgWaitTime.toFixed(1)}h`}
           icon={Clock}
           variant={stats.avgWaitTime > 24 ? "warning" : "default"}
@@ -281,7 +269,7 @@ export default function Dashboard() {
           stats={{
             totalLeads: stats.totalLeads,
             contacted: stats.contacted,
-            qualified: stats.qualified,
+            qualified: 0,
             closed: stats.closed,
             closeRate: stats.closeRate,
             avgWaitTime: stats.avgWaitTime,

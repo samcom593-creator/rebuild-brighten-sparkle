@@ -5,25 +5,60 @@ import { Loader2 } from "lucide-react";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  requireAdmin?: boolean;
 }
 
-export function ProtectedRoute({ children }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
   const [loading, setLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
+  const [agentStatus, setAgentStatus] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setAuthenticated(!!session);
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        setAuthenticated(false);
         setLoading(false);
+        return;
       }
-    );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setAuthenticated(!!session);
+      setAuthenticated(true);
+
+      // Check if user is admin
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", session.user.id);
+
+      const hasAdminRole = roles?.some(r => r.role === "admin" || r.role === "manager") || false;
+      setIsAdmin(hasAdminRole);
+
+      // If admin, don't check agent status
+      if (hasAdminRole) {
+        setAgentStatus("active");
+        setLoading(false);
+        return;
+      }
+
+      // Check agent verification status
+      const { data: agent } = await supabase
+        .from("agents")
+        .select("status")
+        .eq("user_id", session.user.id)
+        .single();
+
+      setAgentStatus(agent?.status || null);
       setLoading(false);
+    };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      checkAuth();
     });
+
+    checkAuth();
 
     return () => subscription.unsubscribe();
   }, []);
@@ -38,6 +73,16 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   if (!authenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  // If agent status is pending and user is not admin, redirect to pending approval
+  if (agentStatus === "pending" && !isAdmin) {
+    return <Navigate to="/pending-approval" replace />;
+  }
+
+  // If agent doesn't exist yet (newly signed up), also redirect to pending
+  if (!agentStatus && !isAdmin) {
+    return <Navigate to="/pending-approval" replace />;
   }
 
   return <>{children}</>;

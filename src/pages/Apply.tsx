@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useForm } from "react-hook-form";
@@ -12,7 +12,9 @@ import {
   FileText, 
   Briefcase, 
   CheckCircle2,
-  Loader2
+  Loader2,
+  Instagram,
+  Users,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -39,6 +41,7 @@ const applicationSchema = z.object({
   phone: z.string().min(10, "Valid phone number is required").max(20),
   city: z.string().min(2, "City is required").max(100),
   state: z.string().min(2, "State is required"),
+  instagramHandle: z.string().max(50).optional(),
   
   // Step 2: Experience
   hasInsuranceExperience: z.boolean().default(false),
@@ -61,11 +64,17 @@ const applicationSchema = z.object({
 
 type ApplicationFormData = z.infer<typeof applicationSchema>;
 
+interface ActiveAgent {
+  id: string;
+  name: string;
+}
+
 const steps = [
   { id: 1, title: "Personal Info", icon: User },
   { id: 2, title: "Experience", icon: Briefcase },
   { id: 3, title: "Licensing", icon: FileText },
   { id: 4, title: "Goals", icon: CheckCircle2 },
+  { id: 5, title: "Referral", icon: Users },
 ];
 
 export default function Apply() {
@@ -73,6 +82,11 @@ export default function Apply() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedStates, setSelectedStates] = useState<string[]>([]);
+  const [applicationId, setApplicationId] = useState<string | null>(null);
+  const [activeAgents, setActiveAgents] = useState<ActiveAgent[]>([]);
+  const [selectedReferrer, setSelectedReferrer] = useState<string>("");
+  const [customReferrer, setCustomReferrer] = useState("");
+  const [savedLicenseStatus, setSavedLicenseStatus] = useState<string>("unlicensed");
 
   const {
     register,
@@ -92,6 +106,52 @@ export default function Apply() {
 
   const hasExperience = watch("hasInsuranceExperience");
   const licenseStatus = watch("licenseStatus");
+
+  // Fetch active agents for referral selection
+  useEffect(() => {
+    const fetchActiveAgents = async () => {
+      const { data: agents, error } = await supabase
+        .from("agents")
+        .select(`
+          id,
+          profiles!agents_profile_id_fkey (
+            full_name
+          )
+        `)
+        .eq("status", "active");
+
+      if (error) {
+        console.error("Error fetching agents:", error);
+        return;
+      }
+
+      // Also fetch by user_id
+      const { data: agentsByUser } = await supabase
+        .from("agents")
+        .select("id, user_id")
+        .eq("status", "active");
+
+      if (agentsByUser && agentsByUser.length > 0) {
+        const userIds = agentsByUser.map(a => a.user_id).filter(Boolean);
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("user_id, full_name")
+          .in("user_id", userIds);
+
+        const agentList = agentsByUser.map(agent => {
+          const profile = profiles?.find(p => p.user_id === agent.user_id);
+          return {
+            id: agent.id,
+            name: profile?.full_name || "APEX Agent",
+          };
+        }).filter(a => a.name && a.name !== "APEX Agent");
+
+        setActiveAgents(agentList);
+      }
+    };
+
+    fetchActiveAgents();
+  }, []);
 
   const validateStep = async (step: number): Promise<boolean> => {
     let fieldsToValidate: (keyof ApplicationFormData)[] = [];
@@ -116,7 +176,7 @@ export default function Apply() {
 
   const nextStep = async () => {
     const isValid = await validateStep(currentStep);
-    if (isValid && currentStep < 4) {
+    if (isValid && currentStep < 5) {
       setCurrentStep(currentStep + 1);
     }
   };
@@ -131,13 +191,20 @@ export default function Apply() {
     setIsSubmitting(true);
     
     try {
-      const { error } = await supabase.from("applications").insert({
+      // Clean Instagram handle
+      let instagramHandle = data.instagramHandle?.trim() || null;
+      if (instagramHandle && instagramHandle.startsWith("@")) {
+        instagramHandle = instagramHandle.substring(1);
+      }
+
+      const { data: insertedApp, error } = await supabase.from("applications").insert({
         first_name: data.firstName,
         last_name: data.lastName,
         email: data.email,
         phone: data.phone,
         city: data.city,
         state: data.state,
+        instagram_handle: instagramHandle,
         has_insurance_experience: data.hasInsuranceExperience,
         years_experience: data.yearsExperience,
         previous_company: data.previousCompany,
@@ -151,9 +218,13 @@ export default function Apply() {
         referral_source: data.referralSource,
         notes: data.notes,
         status: "new",
-      });
+      }).select().single();
 
       if (error) throw error;
+
+      // Save application ID and license status for referral step
+      setApplicationId(insertedApp.id);
+      setSavedLicenseStatus(data.licenseStatus);
 
       // Send email notifications (don't block on this)
       supabase.functions.invoke("send-application-notification", {
@@ -178,17 +249,53 @@ export default function Apply() {
         }
       });
 
-      toast.success("Application submitted successfully!");
+      toast.success("Application submitted! One more step...");
       
+      // Move to referral step
+      setCurrentStep(5);
+    } catch (error) {
+      console.error("Error submitting application:", error);
+      toast.error("Failed to submit application. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleReferralSubmit = async () => {
+    if (!applicationId) return;
+
+    setIsSubmitting(true);
+    try {
+      // Update application with referrer if selected
+      if (selectedReferrer && selectedReferrer !== "none" && selectedReferrer !== "other") {
+        await supabase
+          .from("applications")
+          .update({ assigned_agent_id: selectedReferrer })
+          .eq("id", applicationId);
+      } else if (selectedReferrer === "other" && customReferrer) {
+        // Store custom referrer in notes
+        await supabase
+          .from("applications")
+          .update({ 
+            notes: `Referred by: ${customReferrer}` 
+          })
+          .eq("id", applicationId);
+      }
+
       // Redirect based on license status
-      if (data.licenseStatus === "licensed") {
+      if (savedLicenseStatus === "licensed") {
         navigate("/apply/success/licensed");
       } else {
         navigate("/apply/success/unlicensed");
       }
     } catch (error) {
-      console.error("Error submitting application:", error);
-      toast.error("Failed to submit application. Please try again.");
+      console.error("Error updating referral:", error);
+      // Still redirect even if update fails
+      if (savedLicenseStatus === "licensed") {
+        navigate("/apply/success/licensed");
+      } else {
+        navigate("/apply/success/unlicensed");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -359,6 +466,23 @@ export default function Apply() {
                             <p className="text-sm text-destructive">{errors.state.message}</p>
                           )}
                         </div>
+                      </div>
+
+                      {/* Instagram Handle Field */}
+                      <div className="space-y-2">
+                        <Label htmlFor="instagramHandle" className="flex items-center gap-2">
+                          <Instagram className="h-4 w-4 text-primary" />
+                          Instagram Handle (optional)
+                        </Label>
+                        <Input
+                          id="instagramHandle"
+                          {...register("instagramHandle")}
+                          placeholder="@yourhandle"
+                          className="bg-input"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          We may reach out via Instagram for faster communication
+                        </p>
                       </div>
                     </div>
                   )}
@@ -589,9 +713,70 @@ export default function Apply() {
                     </div>
                   )}
 
+                  {/* Step 5: Referral Selection */}
+                  {currentStep === 5 && (
+                    <div className="space-y-6">
+                      <div className="text-center">
+                        <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
+                          <Users className="h-8 w-8 text-primary" />
+                        </div>
+                        <h2 className="text-2xl font-bold mb-2">One More Thing!</h2>
+                        <p className="text-muted-foreground">
+                          Who referred you to APEX Financial?
+                        </p>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label>Select your referrer</Label>
+                          <Select 
+                            value={selectedReferrer}
+                            onValueChange={setSelectedReferrer}
+                          >
+                            <SelectTrigger className="bg-input">
+                              <SelectValue placeholder="Choose who referred you" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">I found APEX on my own</SelectItem>
+                              {activeAgents.map((agent) => (
+                                <SelectItem key={agent.id} value={agent.id}>
+                                  {agent.name}
+                                </SelectItem>
+                              ))}
+                              <SelectItem value="other">Someone else not listed</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {selectedReferrer === "other" && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            className="space-y-2"
+                          >
+                            <Label htmlFor="customReferrer">Who referred you?</Label>
+                            <Input
+                              id="customReferrer"
+                              value={customReferrer}
+                              onChange={(e) => setCustomReferrer(e.target.value)}
+                              placeholder="Enter their name"
+                              className="bg-input"
+                            />
+                          </motion.div>
+                        )}
+                      </div>
+
+                      <div className="p-4 rounded-lg bg-muted/50 border border-border">
+                        <p className="text-sm text-muted-foreground text-center">
+                          This helps us give credit to our team members who spread the word about APEX.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Navigation Buttons */}
                   <div className="flex items-center justify-between mt-8 pt-6 border-t border-border">
-                    {currentStep > 1 ? (
+                    {currentStep > 1 && currentStep < 5 ? (
                       <GradientButton
                         type="button"
                         variant="outline"
@@ -609,7 +794,7 @@ export default function Apply() {
                         Next Step
                         <ArrowRight className="h-4 w-4 ml-2" />
                       </GradientButton>
-                    ) : (
+                    ) : currentStep === 4 ? (
                       <GradientButton type="submit" disabled={isSubmitting}>
                         {isSubmitting ? (
                           <>
@@ -618,7 +803,25 @@ export default function Apply() {
                           </>
                         ) : (
                           <>
-                            Submit Application
+                            Continue
+                            <ArrowRight className="h-4 w-4 ml-2" />
+                          </>
+                        )}
+                      </GradientButton>
+                    ) : (
+                      <GradientButton 
+                        type="button" 
+                        onClick={handleReferralSubmit}
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Finishing...
+                          </>
+                        ) : (
+                          <>
+                            Complete Application
                             <CheckCircle2 className="h-4 w-4 ml-2" />
                           </>
                         )}

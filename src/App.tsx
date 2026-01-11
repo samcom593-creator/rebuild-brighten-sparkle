@@ -15,6 +15,7 @@ import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import DashboardApplicants from "./pages/DashboardApplicants";
 import DashboardAdmin from "./pages/DashboardAdmin";
+import PendingApproval from "./pages/PendingApproval";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => (
           <Route path="/apply/success/unlicensed" element={<ApplySuccessUnlicensed />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/pending-approval" element={<PendingApproval />} />
           <Route
             path="/dashboard"
             element={

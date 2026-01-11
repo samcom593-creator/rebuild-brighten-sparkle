@@ -53,13 +53,13 @@ export default function Signup() {
 
       if (error) throw error;
 
-      // Create agent record with pending status
+      // Create agent record with active status - no approval needed
       if (authData.user) {
         const { error: agentError } = await supabase
           .from("agents")
           .insert({
             user_id: authData.user.id,
-            status: "pending",
+            status: "active",
             license_status: "unlicensed",
           });
 
@@ -68,8 +68,8 @@ export default function Signup() {
         }
       }
 
-      toast.success("Account created! Awaiting admin approval.");
-      navigate("/pending-approval");
+      toast.success("Account created! Redirecting to dashboard...");
+      navigate("/dashboard");
     } catch (error: any) {
       console.error("Signup error:", error);
       toast.error(error.message || "Failed to create account");

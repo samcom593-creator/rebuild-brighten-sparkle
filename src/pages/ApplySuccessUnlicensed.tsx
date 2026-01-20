@@ -1,13 +1,13 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Crown, Play, CheckCircle2, Calendar } from "lucide-react";
+import { Crown, CheckCircle2, Calendar } from "lucide-react";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { CalendlyEmbed } from "@/components/landing/CalendlyEmbed";
 
 export default function ApplySuccessUnlicensed() {
-  // Replace with your actual Calendly URL
-  const calendlyUrl = "https://calendly.com/your-apex-unlicensed-onboarding";
+  const calendlyUrl = "https://calendly.com/sam-com593/licensed-prospect-call-clone";
+  const videoUrl = "https://www.youtube.com/embed/WpZge-Ghyww";
 
   return (
     <div className="min-h-screen bg-background py-8 px-4">
@@ -45,34 +45,20 @@ export default function ApplySuccessUnlicensed() {
             </p>
           </div>
 
-          {/* Video Player Placeholder */}
+          {/* Video Player */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="relative aspect-video rounded-xl overflow-hidden mb-8 bg-gradient-to-br from-teal-600/20 via-cyan-700/30 to-slate-900/50"
+            className="relative aspect-video rounded-xl overflow-hidden mb-8"
           >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1)_0%,transparent_50%)]" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(0,0,0,0.2)_0%,transparent_50%)]" />
-            
-            {/* Play Button */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <motion.div
-                className="w-20 h-20 rounded-full bg-primary/90 backdrop-blur-sm flex items-center justify-center shadow-lg shadow-primary/30 cursor-pointer hover:bg-primary transition-colors mb-4"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Play className="h-9 w-9 text-primary-foreground fill-primary-foreground ml-1" />
-              </motion.div>
-              <p className="text-white/80 text-sm font-medium bg-black/30 px-4 py-2 rounded-full backdrop-blur-sm">
-                Getting Licensed with APEX
-              </p>
-            </div>
-
-            {/* Duration Badge */}
-            <div className="absolute bottom-4 right-4 px-3 py-1.5 rounded bg-background/80 backdrop-blur-sm text-sm font-medium">
-              12:30
-            </div>
+            <iframe
+              src={videoUrl}
+              title="Getting Licensed with APEX"
+              className="w-full h-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
           </motion.div>
 
           {/* Key Points */}

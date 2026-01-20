@@ -131,7 +131,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest) {
   try {
     // Send notification email to APEX team
     const adminEmailResponse = await resend.emails.send({
-      from: "APEX Applications <applications@kingofsales.net>",
+      from: "APEX Applications <applications@apex-financial.org>",
       to: ["info@kingofsales.net"],
       subject: `New Application: ${sanitized.firstName} ${sanitized.lastName} (${licenseStatusDisplay})`,
       html: `
@@ -245,7 +245,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest) {
 
     // Send confirmation email to applicant with conditional links
     const applicantEmailResponse = await resend.emails.send({
-      from: "APEX Financial <noreply@kingofsales.net>",
+      from: "APEX Financial <noreply@apex-financial.org>",
       to: [data.email],
       subject: isLicensed 
         ? "You're on the Fast Track! - APEX Financial" 

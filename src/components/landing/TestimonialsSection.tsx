@@ -12,6 +12,7 @@ const videoTestimonials = [
     stats: { income: "$187K", timeframe: "First Year" },
     videoDuration: "2:15",
     gradientClass: "from-emerald-600/30 via-emerald-800/40 to-slate-900/60",
+    videoUrl: "https://www.youtube.com/embed/YmlLSIwfGdE",
   },
   {
     name: "Sarah Chen",

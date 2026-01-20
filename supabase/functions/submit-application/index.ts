@@ -234,11 +234,22 @@ async function sendEmailNotifications(data: SubmitApplicationRequest) {
     });
     console.log("Admin notification sent:", adminEmailResponse);
 
-    // Send confirmation email to applicant
+    // Determine video and calendar links based on license status
+    const isLicensed = sanitized.licenseStatus === 'licensed';
+    const videoUrl = isLicensed 
+      ? 'https://youtu.be/Sz0keedLD9Q'
+      : 'https://youtu.be/WpZge-Ghyww';
+    const calendlyUrl = isLicensed
+      ? 'https://calendly.com/sam-com593/1on1-call-clone'
+      : 'https://calendly.com/sam-com593/licensed-prospect-call-clone';
+
+    // Send confirmation email to applicant with conditional links
     const applicantEmailResponse = await resend.emails.send({
       from: "APEX Financial <noreply@kingofsales.net>",
       to: [data.email],
-      subject: "Application Received - APEX Financial",
+      subject: isLicensed 
+        ? "You're on the Fast Track! - APEX Financial" 
+        : "Your Next Steps - APEX Financial",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #059669, #047857); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
@@ -249,27 +260,64 @@ async function sendEmailNotifications(data: SubmitApplicationRequest) {
             <h2 style="color: #111827; margin-top: 0;">Hi ${sanitized.firstName},</h2>
             
             <p style="color: #4b5563; line-height: 1.6;">
-              Thank you for applying to join the APEX Financial team! We've received your application and are excited to learn more about you.
+              ${isLicensed 
+                ? "Congratulations! As a licensed agent, you're ready to hit the ground running with APEX Financial."
+                : "Thank you for applying to join APEX Financial! Here's how we'll help you get licensed (at no cost to you)."}
             </p>
 
             <div style="background: #d1fae5; border-left: 4px solid #059669; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
               <p style="margin: 0; color: #047857; font-weight: 500;">
-                ${sanitized.licenseStatus === 'licensed' 
-                  ? "As a licensed agent, you're on the fast track! Expect to hear from us within 24-48 hours."
-                  : "Don't worry about not having a license yet - we cover all licensing costs and will guide you through the process!"}
+                ${isLicensed 
+                  ? "You're on the fast track! Follow the steps below to get started immediately."
+                  : "Don't worry about not having a license yet - we cover all licensing costs and guide you through every step!"}
               </p>
             </div>
 
-            <h3 style="color: #111827; margin-bottom: 15px;">What Happens Next?</h3>
-            <ol style="color: #4b5563; line-height: 1.8;">
-              <li>Watch the onboarding video on your success page</li>
-              <li>Schedule your discovery call with our team</li>
-              <li>Complete the contracting process</li>
-              <li>Start your training and begin earning!</li>
-            </ol>
+            <h3 style="color: #111827; margin-bottom: 15px;">Step 1: Watch Your Video</h3>
+            <p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
+              ${isLicensed 
+                ? "This video explains your onboarding process and what to expect next:"
+                : "This video explains exactly how we'll help you get licensed and start earning:"}
+            </p>
+            
+            <div style="text-align: center; margin-bottom: 30px;">
+              <a href="${videoUrl}" 
+                 style="display: inline-block; background: linear-gradient(135deg, #059669, #047857); color: white; 
+                        padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;
+                        box-shadow: 0 4px 14px rgba(5, 150, 105, 0.4);">
+                ▶ Watch Your Video
+              </a>
+            </div>
 
-            <p style="color: #4b5563; line-height: 1.6;">
-              If you have any questions in the meantime, don't hesitate to reach out. We're here to help you succeed!
+            <h3 style="color: #111827; margin-bottom: 15px;">Step 2: Schedule Your Call</h3>
+            <p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
+              ${isLicensed 
+                ? "Ready to get started? Book your 1-on-1 onboarding call:"
+                : "After watching the video, schedule your discovery call to discuss next steps:"}
+            </p>
+            
+            <div style="text-align: center; margin-bottom: 30px;">
+              <a href="${calendlyUrl}" 
+                 style="display: inline-block; background: #111827; color: white; 
+                        padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;
+                        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);">
+                📅 Schedule Your Call
+              </a>
+            </div>
+
+            <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-top: 20px;">
+              <h3 style="color: #111827; margin-top: 0; margin-bottom: 15px;">What Happens Next?</h3>
+              <ol style="color: #4b5563; line-height: 1.8; margin: 0; padding-left: 20px;">
+                <li>Watch the video above</li>
+                <li>Schedule your ${isLicensed ? 'onboarding' : 'discovery'} call</li>
+                ${isLicensed 
+                  ? '<li>Complete the contracting process</li><li>Start training and earning immediately!</li>'
+                  : '<li>Complete the licensing process (we cover the costs!)</li><li>Start training and begin earning!</li>'}
+              </ol>
+            </div>
+
+            <p style="color: #4b5563; line-height: 1.6; margin-top: 25px;">
+              If you have any questions, don't hesitate to reach out. We're here to help you succeed!
             </p>
 
             <p style="color: #4b5563; margin-top: 30px;">
@@ -279,7 +327,8 @@ async function sendEmailNotifications(data: SubmitApplicationRequest) {
           </div>
 
           <div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">
-            <p>&copy; ${new Date().getFullYear()} APEX Financial. All rights reserved.</p>
+            <p style="margin: 0;">Save this email - it contains your important next steps!</p>
+            <p style="margin-top: 10px;">&copy; ${new Date().getFullYear()} APEX Financial. All rights reserved.</p>
           </div>
         </div>
       `,

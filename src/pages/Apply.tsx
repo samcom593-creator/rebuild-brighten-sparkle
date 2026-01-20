@@ -57,7 +57,6 @@ const applicationSchema = z.object({
   // Step 4: Goals
   desiredIncome: z.number().min(0).optional(),
   availability: z.string().min(1, "Availability is required"),
-  startDate: z.string().optional(),
   referralSource: z.string().optional(),
   notes: z.string().max(1000).optional(),
 });
@@ -214,7 +213,6 @@ export default function Apply() {
         licensed_states: selectedStates,
         desired_income: data.desiredIncome,
         availability: data.availability,
-        start_date: data.startDate,
         referral_source: data.referralSource,
         notes: data.notes,
         status: "new",
@@ -675,15 +673,6 @@ export default function Apply() {
                         )}
                       </div>
 
-                      <div className="space-y-2">
-                        <Label htmlFor="startDate">Desired Start Date</Label>
-                        <Input
-                          id="startDate"
-                          type="date"
-                          {...register("startDate")}
-                          className="bg-input"
-                        />
-                      </div>
 
                       <div className="space-y-2">
                         <Label>How did you hear about us?</Label>

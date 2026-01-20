@@ -74,7 +74,7 @@ export function HeroSection() {
           >
             <div className="aspect-video rounded-xl overflow-hidden glass border border-primary/20 shadow-2xl">
               <iframe
-                src="https://www.youtube.com/embed/oVHWCv4MvNw"
+                src="https://www.youtube.com/embed/v4Fp3FL9ITo"
                 title="APEX Video"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen

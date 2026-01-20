@@ -450,7 +450,7 @@ export default function Apply() {
 
                         <div className="space-y-2">
                           <Label htmlFor="state">State *</Label>
-                          <Select onValueChange={(value) => setValue("state", value)}>
+                          <Select onValueChange={(value) => setValue("state", value, { shouldValidate: true })}>
                             <SelectTrigger className="bg-input">
                               <SelectValue placeholder="Select state" />
                             </SelectTrigger>
@@ -658,7 +658,7 @@ export default function Apply() {
 
                       <div className="space-y-2">
                         <Label>Availability *</Label>
-                        <Select onValueChange={(value) => setValue("availability", value)}>
+                        <Select onValueChange={(value) => setValue("availability", value, { shouldValidate: true })}>
                           <SelectTrigger className="bg-input">
                             <SelectValue placeholder="Select availability" />
                           </SelectTrigger>
@@ -687,7 +687,7 @@ export default function Apply() {
 
                       <div className="space-y-2">
                         <Label>How did you hear about us?</Label>
-                        <Select onValueChange={(value) => setValue("referralSource", value)}>
+                        <Select onValueChange={(value) => setValue("referralSource", value, { shouldValidate: true })}>
                           <SelectTrigger className="bg-input">
                             <SelectValue placeholder="Select source" />
                           </SelectTrigger>

@@ -196,32 +196,52 @@ export default function Apply() {
         instagramHandle = instagramHandle.substring(1);
       }
 
-      const { data: insertedApp, error } = await supabase.from("applications").insert({
-        first_name: data.firstName,
-        last_name: data.lastName,
-        email: data.email,
-        phone: data.phone,
-        city: data.city,
-        state: data.state,
-        instagram_handle: instagramHandle,
-        has_insurance_experience: data.hasInsuranceExperience,
-        years_experience: data.yearsExperience,
-        previous_company: data.previousCompany,
-        previous_production: data.previousProduction,
-        license_status: data.licenseStatus,
-        nipr_number: data.niprNumber,
-        licensed_states: selectedStates,
-        desired_income: data.desiredIncome,
-        availability: data.availability,
-        referral_source: data.referralSource,
-        notes: data.notes,
-        status: "new",
-      }).select().single();
+      const desiredIncome = Number.isFinite(data.desiredIncome as number)
+        ? (data.desiredIncome as number)
+        : undefined;
+
+      const yearsExperience = Number.isFinite(data.yearsExperience as number)
+        ? (data.yearsExperience as number)
+        : undefined;
+
+      const previousProduction = Number.isFinite(data.previousProduction as number)
+        ? (data.previousProduction as number)
+        : undefined;
+
+      const { data: submitResult, error } = await supabase.functions.invoke(
+        "submit-application",
+        {
+          body: {
+            firstName: data.firstName,
+            lastName: data.lastName,
+            email: data.email,
+            phone: data.phone,
+            city: data.city,
+            state: data.state,
+            instagramHandle,
+
+            hasInsuranceExperience: data.hasInsuranceExperience,
+            yearsExperience,
+            previousCompany: data.previousCompany,
+            previousProduction,
+
+            licenseStatus: data.licenseStatus,
+            niprNumber: data.niprNumber,
+            licensedStates: selectedStates,
+
+            desiredIncome,
+            availability: data.availability,
+            referralSource: data.referralSource,
+            notes: data.notes,
+          },
+        },
+      );
 
       if (error) throw error;
+      if (!submitResult?.applicationId) throw new Error("Missing application id");
 
       // Save application ID and license status for referral step
-      setApplicationId(insertedApp.id);
+      setApplicationId(submitResult.applicationId);
       setSavedLicenseStatus(data.licenseStatus);
 
       // Send email notifications (don't block on this)
@@ -265,20 +285,13 @@ export default function Apply() {
     setIsSubmitting(true);
     try {
       // Update application with referrer if selected
-      if (selectedReferrer && selectedReferrer !== "none" && selectedReferrer !== "other") {
-        await supabase
-          .from("applications")
-          .update({ assigned_agent_id: selectedReferrer })
-          .eq("id", applicationId);
-      } else if (selectedReferrer === "other" && customReferrer) {
-        // Store custom referrer in notes
-        await supabase
-          .from("applications")
-          .update({ 
-            notes: `Referred by: ${customReferrer}` 
-          })
-          .eq("id", applicationId);
-      }
+      await supabase.functions.invoke("update-application-referral", {
+        body: {
+          applicationId,
+          selectedReferrer,
+          customReferrer,
+        },
+      });
 
       // Redirect based on license status
       if (savedLicenseStatus === "licensed") {

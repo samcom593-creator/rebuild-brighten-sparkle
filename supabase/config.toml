@@ -2,3 +2,9 @@ project_id = "msydzhzolwourcdmqxvn"
 
 [functions.send-application-notification]
 verify_jwt = false
+
+[functions.submit-application]
+verify_jwt = false
+
+[functions.update-application-referral]
+verify_jwt = false

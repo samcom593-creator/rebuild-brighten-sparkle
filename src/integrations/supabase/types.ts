@@ -215,6 +215,7 @@ export type Database = {
           agent_code: string | null
           created_at: string
           id: string
+          invited_by_manager_id: string | null
           license_states: string[] | null
           license_status: Database["public"]["Enums"]["license_status"]
           manager_id: string | null
@@ -234,6 +235,7 @@ export type Database = {
           agent_code?: string | null
           created_at?: string
           id?: string
+          invited_by_manager_id?: string | null
           license_states?: string[] | null
           license_status?: Database["public"]["Enums"]["license_status"]
           manager_id?: string | null
@@ -253,6 +255,7 @@ export type Database = {
           agent_code?: string | null
           created_at?: string
           id?: string
+          invited_by_manager_id?: string | null
           license_states?: string[] | null
           license_status?: Database["public"]["Enums"]["license_status"]
           manager_id?: string | null
@@ -269,6 +272,13 @@ export type Database = {
           verified_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "agents_invited_by_manager_id_fkey"
+            columns: ["invited_by_manager_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "agents_manager_id_fkey"
             columns: ["manager_id"]
@@ -451,6 +461,38 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      manager_invite_links: {
+        Row: {
+          created_at: string
+          id: string
+          invite_code: string
+          is_active: boolean
+          manager_agent_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invite_code: string
+          is_active?: boolean
+          manager_agent_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invite_code?: string
+          is_active?: boolean
+          manager_agent_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manager_invite_links_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {

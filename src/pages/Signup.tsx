@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -26,7 +26,53 @@ type SignupFormData = z.infer<typeof signupSchema>;
 
 export default function Signup() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
+  const [referrerName, setReferrerName] = useState<string | null>(null);
+  
+  // Get referral code from URL
+  const refCode = searchParams.get("ref");
+
+  // Look up the referrer's name when we have a ref code
+  useEffect(() => {
+    async function fetchReferrerName() {
+      if (!refCode) return;
+      
+      try {
+        const { data: inviteLink, error } = await supabase
+          .from("manager_invite_links")
+          .select("manager_agent_id")
+          .eq("invite_code", refCode)
+          .eq("is_active", true)
+          .single();
+        
+        if (error || !inviteLink) return;
+        
+        // Get the manager's profile
+        const { data: agent } = await supabase
+          .from("agents")
+          .select("profile_id, user_id")
+          .eq("id", inviteLink.manager_agent_id)
+          .single();
+        
+        if (agent?.user_id) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("full_name")
+            .eq("user_id", agent.user_id)
+            .single();
+          
+          if (profile?.full_name) {
+            setReferrerName(profile.full_name);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching referrer:", err);
+      }
+    }
+    
+    fetchReferrerName();
+  }, [refCode]);
 
   const {
     register,
@@ -53,6 +99,21 @@ export default function Signup() {
 
       if (error) throw error;
 
+      // Look up the manager_agent_id from the invite code if present
+      let invitedByManagerId: string | null = null;
+      if (refCode) {
+        const { data: inviteLink } = await supabase
+          .from("manager_invite_links")
+          .select("manager_agent_id")
+          .eq("invite_code", refCode)
+          .eq("is_active", true)
+          .single();
+        
+        if (inviteLink) {
+          invitedByManagerId = inviteLink.manager_agent_id;
+        }
+      }
+
       // Create agent record with active status - no approval needed
       if (authData.user) {
         const { error: agentError } = await supabase
@@ -61,6 +122,7 @@ export default function Signup() {
             user_id: authData.user.id,
             status: "active",
             license_status: "unlicensed",
+            invited_by_manager_id: invitedByManagerId,
           });
 
         if (agentError) {
@@ -76,8 +138,7 @@ export default function Signup() {
     } finally {
       setIsLoading(false);
     }
-  };
-
+  }
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(var(--primary)/0.1)_0%,transparent_50%)]" />
@@ -93,7 +154,11 @@ export default function Signup() {
             <span className="text-2xl font-bold gradient-text">APEX Financial</span>
           </Link>
           <h1 className="text-3xl font-bold mb-2">Join APEX</h1>
-          <p className="text-muted-foreground">Create your agent account</p>
+          <p className="text-muted-foreground">
+            {referrerName 
+              ? `You've been invited by ${referrerName}` 
+              : "Create your agent account"}
+          </p>
         </div>
 
         <GlassCard className="p-8">

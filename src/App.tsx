@@ -10,6 +10,7 @@ import Apply from "./pages/Apply";
 import ApplySuccess from "./pages/ApplySuccess";
 import ApplySuccessLicensed from "./pages/ApplySuccessLicensed";
 import ApplySuccessUnlicensed from "./pages/ApplySuccessUnlicensed";
+import GetLicensed from "./pages/GetLicensed";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
@@ -33,6 +34,7 @@ const App = () => (
           <Route path="/apply/success" element={<ApplySuccess />} />
           <Route path="/apply/success/licensed" element={<ApplySuccessLicensed />} />
           <Route path="/apply/success/unlicensed" element={<ApplySuccessUnlicensed />} />
+          <Route path="/get-licensed" element={<GetLicensed />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/pending-approval" element={<PendingApproval />} />

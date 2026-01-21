@@ -239,6 +239,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest) {
     
     // Licensed applicants get call scheduling, unlicensed get licensing resources
     const licensedCalendlyUrl = 'https://calendly.com/sam-com593/1on1-call-clone';
+    const testimonialsVideoUrl = 'https://youtu.be/YmlLSIwfGdE';
     const unlicensedVideoUrl = 'https://youtu.be/i1e5p-GEfAU?si=KMthNhQzcQnj9A6u';
     const licensingDocUrl = 'https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg/edit?usp=sharing';
     const preLicensingCourseUrl = 'https://partners.xcelsolutions.com/afe';
@@ -264,6 +265,20 @@ async function sendEmailNotifications(data: SubmitApplicationRequest) {
               </p>
             </div>
 
+            <h3 style="color: #111827; margin-bottom: 15px;">Hear From Our Agents</h3>
+            <p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
+              Watch what our top agents have to say about working with APEX:
+            </p>
+            
+            <div style="text-align: center; margin-bottom: 30px;">
+              <a href="${testimonialsVideoUrl}" 
+                 style="display: inline-block; background: #111827; color: white; 
+                        padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;
+                        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);">
+                ▶ Watch Agent Testimonials
+              </a>
+            </div>
+
             <h3 style="color: #111827; margin-bottom: 15px;">Schedule Your Call</h3>
             <p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
               Ready to get started? Book your 1-on-1 onboarding call with our team:
@@ -281,7 +296,8 @@ async function sendEmailNotifications(data: SubmitApplicationRequest) {
             <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-top: 20px;">
               <h3 style="color: #111827; margin-top: 0; margin-bottom: 15px;">What Happens Next?</h3>
               <ol style="color: #4b5563; line-height: 1.8; margin: 0; padding-left: 20px;">
-                <li>Schedule your onboarding call above</li>
+                <li>Watch the agent testimonials above</li>
+                <li>Schedule your onboarding call</li>
                 <li>Complete the contracting process</li>
                 <li>Start training and earning immediately!</li>
               </ol>

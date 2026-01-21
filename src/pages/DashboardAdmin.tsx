@@ -26,6 +26,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LeaderboardCard } from "@/components/dashboard/LeaderboardCard";
+import { ManagerInviteLinks } from "@/components/dashboard/ManagerInviteLinks";
+import { LeadReassignment } from "@/components/dashboard/LeadReassignment";
 import {
   Table,
   TableBody,
@@ -601,13 +603,32 @@ export default function DashboardAdmin() {
         </GlassCard>
       </motion.div>
 
+      {/* Manager Invite Links & Lead Reassignment */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+        >
+          <ManagerInviteLinks />
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <LeadReassignment />
+        </motion.div>
+      </div>
+
       {/* Bottom Row: Needs Attention + Fastest Growers */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Needs Attention */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
+          transition={{ delay: 0.45 }}
         >
           <GlassCard className="p-6">
             <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">

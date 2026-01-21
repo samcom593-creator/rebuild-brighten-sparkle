@@ -1,9 +1,8 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Crown, CheckCircle2, Calendar } from "lucide-react";
+import { Crown, CheckCircle2, ArrowRight, Calendar, Sparkles } from "lucide-react";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { GlassCard } from "@/components/ui/glass-card";
-import { CalendlyEmbed } from "@/components/landing/CalendlyEmbed";
 
 export default function ApplySuccessUnlicensed() {
   const calendlyUrl = "https://calendly.com/sam-com593/licensed-prospect-call-clone";
@@ -18,7 +17,7 @@ export default function ApplySuccessUnlicensed() {
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-5xl mx-auto relative z-10"
+        className="w-full max-w-3xl mx-auto relative z-10"
       >
         <GlassCard className="p-6 md:p-10">
           {/* Header */}
@@ -27,9 +26,9 @@ export default function ApplySuccessUnlicensed() {
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-              className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4"
+              className="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-6"
             >
-              <CheckCircle2 className="h-8 w-8 text-primary" />
+              <CheckCircle2 className="h-10 w-10 text-primary" />
             </motion.div>
 
             <div className="flex items-center justify-center gap-2 mb-4">
@@ -37,11 +36,11 @@ export default function ApplySuccessUnlicensed() {
               <span className="text-lg font-bold gradient-text">APEX Financial</span>
             </div>
 
-            <h1 className="text-2xl md:text-3xl font-bold mb-2">
-              Your Journey <span className="gradient-text">Starts Here!</span>
+            <h1 className="text-3xl md:text-4xl font-bold mb-3">
+              Application <span className="gradient-text">Received!</span>
             </h1>
-            <p className="text-muted-foreground max-w-lg mx-auto">
-              Your application has been received. Watch this video to learn how we'll help you get licensed and start earning.
+            <p className="text-muted-foreground max-w-lg mx-auto text-lg">
+              Welcome to APEX! We're excited to help you start your journey in the insurance industry.
             </p>
           </div>
 
@@ -54,7 +53,7 @@ export default function ApplySuccessUnlicensed() {
           >
             <iframe
               src={videoUrl}
-              title="Getting Licensed with APEX"
+              title="Getting Started with APEX"
               className="w-full h-full"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
@@ -80,33 +79,53 @@ export default function ApplySuccessUnlicensed() {
             ))}
           </motion.div>
 
-          {/* Calendly Section */}
+          {/* CTA Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
-            className="mb-8"
+            className="text-center mb-8"
           >
-            <div className="text-center mb-6">
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <Calendar className="h-5 w-5 text-primary" />
-                <h2 className="text-xl font-bold">Schedule Your Discovery Call</h2>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Book a call with our team to learn about our licensing program and how we'll support you.
+            <div className="bg-gradient-to-r from-primary/10 via-primary/20 to-primary/10 rounded-xl p-8 border border-primary/20">
+              <Sparkles className="h-8 w-8 text-primary mx-auto mb-4" />
+              <h2 className="text-2xl font-bold mb-3">Ready to Get Started?</h2>
+              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                Click below to access your licensing resources, video tutorials, and pre-licensing course.
               </p>
+              <Link to="/get-licensed">
+                <GradientButton size="lg" className="text-lg px-8">
+                  Start Steps to Get My License
+                  <ArrowRight className="h-5 w-5 ml-2" />
+                </GradientButton>
+              </Link>
             </div>
-            
-            <div className="rounded-xl overflow-hidden border border-border/50 bg-background/50">
-              <CalendlyEmbed url={calendlyUrl} />
-            </div>
+          </motion.div>
+
+          {/* Questions Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            className="text-center p-6 rounded-xl bg-muted/30 mb-8"
+          >
+            <Calendar className="h-6 w-6 text-primary mx-auto mb-3" />
+            <h3 className="font-bold mb-2">Have Questions?</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Book a call with one of our team members to learn more about the licensing process.
+            </p>
+            <a href={calendlyUrl} target="_blank" rel="noopener noreferrer">
+              <GradientButton variant="outline">
+                <Calendar className="h-4 w-4 mr-2" />
+                Schedule a Call
+              </GradientButton>
+            </a>
           </motion.div>
 
           {/* Back Button */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
+            transition={{ delay: 0.7 }}
             className="text-center"
           >
             <Link to="/">

@@ -277,6 +277,16 @@ export default function DashboardApplicants() {
     } else {
       toast.success("Marked as closed");
       fetchApplications();
+      
+      // Send notification email to the agent (fire and forget)
+      if (agentId) {
+        supabase.functions.invoke("notify-lead-closed", {
+          body: { applicationId: id, agentId }
+        }).then(({ error: notifyError }) => {
+          if (notifyError) console.error("Failed to send closed notification:", notifyError);
+          else console.log("Lead closed notification sent");
+        });
+      }
     }
   };
 

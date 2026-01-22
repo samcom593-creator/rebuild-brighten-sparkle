@@ -141,6 +141,8 @@ export function LeadReassignment() {
 
     setIsReassigning(true);
     try {
+      const previousAgentId = selectedApp.assigned_agent_id;
+      
       const { error } = await supabase
         .from("applications")
         .update({ assigned_agent_id: targetAgent })
@@ -149,6 +151,19 @@ export function LeadReassignment() {
       if (error) throw error;
 
       toast.success("Lead reassigned successfully!");
+      
+      // Send notification email to the new agent (fire and forget)
+      supabase.functions.invoke("notify-lead-assigned", {
+        body: { 
+          applicationId: selectedApp.id, 
+          newAgentId: targetAgent,
+          previousAgentId 
+        }
+      }).then(({ error: notifyError }) => {
+        if (notifyError) console.error("Failed to send assignment notification:", notifyError);
+        else console.log("Lead assignment notification sent");
+      });
+      
       setSelectedApp(null);
       setTargetAgent("");
       fetchApplications();

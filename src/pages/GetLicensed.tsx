@@ -166,7 +166,7 @@ export default function GetLicensed() {
         >
           {[
             { title: "We Cover Licensing Costs", description: "No upfront costs to get started" },
-            { title: "Fast-Track Program", description: "Get licensed in as little as 2 weeks" },
+            { title: "Takes About 7 Days", description: "Complete your licensing in just one week" },
             { title: "Full Training Provided", description: "Learn everything you need to succeed" },
           ].map((item, index) => (
             <div key={index} className="p-4 rounded-lg bg-muted/50 text-center flex items-center gap-3">
@@ -179,22 +179,48 @@ export default function GetLicensed() {
           ))}
         </motion.div>
 
-        {/* Questions Section */}
+        {/* Book Call When Done Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7 }}
         >
-          <GlassCard className="p-6 text-center">
-            <Calendar className="h-8 w-8 text-primary mx-auto mb-4" />
-            <h2 className="text-xl font-bold mb-2">Have Questions?</h2>
+          <GlassCard className="p-6 md:p-8 text-center border-2 border-primary/30 bg-primary/5">
+            <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
+              <Calendar className="h-8 w-8 text-primary" />
+            </div>
+            <h2 className="text-2xl font-bold mb-2">Once You're Licensed</h2>
+            <p className="text-lg text-muted-foreground mb-2">
+              The licensing process typically takes <span className="text-primary font-semibold">about 7 days</span> to complete.
+            </p>
             <p className="text-muted-foreground mb-6 max-w-lg mx-auto">
-              Schedule a call with one of our team members. We're here to help you every step of the way.
+              After you finish your pre-licensing course and pass your exam, book a call with us to get started on your APEX journey!
             </p>
             <a href={calendlyUrl} target="_blank" rel="noopener noreferrer">
-              <GradientButton>
+              <GradientButton size="lg" className="text-lg px-8">
+                <Calendar className="h-5 w-5 mr-2" />
+                Book Your Onboarding Call
+              </GradientButton>
+            </a>
+          </GlassCard>
+        </motion.div>
+
+        {/* Questions Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8 }}
+          className="mt-8"
+        >
+          <GlassCard className="p-6 text-center">
+            <h2 className="text-lg font-bold mb-2">Have Questions?</h2>
+            <p className="text-muted-foreground mb-4 max-w-lg mx-auto text-sm">
+              Need help with the licensing process? We're here for you.
+            </p>
+            <a href={calendlyUrl} target="_blank" rel="noopener noreferrer">
+              <GradientButton variant="outline">
                 <Calendar className="h-4 w-4 mr-2" />
-                Book a Call
+                Schedule a Call
               </GradientButton>
             </a>
           </GlassCard>

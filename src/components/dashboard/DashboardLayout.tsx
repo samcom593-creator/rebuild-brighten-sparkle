@@ -10,10 +10,12 @@ import {
   Menu,
   X,
   ChevronRight,
+  Settings,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
 
 interface DashboardLayoutProps {
@@ -30,6 +32,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
     { icon: Users, label: "Applicants", href: "/dashboard/applicants" },
     ...(isAdmin || isManager ? [{ icon: Shield, label: "Admin Panel", href: "/dashboard/admin" }] : []),
+    { icon: Settings, label: "Settings", href: "/dashboard/settings" },
   ];
 
   const handleLogout = async () => {
@@ -46,13 +49,16 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <Crown className="h-8 w-8 text-primary" />
             <span className="text-lg font-bold gradient-text">APEX</span>
           </Link>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-          >
-            {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </Button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+            >
+              {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -107,6 +113,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 <p className="text-xs text-muted-foreground truncate">{user.email}</p>
               </div>
             )}
+            <div className="flex items-center justify-between px-4 mb-3">
+              <span className="text-sm text-muted-foreground">Theme</span>
+              <ThemeToggle />
+            </div>
             <Button
               variant="ghost"
               className="w-full justify-start text-muted-foreground hover:text-foreground"

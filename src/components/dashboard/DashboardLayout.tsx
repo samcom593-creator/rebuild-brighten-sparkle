@@ -11,6 +11,7 @@ import {
   X,
   ChevronRight,
   Settings,
+  UserCog,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -31,7 +32,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const navItems = [
     { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
     { icon: Users, label: "Applicants", href: "/dashboard/applicants" },
-    ...(isAdmin || isManager ? [{ icon: Shield, label: "Admin Panel", href: "/dashboard/admin" }] : []),
+    ...(isAdmin || isManager ? [
+      { icon: Shield, label: "Admin Panel", href: "/dashboard/admin" },
+      { icon: UserCog, label: "Accounts", href: "/dashboard/accounts" },
+    ] : []),
     { icon: Settings, label: "Settings", href: "/dashboard/settings" },
   ];
 

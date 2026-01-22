@@ -20,6 +20,7 @@ import { GrowthChart } from "@/components/dashboard/GrowthChart";
 import { AnalyticsPieChart } from "@/components/dashboard/AnalyticsPieChart";
 import { EarningsPotentialCard } from "@/components/dashboard/EarningsPotentialCard";
 import { ManagerTeamView } from "@/components/dashboard/ManagerTeamView";
+import { InviteManagerCard } from "@/components/dashboard/InviteManagerCard";
 import { useAuth } from "@/hooks/useAuth";
 
 interface DashboardStats {
@@ -315,6 +316,13 @@ export default function Dashboard() {
           valueLabel="closed"
         />
       </div>
+
+      {/* Admin Quick Actions - Invite Manager Card */}
+      {isAdmin && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <InviteManagerCard />
+        </div>
+      )}
 
       {/* Manager Team View */}
       {(isManager || isAdmin) && (

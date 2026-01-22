@@ -17,13 +17,13 @@ export function Footer() {
               Join America's fastest-growing life insurance agency.
             </p>
             <div className="flex flex-col gap-2 text-sm text-muted-foreground">
-              <a href="mailto:careers@apexfinancial.com" className="flex items-center gap-2 hover:text-primary transition-colors">
+              <a href="mailto:info@kingofsales.net" className="flex items-center gap-2 hover:text-primary transition-colors">
                 <Mail className="h-4 w-4" />
-                careers@apexfinancial.com
+                info@kingofsales.net
               </a>
-              <a href="tel:+18005551234" className="flex items-center gap-2 hover:text-primary transition-colors">
+              <a href="tel:+14697676068" className="flex items-center gap-2 hover:text-primary transition-colors">
                 <Phone className="h-4 w-4" />
-                (800) 555-1234
+                (469) 767-6068
               </a>
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4" />

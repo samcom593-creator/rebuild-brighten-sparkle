@@ -106,50 +106,59 @@ export default function Apply() {
   const hasExperience = watch("hasInsuranceExperience");
   const licenseStatus = watch("licenseStatus");
 
-  // Fetch active agents for referral selection
+  // Fetch only active MANAGERS for referral selection
   useEffect(() => {
-    const fetchActiveAgents = async () => {
-      const { data: agents, error } = await supabase
-        .from("agents")
-        .select(`
-          id,
-          profiles!agents_profile_id_fkey (
-            full_name
-          )
-        `)
-        .eq("status", "active");
+    const fetchActiveManagers = async () => {
+      try {
+        // Get all active agents
+        const { data: activeAgents, error: agentsError } = await supabase
+          .from("agents")
+          .select("id, user_id")
+          .eq("status", "active");
 
-      if (error) {
-        console.error("Error fetching agents:", error);
-        return;
-      }
+        if (agentsError || !activeAgents) {
+          console.error("Error fetching agents:", agentsError);
+          return;
+        }
 
-      // Also fetch by user_id
-      const { data: agentsByUser } = await supabase
-        .from("agents")
-        .select("id, user_id")
-        .eq("status", "active");
+        // Filter to only those with manager role
+        const managersWithProfiles: ActiveAgent[] = [];
 
-      if (agentsByUser && agentsByUser.length > 0) {
-        const userIds = agentsByUser.map(a => a.user_id).filter(Boolean);
-        const { data: profiles } = await supabase
-          .from("profiles")
-          .select("user_id, full_name")
-          .in("user_id", userIds);
+        for (const agent of activeAgents) {
+          if (!agent.user_id) continue;
 
-        const agentList = agentsByUser.map(agent => {
-          const profile = profiles?.find(p => p.user_id === agent.user_id);
-          return {
-            id: agent.id,
-            name: profile?.full_name || "APEX Agent",
-          };
-        }).filter(a => a.name && a.name !== "APEX Agent");
+          // Check if this user has the manager role
+          const { data: roleData } = await supabase
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", agent.user_id)
+            .eq("role", "manager")
+            .maybeSingle();
 
-        setActiveAgents(agentList);
+          if (roleData) {
+            // Get their profile name
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("full_name")
+              .eq("user_id", agent.user_id)
+              .maybeSingle();
+
+            if (profile?.full_name) {
+              managersWithProfiles.push({
+                id: agent.id,
+                name: profile.full_name,
+              });
+            }
+          }
+        }
+
+        setActiveAgents(managersWithProfiles);
+      } catch (error) {
+        console.error("Error fetching managers:", error);
       }
     };
 
-    fetchActiveAgents();
+    fetchActiveManagers();
   }, []);
 
   const validateStep = async (step: number): Promise<boolean> => {

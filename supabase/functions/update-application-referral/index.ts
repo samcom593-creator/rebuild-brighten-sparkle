@@ -137,7 +137,7 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // UUID referrer
+    // UUID referrer (manager selected)
     const { error: updateError } = await supabaseAdmin
       .from("applications")
       .update({ assigned_agent_id: selected })
@@ -149,6 +149,27 @@ const handler = async (req: Request): Promise<Response> => {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
+    }
+
+    // Notify the manager about the referral (fire-and-forget)
+    try {
+      const notifyUrl = `${supabaseUrl}/functions/v1/notify-manager-referral`;
+      fetch(notifyUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${serviceRoleKey}`,
+        },
+        body: JSON.stringify({
+          applicationId: data.applicationId,
+          managerId: selected,
+        }),
+      }).catch((err) => {
+        console.error("Failed to trigger manager notification:", err);
+      });
+    } catch (notifyErr) {
+      console.error("Error triggering manager notification:", notifyErr);
+      // Don't fail the main request
     }
 
     return new Response(JSON.stringify({ success: true }), {

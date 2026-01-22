@@ -21,3 +21,6 @@ verify_jwt = false
 
 [functions.notify-lead-assigned]
 verify_jwt = false
+
+[functions.notify-manager-referral]
+verify_jwt = false

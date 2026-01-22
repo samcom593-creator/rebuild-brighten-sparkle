@@ -589,6 +589,45 @@ export type Database = {
           },
         ]
       }
+      manager_signup_tokens: {
+        Row: {
+          created_at: string
+          created_by: string
+          expires_at: string
+          id: string
+          is_used: boolean
+          manager_email: string | null
+          manager_name: string | null
+          token: string
+          used_at: string | null
+          used_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          expires_at?: string
+          id?: string
+          is_used?: boolean
+          manager_email?: string | null
+          manager_name?: string | null
+          token: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          id?: string
+          is_used?: boolean
+          manager_email?: string | null
+          manager_name?: string | null
+          token?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

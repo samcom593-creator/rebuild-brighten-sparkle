@@ -118,12 +118,9 @@ export default function Login() {
             </GradientButton>
           </form>
 
-          <div className="mt-6 text-center text-sm">
-            <span className="text-muted-foreground">Don't have an account? </span>
-            <Link to="/signup" className="text-primary hover:underline font-medium">
-              Sign up
-            </Link>
-          </div>
+          <p className="mt-6 text-center text-sm text-muted-foreground">
+            Contact your administrator for account access.
+          </p>
         </GlassCard>
       </motion.div>
     </div>

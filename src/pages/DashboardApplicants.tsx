@@ -429,7 +429,8 @@ export default function DashboardApplicants() {
                         className="text-pink-400 hover:text-pink-300 hover:bg-pink-500/10"
                       >
                         <Instagram className="h-4 w-4 mr-1" />
-                        <ExternalLink className="h-3 w-3" />
+                        <span className="hidden sm:inline">@{app.instagram_handle}</span>
+                        <ExternalLink className="h-3 w-3 ml-1" />
                       </Button>
                     )}
                     

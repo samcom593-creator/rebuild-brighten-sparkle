@@ -91,7 +91,7 @@ export default function Signup() {
   };
 
   const onSubmit = async (data: SignupFormData) => {
-    if (!isValidToken || !tokenData) {
+    if (!isValidToken || !token) {
       toast.error("Invalid invite link");
       return;
     }
@@ -99,56 +99,44 @@ export default function Signup() {
     setIsLoading(true);
     
     try {
-      // Create the auth account
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      // Use edge function for secure server-side signup
+      const { data: response, error: functionError } = await supabase.functions.invoke(
+        "manager-signup",
+        {
+          body: {
+            token,
+            email: data.email,
+            password: data.password,
+            fullName: data.fullName,
+          },
+        }
+      );
+
+      if (functionError) {
+        throw new Error(functionError.message || "Failed to create account");
+      }
+
+      if (response?.error) {
+        throw new Error(response.error);
+      }
+
+      // Sign in the user after successful signup
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
-        options: {
-          data: {
-            full_name: data.fullName,
-          },
-          emailRedirectTo: `${window.location.origin}/`,
-        },
       });
 
-      if (authError) throw authError;
-
-      if (authData.user) {
-        // Create agent record with active status (pre-approved via token)
-        const { error: agentError } = await supabase
-          .from("agents")
-          .insert({
-            user_id: authData.user.id,
-            status: "active",
-            license_status: "unlicensed",
-          });
-
-        if (agentError) {
-          console.error("Agent creation error:", agentError);
-        }
-
-        // Add manager role
-        const { error: roleError } = await supabase
-          .from("user_roles")
-          .insert({
-            user_id: authData.user.id,
-            role: "manager",
-          });
-
-        if (roleError) {
-          console.error("Role assignment error:", roleError);
-        }
+      if (signInError) {
+        toast.success("Account created! Please log in.");
+        navigate("/login");
+        return;
       }
 
       toast.success("Account created! Welcome to APEX Financial.");
       navigate("/dashboard");
     } catch (error: any) {
       console.error("Signup error:", error);
-      if (error.message?.includes("already registered")) {
-        toast.error("This email is already registered. Please log in instead.");
-      } else {
-        toast.error(error.message || "Failed to create account");
-      }
+      toast.error(error.message || "Failed to create account");
     } finally {
       setIsLoading(false);
     }

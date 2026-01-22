@@ -3,6 +3,10 @@ project_id = "msydzhzolwourcdmqxvn"
 [functions.send-application-notification]
 verify_jwt = false
 
+[functions.manager-signup]
+enabled = true
+verify_jwt = false
+
 [functions.submit-application]
 verify_jwt = false
 

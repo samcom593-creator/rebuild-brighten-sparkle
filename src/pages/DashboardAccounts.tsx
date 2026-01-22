@@ -11,6 +11,10 @@ import {
   CheckCircle,
   XCircle,
   AlertTriangle,
+  MoreHorizontal,
+  Edit,
+  UserX,
+  UserCheck,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -28,6 +32,29 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { Navigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -54,6 +81,13 @@ export default function DashboardAccounts() {
     agents: 0,
     pendingApproval: 0,
   });
+
+  // Edit dialog state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<AccountInfo | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editRole, setEditRole] = useState<"admin" | "manager" | "agent">("agent");
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     fetchAccounts();
@@ -124,6 +158,70 @@ export default function DashboardAccounts() {
     }
   };
 
+  const handleEditAccount = (account: AccountInfo) => {
+    setEditingAccount(account);
+    setEditName(account.name);
+    setEditRole(account.role);
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingAccount) return;
+    setIsSaving(true);
+
+    try {
+      // Update profile name
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({ full_name: editName })
+        .eq("user_id", editingAccount.userId);
+
+      if (profileError) throw profileError;
+
+      // Update role if changed (admin only)
+      if (isAdmin && editRole !== editingAccount.role) {
+        const { error: roleError } = await supabase
+          .from("user_roles")
+          .update({ role: editRole })
+          .eq("user_id", editingAccount.userId);
+
+        if (roleError) throw roleError;
+      }
+
+      toast.success("Account updated successfully");
+      setEditDialogOpen(false);
+      fetchAccounts();
+    } catch (error) {
+      console.error("Error updating account:", error);
+      toast.error("Failed to update account");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleToggleStatus = async (account: AccountInfo) => {
+    const newStatus = account.status === "active" ? "terminated" : "active";
+    const action = newStatus === "terminated" ? "deactivate" : "reactivate";
+
+    try {
+      const { error } = await supabase
+        .from("agents")
+        .update({ 
+          status: newStatus,
+          ...(newStatus === "active" ? { verified_at: new Date().toISOString() } : {})
+        })
+        .eq("id", account.id);
+
+      if (error) throw error;
+
+      toast.success(`Account ${action}d successfully`);
+      fetchAccounts();
+    } catch (error) {
+      console.error(`Error ${action}ing account:`, error);
+      toast.error(`Failed to ${action} account`);
+    }
+  };
+
   const filteredAccounts = accounts.filter(
     (account) =>
       account.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -177,7 +275,7 @@ export default function DashboardAccounts() {
         return (
           <Badge className="bg-red-500/20 text-red-400 border-red-500/30">
             <XCircle className="h-3 w-3 mr-1" />
-            Terminated
+            Deactivated
           </Badge>
         );
       default:
@@ -300,6 +398,7 @@ export default function DashboardAccounts() {
                     <TableHead>Role</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Joined</TableHead>
+                    <TableHead className="w-[50px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -320,6 +419,39 @@ export default function DashboardAccounts() {
                           {new Date(account.createdAt).toLocaleDateString()}
                         </div>
                       </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEditAccount(account)}>
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit Account
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            {account.status === "active" ? (
+                              <DropdownMenuItem 
+                                onClick={() => handleToggleStatus(account)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <UserX className="h-4 w-4 mr-2" />
+                                Deactivate Account
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem 
+                                onClick={() => handleToggleStatus(account)}
+                                className="text-emerald-500 focus:text-emerald-500"
+                              >
+                                <UserCheck className="h-4 w-4 mr-2" />
+                                Reactivate Account
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -328,6 +460,52 @@ export default function DashboardAccounts() {
           )}
         </GlassCard>
       </motion.div>
+
+      {/* Edit Account Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Account</DialogTitle>
+            <DialogDescription>
+              Update account details for {editingAccount?.email}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Full Name</Label>
+              <Input
+                id="edit-name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="Enter full name"
+              />
+            </div>
+            {isAdmin && (
+              <div className="space-y-2">
+                <Label htmlFor="edit-role">Role</Label>
+                <Select value={editRole} onValueChange={(v) => setEditRole(v as "admin" | "manager" | "agent")}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="agent">Agent</SelectItem>
+                    <SelectItem value="manager">Manager</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEdit} disabled={isSaving}>
+              {isSaving ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

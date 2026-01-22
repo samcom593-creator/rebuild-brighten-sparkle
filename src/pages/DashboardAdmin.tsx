@@ -28,6 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { LeaderboardCard } from "@/components/dashboard/LeaderboardCard";
 import { ManagerInviteLinks } from "@/components/dashboard/ManagerInviteLinks";
 import { LeadReassignment } from "@/components/dashboard/LeadReassignment";
+import { LeadExporter } from "@/components/dashboard/LeadExporter";
 import {
   Table,
   TableBody,
@@ -397,24 +398,28 @@ export default function DashboardAdmin() {
               Manage team members and oversee all recruiting activity
             </p>
           </div>
-          {/* Real-time connection indicator */}
-          <div className={cn(
-            "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium",
-            isRealtimeConnected 
-              ? "bg-emerald-500/20 text-emerald-400" 
-              : "bg-amber-500/20 text-amber-400"
-          )}>
-            {isRealtimeConnected ? (
-              <>
-                <Wifi className="h-3.5 w-3.5" />
-                Live Updates
-              </>
-            ) : (
-              <>
-                <WifiOff className="h-3.5 w-3.5" />
-                Connecting...
-              </>
-            )}
+          <div className="flex items-center gap-3">
+            {/* Lead Exporter */}
+            <LeadExporter />
+            {/* Real-time connection indicator */}
+            <div className={cn(
+              "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium",
+              isRealtimeConnected 
+                ? "bg-emerald-500/20 text-emerald-400" 
+                : "bg-amber-500/20 text-amber-400"
+            )}>
+              {isRealtimeConnected ? (
+                <>
+                  <Wifi className="h-3.5 w-3.5" />
+                  Live Updates
+                </>
+              ) : (
+                <>
+                  <WifiOff className="h-3.5 w-3.5" />
+                  Connecting...
+                </>
+              )}
+            </div>
           </div>
         </div>
       </motion.div>

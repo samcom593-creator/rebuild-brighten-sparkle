@@ -15,6 +15,9 @@ import {
   Award,
   GraduationCap,
   ExternalLink,
+  StickyNote,
+  Mic,
+  Building2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -32,6 +35,8 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { ApplicantNotes } from "@/components/dashboard/ApplicantNotes";
+import { InterviewRecorder } from "@/components/dashboard/InterviewRecorder";
 
 interface Application {
   id: string;
@@ -49,6 +54,10 @@ interface Application {
   closed_at: string | null;
   started_training: boolean | null;
   created_at: string;
+  notes: string | null;
+  has_insurance_experience: boolean | null;
+  previous_company: string | null;
+  years_experience: number | null;
 }
 
 const statusColors: Record<string, string> = {
@@ -71,6 +80,13 @@ export default function DashboardApplicants() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [licenseFilter, setLicenseFilter] = useState<string>("all");
   const [isLoading, setIsLoading] = useState(true);
+  const [agentId, setAgentId] = useState<string | null>(null);
+  
+  // Notes modal state
+  const [notesApp, setNotesApp] = useState<Application | null>(null);
+  
+  // Interview recorder state
+  const [recorderApp, setRecorderApp] = useState<Application | null>(null);
 
   useEffect(() => {
     fetchApplications();
@@ -89,6 +105,7 @@ export default function DashboardApplicants() {
       .single();
 
     if (agentData) {
+      setAgentId(agentData.id);
       const { data, error } = await supabase
         .from("applications")
         .select("*")
@@ -117,6 +134,10 @@ export default function DashboardApplicants() {
           closed_at: null,
           started_training: false,
           created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+          notes: null,
+          has_insurance_experience: true,
+          previous_company: "Symmetry Financial",
+          years_experience: 3,
         },
         {
           id: "2",
@@ -134,6 +155,10 @@ export default function DashboardApplicants() {
           closed_at: null,
           started_training: true,
           created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+          notes: "[Jan 20, 10:30 AM] Left voicemail, will call back tomorrow",
+          has_insurance_experience: false,
+          previous_company: null,
+          years_experience: null,
         },
         {
           id: "3",
@@ -151,6 +176,10 @@ export default function DashboardApplicants() {
           closed_at: null,
           started_training: false,
           created_at: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString(),
+          notes: null,
+          has_insurance_experience: true,
+          previous_company: "American Income Life",
+          years_experience: 5,
         },
         {
           id: "4",
@@ -168,6 +197,10 @@ export default function DashboardApplicants() {
           closed_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
           started_training: false,
           created_at: new Date(Date.now() - 168 * 60 * 60 * 1000).toISOString(),
+          notes: null,
+          has_insurance_experience: false,
+          previous_company: null,
+          years_experience: null,
         },
       ]);
     }
@@ -248,6 +281,15 @@ export default function DashboardApplicants() {
 
   const openInstagram = (handle: string) => {
     window.open(`https://instagram.com/${handle}`, "_blank");
+  };
+
+  const handleNotesSave = (notes: string) => {
+    if (notesApp) {
+      setApplications(apps => 
+        apps.map(a => a.id === notesApp.id ? { ...a, notes } : a)
+      );
+      setNotesApp(null);
+    }
   };
 
   const filteredApplications = applications.filter((app) => {
@@ -369,58 +411,81 @@ export default function DashboardApplicants() {
               transition={{ delay: 0.1 * index }}
             >
               <GlassCard className="p-4 hover:bg-muted/50 transition-colors">
-                <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-                  {/* Avatar & Name */}
-                  <div className="flex items-center gap-4 flex-1">
-                    <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
-                      <Users className="h-6 w-6 text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold">{app.first_name} {app.last_name}</h3>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        <span>{getTimeAgo(app.created_at)}</span>
+                <div className="flex flex-col gap-4">
+                  {/* Top Row: Avatar, Name, Contact Info, Badges */}
+                  <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                    {/* Avatar & Name */}
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
+                        <Users className="h-6 w-6 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">{app.first_name} {app.last_name}</h3>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          <span>{getTimeAgo(app.created_at)}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Contact Info */}
-                  <div className="flex flex-wrap gap-4 text-sm">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Mail className="h-4 w-4" />
-                      <span>{app.email}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Phone className="h-4 w-4" />
-                      <span>{app.phone}</span>
-                    </div>
-                    {app.city && app.state && (
+                    {/* Contact Info */}
+                    <div className="flex flex-wrap gap-4 text-sm">
                       <div className="flex items-center gap-2 text-muted-foreground">
-                        <MapPin className="h-4 w-4" />
-                        <span>{app.city}, {app.state}</span>
+                        <Mail className="h-4 w-4" />
+                        <span>{app.email}</span>
                       </div>
-                    )}
-                  </div>
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Phone className="h-4 w-4" />
+                        <span>{app.phone}</span>
+                      </div>
+                      {app.city && app.state && (
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <MapPin className="h-4 w-4" />
+                          <span>{app.city}, {app.state}</span>
+                        </div>
+                      )}
+                    </div>
 
-                  {/* Badges */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Badge variant="outline" className={cn("capitalize", statusColors[status])}>
-                      {status}
-                    </Badge>
-                    <Badge variant="outline" className={cn("capitalize", licenseColors[app.license_status])}>
-                      {app.license_status === "licensed" && <Award className="h-3 w-3 mr-1" />}
-                      {app.license_status === "unlicensed" && <GraduationCap className="h-3 w-3 mr-1" />}
-                      {app.license_status}
-                    </Badge>
-                    {app.started_training && (
-                      <Badge variant="outline" className="bg-primary/20 text-primary border-primary/30">
-                        Started Training
+                    {/* Badges */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="outline" className={cn("capitalize", statusColors[status])}>
+                        {status}
                       </Badge>
-                    )}
+                      <Badge variant="outline" className={cn("capitalize", licenseColors[app.license_status])}>
+                        {app.license_status === "licensed" && <Award className="h-3 w-3 mr-1" />}
+                        {app.license_status === "unlicensed" && <GraduationCap className="h-3 w-3 mr-1" />}
+                        {app.license_status}
+                      </Badge>
+                      {app.started_training && (
+                        <Badge variant="outline" className="bg-primary/20 text-primary border-primary/30">
+                          Started Training
+                        </Badge>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-2">
+                  {/* Previous Experience Row */}
+                  {app.has_insurance_experience && app.previous_company && (
+                    <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-muted/50 w-fit">
+                      <Building2 className="h-4 w-4 text-orange-400" />
+                      <span className="text-sm text-muted-foreground">
+                        Previously at <span className="text-foreground font-medium">{app.previous_company}</span>
+                        {app.years_experience && app.years_experience > 0 && (
+                          <span className="text-muted-foreground"> • {app.years_experience} yr{app.years_experience > 1 ? 's' : ''} exp</span>
+                        )}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Notes Preview */}
+                  {app.notes && (
+                    <div className="text-sm text-muted-foreground bg-muted/30 rounded-md px-3 py-2 border-l-2 border-primary/50">
+                      <span className="line-clamp-2">{app.notes}</span>
+                    </div>
+                  )}
+
+                  {/* Actions Row */}
+                  <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-border/50">
                     {app.instagram_handle && (
                       <Button
                         variant="ghost"
@@ -433,6 +498,31 @@ export default function DashboardApplicants() {
                         <ExternalLink className="h-3 w-3 ml-1" />
                       </Button>
                     )}
+                    
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setNotesApp(app)}
+                      className={cn(
+                        "text-muted-foreground hover:text-foreground",
+                        app.notes && "text-primary"
+                      )}
+                    >
+                      <StickyNote className="h-4 w-4 mr-1" />
+                      Notes
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setRecorderApp(app)}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <Mic className="h-4 w-4 mr-1" />
+                      Record Interview
+                    </Button>
+                    
+                    <div className="flex-1" />
                     
                     {status === "new" && (
                       <Button
@@ -483,6 +573,28 @@ export default function DashboardApplicants() {
           </GlassCard>
         )}
       </motion.div>
+
+      {/* Notes Modal */}
+      {notesApp && (
+        <ApplicantNotes
+          applicationId={notesApp.id}
+          applicantName={`${notesApp.first_name} ${notesApp.last_name}`}
+          initialNotes={notesApp.notes}
+          onClose={() => setNotesApp(null)}
+          onSave={handleNotesSave}
+        />
+      )}
+
+      {/* Interview Recorder Modal */}
+      {recorderApp && agentId && (
+        <InterviewRecorder
+          applicationId={recorderApp.id}
+          agentId={agentId}
+          applicantName={`${recorderApp.first_name} ${recorderApp.last_name}`}
+          onClose={() => setRecorderApp(null)}
+          onTranscriptionSaved={fetchApplications}
+        />
+      )}
     </DashboardLayout>
   );
 }

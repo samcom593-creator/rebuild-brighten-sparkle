@@ -210,6 +210,47 @@ export type Database = {
           },
         ]
       }
+      agent_onboarding: {
+        Row: {
+          agent_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          stage: Database["public"]["Enums"]["onboarding_stage"]
+          stage_completed_at: string | null
+          stage_started_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          stage: Database["public"]["Enums"]["onboarding_stage"]
+          stage_completed_at?: string | null
+          stage_started_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          stage?: Database["public"]["Enums"]["onboarding_stage"]
+          stage_completed_at?: string | null
+          stage_started_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_onboarding_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agents: {
         Row: {
           agent_code: string | null
@@ -220,6 +261,10 @@ export type Database = {
           license_status: Database["public"]["Enums"]["license_status"]
           manager_id: string | null
           nipr_number: string | null
+          onboarding_completed_at: string | null
+          onboarding_stage:
+            | Database["public"]["Enums"]["onboarding_stage"]
+            | null
           profile_id: string | null
           start_date: string | null
           status: Database["public"]["Enums"]["agent_status"]
@@ -240,6 +285,10 @@ export type Database = {
           license_status?: Database["public"]["Enums"]["license_status"]
           manager_id?: string | null
           nipr_number?: string | null
+          onboarding_completed_at?: string | null
+          onboarding_stage?:
+            | Database["public"]["Enums"]["onboarding_stage"]
+            | null
           profile_id?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["agent_status"]
@@ -260,6 +309,10 @@ export type Database = {
           license_status?: Database["public"]["Enums"]["license_status"]
           manager_id?: string | null
           nipr_number?: string | null
+          onboarding_completed_at?: string | null
+          onboarding_stage?:
+            | Database["public"]["Enums"]["onboarding_stage"]
+            | null
           profile_id?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["agent_status"]
@@ -666,6 +719,11 @@ export type Database = {
         | "approved"
         | "rejected"
       license_status: "licensed" | "unlicensed" | "pending"
+      onboarding_stage:
+        | "onboarding"
+        | "training_online"
+        | "in_field_training"
+        | "evaluated"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -804,6 +862,12 @@ export const Constants = {
         "rejected",
       ],
       license_status: ["licensed", "unlicensed", "pending"],
+      onboarding_stage: [
+        "onboarding",
+        "training_online",
+        "in_field_training",
+        "evaluated",
+      ],
     },
   },
 } as const

@@ -19,6 +19,7 @@ import { AIInsightsCard } from "@/components/dashboard/AIInsightsCard";
 import { GrowthChart } from "@/components/dashboard/GrowthChart";
 import { AnalyticsPieChart } from "@/components/dashboard/AnalyticsPieChart";
 import { EarningsPotentialCard } from "@/components/dashboard/EarningsPotentialCard";
+import { ManagerTeamView } from "@/components/dashboard/ManagerTeamView";
 import { useAuth } from "@/hooks/useAuth";
 
 interface DashboardStats {
@@ -41,7 +42,7 @@ interface LeaderboardEntry {
 }
 
 export default function Dashboard() {
-  const { profile, user } = useAuth();
+  const { profile, user, isManager, isAdmin } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
     totalLeads: 0,
     contacted: 0,
@@ -314,6 +315,23 @@ export default function Dashboard() {
           valueLabel="closed"
         />
       </div>
+
+      {/* Manager Team View */}
+      {(isManager || isAdmin) && (
+        <div className="mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4"
+          >
+            <h3 className="text-xl font-bold">Your Team</h3>
+            <p className="text-muted-foreground text-sm">
+              Manage and track your team's onboarding progress
+            </p>
+          </motion.div>
+          <ManagerTeamView />
+        </div>
+      )}
     </DashboardLayout>
   );
 }

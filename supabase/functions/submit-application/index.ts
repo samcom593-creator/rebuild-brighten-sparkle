@@ -84,6 +84,9 @@ const SubmitApplicationSchema = z.object({
   availability: z.string().min(1).max(500),
   referralSource: z.string().max(500).optional().nullable(),
   notes: z.string().max(1000).optional().nullable(),
+  
+  // New: selected referral agent ID
+  selectedReferralAgentId: z.string().uuid().optional().nullable(),
 });
 
 type SubmitApplicationRequest = z.infer<typeof SubmitApplicationSchema>;
@@ -96,6 +99,140 @@ function sanitizeHtml(str: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+// Get manager info by agent ID
+async function getManagerInfo(agentId: string): Promise<{ email: string; name: string } | null> {
+  try {
+    // Get the agent's user_id
+    const { data: agent, error: agentError } = await supabaseAdmin
+      .from("agents")
+      .select("user_id")
+      .eq("id", agentId)
+      .single();
+    
+    if (agentError || !agent?.user_id) {
+      console.log("Could not find agent:", agentError);
+      return null;
+    }
+    
+    // Get the profile info
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .select("email, full_name")
+      .eq("user_id", agent.user_id)
+      .single();
+    
+    if (profileError || !profile?.email) {
+      console.log("Could not find profile:", profileError);
+      return null;
+    }
+    
+    return {
+      email: profile.email,
+      name: profile.full_name || profile.email.split("@")[0],
+    };
+  } catch (err) {
+    console.error("Error getting manager info:", err);
+    return null;
+  }
+}
+
+// Send manager notification email
+async function sendManagerNotification(
+  data: SubmitApplicationRequest,
+  managerEmail: string,
+  managerName: string
+) {
+  if (!resend) return;
+
+  const sanitized = {
+    firstName: sanitizeHtml(data.firstName),
+    lastName: sanitizeHtml(data.lastName),
+    email: sanitizeHtml(data.email),
+    phone: sanitizeHtml(data.phone),
+    city: sanitizeHtml(data.city),
+    state: sanitizeHtml(data.state),
+    licenseStatus: data.licenseStatus,
+    instagramHandle: data.instagramHandle ? sanitizeHtml(data.instagramHandle) : undefined,
+  };
+
+  const licenseStatusDisplay = {
+    licensed: "Licensed",
+    unlicensed: "Not Yet Licensed",
+    pending: "License Pending",
+  }[sanitized.licenseStatus] || sanitized.licenseStatus;
+
+  try {
+    await resend.emails.send({
+      from: "APEX Applications <applications@apex-financial.org>",
+      to: [managerEmail],
+      subject: `🎯 New Team Applicant: ${sanitized.firstName} ${sanitized.lastName}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #059669, #047857); padding: 30px; border-radius: 10px 10px 0 0;">
+            <h1 style="color: white; margin: 0; font-size: 24px;">New Team Application!</h1>
+            <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0;">Hi ${managerName}, someone applied using your referral link!</p>
+          </div>
+          
+          <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
+            <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+              <h2 style="color: #059669; margin-top: 0; font-size: 18px;">Applicant Details</h2>
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 8px 0; color: #6b7280; width: 40%;">Name:</td>
+                  <td style="padding: 8px 0; font-weight: bold;">${sanitized.firstName} ${sanitized.lastName}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #6b7280;">Email:</td>
+                  <td style="padding: 8px 0;"><a href="mailto:${data.email}" style="color: #059669;">${sanitized.email}</a></td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #6b7280;">Phone:</td>
+                  <td style="padding: 8px 0;"><a href="tel:${data.phone}" style="color: #059669;">${sanitized.phone}</a></td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #6b7280;">Location:</td>
+                  <td style="padding: 8px 0;">${sanitized.city}, ${sanitized.state}</td>
+                </tr>
+                ${sanitized.instagramHandle ? `
+                <tr>
+                  <td style="padding: 8px 0; color: #6b7280;">Instagram:</td>
+                  <td style="padding: 8px 0;"><a href="https://instagram.com/${sanitized.instagramHandle}" style="color: #059669;">@${sanitized.instagramHandle}</a></td>
+                </tr>
+                ` : ''}
+                <tr>
+                  <td style="padding: 8px 0; color: #6b7280;">License Status:</td>
+                  <td style="padding: 8px 0;">
+                    <span style="background: ${sanitized.licenseStatus === 'licensed' ? '#d1fae5' : sanitized.licenseStatus === 'pending' ? '#fef3c7' : '#fee2e2'}; 
+                                 color: ${sanitized.licenseStatus === 'licensed' ? '#047857' : sanitized.licenseStatus === 'pending' ? '#92400e' : '#991b1b'};
+                                 padding: 4px 12px; border-radius: 20px; font-size: 14px; font-weight: 500;">
+                      ${licenseStatusDisplay}
+                    </span>
+                  </td>
+                </tr>
+              </table>
+            </div>
+
+            <div style="background: #d1fae5; border-left: 4px solid #059669; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+              <p style="margin: 0; color: #047857; font-weight: 500;">
+                This applicant selected you as their referring manager. Follow up with them soon!
+              </p>
+            </div>
+
+            <div style="text-align: center; margin-top: 20px;">
+              <p style="color: #6b7280; font-size: 14px;">
+                Submitted on ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              </p>
+            </div>
+          </div>
+        </div>
+      `,
+    });
+    console.log("Manager notification sent to:", managerEmail);
+  } catch (error) {
+    console.error("Error sending manager notification:", error);
+  }
 }
 
 // Send email notifications
@@ -419,6 +556,14 @@ async function sendEmailNotifications(data: SubmitApplicationRequest) {
     });
     console.log("Applicant confirmation sent:", applicantEmailResponse);
 
+    // Send notification to referring manager if selected
+    if (data.selectedReferralAgentId) {
+      const managerInfo = await getManagerInfo(data.selectedReferralAgentId);
+      if (managerInfo) {
+        await sendManagerNotification(data, managerInfo.email, managerInfo.name);
+      }
+    }
+
   } catch (error) {
     console.error("Error sending email notifications:", error);
   }
@@ -502,9 +647,11 @@ const handler = async (req: Request): Promise<Response> => {
       availability: data.availability,
       referral_source: data.referralSource ?? null,
       notes: data.notes ?? null,
+      
+      // Assign to the selected referral agent if provided
+      assigned_agent_id: data.selectedReferralAgentId ?? null,
 
       status: "new",
-      assigned_agent_id: null,
       reviewed_at: null,
       reviewed_by: null,
       contacted_at: null,

@@ -79,6 +79,7 @@ export default function DashboardApplicants() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [licenseFilter, setLicenseFilter] = useState<string>("all");
+  const [sortOrder, setSortOrder] = useState<string>("newest");
   const [isLoading, setIsLoading] = useState(true);
   const [agentId, setAgentId] = useState<string | null>(null);
   
@@ -292,17 +293,23 @@ export default function DashboardApplicants() {
     }
   };
 
-  const filteredApplications = applications.filter((app) => {
-    const name = `${app.first_name} ${app.last_name}`.toLowerCase();
-    const matchesSearch = name.includes(searchQuery.toLowerCase()) ||
-      app.email.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const appStatus = getApplicationStatus(app);
-    const matchesStatus = statusFilter === "all" || appStatus === statusFilter;
-    const matchesLicense = licenseFilter === "all" || app.license_status === licenseFilter;
-    
-    return matchesSearch && matchesStatus && matchesLicense;
-  });
+  const filteredApplications = applications
+    .filter((app) => {
+      const name = `${app.first_name} ${app.last_name}`.toLowerCase();
+      const matchesSearch = name.includes(searchQuery.toLowerCase()) ||
+        app.email.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const appStatus = getApplicationStatus(app);
+      const matchesStatus = statusFilter === "all" || appStatus === statusFilter;
+      const matchesLicense = licenseFilter === "all" || app.license_status === licenseFilter;
+      
+      return matchesSearch && matchesStatus && matchesLicense;
+    })
+    .sort((a, b) => {
+      const dateA = new Date(a.created_at).getTime();
+      const dateB = new Date(b.created_at).getTime();
+      return sortOrder === "newest" ? dateB - dateA : dateA - dateB;
+    });
 
   // Stats
   const totalLeads = applications.length;
@@ -390,6 +397,16 @@ export default function DashboardApplicants() {
             <SelectItem value="licensed">Licensed</SelectItem>
             <SelectItem value="unlicensed">Unlicensed</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={sortOrder} onValueChange={setSortOrder}>
+          <SelectTrigger className="w-full sm:w-40 bg-input">
+            <Clock className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Sort by" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="newest">Newest First</SelectItem>
+            <SelectItem value="oldest">Oldest First</SelectItem>
           </SelectContent>
         </Select>
       </motion.div>

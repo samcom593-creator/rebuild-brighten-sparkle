@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Crown, Mail, Lock, User, Loader2 } from "lucide-react";
+import { Crown, Mail, Lock, User, Loader2, ShieldAlert } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { GradientButton } from "@/components/ui/gradient-button";
@@ -28,51 +28,16 @@ export default function Signup() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
-  const [referrerName, setReferrerName] = useState<string | null>(null);
+  const [isValidatingToken, setIsValidatingToken] = useState(true);
+  const [isValidToken, setIsValidToken] = useState(false);
+  const [tokenData, setTokenData] = useState<{
+    id: string;
+    manager_name: string | null;
+    manager_email: string | null;
+  } | null>(null);
   
-  // Get referral code from URL
-  const refCode = searchParams.get("ref");
-
-  // Look up the referrer's name when we have a ref code
-  useEffect(() => {
-    async function fetchReferrerName() {
-      if (!refCode) return;
-      
-      try {
-        const { data: inviteLink, error } = await supabase
-          .from("manager_invite_links")
-          .select("manager_agent_id")
-          .eq("invite_code", refCode)
-          .eq("is_active", true)
-          .single();
-        
-        if (error || !inviteLink) return;
-        
-        // Get the manager's profile
-        const { data: agent } = await supabase
-          .from("agents")
-          .select("profile_id, user_id")
-          .eq("id", inviteLink.manager_agent_id)
-          .single();
-        
-        if (agent?.user_id) {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("full_name")
-            .eq("user_id", agent.user_id)
-            .single();
-          
-          if (profile?.full_name) {
-            setReferrerName(profile.full_name);
-          }
-        }
-      } catch (err) {
-        console.error("Error fetching referrer:", err);
-      }
-    }
-    
-    fetchReferrerName();
-  }, [refCode]);
+  // Get token from URL
+  const token = searchParams.get("token");
 
   const {
     register,
@@ -82,63 +47,162 @@ export default function Signup() {
     resolver: zodResolver(signupSchema),
   });
 
+  // Validate token on load
+  useEffect(() => {
+    validateToken();
+  }, [token]);
+
+  const validateToken = async () => {
+    if (!token) {
+      setIsValidatingToken(false);
+      setIsValidToken(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("manager_signup_tokens")
+        .select("id, manager_name, manager_email, is_used, expires_at")
+        .eq("token", token)
+        .single();
+
+      if (error || !data) {
+        setIsValidToken(false);
+      } else if (data.is_used) {
+        setIsValidToken(false);
+        toast.error("This invite link has already been used");
+      } else if (new Date(data.expires_at) < new Date()) {
+        setIsValidToken(false);
+        toast.error("This invite link has expired");
+      } else {
+        setIsValidToken(true);
+        setTokenData({
+          id: data.id,
+          manager_name: data.manager_name,
+          manager_email: data.manager_email,
+        });
+      }
+    } catch (error) {
+      console.error("Token validation error:", error);
+      setIsValidToken(false);
+    } finally {
+      setIsValidatingToken(false);
+    }
+  };
+
   const onSubmit = async (data: SignupFormData) => {
+    if (!isValidToken || !tokenData) {
+      toast.error("Invalid invite link");
+      return;
+    }
+
     setIsLoading(true);
     
     try {
-      const { data: authData, error } = await supabase.auth.signUp({
+      // Create the auth account
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
         options: {
-          emailRedirectTo: window.location.origin,
           data: {
             full_name: data.fullName,
           },
+          emailRedirectTo: `${window.location.origin}/`,
         },
       });
 
-      if (error) throw error;
+      if (authError) throw authError;
 
-      // Look up the manager_agent_id from the invite code if present
-      let invitedByManagerId: string | null = null;
-      if (refCode) {
-        const { data: inviteLink } = await supabase
-          .from("manager_invite_links")
-          .select("manager_agent_id")
-          .eq("invite_code", refCode)
-          .eq("is_active", true)
-          .single();
-        
-        if (inviteLink) {
-          invitedByManagerId = inviteLink.manager_agent_id;
-        }
-      }
-
-      // Create agent record with pending status - requires admin approval
       if (authData.user) {
+        // Create agent record with active status (pre-approved via token)
         const { error: agentError } = await supabase
           .from("agents")
           .insert({
             user_id: authData.user.id,
-            status: "pending",
+            status: "active",
             license_status: "unlicensed",
-            invited_by_manager_id: invitedByManagerId,
           });
 
         if (agentError) {
-          console.error("Error creating agent record:", agentError);
+          console.error("Agent creation error:", agentError);
+        }
+
+        // Add manager role
+        const { error: roleError } = await supabase
+          .from("user_roles")
+          .insert({
+            user_id: authData.user.id,
+            role: "manager",
+          });
+
+        if (roleError) {
+          console.error("Role assignment error:", roleError);
         }
       }
 
-      toast.success("Account created! Pending admin approval...");
-      navigate("/pending-approval");
+      toast.success("Account created! Welcome to APEX Financial.");
+      navigate("/dashboard");
     } catch (error: any) {
       console.error("Signup error:", error);
-      toast.error(error.message || "Failed to create account");
+      if (error.message?.includes("already registered")) {
+        toast.error("This email is already registered. Please log in instead.");
+      } else {
+        toast.error(error.message || "Failed to create account");
+      }
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Loading state
+  if (isValidatingToken) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+          <p className="text-muted-foreground">Validating invite link...</p>
+        </div>
+      </div>
+    );
   }
+
+  // Invalid token state
+  if (!isValidToken) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(var(--primary)/0.1)_0%,transparent_50%)]" />
+        
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-md relative z-10"
+        >
+          <div className="text-center mb-8">
+            <Link to="/" className="inline-flex items-center gap-2 mb-6">
+              <Crown className="h-10 w-10 text-primary" />
+              <span className="text-2xl font-bold gradient-text">APEX Financial</span>
+            </Link>
+          </div>
+
+          <GlassCard className="p-8 text-center">
+            <ShieldAlert className="h-16 w-16 mx-auto mb-4 text-destructive" />
+            <h1 className="text-2xl font-bold mb-2">Invalid Invite Link</h1>
+            <p className="text-muted-foreground mb-6">
+              This invite link is invalid, expired, or has already been used.
+              Please contact your administrator for a new invite.
+            </p>
+            <Link to="/login">
+              <GradientButton className="w-full">
+                Go to Login
+              </GradientButton>
+            </Link>
+          </GlassCard>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Valid token - show signup form
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(var(--primary)/0.1)_0%,transparent_50%)]" />
@@ -153,11 +217,9 @@ export default function Signup() {
             <Crown className="h-10 w-10 text-primary" />
             <span className="text-2xl font-bold gradient-text">APEX Financial</span>
           </Link>
-          <h1 className="text-3xl font-bold mb-2">Join APEX</h1>
+          <h1 className="text-3xl font-bold mb-2">Create Your Account</h1>
           <p className="text-muted-foreground">
-            {referrerName 
-              ? `You've been invited by ${referrerName}` 
-              : "Create your agent account"}
+            You've been invited to join as a manager
           </p>
         </div>
 
@@ -172,6 +234,7 @@ export default function Signup() {
                   {...register("fullName")}
                   placeholder="John Smith"
                   className="pl-10 bg-input"
+                  defaultValue={tokenData?.manager_name || ""}
                 />
               </div>
               {errors.fullName && (
@@ -189,6 +252,7 @@ export default function Signup() {
                   {...register("email")}
                   placeholder="you@example.com"
                   className="pl-10 bg-input"
+                  defaultValue={tokenData?.manager_email || ""}
                 />
               </div>
               {errors.email && (
@@ -242,12 +306,12 @@ export default function Signup() {
             </GradientButton>
           </form>
 
-          <div className="mt-6 text-center text-sm">
-            <span className="text-muted-foreground">Already have an account? </span>
+          <p className="mt-6 text-center text-sm text-muted-foreground">
+            Already have an account?{" "}
             <Link to="/login" className="text-primary hover:underline font-medium">
               Sign in
             </Link>
-          </div>
+          </p>
         </GlassCard>
       </motion.div>
     </div>

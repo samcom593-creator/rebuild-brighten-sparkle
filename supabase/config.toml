@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.update-application-referral]
 verify_jwt = false
+
+[functions.send-weekly-analytics]
+verify_jwt = false

@@ -16,6 +16,7 @@ import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import DashboardApplicants from "./pages/DashboardApplicants";
 import DashboardAdmin from "./pages/DashboardAdmin";
+import DashboardAccounts from "./pages/DashboardAccounts";
 import Settings from "./pages/Settings";
 import PendingApproval from "./pages/PendingApproval";
 import NotFound from "./pages/NotFound";
@@ -60,6 +61,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <DashboardAdmin />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/accounts"
+            element={
+              <ProtectedRoute>
+                <DashboardAccounts />
               </ProtectedRoute>
             }
           />

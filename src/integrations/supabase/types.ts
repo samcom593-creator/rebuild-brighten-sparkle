@@ -444,6 +444,48 @@ export type Database = {
           },
         ]
       }
+      interview_recordings: {
+        Row: {
+          agent_id: string | null
+          application_id: string
+          created_at: string | null
+          duration_seconds: number | null
+          id: string
+          transcription: string | null
+        }
+        Insert: {
+          agent_id?: string | null
+          application_id: string
+          created_at?: string | null
+          duration_seconds?: number | null
+          id?: string
+          transcription?: string | null
+        }
+        Update: {
+          agent_id?: string | null
+          application_id?: string
+          created_at?: string | null
+          duration_seconds?: number | null
+          id?: string
+          transcription?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_recordings_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interview_recordings_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_counter: {
         Row: {
           count: number

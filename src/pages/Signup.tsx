@@ -60,24 +60,26 @@ export default function Signup() {
     }
 
     try {
-      const { data, error } = await supabase
-        .from("manager_signup_tokens")
-        .select("id, manager_name, manager_email, is_used, expires_at")
-        .eq("token", token)
-        .single();
+      // Use edge function for secure server-side token validation
+      const { data, error } = await supabase.functions.invoke(
+        "validate-signup-token",
+        {
+          body: { token },
+        }
+      );
 
-      if (error || !data) {
+      if (error) {
+        console.error("Token validation error:", error);
         setIsValidToken(false);
-      } else if (data.is_used) {
+      } else if (!data?.valid) {
         setIsValidToken(false);
-        toast.error("This invite link has already been used");
-      } else if (new Date(data.expires_at) < new Date()) {
-        setIsValidToken(false);
-        toast.error("This invite link has expired");
+        if (data?.error) {
+          toast.error(data.error);
+        }
       } else {
         setIsValidToken(true);
         setTokenData({
-          id: data.id,
+          id: "", // ID not needed on client side
           manager_name: data.manager_name,
           manager_email: data.manager_email,
         });

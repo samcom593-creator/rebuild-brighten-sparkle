@@ -11,3 +11,9 @@ verify_jwt = false
 
 [functions.send-weekly-analytics]
 verify_jwt = false
+
+[functions.notify-lead-closed]
+verify_jwt = false
+
+[functions.notify-lead-assigned]
+verify_jwt = false

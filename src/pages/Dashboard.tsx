@@ -59,40 +59,11 @@ export default function Dashboard() {
   const [leaderboardApplicants, setLeaderboardApplicants] = useState<LeaderboardEntry[]>([]);
   const [leaderboardClosed, setLeaderboardClosed] = useState<LeaderboardEntry[]>([]);
 
-  // Demo data for charts
-  const dailyData = [
-    { label: "Mon", leads: 3, closed: 1 },
-    { label: "Tue", leads: 5, closed: 2 },
-    { label: "Wed", leads: 4, closed: 1 },
-    { label: "Thu", leads: 7, closed: 3 },
-    { label: "Fri", leads: 6, closed: 2 },
-    { label: "Sat", leads: 2, closed: 1 },
-    { label: "Sun", leads: 1, closed: 0 },
-  ];
-
-  const weeklyData = [
-    { label: "Week 1", leads: 12, closed: 4 },
-    { label: "Week 2", leads: 18, closed: 6 },
-    { label: "Week 3", leads: 22, closed: 8 },
-    { label: "Week 4", leads: 28, closed: 10 },
-  ];
-
-  const monthlyData = [
-    { label: "Jan", leads: 45, closed: 12 },
-    { label: "Feb", leads: 52, closed: 18 },
-    { label: "Mar", leads: 68, closed: 24 },
-    { label: "Apr", leads: 75, closed: 28 },
-    { label: "May", leads: 82, closed: 32 },
-    { label: "Jun", leads: 95, closed: 38 },
-  ];
-
-  const sourceData = [
-    { name: "Social Media", value: 35, color: "hsl(168, 84%, 42%)" },
-    { name: "Referrals", value: 28, color: "hsl(160, 84%, 39%)" },
-    { name: "Job Boards", value: 20, color: "hsl(45, 93%, 58%)" },
-    { name: "Google", value: 12, color: "hsl(222, 47%, 40%)" },
-    { name: "Other", value: 5, color: "hsl(220, 15%, 50%)" },
-  ];
+  // Chart data - will populate from real data
+  const [dailyData, setDailyData] = useState<Array<{ label: string; leads: number; closed: number }>>([]);
+  const [weeklyData, setWeeklyData] = useState<Array<{ label: string; leads: number; closed: number }>>([]);
+  const [monthlyData, setMonthlyData] = useState<Array<{ label: string; leads: number; closed: number }>>([]);
+  const [sourceData, setSourceData] = useState<Array<{ name: string; value: number; color: string }>>([]);
 
   const licenseData = [
     { name: "Licensed", value: stats.licensed, color: "hsl(168, 84%, 42%)" },
@@ -118,7 +89,7 @@ export default function Dashboard() {
             .select("*")
             .eq("assigned_agent_id", agentData.id);
 
-          if (applications) {
+          if (applications && applications.length > 0) {
             const totalLeads = applications.length;
             const contacted = applications.filter(a => a.contacted_at).length;
             const closed = applications.filter(a => a.closed_at).length;
@@ -141,10 +112,26 @@ export default function Dashboard() {
               .filter(a => a.license_status === "licensed" && a.contacted_at)
               .forEach(a => {
                 const created = new Date(a.created_at);
-                const contacted = new Date(a.contacted_at!);
-                totalWaitTime += (contacted.getTime() - created.getTime()) / (1000 * 60 * 60);
+                const contactedDate = new Date(a.contacted_at!);
+                totalWaitTime += (contactedDate.getTime() - created.getTime()) / (1000 * 60 * 60);
                 countWithContact++;
               });
+
+            // Calculate growth (compare to previous period)
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            const sixtyDaysAgo = new Date();
+            sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+            
+            const currentPeriodLeads = applications.filter(a => new Date(a.created_at) >= thirtyDaysAgo).length;
+            const previousPeriodLeads = applications.filter(a => {
+              const date = new Date(a.created_at);
+              return date >= sixtyDaysAgo && date < thirtyDaysAgo;
+            }).length;
+            
+            const growthPercent = previousPeriodLeads > 0 
+              ? ((currentPeriodLeads - previousPeriodLeads) / previousPeriodLeads) * 100 
+              : currentPeriodLeads > 0 ? 100 : 0;
 
             setStats({
               totalLeads,
@@ -154,9 +141,79 @@ export default function Dashboard() {
               unlicensed,
               closeRate: totalLeads > 0 ? (closed / totalLeads) * 100 : 0,
               avgWaitTime: countWithContact > 0 ? totalWaitTime / countWithContact : 0,
-              growthPercent: 15, // Demo data
+              growthPercent: Math.round(growthPercent),
               staleLeads,
             });
+
+            // Build real chart data from applications
+            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const last7Days = Array.from({ length: 7 }, (_, i) => {
+              const date = new Date();
+              date.setDate(date.getDate() - (6 - i));
+              return date;
+            });
+            
+            const dailyChartData = last7Days.map(date => {
+              const dayApps = applications.filter(a => {
+                const appDate = new Date(a.created_at);
+                return appDate.toDateString() === date.toDateString();
+              });
+              return {
+                label: dayNames[date.getDay()],
+                leads: dayApps.length,
+                closed: dayApps.filter(a => a.closed_at).length,
+              };
+            });
+            setDailyData(dailyChartData);
+
+            // Weekly data (last 4 weeks)
+            const weeklyChartData = Array.from({ length: 4 }, (_, i) => {
+              const weekStart = new Date();
+              weekStart.setDate(weekStart.getDate() - ((3 - i) * 7 + 7));
+              const weekEnd = new Date(weekStart);
+              weekEnd.setDate(weekEnd.getDate() + 7);
+              
+              const weekApps = applications.filter(a => {
+                const appDate = new Date(a.created_at);
+                return appDate >= weekStart && appDate < weekEnd;
+              });
+              return {
+                label: `Week ${i + 1}`,
+                leads: weekApps.length,
+                closed: weekApps.filter(a => a.closed_at).length,
+              };
+            });
+            setWeeklyData(weeklyChartData);
+
+            // Monthly data (last 6 months)
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const monthlyChartData = Array.from({ length: 6 }, (_, i) => {
+              const date = new Date();
+              date.setMonth(date.getMonth() - (5 - i));
+              const monthApps = applications.filter(a => {
+                const appDate = new Date(a.created_at);
+                return appDate.getMonth() === date.getMonth() && appDate.getFullYear() === date.getFullYear();
+              });
+              return {
+                label: monthNames[date.getMonth()],
+                leads: monthApps.length,
+                closed: monthApps.filter(a => a.closed_at).length,
+              };
+            });
+            setMonthlyData(monthlyChartData);
+
+            // Source data from referral_source field
+            const sourceMap = new Map<string, number>();
+            applications.forEach(a => {
+              const source = a.referral_source || 'Direct';
+              sourceMap.set(source, (sourceMap.get(source) || 0) + 1);
+            });
+            const colors = ["hsl(168, 84%, 42%)", "hsl(160, 84%, 39%)", "hsl(45, 93%, 58%)", "hsl(222, 47%, 40%)", "hsl(220, 15%, 50%)"];
+            const sourceChartData = Array.from(sourceMap.entries())
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 5)
+              .map(([name, value], i) => ({ name, value, color: colors[i % colors.length] }));
+            setSourceData(sourceChartData.length > 0 ? sourceChartData : [{ name: "No data yet", value: 1, color: "hsl(222, 30%, 30%)" }]);
 
             // Real leaderboard data - will populate as team grows
             if (totalLeads > 0) {
@@ -176,11 +233,27 @@ export default function Dashboard() {
               setLeaderboardClosed([]);
             }
           } else {
+            // No applications yet - empty state
+            setStats({
+              totalLeads: 0,
+              contacted: 0,
+              closed: 0,
+              licensed: 0,
+              unlicensed: 0,
+              closeRate: 0,
+              avgWaitTime: 0,
+              growthPercent: 0,
+              staleLeads: 0,
+            });
+            setDailyData([]);
+            setWeeklyData([]);
+            setMonthlyData([]);
+            setSourceData([{ name: "No data yet", value: 1, color: "hsl(222, 30%, 30%)" }]);
             setLeaderboardApplicants([]);
             setLeaderboardClosed([]);
           }
         } else {
-          // No leads yet - show empty state
+          // No agent record yet - empty state
           setStats({
             totalLeads: 0,
             contacted: 0,
@@ -192,6 +265,10 @@ export default function Dashboard() {
             growthPercent: 0,
             staleLeads: 0,
           });
+          setDailyData([]);
+          setWeeklyData([]);
+          setMonthlyData([]);
+          setSourceData([{ name: "No data yet", value: 1, color: "hsl(222, 30%, 30%)" }]);
           setLeaderboardApplicants([]);
           setLeaderboardClosed([]);
         }

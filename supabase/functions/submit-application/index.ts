@@ -99,8 +99,14 @@ function sanitizeHtml(str: string): string {
     .replace(/'/g, "&#039;");
 }
 
-// Get manager info by agent ID
-async function getManagerInfo(agentId: string): Promise<{ email: string; name: string } | null> {
+// Get manager info by agent ID (including phone)
+interface ManagerInfo {
+  email: string;
+  name: string;
+  phone?: string;
+}
+
+async function getManagerInfo(agentId: string): Promise<ManagerInfo | null> {
   try {
     // Get the agent's user_id
     const { data: agent, error: agentError } = await supabaseAdmin
@@ -114,10 +120,10 @@ async function getManagerInfo(agentId: string): Promise<{ email: string; name: s
       return null;
     }
     
-    // Get the profile info
+    // Get the profile info including phone
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
-      .select("email, full_name")
+      .select("email, full_name, phone")
       .eq("user_id", agent.user_id)
       .single();
     
@@ -129,6 +135,7 @@ async function getManagerInfo(agentId: string): Promise<{ email: string; name: s
     return {
       email: profile.email,
       name: profile.full_name || profile.email.split("@")[0],
+      phone: profile.phone || undefined,
     };
   } catch (err) {
     console.error("Error getting manager info:", err);
@@ -136,11 +143,10 @@ async function getManagerInfo(agentId: string): Promise<{ email: string; name: s
   }
 }
 
-// Send manager notification email
+// Send manager notification email (with phone prompt if missing)
 async function sendManagerNotification(
   data: SubmitApplicationRequest,
-  managerEmail: string,
-  managerName: string
+  manager: ManagerInfo
 ) {
   if (!resend) return;
 
@@ -161,19 +167,33 @@ async function sendManagerNotification(
     pending: "License Pending",
   }[sanitized.licenseStatus] || sanitized.licenseStatus;
 
+  // Phone prompt section for managers without phone
+  const phonePromptSection = !manager.phone ? `
+    <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+      <p style="margin: 0; color: #92400e; font-weight: 500;">
+        📱 Add your phone number! Your contact info is shared with applicants so they can reach you directly.
+      </p>
+      <p style="margin: 10px 0 0; color: #a16207; font-size: 14px;">
+        Update your profile in the dashboard settings to add your phone number.
+      </p>
+    </div>
+  ` : '';
+
   try {
     await resend.emails.send({
       from: "APEX Applications <applications@apex-financial.org>",
-      to: [managerEmail],
+      to: [manager.email],
       subject: `🎯 New Team Applicant: ${sanitized.firstName} ${sanitized.lastName}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #059669, #047857); padding: 30px; border-radius: 10px 10px 0 0;">
             <h1 style="color: white; margin: 0; font-size: 24px;">New Team Application!</h1>
-            <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0;">Hi ${managerName}, someone applied using your referral link!</p>
+            <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0;">Hi ${manager.name}, someone applied using your referral link!</p>
           </div>
           
           <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
+            ${phonePromptSection}
+            
             <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
               <h2 style="color: #059669; margin-top: 0; font-size: 18px;">Applicant Details</h2>
               <table style="width: 100%; border-collapse: collapse;">
@@ -227,7 +247,7 @@ async function sendManagerNotification(
         </div>
       `,
     });
-    console.log("Manager notification sent to:", managerEmail);
+    console.log("Manager notification sent to:", manager.email);
   } catch (error) {
     console.error("Error sending manager notification:", error);
   }
@@ -261,6 +281,12 @@ async function sendEmailNotifications(data: SubmitApplicationRequest) {
     unlicensed: "Not Yet Licensed",
     pending: "License Pending",
   }[sanitized.licenseStatus] || sanitized.licenseStatus;
+
+  // Get manager info if there's a referral agent
+  let managerInfo: ManagerInfo | null = null;
+  if (data.selectedReferralAgentId) {
+    managerInfo = await getManagerInfo(data.selectedReferralAgentId);
+  }
 
   try {
     // Send notification email to APEX team
@@ -348,6 +374,12 @@ async function sendEmailNotifications(data: SubmitApplicationRequest) {
                   <td style="padding: 8px 0;">${sanitized.referralSource}</td>
                 </tr>
                 ` : ''}
+                ${managerInfo ? `
+                <tr>
+                  <td style="padding: 8px 0; color: #6b7280;">Referred By:</td>
+                  <td style="padding: 8px 0; font-weight: bold;">${sanitizeHtml(managerInfo.name)}</td>
+                </tr>
+                ` : ''}
               </table>
             </div>
 
@@ -372,6 +404,32 @@ async function sendEmailNotifications(data: SubmitApplicationRequest) {
     const licensingDocUrl = 'https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg/edit?usp=sharing';
     const preLicensingCourseUrl = 'https://partners.xcelsolutions.com/afe';
 
+    // Build recruiter contact section if there's a referring manager
+    const recruiterContactSection = managerInfo ? `
+      <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <h3 style="color: #1e40af; margin-top: 0; margin-bottom: 15px; font-size: 16px;">👤 Your Recruiter</h3>
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="padding: 6px 0; color: #3b82f6; width: 80px;">Name:</td>
+            <td style="padding: 6px 0; font-weight: bold; color: #1e3a8a;">${sanitizeHtml(managerInfo.name)}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #3b82f6;">Email:</td>
+            <td style="padding: 6px 0;"><a href="mailto:${managerInfo.email}" style="color: #2563eb; font-weight: 500;">${sanitizeHtml(managerInfo.email)}</a></td>
+          </tr>
+          ${managerInfo.phone ? `
+          <tr>
+            <td style="padding: 6px 0; color: #3b82f6;">Phone:</td>
+            <td style="padding: 6px 0;"><a href="tel:${managerInfo.phone}" style="color: #2563eb; font-weight: 500;">${sanitizeHtml(managerInfo.phone)}</a></td>
+          </tr>
+          ` : ''}
+        </table>
+        <p style="color: #1e40af; font-size: 13px; margin-top: 12px; margin-bottom: 0;">
+          Feel free to reach out with any questions about the opportunity!
+        </p>
+      </div>
+    ` : '';
+
     // Build email HTML based on license status
     const emailHtml = isLicensed 
       ? `
@@ -392,6 +450,8 @@ async function sendEmailNotifications(data: SubmitApplicationRequest) {
                 You're on the fast track! Schedule your call below to get started immediately.
               </p>
             </div>
+
+            ${recruiterContactSection}
 
             <h3 style="color: #111827; margin-bottom: 15px;">Hear From Our Agents</h3>
             <p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
@@ -465,6 +525,8 @@ async function sendEmailNotifications(data: SubmitApplicationRequest) {
                 Don't worry about not having a license yet - we cover all licensing costs and guide you through every step!
               </p>
             </div>
+
+            ${recruiterContactSection}
 
             <h3 style="color: #111827; margin-bottom: 15px;">Step 1: Watch How to Get Licensed</h3>
             <p style="color: #4b5563; line-height: 1.6; margin-bottom: 20px;">
@@ -548,11 +610,8 @@ async function sendEmailNotifications(data: SubmitApplicationRequest) {
     console.log("Applicant confirmation sent:", applicantEmailResponse);
 
     // Send notification to referring manager if selected
-    if (data.selectedReferralAgentId) {
-      const managerInfo = await getManagerInfo(data.selectedReferralAgentId);
-      if (managerInfo) {
-        await sendManagerNotification(data, managerInfo.email, managerInfo.name);
-      }
+    if (data.selectedReferralAgentId && managerInfo) {
+      await sendManagerNotification(data, managerInfo);
     }
 
   } catch (error) {

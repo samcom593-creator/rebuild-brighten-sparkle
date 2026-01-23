@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { PhonePromptBanner } from "@/components/dashboard/PhonePromptBanner";
 import { cn } from "@/lib/utils";
 
 interface DashboardLayoutProps {
@@ -148,6 +149,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           animate={{ opacity: 1 }}
           className="p-6 lg:p-8"
         >
+          {/* Phone Prompt Banner */}
+          <PhonePromptBanner />
+          
           {children}
         </motion.div>
       </main>

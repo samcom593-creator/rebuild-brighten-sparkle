@@ -416,6 +416,8 @@ export type Database = {
           started_training: boolean | null
           state: string | null
           status: Database["public"]["Enums"]["application_status"]
+          terminated_at: string | null
+          termination_reason: string | null
           updated_at: string
           years_experience: number | null
         }
@@ -450,6 +452,8 @@ export type Database = {
           started_training?: boolean | null
           state?: string | null
           status?: Database["public"]["Enums"]["application_status"]
+          terminated_at?: string | null
+          termination_reason?: string | null
           updated_at?: string
           years_experience?: number | null
         }
@@ -484,6 +488,8 @@ export type Database = {
           started_training?: boolean | null
           state?: string | null
           status?: Database["public"]["Enums"]["application_status"]
+          terminated_at?: string | null
+          termination_reason?: string | null
           updated_at?: string
           years_experience?: number | null
         }

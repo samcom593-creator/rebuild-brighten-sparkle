@@ -26,14 +26,32 @@ export function useAuth() {
   const [roles, setRoles] = useState<UserRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchProfile = useCallback(async (userId: string) => {
+  const fetchProfile = useCallback(async (userId: string, authEmail?: string) => {
     const { data } = await supabase
       .from("profiles")
       .select("*")
       .eq("user_id", userId)
       .maybeSingle();
     
-    setProfile(data);
+    // Auto-sync profile email if it doesn't match auth email
+    if (data && authEmail && data.email !== authEmail) {
+      console.log("Syncing profile email with auth email:", authEmail);
+      await supabase
+        .from("profiles")
+        .update({ email: authEmail })
+        .eq("user_id", userId);
+      
+      // Refetch with updated email
+      const { data: updatedData } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", userId)
+        .maybeSingle();
+      
+      setProfile(updatedData);
+    } else {
+      setProfile(data);
+    }
   }, []);
 
   const fetchRoles = useCallback(async (userId: string) => {
@@ -55,7 +73,7 @@ export function useAuth() {
         if (session?.user) {
           // Use setTimeout to prevent potential deadlock with Supabase
           setTimeout(() => {
-            fetchProfile(session.user.id);
+            fetchProfile(session.user.id, session.user.email);
             fetchRoles(session.user.id);
           }, 0);
         } else {
@@ -72,7 +90,7 @@ export function useAuth() {
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        fetchProfile(session.user.id);
+        fetchProfile(session.user.id, session.user.email);
         fetchRoles(session.user.id);
       }
       setIsLoading(false);

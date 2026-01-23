@@ -132,7 +132,7 @@ export function ManagerInviteLinks() {
   };
 
   const copyToClipboard = async (code: string, id: string) => {
-    const fullUrl = `${baseUrl}/signup?ref=${code}`;
+    const fullUrl = `${baseUrl}/join?ref=${code}`;
     await navigator.clipboard.writeText(fullUrl);
     setCopiedId(id);
     toast.success("Invite link copied to clipboard!");
@@ -254,7 +254,7 @@ export function ManagerInviteLinks() {
                   className="bg-input"
                 />
                 <p className="text-xs text-muted-foreground">
-                  This will create: {baseUrl}/signup?ref={newCode.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") || "your-code"}
+                  This will create: {baseUrl}/join?ref={newCode.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") || "your-code"}
                 </p>
               </div>
             </div>
@@ -299,7 +299,7 @@ export function ManagerInviteLinks() {
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground truncate">
-                  {baseUrl}/signup?ref={link.invite_code}
+                  {baseUrl}/join?ref={link.invite_code}
                 </p>
               </div>
 
@@ -316,7 +316,7 @@ export function ManagerInviteLinks() {
                   )}
                 </Button>
                 <a
-                  href={`${baseUrl}/signup?ref=${link.invite_code}`}
+                  href={`${baseUrl}/join?ref=${link.invite_code}`}
                   target="_blank"
                   rel="noopener noreferrer"
                 >

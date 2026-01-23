@@ -36,42 +36,48 @@ export function LeaderboardCard({
         {title}
       </h3>
       <div className="space-y-3">
-        {entries.slice(0, 10).map((entry, index) => (
-          <motion.div
-            key={entry.rank}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: index * 0.05 }}
-            className={cn(
-              "flex items-center gap-3 p-3 rounded-lg transition-colors",
-              entry.isCurrentUser 
-                ? "bg-primary/20 border border-primary/30" 
-                : "bg-muted/50"
-            )}
-          >
-            <div className="w-8 flex justify-center">
-              {entry.rank <= 3 
-                ? rankIcons[entry.rank as 1 | 2 | 3]
-                : <span className="text-muted-foreground font-medium">{entry.rank}</span>
-              }
-            </div>
-            <div className="flex-1">
-              <p className={cn(
-                "font-medium text-sm",
-                entry.isCurrentUser && "text-primary"
-              )}>
-                {entry.name}
-                {entry.isCurrentUser && <span className="ml-2 text-xs">(You)</span>}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="font-bold text-foreground">{entry.value}</p>
-              {valueLabel && (
-                <p className="text-xs text-muted-foreground">{valueLabel}</p>
+        {entries.length === 0 ? (
+          <div className="text-center py-6 text-muted-foreground">
+            <p className="text-sm">Leaderboard will populate as your team grows</p>
+          </div>
+        ) : (
+          entries.slice(0, 10).map((entry, index) => (
+            <motion.div
+              key={entry.rank}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.05 }}
+              className={cn(
+                "flex items-center gap-3 p-3 rounded-lg transition-colors",
+                entry.isCurrentUser 
+                  ? "bg-primary/20 border border-primary/30" 
+                  : "bg-muted/50"
               )}
-            </div>
-          </motion.div>
-        ))}
+            >
+              <div className="w-8 flex justify-center">
+                {entry.rank <= 3 
+                  ? rankIcons[entry.rank as 1 | 2 | 3]
+                  : <span className="text-muted-foreground font-medium">{entry.rank}</span>
+                }
+              </div>
+              <div className="flex-1">
+                <p className={cn(
+                  "font-medium text-sm",
+                  entry.isCurrentUser && "text-primary"
+                )}>
+                  {entry.name}
+                  {entry.isCurrentUser && <span className="ml-2 text-xs">(You)</span>}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="font-bold text-foreground">{entry.value}</p>
+                {valueLabel && (
+                  <p className="text-xs text-muted-foreground">{valueLabel}</p>
+                )}
+              </div>
+            </motion.div>
+          ))
+        )}
       </div>
     </GlassCard>
   );

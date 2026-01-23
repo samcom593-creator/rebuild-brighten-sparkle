@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { GlassCard } from "@/components/ui/glass-card";
+import { AvatarUpload } from "@/components/dashboard/AvatarUpload";
 import { toast } from "@/hooks/use-toast";
 
 export function ProfileSettings() {
@@ -42,6 +43,8 @@ export function ProfileSettings() {
     bio: "",
     instagramHandle: "",
   });
+
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   const [newEmail, setNewEmail] = useState("");
   const [passwordData, setPasswordData] = useState({
@@ -67,6 +70,7 @@ export function ProfileSettings() {
         instagramHandle: profile.instagram_handle || "",
       });
       setNewEmail(profile.email || "");
+      setAvatarUrl(profile.avatar_url || null);
     }
   }, [profile]);
 
@@ -210,11 +214,20 @@ export function ProfileSettings() {
       {/* Profile Form */}
       <GlassCard className="p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="h-16 w-16 rounded-full bg-primary/20 flex items-center justify-center">
-              <User className="h-8 w-8 text-primary" />
-            </div>
-            <div>
+          {/* Avatar Upload Section */}
+          <div className="flex flex-col items-center pb-6 border-b border-border">
+            {user && (
+              <AvatarUpload
+                userId={user.id}
+                currentAvatarUrl={avatarUrl}
+                fullName={formData.fullName}
+                onAvatarChange={(newUrl) => {
+                  setAvatarUrl(newUrl);
+                  refreshProfile();
+                }}
+              />
+            )}
+            <div className="text-center mt-4">
               <h3 className="font-semibold">{formData.fullName || "Your Name"}</h3>
               <p className="text-sm text-muted-foreground">{formData.email}</p>
               {formData.instagramHandle && (

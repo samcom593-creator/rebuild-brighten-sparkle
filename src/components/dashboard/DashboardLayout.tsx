@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Settings,
   UserCog,
+  UsersRound,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -33,6 +34,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const navItems = [
     { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
     { icon: Users, label: "Applicants", href: "/dashboard/applicants" },
+    { icon: UsersRound, label: "My Team", href: "/dashboard/team" },
     ...(isAdmin || isManager ? [
       { icon: Shield, label: "Admin Panel", href: "/dashboard/admin" },
       { icon: UserCog, label: "Accounts", href: "/dashboard/accounts" },

@@ -12,6 +12,7 @@ interface Profile {
   bio: string | null;
   city: string | null;
   state: string | null;
+  instagram_handle: string | null;
 }
 
 interface UserRole {

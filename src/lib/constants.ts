@@ -62,7 +62,6 @@ export const REFERRAL_SOURCES = [
   { value: "social-media", label: "Social Media" },
   { value: "friend-referral", label: "Friend/Family Referral" },
   { value: "agent-referral", label: "Agent Referral" },
-  { value: "job-board", label: "Job Board" },
   { value: "google", label: "Google Search" },
   { value: "event", label: "Recruiting Event" },
   { value: "other", label: "Other" },

@@ -13,6 +13,7 @@ import ApplySuccessUnlicensed from "./pages/ApplySuccessUnlicensed";
 import GetLicensed from "./pages/GetLicensed";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import AgentSignup from "./pages/AgentSignup";
 import Dashboard from "./pages/Dashboard";
 import DashboardApplicants from "./pages/DashboardApplicants";
 import DashboardAdmin from "./pages/DashboardAdmin";
@@ -39,6 +40,7 @@ const App = () => (
           <Route path="/get-licensed" element={<GetLicensed />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/join" element={<AgentSignup />} />
           <Route path="/pending-approval" element={<PendingApproval />} />
           <Route
             path="/dashboard"

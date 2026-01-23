@@ -19,6 +19,7 @@ import DashboardApplicants from "./pages/DashboardApplicants";
 import DashboardAdmin from "./pages/DashboardAdmin";
 import DashboardAccounts from "./pages/DashboardAccounts";
 import Settings from "./pages/Settings";
+import TeamDirectory from "./pages/TeamDirectory";
 import PendingApproval from "./pages/PendingApproval";
 import NotFound from "./pages/NotFound";
 
@@ -79,6 +80,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <Settings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/team"
+            element={
+              <ProtectedRoute>
+                <TeamDirectory />
               </ProtectedRoute>
             }
           />

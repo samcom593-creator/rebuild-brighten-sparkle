@@ -8,8 +8,11 @@ import {
   Save,
   Loader2,
   Bell,
-  BellOff,
   Check,
+  Lock,
+  Eye,
+  EyeOff,
+  Instagram,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -25,6 +28,10 @@ export function ProfileSettings() {
   const { user, profile, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const [formData, setFormData] = useState({
     fullName: "",
@@ -33,6 +40,13 @@ export function ProfileSettings() {
     city: "",
     state: "",
     bio: "",
+    instagramHandle: "",
+  });
+
+  const [newEmail, setNewEmail] = useState("");
+  const [passwordData, setPasswordData] = useState({
+    newPassword: "",
+    confirmPassword: "",
   });
 
   const [notifications, setNotifications] = useState({
@@ -50,7 +64,9 @@ export function ProfileSettings() {
         city: profile.city || "",
         state: profile.state || "",
         bio: profile.bio || "",
+        instagramHandle: profile.instagram_handle || "",
       });
+      setNewEmail(profile.email || "");
     }
   }, [profile]);
 
@@ -68,6 +84,12 @@ export function ProfileSettings() {
 
     setLoading(true);
     try {
+      // Clean Instagram handle (remove @ if present)
+      let instagramHandle = formData.instagramHandle.trim();
+      if (instagramHandle.startsWith("@")) {
+        instagramHandle = instagramHandle.substring(1);
+      }
+
       const { error } = await supabase
         .from("profiles")
         .update({
@@ -76,6 +98,7 @@ export function ProfileSettings() {
           city: formData.city,
           state: formData.state,
           bio: formData.bio,
+          instagram_handle: instagramHandle || null,
         })
         .eq("user_id", user.id);
 
@@ -101,6 +124,77 @@ export function ProfileSettings() {
     }
   };
 
+  const handleEmailChange = async () => {
+    if (!user) return;
+    if (newEmail === formData.email) {
+      toast({ title: "No changes", description: "Email is the same." });
+      return;
+    }
+
+    setEmailLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ email: newEmail });
+      if (error) throw error;
+
+      toast({
+        title: "Email Update Initiated",
+        description: "Check your new email for a confirmation link.",
+      });
+    } catch (err) {
+      console.error("Error updating email:", err);
+      toast({
+        title: "Error",
+        description: "Failed to update email. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    if (!user) return;
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast({
+        title: "Password Mismatch",
+        description: "New password and confirmation do not match.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (passwordData.newPassword.length < 6) {
+      toast({
+        title: "Password Too Short",
+        description: "Password must be at least 6 characters.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: passwordData.newPassword,
+      });
+      if (error) throw error;
+
+      toast({
+        title: "Password Updated",
+        description: "Your password has been changed successfully.",
+      });
+      setPasswordData({ newPassword: "", confirmPassword: "" });
+    } catch (err) {
+      console.error("Error updating password:", err);
+      toast({
+        title: "Error",
+        description: "Failed to update password. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <motion.div
@@ -123,6 +217,16 @@ export function ProfileSettings() {
             <div>
               <h3 className="font-semibold">{formData.fullName || "Your Name"}</h3>
               <p className="text-sm text-muted-foreground">{formData.email}</p>
+              {formData.instagramHandle && (
+                <a 
+                  href={`https://instagram.com/${formData.instagramHandle}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-primary hover:underline"
+                >
+                  @{formData.instagramHandle}
+                </a>
+              )}
             </div>
           </div>
 
@@ -202,6 +306,23 @@ export function ProfileSettings() {
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="instagramHandle" className="flex items-center gap-2">
+              <Instagram className="h-4 w-4 text-primary" />
+              Instagram Handle
+            </Label>
+            <Input
+              id="instagramHandle"
+              name="instagramHandle"
+              value={formData.instagramHandle}
+              onChange={handleChange}
+              placeholder="@yourhandle"
+            />
+            <p className="text-xs text-muted-foreground">
+              Your Instagram is shared with applicants who select you as their referrer
+            </p>
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="bio">Bio</Label>
             <Textarea
               id="bio"
@@ -224,6 +345,107 @@ export function ProfileSettings() {
             {loading ? "Saving..." : saved ? "Saved!" : "Save Changes"}
           </Button>
         </form>
+      </GlassCard>
+
+      {/* Email & Password Settings */}
+      <GlassCard className="p-6">
+        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Lock className="h-5 w-5 text-primary" />
+          Account Security
+        </h3>
+
+        <div className="space-y-6">
+          {/* Email Change */}
+          <div className="space-y-3">
+            <Label htmlFor="newEmail">Email Address</Label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="newEmail"
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Button
+                type="button"
+                onClick={handleEmailChange}
+                disabled={emailLoading || newEmail === formData.email}
+                variant="outline"
+              >
+                {emailLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update"}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Changing your email will require verification
+            </p>
+          </div>
+
+          <div className="border-t border-border pt-6">
+            <Label className="text-base font-medium">Change Password</Label>
+            <div className="mt-3 space-y-3">
+              <div className="space-y-2">
+                <Label htmlFor="newPassword" className="text-sm">New Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="newPassword"
+                    type={showNewPassword ? "text" : "password"}
+                    value={passwordData.newPassword}
+                    onChange={(e) => setPasswordData((prev) => ({ ...prev, newPassword: e.target.value }))}
+                    className="pl-10 pr-10"
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword" className="text-sm">Confirm New Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={passwordData.confirmPassword}
+                    onChange={(e) => setPasswordData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
+                    className="pl-10 pr-10"
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                onClick={handlePasswordChange}
+                disabled={passwordLoading || !passwordData.newPassword}
+                className="w-full"
+              >
+                {passwordLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Lock className="h-4 w-4 mr-2" />
+                )}
+                {passwordLoading ? "Updating..." : "Update Password"}
+              </Button>
+            </div>
+          </div>
+        </div>
       </GlassCard>
 
       {/* Notification Preferences */}

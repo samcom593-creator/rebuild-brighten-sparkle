@@ -64,6 +64,7 @@ type ApplicationFormData = z.infer<typeof applicationSchema>;
 interface ActiveAgent {
   id: string;
   name: string;
+  instagramHandle?: string;
 }
 
 const steps = [
@@ -134,10 +135,10 @@ export default function Apply() {
             .maybeSingle();
 
           if (roleData) {
-            // Get their profile name
+            // Get their profile name and Instagram handle
             const { data: profile } = await supabase
               .from("profiles")
-              .select("full_name")
+              .select("full_name, instagram_handle")
               .eq("user_id", agent.user_id)
               .maybeSingle();
 
@@ -145,6 +146,7 @@ export default function Apply() {
               managersWithProfiles.push({
                 id: agent.id,
                 name: profile.full_name,
+                instagramHandle: profile.instagram_handle || undefined,
               });
             }
           }
@@ -720,7 +722,7 @@ export default function Apply() {
                               <SelectItem value="none">I found APEX on my own</SelectItem>
                               {activeAgents.map((agent) => (
                                 <SelectItem key={agent.id} value={agent.id}>
-                                  {agent.name}
+                                  {agent.name}{agent.instagramHandle ? ` (@${agent.instagramHandle})` : ''}
                                 </SelectItem>
                               ))}
                               <SelectItem value="other">Someone else not listed</SelectItem>

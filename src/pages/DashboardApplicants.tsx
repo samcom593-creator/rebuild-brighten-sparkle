@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Users,
   Phone,
@@ -18,6 +18,10 @@ import {
   StickyNote,
   Mic,
   Building2,
+  XCircle,
+  ChevronDown,
+  ChevronUp,
+  RotateCcw,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -33,6 +37,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ApplicantNotes } from "@/components/dashboard/ApplicantNotes";
@@ -52,6 +66,8 @@ interface Application {
   contacted_at: string | null;
   qualified_at: string | null;
   closed_at: string | null;
+  terminated_at: string | null;
+  termination_reason: string | null;
   started_training: boolean | null;
   created_at: string;
   notes: string | null;
@@ -65,6 +81,7 @@ const statusColors: Record<string, string> = {
   contacted: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
   qualified: "bg-purple-500/20 text-purple-400 border-purple-500/30",
   closed: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+  terminated: "bg-red-500/20 text-red-400 border-red-500/30",
 };
 
 const licenseColors: Record<string, string> = {
@@ -88,6 +105,14 @@ export default function DashboardApplicants() {
   
   // Interview recorder state
   const [recorderApp, setRecorderApp] = useState<Application | null>(null);
+
+  // Terminate modal state
+  const [terminateApp, setTerminateApp] = useState<Application | null>(null);
+  const [terminateReason, setTerminateReason] = useState("");
+  const [isTerminating, setIsTerminating] = useState(false);
+
+  // Terminated section expanded state
+  const [showTerminated, setShowTerminated] = useState(false);
 
   useEffect(() => {
     fetchApplications();
@@ -117,99 +142,15 @@ export default function DashboardApplicants() {
         setApplications(data as Application[]);
       }
     } else {
-      // Demo data for agents without assigned applications
-      setApplications([
-        {
-          id: "1",
-          first_name: "Sarah",
-          last_name: "Johnson",
-          email: "sarah.j@email.com",
-          phone: "(555) 123-4567",
-          city: "Atlanta",
-          state: "GA",
-          license_status: "licensed",
-          status: "new",
-          instagram_handle: "sarahjohnson",
-          contacted_at: null,
-          qualified_at: null,
-          closed_at: null,
-          started_training: false,
-          created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-          notes: null,
-          has_insurance_experience: true,
-          previous_company: "Symmetry Financial",
-          years_experience: 3,
-        },
-        {
-          id: "2",
-          first_name: "Michael",
-          last_name: "Chen",
-          email: "m.chen@email.com",
-          phone: "(555) 234-5678",
-          city: "Miami",
-          state: "FL",
-          license_status: "unlicensed",
-          status: "contacted",
-          instagram_handle: "mikechen_",
-          contacted_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-          qualified_at: null,
-          closed_at: null,
-          started_training: true,
-          created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-          notes: "[Jan 20, 10:30 AM] Left voicemail, will call back tomorrow",
-          has_insurance_experience: false,
-          previous_company: null,
-          years_experience: null,
-        },
-        {
-          id: "3",
-          first_name: "Emily",
-          last_name: "Rodriguez",
-          email: "emily.r@email.com",
-          phone: "(555) 345-6789",
-          city: "Houston",
-          state: "TX",
-          license_status: "licensed",
-          status: "qualified",
-          instagram_handle: "emilyrod",
-          contacted_at: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
-          qualified_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-          closed_at: null,
-          started_training: false,
-          created_at: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString(),
-          notes: null,
-          has_insurance_experience: true,
-          previous_company: "American Income Life",
-          years_experience: 5,
-        },
-        {
-          id: "4",
-          first_name: "David",
-          last_name: "Kim",
-          email: "d.kim@email.com",
-          phone: "(555) 456-7890",
-          city: "Phoenix",
-          state: "AZ",
-          license_status: "pending",
-          status: "closed",
-          instagram_handle: null,
-          contacted_at: new Date(Date.now() - 96 * 60 * 60 * 1000).toISOString(),
-          qualified_at: new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString(),
-          closed_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-          started_training: false,
-          created_at: new Date(Date.now() - 168 * 60 * 60 * 1000).toISOString(),
-          notes: null,
-          has_insurance_experience: false,
-          previous_company: null,
-          years_experience: null,
-        },
-      ]);
+      // No demo data - show empty state for new agents
+      setApplications([]);
     }
     
     setIsLoading(false);
   };
 
   const getApplicationStatus = (app: Application): string => {
+    if (app.terminated_at) return "terminated";
     if (app.closed_at) return "closed";
     if (app.qualified_at) return "qualified";
     if (app.contacted_at) return "contacted";
@@ -290,6 +231,46 @@ export default function DashboardApplicants() {
     }
   };
 
+  const handleTerminate = async () => {
+    if (!terminateApp) return;
+    
+    setIsTerminating(true);
+    const { error } = await supabase
+      .from("applications")
+      .update({ 
+        terminated_at: new Date().toISOString(),
+        termination_reason: terminateReason.trim() || null
+      })
+      .eq("id", terminateApp.id);
+
+    if (error) {
+      toast.error("Failed to terminate lead");
+    } else {
+      toast.success("Lead terminated");
+      setTerminateApp(null);
+      setTerminateReason("");
+      fetchApplications();
+    }
+    setIsTerminating(false);
+  };
+
+  const handleRestoreLead = async (id: string) => {
+    const { error } = await supabase
+      .from("applications")
+      .update({ 
+        terminated_at: null,
+        termination_reason: null
+      })
+      .eq("id", id);
+
+    if (error) {
+      toast.error("Failed to restore lead");
+    } else {
+      toast.success("Lead restored");
+      fetchApplications();
+    }
+  };
+
   const openInstagram = (handle: string) => {
     window.open(`https://instagram.com/${handle}`, "_blank");
   };
@@ -303,7 +284,11 @@ export default function DashboardApplicants() {
     }
   };
 
-  const filteredApplications = applications
+  // Split applications into active and terminated
+  const activeApplications = applications.filter(app => !app.terminated_at);
+  const terminatedApplications = applications.filter(app => app.terminated_at);
+
+  const filteredApplications = activeApplications
     .filter((app) => {
       const name = `${app.first_name} ${app.last_name}`.toLowerCase();
       const matchesSearch = name.includes(searchQuery.toLowerCase()) ||
@@ -321,11 +306,217 @@ export default function DashboardApplicants() {
       return sortOrder === "newest" ? dateB - dateA : dateA - dateB;
     });
 
-  // Stats
-  const totalLeads = applications.length;
-  const contacted = applications.filter(a => a.contacted_at).length;
-  const qualified = applications.filter(a => a.qualified_at).length;
-  const closed = applications.filter(a => a.closed_at).length;
+  // Stats - exclude terminated from active stats
+  const totalLeads = activeApplications.length;
+  const contacted = activeApplications.filter(a => a.contacted_at).length;
+  const qualified = activeApplications.filter(a => a.qualified_at).length;
+  const closed = activeApplications.filter(a => a.closed_at).length;
+  const terminated = terminatedApplications.length;
+
+  const renderApplicationCard = (app: Application, index: number, isTerminated = false) => {
+    const status = getApplicationStatus(app);
+    return (
+      <motion.div
+        key={app.id}
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.05 * index }}
+      >
+        <GlassCard className={cn(
+          "p-4 hover:bg-muted/50 transition-colors",
+          isTerminated && "opacity-60"
+        )}>
+          <div className="flex flex-col gap-4">
+            {/* Top Row: Avatar, Name, Contact Info, Badges */}
+            <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+              {/* Avatar & Name */}
+              <div className="flex items-center gap-4 flex-1">
+                <div className={cn(
+                  "w-12 h-12 rounded-full flex items-center justify-center",
+                  isTerminated ? "bg-red-500/20" : "bg-primary/20"
+                )}>
+                  <Users className={cn("h-6 w-6", isTerminated ? "text-red-400" : "text-primary")} />
+                </div>
+                <div>
+                  <h3 className="font-semibold">{app.first_name} {app.last_name}</h3>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Clock className="h-3 w-3" />
+                    <span>{getTimeAgo(app.created_at)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Info */}
+              <div className="flex flex-wrap gap-4 text-sm">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Mail className="h-4 w-4" />
+                  <span>{app.email}</span>
+                </div>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Phone className="h-4 w-4" />
+                  <span>{app.phone}</span>
+                </div>
+                {app.city && app.state && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <MapPin className="h-4 w-4" />
+                    <span>{app.city}, {app.state}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Badges */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <Badge variant="outline" className={cn("capitalize", statusColors[status])}>
+                  {status}
+                </Badge>
+                <Badge variant="outline" className={cn("capitalize", licenseColors[app.license_status])}>
+                  {app.license_status === "licensed" && <Award className="h-3 w-3 mr-1" />}
+                  {app.license_status === "unlicensed" && <GraduationCap className="h-3 w-3 mr-1" />}
+                  {app.license_status}
+                </Badge>
+                {app.started_training && (
+                  <Badge variant="outline" className="bg-primary/20 text-primary border-primary/30">
+                    Started Training
+                  </Badge>
+                )}
+              </div>
+            </div>
+
+            {/* Previous Experience Row */}
+            {app.has_insurance_experience && app.previous_company && (
+              <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-muted/50 w-fit">
+                <Building2 className="h-4 w-4 text-orange-400" />
+                <span className="text-sm text-muted-foreground">
+                  Previously at <span className="text-foreground font-medium">{app.previous_company}</span>
+                  {app.years_experience && app.years_experience > 0 && (
+                    <span className="text-muted-foreground"> • {app.years_experience} yr{app.years_experience > 1 ? 's' : ''} exp</span>
+                  )}
+                </span>
+              </div>
+            )}
+
+            {/* Termination Reason */}
+            {isTerminated && app.termination_reason && (
+              <div className="text-sm text-red-400 bg-red-500/10 rounded-md px-3 py-2 border-l-2 border-red-500/50">
+                <span className="font-medium">Reason:</span> {app.termination_reason}
+              </div>
+            )}
+
+            {/* Notes Preview */}
+            {app.notes && !isTerminated && (
+              <div className="text-sm text-muted-foreground bg-muted/30 rounded-md px-3 py-2 border-l-2 border-primary/50">
+                <span className="line-clamp-2">{app.notes}</span>
+              </div>
+            )}
+
+            {/* Actions Row */}
+            <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-border/50">
+              {app.instagram_handle && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => openInstagram(app.instagram_handle!)}
+                  className="text-pink-400 hover:text-pink-300 hover:bg-pink-500/10"
+                >
+                  <Instagram className="h-4 w-4 mr-1" />
+                  <span className="hidden sm:inline">@{app.instagram_handle}</span>
+                  <ExternalLink className="h-3 w-3 ml-1" />
+                </Button>
+              )}
+              
+              {!isTerminated && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setNotesApp(app)}
+                    className={cn(
+                      "text-muted-foreground hover:text-foreground",
+                      app.notes && "text-primary"
+                    )}
+                  >
+                    <StickyNote className="h-4 w-4 mr-1" />
+                    Notes
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setRecorderApp(app)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <Mic className="h-4 w-4 mr-1" />
+                    Record Interview
+                  </Button>
+                </>
+              )}
+              
+              <div className="flex-1" />
+
+              {isTerminated ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleRestoreLead(app.id)}
+                  className="text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
+                >
+                  <RotateCcw className="h-4 w-4 mr-1" />
+                  Restore
+                </Button>
+              ) : (
+                <>
+                  {status === "new" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleMarkAsContacted(app.id)}
+                    >
+                      <MessageCircle className="h-4 w-4 mr-1" />
+                      Contacted
+                    </Button>
+                  )}
+                  
+                  {status === "contacted" && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleMarkAsQualified(app.id)}
+                    >
+                      <UserCheck className="h-4 w-4 mr-1" />
+                      Qualified
+                    </Button>
+                  )}
+                  
+                  {status === "qualified" && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => handleMarkAsClosed(app.id)}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-1" />
+                      Close
+                    </Button>
+                  )}
+
+                  {status !== "closed" && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setTerminateApp(app)}
+                      className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                    >
+                      <XCircle className="h-4 w-4 mr-1" />
+                      Terminate
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </GlassCard>
+      </motion.div>
+    );
+  };
 
   return (
     <DashboardLayout>
@@ -346,13 +537,14 @@ export default function DashboardApplicants() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"
+        className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8"
       >
         {[
           { label: "Total Leads", value: totalLeads, icon: Users, color: "text-primary" },
           { label: "Contacted", value: contacted, icon: Phone, color: "text-yellow-400" },
           { label: "Qualified", value: qualified, icon: UserCheck, color: "text-purple-400" },
           { label: "Closed", value: closed, icon: CheckCircle, color: "text-emerald-400" },
+          { label: "Terminated", value: terminated, icon: XCircle, color: "text-red-400" },
         ].map((stat) => (
           <GlassCard key={stat.label} className="p-4">
             <div className="flex items-center gap-3">
@@ -421,174 +613,14 @@ export default function DashboardApplicants() {
         </Select>
       </motion.div>
 
-      {/* Applicants List */}
+      {/* Active Applicants List */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
         className="space-y-4"
       >
-        {filteredApplications.map((app, index) => {
-          const status = getApplicationStatus(app);
-          return (
-            <motion.div
-              key={app.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 * index }}
-            >
-              <GlassCard className="p-4 hover:bg-muted/50 transition-colors">
-                <div className="flex flex-col gap-4">
-                  {/* Top Row: Avatar, Name, Contact Info, Badges */}
-                  <div className="flex flex-col lg:flex-row lg:items-center gap-4">
-                    {/* Avatar & Name */}
-                    <div className="flex items-center gap-4 flex-1">
-                      <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
-                        <Users className="h-6 w-6 text-primary" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold">{app.first_name} {app.last_name}</h3>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          <span>{getTimeAgo(app.created_at)}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Contact Info */}
-                    <div className="flex flex-wrap gap-4 text-sm">
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Mail className="h-4 w-4" />
-                        <span>{app.email}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Phone className="h-4 w-4" />
-                        <span>{app.phone}</span>
-                      </div>
-                      {app.city && app.state && (
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <MapPin className="h-4 w-4" />
-                          <span>{app.city}, {app.state}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Badges */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Badge variant="outline" className={cn("capitalize", statusColors[status])}>
-                        {status}
-                      </Badge>
-                      <Badge variant="outline" className={cn("capitalize", licenseColors[app.license_status])}>
-                        {app.license_status === "licensed" && <Award className="h-3 w-3 mr-1" />}
-                        {app.license_status === "unlicensed" && <GraduationCap className="h-3 w-3 mr-1" />}
-                        {app.license_status}
-                      </Badge>
-                      {app.started_training && (
-                        <Badge variant="outline" className="bg-primary/20 text-primary border-primary/30">
-                          Started Training
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Previous Experience Row */}
-                  {app.has_insurance_experience && app.previous_company && (
-                    <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-muted/50 w-fit">
-                      <Building2 className="h-4 w-4 text-orange-400" />
-                      <span className="text-sm text-muted-foreground">
-                        Previously at <span className="text-foreground font-medium">{app.previous_company}</span>
-                        {app.years_experience && app.years_experience > 0 && (
-                          <span className="text-muted-foreground"> • {app.years_experience} yr{app.years_experience > 1 ? 's' : ''} exp</span>
-                        )}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Notes Preview */}
-                  {app.notes && (
-                    <div className="text-sm text-muted-foreground bg-muted/30 rounded-md px-3 py-2 border-l-2 border-primary/50">
-                      <span className="line-clamp-2">{app.notes}</span>
-                    </div>
-                  )}
-
-                  {/* Actions Row */}
-                  <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-border/50">
-                    {app.instagram_handle && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openInstagram(app.instagram_handle!)}
-                        className="text-pink-400 hover:text-pink-300 hover:bg-pink-500/10"
-                      >
-                        <Instagram className="h-4 w-4 mr-1" />
-                        <span className="hidden sm:inline">@{app.instagram_handle}</span>
-                        <ExternalLink className="h-3 w-3 ml-1" />
-                      </Button>
-                    )}
-                    
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setNotesApp(app)}
-                      className={cn(
-                        "text-muted-foreground hover:text-foreground",
-                        app.notes && "text-primary"
-                      )}
-                    >
-                      <StickyNote className="h-4 w-4 mr-1" />
-                      Notes
-                    </Button>
-
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setRecorderApp(app)}
-                      className="text-muted-foreground hover:text-foreground"
-                    >
-                      <Mic className="h-4 w-4 mr-1" />
-                      Record Interview
-                    </Button>
-                    
-                    <div className="flex-1" />
-                    
-                    {status === "new" && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleMarkAsContacted(app.id)}
-                      >
-                        <MessageCircle className="h-4 w-4 mr-1" />
-                        Contacted
-                      </Button>
-                    )}
-                    
-                    {status === "contacted" && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleMarkAsQualified(app.id)}
-                      >
-                        <UserCheck className="h-4 w-4 mr-1" />
-                        Qualified
-                      </Button>
-                    )}
-                    
-                    {status === "qualified" && (
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => handleMarkAsClosed(app.id)}
-                      >
-                        <CheckCircle className="h-4 w-4 mr-1" />
-                        Close
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </GlassCard>
-            </motion.div>
-          );
-        })}
+        {filteredApplications.map((app, index) => renderApplicationCard(app, index, false))}
 
         {filteredApplications.length === 0 && (
           <GlassCard className="p-12 text-center">
@@ -600,6 +632,47 @@ export default function DashboardApplicants() {
           </GlassCard>
         )}
       </motion.div>
+
+      {/* Terminated Leads Section */}
+      {terminatedApplications.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="mt-8"
+        >
+          <button
+            onClick={() => setShowTerminated(!showTerminated)}
+            className="w-full flex items-center justify-between p-4 rounded-lg bg-red-500/10 border border-red-500/20 hover:bg-red-500/15 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <XCircle className="h-5 w-5 text-red-400" />
+              <span className="font-semibold text-red-400">
+                Terminated Leads ({terminatedApplications.length})
+              </span>
+            </div>
+            {showTerminated ? (
+              <ChevronUp className="h-5 w-5 text-red-400" />
+            ) : (
+              <ChevronDown className="h-5 w-5 text-red-400" />
+            )}
+          </button>
+
+          <AnimatePresence>
+            {showTerminated && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-4 mt-4 overflow-hidden"
+              >
+                {terminatedApplications.map((app, index) => renderApplicationCard(app, index, true))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+      )}
 
       {/* Notes Modal */}
       {notesApp && (
@@ -622,6 +695,46 @@ export default function DashboardApplicants() {
           onTranscriptionSaved={fetchApplications}
         />
       )}
+
+      {/* Terminate Confirmation Modal */}
+      <Dialog open={!!terminateApp} onOpenChange={(open) => !open && setTerminateApp(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-400">
+              <XCircle className="h-5 w-5" />
+              Terminate Lead
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to terminate {terminateApp?.first_name} {terminateApp?.last_name}? 
+              This will move them to the terminated leads section.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-2 py-4">
+            <Label htmlFor="reason">Reason (optional)</Label>
+            <Textarea
+              id="reason"
+              placeholder="e.g., Not interested, Wrong number, Duplicate..."
+              value={terminateReason}
+              onChange={(e) => setTerminateReason(e.target.value)}
+              className="bg-input"
+            />
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTerminateApp(null)}>
+              Cancel
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleTerminate}
+              disabled={isTerminating}
+            >
+              {isTerminating ? "Terminating..." : "Terminate Lead"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
 }

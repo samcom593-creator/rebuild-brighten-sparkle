@@ -157,38 +157,44 @@ export default function Dashboard() {
               growthPercent: 15, // Demo data
               staleLeads,
             });
+
+            // Real leaderboard data - will populate as team grows
+            if (totalLeads > 0) {
+              setLeaderboardApplicants([
+                { rank: 1, name: userName || "You", value: totalLeads, isCurrentUser: true },
+              ]);
+              
+              if (closed > 0) {
+                setLeaderboardClosed([
+                  { rank: 1, name: userName || "You", value: closed, isCurrentUser: true },
+                ]);
+              } else {
+                setLeaderboardClosed([]);
+              }
+            } else {
+              setLeaderboardApplicants([]);
+              setLeaderboardClosed([]);
+            }
+          } else {
+            setLeaderboardApplicants([]);
+            setLeaderboardClosed([]);
           }
         } else {
-          // Demo data for agents without assigned leads
+          // No leads yet - show empty state
           setStats({
-            totalLeads: 45,
-            contacted: 32,
-            closed: 12,
-            licensed: 30,
-            unlicensed: 15,
-            closeRate: 26.7,
-            avgWaitTime: 2.4,
-            growthPercent: 15,
-            staleLeads: 3,
+            totalLeads: 0,
+            contacted: 0,
+            closed: 0,
+            licensed: 0,
+            unlicensed: 0,
+            closeRate: 0,
+            avgWaitTime: 0,
+            growthPercent: 0,
+            staleLeads: 0,
           });
+          setLeaderboardApplicants([]);
+          setLeaderboardClosed([]);
         }
-
-        // Demo leaderboard data
-        setLeaderboardApplicants([
-          { rank: 1, name: "Marcus T.", value: 78 },
-          { rank: 2, name: userName || "You", value: 45, isCurrentUser: true },
-          { rank: 3, name: "Jessica R.", value: 42 },
-          { rank: 4, name: "David K.", value: 38 },
-          { rank: 5, name: "Sarah M.", value: 35 },
-        ]);
-
-        setLeaderboardClosed([
-          { rank: 1, name: "Sarah M.", value: 24 },
-          { rank: 2, name: "Marcus T.", value: 22 },
-          { rank: 3, name: userName || "You", value: 12, isCurrentUser: true },
-          { rank: 4, name: "Jessica R.", value: 10 },
-          { rank: 5, name: "David K.", value: 8 },
-        ]);
       }
     };
     

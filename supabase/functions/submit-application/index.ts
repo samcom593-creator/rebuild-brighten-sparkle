@@ -80,10 +80,8 @@ const SubmitApplicationSchema = z.object({
   niprNumber: z.string().max(20).optional().nullable(),
   licensedStates: z.array(z.string().min(2).max(50)).optional().nullable(),
 
-  desiredIncome: NumOptional(0, 10000000),
   availability: z.string().min(1).max(500),
   referralSource: z.string().max(500).optional().nullable(),
-  notes: z.string().max(1000).optional().nullable(),
   
   // New: selected referral agent ID
   selectedReferralAgentId: z.string().uuid().optional().nullable(),
@@ -253,7 +251,6 @@ async function sendEmailNotifications(data: SubmitApplicationRequest) {
     hasInsuranceExperience: data.hasInsuranceExperience,
     yearsExperience: data.yearsExperience,
     previousCompany: data.previousCompany ? sanitizeHtml(data.previousCompany) : undefined,
-    desiredIncome: data.desiredIncome,
     availability: sanitizeHtml(data.availability),
     referralSource: data.referralSource ? sanitizeHtml(data.referralSource) : undefined,
     instagramHandle: data.instagramHandle ? sanitizeHtml(data.instagramHandle) : undefined,
@@ -341,12 +338,6 @@ async function sendEmailNotifications(data: SubmitApplicationRequest) {
             <div style="background: white; padding: 20px; border-radius: 8px;">
               <h2 style="color: #059669; margin-top: 0; font-size: 18px;">Goals &amp; Availability</h2>
               <table style="width: 100%; border-collapse: collapse;">
-                ${sanitized.desiredIncome ? `
-                <tr>
-                  <td style="padding: 8px 0; color: #6b7280; width: 40%;">Desired Income:</td>
-                  <td style="padding: 8px 0;">$${sanitized.desiredIncome.toLocaleString()}</td>
-                </tr>
-                ` : ''}
                 <tr>
                   <td style="padding: 8px 0; color: #6b7280;">Availability:</td>
                   <td style="padding: 8px 0;">${sanitized.availability}</td>
@@ -643,10 +634,10 @@ const handler = async (req: Request): Promise<Response> => {
         ? data.licensedStates
         : null,
 
-      desired_income: data.desiredIncome ?? null,
+      desired_income: null,
       availability: data.availability,
       referral_source: data.referralSource ?? null,
-      notes: data.notes ?? null,
+      notes: null,
       
       // Assign to the selected referral agent if provided
       assigned_agent_id: data.selectedReferralAgentId ?? null,

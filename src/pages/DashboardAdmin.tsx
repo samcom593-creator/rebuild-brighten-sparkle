@@ -30,6 +30,7 @@ import { ManagerInviteLinks } from "@/components/dashboard/ManagerInviteLinks";
 import { AdminManagerInvites } from "@/components/dashboard/AdminManagerInvites";
 import { LeadReassignment } from "@/components/dashboard/LeadReassignment";
 import { LeadExporter } from "@/components/dashboard/LeadExporter";
+import { BulkLeadAssignment } from "@/components/dashboard/BulkLeadAssignment";
 import {
   Table,
   TableBody,
@@ -255,109 +256,122 @@ export default function DashboardAdmin() {
   };
 
   const fetchAdminData = async () => {
-    // Fetch all active agents
+    // Fetch all active agents with their user IDs
     const { data: activeAgents } = await supabase
       .from("agents")
-      .select(`
-        id,
-        user_id,
-        profiles!agents_profile_id_fkey (
-          full_name,
-          email
-        )
-      `)
+      .select("id, user_id")
       .eq("status", "active");
 
-    // For now, use demo data for agent stats since we need to aggregate applications
-    const demoAgents: AgentStats[] = [
-      {
-        id: "1",
-        name: "Marcus Thompson",
-        email: "marcus.t@apex.com",
-        totalLeads: 78,
-        contacted: 65,
-        closed: 22,
-        closeRate: 28.2,
-        staleLeads: 2,
-        lastActive: "2 hours ago",
-      },
-      {
-        id: "2",
-        name: "Sarah Kim",
-        email: "sarah.k@apex.com",
-        totalLeads: 65,
-        contacted: 58,
-        closed: 24,
-        closeRate: 36.9,
-        staleLeads: 0,
-        lastActive: "30 minutes ago",
-      },
-      {
-        id: "3",
-        name: "Jessica Rodriguez",
-        email: "jessica.r@apex.com",
-        totalLeads: 42,
-        contacted: 35,
-        closed: 10,
-        closeRate: 23.8,
-        staleLeads: 5,
-        lastActive: "1 day ago",
-      },
-      {
-        id: "4",
-        name: "David Chen",
-        email: "david.c@apex.com",
-        totalLeads: 38,
-        contacted: 28,
-        closed: 8,
-        closeRate: 21.1,
-        staleLeads: 8,
-        lastActive: "3 days ago",
-      },
-      {
-        id: "5",
-        name: "Emily Watson",
-        email: "emily.w@apex.com",
-        totalLeads: 55,
-        contacted: 48,
-        closed: 15,
-        closeRate: 27.3,
-        staleLeads: 3,
-        lastActive: "5 hours ago",
-      },
-    ];
+    if (!activeAgents || activeAgents.length === 0) {
+      // No active agents yet - show empty state
+      setAgents([]);
+      setTeamOverview(prev => ({
+        ...prev,
+        totalAgents: 0,
+        totalLeads: 0,
+        totalClosed: 0,
+        teamCloseRate: 0,
+      }));
+      setNeedsAttention([]);
+      setFastestGrowers([]);
+      return;
+    }
 
-    setAgents(demoAgents);
+    // Get profile info for all agents
+    const userIds = activeAgents.map(a => a.user_id).filter(Boolean);
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("user_id, full_name, email")
+      .in("user_id", userIds);
 
-    // Calculate team overview
-    const totalLeads = demoAgents.reduce((sum, a) => sum + a.totalLeads, 0);
-    const totalClosed = demoAgents.reduce((sum, a) => sum + a.closed, 0);
+    // Get all applications to calculate stats
+    const { data: allApplications } = await supabase
+      .from("applications")
+      .select("id, assigned_agent_id, contacted_at, closed_at, created_at");
+
+    const now = new Date();
+    
+    // Calculate real stats for each agent
+    const agentStats: AgentStats[] = activeAgents.map(agent => {
+      const profile = profiles?.find(p => p.user_id === agent.user_id);
+      const agentApps = (allApplications || []).filter(a => a.assigned_agent_id === agent.id);
+      
+      const totalLeads = agentApps.length;
+      const contacted = agentApps.filter(a => a.contacted_at).length;
+      const closed = agentApps.filter(a => a.closed_at).length;
+      
+      // Calculate stale leads (not contacted in 48+ hours)
+      const staleLeads = agentApps.filter(a => {
+        if (a.contacted_at) return false;
+        const createdAt = new Date(a.created_at);
+        const hoursDiff = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+        return hoursDiff > 48;
+      }).length;
+
+      // Calculate last active (most recent activity)
+      const lastApp = agentApps
+        .filter(a => a.contacted_at || a.closed_at)
+        .sort((a, b) => {
+          const dateA = new Date(a.closed_at || a.contacted_at || a.created_at);
+          const dateB = new Date(b.closed_at || b.contacted_at || b.created_at);
+          return dateB.getTime() - dateA.getTime();
+        })[0];
+      
+      let lastActive = "No activity";
+      if (lastApp) {
+        const lastDate = new Date(lastApp.closed_at || lastApp.contacted_at || lastApp.created_at);
+        const diffMs = now.getTime() - lastDate.getTime();
+        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+        const diffDays = Math.floor(diffHours / 24);
+        
+        if (diffHours < 1) lastActive = "Just now";
+        else if (diffHours < 24) lastActive = `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+        else lastActive = `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+      }
+
+      return {
+        id: agent.id,
+        name: profile?.full_name || "Unknown",
+        email: profile?.email || "",
+        totalLeads,
+        contacted,
+        closed,
+        closeRate: totalLeads > 0 ? (closed / totalLeads) * 100 : 0,
+        staleLeads,
+        lastActive,
+      };
+    });
+
+    setAgents(agentStats);
+
+    // Calculate team overview from real data
+    const totalLeads = agentStats.reduce((sum, a) => sum + a.totalLeads, 0);
+    const totalClosed = agentStats.reduce((sum, a) => sum + a.closed, 0);
     setTeamOverview(prev => ({
       ...prev,
-      totalAgents: demoAgents.length,
+      totalAgents: agentStats.length,
       totalLeads,
       totalClosed,
       teamCloseRate: totalLeads > 0 ? (totalClosed / totalLeads) * 100 : 0,
     }));
 
     // Agents needing attention (low close rate or many stale leads)
-    setNeedsAttention(
-      demoAgents
-        .filter(a => a.closeRate < 25 || a.staleLeads > 3)
-        .sort((a, b) => a.closeRate - b.closeRate)
-    );
+    const attention = agentStats
+      .filter(a => (a.totalLeads > 0 && a.closeRate < 25) || a.staleLeads > 3)
+      .sort((a, b) => a.closeRate - b.closeRate);
+    setNeedsAttention(attention);
 
-    // Fastest growers (by close rate for demo)
-    setFastestGrowers(
-      demoAgents
-        .sort((a, b) => b.closeRate - a.closeRate)
-        .map((a, i) => ({
-          rank: i + 1,
-          name: a.name,
-          value: Math.round(a.closeRate * 10) / 10,
-        }))
-        .slice(0, 5)
-    );
+    // Fastest growers (by close rate)
+    const growers = agentStats
+      .filter(a => a.totalLeads > 0)
+      .sort((a, b) => b.closeRate - a.closeRate)
+      .map((a, i) => ({
+        rank: i + 1,
+        name: a.name,
+        value: Math.round(a.closeRate * 10) / 10,
+      }))
+      .slice(0, 5);
+    setFastestGrowers(growers);
   };
 
   const filteredAgents = agents.filter(
@@ -619,12 +633,22 @@ export default function DashboardAdmin() {
         <AdminManagerInvites />
       </motion.div>
 
+      {/* Bulk Lead Assignment */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="mb-8"
+      >
+        <BulkLeadAssignment />
+      </motion.div>
+
       {/* Manager Invite Links & Lead Reassignment */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
+          transition={{ delay: 0.45 }}
         >
           <ManagerInviteLinks />
         </motion.div>
@@ -632,7 +656,7 @@ export default function DashboardAdmin() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.45 }}
+          transition={{ delay: 0.5 }}
         >
           <LeadReassignment />
         </motion.div>

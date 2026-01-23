@@ -37,7 +37,7 @@ function sanitizeHtml(str: string): string {
     .replace(/'/g, "&#039;");
 }
 
-// Get manager info from agent ID
+// Get manager info from agent ID - prioritizes auth.users email for accuracy
 async function getManagerInfo(agentId: string): Promise<{ email: string; name: string } | null> {
   const { data: agent, error: agentError } = await supabaseAdmin
     .from("agents")
@@ -50,6 +50,25 @@ async function getManagerInfo(agentId: string): Promise<{ email: string; name: s
     return null;
   }
 
+  // First try to get the canonical email from auth.users (most reliable source)
+  const { data: authData, error: authError } = await supabaseAdmin.auth.admin.getUserById(agent.user_id);
+  
+  if (!authError && authData?.user?.email) {
+    // Get the name from profile
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("full_name")
+      .eq("user_id", agent.user_id)
+      .maybeSingle();
+    
+    console.log(`Using auth.users email for manager ${agentId}: ${authData.user.email}`);
+    return {
+      email: authData.user.email,
+      name: profile?.full_name || "Manager",
+    };
+  }
+
+  // Fallback to profile email if auth lookup fails
   const { data: profile, error: profileError } = await supabaseAdmin
     .from("profiles")
     .select("email, full_name")
@@ -61,6 +80,7 @@ async function getManagerInfo(agentId: string): Promise<{ email: string; name: s
     return null;
   }
 
+  console.log(`Using profile email for manager ${agentId} (auth lookup failed): ${profile.email}`);
   return {
     email: profile.email,
     name: profile.full_name || "Manager",

@@ -272,7 +272,7 @@ export function ProfileSettings() {
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                Email cannot be changed
+                To change email, use the Account Security section below
               </p>
             </div>
 
@@ -392,7 +392,7 @@ export function ProfileSettings() {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Changing your email will require verification
+              After updating, you'll receive a confirmation link at both your old and new email addresses. Your profile will automatically sync once confirmed.
             </p>
           </div>
 

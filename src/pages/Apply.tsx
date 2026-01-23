@@ -55,10 +55,8 @@ const applicationSchema = z.object({
   licensedStates: z.array(z.string()).optional(),
   
   // Step 4: Goals
-  desiredIncome: z.number().min(0).optional(),
   availability: z.string().min(1, "Availability is required"),
   referralSource: z.string().optional(),
-  notes: z.string().max(1000).optional(),
 });
 
 type ApplicationFormData = z.infer<typeof applicationSchema>;
@@ -205,10 +203,6 @@ export default function Apply() {
         instagramHandle = instagramHandle.substring(1);
       }
 
-      const desiredIncome = Number.isFinite(data.desiredIncome as number)
-        ? (data.desiredIncome as number)
-        : undefined;
-
       const yearsExperience = Number.isFinite(data.yearsExperience as number)
         ? (data.yearsExperience as number)
         : undefined;
@@ -238,10 +232,8 @@ export default function Apply() {
             niprNumber: data.niprNumber,
             licensedStates: selectedStates,
 
-            desiredIncome,
             availability: data.availability,
             referralSource: data.referralSource,
-            notes: data.notes,
           },
         },
       );
@@ -266,7 +258,6 @@ export default function Apply() {
           hasInsuranceExperience: data.hasInsuranceExperience,
           yearsExperience: data.yearsExperience,
           previousCompany: data.previousCompany,
-          desiredIncome: data.desiredIncome,
           availability: data.availability,
           referralSource: data.referralSource,
         },
@@ -666,17 +657,6 @@ export default function Apply() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label htmlFor="desiredIncome">Target Annual Income ($)</Label>
-                        <Input
-                          id="desiredIncome"
-                          type="number"
-                          {...register("desiredIncome", { valueAsNumber: true })}
-                          placeholder="150000"
-                          className="bg-input"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
                         <Label>Availability *</Label>
                         <Select onValueChange={(value) => setValue("availability", value, { shouldValidate: true })}>
                           <SelectTrigger className="bg-input">
@@ -695,7 +675,6 @@ export default function Apply() {
                         )}
                       </div>
 
-
                       <div className="space-y-2">
                         <Label>How did you hear about us?</Label>
                         <Select onValueChange={(value) => setValue("referralSource", value, { shouldValidate: true })}>
@@ -710,16 +689,6 @@ export default function Apply() {
                             ))}
                           </SelectContent>
                         </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="notes">Anything else you'd like us to know?</Label>
-                        <Textarea
-                          id="notes"
-                          {...register("notes")}
-                          placeholder="Tell us about your goals, questions, or anything else..."
-                          className="bg-input min-h-[100px]"
-                        />
                       </div>
                     </div>
                   )}

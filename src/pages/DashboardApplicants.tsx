@@ -51,6 +51,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ApplicantNotes } from "@/components/dashboard/ApplicantNotes";
 import { InterviewRecorder } from "@/components/dashboard/InterviewRecorder";
+import { ApplicantSummary } from "@/components/dashboard/ApplicantSummary";
+import { LeadQualificationChat } from "@/components/dashboard/LeadQualificationChat";
 
 interface Application {
   id: string;
@@ -409,6 +411,27 @@ export default function DashboardApplicants() {
               </div>
             )}
 
+            {/* AI Summary */}
+            {!isTerminated && (
+              <ApplicantSummary 
+                applicant={{
+                  id: app.id,
+                  full_name: `${app.first_name} ${app.last_name}`,
+                  email: app.email,
+                  phone: app.phone,
+                  city: app.city || '',
+                  state: app.state || '',
+                  instagram_handle: app.instagram_handle || '',
+                  has_license: app.license_status === 'licensed',
+                  years_experience: app.years_experience?.toString() || '',
+                  current_occupation: app.previous_company || '',
+                  why_join: '',
+                  status: status,
+                  created_at: app.created_at,
+                }}
+              />
+            )}
+
             {/* Actions Row */}
             <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-border/50">
               {app.instagram_handle && (
@@ -735,6 +758,9 @@ export default function DashboardApplicants() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Lead Qualification Chat */}
+      <LeadQualificationChat />
     </DashboardLayout>
   );
 }

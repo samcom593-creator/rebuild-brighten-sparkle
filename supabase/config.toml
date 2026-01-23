@@ -24,3 +24,6 @@ verify_jwt = false
 
 [functions.notify-manager-referral]
 verify_jwt = false
+
+[functions.ai-assistant]
+verify_jwt = false

@@ -16,11 +16,13 @@ import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { LeaderboardCard } from "@/components/dashboard/LeaderboardCard";
 import { AIInsightsCard } from "@/components/dashboard/AIInsightsCard";
+import { AICoachingPanel } from "@/components/dashboard/AICoachingPanel";
 import { GrowthChart } from "@/components/dashboard/GrowthChart";
 import { AnalyticsPieChart } from "@/components/dashboard/AnalyticsPieChart";
 import { EarningsPotentialCard } from "@/components/dashboard/EarningsPotentialCard";
 import { ManagerTeamView } from "@/components/dashboard/ManagerTeamView";
 import { InviteManagerCard } from "@/components/dashboard/InviteManagerCard";
+import { LeadQualificationChat } from "@/components/dashboard/LeadQualificationChat";
 import { useAuth } from "@/hooks/useAuth";
 
 interface DashboardStats {
@@ -348,8 +350,8 @@ export default function Dashboard() {
         <EarningsPotentialCard leadCount={stats.totalLeads} />
       </div>
 
-      {/* AI Suggestions */}
-      <div className="mb-8">
+      {/* AI Features */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <AIInsightsCard 
           stats={{
             totalLeads: stats.totalLeads,
@@ -362,7 +364,22 @@ export default function Dashboard() {
             teamAvgCloseRate: 25,
           }}
         />
+        <AICoachingPanel
+          stats={{
+            totalLeads: stats.totalLeads,
+            contacted: stats.contacted,
+            qualified: 0,
+            closed: stats.closed,
+            closeRate: stats.closeRate,
+            avgWaitTime: stats.avgWaitTime,
+            staleLeads: stats.staleLeads,
+            teamAvgCloseRate: 25,
+          }}
+        />
       </div>
+
+      {/* Lead Qualification Chat */}
+      <LeadQualificationChat />
 
       {/* Growth Analytics */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">

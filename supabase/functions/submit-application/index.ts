@@ -99,11 +99,12 @@ function sanitizeHtml(str: string): string {
     .replace(/'/g, "&#039;");
 }
 
-// Get manager info by agent ID (including phone)
+// Get manager info by agent ID (including phone and Instagram)
 interface ManagerInfo {
   email: string;
   name: string;
   phone?: string;
+  instagramHandle?: string;
 }
 
 async function getManagerInfo(agentId: string): Promise<ManagerInfo | null> {
@@ -120,10 +121,10 @@ async function getManagerInfo(agentId: string): Promise<ManagerInfo | null> {
       return null;
     }
     
-    // Get the profile info including phone
+    // Get the profile info including phone and Instagram
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
-      .select("email, full_name, phone")
+      .select("email, full_name, phone, instagram_handle")
       .eq("user_id", agent.user_id)
       .single();
     
@@ -136,6 +137,7 @@ async function getManagerInfo(agentId: string): Promise<ManagerInfo | null> {
       email: profile.email,
       name: profile.full_name || profile.email.split("@")[0],
       phone: profile.phone || undefined,
+      instagramHandle: profile.instagram_handle || undefined,
     };
   } catch (err) {
     console.error("Error getting manager info:", err);
@@ -421,6 +423,12 @@ async function sendEmailNotifications(data: SubmitApplicationRequest) {
           <tr>
             <td style="padding: 6px 0; color: #3b82f6;">Phone:</td>
             <td style="padding: 6px 0;"><a href="tel:${managerInfo.phone}" style="color: #2563eb; font-weight: 500;">${sanitizeHtml(managerInfo.phone)}</a></td>
+          </tr>
+          ` : ''}
+          ${managerInfo.instagramHandle ? `
+          <tr>
+            <td style="padding: 6px 0; color: #3b82f6;">Instagram:</td>
+            <td style="padding: 6px 0;"><a href="https://instagram.com/${managerInfo.instagramHandle}" style="color: #2563eb; font-weight: 500;">@${sanitizeHtml(managerInfo.instagramHandle)}</a></td>
           </tr>
           ` : ''}
         </table>

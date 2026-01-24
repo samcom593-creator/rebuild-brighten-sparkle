@@ -78,3 +78,27 @@ verify_jwt = false
 
 [functions.welcome-new-agent]
 verify_jwt = false
+
+[functions.get-active-managers]
+verify_jwt = false
+
+[functions.notify-missed-dialer]
+verify_jwt = false
+
+[functions.notify-fill-numbers]
+verify_jwt = false
+
+[functions.notify-top-performer]
+verify_jwt = false
+
+[functions.notify-daily-summary]
+verify_jwt = false
+
+[functions.notify-milestone-congrats]
+verify_jwt = false
+
+[functions.send-agent-portal-login]
+verify_jwt = false
+
+[functions.notify-low-close-rate]
+verify_jwt = false

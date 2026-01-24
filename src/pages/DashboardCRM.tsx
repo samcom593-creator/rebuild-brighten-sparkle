@@ -16,6 +16,11 @@ import {
   Phone,
   UserX,
   Filter,
+  BookOpen,
+  GraduationCap,
+  Briefcase,
+  Instagram,
+  X,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -45,6 +50,8 @@ import { AttendanceGrid } from "@/components/dashboard/AttendanceGrid";
 import { StarRating } from "@/components/dashboard/StarRating";
 import { AgentNotes } from "@/components/dashboard/AgentNotes";
 import { EvaluationButtons } from "@/components/dashboard/EvaluationButtons";
+import { PerformanceBadges } from "@/components/dashboard/PerformanceBadges";
+import { DeactivateAgentDialog } from "@/components/dashboard/DeactivateAgentDialog";
 import { cn } from "@/lib/utils";
 import { Database } from "@/integrations/supabase/types";
 
@@ -64,6 +71,7 @@ interface AgentCRM {
   email: string;
   phone?: string;
   avatarUrl?: string;
+  instagramHandle?: string;
   onboardingStage: OnboardingStage;
   attendanceStatus: AttendanceStatus;
   performanceTier: PerformanceTier;
@@ -78,6 +86,7 @@ interface AgentCRM {
   isDeactivated: boolean;
   managerId?: string;
   managerName?: string;
+  weekly10kBadges: number;
 }
 
 const attendanceColors: Record<AttendanceStatus, string> = {
@@ -104,15 +113,43 @@ const performanceColors: Record<PerformanceTier, string> = {
   top_producer: "bg-amber-500/20 text-amber-400 border-amber-500/30",
 };
 
+// Column definitions for the 3-column layout
+const COLUMNS = [
+  { 
+    key: "in_course", 
+    label: "In Course", 
+    icon: BookOpen,
+    stages: ["onboarding", "training_online"] as OnboardingStage[],
+    color: "text-blue-400",
+    bgColor: "bg-blue-500/20"
+  },
+  { 
+    key: "in_training", 
+    label: "In-Field Training", 
+    icon: GraduationCap,
+    stages: ["in_field_training"] as OnboardingStage[],
+    color: "text-amber-400",
+    bgColor: "bg-amber-500/20"
+  },
+  { 
+    key: "in_field", 
+    label: "In Field Active", 
+    icon: Briefcase,
+    stages: ["evaluated"] as OnboardingStage[],
+    color: "text-green-400",
+    bgColor: "bg-green-500/20"
+  },
+];
+
 export default function DashboardCRM() {
   const { user, isAdmin, isManager, isLoading: authLoading } = useAuth();
   const [agents, setAgents] = useState<AgentCRM[]>([]);
   const [managers, setManagers] = useState<Manager[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [stageFilter, setStageFilter] = useState<string>("all");
   const [managerFilter, setManagerFilter] = useState<string>("all");
   const [showDeactivated, setShowDeactivated] = useState(false);
+  const [deactivateAgent, setDeactivateAgent] = useState<AgentCRM | null>(null);
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -196,7 +233,7 @@ export default function DashboardCRM() {
       const userIds = agentData.map(a => a.user_id).filter(Boolean);
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("user_id, full_name, email, phone, avatar_url")
+        .select("user_id, full_name, email, phone, avatar_url, instagram_handle")
         .in("user_id", userIds);
 
       const profileMap = new Map(
@@ -238,6 +275,7 @@ export default function DashboardCRM() {
           email: profile?.email || "",
           phone: profile?.phone || undefined,
           avatarUrl: profile?.avatar_url || undefined,
+          instagramHandle: profile?.instagram_handle || undefined,
           onboardingStage: agent.onboarding_stage || "onboarding",
           attendanceStatus: agent.attendance_status || "good",
           performanceTier: agent.performance_tier || "below_10k",
@@ -254,6 +292,7 @@ export default function DashboardCRM() {
           managerName: agent.invited_by_manager_id 
             ? managerProfileMap.get(agent.invited_by_manager_id) 
             : undefined,
+          weekly10kBadges: agent.weekly_10k_badges || 0,
         };
       });
 
@@ -306,26 +345,6 @@ export default function DashboardCRM() {
     }
   };
 
-  const handleDeactivateToggle = async (agentId: string, currentState: boolean) => {
-    try {
-      const { error } = await supabase
-        .from("agents")
-        .update({ is_deactivated: !currentState })
-        .eq("id", agentId);
-
-      if (error) throw error;
-
-      setAgents(prev =>
-        prev.map(a => (a.id === agentId ? { ...a, isDeactivated: !currentState } : a))
-      );
-
-      toast.success(currentState ? "Agent reactivated" : "Agent deactivated");
-    } catch (error) {
-      console.error("Error toggling deactivation:", error);
-      toast.error("Failed to update agent status");
-    }
-  };
-
   const handleMarkAbsent = async (agentId: string) => {
     try {
       await supabase.functions.invoke("notify-attendance-missing", {
@@ -336,23 +355,28 @@ export default function DashboardCRM() {
     }
   };
 
+  // Filter agents
   const filteredAgents = agents.filter(agent => {
     const matchesSearch =
       agent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       agent.email.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStage = stageFilter === "all" || agent.onboardingStage === stageFilter;
     const matchesManager = managerFilter === "all" || agent.managerId === managerFilter;
     const matchesDeactivated = showDeactivated ? agent.isDeactivated : !agent.isDeactivated;
 
-    return matchesSearch && matchesStage && matchesManager && matchesDeactivated;
+    return matchesSearch && matchesManager && matchesDeactivated;
   });
+
+  // Group agents by column
+  const getAgentsForColumn = (stages: OnboardingStage[]) => {
+    return filteredAgents.filter(agent => stages.includes(agent.onboardingStage));
+  };
 
   // Stats
   const activeAgents = agents.filter(a => !a.isDeactivated);
-  const totalAgents = activeAgents.length;
+  const inCourse = activeAgents.filter(a => ["onboarding", "training_online"].includes(a.onboardingStage)).length;
   const inTraining = activeAgents.filter(a => a.onboardingStage === "in_field_training").length;
-  const evaluated = activeAgents.filter(a => a.onboardingStage === "evaluated").length;
+  const inField = activeAgents.filter(a => a.onboardingStage === "evaluated").length;
   const criticalAttendance = activeAgents.filter(a => a.attendanceStatus === "critical").length;
 
   if (authLoading) {
@@ -364,6 +388,243 @@ export default function DashboardCRM() {
       </DashboardLayout>
     );
   }
+
+  const renderAgentCard = (agent: AgentCRM, index: number) => {
+    const daysInTraining = agent.fieldTrainingStartedAt
+      ? differenceInDays(new Date(), new Date(agent.fieldTrainingStartedAt))
+      : null;
+    const evaluationDue = daysInTraining !== null && daysInTraining >= 7 && !agent.evaluationResult;
+    const isInFieldActive = agent.onboardingStage === "evaluated";
+
+    return (
+      <motion.div
+        key={agent.id}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: index * 0.03 }}
+      >
+        <GlassCard className={cn("p-4", agent.isDeactivated && "opacity-60")}>
+          <div className="flex flex-col gap-3">
+            {/* Top Row: Agent Info + Star Rating */}
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-start gap-3 min-w-0">
+                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center text-white font-bold shrink-0">
+                  {agent.name.charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-semibold text-sm truncate">{agent.name}</h3>
+                    {agent.isDeactivated && (
+                      <Badge variant="destructive" className="text-xs">
+                        Inactive
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
+                    <a href={`mailto:${agent.email}`} className="flex items-center gap-1 hover:text-foreground transition-colors truncate">
+                      <Mail className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{agent.email}</span>
+                    </a>
+                    {agent.phone && (
+                      <a href={`tel:${agent.phone}`} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                        <Phone className="h-3 w-3" />
+                      </a>
+                    )}
+                    {agent.instagramHandle && (
+                      <a 
+                        href={`https://instagram.com/${agent.instagramHandle.replace('@', '')}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 hover:text-foreground transition-colors"
+                      >
+                        <Instagram className="h-3 w-3" />
+                      </a>
+                    )}
+                  </div>
+                  {agent.managerName && (
+                    <Badge variant="outline" className="text-[10px] mt-1">
+                      {agent.managerName}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-col items-end gap-1 shrink-0">
+                <StarRating
+                  agentId={agent.id}
+                  rating={agent.potentialRating}
+                  onUpdate={fetchAgents}
+                  size="sm"
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                  onClick={() => setDeactivateAgent(agent)}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Badges for In Field Active agents */}
+            {isInFieldActive && agent.weekly10kBadges > 0 && (
+              <PerformanceBadges
+                agentId={agent.id}
+                badgeCount={agent.weekly10kBadges}
+                onUpdate={fetchAgents}
+              />
+            )}
+
+            {/* Checklist Row */}
+            <AgentChecklist
+              agentId={agent.id}
+              hasTrainingCourse={agent.hasTrainingCourse}
+              hasDialerLogin={agent.hasDialerLogin}
+              hasDiscordAccess={agent.hasDiscordAccess}
+              onUpdate={fetchAgents}
+            />
+
+            {/* Onboarding Stage */}
+            <div className="border-t border-border pt-3">
+              <OnboardingTracker
+                agentId={agent.id}
+                currentStage={agent.onboardingStage}
+                onStageUpdate={fetchAgents}
+                readOnly={false}
+              />
+            </div>
+
+            {/* Attendance Grids */}
+            {(agent.onboardingStage === "in_field_training" || agent.onboardingStage === "training_online") && (
+              <div className="border-t border-border pt-3 space-y-2">
+                <AttendanceGrid
+                  agentId={agent.id}
+                  type="training"
+                  label="Training"
+                  onMarkAbsent={() => handleMarkAbsent(agent.id)}
+                />
+                <AttendanceGrid
+                  agentId={agent.id}
+                  type="onboarded_meeting"
+                  label="Meetings"
+                  onMarkAbsent={() => handleMarkAbsent(agent.id)}
+                />
+              </div>
+            )}
+
+            {/* In Field Active - Show Meetings + Dialer Attendance */}
+            {isInFieldActive && (
+              <div className="border-t border-border pt-3 space-y-2">
+                <AttendanceGrid
+                  agentId={agent.id}
+                  type="onboarded_meeting"
+                  label="Meetings"
+                  onMarkAbsent={() => handleMarkAbsent(agent.id)}
+                />
+                <AttendanceGrid
+                  agentId={agent.id}
+                  type="dialer_activity"
+                  label="Dialed"
+                  onMarkAbsent={() => handleMarkAbsent(agent.id)}
+                />
+              </div>
+            )}
+
+            {/* Status Controls */}
+            <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
+              {/* Training Duration & Evaluation */}
+              {daysInTraining !== null && agent.onboardingStage === "in_field_training" && (
+                <Badge 
+                  variant="outline" 
+                  className={cn(
+                    "gap-1 text-xs",
+                    evaluationDue && "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                  )}
+                >
+                  <Clock className="h-3 w-3" />
+                  {daysInTraining}d
+                  {evaluationDue && " - Eval Due!"}
+                </Badge>
+              )}
+
+              {/* Evaluation Buttons */}
+              {(evaluationDue || agent.evaluationResult) && (
+                <EvaluationButtons
+                  agentId={agent.id}
+                  agentName={agent.name}
+                  currentResult={agent.evaluationResult}
+                  onEvaluated={fetchAgents}
+                />
+              )}
+
+              <div className="flex-1" />
+
+              {/* Attendance Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn("gap-1 text-xs h-7 px-2", attendanceColors[agent.attendanceStatus])}
+                  >
+                    {attendanceLabels[agent.attendanceStatus].split(' ')[0]}
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={() => handleAttendanceChange(agent.id, "good")}>
+                    <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />
+                    Good
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleAttendanceChange(agent.id, "warning")}>
+                    <AlertTriangle className="h-4 w-4 mr-2 text-amber-500" />
+                    Warning
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleAttendanceChange(agent.id, "critical")}>
+                    <AlertTriangle className="h-4 w-4 mr-2 text-red-500" />
+                    Critical
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Performance Tier Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn("gap-1 text-xs h-7 px-2", performanceColors[agent.performanceTier])}
+                  >
+                    {performanceLabels[agent.performanceTier]}
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={() => handlePerformanceChange(agent.id, "below_10k")}>
+                    Below $10K
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handlePerformanceChange(agent.id, "standard")}>
+                    <TrendingUp className="h-4 w-4 mr-2 text-primary" />
+                    Standard
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handlePerformanceChange(agent.id, "top_producer")}>
+                    <Award className="h-4 w-4 mr-2 text-amber-500" />
+                    Top Producer
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            {/* Notes Section */}
+            <AgentNotes
+              agentId={agent.id}
+              onNoteAdded={fetchAgents}
+            />
+          </div>
+        </GlassCard>
+      </motion.div>
+    );
+  };
 
   return (
     <DashboardLayout>
@@ -389,12 +650,12 @@ export default function DashboardCRM() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <GlassCard className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/20">
-                <Users className="h-5 w-5 text-primary" />
+              <div className="p-2 rounded-lg bg-blue-500/20">
+                <BookOpen className="h-5 w-5 text-blue-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{totalAgents}</p>
-                <p className="text-sm text-muted-foreground">Total Agents</p>
+                <p className="text-2xl font-bold">{inCourse}</p>
+                <p className="text-sm text-muted-foreground">In Course</p>
               </div>
             </div>
           </GlassCard>
@@ -402,11 +663,11 @@ export default function DashboardCRM() {
           <GlassCard className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-amber-500/20">
-                <Clock className="h-5 w-5 text-amber-400" />
+                <GraduationCap className="h-5 w-5 text-amber-400" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{inTraining}</p>
-                <p className="text-sm text-muted-foreground">In Training</p>
+                <p className="text-sm text-muted-foreground">In-Field Training</p>
               </div>
             </div>
           </GlassCard>
@@ -414,11 +675,11 @@ export default function DashboardCRM() {
           <GlassCard className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-green-500/20">
-                <CheckCircle2 className="h-5 w-5 text-green-400" />
+                <Briefcase className="h-5 w-5 text-green-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{evaluated}</p>
-                <p className="text-sm text-muted-foreground">Fully Trained</p>
+                <p className="text-2xl font-bold">{inField}</p>
+                <p className="text-sm text-muted-foreground">In Field Active</p>
               </div>
             </div>
           </GlassCard>
@@ -447,19 +708,6 @@ export default function DashboardCRM() {
               className="pl-10"
             />
           </div>
-          
-          <Select value={stageFilter} onValueChange={setStageFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filter by stage" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Stages</SelectItem>
-              <SelectItem value="onboarding">Onboarding</SelectItem>
-              <SelectItem value="training_online">Training Online</SelectItem>
-              <SelectItem value="in_field_training">In-Field Training</SelectItem>
-              <SelectItem value="evaluated">Evaluated</SelectItem>
-            </SelectContent>
-          </Select>
 
           {isAdmin && managers.length > 0 && (
             <Select value={managerFilter} onValueChange={setManagerFilter}>
@@ -489,260 +737,56 @@ export default function DashboardCRM() {
           </Button>
         </div>
 
-        {/* Quick Filter Buttons */}
-        <div className="flex gap-2 flex-wrap">
-          <Button
-            variant={stageFilter === "in_field_training" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setStageFilter(stageFilter === "in_field_training" ? "all" : "in_field_training")}
-          >
-            In Training ({inTraining})
-          </Button>
-          <Button
-            variant={stageFilter === "evaluated" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setStageFilter(stageFilter === "evaluated" ? "all" : "evaluated")}
-          >
-            Onboarded ({evaluated})
-          </Button>
-        </div>
-
-        {/* Agent Grid */}
+        {/* 3-Column Layout */}
         {loading ? (
           <div className="flex items-center justify-center h-64">
             <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
-        ) : filteredAgents.length === 0 ? (
-          <GlassCard className="p-12 text-center">
-            <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No Agents Found</h3>
-            <p className="text-muted-foreground">
-              {searchTerm || stageFilter !== "all" || managerFilter !== "all"
-                ? "Try adjusting your filters"
-                : "Licensed agents will appear here once they join your team"}
-            </p>
-          </GlassCard>
         ) : (
-          <div className="grid gap-4">
-            {filteredAgents.map((agent, index) => {
-              const daysInTraining = agent.fieldTrainingStartedAt
-                ? differenceInDays(new Date(), new Date(agent.fieldTrainingStartedAt))
-                : null;
-              const evaluationDue = daysInTraining !== null && daysInTraining >= 7 && !agent.evaluationResult;
-
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {COLUMNS.map((column) => {
+              const columnAgents = getAgentsForColumn(column.stages);
+              const Icon = column.icon;
+              
               return (
-                <motion.div
-                  key={agent.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.03 }}
-                >
-                  <GlassCard className={cn("p-6", agent.isDeactivated && "opacity-60")}>
-                    <div className="flex flex-col gap-4">
-                      {/* Top Row: Agent Info + Star Rating */}
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start gap-4">
-                          <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center text-white font-bold text-lg shrink-0">
-                            {agent.name.charAt(0).toUpperCase()}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h3 className="font-semibold">{agent.name}</h3>
-                              {agent.managerName && (
-                                <Badge variant="outline" className="text-xs">
-                                  Under: {agent.managerName}
-                                </Badge>
-                              )}
-                              {agent.isDeactivated && (
-                                <Badge variant="destructive" className="text-xs">
-                                  Inactive
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                              <a href={`mailto:${agent.email}`} className="flex items-center gap-1 hover:text-foreground transition-colors">
-                                <Mail className="h-3 w-3" />
-                                {agent.email}
-                              </a>
-                              {agent.phone && (
-                                <a href={`tel:${agent.phone}`} className="flex items-center gap-1 hover:text-foreground transition-colors">
-                                  <Phone className="h-3 w-3" />
-                                  {agent.phone}
-                                </a>
-                              )}
-                            </div>
-                            {agent.startDate && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                <Calendar className="h-3 w-3 inline mr-1" />
-                                Started {format(new Date(agent.startDate), "MMM d, yyyy")}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <StarRating
-                          agentId={agent.id}
-                          rating={agent.potentialRating}
-                          onUpdate={fetchAgents}
-                        />
-                      </div>
-
-                      {/* Checklist Row */}
-                      <div className="flex items-center gap-4 flex-wrap">
-                        <AgentChecklist
-                          agentId={agent.id}
-                          hasTrainingCourse={agent.hasTrainingCourse}
-                          hasDialerLogin={agent.hasDialerLogin}
-                          hasDiscordAccess={agent.hasDiscordAccess}
-                          onUpdate={fetchAgents}
-                        />
-                      </div>
-
-                      {/* Onboarding Stage */}
-                      <div className="border-t border-border pt-4">
-                        <OnboardingTracker
-                          agentId={agent.id}
-                          currentStage={agent.onboardingStage}
-                          onStageUpdate={fetchAgents}
-                          readOnly={false}
-                        />
-                      </div>
-
-                      {/* Attendance Grids (for training agents) */}
-                      {(agent.onboardingStage === "in_field_training" || agent.onboardingStage === "training_online") && (
-                        <div className="border-t border-border pt-4 space-y-2">
-                          <AttendanceGrid
-                            agentId={agent.id}
-                            type="training"
-                            label="Training"
-                            onMarkAbsent={() => handleMarkAbsent(agent.id)}
-                          />
-                          <AttendanceGrid
-                            agentId={agent.id}
-                            type="onboarded_meeting"
-                            label="Meetings"
-                            onMarkAbsent={() => handleMarkAbsent(agent.id)}
-                          />
-                        </div>
-                      )}
-
-                      {/* Status Controls */}
-                      <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
-                        {/* Training Duration & Evaluation */}
-                        {daysInTraining !== null && agent.onboardingStage === "in_field_training" && (
-                          <Badge 
-                            variant="outline" 
-                            className={cn(
-                              "gap-1",
-                              evaluationDue && "bg-amber-500/20 text-amber-400 border-amber-500/30"
-                            )}
-                          >
-                            <Clock className="h-3 w-3" />
-                            {daysInTraining} days in training
-                            {evaluationDue && " - Evaluation Due!"}
-                          </Badge>
-                        )}
-
-                        {/* Evaluation Buttons (show when 7+ days in training) */}
-                        {evaluationDue && (
-                          <EvaluationButtons
-                            agentId={agent.id}
-                            agentName={agent.name}
-                            currentResult={agent.evaluationResult}
-                            onEvaluated={fetchAgents}
-                          />
-                        )}
-
-                        {/* Show evaluation result if exists */}
-                        {agent.evaluationResult && (
-                          <EvaluationButtons
-                            agentId={agent.id}
-                            agentName={agent.name}
-                            currentResult={agent.evaluationResult}
-                            onEvaluated={fetchAgents}
-                          />
-                        )}
-
-                        <div className="flex-1" />
-
-                        {/* Attendance Dropdown */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className={cn("gap-2 justify-between", attendanceColors[agent.attendanceStatus])}
-                            >
-                              {attendanceLabels[agent.attendanceStatus]}
-                              <ChevronDown className="h-3 w-3" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent>
-                            <DropdownMenuItem onClick={() => handleAttendanceChange(agent.id, "good")}>
-                              <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />
-                              Good Attendance
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleAttendanceChange(agent.id, "warning")}>
-                              <AlertTriangle className="h-4 w-4 mr-2 text-amber-500" />
-                              Needs Improvement
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleAttendanceChange(agent.id, "critical")}>
-                              <AlertTriangle className="h-4 w-4 mr-2 text-red-500" />
-                              Critical
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-
-                        {/* Performance Tier Dropdown */}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className={cn("gap-2 justify-between", performanceColors[agent.performanceTier])}
-                            >
-                              {performanceLabels[agent.performanceTier]}
-                              <ChevronDown className="h-3 w-3" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent>
-                            <DropdownMenuItem onClick={() => handlePerformanceChange(agent.id, "below_10k")}>
-                              Below $10K
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handlePerformanceChange(agent.id, "standard")}>
-                              <TrendingUp className="h-4 w-4 mr-2 text-primary" />
-                              Standard ($10K+)
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handlePerformanceChange(agent.id, "top_producer")}>
-                              <Award className="h-4 w-4 mr-2 text-amber-500" />
-                              Top Producer
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-
-                        {/* Deactivate Button */}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeactivateToggle(agent.id, agent.isDeactivated)}
-                          className="text-muted-foreground hover:text-foreground"
-                        >
-                          <UserX className="h-4 w-4" />
-                        </Button>
-                      </div>
-
-                      {/* Notes Section */}
-                      <AgentNotes
-                        agentId={agent.id}
-                        onNoteAdded={fetchAgents}
-                      />
+                <div key={column.key} className="space-y-4">
+                  <div className={cn("flex items-center gap-2 p-3 rounded-lg", column.bgColor)}>
+                    <Icon className={cn("h-5 w-5", column.color)} />
+                    <h2 className={cn("font-semibold", column.color)}>
+                      {column.label}
+                    </h2>
+                    <Badge variant="secondary" className="ml-auto">
+                      {columnAgents.length}
+                    </Badge>
+                  </div>
+                  
+                  {columnAgents.length === 0 ? (
+                    <GlassCard className="p-6 text-center">
+                      <p className="text-sm text-muted-foreground">
+                        No agents in this stage
+                      </p>
+                    </GlassCard>
+                  ) : (
+                    <div className="space-y-3">
+                      {columnAgents.map((agent, index) => renderAgentCard(agent, index))}
                     </div>
-                  </GlassCard>
-                </motion.div>
+                  )}
+                </div>
               );
             })}
           </div>
         )}
       </div>
+
+      {/* Deactivate Dialog */}
+      <DeactivateAgentDialog
+        open={!!deactivateAgent}
+        onOpenChange={(open) => !open && setDeactivateAgent(null)}
+        agentId={deactivateAgent?.id || ""}
+        agentName={deactivateAgent?.name || ""}
+        currentManagerId={deactivateAgent?.managerId}
+        onComplete={fetchAgents}
+      />
     </DashboardLayout>
   );
 }

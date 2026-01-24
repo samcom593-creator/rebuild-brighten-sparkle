@@ -31,6 +31,7 @@ import { AdminManagerInvites } from "@/components/dashboard/AdminManagerInvites"
 import { LeadReassignment } from "@/components/dashboard/LeadReassignment";
 import { LeadExporter } from "@/components/dashboard/LeadExporter";
 import { BulkLeadAssignment } from "@/components/dashboard/BulkLeadAssignment";
+import { AbandonedLeadsPanel } from "@/components/dashboard/AbandonedLeadsPanel";
 import {
   Table,
   TableBody,
@@ -500,6 +501,16 @@ export default function DashboardAdmin() {
           </GlassCard>
         </motion.div>
       )}
+
+      {/* Abandoned Applications */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.08 }}
+        className="mb-8"
+      >
+        <AbandonedLeadsPanel />
+      </motion.div>
 
       {/* Team Overview */}
       <motion.div

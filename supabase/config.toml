@@ -75,3 +75,6 @@ verify_jwt = false
 
 [functions.notify-agent-contracted]
 verify_jwt = false
+
+[functions.welcome-new-agent]
+verify_jwt = false

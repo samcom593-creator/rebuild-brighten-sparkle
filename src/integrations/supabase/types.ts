@@ -515,6 +515,54 @@ export type Database = {
           },
         ]
       }
+      contact_history: {
+        Row: {
+          agent_id: string | null
+          application_id: string
+          contact_type: string
+          created_at: string
+          email_template: string | null
+          id: string
+          notes: string | null
+          subject: string | null
+        }
+        Insert: {
+          agent_id?: string | null
+          application_id: string
+          contact_type: string
+          created_at?: string
+          email_template?: string | null
+          id?: string
+          notes?: string | null
+          subject?: string | null
+        }
+        Update: {
+          agent_id?: string | null
+          application_id?: string
+          contact_type?: string
+          created_at?: string
+          email_template?: string | null
+          id?: string
+          notes?: string | null
+          subject?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_history_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_history_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       interview_recordings: {
         Row: {
           agent_id: string | null

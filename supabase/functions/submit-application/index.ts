@@ -295,20 +295,66 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
   }
 
   try {
+    const isLicensedApplicant = sanitized.licenseStatus === 'licensed';
+    
+    // Build different admin email based on license status
+    const adminSubject = isLicensedApplicant 
+      ? `🔥 HOT LEAD - CALL NOW: ${sanitized.firstName} ${sanitized.lastName} is LICENSED!`
+      : `New Application: ${sanitized.firstName} ${sanitized.lastName} (${licenseStatusDisplay})`;
+    
+    const urgentBanner = isLicensedApplicant ? `
+      <div style="background: linear-gradient(135deg, #dc2626, #991b1b); padding: 15px; text-align: center; margin-bottom: 0;">
+        <h2 style="color: white; margin: 0; font-size: 20px; text-transform: uppercase; letter-spacing: 1px;">
+          ⚠️ URGENT: Licensed Agent Ready to Start! ⚠️
+        </h2>
+        <p style="color: #fecaca; margin: 8px 0 0 0; font-size: 14px;">
+          Call within 5 minutes for best results
+        </p>
+      </div>
+    ` : '';
+    
+    const headerGradient = isLicensedApplicant 
+      ? 'linear-gradient(135deg, #dc2626, #991b1b)'
+      : 'linear-gradient(135deg, #059669, #047857)';
+    
+    const headerTitle = isLicensedApplicant
+      ? '🔥 HOT LEAD - LICENSED AGENT'
+      : 'New Agent Application';
+    
+    const callToActionStyle = isLicensedApplicant
+      ? 'display: inline-block; background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white; text-decoration: none; padding: 18px 36px; border-radius: 8px; font-weight: 700; font-size: 18px; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 14px rgba(220, 38, 38, 0.5);'
+      : 'display: inline-block; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px; margin-bottom: 15px;';
+    
+    const callToActionText = isLicensedApplicant
+      ? '📞 CALL NOW: ' + sanitized.phone
+      : '📞 View Lead & Call Now →';
+    
     // Send notification email to APEX team
     const adminEmailResponse = await resend.emails.send({
       from: "APEX Applications <applications@apex-financial.org>",
       to: ["info@kingofsales.net"],
-      subject: `New Application: ${sanitized.firstName} ${sanitized.lastName} (${licenseStatusDisplay})`,
+      subject: adminSubject,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: linear-gradient(135deg, #059669, #047857); padding: 30px; border-radius: 10px 10px 0 0;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">New Agent Application</h1>
+          ${urgentBanner}
+          <div style="background: ${headerGradient}; padding: 30px; border-radius: ${isLicensedApplicant ? '0' : '10px 10px 0 0'};">
+            <h1 style="color: white; margin: 0; font-size: 24px;">${headerTitle}</h1>
           </div>
           
           <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
+            ${isLicensedApplicant ? `
+            <div style="background: #fef2f2; border: 2px solid #dc2626; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+              <p style="margin: 0 0 10px 0; color: #991b1b; font-weight: bold; font-size: 16px;">
+                📱 CLICK TO CALL IMMEDIATELY
+              </p>
+              <a href="tel:${data.phone}" style="display: inline-block; background: #dc2626; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 20px;">
+                ${sanitized.phone}
+              </a>
+            </div>
+            ` : ''}
+            
             <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-              <h2 style="color: #059669; margin-top: 0; font-size: 18px;">Applicant Details</h2>
+              <h2 style="color: ${isLicensedApplicant ? '#dc2626' : '#059669'}; margin-top: 0; font-size: 18px;">Applicant Details</h2>
               <table style="width: 100%; border-collapse: collapse;">
                 <tr>
                   <td style="padding: 8px 0; color: #6b7280; width: 40%;">Name:</td>
@@ -316,11 +362,11 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
                 </tr>
                 <tr>
                   <td style="padding: 8px 0; color: #6b7280;">Email:</td>
-                  <td style="padding: 8px 0;"><a href="mailto:${data.email}" style="color: #059669;">${sanitized.email}</a></td>
+                  <td style="padding: 8px 0;"><a href="mailto:${data.email}" style="color: ${isLicensedApplicant ? '#dc2626' : '#059669'};">${sanitized.email}</a></td>
                 </tr>
                 <tr>
                   <td style="padding: 8px 0; color: #6b7280;">Phone:</td>
-                  <td style="padding: 8px 0;"><a href="tel:${data.phone}" style="color: #059669;">${sanitized.phone}</a></td>
+                  <td style="padding: 8px 0;"><a href="tel:${data.phone}" style="color: ${isLicensedApplicant ? '#dc2626' : '#059669'}; font-weight: bold; font-size: 16px;">${sanitized.phone}</a></td>
                 </tr>
                 <tr>
                   <td style="padding: 8px 0; color: #6b7280;">Location:</td>
@@ -336,7 +382,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
             </div>
 
             <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-              <h2 style="color: #059669; margin-top: 0; font-size: 18px;">Licensing &amp; Experience</h2>
+              <h2 style="color: ${isLicensedApplicant ? '#dc2626' : '#059669'}; margin-top: 0; font-size: 18px;">Licensing &amp; Experience</h2>
               <table style="width: 100%; border-collapse: collapse;">
                 <tr>
                   <td style="padding: 8px 0; color: #6b7280; width: 40%;">License Status:</td>
@@ -368,7 +414,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
             </div>
 
             <div style="background: white; padding: 20px; border-radius: 8px;">
-              <h2 style="color: #059669; margin-top: 0; font-size: 18px;">Goals &amp; Availability</h2>
+              <h2 style="color: ${isLicensedApplicant ? '#dc2626' : '#059669'}; margin-top: 0; font-size: 18px;">Goals &amp; Availability</h2>
               <table style="width: 100%; border-collapse: collapse;">
                 <tr>
                   <td style="padding: 8px 0; color: #6b7280;">Availability:</td>
@@ -390,9 +436,14 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
             </div>
 
             <div style="margin-top: 25px; text-align: center;">
-              <a href="https://rebuild-brighten-sparkle.lovable.app/dashboard/applicants?lead=${applicationId}" style="display: inline-block; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px; margin-bottom: 15px;">
-                📞 View Lead & Call Now →
+              <a href="https://rebuild-brighten-sparkle.lovable.app/dashboard/applicants?lead=${applicationId}" style="${callToActionStyle}">
+                ${callToActionText}
               </a>
+              ${isLicensedApplicant ? `
+              <p style="color: #dc2626; font-size: 14px; font-weight: bold; margin-top: 10px;">
+                ⏰ Speed to lead wins! Contact within 5 minutes.
+              </p>
+              ` : ''}
               <p style="color: #6b7280; font-size: 14px; margin-top: 15px;">
                 Submitted on ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} at ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
               </p>

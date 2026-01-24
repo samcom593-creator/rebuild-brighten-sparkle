@@ -176,54 +176,25 @@ export default function Apply() {
   const hasExperience = watch("hasInsuranceExperience");
   const licenseStatus = watch("licenseStatus");
 
-  // Fetch only active MANAGERS for referral selection
+  // Fetch only active MANAGERS for referral selection via edge function (bypasses RLS for public access)
   useEffect(() => {
     const fetchActiveManagers = async () => {
       try {
-        // Get all active agents
-        const { data: activeAgents, error: agentsError } = await supabase
-          .from("agents")
-          .select("id, user_id")
-          .eq("status", "active");
+        console.log("Fetching managers via edge function...");
+        
+        const { data, error } = await supabase.functions.invoke("get-active-managers");
 
-        if (agentsError || !activeAgents) {
-          console.error("Error fetching agents:", agentsError);
+        if (error) {
+          console.error("Error fetching managers:", error);
           return;
         }
 
-        // Filter to only those with manager role
-        const managersWithProfiles: ActiveAgent[] = [];
-
-        for (const agent of activeAgents) {
-          if (!agent.user_id) continue;
-
-          // Check if this user has the manager role
-          const { data: roleData } = await supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", agent.user_id)
-            .eq("role", "manager")
-            .maybeSingle();
-
-          if (roleData) {
-            // Get their profile name and Instagram handle
-            const { data: profile } = await supabase
-              .from("profiles")
-              .select("full_name, instagram_handle")
-              .eq("user_id", agent.user_id)
-              .maybeSingle();
-
-            if (profile?.full_name) {
-              managersWithProfiles.push({
-                id: agent.id,
-                name: profile.full_name,
-                instagramHandle: profile.instagram_handle || undefined,
-              });
-            }
-          }
+        if (data?.managers && Array.isArray(data.managers)) {
+          console.log("Managers loaded:", data.managers);
+          setActiveAgents(data.managers);
+        } else {
+          console.log("No managers returned from edge function");
         }
-
-        setActiveAgents(managersWithProfiles);
       } catch (error) {
         console.error("Error fetching managers:", error);
       }

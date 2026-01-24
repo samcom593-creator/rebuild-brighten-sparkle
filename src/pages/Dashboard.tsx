@@ -400,21 +400,11 @@ export default function Dashboard() {
       </div>
 
       {/* Quick Analytics & License Distribution */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <AnalyticsPieChart
           title="License Status"
           icon={<Award className="h-5 w-5 text-primary" />}
           data={licenseData}
-        />
-        <LeaderboardCard
-          title="Total Applicants"
-          entries={leaderboardApplicants}
-          valueLabel="leads"
-        />
-        <LeaderboardCard
-          title="Total Closed"
-          entries={leaderboardClosed}
-          valueLabel="closed"
         />
       </div>
 

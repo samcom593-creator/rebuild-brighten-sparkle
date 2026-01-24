@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users,
@@ -94,6 +95,9 @@ const licenseColors: Record<string, string> = {
 
 export default function DashboardApplicants() {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const highlightedLeadId = searchParams.get("lead");
+  
   const [applications, setApplications] = useState<Application[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -115,6 +119,45 @@ export default function DashboardApplicants() {
 
   // Terminated section expanded state
   const [showTerminated, setShowTerminated] = useState(false);
+  
+  // When deep linking, clear filters to ensure lead is visible
+  useEffect(() => {
+    if (highlightedLeadId) {
+      setStatusFilter("all");
+      setLicenseFilter("all");
+      setSearchQuery("");
+    }
+  }, [highlightedLeadId]);
+  
+  // Scroll to highlighted lead when data loads
+  useEffect(() => {
+    if (highlightedLeadId && applications.length > 0) {
+      const timer = setTimeout(() => {
+        const leadElement = document.getElementById(`lead-${highlightedLeadId}`);
+        if (leadElement) {
+          leadElement.scrollIntoView({ behavior: "smooth", block: "center" });
+          // Clear the URL param after scrolling
+          setTimeout(() => setSearchParams({}), 2000);
+        } else {
+          // Check if it's in terminated section and show it
+          const isTerminatedLead = applications.find(
+            app => app.id === highlightedLeadId && app.terminated_at
+          );
+          if (isTerminatedLead) {
+            setShowTerminated(true);
+            setTimeout(() => {
+              const leadEl = document.getElementById(`lead-${highlightedLeadId}`);
+              if (leadEl) {
+                leadEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                setTimeout(() => setSearchParams({}), 2000);
+              }
+            }, 300);
+          }
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightedLeadId, applications, setSearchParams]);
 
   useEffect(() => {
     fetchApplications();
@@ -317,16 +360,19 @@ export default function DashboardApplicants() {
 
   const renderApplicationCard = (app: Application, index: number, isTerminated = false) => {
     const status = getApplicationStatus(app);
+    const isHighlighted = highlightedLeadId === app.id;
     return (
       <motion.div
         key={app.id}
+        id={`lead-${app.id}`}
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.05 * index }}
       >
         <GlassCard className={cn(
-          "p-4 hover:bg-muted/50 transition-colors",
-          isTerminated && "opacity-60"
+          "p-4 hover:bg-muted/50 transition-all duration-300",
+          isTerminated && "opacity-60",
+          isHighlighted && "ring-2 ring-primary shadow-lg shadow-primary/20 animate-pulse"
         )}>
           <div className="flex flex-col gap-4">
             {/* Top Row: Avatar, Name, Contact Info, Badges */}

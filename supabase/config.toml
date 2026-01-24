@@ -57,3 +57,18 @@ verify_jwt = false
 
 [functions.send-aged-lead-email]
 verify_jwt = false
+
+[functions.notify-attendance-missing]
+verify_jwt = false
+
+[functions.notify-evaluation-result]
+verify_jwt = false
+
+[functions.notify-notes-added]
+verify_jwt = false
+
+[functions.notify-training-reminder]
+verify_jwt = false
+
+[functions.notify-evaluation-due]
+verify_jwt = false

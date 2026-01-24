@@ -166,6 +166,47 @@ export type Database = {
           },
         ]
       }
+      agent_attendance: {
+        Row: {
+          agent_id: string
+          attendance_date: string
+          attendance_type: Database["public"]["Enums"]["attendance_type"]
+          created_at: string
+          id: string
+          marked_by: string | null
+          status: Database["public"]["Enums"]["attendance_mark"]
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          attendance_date: string
+          attendance_type: Database["public"]["Enums"]["attendance_type"]
+          created_at?: string
+          id?: string
+          marked_by?: string | null
+          status?: Database["public"]["Enums"]["attendance_mark"]
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          attendance_date?: string
+          attendance_type?: Database["public"]["Enums"]["attendance_type"]
+          created_at?: string
+          id?: string
+          marked_by?: string | null
+          status?: Database["public"]["Enums"]["attendance_mark"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_attendance_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_lead_stats: {
         Row: {
           agent_id: string
@@ -266,6 +307,38 @@ export type Database = {
           },
         ]
       }
+      agent_notes: {
+        Row: {
+          agent_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          note: string
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note: string
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_notes_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_onboarding: {
         Row: {
           agent_id: string
@@ -314,9 +387,16 @@ export type Database = {
             | Database["public"]["Enums"]["attendance_status"]
             | null
           created_at: string
+          evaluated_at: string | null
+          evaluated_by: string | null
+          evaluation_result: string | null
           field_training_started_at: string | null
+          has_dialer_login: boolean | null
+          has_discord_access: boolean | null
+          has_training_course: boolean | null
           id: string
           invited_by_manager_id: string | null
+          is_deactivated: boolean | null
           license_states: string[] | null
           license_status: Database["public"]["Enums"]["license_status"]
           manager_id: string | null
@@ -328,6 +408,7 @@ export type Database = {
           performance_tier:
             | Database["public"]["Enums"]["performance_tier"]
             | null
+          potential_rating: number | null
           profile_id: string | null
           start_date: string | null
           status: Database["public"]["Enums"]["agent_status"]
@@ -345,9 +426,16 @@ export type Database = {
             | Database["public"]["Enums"]["attendance_status"]
             | null
           created_at?: string
+          evaluated_at?: string | null
+          evaluated_by?: string | null
+          evaluation_result?: string | null
           field_training_started_at?: string | null
+          has_dialer_login?: boolean | null
+          has_discord_access?: boolean | null
+          has_training_course?: boolean | null
           id?: string
           invited_by_manager_id?: string | null
+          is_deactivated?: boolean | null
           license_states?: string[] | null
           license_status?: Database["public"]["Enums"]["license_status"]
           manager_id?: string | null
@@ -359,6 +447,7 @@ export type Database = {
           performance_tier?:
             | Database["public"]["Enums"]["performance_tier"]
             | null
+          potential_rating?: number | null
           profile_id?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["agent_status"]
@@ -376,9 +465,16 @@ export type Database = {
             | Database["public"]["Enums"]["attendance_status"]
             | null
           created_at?: string
+          evaluated_at?: string | null
+          evaluated_by?: string | null
+          evaluation_result?: string | null
           field_training_started_at?: string | null
+          has_dialer_login?: boolean | null
+          has_discord_access?: boolean | null
+          has_training_course?: boolean | null
           id?: string
           invited_by_manager_id?: string | null
+          is_deactivated?: boolean | null
           license_states?: string[] | null
           license_status?: Database["public"]["Enums"]["license_status"]
           manager_id?: string | null
@@ -390,6 +486,7 @@ export type Database = {
           performance_tier?:
             | Database["public"]["Enums"]["performance_tier"]
             | null
+          potential_rating?: number | null
           profile_id?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["agent_status"]
@@ -971,7 +1068,9 @@ export type Database = {
         | "contracting"
         | "approved"
         | "rejected"
+      attendance_mark: "present" | "absent" | "excused" | "unmarked"
       attendance_status: "good" | "warning" | "critical"
+      attendance_type: "training" | "onboarded_meeting"
       license_progress:
         | "unlicensed"
         | "course_purchased"
@@ -1122,7 +1221,9 @@ export const Constants = {
         "approved",
         "rejected",
       ],
+      attendance_mark: ["present", "absent", "excused", "unmarked"],
       attendance_status: ["good", "warning", "critical"],
+      attendance_type: ["training", "onboarded_meeting"],
       license_progress: [
         "unlicensed",
         "course_purchased",

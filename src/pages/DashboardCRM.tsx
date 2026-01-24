@@ -12,7 +12,10 @@ import {
   Calendar,
   Award,
   ChevronDown,
-  ArrowUpRight,
+  Mail,
+  Phone,
+  UserX,
+  Filter,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -36,12 +39,23 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { OnboardingTracker } from "@/components/dashboard/OnboardingTracker";
+import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
+import { AgentChecklist } from "@/components/dashboard/AgentChecklist";
+import { AttendanceGrid } from "@/components/dashboard/AttendanceGrid";
+import { StarRating } from "@/components/dashboard/StarRating";
+import { AgentNotes } from "@/components/dashboard/AgentNotes";
+import { EvaluationButtons } from "@/components/dashboard/EvaluationButtons";
 import { cn } from "@/lib/utils";
 import { Database } from "@/integrations/supabase/types";
 
 type AttendanceStatus = Database["public"]["Enums"]["attendance_status"];
 type PerformanceTier = Database["public"]["Enums"]["performance_tier"];
 type OnboardingStage = Database["public"]["Enums"]["onboarding_stage"];
+
+interface Manager {
+  id: string;
+  name: string;
+}
 
 interface AgentCRM {
   id: string;
@@ -56,6 +70,14 @@ interface AgentCRM {
   fieldTrainingStartedAt?: string;
   startDate?: string;
   totalEarnings: number;
+  hasTrainingCourse: boolean;
+  hasDialerLogin: boolean;
+  hasDiscordAccess: boolean;
+  potentialRating: number;
+  evaluationResult?: string | null;
+  isDeactivated: boolean;
+  managerId?: string;
+  managerName?: string;
 }
 
 const attendanceColors: Record<AttendanceStatus, string> = {
@@ -67,7 +89,7 @@ const attendanceColors: Record<AttendanceStatus, string> = {
 const attendanceLabels: Record<AttendanceStatus, string> = {
   good: "Good Attendance",
   warning: "Needs Improvement",
-  critical: "Critical - Alert Sent",
+  critical: "Critical",
 };
 
 const performanceLabels: Record<PerformanceTier, string> = {
@@ -85,20 +107,62 @@ const performanceColors: Record<PerformanceTier, string> = {
 export default function DashboardCRM() {
   const { user, isAdmin, isManager, isLoading: authLoading } = useAuth();
   const [agents, setAgents] = useState<AgentCRM[]>([]);
+  const [managers, setManagers] = useState<Manager[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [stageFilter, setStageFilter] = useState<string>("all");
+  const [managerFilter, setManagerFilter] = useState<string>("all");
+  const [showDeactivated, setShowDeactivated] = useState(false);
 
   useEffect(() => {
     if (!authLoading && user) {
       fetchAgents();
+      if (isAdmin) {
+        fetchManagers();
+      }
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, isAdmin]);
+
+  const fetchManagers = async () => {
+    try {
+      const { data: managerRoles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "manager");
+
+      if (!managerRoles?.length) return;
+
+      const managerUserIds = managerRoles.map(r => r.user_id);
+
+      const { data: managerAgents } = await supabase
+        .from("agents")
+        .select("id, user_id")
+        .in("user_id", managerUserIds)
+        .eq("status", "active");
+
+      if (!managerAgents?.length) return;
+
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, full_name")
+        .in("user_id", managerUserIds);
+
+      const profileMap = new Map(profiles?.map(p => [p.user_id, p.full_name]) || []);
+
+      const managerList: Manager[] = managerAgents.map(agent => ({
+        id: agent.id,
+        name: profileMap.get(agent.user_id) || "Unknown Manager",
+      }));
+
+      setManagers(managerList);
+    } catch (error) {
+      console.error("Error fetching managers:", error);
+    }
+  };
 
   const fetchAgents = async () => {
     setLoading(true);
     try {
-      // Get current user's agent ID
       const { data: currentAgent } = await supabase
         .from("agents")
         .select("id")
@@ -110,14 +174,12 @@ export default function DashboardCRM() {
         return;
       }
 
-      // Build query for agents
       let query = supabase
         .from("agents")
         .select("*")
         .eq("status", "active")
         .eq("license_status", "licensed");
 
-      // If manager (not admin), only show their team
       if (isManager && !isAdmin) {
         query = query.eq("invited_by_manager_id", currentAgent?.id);
       }
@@ -131,7 +193,6 @@ export default function DashboardCRM() {
         return;
       }
 
-      // Get profiles
       const userIds = agentData.map(a => a.user_id).filter(Boolean);
       const { data: profiles } = await supabase
         .from("profiles")
@@ -141,6 +202,32 @@ export default function DashboardCRM() {
       const profileMap = new Map(
         profiles?.map(p => [p.user_id, p]) || []
       );
+
+      // Get manager names
+      const managerIds = [...new Set(agentData.map(a => a.invited_by_manager_id).filter(Boolean))];
+      let managerProfileMap = new Map<string, string>();
+
+      if (managerIds.length > 0) {
+        const { data: managerAgents } = await supabase
+          .from("agents")
+          .select("id, user_id")
+          .in("id", managerIds);
+
+        if (managerAgents?.length) {
+          const managerUserIds = managerAgents.map(a => a.user_id).filter(Boolean);
+          const { data: managerProfiles } = await supabase
+            .from("profiles")
+            .select("user_id, full_name")
+            .in("user_id", managerUserIds);
+
+          const userToName = new Map(managerProfiles?.map(p => [p.user_id, p.full_name]) || []);
+          managerAgents.forEach(ma => {
+            if (ma.user_id) {
+              managerProfileMap.set(ma.id, userToName.get(ma.user_id) || "Unknown");
+            }
+          });
+        }
+      }
 
       const crmAgents: AgentCRM[] = agentData.map(agent => {
         const profile = profileMap.get(agent.user_id);
@@ -157,6 +244,16 @@ export default function DashboardCRM() {
           fieldTrainingStartedAt: agent.field_training_started_at || undefined,
           startDate: agent.start_date || undefined,
           totalEarnings: Number(agent.total_earnings) || 0,
+          hasTrainingCourse: agent.has_training_course || false,
+          hasDialerLogin: agent.has_dialer_login || false,
+          hasDiscordAccess: agent.has_discord_access || false,
+          potentialRating: agent.potential_rating || 0,
+          evaluationResult: agent.evaluation_result,
+          isDeactivated: agent.is_deactivated || false,
+          managerId: agent.invited_by_manager_id || undefined,
+          managerName: agent.invited_by_manager_id 
+            ? managerProfileMap.get(agent.invited_by_manager_id) 
+            : undefined,
         };
       });
 
@@ -209,21 +306,54 @@ export default function DashboardCRM() {
     }
   };
 
+  const handleDeactivateToggle = async (agentId: string, currentState: boolean) => {
+    try {
+      const { error } = await supabase
+        .from("agents")
+        .update({ is_deactivated: !currentState })
+        .eq("id", agentId);
+
+      if (error) throw error;
+
+      setAgents(prev =>
+        prev.map(a => (a.id === agentId ? { ...a, isDeactivated: !currentState } : a))
+      );
+
+      toast.success(currentState ? "Agent reactivated" : "Agent deactivated");
+    } catch (error) {
+      console.error("Error toggling deactivation:", error);
+      toast.error("Failed to update agent status");
+    }
+  };
+
+  const handleMarkAbsent = async (agentId: string) => {
+    try {
+      await supabase.functions.invoke("notify-attendance-missing", {
+        body: { agentId, attendanceType: "training" },
+      });
+    } catch (error) {
+      console.log("Attendance notification skipped:", error);
+    }
+  };
+
   const filteredAgents = agents.filter(agent => {
     const matchesSearch =
       agent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       agent.email.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesStage = stageFilter === "all" || agent.onboardingStage === stageFilter;
+    const matchesManager = managerFilter === "all" || agent.managerId === managerFilter;
+    const matchesDeactivated = showDeactivated ? agent.isDeactivated : !agent.isDeactivated;
 
-    return matchesSearch && matchesStage;
+    return matchesSearch && matchesStage && matchesManager && matchesDeactivated;
   });
 
   // Stats
-  const totalAgents = agents.length;
-  const inTraining = agents.filter(a => a.onboardingStage === "in_field_training").length;
-  const evaluated = agents.filter(a => a.onboardingStage === "evaluated").length;
-  const criticalAttendance = agents.filter(a => a.attendanceStatus === "critical").length;
+  const activeAgents = agents.filter(a => !a.isDeactivated);
+  const totalAgents = activeAgents.length;
+  const inTraining = activeAgents.filter(a => a.onboardingStage === "in_field_training").length;
+  const evaluated = activeAgents.filter(a => a.onboardingStage === "evaluated").length;
+  const criticalAttendance = activeAgents.filter(a => a.attendanceStatus === "critical").length;
 
   if (authLoading) {
     return (
@@ -246,10 +376,13 @@ export default function DashboardCRM() {
               Manage your licensed agents and track their progress
             </p>
           </div>
-          <Button onClick={fetchAgents} variant="outline" className="gap-2">
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </Button>
+          <div className="flex gap-2">
+            <AddAgentModal onAgentAdded={fetchAgents} />
+            <Button onClick={fetchAgents} variant="outline" className="gap-2">
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {/* Stats */}
@@ -304,8 +437,8 @@ export default function DashboardCRM() {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1">
+        <div className="flex flex-col sm:flex-row gap-4 flex-wrap">
+          <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search agents..."
@@ -314,8 +447,9 @@ export default function DashboardCRM() {
               className="pl-10"
             />
           </div>
+          
           <Select value={stageFilter} onValueChange={setStageFilter}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filter by stage" />
             </SelectTrigger>
             <SelectContent>
@@ -326,6 +460,51 @@ export default function DashboardCRM() {
               <SelectItem value="evaluated">Evaluated</SelectItem>
             </SelectContent>
           </Select>
+
+          {isAdmin && managers.length > 0 && (
+            <Select value={managerFilter} onValueChange={setManagerFilter}>
+              <SelectTrigger className="w-[180px]">
+                <Filter className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Filter by manager" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Managers</SelectItem>
+                {managers.map((manager) => (
+                  <SelectItem key={manager.id} value={manager.id}>
+                    {manager.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          <Button
+            variant={showDeactivated ? "secondary" : "outline"}
+            size="sm"
+            onClick={() => setShowDeactivated(!showDeactivated)}
+            className="gap-2"
+          >
+            <UserX className="h-4 w-4" />
+            {showDeactivated ? "Showing Inactive" : "Show Inactive"}
+          </Button>
+        </div>
+
+        {/* Quick Filter Buttons */}
+        <div className="flex gap-2 flex-wrap">
+          <Button
+            variant={stageFilter === "in_field_training" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setStageFilter(stageFilter === "in_field_training" ? "all" : "in_field_training")}
+          >
+            In Training ({inTraining})
+          </Button>
+          <Button
+            variant={stageFilter === "evaluated" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setStageFilter(stageFilter === "evaluated" ? "all" : "evaluated")}
+          >
+            Onboarded ({evaluated})
+          </Button>
         </div>
 
         {/* Agent Grid */}
@@ -338,7 +517,7 @@ export default function DashboardCRM() {
             <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">No Agents Found</h3>
             <p className="text-muted-foreground">
-              {searchTerm || stageFilter !== "all"
+              {searchTerm || stageFilter !== "all" || managerFilter !== "all"
                 ? "Try adjusting your filters"
                 : "Licensed agents will appear here once they join your team"}
             </p>
@@ -349,37 +528,77 @@ export default function DashboardCRM() {
               const daysInTraining = agent.fieldTrainingStartedAt
                 ? differenceInDays(new Date(), new Date(agent.fieldTrainingStartedAt))
                 : null;
+              const evaluationDue = daysInTraining !== null && daysInTraining >= 7 && !agent.evaluationResult;
 
               return (
                 <motion.div
                   key={agent.id}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
+                  transition={{ delay: index * 0.03 }}
                 >
-                  <GlassCard className="p-6">
-                    <div className="flex flex-col lg:flex-row gap-6">
-                      {/* Agent Info */}
-                      <div className="flex items-start gap-4 lg:w-1/4">
-                        <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center text-white font-bold text-lg">
-                          {agent.name.charAt(0).toUpperCase()}
+                  <GlassCard className={cn("p-6", agent.isDeactivated && "opacity-60")}>
+                    <div className="flex flex-col gap-4">
+                      {/* Top Row: Agent Info + Star Rating */}
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-4">
+                          <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center text-white font-bold text-lg shrink-0">
+                            {agent.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="font-semibold">{agent.name}</h3>
+                              {agent.managerName && (
+                                <Badge variant="outline" className="text-xs">
+                                  Under: {agent.managerName}
+                                </Badge>
+                              )}
+                              {agent.isDeactivated && (
+                                <Badge variant="destructive" className="text-xs">
+                                  Inactive
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                              <a href={`mailto:${agent.email}`} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                                <Mail className="h-3 w-3" />
+                                {agent.email}
+                              </a>
+                              {agent.phone && (
+                                <a href={`tel:${agent.phone}`} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                                  <Phone className="h-3 w-3" />
+                                  {agent.phone}
+                                </a>
+                              )}
+                            </div>
+                            {agent.startDate && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                <Calendar className="h-3 w-3 inline mr-1" />
+                                Started {format(new Date(agent.startDate), "MMM d, yyyy")}
+                              </p>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold truncate">{agent.name}</h3>
-                          <p className="text-sm text-muted-foreground truncate">
-                            {agent.email}
-                          </p>
-                          {agent.startDate && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              <Calendar className="h-3 w-3 inline mr-1" />
-                              Started {format(new Date(agent.startDate), "MMM d, yyyy")}
-                            </p>
-                          )}
-                        </div>
+                        <StarRating
+                          agentId={agent.id}
+                          rating={agent.potentialRating}
+                          onUpdate={fetchAgents}
+                        />
+                      </div>
+
+                      {/* Checklist Row */}
+                      <div className="flex items-center gap-4 flex-wrap">
+                        <AgentChecklist
+                          agentId={agent.id}
+                          hasTrainingCourse={agent.hasTrainingCourse}
+                          hasDialerLogin={agent.hasDialerLogin}
+                          hasDiscordAccess={agent.hasDiscordAccess}
+                          onUpdate={fetchAgents}
+                        />
                       </div>
 
                       {/* Onboarding Stage */}
-                      <div className="lg:flex-1">
+                      <div className="border-t border-border pt-4">
                         <OnboardingTracker
                           agentId={agent.id}
                           currentStage={agent.onboardingStage}
@@ -388,15 +607,62 @@ export default function DashboardCRM() {
                         />
                       </div>
 
+                      {/* Attendance Grids (for training agents) */}
+                      {(agent.onboardingStage === "in_field_training" || agent.onboardingStage === "training_online") && (
+                        <div className="border-t border-border pt-4 space-y-2">
+                          <AttendanceGrid
+                            agentId={agent.id}
+                            type="training"
+                            label="Training"
+                            onMarkAbsent={() => handleMarkAbsent(agent.id)}
+                          />
+                          <AttendanceGrid
+                            agentId={agent.id}
+                            type="onboarded_meeting"
+                            label="Meetings"
+                            onMarkAbsent={() => handleMarkAbsent(agent.id)}
+                          />
+                        </div>
+                      )}
+
                       {/* Status Controls */}
-                      <div className="flex flex-wrap lg:flex-col gap-3 lg:w-48">
-                        {/* Training Duration */}
+                      <div className="flex flex-wrap items-center gap-3 border-t border-border pt-4">
+                        {/* Training Duration & Evaluation */}
                         {daysInTraining !== null && agent.onboardingStage === "in_field_training" && (
-                          <Badge variant="outline" className="gap-1">
+                          <Badge 
+                            variant="outline" 
+                            className={cn(
+                              "gap-1",
+                              evaluationDue && "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                            )}
+                          >
                             <Clock className="h-3 w-3" />
                             {daysInTraining} days in training
+                            {evaluationDue && " - Evaluation Due!"}
                           </Badge>
                         )}
+
+                        {/* Evaluation Buttons (show when 7+ days in training) */}
+                        {evaluationDue && (
+                          <EvaluationButtons
+                            agentId={agent.id}
+                            agentName={agent.name}
+                            currentResult={agent.evaluationResult}
+                            onEvaluated={fetchAgents}
+                          />
+                        )}
+
+                        {/* Show evaluation result if exists */}
+                        {agent.evaluationResult && (
+                          <EvaluationButtons
+                            agentId={agent.id}
+                            agentName={agent.name}
+                            currentResult={agent.evaluationResult}
+                            onEvaluated={fetchAgents}
+                          />
+                        )}
+
+                        <div className="flex-1" />
 
                         {/* Attendance Dropdown */}
                         <DropdownMenu>
@@ -452,7 +718,23 @@ export default function DashboardCRM() {
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
+
+                        {/* Deactivate Button */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeactivateToggle(agent.id, agent.isDeactivated)}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          <UserX className="h-4 w-4" />
+                        </Button>
                       </div>
+
+                      {/* Notes Section */}
+                      <AgentNotes
+                        agentId={agent.id}
+                        onNoteAdded={fetchAgents}
+                      />
                     </div>
                   </GlassCard>
                 </motion.div>

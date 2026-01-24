@@ -397,6 +397,7 @@ export type Database = {
           first_name: string
           followup_licensed_sent_at: string | null
           followup_sent_at: string | null
+          followup_unlicensed_2_sent_at: string | null
           has_insurance_experience: boolean | null
           id: string
           instagram_handle: string | null
@@ -435,6 +436,7 @@ export type Database = {
           first_name: string
           followup_licensed_sent_at?: string | null
           followup_sent_at?: string | null
+          followup_unlicensed_2_sent_at?: string | null
           has_insurance_experience?: boolean | null
           id?: string
           instagram_handle?: string | null
@@ -473,6 +475,7 @@ export type Database = {
           first_name?: string
           followup_licensed_sent_at?: string | null
           followup_sent_at?: string | null
+          followup_unlicensed_2_sent_at?: string | null
           has_insurance_experience?: boolean | null
           id?: string
           instagram_handle?: string | null

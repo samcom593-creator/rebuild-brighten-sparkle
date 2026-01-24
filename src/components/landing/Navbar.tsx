@@ -21,7 +21,7 @@ export function Navbar() {
     href: "#career",
     label: "Career Path"
   }];
-  return <motion.nav className="fixed top-0 left-0 right-0 z-50 glass-strong" initial={{
+  return <motion.nav className="fixed top-8 left-0 right-0 z-50 glass-strong" initial={{
     y: -100
   }} animate={{
     y: 0

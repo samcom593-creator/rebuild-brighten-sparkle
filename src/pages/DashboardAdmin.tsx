@@ -11,12 +11,12 @@ import {
   Trophy,
   ChevronRight,
   UserCheck,
-  UserX,
   Clock,
   CheckCircle,
   XCircle,
   Wifi,
   WifiOff,
+  FileText,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -32,6 +32,7 @@ import { LeadReassignment } from "@/components/dashboard/LeadReassignment";
 import { LeadExporter } from "@/components/dashboard/LeadExporter";
 import { BulkLeadAssignment } from "@/components/dashboard/BulkLeadAssignment";
 import { AbandonedLeadsPanel } from "@/components/dashboard/AbandonedLeadsPanel";
+import { AllLeadsPanel } from "@/components/dashboard/AllLeadsPanel";
 import {
   Table,
   TableBody,
@@ -510,6 +511,16 @@ export default function DashboardAdmin() {
         className="mb-8"
       >
         <AbandonedLeadsPanel />
+      </motion.div>
+
+      {/* All Leads Master Table */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.09 }}
+        className="mb-8"
+      >
+        <AllLeadsPanel />
       </motion.div>
 
       {/* Team Overview */}

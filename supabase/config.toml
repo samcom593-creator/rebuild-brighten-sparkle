@@ -30,3 +30,12 @@ verify_jwt = false
 
 [functions.update-user-email]
 verify_jwt = false
+
+[functions.send-followup-emails]
+verify_jwt = false
+
+[functions.agent-signup]
+verify_jwt = false
+
+[functions.validate-signup-token]
+verify_jwt = false

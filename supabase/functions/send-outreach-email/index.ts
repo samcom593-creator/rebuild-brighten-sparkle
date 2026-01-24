@@ -217,6 +217,169 @@ const emailTemplates = {
 </html>
     `,
   },
+  followup1_unlicensed: {
+    subject: "How's your licensing journey going?",
+    getHtml: (firstName: string, agentName: string) => `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#0a0a0a;color:#ffffff;">
+  <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
+    <div style="text-align:center;margin-bottom:32px;">
+      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">APEX FINANCIAL</h1>
+    </div>
+    
+    <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:16px;padding:32px;border:1px solid rgba(20,184,166,0.2);">
+      <h2 style="font-size:24px;margin:0 0 16px 0;color:#14b8a6;">Hey ${firstName}!</h2>
+      
+      <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 16px 0;">
+        I wanted to check in and see how your licensing journey is going! Getting your life insurance license is the first big step toward a high-income career in financial services.
+      </p>
+      
+      <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 16px 0;">
+        Whether you've started studying, signed up for the course, or are still weighing your options—I'm here to help. A lot of our top earners started exactly where you are right now.
+      </p>
+      
+      <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 24px 0;">
+        <strong style="color:#ffffff;">Let me know where you're at</strong> and I can point you in the right direction. No pressure—just want to make sure you have the support you need.
+      </p>
+      
+      <div style="text-align:center;margin:32px 0;">
+        <a href="https://calendly.com/sam-com593/licensed-prospect-call-clone" 
+           style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#ffffff;padding:16px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;">
+          Let's Chat About Your Progress
+        </a>
+      </div>
+      
+      <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
+        Rooting for you,<br>
+        <strong style="color:#ffffff;">${agentName}</strong><br>
+        Apex Financial
+      </p>
+    </div>
+    
+    <p style="font-size:12px;color:#6b7280;text-align:center;margin-top:32px;">
+      © ${new Date().getFullYear()} Apex Financial. All rights reserved.
+    </p>
+  </div>
+</body>
+</html>
+    `,
+  },
+  followup2_unlicensed: {
+    subject: "Don't let this opportunity slip away",
+    getHtml: (firstName: string, agentName: string) => `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#0a0a0a;color:#ffffff;">
+  <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
+    <div style="text-align:center;margin-bottom:32px;">
+      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">APEX FINANCIAL</h1>
+    </div>
+    
+    <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:16px;padding:32px;border:1px solid rgba(20,184,166,0.2);">
+      <h2 style="font-size:24px;margin:0 0 16px 0;color:#14b8a6;">Hey ${firstName}!</h2>
+      
+      <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 16px 0;">
+        I'm reaching out one more time because I genuinely believe you have what it takes to succeed in this industry. The only thing standing between you and a $10k+ monthly income is getting licensed.
+      </p>
+      
+      <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 16px 0;">
+        I know it can feel overwhelming, but here's the truth: the license exam is easier than most people think, and we have resources to help you pass on your first try.
+      </p>
+      
+      <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 24px 0;">
+        <strong style="color:#ffffff;">If you're still interested, let's talk.</strong> I can walk you through exactly what you need to do to get started—step by step.
+      </p>
+      
+      <div style="text-align:center;margin:32px 0;">
+        <a href="https://calendly.com/sam-com593/licensed-prospect-call-clone" 
+           style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#ffffff;padding:16px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;">
+          Get Licensed & Start Earning
+        </a>
+      </div>
+      
+      <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
+        Believe in you,<br>
+        <strong style="color:#ffffff;">${agentName}</strong><br>
+        Apex Financial
+      </p>
+    </div>
+    
+    <p style="font-size:12px;color:#6b7280;text-align:center;margin-top:32px;">
+      © ${new Date().getFullYear()} Apex Financial. All rights reserved.
+    </p>
+  </div>
+</body>
+</html>
+    `,
+  },
+  licensing_reminder: {
+    subject: "Quick reminder: Your license is the key 🔑",
+    getHtml: (firstName: string, agentName: string) => `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#0a0a0a;color:#ffffff;">
+  <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
+    <div style="text-align:center;margin-bottom:32px;">
+      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">APEX FINANCIAL</h1>
+    </div>
+    
+    <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:16px;padding:32px;border:1px solid rgba(20,184,166,0.2);">
+      <h2 style="font-size:24px;margin:0 0 16px 0;color:#14b8a6;">Hey ${firstName}!</h2>
+      
+      <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 16px 0;">
+        Just a friendly reminder that your life insurance license is the key that unlocks everything at Apex Financial.
+      </p>
+      
+      <div style="background:rgba(20,184,166,0.1);border-radius:8px;padding:20px;margin:20px 0;">
+        <p style="font-size:16px;color:#14b8a6;margin:0 0 12px 0;font-weight:bold;">What's waiting for you:</p>
+        <ul style="margin:0;padding-left:20px;color:#d1d5db;">
+          <li style="margin-bottom:8px;">Free leads provided daily</li>
+          <li style="margin-bottom:8px;">Starting income of $10k+/month</li>
+          <li style="margin-bottom:8px;">Full training and mentorship</li>
+          <li style="margin-bottom:8px;">Equity partnership opportunity</li>
+          <li>Work remotely or from the office</li>
+        </ul>
+      </div>
+      
+      <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 24px 0;">
+        <strong style="color:#ffffff;">Need help getting started with your course?</strong> Let's hop on a quick call and I'll walk you through the fastest path to getting licensed.
+      </p>
+      
+      <div style="text-align:center;margin:32px 0;">
+        <a href="https://calendly.com/sam-com593/licensed-prospect-call-clone" 
+           style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#ffffff;padding:16px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;">
+          Get Help With Licensing
+        </a>
+      </div>
+      
+      <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
+        Here to help,<br>
+        <strong style="color:#ffffff;">${agentName}</strong><br>
+        Apex Financial
+      </p>
+    </div>
+    
+    <p style="font-size:12px;color:#6b7280;text-align:center;margin-top:32px;">
+      © ${new Date().getFullYear()} Apex Financial. All rights reserved.
+    </p>
+  </div>
+</body>
+</html>
+    `,
+  },
 };
 
 type EmailTemplate = keyof typeof emailTemplates;
@@ -238,10 +401,12 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { applicationId, agentId, templateType } = await req.json() as {
+    const { applicationId, agentId, templateType, customSubject, customBody } = await req.json() as {
       applicationId: string;
       agentId: string;
       templateType: EmailTemplate;
+      customSubject?: string;
+      customBody?: string;
     };
 
     if (!applicationId || !templateType) {
@@ -288,13 +453,16 @@ const handler = async (req: Request): Promise<Response> => {
 
     const template = emailTemplates[templateType];
     const firstName = application.first_name;
-    const html = template.getHtml(firstName, agentName);
+    
+    // Use custom content if provided, otherwise use template defaults
+    const subject = customSubject || template.subject;
+    const html = customBody || template.getHtml(firstName, agentName);
 
     // Send email
     const { error: emailError } = await resend.emails.send({
       from: "Apex Financial <team@updates.apexlifeadvisors.com>",
       to: [application.email],
-      subject: template.subject,
+      subject,
       html,
     });
 
@@ -309,8 +477,8 @@ const handler = async (req: Request): Promise<Response> => {
       agent_id: agentId || null,
       contact_type: templateType.startsWith("cold") ? "cold_outreach" : "followup",
       email_template: templateType,
-      subject: template.subject,
-      notes: `Sent ${templateType.replace(/_/g, " ")} email`,
+      subject: subject,
+      notes: customBody ? `Sent customized ${templateType.replace(/_/g, " ")} email` : `Sent ${templateType.replace(/_/g, " ")} email`,
     });
 
     console.log(`Email sent successfully: ${templateType} to ${application.email}`);

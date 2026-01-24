@@ -13,12 +13,15 @@ import {
   Settings,
   UserCog,
   UsersRound,
+  Briefcase,
+  Archive,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PhonePromptBanner } from "@/components/dashboard/PhonePromptBanner";
+import { MiniLeaderboard } from "@/components/dashboard/MiniLeaderboard";
 import { cn } from "@/lib/utils";
 
 interface DashboardLayoutProps {
@@ -34,6 +37,10 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const navItems = [
     { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
     { icon: Users, label: "Applicants", href: "/dashboard/applicants" },
+    ...(isAdmin || isManager ? [
+      { icon: Briefcase, label: "CRM", href: "/dashboard/crm" },
+      { icon: Archive, label: "Aged Leads", href: "/dashboard/aged-leads" },
+    ] : []),
     { icon: UsersRound, label: "My Team", href: "/dashboard/team" },
     ...(isAdmin || isManager ? [
       { icon: Shield, label: "Admin Panel", href: "/dashboard/admin" },
@@ -110,29 +117,32 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             })}
           </nav>
 
-          {/* User & Logout */}
-          <div className="p-4 border-t border-border">
-            {user && (
-              <div className="mb-4 px-4 py-2">
-                <p className="text-sm font-medium truncate">
-                  {user.user_metadata?.full_name || user.email}
-                </p>
-                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-              </div>
-            )}
-            <div className="flex items-center justify-between px-4 mb-3">
-              <span className="text-sm text-muted-foreground">Theme</span>
-              <ThemeToggle />
+          {/* Mini Leaderboard in Sidebar */}
+          {(isManager || isAdmin) && <MiniLeaderboard />}
+        </div>
+
+        {/* User & Logout */}
+        <div className="p-4 border-t border-border">
+          {user && (
+            <div className="mb-4 px-4 py-2">
+              <p className="text-sm font-medium truncate">
+                {user.user_metadata?.full_name || user.email}
+              </p>
+              <p className="text-xs text-muted-foreground truncate">{user.email}</p>
             </div>
-            <Button
-              variant="ghost"
-              className="w-full justify-start text-muted-foreground hover:text-foreground"
-              onClick={handleLogout}
-            >
-              <LogOut className="h-5 w-5 mr-3" />
-              Sign Out
-            </Button>
+          )}
+          <div className="flex items-center justify-between px-4 mb-3">
+            <span className="text-sm text-muted-foreground">Theme</span>
+            <ThemeToggle />
           </div>
+          <Button
+            variant="ghost"
+            className="w-full justify-start text-muted-foreground hover:text-foreground"
+            onClick={handleLogout}
+          >
+            <LogOut className="h-5 w-5 mr-3" />
+            Sign Out
+          </Button>
         </div>
       </aside>
 

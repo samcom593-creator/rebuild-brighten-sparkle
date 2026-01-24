@@ -18,6 +18,9 @@ import Dashboard from "./pages/Dashboard";
 import DashboardApplicants from "./pages/DashboardApplicants";
 import DashboardAdmin from "./pages/DashboardAdmin";
 import DashboardAccounts from "./pages/DashboardAccounts";
+import DashboardCRM from "./pages/DashboardCRM";
+import DashboardAgedLeads from "./pages/DashboardAgedLeads";
+import ScheduleCall from "./pages/ScheduleCall";
 import Settings from "./pages/Settings";
 import TeamDirectory from "./pages/TeamDirectory";
 import PendingApproval from "./pages/PendingApproval";
@@ -42,6 +45,7 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/join" element={<AgentSignup />} />
+          <Route path="/schedule-call" element={<ScheduleCall />} />
           <Route path="/pending-approval" element={<PendingApproval />} />
           <Route
             path="/dashboard"
@@ -88,6 +92,22 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <TeamDirectory />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/crm"
+            element={
+              <ProtectedRoute>
+                <DashboardCRM />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/aged-leads"
+            element={
+              <ProtectedRoute>
+                <DashboardAgedLeads />
               </ProtectedRoute>
             }
           />

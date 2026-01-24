@@ -74,6 +74,62 @@ export type Database = {
         }
         Relationships: []
       }
+      aged_leads: {
+        Row: {
+          about_me: string | null
+          assigned_manager_id: string | null
+          created_at: string | null
+          email: string
+          first_name: string
+          id: string
+          last_name: string | null
+          license_status: string | null
+          notes: string | null
+          original_date: string | null
+          phone: string | null
+          processed_at: string | null
+          status: string | null
+        }
+        Insert: {
+          about_me?: string | null
+          assigned_manager_id?: string | null
+          created_at?: string | null
+          email: string
+          first_name: string
+          id?: string
+          last_name?: string | null
+          license_status?: string | null
+          notes?: string | null
+          original_date?: string | null
+          phone?: string | null
+          processed_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          about_me?: string | null
+          assigned_manager_id?: string | null
+          created_at?: string | null
+          email?: string
+          first_name?: string
+          id?: string
+          last_name?: string | null
+          license_status?: string | null
+          notes?: string | null
+          original_date?: string | null
+          phone?: string | null
+          processed_at?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aged_leads_assigned_manager_id_fkey"
+            columns: ["assigned_manager_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_achievements: {
         Row: {
           achievement_id: string
@@ -254,7 +310,11 @@ export type Database = {
       agents: {
         Row: {
           agent_code: string | null
+          attendance_status:
+            | Database["public"]["Enums"]["attendance_status"]
+            | null
           created_at: string
+          field_training_started_at: string | null
           id: string
           invited_by_manager_id: string | null
           license_states: string[] | null
@@ -264,6 +324,9 @@ export type Database = {
           onboarding_completed_at: string | null
           onboarding_stage:
             | Database["public"]["Enums"]["onboarding_stage"]
+            | null
+          performance_tier:
+            | Database["public"]["Enums"]["performance_tier"]
             | null
           profile_id: string | null
           start_date: string | null
@@ -278,7 +341,11 @@ export type Database = {
         }
         Insert: {
           agent_code?: string | null
+          attendance_status?:
+            | Database["public"]["Enums"]["attendance_status"]
+            | null
           created_at?: string
+          field_training_started_at?: string | null
           id?: string
           invited_by_manager_id?: string | null
           license_states?: string[] | null
@@ -288,6 +355,9 @@ export type Database = {
           onboarding_completed_at?: string | null
           onboarding_stage?:
             | Database["public"]["Enums"]["onboarding_stage"]
+            | null
+          performance_tier?:
+            | Database["public"]["Enums"]["performance_tier"]
             | null
           profile_id?: string | null
           start_date?: string | null
@@ -302,7 +372,11 @@ export type Database = {
         }
         Update: {
           agent_code?: string | null
+          attendance_status?:
+            | Database["public"]["Enums"]["attendance_status"]
+            | null
           created_at?: string
+          field_training_started_at?: string | null
           id?: string
           invited_by_manager_id?: string | null
           license_states?: string[] | null
@@ -312,6 +386,9 @@ export type Database = {
           onboarding_completed_at?: string | null
           onboarding_stage?:
             | Database["public"]["Enums"]["onboarding_stage"]
+            | null
+          performance_tier?:
+            | Database["public"]["Enums"]["performance_tier"]
             | null
           profile_id?: string | null
           start_date?: string | null
@@ -894,6 +971,7 @@ export type Database = {
         | "contracting"
         | "approved"
         | "rejected"
+      attendance_status: "good" | "warning" | "critical"
       license_progress:
         | "unlicensed"
         | "course_purchased"
@@ -906,6 +984,7 @@ export type Database = {
         | "training_online"
         | "in_field_training"
         | "evaluated"
+      performance_tier: "below_10k" | "standard" | "top_producer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1043,6 +1122,7 @@ export const Constants = {
         "approved",
         "rejected",
       ],
+      attendance_status: ["good", "warning", "critical"],
       license_progress: [
         "unlicensed",
         "course_purchased",
@@ -1057,6 +1137,7 @@ export const Constants = {
         "in_field_training",
         "evaluated",
       ],
+      performance_tier: ["below_10k", "standard", "top_producer"],
     },
   },
 } as const

@@ -24,6 +24,7 @@ import {
   ChevronUp,
   RotateCcw,
   Send,
+  FileCheck,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -59,6 +60,7 @@ import { QuickEmailMenu } from "@/components/dashboard/QuickEmailMenu";
 import { QuickAssignMenu } from "@/components/dashboard/QuickAssignMenu";
 import { LastContactedBadge } from "@/components/dashboard/LastContactedBadge";
 import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressSelector";
+import { ContractedModal } from "@/components/dashboard/ContractedModal";
 
 interface Application {
   id: string;
@@ -75,6 +77,7 @@ interface Application {
   contacted_at: string | null;
   qualified_at: string | null;
   closed_at: string | null;
+  contracted_at: string | null;
   terminated_at: string | null;
   termination_reason: string | null;
   started_training: boolean | null;
@@ -130,6 +133,9 @@ export default function DashboardApplicants() {
 
   // Manual follow-up state
   const [sendingFollowupId, setSendingFollowupId] = useState<string | null>(null);
+
+  // Contracted modal state
+  const [contractedApp, setContractedApp] = useState<Application | null>(null);
   
   // When deep linking, clear filters to ensure lead is visible
   useEffect(() => {
@@ -682,13 +688,38 @@ export default function DashboardApplicants() {
                   )}
                   
                   {status === "qualified" && (
+                    <>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => handleMarkAsClosed(app.id)}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        Close
+                      </Button>
+                      {app.license_status === "licensed" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setContractedApp(app)}
+                          className="text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
+                        >
+                          <FileCheck className="h-4 w-4 mr-1" />
+                          Contracted
+                        </Button>
+                      )}
+                    </>
+                  )}
+
+                  {status === "closed" && app.license_status === "licensed" && !app.contracted_at && (
                     <Button
-                      variant="default"
+                      variant="outline"
                       size="sm"
-                      onClick={() => handleMarkAsClosed(app.id)}
+                      onClick={() => setContractedApp(app)}
+                      className="text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
                     >
-                      <CheckCircle className="h-4 w-4 mr-1" />
-                      Close
+                      <FileCheck className="h-4 w-4 mr-1" />
+                      Contracted
                     </Button>
                   )}
 
@@ -929,6 +960,17 @@ export default function DashboardApplicants() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Contracted Modal */}
+      {contractedApp && agentId && (
+        <ContractedModal
+          open={!!contractedApp}
+          onOpenChange={(open) => !open && setContractedApp(null)}
+          application={contractedApp}
+          agentId={agentId}
+          onSuccess={fetchApplications}
+        />
+      )}
 
       {/* Lead Qualification Chat */}
       <LeadQualificationChat />

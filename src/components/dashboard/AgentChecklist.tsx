@@ -60,34 +60,34 @@ export function AgentChecklist({
     },
     {
       key: "has_discord_access",
-      label: "Discord",
+      label: "Discord Access",
       icon: MessageSquare,
       checked: hasDiscordAccess,
     },
   ];
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex flex-wrap items-center gap-2">
       {items.map((item) => (
         <button
           key={item.key}
           onClick={() => handleToggle(item.key, item.checked)}
           disabled={readOnly || updating === item.key}
           className={cn(
-            "flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-all",
+            "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all border",
             item.checked
-              ? "bg-green-500/20 text-green-400 border border-green-500/30"
-              : "bg-muted text-muted-foreground border border-border",
+              ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+              : "bg-muted/50 text-muted-foreground border-border/50",
             !readOnly && "hover:opacity-80 cursor-pointer",
             updating === item.key && "opacity-50"
           )}
-          title={item.label}
         >
-          <item.icon className="h-3 w-3" />
+          <item.icon className="h-3.5 w-3.5" />
+          <span>{item.label}</span>
           {item.checked ? (
-            <Check className="h-3 w-3" />
+            <Check className="h-3 w-3 ml-1" />
           ) : (
-            <X className="h-3 w-3 opacity-50" />
+            <X className="h-3 w-3 ml-1 opacity-50" />
           )}
         </button>
       ))}

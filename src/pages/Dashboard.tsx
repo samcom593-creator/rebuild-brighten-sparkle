@@ -293,7 +293,7 @@ export default function Dashboard() {
         <p className="text-muted-foreground">Here's your recruiting performance overview</p>
       </motion.div>
 
-      {/* Primary Stats Row - Removed Qualified */}
+      {/* Primary Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
         <StatCard
           title="Total Leads"
@@ -328,7 +328,7 @@ export default function Dashboard() {
       </div>
 
       {/* Secondary Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatCard
           title="Close Rate"
           value={`${stats.closeRate.toFixed(1)}%`}
@@ -350,6 +350,32 @@ export default function Dashboard() {
         />
         <EarningsPotentialCard leadCount={stats.totalLeads} />
       </div>
+
+      {/* Manager Leaderboard - MOVED UP - Visible to all managers and admins */}
+      {(isManager || isAdmin) && (
+        <div className="mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4"
+          >
+            <h3 className="text-xl font-bold">Recruiter Rankings</h3>
+            <p className="text-muted-foreground text-sm">
+              See how you stack up against other managers
+            </p>
+          </motion.div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ManagerLeaderboard />
+            <GrowthChart
+              dailyData={dailyData}
+              weeklyData={weeklyData}
+              monthlyData={monthlyData}
+              currentPeriodTotal={stats.totalLeads}
+              previousPeriodTotal={Math.round(stats.totalLeads * 0.87)}
+            />
+          </div>
+        </div>
+      )}
 
       {/* AI Features */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
@@ -382,50 +408,38 @@ export default function Dashboard() {
       {/* Lead Qualification Chat */}
       <LeadQualificationChat />
 
-      {/* Growth Analytics */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <GrowthChart
-          dailyData={dailyData}
-          weeklyData={weeklyData}
-          monthlyData={monthlyData}
-          currentPeriodTotal={stats.totalLeads}
-          previousPeriodTotal={Math.round(stats.totalLeads * 0.87)}
-          className="lg:col-span-2"
-        />
+      {/* Growth Analytics - For non-managers or additional charts */}
+      {!(isManager || isAdmin) && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <GrowthChart
+            dailyData={dailyData}
+            weeklyData={weeklyData}
+            monthlyData={monthlyData}
+            currentPeriodTotal={stats.totalLeads}
+            previousPeriodTotal={Math.round(stats.totalLeads * 0.87)}
+            className="lg:col-span-2"
+          />
+          <AnalyticsPieChart
+            title="Lead Sources"
+            icon={<MapPin className="h-5 w-5 text-primary" />}
+            data={sourceData}
+          />
+        </div>
+      )}
+
+      {/* Quick Analytics & License Distribution */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <AnalyticsPieChart
           title="Lead Sources"
           icon={<MapPin className="h-5 w-5 text-primary" />}
           data={sourceData}
         />
-      </div>
-
-      {/* Quick Analytics & License Distribution */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <AnalyticsPieChart
           title="License Status"
           icon={<Award className="h-5 w-5 text-primary" />}
           data={licenseData}
         />
       </div>
-
-      {/* Manager Leaderboard - Visible to all managers and admins */}
-      {(isManager || isAdmin) && (
-        <div className="mb-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-4"
-          >
-            <h3 className="text-xl font-bold">Recruiter Rankings</h3>
-            <p className="text-muted-foreground text-sm">
-              See how you stack up against other managers
-            </p>
-          </motion.div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <ManagerLeaderboard />
-          </div>
-        </div>
-      )}
 
       {/* Admin Quick Actions - Invite Manager Card */}
       {isAdmin && (

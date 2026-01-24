@@ -83,8 +83,8 @@ async function getAllManagerEmails(): Promise<Array<{ email: string; name: strin
 }
 
 async function getScoringManagerName(managerId: string | undefined, referralSource: string | undefined): Promise<string> {
+  // Priority 1: Check scoringManagerId (direct manager assignment)
   if (managerId) {
-    // Get manager's name from agent -> profile
     const { data: agentData } = await supabaseAdmin
       .from("agents")
       .select("user_id")
@@ -99,16 +99,18 @@ async function getScoringManagerName(managerId: string | undefined, referralSour
         .single();
 
       if (profileData?.full_name) {
+        console.log(`[Leaderboard] Found manager name from ID: ${profileData.full_name}`);
         return profileData.full_name;
       }
     }
   }
 
-  // Check referral_source for a name
+  // Priority 2: Check if referral_source is a manager UUID
   if (referralSource && referralSource.trim()) {
-    // If it's a UUID, try to look it up
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    
     if (uuidRegex.test(referralSource)) {
+      // It's a UUID - look up the manager's name
       const { data: agentData } = await supabaseAdmin
         .from("agents")
         .select("user_id")
@@ -123,15 +125,23 @@ async function getScoringManagerName(managerId: string | undefined, referralSour
           .single();
 
         if (profileData?.full_name) {
+          console.log(`[Leaderboard] Found manager name from referral UUID: ${profileData.full_name}`);
           return profileData.full_name;
         }
       }
     }
     
-    // Otherwise use the referral source as-is (might be a typed name)
-    return referralSource;
+    // IMPORTANT: Do NOT use generic referral sources like "Agent Referral", "Social Media", etc.
+    // These are NOT manager names - they are category labels from the application form.
+    // Only actual manager names should appear in leaderboard emails.
+    // If referral_source is not a UUID, it's either:
+    // - A generic category label (ignore these)
+    // - A typed "Word of mouth" name (these are NOT managers, so still organic)
+    
+    console.log(`[Leaderboard] referralSource "${referralSource}" is not a manager UUID - treating as organic`);
   }
 
+  // Default: No manager identified = Organic Lead
   return "Organic Lead";
 }
 

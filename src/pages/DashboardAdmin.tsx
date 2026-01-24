@@ -30,6 +30,7 @@ import { ManagerInviteLinks } from "@/components/dashboard/ManagerInviteLinks";
 import { AdminManagerInvites } from "@/components/dashboard/AdminManagerInvites";
 import { LeadReassignment } from "@/components/dashboard/LeadReassignment";
 import { LeadExporter } from "@/components/dashboard/LeadExporter";
+import { LeadImporter } from "@/components/dashboard/LeadImporter";
 import { BulkLeadAssignment } from "@/components/dashboard/BulkLeadAssignment";
 import { AbandonedLeadsPanel } from "@/components/dashboard/AbandonedLeadsPanel";
 import { AllLeadsPanel } from "@/components/dashboard/AllLeadsPanel";
@@ -416,7 +417,8 @@ export default function DashboardAdmin() {
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {/* Lead Exporter */}
+            {/* Lead Import/Export */}
+            <LeadImporter />
             <LeadExporter />
             {/* Real-time connection indicator */}
             <div className={cn(

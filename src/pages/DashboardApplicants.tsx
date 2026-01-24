@@ -58,6 +58,7 @@ import { LeadQualificationChat } from "@/components/dashboard/LeadQualificationC
 import { QuickEmailMenu } from "@/components/dashboard/QuickEmailMenu";
 import { QuickAssignMenu } from "@/components/dashboard/QuickAssignMenu";
 import { LastContactedBadge } from "@/components/dashboard/LastContactedBadge";
+import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressSelector";
 
 interface Application {
   id: string;
@@ -68,6 +69,7 @@ interface Application {
   city: string | null;
   state: string | null;
   license_status: "licensed" | "unlicensed" | "pending";
+  license_progress: "unlicensed" | "course_purchased" | "passed_test" | "waiting_on_license" | "licensed" | null;
   status: string;
   instagram_handle: string | null;
   contacted_at: string | null;
@@ -102,6 +104,7 @@ export default function DashboardApplicants() {
   const { user, isAdmin, isManager } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const highlightedLeadId = searchParams.get("lead");
+  const managerFilter = searchParams.get("manager");
   
   const [applications, setApplications] = useState<Application[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -169,7 +172,7 @@ export default function DashboardApplicants() {
 
   useEffect(() => {
     fetchApplications();
-  }, [user, highlightedLeadId, isAdmin, isManager]);
+  }, [user, highlightedLeadId, isAdmin, isManager, managerFilter]);
 
   const fetchApplications = async () => {
     if (!user) return;
@@ -185,6 +188,21 @@ export default function DashboardApplicants() {
 
     if (agentData) {
       setAgentId(agentData.id);
+    }
+
+    // If admin/manager with manager filter, filter by that manager
+    if (managerFilter && (isAdmin || isManager)) {
+      const { data: filteredApps, error } = await supabase
+        .from("applications")
+        .select("*")
+        .eq("assigned_agent_id", managerFilter)
+        .order("created_at", { ascending: false });
+      
+      if (!error && filteredApps) {
+        setApplications(filteredApps as Application[]);
+      }
+      setIsLoading(false);
+      return;
     }
     
     // For admins/managers with a highlighted lead, fetch that specific lead first
@@ -490,11 +508,22 @@ export default function DashboardApplicants() {
                 <Badge variant="outline" className={cn("capitalize", statusColors[status])}>
                   {status}
                 </Badge>
-                <Badge variant="outline" className={cn("capitalize", licenseColors[app.license_status])}>
-                  {app.license_status === "licensed" && <Award className="h-3 w-3 mr-1" />}
-                  {app.license_status === "unlicensed" && <GraduationCap className="h-3 w-3 mr-1" />}
-                  {app.license_status}
-                </Badge>
+                
+                {/* License Progress Selector (replaces static badge for unlicensed leads) */}
+                {!isTerminated && app.license_status !== "licensed" ? (
+                  <LicenseProgressSelector
+                    applicationId={app.id}
+                    currentProgress={app.license_progress}
+                    onProgressUpdated={fetchApplications}
+                  />
+                ) : (
+                  <Badge variant="outline" className={cn("capitalize", licenseColors[app.license_status])}>
+                    {app.license_status === "licensed" && <Award className="h-3 w-3 mr-1" />}
+                    {app.license_status === "unlicensed" && <GraduationCap className="h-3 w-3 mr-1" />}
+                    {app.license_status}
+                  </Badge>
+                )}
+                
                 {app.started_training && (
                   <Badge variant="outline" className="bg-primary/20 text-primary border-primary/30">
                     Started Training

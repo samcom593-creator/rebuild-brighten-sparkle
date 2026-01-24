@@ -8,6 +8,7 @@ import { CareerPathwaySection } from "@/components/landing/CareerPathwaySection"
 import { CTASection } from "@/components/landing/CTASection";
 import { Footer } from "@/components/landing/Footer";
 import { DealsTicker } from "@/components/landing/DealsTicker";
+import { ApplicationToast } from "@/components/landing/ApplicationToast";
 
 const Index = () => {
   return (
@@ -24,6 +25,9 @@ const Index = () => {
         <CTASection />
       </main>
       <Footer />
+      
+      {/* Synthetic "new application" notification popups */}
+      <ApplicationToast />
     </div>
   );
 };

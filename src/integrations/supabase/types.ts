@@ -1198,7 +1198,11 @@ export type Database = {
         | "rejected"
       attendance_mark: "present" | "absent" | "excused" | "unmarked"
       attendance_status: "good" | "warning" | "critical"
-      attendance_type: "training" | "onboarded_meeting" | "dialer_activity"
+      attendance_type:
+        | "training"
+        | "onboarded_meeting"
+        | "dialer_activity"
+        | "daily_sale"
       deactivation_reason: "bad_business" | "inactive" | "switched_teams"
       license_progress:
         | "unlicensed"
@@ -1352,7 +1356,12 @@ export const Constants = {
       ],
       attendance_mark: ["present", "absent", "excused", "unmarked"],
       attendance_status: ["good", "warning", "critical"],
-      attendance_type: ["training", "onboarded_meeting", "dialer_activity"],
+      attendance_type: [
+        "training",
+        "onboarded_meeting",
+        "dialer_activity",
+        "daily_sale",
+      ],
       deactivation_reason: ["bad_business", "inactive", "switched_teams"],
       license_progress: [
         "unlicensed",

@@ -627,19 +627,19 @@ export default function DashboardCRM() {
             </div>
           )}
 
-          {/* Live agents: Meetings + Dialed */}
+          {/* Live agents: Meeting attendance + Did they sell? */}
           {isInFieldActive && (
             <div className="border-t border-border pt-1.5 space-y-1">
               <AttendanceGrid
                 agentId={agent.id}
                 type="onboarded_meeting"
-                label="Meetings"
+                label="Meeting"
                 onMarkAbsent={() => handleMarkAbsent(agent.id)}
               />
               <AttendanceGrid
                 agentId={agent.id}
-                type="dialer_activity"
-                label="Dialed"
+                type="daily_sale"
+                label="Sold"
                 onMarkAbsent={() => handleMarkAbsent(agent.id)}
               />
             </div>

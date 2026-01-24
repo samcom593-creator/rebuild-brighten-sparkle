@@ -447,8 +447,10 @@ export type Database = {
           performance_tier:
             | Database["public"]["Enums"]["performance_tier"]
             | null
+          portal_password_set: boolean | null
           potential_rating: number | null
           profile_id: string | null
+          sort_order: number | null
           start_date: string | null
           status: Database["public"]["Enums"]["agent_status"]
           switched_to_manager_id: string | null
@@ -492,8 +494,10 @@ export type Database = {
           performance_tier?:
             | Database["public"]["Enums"]["performance_tier"]
             | null
+          portal_password_set?: boolean | null
           potential_rating?: number | null
           profile_id?: string | null
+          sort_order?: number | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["agent_status"]
           switched_to_manager_id?: string | null
@@ -537,8 +541,10 @@ export type Database = {
           performance_tier?:
             | Database["public"]["Enums"]["performance_tier"]
             | null
+          portal_password_set?: boolean | null
           potential_rating?: number | null
           profile_id?: string | null
+          sort_order?: number | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["agent_status"]
           switched_to_manager_id?: string | null
@@ -805,6 +811,65 @@ export type Database = {
             columns: ["application_id"]
             isOneToOne: false
             referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_production: {
+        Row: {
+          agent_id: string
+          aop: number
+          booked_inhome_referrals: number
+          closing_rate: number | null
+          created_at: string
+          deals_closed: number
+          hours_called: number
+          id: string
+          passed_price: number
+          presentations: number
+          production_date: string
+          referral_presentations: number
+          referrals_caught: number
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          aop?: number
+          booked_inhome_referrals?: number
+          closing_rate?: number | null
+          created_at?: string
+          deals_closed?: number
+          hours_called?: number
+          id?: string
+          passed_price?: number
+          presentations?: number
+          production_date?: string
+          referral_presentations?: number
+          referrals_caught?: number
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          aop?: number
+          booked_inhome_referrals?: number
+          closing_rate?: number | null
+          created_at?: string
+          deals_closed?: number
+          hours_called?: number
+          id?: string
+          passed_price?: number
+          presentations?: number
+          production_date?: string
+          referral_presentations?: number
+          referrals_caught?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_production_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
             referencedColumns: ["id"]
           },
         ]

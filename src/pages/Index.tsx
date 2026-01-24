@@ -7,10 +7,12 @@ import { SystemsSection } from "@/components/landing/SystemsSection";
 import { CareerPathwaySection } from "@/components/landing/CareerPathwaySection";
 import { CTASection } from "@/components/landing/CTASection";
 import { Footer } from "@/components/landing/Footer";
+import { DealsTicker } from "@/components/landing/DealsTicker";
 
 const Index = () => {
   return (
     <div className="min-h-screen bg-background">
+      <DealsTicker />
       <Navbar />
       <main>
         <HeroSection />

@@ -311,6 +311,19 @@
   }
 }
 
+@keyframes ticker-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.ticker-animate {
+  animation: ticker-scroll 25s linear infinite;
+}
+
 @keyframes counter-up {
   from {
     opacity: 0;

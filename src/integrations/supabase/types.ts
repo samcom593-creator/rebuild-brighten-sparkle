@@ -640,6 +640,63 @@ export type Database = {
         }
         Relationships: []
       }
+      partial_applications: {
+        Row: {
+          admin_notified_at: string | null
+          city: string | null
+          converted_at: string | null
+          created_at: string
+          email: string | null
+          first_name: string | null
+          form_data: Json | null
+          id: string
+          ip_address: string | null
+          last_name: string | null
+          phone: string | null
+          session_id: string
+          state: string | null
+          step_completed: number
+          updated_at: string
+          user_agent: string | null
+        }
+        Insert: {
+          admin_notified_at?: string | null
+          city?: string | null
+          converted_at?: string | null
+          created_at?: string
+          email?: string | null
+          first_name?: string | null
+          form_data?: Json | null
+          id?: string
+          ip_address?: string | null
+          last_name?: string | null
+          phone?: string | null
+          session_id: string
+          state?: string | null
+          step_completed?: number
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Update: {
+          admin_notified_at?: string | null
+          city?: string | null
+          converted_at?: string | null
+          created_at?: string
+          email?: string | null
+          first_name?: string | null
+          form_data?: Json | null
+          id?: string
+          ip_address?: string | null
+          last_name?: string | null
+          phone?: string | null
+          session_id?: string
+          state?: string | null
+          step_completed?: number
+          updated_at?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { AlertTriangle, Phone, Mail, Clock, RefreshCw } from "lucide-react";
+import { AlertTriangle, Phone, Mail, Clock, RefreshCw, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
@@ -25,11 +25,13 @@ interface AbandonedLead {
   state: string | null;
   stepCompleted: number;
   createdAt: string;
+  followupSentAt: string | null;
 }
 
 export function AbandonedLeadsPanel() {
   const [leads, setLeads] = useState<AbandonedLead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [sendingFollowup, setSendingFollowup] = useState<string | null>(null);
 
   const fetchAbandonedLeads = async () => {
     setIsLoading(true);
@@ -52,6 +54,7 @@ export function AbandonedLeadsPanel() {
         state: row.state,
         stepCompleted: row.step_completed,
         createdAt: row.created_at,
+        followupSentAt: (row.form_data as any)?.followup_sent_at || null,
       }));
 
       setLeads(mappedLeads);
@@ -60,6 +63,30 @@ export function AbandonedLeadsPanel() {
       toast.error("Failed to load abandoned leads");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleSendFollowup = async (lead: AbandonedLead) => {
+    if (!lead.email) {
+      toast.error("No email address for this lead");
+      return;
+    }
+
+    setSendingFollowup(lead.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-abandoned-followup", {
+        body: { partialApplicationId: lead.id },
+      });
+
+      if (error) throw error;
+
+      toast.success(`Follow-up email sent to ${lead.email}`);
+      fetchAbandonedLeads(); // Refresh to show updated status
+    } catch (error: any) {
+      console.error("Error sending follow-up:", error);
+      toast.error(error.message || "Failed to send follow-up email");
+    } finally {
+      setSendingFollowup(null);
     }
   };
 
@@ -162,16 +189,28 @@ export function AbandonedLeadsPanel() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1">
+                      {lead.email && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 px-2 gap-1 text-xs"
+                          onClick={() => handleSendFollowup(lead)}
+                          disabled={sendingFollowup === lead.id}
+                        >
+                          <Send className={`h-3 w-3 ${sendingFollowup === lead.id ? "animate-pulse" : ""}`} />
+                          {lead.followupSentAt ? "Resend" : "Follow Up"}
+                        </Button>
+                      )}
                       {lead.phone && (
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
+                          className="h-7 w-7"
                           asChild
                         >
                           <a href={`tel:${lead.phone}`}>
-                            <Phone className="h-4 w-4 text-primary" />
+                            <Phone className="h-3.5 w-3.5 text-primary" />
                           </a>
                         </Button>
                       )}
@@ -179,11 +218,11 @@ export function AbandonedLeadsPanel() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8"
+                          className="h-7 w-7"
                           asChild
                         >
                           <a href={`mailto:${lead.email}`}>
-                            <Mail className="h-4 w-4 text-primary" />
+                            <Mail className="h-3.5 w-3.5 text-primary" />
                           </a>
                         </Button>
                       )}

@@ -47,7 +47,7 @@ const applicationSchema = z.object({
   hasInsuranceExperience: z.boolean().default(false),
   yearsExperience: z.number().min(0).max(50).optional(),
   previousCompany: z.string().max(100).optional(),
-  previousProduction: z.number().min(0).optional(),
+  numberOfDownlines: z.number().min(0).optional(),
   
   // Step 3: Licensing
   licenseStatus: z.enum(["licensed", "unlicensed", "pending"]),
@@ -55,8 +55,9 @@ const applicationSchema = z.object({
   licensedStates: z.array(z.string()).optional(),
   
   // Step 4: Goals
-  availability: z.string().min(1, "Availability is required"),
+  availability: z.string().min(1, "Please select your availability"),
   referralSource: z.string().optional(),
+  whyJoin: z.string().optional(),
 });
 
 type ApplicationFormData = z.infer<typeof applicationSchema>;
@@ -209,8 +210,8 @@ export default function Apply() {
         ? (data.yearsExperience as number)
         : undefined;
 
-      const previousProduction = Number.isFinite(data.previousProduction as number)
-        ? (data.previousProduction as number)
+      const numberOfDownlines = Number.isFinite(data.numberOfDownlines as number)
+        ? (data.numberOfDownlines as number)
         : undefined;
 
       const { data: submitResult, error } = await supabase.functions.invoke(
@@ -228,7 +229,7 @@ export default function Apply() {
             hasInsuranceExperience: data.hasInsuranceExperience,
             yearsExperience,
             previousCompany: data.previousCompany,
-            previousProduction,
+            numberOfDownlines,
 
             licenseStatus: data.licenseStatus,
             niprNumber: data.niprNumber,
@@ -549,12 +550,12 @@ export default function Apply() {
                           </div>
 
                           <div className="space-y-2">
-                            <Label htmlFor="previousProduction">Annual Premium Production ($)</Label>
+                            <Label htmlFor="numberOfDownlines">Number of Downlines (if any)</Label>
                             <Input
-                              id="previousProduction"
+                              id="numberOfDownlines"
                               type="number"
-                              {...register("previousProduction", { valueAsNumber: true })}
-                              placeholder="100000"
+                              {...register("numberOfDownlines", { valueAsNumber: true })}
+                              placeholder="0"
                               className="bg-input"
                             />
                           </div>

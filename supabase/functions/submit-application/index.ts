@@ -74,7 +74,7 @@ const SubmitApplicationSchema = z.object({
   hasInsuranceExperience: z.boolean().default(false),
   yearsExperience: NumOptional(0, 50),
   previousCompany: z.string().max(200).optional().nullable(),
-  previousProduction: NumOptional(0, 100000000),
+  numberOfDownlines: NumOptional(0, 10000),
 
   licenseStatus: z.enum(["licensed", "unlicensed", "pending"]),
   niprNumber: z.string().max(20).optional().nullable(),
@@ -700,7 +700,7 @@ const handler = async (req: Request): Promise<Response> => {
       has_insurance_experience: data.hasInsuranceExperience,
       years_experience: data.yearsExperience ?? null,
       previous_company: data.previousCompany ?? null,
-      previous_production: data.previousProduction ?? null,
+      previous_production: data.numberOfDownlines ?? null, // Stores number of downlines
 
       license_status: data.licenseStatus,
       nipr_number: data.niprNumber ?? null,

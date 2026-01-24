@@ -380,6 +380,41 @@ export type Database = {
           },
         ]
       }
+      agent_ratings: {
+        Row: {
+          agent_id: string
+          created_at: string
+          id: string
+          rated_by: string
+          rating: number
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          id?: string
+          rated_by: string
+          rating: number
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          id?: string
+          rated_by?: string
+          rating?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_ratings_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agents: {
         Row: {
           agent_code: string | null
@@ -388,6 +423,9 @@ export type Database = {
             | null
           created_at: string
           crm_setup_link: string | null
+          deactivation_reason:
+            | Database["public"]["Enums"]["deactivation_reason"]
+            | null
           evaluated_at: string | null
           evaluated_by: string | null
           evaluation_result: string | null
@@ -413,6 +451,7 @@ export type Database = {
           profile_id: string | null
           start_date: string | null
           status: Database["public"]["Enums"]["agent_status"]
+          switched_to_manager_id: string | null
           total_earnings: number | null
           total_policies: number | null
           total_premium: number | null
@@ -420,6 +459,7 @@ export type Database = {
           user_id: string | null
           verified_at: string | null
           verified_by: string | null
+          weekly_10k_badges: number | null
         }
         Insert: {
           agent_code?: string | null
@@ -428,6 +468,9 @@ export type Database = {
             | null
           created_at?: string
           crm_setup_link?: string | null
+          deactivation_reason?:
+            | Database["public"]["Enums"]["deactivation_reason"]
+            | null
           evaluated_at?: string | null
           evaluated_by?: string | null
           evaluation_result?: string | null
@@ -453,6 +496,7 @@ export type Database = {
           profile_id?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["agent_status"]
+          switched_to_manager_id?: string | null
           total_earnings?: number | null
           total_policies?: number | null
           total_premium?: number | null
@@ -460,6 +504,7 @@ export type Database = {
           user_id?: string | null
           verified_at?: string | null
           verified_by?: string | null
+          weekly_10k_badges?: number | null
         }
         Update: {
           agent_code?: string | null
@@ -468,6 +513,9 @@ export type Database = {
             | null
           created_at?: string
           crm_setup_link?: string | null
+          deactivation_reason?:
+            | Database["public"]["Enums"]["deactivation_reason"]
+            | null
           evaluated_at?: string | null
           evaluated_by?: string | null
           evaluation_result?: string | null
@@ -493,6 +541,7 @@ export type Database = {
           profile_id?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["agent_status"]
+          switched_to_manager_id?: string | null
           total_earnings?: number | null
           total_policies?: number | null
           total_premium?: number | null
@@ -500,6 +549,7 @@ export type Database = {
           user_id?: string | null
           verified_at?: string | null
           verified_by?: string | null
+          weekly_10k_badges?: number | null
         }
         Relationships: [
           {
@@ -521,6 +571,13 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agents_switched_to_manager_id_fkey"
+            columns: ["switched_to_manager_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
             referencedColumns: ["id"]
           },
         ]
@@ -1076,7 +1133,8 @@ export type Database = {
         | "rejected"
       attendance_mark: "present" | "absent" | "excused" | "unmarked"
       attendance_status: "good" | "warning" | "critical"
-      attendance_type: "training" | "onboarded_meeting"
+      attendance_type: "training" | "onboarded_meeting" | "dialer_activity"
+      deactivation_reason: "bad_business" | "inactive" | "switched_teams"
       license_progress:
         | "unlicensed"
         | "course_purchased"
@@ -1229,7 +1287,8 @@ export const Constants = {
       ],
       attendance_mark: ["present", "absent", "excused", "unmarked"],
       attendance_status: ["good", "warning", "critical"],
-      attendance_type: ["training", "onboarded_meeting"],
+      attendance_type: ["training", "onboarded_meeting", "dialer_activity"],
+      deactivation_reason: ["bad_business", "inactive", "switched_teams"],
       license_progress: [
         "unlicensed",
         "course_purchased",

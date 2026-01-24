@@ -12,6 +12,7 @@ import { PersonalStatsCard } from "@/components/dashboard/PersonalStatsCard";
 import { ProductionHistoryChart } from "@/components/dashboard/ProductionHistoryChart";
 import { ClosingRateLeaderboard } from "@/components/dashboard/ClosingRateLeaderboard";
 import { ReferralLeaderboard } from "@/components/dashboard/ReferralLeaderboard";
+import { TeamGoalsTracker } from "@/components/dashboard/TeamGoalsTracker";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -243,12 +244,17 @@ export default function AgentPortal() {
           </section>
         )}
 
-        {/* SECTION 5: Additional Leaderboards (Closing Rate & Referrals) */}
+        {/* SECTION 5: Team Goals Tracker */}
+        <section>
+          <TeamGoalsTracker key={`goals-${refreshKey}`} />
+        </section>
+
+        {/* SECTION 6: Additional Leaderboards (Closing Rate & Referrals) */}
         <section>
           <div className="grid md:grid-cols-2 gap-4">
             <ClosingRateLeaderboard 
               key={`closing-${refreshKey}`}
-              currentAgentId={agentId || undefined} 
+              currentAgentId={agentId || undefined}
               period="week" 
             />
             <ReferralLeaderboard 

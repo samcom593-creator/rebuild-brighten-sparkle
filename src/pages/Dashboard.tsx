@@ -23,6 +23,7 @@ import { EarningsPotentialCard } from "@/components/dashboard/EarningsPotentialC
 import { ManagerTeamView } from "@/components/dashboard/ManagerTeamView";
 import { InviteManagerCard } from "@/components/dashboard/InviteManagerCard";
 import { LeadQualificationChat } from "@/components/dashboard/LeadQualificationChat";
+import { ManagerLeaderboard } from "@/components/dashboard/ManagerLeaderboard";
 import { useAuth } from "@/hooks/useAuth";
 
 interface DashboardStats {
@@ -416,6 +417,25 @@ export default function Dashboard() {
           valueLabel="closed"
         />
       </div>
+
+      {/* Manager Leaderboard - Visible to all managers and admins */}
+      {(isManager || isAdmin) && (
+        <div className="mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4"
+          >
+            <h3 className="text-xl font-bold">Recruiter Rankings</h3>
+            <p className="text-muted-foreground text-sm">
+              See how you stack up against other managers
+            </p>
+          </motion.div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <ManagerLeaderboard />
+          </div>
+        </div>
+      )}
 
       {/* Admin Quick Actions - Invite Manager Card */}
       {isAdmin && (

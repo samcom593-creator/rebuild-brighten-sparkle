@@ -9,9 +9,7 @@ import {
   Loader2,
   Bell,
   Check,
-  Lock,
-  Eye,
-  EyeOff,
+  KeyRound,
   Instagram,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,10 +27,7 @@ export function ProfileSettings() {
   const { user, profile, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [emailLoading, setEmailLoading] = useState(false);
-  const [passwordLoading, setPasswordLoading] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
   
   const [formData, setFormData] = useState({
     fullName: "",
@@ -45,12 +40,6 @@ export function ProfileSettings() {
   });
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-
-  const [newEmail, setNewEmail] = useState("");
-  const [passwordData, setPasswordData] = useState({
-    newPassword: "",
-    confirmPassword: "",
-  });
 
   const [notifications, setNotifications] = useState({
     emailNewApplication: true,
@@ -69,7 +58,6 @@ export function ProfileSettings() {
         bio: profile.bio || "",
         instagramHandle: profile.instagram_handle || "",
       });
-      setNewEmail(profile.email || "");
       setAvatarUrl(profile.avatar_url || null);
     }
   }, [profile]);
@@ -94,10 +82,15 @@ export function ProfileSettings() {
         instagramHandle = instagramHandle.substring(1);
       }
 
-      const { error } = await supabase
+      // Check if email changed
+      const emailChanged = formData.email !== profile?.email;
+
+      // Update profile
+      const { error: profileError } = await supabase
         .from("profiles")
         .update({
           full_name: formData.fullName,
+          email: formData.email,
           phone: formData.phone,
           city: formData.city,
           state: formData.state,
@@ -106,21 +99,43 @@ export function ProfileSettings() {
         })
         .eq("user_id", user.id);
 
-      if (error) throw error;
+      if (profileError) throw profileError;
+
+      // If email changed, also update auth email
+      if (emailChanged) {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-user-email`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+            },
+            body: JSON.stringify({ newEmail: formData.email }),
+          }
+        );
+
+        if (!response.ok) {
+          const result = await response.json();
+          throw new Error(result.error || "Failed to update email");
+        }
+      }
 
       await refreshProfile();
       setSaved(true);
       toast({
         title: "Profile Updated",
-        description: "Your profile has been saved successfully.",
+        description: emailChanged 
+          ? "Your profile and email have been saved successfully."
+          : "Your profile has been saved successfully.",
       });
 
       setTimeout(() => setSaved(false), 3000);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error updating profile:", err);
       toast({
         title: "Error",
-        description: "Failed to update profile. Please try again.",
+        description: err.message || "Failed to update profile. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -128,106 +143,46 @@ export function ProfileSettings() {
     }
   };
 
-  const handleEmailChange = async () => {
-    if (!user) return;
-    if (newEmail === formData.email) {
-      toast({ title: "No changes", description: "Email is the same." });
-      return;
-    }
-
-    // Basic email validation
-    if (!newEmail || !newEmail.includes("@")) {
+  const handlePasswordReset = async () => {
+    if (!formData.email) {
       toast({
-        title: "Invalid Email",
-        description: "Please enter a valid email address.",
+        title: "No Email",
+        description: "Please enter your email address first.",
         variant: "destructive",
       });
       return;
     }
 
-    setEmailLoading(true);
+    setResetLoading(true);
     try {
-      // Call the edge function for direct email update
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-user-email`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-password-reset`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
-          },
-          body: JSON.stringify({ newEmail }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: formData.email }),
         }
       );
 
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || "Failed to update email");
+        throw new Error(result.error || "Failed to send reset email");
       }
 
-      // Update local state
-      setFormData((prev) => ({ ...prev, email: newEmail }));
-      
-      // Refresh profile to get updated data
-      await refreshProfile();
-
       toast({
-        title: "Email Updated",
-        description: "Your email has been changed successfully. You can now log in with your new email.",
+        title: "Password Reset Sent! 📧",
+        description: `Check ${formData.email} for a link to reset your password.`,
       });
     } catch (err: any) {
-      console.error("Error updating email:", err);
+      console.error("Error sending password reset:", err);
       toast({
         title: "Error",
-        description: err.message || "Failed to update email. Please try again.",
+        description: err.message || "Failed to send password reset. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setEmailLoading(false);
-    }
-  };
-
-  const handlePasswordChange = async () => {
-    if (!user) return;
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast({
-        title: "Password Mismatch",
-        description: "New password and confirmation do not match.",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (passwordData.newPassword.length < 6) {
-      toast({
-        title: "Password Too Short",
-        description: "Password must be at least 6 characters.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setPasswordLoading(true);
-    try {
-      const { error } = await supabase.auth.updateUser({
-        password: passwordData.newPassword,
-      });
-      if (error) throw error;
-
-      toast({
-        title: "Password Updated",
-        description: "Your password has been changed successfully.",
-      });
-      setPasswordData({ newPassword: "", confirmPassword: "" });
-    } catch (err) {
-      console.error("Error updating password:", err);
-      toast({
-        title: "Error",
-        description: "Failed to update password. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setPasswordLoading(false);
+      setResetLoading(false);
     }
   };
 
@@ -298,14 +253,13 @@ export function ProfileSettings() {
                 <Input
                   id="email"
                   name="email"
+                  type="email"
                   value={formData.email}
-                  disabled
-                  className="pl-10 opacity-50"
+                  onChange={handleChange}
+                  className="pl-10"
+                  placeholder="you@example.com"
                 />
               </div>
-              <p className="text-xs text-muted-foreground">
-                To change email, use the Account Security section below
-              </p>
             </div>
 
             <div className="space-y-2">
@@ -389,108 +343,32 @@ export function ProfileSettings() {
             )}
             {loading ? "Saving..." : saved ? "Saved!" : "Save Changes"}
           </Button>
-        </form>
-      </GlassCard>
 
-      {/* Email & Password Settings */}
-      <GlassCard className="p-6">
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <Lock className="h-5 w-5 text-primary" />
-          Account Security
-        </h3>
-
-        <div className="space-y-6">
-          {/* Email Change */}
-          <div className="space-y-3">
-            <Label htmlFor="newEmail">Email Address</Label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="newEmail"
-                  type="email"
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                  className="pl-10"
-                />
+          {/* Password Reset Section */}
+          <div className="pt-4 border-t border-border">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Need to change your password?</p>
+                <p className="text-sm text-muted-foreground">
+                  We'll send a reset link to your email
+                </p>
               </div>
               <Button
                 type="button"
-                onClick={handleEmailChange}
-                disabled={emailLoading || newEmail === formData.email}
                 variant="outline"
+                onClick={handlePasswordReset}
+                disabled={resetLoading}
               >
-                {emailLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update"}
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Your email will be updated immediately. Security notifications will be sent to both your old and new email addresses.
-            </p>
-          </div>
-
-          <div className="border-t border-border pt-6">
-            <Label className="text-base font-medium">Change Password</Label>
-            <div className="mt-3 space-y-3">
-              <div className="space-y-2">
-                <Label htmlFor="newPassword" className="text-sm">New Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="newPassword"
-                    type={showNewPassword ? "text" : "password"}
-                    value={passwordData.newPassword}
-                    onChange={(e) => setPasswordData((prev) => ({ ...prev, newPassword: e.target.value }))}
-                    className="pl-10 pr-10"
-                    placeholder="••••••••"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowNewPassword(!showNewPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="text-sm">Confirm New Password</Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="confirmPassword"
-                    type={showConfirmPassword ? "text" : "password"}
-                    value={passwordData.confirmPassword}
-                    onChange={(e) => setPasswordData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
-                    className="pl-10 pr-10"
-                    placeholder="••••••••"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
-
-              <Button
-                type="button"
-                onClick={handlePasswordChange}
-                disabled={passwordLoading || !passwordData.newPassword}
-                className="w-full"
-              >
-                {passwordLoading ? (
+                {resetLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 ) : (
-                  <Lock className="h-4 w-4 mr-2" />
+                  <KeyRound className="h-4 w-4 mr-2" />
                 )}
-                {passwordLoading ? "Updating..." : "Update Password"}
+                {resetLoading ? "Sending..." : "Reset Password"}
               </Button>
             </div>
           </div>
-        </div>
+        </form>
       </GlassCard>
 
       {/* Notification Preferences */}

@@ -1,6 +1,19 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
+    <script>
+      (function() {
+        const theme = localStorage.getItem('theme') || 'dark';
+        const root = document.documentElement;
+        root.classList.remove('light', 'dark');
+        if (theme === 'system') {
+          const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          root.classList.add(systemTheme);
+        } else {
+          root.classList.add(theme);
+        }
+      })();
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>APEX Financial - Build Your Career in Financial Services</title>

@@ -185,7 +185,11 @@ export default function Apply() {
 
   const nextStep = async () => {
     const isValid = await validateStep(currentStep);
-    if (isValid && currentStep < 5) {
+    if (!isValid) {
+      toast.error("Please fill in all required fields before continuing");
+      return;
+    }
+    if (currentStep < 5) {
       setCurrentStep(currentStep + 1);
     }
   };

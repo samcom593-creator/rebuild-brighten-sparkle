@@ -209,7 +209,7 @@ async function sendLeaderboardEmail(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Apex Financial <notifications@apexfinancialenterprises.com>",
+        from: "APEX Financial <noreply@apex-financial.org>",
         to: [recipientEmail],
         subject: subject,
         html: emailHtml,
@@ -258,7 +258,7 @@ const handler = async (req: Request): Promise<Response> => {
     
     console.log(`[Leaderboard] Scorer: ${scorerName} (organic: ${isOrganic})`);
 
-    // Send to all managers
+    // Send to all managers with rate limiting
     let sentCount = 0;
     for (const manager of managers) {
       const sent = await sendLeaderboardEmail(
@@ -267,6 +267,9 @@ const handler = async (req: Request): Promise<Response> => {
         scorerName
       );
       if (sent) sentCount++;
+      
+      // Add delay between emails to prevent rate limiting
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
 
     console.log(`[Leaderboard] ✅ Completed: ${sentCount}/${managers.length} emails sent`);

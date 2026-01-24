@@ -105,3 +105,6 @@ verify_jwt = false
 
 [functions.send-daily-leaderboard-summary]
 verify_jwt = false
+
+[functions.send-password-reset]
+verify_jwt = false

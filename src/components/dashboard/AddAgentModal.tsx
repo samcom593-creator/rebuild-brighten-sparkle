@@ -158,6 +158,15 @@ export function AddAgentModal({ onAgentAdded }: AddAgentModalProps) {
         }
       }
 
+      // Send welcome email
+      try {
+        await supabase.functions.invoke("welcome-new-agent", {
+          body: { agentName: `${firstName} ${lastName}`, agentEmail: email },
+        });
+      } catch (emailError) {
+        console.log("Welcome email skipped:", emailError);
+      }
+
       toast.success("Agent added successfully!");
       setOpen(false);
       resetForm();

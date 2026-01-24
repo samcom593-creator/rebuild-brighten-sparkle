@@ -864,6 +864,126 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
+    // 12. Instagram Handle Reminder Email to all managers
+    if (flowType === "instagram-reminder") {
+      try {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        
+        const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+        const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+
+        // Get all managers/admins
+        const { data: roleData } = await supabaseAdmin
+          .from("user_roles")
+          .select("user_id, role")
+          .in("role", ["manager", "admin"]);
+
+        const sentResults: { email: string; name: string; success: boolean; error?: string }[] = [];
+
+        for (const role of roleData || []) {
+          // Get email from auth.users
+          const { data: authData, error: authError } = await supabaseAdmin.auth.admin.getUserById(role.user_id);
+          
+          if (authError || !authData?.user?.email) {
+            continue;
+          }
+
+          // Get name and instagram handle from profiles
+          const { data: profileData } = await supabaseAdmin
+            .from("profiles")
+            .select("full_name, instagram_handle")
+            .eq("user_id", role.user_id)
+            .single();
+
+          const managerName = profileData?.full_name || authData.user.email;
+          const hasInstagram = !!profileData?.instagram_handle;
+
+          // Send reminder email
+          try {
+            await resend.emails.send({
+              from: "APEX Financial <noreply@apex-financial.org>",
+              to: [authData.user.email],
+              subject: hasInstagram 
+                ? "📱 Your Instagram Handle is Set - Thanks!" 
+                : "📱 Add Your Instagram Handle for Referrals",
+              html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                  <div style="background: linear-gradient(135deg, #D4AF37, #C5A028); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                    <h1 style="color: #000000; margin: 0; font-size: 24px;">
+                      ${hasInstagram ? "✅ Your Profile is Complete!" : "📱 Update Your Profile"}
+                    </h1>
+                  </div>
+                  
+                  <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
+                    <h2 style="color: #111827; margin-top: 0;">Hi ${managerName.split(' ')[0]},</h2>
+                    
+                    ${hasInstagram ? `
+                      <p style="color: #4b5563; line-height: 1.6;">
+                        Great news! Your Instagram handle <strong>@${profileData?.instagram_handle}</strong> is already set up and visible to applicants.
+                      </p>
+                      <p style="color: #4b5563; line-height: 1.6;">
+                        When applicants select you as their referrer, they'll see: <strong>${managerName} (@${profileData?.instagram_handle})</strong>
+                      </p>
+                    ` : `
+                      <p style="color: #4b5563; line-height: 1.6;">
+                        Applicants can now select you as their referrer when applying to APEX! To help them recognize you (especially from Instagram), please update your Instagram handle in your profile settings.
+                      </p>
+                      
+                      <div style="background: #fef3c7; border-left: 4px solid #D4AF37; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+                        <p style="margin: 0; color: #92400e; font-weight: 500;">
+                          📌 Without your Instagram handle, applicants only see your name. Adding your handle makes it easier for recruits from Instagram to identify you!
+                        </p>
+                      </div>
+
+                      <div style="text-align: center; margin: 25px 0;">
+                        <a href="${DASHBOARD_URL}/settings" style="display: inline-block; background: linear-gradient(135deg, #D4AF37, #C5A028); color: #000000; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
+                          ⚙️ Update Your Profile Now
+                        </a>
+                      </div>
+
+                      <p style="color: #6b7280; font-size: 14px;">
+                        <strong>How to update:</strong><br>
+                        1. Go to Dashboard → Settings<br>
+                        2. Find "Instagram Handle" field<br>
+                        3. Enter your handle (without the @)<br>
+                        4. Click Save Changes
+                      </p>
+                    `}
+
+                    <p style="color: #4b5563; margin-top: 30px;">
+                      Keep scaling up! 🚀<br>
+                      <strong style="color: #D4AF37;">The APEX Team</strong>
+                    </p>
+                  </div>
+
+                  <div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">
+                    <p>Apex Financial Enterprises</p>
+                  </div>
+                </div>
+              `,
+            });
+            sentResults.push({ email: authData.user.email, name: managerName, success: true });
+          } catch (e: any) {
+            sentResults.push({ email: authData.user.email, name: managerName, success: false, error: e.message });
+          }
+
+          // Rate limiting delay
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+
+        const successfulSends = sentResults.filter(r => r.success).length;
+        results.push({ 
+          flow: "instagram-reminder", 
+          success: true,
+          details: `Sent ${successfulSends}/${sentResults.length} Instagram reminder emails`,
+          sentResults
+        });
+      } catch (e: any) {
+        results.push({ flow: "instagram-reminder", success: false, error: e.message });
+      }
+    }
+
     const successCount = results.filter((r) => r.success).length;
     const failCount = results.filter((r) => !r.success).length;
 

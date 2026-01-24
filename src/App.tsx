@@ -112,6 +112,14 @@ const App = () => (
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/agent-portal"
+            element={
+              <ProtectedRoute>
+                <AgentPortal />
+              </ProtectedRoute>
+            }
+          />
           {/* Legacy redirect */}
           <Route path="/dashboard/leads" element={<DashboardApplicants />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

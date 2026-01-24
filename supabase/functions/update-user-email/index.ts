@@ -42,19 +42,19 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Verify the user's JWT and get their claims
+    // Verify the user's JWT and get their user data
     const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabaseAdmin.auth.getClaims(token);
+    const { data: { user: authUser }, error: userError } = await supabaseAdmin.auth.getUser(token);
     
-    if (claimsError || !claimsData?.claims) {
-      console.error("Claims error:", claimsError);
+    if (userError || !authUser) {
+      console.error("Auth error:", userError);
       return new Response(
         JSON.stringify({ error: "Unauthorized - Invalid token" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const userId = claimsData.claims.sub as string;
+    const userId = authUser.id;
     console.log("Processing email update for user:", userId);
 
     // Verify the user has manager or admin role

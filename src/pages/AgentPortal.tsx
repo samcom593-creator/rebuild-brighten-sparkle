@@ -1,16 +1,31 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
-import { RefreshCw, User, Calendar, LogOut } from "lucide-react";
+import { RefreshCw, User, Calendar, LogOut, Trophy, TrendingUp, Sparkles, Quote } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ProductionEntry } from "@/components/dashboard/ProductionEntry";
-import { LiveLeaderboard } from "@/components/dashboard/LiveLeaderboard";
+import { LeaderboardTabs } from "@/components/dashboard/LeaderboardTabs";
+import { PersonalStatsCard } from "@/components/dashboard/PersonalStatsCard";
+import { ProductionHistoryChart } from "@/components/dashboard/ProductionHistoryChart";
+import { ClosingRateLeaderboard } from "@/components/dashboard/ClosingRateLeaderboard";
+import { ReferralLeaderboard } from "@/components/dashboard/ReferralLeaderboard";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+
+const motivationalQuotes = [
+  "Success is not final, failure is not fatal: it's the courage to continue that counts.",
+  "The only way to do great work is to love what you do.",
+  "Your limitation—it's only your imagination.",
+  "Push yourself, because no one else is going to do it for you.",
+  "Great things never come from comfort zones.",
+  "Dream it. Wish it. Do it.",
+  "Stay focused and never give up.",
+  "The harder you work, the luckier you get.",
+];
 
 export default function AgentPortal() {
   const navigate = useNavigate();
@@ -19,6 +34,12 @@ export default function AgentPortal() {
   const [todayProduction, setTodayProduction] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isAdminViewing, setIsAdminViewing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Random quote for the day (consistent per session)
+  const [quote] = useState(() => 
+    motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)]
+  );
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -100,6 +121,11 @@ export default function AgentPortal() {
     }
   };
 
+  const handleSaved = () => {
+    fetchAgentData();
+    setRefreshKey((k) => k + 1);
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/login");
@@ -108,7 +134,10 @@ export default function AgentPortal() {
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+        <div className="text-center">
+          <RefreshCw className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading your portal...</p>
+        </div>
       </div>
     );
   }
@@ -119,7 +148,7 @@ export default function AgentPortal() {
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center text-white font-bold">
+            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center text-white font-bold shadow-lg shadow-primary/20">
               {profile?.full_name?.charAt(0).toUpperCase() || "A"}
             </div>
             <div>
@@ -141,6 +170,7 @@ export default function AgentPortal() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6 space-y-6">
+        {/* Admin Notice */}
         {isAdminViewing && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -153,71 +183,101 @@ export default function AgentPortal() {
           </motion.div>
         )}
 
+        {/* Welcome Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
         >
-          <h2 className="text-2xl font-bold gradient-text mb-2">Agent Portal</h2>
-          <p className="text-muted-foreground">
-            Log your daily numbers and track your performance
-          </p>
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-bold gradient-text flex items-center gap-2">
+              <Sparkles className="h-6 w-6 sm:h-7 sm:w-7" />
+              Agent Performance Portal
+            </h2>
+            <p className="text-muted-foreground mt-1">
+              Track your numbers, compete with peers, and crush your goals
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <TrendingUp className="h-4 w-4 text-emerald-500" />
+            <span className="text-muted-foreground">Live updates</span>
+          </div>
         </motion.div>
 
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* Production Entry */}
-          <div>
-            {agentId ? (
-              <ProductionEntry
-                agentId={agentId}
-                existingData={todayProduction}
-                onSaved={fetchAgentData}
-              />
-            ) : isAdminViewing ? (
-              <GlassCard className="p-6 text-center">
-                <User className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-muted-foreground">No agent record found. Production entry is view-only.</p>
-              </GlassCard>
-            ) : null}
+        {/* SECTION 1: Production Entry (Always at top) */}
+        <section>
+          {agentId ? (
+            <ProductionEntry
+              agentId={agentId}
+              existingData={todayProduction}
+              onSaved={handleSaved}
+            />
+          ) : isAdminViewing ? (
+            <GlassCard className="p-6 text-center">
+              <User className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+              <p className="text-muted-foreground">No agent record found. Production entry is view-only.</p>
+            </GlassCard>
+          ) : null}
+        </section>
 
-            {/* Stats Summary */}
-            {todayProduction && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="mt-4"
-              >
-                <GlassCard className="p-4">
-                  <h3 className="font-semibold text-sm mb-2">Today's Summary</h3>
-                  <div className="grid grid-cols-3 gap-3 text-center">
-                    <div>
-                      <p className="text-2xl font-bold text-primary">
-                        {todayProduction.deals_closed}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Deals</p>
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold gradient-text">
-                        ${Number(todayProduction.aop).toLocaleString()}
-                      </p>
-                      <p className="text-xs text-muted-foreground">AOP</p>
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold">
-                        {Number(todayProduction.closing_rate).toFixed(0)}%
-                      </p>
-                      <p className="text-xs text-muted-foreground">Close Rate</p>
-                    </div>
-                  </div>
-                </GlassCard>
-              </motion.div>
-            )}
-          </div>
+        {/* SECTION 2: Main Leaderboard with Day/Week/Month Tabs */}
+        <section>
+          <LeaderboardTabs key={`leaderboard-${refreshKey}`} currentAgentId={agentId || undefined} />
+        </section>
 
-          {/* Leaderboard */}
-          <div>
-            <LiveLeaderboard currentAgentId={agentId || undefined} />
+        {/* SECTION 3: Personal Stats vs Agency Averages */}
+        {agentId && (
+          <section>
+            <PersonalStatsCard 
+              key={`stats-${refreshKey}`}
+              agentId={agentId} 
+              todayProduction={todayProduction} 
+            />
+          </section>
+        )}
+
+        {/* SECTION 4: 4-Week Production History Chart */}
+        {agentId && (
+          <section>
+            <ProductionHistoryChart key={`history-${refreshKey}`} agentId={agentId} />
+          </section>
+        )}
+
+        {/* SECTION 5: Additional Leaderboards (Closing Rate & Referrals) */}
+        <section>
+          <div className="grid md:grid-cols-2 gap-4">
+            <ClosingRateLeaderboard 
+              key={`closing-${refreshKey}`}
+              currentAgentId={agentId || undefined} 
+              period="week" 
+            />
+            <ReferralLeaderboard 
+              key={`referral-${refreshKey}`}
+              currentAgentId={agentId || undefined} 
+              period="week" 
+            />
           </div>
-        </div>
+        </section>
+
+        {/* SECTION 6: Motivational Footer */}
+        <motion.section
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+        >
+          <GlassCard className="p-6 text-center bg-gradient-to-br from-primary/5 via-transparent to-emerald-500/5">
+            <Quote className="h-6 w-6 mx-auto mb-3 text-primary/50" />
+            <p className="text-sm sm:text-base italic text-muted-foreground max-w-2xl mx-auto">
+              "{quote}"
+            </p>
+            <div className="mt-4 flex items-center justify-center gap-2">
+              <Trophy className="h-4 w-4 text-amber-400" />
+              <span className="text-xs text-muted-foreground">
+                Keep grinding. Your success is built one day at a time.
+              </span>
+            </div>
+          </GlassCard>
+        </motion.section>
       </main>
     </div>
   );

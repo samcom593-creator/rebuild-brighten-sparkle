@@ -86,7 +86,7 @@ const handler = async (req: Request): Promise<Response> => {
           from: "APEX Financial Empire <notifications@tx.apex-financial.org>",
           to: [profile.email],
           subject: hadProduction 
-            ? `📈 Your Performance Summary - $${aop.toLocaleString()}`
+            ? `📈 Your Performance Summary - $${aop.toLocaleString()} ALP`
             : `📊 Yesterday's Performance Summary`,
           html: `
             <!DOCTYPE html>

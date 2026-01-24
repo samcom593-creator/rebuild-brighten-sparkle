@@ -25,6 +25,7 @@ import Settings from "./pages/Settings";
 import TeamDirectory from "./pages/TeamDirectory";
 import PendingApproval from "./pages/PendingApproval";
 import NotFound from "./pages/NotFound";
+import AgentPortal from "./pages/AgentPortal";
 
 const queryClient = new QueryClient();
 

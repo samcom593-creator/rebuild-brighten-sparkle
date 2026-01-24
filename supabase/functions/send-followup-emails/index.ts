@@ -113,6 +113,96 @@ async function sendUnlicensedFollowup(app: {
   }
 }
 
+// Send second unlicensed follow-up (7 days after application - "Are you licensed yet?")
+async function sendUnlicensedFollowup2(app: {
+  id: string;
+  first_name: string;
+  email: string;
+}): Promise<boolean> {
+  if (!resend) {
+    console.log("Resend not configured, skipping second unlicensed followup for:", app.email);
+    return false;
+  }
+
+  try {
+    const response = await resend.emails.send({
+      from: "APEX Financial <noreply@apex-financial.org>",
+      to: [app.email],
+      subject: "Are You Licensed Yet? 🎓",
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #059669, #047857); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+            <h1 style="color: white; margin: 0; font-size: 26px;">How's It Coming Along?</h1>
+          </div>
+          
+          <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
+            <h2 style="color: #111827; margin-top: 0;">Hey ${app.first_name}! 👋</h2>
+            
+            <p style="color: #4b5563; line-height: 1.6; font-size: 16px;">
+              It's been about a week since you applied to join APEX Financial. We wanted to check in and see how your licensing journey is going!
+            </p>
+
+            <div style="background: #d1fae5; border-left: 4px solid #059669; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+              <p style="margin: 0; color: #047857; font-weight: 600; font-size: 18px;">
+                🎓 Are you licensed yet?
+              </p>
+            </div>
+
+            <p style="color: #4b5563; line-height: 1.6; font-size: 16px;">
+              If you've completed your licensing, <strong>congratulations!</strong> Let's get you started right away. Book your onboarding call below:
+            </p>
+            
+            <div style="text-align: center; margin: 25px 0;">
+              <a href="${LICENSED_CALENDLY}" 
+                 style="display: inline-block; background: linear-gradient(135deg, #059669, #047857); color: white; 
+                        padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;
+                        box-shadow: 0 4px 14px rgba(5, 150, 105, 0.4);">
+                📅 I'm Licensed - Schedule My Call!
+              </a>
+            </div>
+
+            <div style="border-top: 1px solid #e5e7eb; margin: 25px 0; padding-top: 25px;">
+              <p style="color: #4b5563; line-height: 1.6; font-size: 16px;">
+                <strong>Still working on it?</strong> No worries! Here are your resources again:
+              </p>
+              
+              <ul style="color: #4b5563; line-height: 2; font-size: 15px; margin: 15px 0;">
+                <li><a href="https://youtu.be/i1e5p-GEfAU" style="color: #059669; font-weight: 500;">▶️ Watch: Licensing Overview Video</a></li>
+                <li><a href="https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg/edit" style="color: #059669; font-weight: 500;">📄 Licensing Step-by-Step Guide</a></li>
+                <li><a href="https://partners.xcelsolutions.com/afe" style="color: #059669; font-weight: 500;">📚 Start/Continue Pre-Licensing Course</a></li>
+              </ul>
+            </div>
+
+            <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+              <p style="margin: 0; color: #92400e; font-weight: 500;">
+                💡 Need help? Schedule a quick call and we'll walk you through the process step-by-step!
+              </p>
+            </div>
+            
+            <div style="text-align: center; margin: 25px 0;">
+              <a href="${UNLICENSED_CALENDLY}" 
+                 style="display: inline-block; background: #f59e0b; color: white; 
+                        padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;">
+                📞 I Need Help Getting Licensed
+              </a>
+            </div>
+
+            <p style="color: #9ca3af; font-size: 13px; text-align: center; margin-top: 25px;">
+              We're here to support you every step of the way!
+            </p>
+          </div>
+        </div>
+      `,
+    });
+
+    console.log("Second unlicensed followup sent to:", app.email, response);
+    return true;
+  } catch (error) {
+    console.error("Failed to send second unlicensed followup to:", app.email, error);
+    return false;
+  }
+}
+
 // Send licensed follow-up (3-4 days after application if not contacted)
 async function sendLicensedFollowup(app: {
   id: string;
@@ -214,8 +304,17 @@ const handler = async (req: Request): Promise<Response> => {
     const fourDaysAgoStart = new Date(fourDaysAgo);
     fourDaysAgoStart.setHours(0, 0, 0, 0);
 
+    // For second unlicensed followup, check 7 days ago
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const sevenDaysAgoStart = new Date(sevenDaysAgo);
+    sevenDaysAgoStart.setHours(0, 0, 0, 0);
+    const sevenDaysAgoEnd = new Date(sevenDaysAgo);
+    sevenDaysAgoEnd.setHours(23, 59, 59, 999);
+
     console.log("Checking for unlicensed apps from:", threeDaysAgoStart.toISOString(), "to", threeDaysAgoEnd.toISOString());
     console.log("Checking for licensed apps from:", fourDaysAgoStart.toISOString(), "to", threeDaysAgoEnd.toISOString());
+    console.log("Checking for second unlicensed followup from:", sevenDaysAgoStart.toISOString(), "to", sevenDaysAgoEnd.toISOString());
 
     // Find unlicensed applicants from exactly 3 days ago who haven't received followup
     const { data: unlicensedApps, error: unlicensedError } = await supabaseAdmin
@@ -230,6 +329,22 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (unlicensedError) {
       console.error("Error fetching unlicensed apps:", unlicensedError);
+    }
+
+    // Find unlicensed applicants from 7 days ago for second followup ("Are you licensed yet?")
+    const { data: unlicensedApps2, error: unlicensedError2 } = await supabaseAdmin
+      .from("applications")
+      .select("id, first_name, email")
+      .eq("license_status", "unlicensed")
+      .not("followup_sent_at", "is", null) // Must have received first followup
+      .is("followup_unlicensed_2_sent_at", null)
+      .is("closed_at", null)
+      .is("terminated_at", null)
+      .gte("created_at", sevenDaysAgoStart.toISOString())
+      .lte("created_at", sevenDaysAgoEnd.toISOString());
+
+    if (unlicensedError2) {
+      console.error("Error fetching second unlicensed apps:", unlicensedError2);
     }
 
     // Find licensed applicants from 3-4 days ago who haven't been contacted and haven't received followup
@@ -249,12 +364,14 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     console.log("Found unlicensed apps for followup:", unlicensedApps?.length || 0);
+    console.log("Found unlicensed apps for second followup:", unlicensedApps2?.length || 0);
     console.log("Found licensed apps for followup:", licensedApps?.length || 0);
 
     let unlicensedSent = 0;
+    let unlicensed2Sent = 0;
     let licensedSent = 0;
 
-    // Send unlicensed follow-ups
+    // Send unlicensed follow-ups (first - 3 days)
     for (const app of unlicensedApps || []) {
       const sent = await sendUnlicensedFollowup(app);
       if (sent) {
@@ -264,6 +381,19 @@ const handler = async (req: Request): Promise<Response> => {
           .update({ followup_sent_at: new Date().toISOString() })
           .eq("id", app.id);
         unlicensedSent++;
+      }
+    }
+
+    // Send second unlicensed follow-ups (7 days - "Are you licensed yet?")
+    for (const app of unlicensedApps2 || []) {
+      const sent = await sendUnlicensedFollowup2(app);
+      if (sent) {
+        // Mark as sent
+        await supabaseAdmin
+          .from("applications")
+          .update({ followup_unlicensed_2_sent_at: new Date().toISOString() })
+          .eq("id", app.id);
+        unlicensed2Sent++;
       }
     }
 
@@ -284,6 +414,8 @@ const handler = async (req: Request): Promise<Response> => {
       success: true,
       unlicensedChecked: unlicensedApps?.length || 0,
       unlicensedSent,
+      unlicensed2Checked: unlicensedApps2?.length || 0,
+      unlicensed2Sent,
       licensedChecked: licensedApps?.length || 0,
       licensedSent,
       timestamp: new Date().toISOString(),

@@ -135,20 +135,52 @@ export function ProfileSettings() {
       return;
     }
 
+    // Basic email validation
+    if (!newEmail || !newEmail.includes("@")) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setEmailLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({ email: newEmail });
-      if (error) throw error;
+      // Call the edge function for direct email update
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-user-email`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          },
+          body: JSON.stringify({ newEmail }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to update email");
+      }
+
+      // Update local state
+      setFormData((prev) => ({ ...prev, email: newEmail }));
+      
+      // Refresh profile to get updated data
+      await refreshProfile();
 
       toast({
-        title: "Email Update Initiated",
-        description: "Check your new email for a confirmation link.",
+        title: "Email Updated",
+        description: "Your email has been changed successfully. You can now log in with your new email.",
       });
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error updating email:", err);
       toast({
         title: "Error",
-        description: "Failed to update email. Please try again.",
+        description: err.message || "Failed to update email. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -392,7 +424,7 @@ export function ProfileSettings() {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              After updating, you'll receive a confirmation link at both your old and new email addresses. Your profile will automatically sync once confirmed.
+              Your email will be updated immediately. Security notifications will be sent to both your old and new email addresses.
             </p>
           </div>
 

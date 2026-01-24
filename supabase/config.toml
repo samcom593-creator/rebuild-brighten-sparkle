@@ -27,3 +27,6 @@ verify_jwt = false
 
 [functions.ai-assistant]
 verify_jwt = false
+
+[functions.update-user-email]
+verify_jwt = false

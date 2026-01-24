@@ -138,126 +138,94 @@ async function getScoringManagerName(managerId: string | undefined, referralSour
 async function sendLeaderboardEmail(
   recipientEmail: string,
   recipientName: string,
-  scorerName: string,
-  applicantName: string,
-  applicantLocation: string,
-  licenseStatus: string,
-  isOrganic: boolean
+  scoringManagerName: string
 ): Promise<boolean> {
   if (!RESEND_API_KEY) {
     console.log("[Leaderboard] Resend not configured, skipping email to:", recipientEmail);
     return false;
   }
 
-  const isLicensed = licenseStatus === "licensed";
-  const badgeColor = isLicensed ? "#22c55e" : "#f59e0b";
-  const badgeText = isLicensed ? "LICENSED" : "UNLICENSED";
-  
-  const subjectLine = isOrganic 
-    ? `🎯 New Organic Lead - ${applicantName}!`
-    : `🏆 ${scorerName} Scored Another Recruit!`;
+  const isOrganic = scoringManagerName === "Organic Lead";
+  const subject = isOrganic 
+    ? "🔥 New Organic Lead!" 
+    : `🏆 ${scoringManagerName} Scored Another Recruit!`;
 
-  const headerText = isOrganic
-    ? `New organic lead just applied!`
-    : `${sanitizeHtml(scorerName)} just landed a new recruit!`;
+  const headline = isOrganic
+    ? "A new organic lead just came in!"
+    : `${sanitizeHtml(scoringManagerName)} scored another recruit!`;
 
-  const html = `
+  const emailHtml = `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc;">
-  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-    
-    <!-- Trophy Header -->
-    <div style="background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%); border-radius: 16px 16px 0 0; padding: 30px; text-align: center;">
-      <div style="font-size: 48px; margin-bottom: 10px;">${isOrganic ? '🎯' : '🏆'}</div>
-      <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700;">
-        ${headerText}
-      </h1>
-    </div>
-
-    <!-- Main Content -->
-    <div style="background-color: #ffffff; padding: 30px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-      
-      <!-- Applicant Card -->
-      <div style="background-color: #f1f5f9; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-        <div style="display: flex; align-items: center; margin-bottom: 15px;">
-          <div style="background-color: #1e3a5f; color: white; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; margin-right: 15px;">
-            ${applicantName.charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <h2 style="margin: 0; color: #1e293b; font-size: 18px;">${sanitizeHtml(applicantName)}</h2>
-            <p style="margin: 5px 0 0 0; color: #64748b; font-size: 14px;">📍 ${sanitizeHtml(applicantLocation || 'Location not specified')}</p>
-          </div>
-        </div>
-        
-        <!-- License Badge -->
-        <div style="display: inline-block; background-color: ${badgeColor}; color: white; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;">
-          ${badgeText}
-        </div>
-      </div>
-
-      ${!isOrganic ? `
-      <!-- Scorer Highlight -->
-      <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 20px;">
-        <p style="margin: 0; color: #92400e; font-size: 14px;">Referred by</p>
-        <p style="margin: 5px 0 0 0; color: #78350f; font-size: 20px; font-weight: 700;">⭐ ${sanitizeHtml(scorerName)}</p>
-      </div>
-      ` : `
-      <!-- Organic Lead Call to Action -->
-      <div style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 20px;">
-        <p style="margin: 0; color: #1e40af; font-size: 16px; font-weight: 600;">🔥 This is an organic lead!</p>
-        <p style="margin: 10px 0 0 0; color: #1e40af; font-size: 14px;">First to reach out gets the credit!</p>
-      </div>
-      `}
-
-      <!-- Motivational Footer -->
-      <div style="text-align: center; padding-top: 20px; border-top: 1px solid #e2e8f0;">
-        <p style="color: #64748b; font-size: 14px; margin: 0;">
-          Keep recruiting and grow your team! 💪
-        </p>
-      </div>
-    </div>
-
-    <!-- Footer -->
-    <div style="text-align: center; padding: 20px; color: #94a3b8; font-size: 12px;">
-      <p style="margin: 0;">Apex Financial Enterprises</p>
-      <p style="margin: 5px 0 0 0;">You're receiving this because you're part of the management team.</p>
-    </div>
-  </div>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 500px; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #D4AF37, #C5A028); padding: 30px; text-align: center;">
+              <h1 style="margin: 0; color: #000000; font-size: 28px; font-weight: bold;">
+                ${headline}
+              </h1>
+            </td>
+          </tr>
+          
+          <!-- Body -->
+          <tr>
+            <td style="padding: 40px 30px; text-align: center;">
+              <p style="margin: 0; color: #333333; font-size: 18px; line-height: 1.6;">
+                Keep scaling up your team. Let's go! 🚀
+              </p>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #1a1a1a; padding: 20px; text-align: center;">
+              <p style="margin: 0; color: #888888; font-size: 12px;">
+                Apex Financial Enterprises
+              </p>
+            </td>
+          </tr>
+          
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
-</html>
-  `;
+</html>`;
 
   try {
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
+        "Authorization": `Bearer ${RESEND_API_KEY}`,
         "Content-Type": "application/json",
-        Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "Apex Financial <notifications@apex-financial.org>",
+        from: "Apex Financial <notifications@apexfinancialenterprises.com>",
         to: [recipientEmail],
-        subject: subjectLine,
-        html: html,
+        subject: subject,
+        html: emailHtml,
       }),
     });
 
-    const result = await response.json();
-    
-    if (response.ok) {
-      console.log(`[Leaderboard] ✅ Email sent to ${recipientEmail}:`, result.id);
-      return true;
-    } else {
-      console.error(`[Leaderboard] ❌ Failed to send to ${recipientEmail}:`, result);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Leaderboard] Failed to send to ${recipientEmail}:`, errorText);
       return false;
     }
+
+    console.log(`[Leaderboard] ✅ Email sent to ${recipientEmail}`);
+    return true;
   } catch (error) {
-    console.error(`[Leaderboard] ❌ Error sending to ${recipientEmail}:`, error);
+    console.error(`[Leaderboard] Error sending to ${recipientEmail}:`, error);
     return false;
   }
 }
@@ -290,26 +258,16 @@ const handler = async (req: Request): Promise<Response> => {
     
     console.log(`[Leaderboard] Scorer: ${scorerName} (organic: ${isOrganic})`);
 
-    // Build location string
-    const location = [body.applicantCity, body.applicantState].filter(Boolean).join(", ") || "Unknown";
-
     // Send to all managers
     let sentCount = 0;
-    const sendPromises = managers.map(async (manager) => {
-      const success = await sendLeaderboardEmail(
+    for (const manager of managers) {
+      const sent = await sendLeaderboardEmail(
         manager.email,
         manager.name,
-        scorerName,
-        body.applicantName,
-        location,
-        body.licenseStatus,
-        isOrganic
+        scorerName
       );
-      if (success) sentCount++;
-      return success;
-    });
-
-    await Promise.all(sendPromises);
+      if (sent) sentCount++;
+    }
 
     console.log(`[Leaderboard] ✅ Completed: ${sentCount}/${managers.length} emails sent`);
 

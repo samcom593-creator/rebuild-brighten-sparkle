@@ -15,6 +15,7 @@ import {
   Edit,
   UserX,
   UserCheck,
+  Loader2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -86,8 +87,10 @@ export default function DashboardAccounts() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<AccountInfo | null>(null);
   const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
   const [editRole, setEditRole] = useState<"admin" | "manager" | "agent">("agent");
   const [isSaving, setIsSaving] = useState(false);
+  const [isUpdatingEmail, setIsUpdatingEmail] = useState(false);
 
   useEffect(() => {
     fetchAccounts();
@@ -161,8 +164,53 @@ export default function DashboardAccounts() {
   const handleEditAccount = (account: AccountInfo) => {
     setEditingAccount(account);
     setEditName(account.name);
+    setEditEmail(account.email);
     setEditRole(account.role);
     setEditDialogOpen(true);
+  };
+
+  const handleUpdateEmail = async () => {
+    if (!editingAccount || !isAdmin) return;
+    if (editEmail === editingAccount.email) {
+      toast.info("Email is the same");
+      return;
+    }
+    if (!editEmail || !editEmail.includes("@")) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+
+    setIsUpdatingEmail(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-user-email`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          },
+          body: JSON.stringify({ 
+            newEmail: editEmail,
+            targetUserId: editingAccount.userId
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to update email");
+      }
+
+      toast.success(`Email updated to ${editEmail}`);
+      fetchAccounts();
+    } catch (err: any) {
+      console.error("Error updating email:", err);
+      toast.error(err.message || "Failed to update email");
+    } finally {
+      setIsUpdatingEmail(false);
+    }
   };
 
   const handleSaveEdit = async () => {
@@ -481,19 +529,45 @@ export default function DashboardAccounts() {
               />
             </div>
             {isAdmin && (
-              <div className="space-y-2">
-                <Label htmlFor="edit-role">Role</Label>
-                <Select value={editRole} onValueChange={(v) => setEditRole(v as "admin" | "manager" | "agent")}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="agent">Agent</SelectItem>
-                    <SelectItem value="manager">Manager</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-email">Email Address</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="edit-email"
+                      type="email"
+                      value={editEmail}
+                      onChange={(e) => setEditEmail(e.target.value)}
+                      placeholder="Enter email address"
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleUpdateEmail}
+                      disabled={isUpdatingEmail || editEmail === editingAccount?.email}
+                    >
+                      {isUpdatingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update"}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Email will be updated immediately without confirmation required.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-role">Role</Label>
+                  <Select value={editRole} onValueChange={(v) => setEditRole(v as "admin" | "manager" | "agent")}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="agent">Agent</SelectItem>
+                      <SelectItem value="manager">Manager</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
             )}
           </div>
           <DialogFooter>

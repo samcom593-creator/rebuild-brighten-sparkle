@@ -15,6 +15,7 @@ const supabaseAdmin = createClient(
 
 interface UpdateEmailRequest {
   newEmail: string;
+  targetUserId?: string; // Optional: Admin can change email for another user
 }
 
 function sanitizeHtml(str: string): string {
@@ -72,7 +73,9 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const userRoles = roles?.map((r) => r.role) || [];
-    const isManagerOrAdmin = userRoles.includes("manager") || userRoles.includes("admin");
+    const isManager = userRoles.includes("manager");
+    const isAdmin = userRoles.includes("admin");
+    const isManagerOrAdmin = isManager || isAdmin;
 
     if (!isManagerOrAdmin) {
       return new Response(
@@ -82,7 +85,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Parse request body
-    const { newEmail }: UpdateEmailRequest = await req.json();
+    const { newEmail, targetUserId }: UpdateEmailRequest = await req.json();
 
     if (!newEmail || !newEmail.includes("@")) {
       return new Response(
@@ -91,13 +94,28 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Get the user's current email before updating
-    const { data: currentUserData, error: currentUserError } = await supabaseAdmin.auth.admin.getUserById(userId);
+    // Determine whose email to change
+    let userIdToUpdate = userId;
+    
+    // If targetUserId is provided, only admins can change another user's email
+    if (targetUserId && targetUserId !== userId) {
+      if (!isAdmin) {
+        return new Response(
+          JSON.stringify({ error: "Only admins can change another user's email" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      userIdToUpdate = targetUserId;
+      console.log(`Admin ${userId} is changing email for user ${targetUserId}`);
+    }
+
+    // Get the target user's current email before updating
+    const { data: currentUserData, error: currentUserError } = await supabaseAdmin.auth.admin.getUserById(userIdToUpdate);
     
     if (currentUserError || !currentUserData?.user) {
-      console.error("Error fetching current user:", currentUserError);
+      console.error("Error fetching target user:", currentUserError);
       return new Response(
-        JSON.stringify({ error: "Failed to fetch current user data" }),
+        JSON.stringify({ error: "Failed to fetch user data" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -115,7 +133,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Update the email using Admin API (bypasses confirmation requirement)
     const { data: updateData, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-      userId,
+      userIdToUpdate,
       { 
         email: newEmail,
         email_confirm: true // Mark as confirmed immediately
@@ -130,31 +148,31 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    console.log("Auth email updated successfully");
+    console.log("Auth email updated successfully for user:", userIdToUpdate);
 
     // Update the profiles table
     const { error: profileError } = await supabaseAdmin
       .from("profiles")
       .update({ email: newEmail })
-      .eq("user_id", userId);
+      .eq("user_id", userIdToUpdate);
 
     if (profileError) {
       console.error("Error updating profile email:", profileError);
       // Don't fail the request, the auth email is already updated
     } else {
-      console.log("Profile email updated successfully");
+      console.log("Profile email updated successfully for user:", userIdToUpdate);
     }
 
     // Log the activity
     const { error: logError } = await supabaseAdmin
       .from("activity_logs")
       .insert({
-        user_id: userId,
-        action: "email_changed",
+        user_id: userId, // Who made the change
+        action: targetUserId && targetUserId !== userId ? "admin_email_changed" : "email_changed",
         entity_type: "user",
-        entity_id: userId,
+        entity_id: userIdToUpdate, // Whose email was changed
         old_values: { email: oldEmail },
-        new_values: { email: newEmail },
+        new_values: { email: newEmail, changed_by: userId },
       });
 
     if (logError) {
@@ -166,14 +184,15 @@ const handler = async (req: Request): Promise<Response> => {
     if (resendApiKey) {
       const resend = new Resend(resendApiKey);
 
-      // Get user's name for the email
+      // Get target user's name for the email
       const { data: profile } = await supabaseAdmin
         .from("profiles")
         .select("full_name")
-        .eq("user_id", userId)
+        .eq("user_id", userIdToUpdate)
         .single();
 
       const userName = profile?.full_name || "Team Member";
+      const isAdminChange = targetUserId && targetUserId !== userId;
       const sanitizedOldEmail = sanitizeHtml(oldEmail || "");
       const sanitizedNewEmail = sanitizeHtml(newEmail);
       const sanitizedName = sanitizeHtml(userName);
@@ -181,6 +200,7 @@ const handler = async (req: Request): Promise<Response> => {
       // Send alert to OLD email
       if (oldEmail) {
         try {
+          const adminNote = isAdminChange ? "<p><em>This change was made by an administrator.</em></p>" : "";
           await resend.emails.send({
             from: "APEX Financial <noreply@apex-financial.org>",
             to: [oldEmail],
@@ -194,6 +214,7 @@ const handler = async (req: Request): Promise<Response> => {
                   <p style="margin: 0;"><strong>Previous email:</strong> ${sanitizedOldEmail}</p>
                   <p style="margin: 8px 0 0 0;"><strong>New email:</strong> ${sanitizedNewEmail}</p>
                 </div>
+                ${adminNote}
                 <p style="color: #dc2626;"><strong>If you did not make this change, please contact support immediately.</strong></p>
                 <p>Best regards,<br>The APEX Financial Team</p>
               </div>

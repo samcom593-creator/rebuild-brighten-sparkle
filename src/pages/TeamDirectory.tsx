@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  Instagram, 
+import {
+  Mail,
+  Phone,
+  Instagram,
   Users,
   Loader2,
   ExternalLink,
@@ -15,6 +14,7 @@ import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { ManagersPanel } from "@/components/dashboard/ManagersPanel";
 
 interface ManagerProfile {
   id: string;
@@ -28,7 +28,7 @@ interface ManagerProfile {
 }
 
 export default function TeamDirectory() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isAdmin, isManager, isLoading: authLoading } = useAuth();
   const [manager, setManager] = useState<ManagerProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -37,11 +37,17 @@ export default function TeamDirectory() {
     const fetchManagerInfo = async () => {
       if (!user) return;
 
+      // Admins/managers see the full panel, agents see their specific manager
+      if (isAdmin || isManager) {
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       setError(null);
 
       try {
-        // First, get the current user's agent record
+        // Get the current user's agent record
         const { data: agentData, error: agentError } = await supabase
           .from("agents")
           .select("invited_by_manager_id")
@@ -108,7 +114,7 @@ export default function TeamDirectory() {
     };
 
     fetchManagerInfo();
-  }, [user]);
+  }, [user, isAdmin, isManager]);
 
   if (authLoading || loading) {
     return (
@@ -120,6 +126,37 @@ export default function TeamDirectory() {
     );
   }
 
+  // Admin/Manager View - show all managers
+  if (isAdmin || isManager) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="flex items-center gap-3 mb-2">
+              <Users className="h-8 w-8 text-primary" />
+              <h1 className="text-3xl font-bold">Team Directory</h1>
+            </div>
+            <p className="text-muted-foreground">
+              View and manage all managers in your organization
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            <ManagersPanel />
+          </motion.div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Agent View - show their specific manager
   return (
     <DashboardLayout>
       <div className="max-w-2xl mx-auto space-y-6">
@@ -179,7 +216,7 @@ export default function TeamDirectory() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-muted-foreground">Email</p>
-                    <a 
+                    <a
                       href={`mailto:${manager.email}`}
                       className="font-medium text-primary hover:underline truncate block"
                     >
@@ -201,7 +238,7 @@ export default function TeamDirectory() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-muted-foreground">Phone</p>
-                      <a 
+                      <a
                         href={`tel:${manager.phone}`}
                         className="font-medium text-primary hover:underline"
                       >
@@ -224,7 +261,7 @@ export default function TeamDirectory() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-muted-foreground">Instagram</p>
-                      <a 
+                      <a
                         href={`https://instagram.com/${manager.instagramHandle}`}
                         target="_blank"
                         rel="noopener noreferrer"
@@ -234,7 +271,7 @@ export default function TeamDirectory() {
                       </a>
                     </div>
                     <Button variant="outline" size="sm" asChild>
-                      <a 
+                      <a
                         href={`https://instagram.com/${manager.instagramHandle}`}
                         target="_blank"
                         rel="noopener noreferrer"
@@ -249,7 +286,7 @@ export default function TeamDirectory() {
                 {!manager.phone && !manager.instagramHandle && (
                   <div className="p-4 rounded-lg bg-muted/30 border border-border text-center">
                     <p className="text-sm text-muted-foreground">
-                      Your manager hasn't added their phone or Instagram yet. 
+                      Your manager hasn't added their phone or Instagram yet.
                       You can reach out via email for now.
                     </p>
                   </div>
@@ -259,8 +296,8 @@ export default function TeamDirectory() {
               <div className="mt-8 pt-6 border-t border-border">
                 <div className="bg-primary/10 rounded-lg p-4 text-center">
                   <p className="text-sm text-primary font-medium">
-                    💡 Need help with training, leads, or onboarding? 
-                    Reach out to your manager anytime!
+                    💡 Need help with training, leads, or onboarding? Reach out
+                    to your manager anytime!
                   </p>
                 </div>
               </div>

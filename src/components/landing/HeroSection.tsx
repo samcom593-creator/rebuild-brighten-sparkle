@@ -2,8 +2,10 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, Shield, TrendingUp, Users } from "lucide-react";
 import { GradientButton } from "@/components/ui/gradient-button";
+import { useLeadCounter } from "@/hooks/useLeadCounter";
 
 export function HeroSection() {
+  const { count, isLoading } = useLeadCounter();
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-28">
       {/* Background Effects */}
@@ -37,8 +39,10 @@ export function HeroSection() {
               <span className="relative inline-flex rounded-full h-3 w-3 bg-primary" />
             </span>
             <span className="text-sm text-muted-foreground">
-              <span className="text-primary font-bold">82</span>
-              {" "}first day deals
+              <span className="text-primary font-bold">
+                {isLoading ? "..." : count}
+              </span>
+              {" "}agents joined
             </span>
           </motion.div>
 

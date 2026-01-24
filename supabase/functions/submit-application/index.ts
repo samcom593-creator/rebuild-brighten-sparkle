@@ -588,7 +588,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
 
             <div style="background: #d1fae5; border-left: 4px solid #059669; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
               <p style="margin: 0; color: #047857; font-weight: 500;">
-                Don't worry about not having a license yet - we cover all licensing costs and guide you through every step!
+                Don't worry about not having a license yet - we cover most of the licensing costs and guide you through every step!
               </p>
             </div>
 

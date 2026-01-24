@@ -246,7 +246,7 @@ const handler = async (req: Request): Promise<Response> => {
               <p style="margin: 0; color: #047857; font-weight: 500;">
                 ${sanitized.licenseStatus === 'licensed' 
                   ? "As a licensed agent, you're on the fast track! Expect to hear from us within 24-48 hours."
-                  : "Don't worry about not having a license yet - we cover all licensing costs and will guide you through the process!"}
+                  : "Don't worry about not having a license yet - we cover most of the licensing costs and will guide you through the process!"}
               </p>
             </div>
 

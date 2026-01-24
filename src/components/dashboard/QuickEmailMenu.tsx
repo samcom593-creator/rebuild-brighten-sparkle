@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Mail, Loader2 } from "lucide-react";
+import { Mail, Loader2, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -25,8 +25,8 @@ type EmailTemplate = "cold_licensed" | "cold_unlicensed" | "followup1_licensed" 
 const emailTemplateLabels: Record<EmailTemplate, string> = {
   cold_licensed: "Cold Outreach (Licensed)",
   cold_unlicensed: "Cold Outreach (Unlicensed)",
-  followup1_licensed: "Post-call Follow-up #1 (Licensed)",
-  followup2_licensed: "Post-call Follow-up #2 (Licensed)",
+  followup1_licensed: "Post-call Follow-up #1",
+  followup2_licensed: "Post-call Follow-up #2",
 };
 
 export function QuickEmailMenu({
@@ -37,6 +37,7 @@ export function QuickEmailMenu({
   className,
 }: QuickEmailMenuProps) {
   const [sendingTemplate, setSendingTemplate] = useState<EmailTemplate | null>(null);
+  const [showAllTemplates, setShowAllTemplates] = useState(false);
 
   const handleSendEmail = async (templateType: EmailTemplate) => {
     setSendingTemplate(templateType);
@@ -59,6 +60,16 @@ export function QuickEmailMenu({
 
   // Determine which templates to show based on license status
   const isLicensed = licenseStatus === "licensed";
+
+  // Contextual templates (shown by default)
+  const contextualTemplates: EmailTemplate[] = isLicensed 
+    ? ["cold_licensed", "followup1_licensed", "followup2_licensed"]
+    : ["cold_unlicensed"];
+
+  // All templates
+  const allTemplates: EmailTemplate[] = ["cold_licensed", "cold_unlicensed", "followup1_licensed", "followup2_licensed"];
+
+  const templatesToShow = showAllTemplates ? allTemplates : contextualTemplates;
 
   return (
     <DropdownMenu>
@@ -83,46 +94,43 @@ export function QuickEmailMenu({
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         
-        {isLicensed ? (
+        {templatesToShow.map((template) => (
+          <DropdownMenuItem
+            key={template}
+            onClick={() => handleSendEmail(template)}
+            disabled={sendingTemplate !== null}
+            className="flex items-center gap-2"
+          >
+            {sendingTemplate === template && (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            )}
+            <span className="flex-1">{emailTemplateLabels[template]}</span>
+            {/* Show indicator if template doesn't match current license status */}
+            {!showAllTemplates ? null : (
+              template.includes("licensed") && !template.includes("unlicensed") && !isLicensed ? (
+                <span className="text-xs text-muted-foreground">(Licensed)</span>
+              ) : template.includes("unlicensed") && isLicensed ? (
+                <span className="text-xs text-muted-foreground">(Unlicensed)</span>
+              ) : null
+            )}
+          </DropdownMenuItem>
+        ))}
+
+        {/* Toggle to show all templates */}
+        {!showAllTemplates && (
           <>
+            <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={() => handleSendEmail("cold_licensed")}
-              disabled={sendingTemplate !== null}
+              onClick={(e) => {
+                e.preventDefault();
+                setShowAllTemplates(true);
+              }}
+              className="text-xs text-muted-foreground hover:text-foreground"
             >
-              {sendingTemplate === "cold_licensed" && (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              )}
-              Cold Outreach (Licensed)
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => handleSendEmail("followup1_licensed")}
-              disabled={sendingTemplate !== null}
-            >
-              {sendingTemplate === "followup1_licensed" && (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              )}
-              Post-call Follow-up #1 (Licensed)
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => handleSendEmail("followup2_licensed")}
-              disabled={sendingTemplate !== null}
-            >
-              {sendingTemplate === "followup2_licensed" && (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              )}
-              Post-call Follow-up #2 (Licensed)
+              <ChevronDown className="h-3 w-3 mr-1" />
+              Show all templates
             </DropdownMenuItem>
           </>
-        ) : (
-          <DropdownMenuItem
-            onClick={() => handleSendEmail("cold_unlicensed")}
-            disabled={sendingTemplate !== null}
-          >
-            {sendingTemplate === "cold_unlicensed" && (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            )}
-            Cold Outreach (Unlicensed)
-          </DropdownMenuItem>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

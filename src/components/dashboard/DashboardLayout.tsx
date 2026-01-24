@@ -117,8 +117,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             })}
           </nav>
 
-          {/* Mini Leaderboard in Sidebar */}
-          {(isManager || isAdmin) && <MiniLeaderboard />}
+          {/* Mini Leaderboard in Sidebar - Visible to everyone */}
+          <MiniLeaderboard />
         </div>
 
         {/* User & Logout */}

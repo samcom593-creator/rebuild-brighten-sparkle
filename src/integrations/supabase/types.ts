@@ -813,6 +813,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      current_agent_id: { Args: never; Returns: string }
+      current_manager_agent_id: { Args: never; Returns: string }
       get_agent_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {

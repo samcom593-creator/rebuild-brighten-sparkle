@@ -148,7 +148,8 @@ async function getManagerInfo(agentId: string): Promise<ManagerInfo | null> {
 // Send manager notification email (with phone prompt if missing)
 async function sendManagerNotification(
   data: SubmitApplicationRequest,
-  manager: ManagerInfo
+  manager: ManagerInfo,
+  applicationId: string
 ) {
   if (!resend) return;
 
@@ -241,7 +242,10 @@ async function sendManagerNotification(
             </div>
 
             <div style="text-align: center; margin-top: 20px;">
-              <p style="color: #6b7280; font-size: 14px;">
+              <a href="https://rebuild-brighten-sparkle.lovable.app/dashboard/applicants?lead=${applicationId}" style="display: inline-block; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px; margin-bottom: 15px;">
+                📞 View Lead & Call Now →
+              </a>
+              <p style="color: #6b7280; font-size: 14px; margin-top: 15px;">
                 Submitted on ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
               </p>
             </div>
@@ -256,7 +260,7 @@ async function sendManagerNotification(
 }
 
 // Send email notifications
-async function sendEmailNotifications(data: SubmitApplicationRequest) {
+async function sendEmailNotifications(data: SubmitApplicationRequest, applicationId: string) {
   if (!resend) {
     console.warn("RESEND_API_KEY not configured, skipping email notifications");
     return;
@@ -386,7 +390,10 @@ async function sendEmailNotifications(data: SubmitApplicationRequest) {
             </div>
 
             <div style="margin-top: 25px; text-align: center;">
-              <p style="color: #6b7280; font-size: 14px; margin-bottom: 15px;">
+              <a href="https://rebuild-brighten-sparkle.lovable.app/dashboard/applicants?lead=${applicationId}" style="display: inline-block; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px; margin-bottom: 15px;">
+                📞 View Lead & Call Now →
+              </a>
+              <p style="color: #6b7280; font-size: 14px; margin-top: 15px;">
                 Submitted on ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} at ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
               </p>
             </div>
@@ -619,7 +626,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest) {
 
     // Send notification to referring manager if selected
     if (data.selectedReferralAgentId && managerInfo) {
-      await sendManagerNotification(data, managerInfo);
+      await sendManagerNotification(data, managerInfo, applicationId);
     }
 
   } catch (error) {
@@ -734,8 +741,8 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Send email notifications in background
-    sendEmailNotifications(data).catch((err) => {
+    // Send email notifications in background (pass the application ID)
+    sendEmailNotifications(data, inserted.id).catch((err) => {
       console.error("Background email notification failed:", err);
     });
 

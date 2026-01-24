@@ -213,7 +213,10 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
 
             <div style="text-align: center; margin-top: 25px;">
-              <p style="color: #6b7280; font-size: 14px;">
+              <a href="https://rebuild-brighten-sparkle.lovable.app/dashboard/applicants?lead=${applicationId}" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px; margin-bottom: 15px;">
+                📋 View Closed Lead →
+              </a>
+              <p style="color: #6b7280; font-size: 14px; margin-top: 15px;">
                 Closed on ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
               </p>
             </div>

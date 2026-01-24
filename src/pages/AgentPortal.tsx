@@ -14,24 +14,53 @@ import { toast } from "sonner";
 
 export default function AgentPortal() {
   const navigate = useNavigate();
-  const { user, profile, isLoading: authLoading } = useAuth();
+  const { user, profile, isLoading: authLoading, isAdmin, isManager } = useAuth();
   const [agentId, setAgentId] = useState<string | null>(null);
   const [todayProduction, setTodayProduction] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdminViewing, setIsAdminViewing] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
       navigate("/login");
       return;
     }
-    if (user) {
+    if (user && !authLoading) {
       fetchAgentData();
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, isAdmin, isManager]);
 
   const fetchAgentData = async () => {
     try {
-      // Get current agent
+      // Admin/Manager bypass - they can view the portal without being a Live agent
+      if (isAdmin || isManager) {
+        setIsAdminViewing(true);
+        
+        // Try to get their agent record if they have one
+        const { data: agent } = await supabase
+          .from("agents")
+          .select("id, onboarding_stage")
+          .eq("user_id", user!.id)
+          .single();
+        
+        if (agent) {
+          setAgentId(agent.id);
+          // Fetch today's production for their agent record
+          const today = new Date().toISOString().split("T")[0];
+          const { data: production } = await supabase
+            .from("daily_production")
+            .select("*")
+            .eq("agent_id", agent.id)
+            .eq("production_date", today)
+            .single();
+          if (production) setTodayProduction(production);
+        }
+        // No redirect - admins can view even without agent record
+        setLoading(false);
+        return;
+      }
+
+      // Regular agent logic - must have agent record and be Live
       const { data: agent, error: agentError } = await supabase
         .from("agents")
         .select("id, onboarding_stage")
@@ -44,7 +73,6 @@ export default function AgentPortal() {
         return;
       }
 
-      // Check if agent is "live" (evaluated)
       if (agent.onboarding_stage !== "evaluated") {
         toast.error("Agent Portal is only available for Live agents");
         navigate("/dashboard");
@@ -113,6 +141,18 @@ export default function AgentPortal() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6 space-y-6">
+        {isAdminViewing && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3"
+          >
+            <p className="text-sm text-amber-600 dark:text-amber-400 font-medium">
+              Admin View — You are viewing the Agent Portal for testing purposes
+            </p>
+          </motion.div>
+        )}
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -126,11 +166,18 @@ export default function AgentPortal() {
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Production Entry */}
           <div>
-            <ProductionEntry
-              agentId={agentId!}
-              existingData={todayProduction}
-              onSaved={fetchAgentData}
-            />
+            {agentId ? (
+              <ProductionEntry
+                agentId={agentId}
+                existingData={todayProduction}
+                onSaved={fetchAgentData}
+              />
+            ) : isAdminViewing ? (
+              <GlassCard className="p-6 text-center">
+                <User className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-muted-foreground">No agent record found. Production entry is view-only.</p>
+              </GlassCard>
+            ) : null}
 
             {/* Stats Summary */}
             {todayProduction && (

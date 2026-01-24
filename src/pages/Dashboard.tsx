@@ -24,6 +24,9 @@ import { ManagerTeamView } from "@/components/dashboard/ManagerTeamView";
 import { InviteManagerCard } from "@/components/dashboard/InviteManagerCard";
 import { LeadQualificationChat } from "@/components/dashboard/LeadQualificationChat";
 import { ManagerLeaderboard } from "@/components/dashboard/ManagerLeaderboard";
+import { LeaderboardTabs } from "@/components/dashboard/LeaderboardTabs";
+import { ClosingRateLeaderboard } from "@/components/dashboard/ClosingRateLeaderboard";
+import { ReferralLeaderboard } from "@/components/dashboard/ReferralLeaderboard";
 import { useAuth } from "@/hooks/useAuth";
 
 interface DashboardStats {
@@ -351,31 +354,62 @@ export default function Dashboard() {
         <EarningsPotentialCard leadCount={stats.totalLeads} />
       </div>
 
-      {/* Manager Leaderboard - MOVED UP - Visible to all managers and admins */}
-      {(isManager || isAdmin) && (
-        <div className="mb-8">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-4"
-          >
-            <h3 className="text-xl font-bold">Recruiter Rankings</h3>
-            <p className="text-muted-foreground text-sm">
-              See how you stack up against other managers
-            </p>
-          </motion.div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <ManagerLeaderboard />
-            <GrowthChart
-              dailyData={dailyData}
-              weeklyData={weeklyData}
-              monthlyData={monthlyData}
-              currentPeriodTotal={stats.totalLeads}
-              previousPeriodTotal={Math.round(stats.totalLeads * 0.87)}
-            />
-          </div>
+      {/* Manager Leaderboard - Visible to EVERYONE */}
+      <div className="mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4"
+        >
+          <h3 className="text-xl font-bold">Recruiter Rankings</h3>
+          <p className="text-muted-foreground text-sm">
+            See who's leading the recruitment competition
+          </p>
+        </motion.div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <ManagerLeaderboard />
+          <GrowthChart
+            dailyData={dailyData}
+            weeklyData={weeklyData}
+            monthlyData={monthlyData}
+            currentPeriodTotal={stats.totalLeads}
+            previousPeriodTotal={Math.round(stats.totalLeads * 0.87)}
+          />
         </div>
-      )}
+      </div>
+
+      {/* Sales Leaderboard - Visible to EVERYONE */}
+      <div className="mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4"
+        >
+          <h3 className="text-xl font-bold">Sales Leaderboard</h3>
+          <p className="text-muted-foreground text-sm">
+            Top producers by ALP, deals closed, and presentations
+          </p>
+        </motion.div>
+        <LeaderboardTabs />
+      </div>
+
+      {/* Performance Leaderboards - Visible to EVERYONE */}
+      <div className="mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4"
+        >
+          <h3 className="text-xl font-bold">Performance Rankings</h3>
+          <p className="text-muted-foreground text-sm">
+            Closing rates and referral production leaders
+          </p>
+        </motion.div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <ClosingRateLeaderboard />
+          <ReferralLeaderboard />
+        </div>
+      </div>
 
       {/* AI Features */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">

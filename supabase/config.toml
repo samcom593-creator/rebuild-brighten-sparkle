@@ -54,3 +54,6 @@ verify_jwt = false
 
 [functions.send-outreach-email]
 verify_jwt = false
+
+[functions.send-aged-lead-email]
+verify_jwt = false

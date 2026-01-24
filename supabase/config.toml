@@ -102,3 +102,6 @@ verify_jwt = false
 
 [functions.notify-low-close-rate]
 verify_jwt = false
+
+[functions.send-daily-leaderboard-summary]
+verify_jwt = false

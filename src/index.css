@@ -55,8 +55,8 @@
     --apex-error: 0 84% 60%;
 
     /* Glass morphism - lighter for light mode */
-    --glass-bg: 0 0% 100% / 0.8;
-    --glass-border: 220 13% 85% / 0.6;
+    --glass-bg: hsl(0 0% 100% / 0.8);
+    --glass-border: hsl(220 13% 85% / 0.6);
     --glass-shadow: 0 4px 16px hsl(220 15% 50% / 0.1);
 
     /* Gradients */
@@ -117,8 +117,8 @@
     --sidebar-ring: 168 84% 32%;
 
     /* Glass morphism - lighter for light mode */
-    --glass-bg: 0 0% 100% / 0.9;
-    --glass-border: 220 13% 85% / 0.5;
+    --glass-bg: hsl(0 0% 100% / 0.9);
+    --glass-border: hsl(220 13% 85% / 0.5);
     --glass-shadow: 0 4px 16px hsl(220 15% 50% / 0.08);
   }
 
@@ -161,8 +161,8 @@
     --sidebar-ring: 168 84% 42%;
 
     /* Glass morphism - dark mode */
-    --glass-bg: 222 47% 8% / 0.7;
-    --glass-border: 222 30% 25% / 0.5;
+    --glass-bg: hsl(222 47% 8% / 0.7);
+    --glass-border: hsl(222 30% 25% / 0.5);
     --glass-shadow: 0 8px 32px hsl(222 47% 3% / 0.5);
   }
 }
@@ -185,10 +185,10 @@
 @layer utilities {
   /* Glass morphism utilities */
   .glass {
-    background: hsl(var(--glass-bg));
+    background: var(--glass-bg);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid hsl(var(--glass-border));
+    border: 1px solid var(--glass-border);
   }
 
   .glass-strong {
@@ -200,9 +200,9 @@
 
   /* Light mode glass override */
   .light .glass {
-    background: hsl(0 0% 100% / 0.9);
-    border: 1px solid hsl(220 13% 85% / 0.6);
-    box-shadow: 0 4px 16px hsl(220 15% 50% / 0.08);
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
   }
 
   .light .glass-strong {

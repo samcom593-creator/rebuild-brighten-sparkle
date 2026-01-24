@@ -387,6 +387,7 @@ export type Database = {
             | Database["public"]["Enums"]["attendance_status"]
             | null
           created_at: string
+          crm_setup_link: string | null
           evaluated_at: string | null
           evaluated_by: string | null
           evaluation_result: string | null
@@ -426,6 +427,7 @@ export type Database = {
             | Database["public"]["Enums"]["attendance_status"]
             | null
           created_at?: string
+          crm_setup_link?: string | null
           evaluated_at?: string | null
           evaluated_by?: string | null
           evaluation_result?: string | null
@@ -465,6 +467,7 @@ export type Database = {
             | Database["public"]["Enums"]["attendance_status"]
             | null
           created_at?: string
+          crm_setup_link?: string | null
           evaluated_at?: string | null
           evaluated_by?: string | null
           evaluation_result?: string | null
@@ -565,6 +568,7 @@ export type Database = {
           city: string | null
           closed_at: string | null
           contacted_at: string | null
+          contracted_at: string | null
           created_at: string
           desired_income: number | null
           email: string
@@ -608,6 +612,7 @@ export type Database = {
           city?: string | null
           closed_at?: string | null
           contacted_at?: string | null
+          contracted_at?: string | null
           created_at?: string
           desired_income?: number | null
           email: string
@@ -651,6 +656,7 @@ export type Database = {
           city?: string | null
           closed_at?: string | null
           contacted_at?: string | null
+          contracted_at?: string | null
           created_at?: string
           desired_income?: number | null
           email?: string

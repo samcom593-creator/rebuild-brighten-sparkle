@@ -59,7 +59,7 @@ async function sendUnlicensedFollowup(app: {
 
             <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
               <p style="margin: 0; color: #92400e; font-weight: 500;">
-                🎓 Remember: APEX covers ALL your licensing costs. You're not alone in this process!
+                🎓 Remember: APEX covers most of your licensing costs. You're not alone in this process!
               </p>
             </div>
 

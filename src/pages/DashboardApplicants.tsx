@@ -94,7 +94,7 @@ const licenseColors: Record<string, string> = {
 };
 
 export default function DashboardApplicants() {
-  const { user } = useAuth();
+  const { user, isAdmin, isManager } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const highlightedLeadId = searchParams.get("lead");
   
@@ -161,7 +161,7 @@ export default function DashboardApplicants() {
 
   useEffect(() => {
     fetchApplications();
-  }, [user]);
+  }, [user, highlightedLeadId, isAdmin, isManager]);
 
   const fetchApplications = async () => {
     if (!user) return;
@@ -177,6 +177,52 @@ export default function DashboardApplicants() {
 
     if (agentData) {
       setAgentId(agentData.id);
+    }
+    
+    // For admins/managers with a highlighted lead, fetch that specific lead first
+    if (highlightedLeadId && (isAdmin || isManager)) {
+      const { data: specificLead, error: specificError } = await supabase
+        .from("applications")
+        .select("*")
+        .eq("id", highlightedLeadId)
+        .maybeSingle();
+      
+      if (!specificError && specificLead) {
+        // If the lead is not assigned to current agent, still show it for admin/manager
+        if (!agentData || specificLead.assigned_agent_id !== agentData.id) {
+          // Fetch all applications the user has access to + this specific one
+          let allApps: Application[] = [];
+          
+          if (isAdmin) {
+            // Admins see ALL applications
+            const { data: adminApps } = await supabase
+              .from("applications")
+              .select("*")
+              .order("created_at", { ascending: false });
+            allApps = (adminApps || []) as Application[];
+          } else if (agentData) {
+            // Manager sees their own + team's apps
+            const { data: managerApps } = await supabase
+              .from("applications")
+              .select("*")
+              .order("created_at", { ascending: false });
+            allApps = (managerApps || []) as Application[];
+          }
+          
+          // Ensure the highlighted lead is in the list
+          if (!allApps.find(a => a.id === highlightedLeadId)) {
+            allApps.unshift(specificLead as Application);
+          }
+          
+          setApplications(allApps);
+          setIsLoading(false);
+          return;
+        }
+      }
+    }
+
+    // Standard fetch for assigned applications
+    if (agentData) {
       const { data, error } = await supabase
         .from("applications")
         .select("*")

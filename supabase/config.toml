@@ -48,3 +48,6 @@ verify_jwt = false
 
 [functions.notify-all-managers-leaderboard]
 verify_jwt = false
+
+[functions.send-manual-followup]
+verify_jwt = false

@@ -23,6 +23,7 @@ import {
   ChevronDown,
   ChevronUp,
   RotateCcw,
+  Send,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -119,6 +120,9 @@ export default function DashboardApplicants() {
 
   // Terminated section expanded state
   const [showTerminated, setShowTerminated] = useState(false);
+
+  // Manual follow-up state
+  const [sendingFollowupId, setSendingFollowupId] = useState<string | null>(null);
   
   // When deep linking, clear filters to ensure lead is visible
   useEffect(() => {
@@ -375,6 +379,25 @@ export default function DashboardApplicants() {
     }
   };
 
+  const handleManualFollowup = async (applicationId: string) => {
+    setSendingFollowupId(applicationId);
+    try {
+      const { error } = await supabase.functions.invoke("send-manual-followup", {
+        body: { applicationId, agentId }
+      });
+      
+      if (error) throw error;
+      
+      toast.success("Follow-up email sent!");
+      fetchApplications();
+    } catch (err) {
+      console.error("Failed to send follow-up:", err);
+      toast.error("Failed to send follow-up email");
+    } finally {
+      setSendingFollowupId(null);
+    }
+  };
+
   // Split applications into active and terminated
   const activeApplications = applications.filter(app => !app.terminated_at);
   const terminatedApplications = applications.filter(app => app.terminated_at);
@@ -563,6 +586,19 @@ export default function DashboardApplicants() {
                     <Mic className="h-4 w-4 mr-1" />
                     Record Interview
                   </Button>
+
+                  {status !== "closed" && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleManualFollowup(app.id)}
+                      disabled={sendingFollowupId === app.id}
+                      className="text-muted-foreground hover:text-primary"
+                    >
+                      <Send className="h-4 w-4 mr-1" />
+                      {sendingFollowupId === app.id ? "Sending..." : "Follow Up"}
+                    </Button>
+                  )}
                 </>
               )}
               

@@ -405,6 +405,7 @@ export type Database = {
           license_doc_url: string | null
           license_status: Database["public"]["Enums"]["license_status"]
           licensed_states: string[] | null
+          manual_followup_sent_at: string | null
           nipr_number: string | null
           notes: string | null
           phone: string
@@ -444,6 +445,7 @@ export type Database = {
           license_doc_url?: string | null
           license_status?: Database["public"]["Enums"]["license_status"]
           licensed_states?: string[] | null
+          manual_followup_sent_at?: string | null
           nipr_number?: string | null
           notes?: string | null
           phone: string
@@ -483,6 +485,7 @@ export type Database = {
           license_doc_url?: string | null
           license_status?: Database["public"]["Enums"]["license_status"]
           licensed_states?: string[] | null
+          manual_followup_sent_at?: string | null
           nipr_number?: string | null
           notes?: string | null
           phone?: string

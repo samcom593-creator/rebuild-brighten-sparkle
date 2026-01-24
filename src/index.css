@@ -9,34 +9,34 @@
 
 @layer base {
   :root {
-    /* Light mode - minimal use, redirects to dark */
-    --background: 222 47% 6%;
-    --foreground: 180 100% 97%;
+    /* Light mode - Clean white professional theme */
+    --background: 0 0% 98%;
+    --foreground: 222 47% 11%;
 
-    --card: 222 47% 8%;
-    --card-foreground: 180 100% 97%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
 
-    --popover: 222 47% 10%;
-    --popover-foreground: 180 100% 97%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
 
-    --primary: 168 84% 42%;
-    --primary-foreground: 222 47% 6%;
+    --primary: 168 84% 32%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 222 30% 14%;
-    --secondary-foreground: 180 100% 97%;
+    --secondary: 210 20% 96%;
+    --secondary-foreground: 222 47% 11%;
 
-    --muted: 222 30% 18%;
-    --muted-foreground: 220 15% 60%;
+    --muted: 210 15% 95%;
+    --muted-foreground: 220 15% 45%;
 
-    --accent: 168 84% 42%;
-    --accent-foreground: 222 47% 6%;
+    --accent: 168 84% 32%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 72% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 222 30% 18%;
-    --input: 222 30% 14%;
-    --ring: 168 84% 42%;
+    --border: 220 13% 88%;
+    --input: 220 13% 91%;
+    --ring: 168 84% 32%;
 
     --radius: 0.75rem;
 
@@ -54,34 +54,34 @@
     --apex-warning: 38 92% 50%;
     --apex-error: 0 84% 60%;
 
-    /* Glass morphism */
-    --glass-bg: 222 47% 8% / 0.7;
-    --glass-border: 222 30% 25% / 0.5;
-    --glass-shadow: 0 8px 32px hsl(222 47% 3% / 0.5);
+    /* Glass morphism - lighter for light mode */
+    --glass-bg: 0 0% 100% / 0.8;
+    --glass-border: 220 13% 85% / 0.6;
+    --glass-shadow: 0 4px 16px hsl(220 15% 50% / 0.1);
 
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(168 84% 42%), hsl(160 84% 39%));
-    --gradient-hero: linear-gradient(180deg, hsl(222 47% 6%) 0%, hsl(222 50% 4%) 100%);
-    --gradient-card: linear-gradient(145deg, hsl(222 40% 10%) 0%, hsl(222 47% 6%) 100%);
-    --gradient-glow: radial-gradient(ellipse at center, hsl(168 84% 42% / 0.15) 0%, transparent 70%);
+    --gradient-hero: linear-gradient(180deg, hsl(0 0% 98%) 0%, hsl(210 20% 96%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(210 20% 98%) 100%);
+    --gradient-glow: radial-gradient(ellipse at center, hsl(168 84% 42% / 0.08) 0%, transparent 70%);
 
     /* Sidebar */
-    --sidebar-background: 222 47% 5%;
-    --sidebar-foreground: 180 100% 97%;
-    --sidebar-primary: 168 84% 42%;
-    --sidebar-primary-foreground: 222 47% 6%;
-    --sidebar-accent: 222 35% 15%;
-    --sidebar-accent-foreground: 180 100% 97%;
-    --sidebar-border: 222 30% 15%;
-    --sidebar-ring: 168 84% 42%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 168 84% 32%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 20% 96%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 220 13% 88%;
+    --sidebar-ring: 168 84% 32%;
   }
 
   .light {
     /* Clean, high-contrast light mode */
-    --background: 0 0% 100%;
+    --background: 0 0% 98%;
     --foreground: 222 47% 11%;
 
-    --card: 210 20% 98%;
+    --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
@@ -90,11 +90,11 @@
     --primary: 168 84% 32%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 15% 93%;
+    --secondary: 210 20% 96%;
     --secondary-foreground: 222 47% 11%;
 
-    --muted: 210 15% 94%;
-    --muted-foreground: 222 25% 35%;
+    --muted: 210 15% 95%;
+    --muted-foreground: 220 15% 45%;
 
     --accent: 168 84% 32%;
     --accent-foreground: 0 0% 100%;
@@ -102,19 +102,24 @@
     --destructive: 0 72% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 15% 82%;
-    --input: 220 15% 92%;
+    --border: 220 13% 88%;
+    --input: 220 13% 91%;
     --ring: 168 84% 32%;
 
     /* Sidebar - clean white with subtle borders */
-    --sidebar-background: 210 20% 98%;
+    --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 222 47% 11%;
     --sidebar-primary: 168 84% 32%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 15% 92%;
+    --sidebar-accent: 210 20% 96%;
     --sidebar-accent-foreground: 222 47% 11%;
-    --sidebar-border: 220 15% 85%;
+    --sidebar-border: 220 13% 88%;
     --sidebar-ring: 168 84% 32%;
+
+    /* Glass morphism - lighter for light mode */
+    --glass-bg: 0 0% 100% / 0.9;
+    --glass-border: 220 13% 85% / 0.5;
+    --glass-shadow: 0 4px 16px hsl(220 15% 50% / 0.08);
   }
 
   .dark {
@@ -154,6 +159,11 @@
     --sidebar-accent-foreground: 180 100% 97%;
     --sidebar-border: 222 30% 15%;
     --sidebar-ring: 168 84% 42%;
+
+    /* Glass morphism - dark mode */
+    --glass-bg: 222 47% 8% / 0.7;
+    --glass-border: 222 30% 25% / 0.5;
+    --glass-shadow: 0 8px 32px hsl(222 47% 3% / 0.5);
   }
 }
 
@@ -186,6 +196,18 @@
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
     border: 1px solid hsl(222 30% 20% / 0.6);
+  }
+
+  /* Light mode glass override */
+  .light .glass {
+    background: hsl(0 0% 100% / 0.9);
+    border: 1px solid hsl(220 13% 85% / 0.6);
+    box-shadow: 0 4px 16px hsl(220 15% 50% / 0.08);
+  }
+
+  .light .glass-strong {
+    background: hsl(0 0% 100% / 0.95);
+    border: 1px solid hsl(220 13% 85% / 0.7);
   }
 
   /* Glow effects */
@@ -268,17 +290,17 @@
   }
 
   .scrollbar-custom::-webkit-scrollbar-track {
-    background: hsl(222 47% 8%);
+    background: hsl(var(--muted));
     border-radius: 3px;
   }
 
   .scrollbar-custom::-webkit-scrollbar-thumb {
-    background: hsl(222 30% 25%);
+    background: hsl(var(--border));
     border-radius: 3px;
   }
 
   .scrollbar-custom::-webkit-scrollbar-thumb:hover {
-    background: hsl(168 84% 42%);
+    background: hsl(var(--primary));
   }
 }
 

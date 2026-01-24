@@ -218,7 +218,7 @@ const emailTemplates = {
     `,
   },
   followup1_unlicensed: {
-    subject: "How's your licensing journey going?",
+    subject: "How's your licensing journey going? 📚",
     getHtml: (firstName: string, agentName: string) => `
 <!DOCTYPE html>
 <html>
@@ -270,7 +270,7 @@ const emailTemplates = {
     `,
   },
   followup2_unlicensed: {
-    subject: "Don't let this opportunity slip away",
+    subject: "Don't let this opportunity slip away 🤔",
     getHtml: (firstName: string, agentName: string) => `
 <!DOCTYPE html>
 <html>
@@ -367,6 +367,68 @@ const emailTemplates = {
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Here to help,<br>
+        <strong style="color:#ffffff;">${agentName}</strong><br>
+        Apex Financial
+      </p>
+    </div>
+    
+    <p style="font-size:12px;color:#6b7280;text-align:center;margin-top:32px;">
+      © ${new Date().getFullYear()} Apex Financial. All rights reserved.
+    </p>
+  </div>
+</body>
+</html>
+    `,
+  },
+  licensing_checkin: {
+    subject: "Checking in—need any help getting licensed? 🤝",
+    getHtml: (firstName: string, agentName: string) => `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#0a0a0a;color:#ffffff;">
+  <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
+    <div style="text-align:center;margin-bottom:32px;">
+      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">APEX FINANCIAL</h1>
+    </div>
+    
+    <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:16px;padding:32px;border:1px solid rgba(20,184,166,0.2);">
+      <h2 style="font-size:24px;margin:0 0 16px 0;color:#14b8a6;">Hey ${firstName}!</h2>
+      
+      <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 16px 0;">
+        I just wanted to check in and see how things are going. Getting licensed can feel like a big task, but I promise—it's totally doable, and I'm here to help however I can.
+      </p>
+      
+      <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 16px 0;">
+        A few things I can help with:
+      </p>
+      
+      <div style="background:rgba(20,184,166,0.1);border-radius:8px;padding:20px;margin:20px 0;">
+        <ul style="margin:0;padding-left:20px;color:#d1d5db;">
+          <li style="margin-bottom:8px;">Choosing the right study course for your state</li>
+          <li style="margin-bottom:8px;">Creating a study schedule that fits your life</li>
+          <li style="margin-bottom:8px;">Understanding what's on the exam</li>
+          <li style="margin-bottom:8px;">Tips from people who passed on their first try</li>
+          <li>Answering any questions you have about the process</li>
+        </ul>
+      </div>
+      
+      <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 24px 0;">
+        <strong style="color:#ffffff;">No judgment, no pressure.</strong> I just want to make sure you're not stuck and have everything you need to move forward.
+      </p>
+      
+      <div style="text-align:center;margin:32px 0;">
+        <a href="https://calendly.com/sam-com593/licensed-prospect-call-clone" 
+           style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#ffffff;padding:16px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;">
+          Let's Chat—I'm Here to Help
+        </a>
+      </div>
+      
+      <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
+        In your corner,<br>
         <strong style="color:#ffffff;">${agentName}</strong><br>
         Apex Financial
       </p>

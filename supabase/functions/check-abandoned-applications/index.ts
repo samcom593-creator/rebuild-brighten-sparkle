@@ -50,16 +50,16 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Find partial applications that are:
-    // - More than 1 hour old
+    // - More than 15 minutes old (quick detection of abandonment)
     // - Not converted (converted_at IS NULL)
     // - Not already notified (admin_notified_at IS NULL)
-    // - Have at least email or phone
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    // - Have at least email or phone (Step 1 completed)
+    const fifteenMinsAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
 
     const { data: abandonedLeads, error: fetchError } = await supabaseAdmin
       .from("partial_applications")
       .select("*")
-      .lt("created_at", oneHourAgo)
+      .lt("created_at", fifteenMinsAgo)
       .is("converted_at", null)
       .is("admin_notified_at", null)
       .or("email.neq.,phone.neq.")

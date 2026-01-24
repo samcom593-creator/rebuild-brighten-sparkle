@@ -55,6 +55,9 @@ import { ApplicantNotes } from "@/components/dashboard/ApplicantNotes";
 import { InterviewRecorder } from "@/components/dashboard/InterviewRecorder";
 import { ApplicantSummary } from "@/components/dashboard/ApplicantSummary";
 import { LeadQualificationChat } from "@/components/dashboard/LeadQualificationChat";
+import { QuickEmailMenu } from "@/components/dashboard/QuickEmailMenu";
+import { QuickAssignMenu } from "@/components/dashboard/QuickAssignMenu";
+import { LastContactedBadge } from "@/components/dashboard/LastContactedBadge";
 
 interface Application {
   id: string;
@@ -78,6 +81,7 @@ interface Application {
   has_insurance_experience: boolean | null;
   previous_company: string | null;
   years_experience: number | null;
+  assigned_agent_id: string | null;
 }
 
 const statusColors: Record<string, string> = {
@@ -229,7 +233,7 @@ export default function DashboardApplicants() {
     if (agentData) {
       const { data, error } = await supabase
         .from("applications")
-        .select("*")
+        .select("*, assigned_agent_id")
         .eq("assigned_agent_id", agentData.id)
         .order("created_at", { ascending: false });
 
@@ -549,6 +553,9 @@ export default function DashboardApplicants() {
 
             {/* Actions Row */}
             <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-border/50">
+              {/* Last contacted badge */}
+              <LastContactedBadge applicationId={app.id} />
+              
               {app.instagram_handle && (
                 <Button
                   variant="ghost"
@@ -584,20 +591,27 @@ export default function DashboardApplicants() {
                     className="text-muted-foreground hover:text-foreground"
                   >
                     <Mic className="h-4 w-4 mr-1" />
-                    Record Interview
+                    Record
                   </Button>
 
                   {status !== "closed" && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleManualFollowup(app.id)}
-                      disabled={sendingFollowupId === app.id}
+                    <QuickEmailMenu
+                      applicationId={app.id}
+                      agentId={agentId}
+                      licenseStatus={app.license_status}
+                      onEmailSent={fetchApplications}
                       className="text-muted-foreground hover:text-primary"
-                    >
-                      <Send className="h-4 w-4 mr-1" />
-                      {sendingFollowupId === app.id ? "Sending..." : "Follow Up"}
-                    </Button>
+                    />
+                  )}
+
+                  {/* Admin-only quick assign */}
+                  {isAdmin && (
+                    <QuickAssignMenu
+                      applicationId={app.id}
+                      currentAgentId={app.assigned_agent_id}
+                      onAssigned={fetchApplications}
+                      className="text-muted-foreground hover:text-primary"
+                    />
                   )}
                 </>
               )}

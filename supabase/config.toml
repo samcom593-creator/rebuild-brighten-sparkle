@@ -45,3 +45,6 @@ verify_jwt = false
 
 [functions.test-email-flows]
 verify_jwt = false
+
+[functions.notify-all-managers-leaderboard]
+verify_jwt = false

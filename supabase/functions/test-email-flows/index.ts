@@ -45,7 +45,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const results: { flow: string; success: boolean; error?: string }[] = [];
+    const results: { flow: string; success: boolean; error?: string; details?: string; sentResults?: any[] }[] = [];
     const allFlows = !flowType || flowType === "all";
 
     // 1. Licensed Applicant Confirmation Email
@@ -725,6 +725,142 @@ const handler = async (req: Request): Promise<Response> => {
         results.push({ flow: "weekly-analytics", success: true });
       } catch (e: any) {
         results.push({ flow: "weekly-analytics", success: false, error: e.message });
+      }
+    }
+
+    // 10. Leaderboard Notification (Sample)
+    if (allFlows || flowType === "leaderboard") {
+      try {
+        await resend.emails.send({
+          from: "Apex Financial <notifications@apex-financial.org>",
+          to: [testEmail],
+          subject: "[TEST] 🏆 KJ Vaughns Scored Another Recruit!",
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <div style="background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%); border-radius: 16px 16px 0 0; padding: 30px; text-align: center;">
+                <div style="font-size: 48px; margin-bottom: 10px;">🏆</div>
+                <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700;">
+                  KJ Vaughns just landed a new recruit!
+                </h1>
+              </div>
+
+              <div style="background-color: #ffffff; padding: 30px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                
+                <div style="background-color: #f1f5f9; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                  <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                    <div style="background-color: #1e3a5f; color: white; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; margin-right: 15px;">
+                      J
+                    </div>
+                    <div>
+                      <h2 style="margin: 0; color: #1e293b; font-size: 18px;">John TestApplicant</h2>
+                      <p style="margin: 5px 0 0 0; color: #64748b; font-size: 14px;">📍 Atlanta, GA</p>
+                    </div>
+                  </div>
+                  
+                  <div style="display: inline-block; background-color: #22c55e; color: white; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;">
+                    LICENSED
+                  </div>
+                </div>
+
+                <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 20px;">
+                  <p style="margin: 0; color: #92400e; font-size: 14px;">Referred by</p>
+                  <p style="margin: 5px 0 0 0; color: #78350f; font-size: 20px; font-weight: 700;">⭐ KJ Vaughns</p>
+                </div>
+
+                <div style="text-align: center; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+                  <p style="color: #64748b; font-size: 14px; margin: 0;">
+                    Keep recruiting and grow your team! 💪
+                  </p>
+                </div>
+              </div>
+
+              <div style="text-align: center; padding: 20px; color: #94a3b8; font-size: 12px;">
+                <p style="margin: 0;">Apex Financial Enterprises</p>
+                <p style="color: #dc2626; font-weight: bold; margin-top: 10px;">[TEST EMAIL - Leaderboard notification preview]</p>
+              </div>
+            </div>
+          `,
+        });
+        results.push({ flow: "leaderboard", success: true });
+      } catch (e: any) {
+        results.push({ flow: "leaderboard", success: false, error: e.message });
+      }
+    }
+
+    // 11. Send retroactive leaderboard notifications for ALL existing applications
+    if (flowType === "retroactive-leaderboard") {
+      try {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        
+        // Dynamically import createClient for this flow
+        const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+        const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+
+        // Get all active applications
+        const { data: applications, error: appError } = await supabaseAdmin
+          .from("applications")
+          .select("id, first_name, last_name, city, state, license_status, assigned_agent_id, referral_source, created_at")
+          .is("terminated_at", null)
+          .order("created_at", { ascending: true });
+
+        if (appError) {
+          throw new Error(`Failed to fetch applications: ${appError.message}`);
+        }
+
+        console.log(`[Retroactive] Found ${applications?.length || 0} applications to notify`);
+
+        const sentResults: { applicant: string; success: boolean; error?: string }[] = [];
+
+        for (const app of applications || []) {
+          try {
+            const response = await fetch(
+              `${supabaseUrl}/functions/v1/notify-all-managers-leaderboard`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${serviceRoleKey}`,
+                },
+                body: JSON.stringify({
+                  applicationId: app.id,
+                  scoringManagerId: app.assigned_agent_id || null,
+                  applicantName: `${app.first_name} ${app.last_name}`,
+                  applicantCity: app.city,
+                  applicantState: app.state,
+                  licenseStatus: app.license_status,
+                  referralSource: app.referral_source,
+                }),
+              }
+            );
+
+            const result = await response.json();
+            console.log(`[Retroactive] Sent for ${app.first_name} ${app.last_name}:`, result);
+            sentResults.push({ 
+              applicant: `${app.first_name} ${app.last_name}`,
+              success: response.ok 
+            });
+
+            // Small delay to avoid overwhelming email service
+            await new Promise(resolve => setTimeout(resolve, 500));
+          } catch (e: any) {
+            sentResults.push({ 
+              applicant: `${app.first_name} ${app.last_name}`,
+              success: false,
+              error: e.message
+            });
+          }
+        }
+
+        const successfulSends = sentResults.filter(r => r.success).length;
+        results.push({ 
+          flow: "retroactive-leaderboard", 
+          success: true,
+          details: `Sent ${successfulSends}/${applications?.length || 0} retroactive notifications`,
+          sentResults
+        });
+      } catch (e: any) {
+        results.push({ flow: "retroactive-leaderboard", success: false, error: e.message });
       }
     }
 

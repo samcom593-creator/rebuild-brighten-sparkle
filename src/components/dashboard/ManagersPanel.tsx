@@ -60,14 +60,17 @@ export function ManagersPanel() {
   const fetchManagers = async () => {
     setLoading(true);
     try {
-      const { data: managerRoles, error: rolesError } = await supabase
-        .from("user_roles")
-        .select("user_id")
-        .eq("role", "manager");
+      // Fetch all data in parallel for better performance
+      const [rolesResult, profilesResult, applicationsResult, teamMembersResult] = await Promise.all([
+        supabase.from("user_roles").select("user_id").eq("role", "manager"),
+        supabase.from("profiles").select("*"),
+        supabase.from("applications").select("assigned_agent_id, closed_at"),
+        supabase.from("agents").select("invited_by_manager_id").eq("status", "active"),
+      ]);
 
-      if (rolesError) throw rolesError;
+      if (rolesResult.error) throw rolesResult.error;
 
-      const managerUserIds = managerRoles?.map((r) => r.user_id) || [];
+      const managerUserIds = rolesResult.data?.map((r) => r.user_id) || [];
 
       if (managerUserIds.length === 0) {
         setManagers([]);
@@ -75,6 +78,7 @@ export function ManagersPanel() {
         return;
       }
 
+      // Get active agents for these manager user IDs
       const { data: agents, error: agentsError } = await supabase
         .from("agents")
         .select("id, user_id")
@@ -83,26 +87,14 @@ export function ManagersPanel() {
 
       if (agentsError) throw agentsError;
 
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("*")
-        .in("user_id", managerUserIds);
-
-      if (profilesError) throw profilesError;
-
-      const { data: applications } = await supabase
-        .from("applications")
-        .select("assigned_agent_id, closed_at");
-
-      const { data: teamMembers } = await supabase
-        .from("agents")
-        .select("invited_by_manager_id")
-        .eq("status", "active");
+      const profiles = profilesResult.data || [];
+      const applications = applicationsResult.data || [];
+      const teamMembers = teamMembersResult.data || [];
 
       const managersData: ManagerData[] = (agents || []).map((agent) => {
-        const profile = profiles?.find((p) => p.user_id === agent.user_id);
-        const agentApps = applications?.filter((a) => a.assigned_agent_id === agent.id) || [];
-        const teamCount = teamMembers?.filter((t) => t.invited_by_manager_id === agent.id).length || 0;
+        const profile = profiles.find((p) => p.user_id === agent.user_id);
+        const agentApps = applications.filter((a) => a.assigned_agent_id === agent.id);
+        const teamCount = teamMembers.filter((t) => t.invited_by_manager_id === agent.id).length;
 
         return {
           agentId: agent.id,

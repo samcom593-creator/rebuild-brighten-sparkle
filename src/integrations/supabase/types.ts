@@ -403,6 +403,9 @@ export type Database = {
           instagram_handle: string | null
           last_name: string
           license_doc_url: string | null
+          license_progress:
+            | Database["public"]["Enums"]["license_progress"]
+            | null
           license_status: Database["public"]["Enums"]["license_status"]
           licensed_states: string[] | null
           manual_followup_sent_at: string | null
@@ -443,6 +446,9 @@ export type Database = {
           instagram_handle?: string | null
           last_name: string
           license_doc_url?: string | null
+          license_progress?:
+            | Database["public"]["Enums"]["license_progress"]
+            | null
           license_status?: Database["public"]["Enums"]["license_status"]
           licensed_states?: string[] | null
           manual_followup_sent_at?: string | null
@@ -483,6 +489,9 @@ export type Database = {
           instagram_handle?: string | null
           last_name?: string
           license_doc_url?: string | null
+          license_progress?:
+            | Database["public"]["Enums"]["license_progress"]
+            | null
           license_status?: Database["public"]["Enums"]["license_status"]
           licensed_states?: string[] | null
           manual_followup_sent_at?: string | null
@@ -885,6 +894,12 @@ export type Database = {
         | "contracting"
         | "approved"
         | "rejected"
+      license_progress:
+        | "unlicensed"
+        | "course_purchased"
+        | "passed_test"
+        | "waiting_on_license"
+        | "licensed"
       license_status: "licensed" | "unlicensed" | "pending"
       onboarding_stage:
         | "onboarding"
@@ -1027,6 +1042,13 @@ export const Constants = {
         "contracting",
         "approved",
         "rejected",
+      ],
+      license_progress: [
+        "unlicensed",
+        "course_purchased",
+        "passed_test",
+        "waiting_on_license",
+        "licensed",
       ],
       license_status: ["licensed", "unlicensed", "pending"],
       onboarding_stage: [

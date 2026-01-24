@@ -25,6 +25,7 @@ export function useAuth() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<UserRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [rolesLoading, setRolesLoading] = useState(true);
 
   const fetchProfile = useCallback(async (userId: string, authEmail?: string) => {
     const { data } = await supabase
@@ -55,48 +56,66 @@ export function useAuth() {
   }, []);
 
   const fetchRoles = useCallback(async (userId: string) => {
+    setRolesLoading(true);
     const { data } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", userId);
     
     setRoles(data || []);
+    setRolesLoading(false);
   }, []);
 
   useEffect(() => {
+    let isMounted = true;
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (!isMounted) return;
+        
         setSession(session);
         setUser(session?.user ?? null);
 
         if (session?.user) {
           // Use setTimeout to prevent potential deadlock with Supabase
-          setTimeout(() => {
-            fetchProfile(session.user.id, session.user.email);
-            fetchRoles(session.user.id);
+          setTimeout(async () => {
+            if (!isMounted) return;
+            await Promise.all([
+              fetchProfile(session.user.id, session.user.email),
+              fetchRoles(session.user.id)
+            ]);
+            if (isMounted) setIsLoading(false);
           }, 0);
         } else {
           setProfile(null);
           setRoles([]);
+          setRolesLoading(false);
+          setIsLoading(false);
         }
-        setIsLoading(false);
       }
     );
 
     // THEN get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!isMounted) return;
+      
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        fetchProfile(session.user.id, session.user.email);
-        fetchRoles(session.user.id);
+        await Promise.all([
+          fetchProfile(session.user.id, session.user.email),
+          fetchRoles(session.user.id)
+        ]);
+      } else {
+        setRolesLoading(false);
       }
-      setIsLoading(false);
+      if (isMounted) setIsLoading(false);
     });
 
     return () => {
+      isMounted = false;
       subscription.unsubscribe();
     };
   }, [fetchProfile, fetchRoles]);
@@ -136,12 +155,15 @@ export function useAuth() {
   const isManager = hasRole("manager");
   const isAgent = hasRole("agent");
 
+  // Combined loading state - wait for BOTH auth check AND roles to load
+  const isFullyLoaded = !isLoading && !rolesLoading;
+
   return {
     user,
     session,
     profile,
     roles,
-    isLoading,
+    isLoading: !isFullyLoaded, // Only report as loaded when roles are also loaded
     isAdmin,
     isManager,
     isAgent,

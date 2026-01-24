@@ -113,100 +113,121 @@ export function AgentNotes({ agentId, onNoteAdded, readOnly = false }: AgentNote
     }
   };
 
+  // Auto-expand and fetch on mount
+  useEffect(() => {
+    fetchNotes();
+  }, [agentId]);
+
   return (
-    <div className="border-t border-border pt-3 mt-3">
-      <div className="flex items-center justify-between">
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          {expanded ? (
-            <ChevronUp className="h-4 w-4" />
-          ) : (
-            <ChevronDown className="h-4 w-4" />
+    <div className="mt-4 pt-4 border-t border-border/50">
+      <div className="flex items-center justify-between mb-3">
+        <h4 className="text-sm font-medium text-foreground flex items-center gap-2">
+          <MessageSquarePlus className="h-4 w-4 text-primary" />
+          Notes
+          {notes.length > 0 && (
+            <span className="text-xs text-muted-foreground">({notes.length})</span>
           )}
-          Notes ({notes.length > 0 ? notes.length : "..."})
-        </button>
+        </h4>
         
-        {!readOnly && (
+        {!readOnly && !showInput && (
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
-            onClick={() => {
-              setExpanded(true);
-              setShowInput(true);
-            }}
-            className="gap-1 h-7 text-xs"
+            onClick={() => setShowInput(true)}
+            className="gap-1.5 h-7 text-xs"
           >
             <MessageSquarePlus className="h-3 w-3" />
-            Add Note
+            Add
           </Button>
         )}
       </div>
 
-      {expanded && (
-        <div className="mt-3 space-y-3">
-          {/* Add note input */}
-          {showInput && !readOnly && (
-            <div className="flex gap-2">
-              <Textarea
-                value={newNote}
-                onChange={(e) => setNewNote(e.target.value)}
-                placeholder="Add a note about this agent..."
-                className="text-sm resize-none"
-                rows={2}
-              />
-              <div className="flex flex-col gap-1">
-                <Button
-                  size="sm"
-                  onClick={handleAddNote}
-                  disabled={!newNote.trim() || submitting}
-                  className="h-8"
-                >
-                  {submitting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setShowInput(false);
-                    setNewNote("");
-                  }}
-                  className="h-8 text-xs"
-                >
-                  Cancel
-                </Button>
+      {/* Add note input */}
+      {showInput && !readOnly && (
+        <div className="mb-3 p-3 bg-muted/30 rounded-lg border border-border/50">
+          <Textarea
+            value={newNote}
+            onChange={(e) => setNewNote(e.target.value)}
+            placeholder="Add a note..."
+            className="text-sm resize-none bg-background mb-2"
+            rows={2}
+            autoFocus
+          />
+          <div className="flex items-center justify-end gap-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setShowInput(false);
+                setNewNote("");
+              }}
+              className="h-7 text-xs"
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleAddNote}
+              disabled={!newNote.trim() || submitting}
+              className="h-7 text-xs gap-1"
+            >
+              {submitting ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Send className="h-3 w-3" />
+              )}
+              Save
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Notes list */}
+      {loading ? (
+        <div className="flex items-center justify-center py-4">
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        </div>
+      ) : notes.length === 0 ? (
+        <p className="text-xs text-muted-foreground text-center py-3 bg-muted/20 rounded-md">
+          No notes yet
+        </p>
+      ) : (
+        <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+          {notes.slice(0, expanded ? notes.length : 3).map((note) => (
+            <div
+              key={note.id}
+              className="bg-muted/30 rounded-lg p-3 text-sm border border-border/30"
+            >
+              <p className="text-foreground leading-relaxed">{note.note}</p>
+              <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-medium text-primary">
+                  {note.createdBy.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+                </div>
+                <span>{note.createdBy}</span>
+                <span>•</span>
+                <span>{formatDistanceToNow(new Date(note.createdAt), { addSuffix: true })}</span>
               </div>
             </div>
+          ))}
+          
+          {notes.length > 3 && !expanded && (
+            <button
+              onClick={() => setExpanded(true)}
+              className="w-full text-xs text-primary hover:text-primary/80 py-2 flex items-center justify-center gap-1"
+            >
+              <ChevronDown className="h-3 w-3" />
+              Show {notes.length - 3} more
+            </button>
           )}
-
-          {/* Notes list */}
-          {loading ? (
-            <div className="flex items-center justify-center py-4">
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            </div>
-          ) : notes.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-2">
-              No notes yet
-            </p>
-          ) : (
-            <div className="space-y-2 max-h-40 overflow-y-auto">
-              {notes.map((note) => (
-                <div
-                  key={note.id}
-                  className="bg-muted/50 rounded-md p-2 text-sm"
-                >
-                  <p className="text-foreground">{note.note}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {note.createdBy} • {formatDistanceToNow(new Date(note.createdAt), { addSuffix: true })}
-                  </p>
-                </div>
-              ))}
-            </div>
+          
+          {expanded && notes.length > 3 && (
+            <button
+              onClick={() => setExpanded(false)}
+              className="w-full text-xs text-muted-foreground hover:text-foreground py-2 flex items-center justify-center gap-1"
+            >
+              <ChevronUp className="h-3 w-3" />
+              Show less
+            </button>
           )}
         </div>
       )}

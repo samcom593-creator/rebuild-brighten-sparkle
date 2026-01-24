@@ -72,3 +72,6 @@ verify_jwt = false
 
 [functions.notify-evaluation-due]
 verify_jwt = false
+
+[functions.notify-agent-contracted]
+verify_jwt = false

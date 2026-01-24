@@ -20,13 +20,25 @@ interface QuickEmailMenuProps {
   className?: string;
 }
 
-type EmailTemplate = "cold_licensed" | "cold_unlicensed" | "followup1_licensed" | "followup2_licensed";
+type EmailTemplate = 
+  | "cold_licensed" 
+  | "cold_unlicensed" 
+  | "followup1_licensed" 
+  | "followup2_licensed"
+  | "followup1_unlicensed"
+  | "followup2_unlicensed"
+  | "licensing_reminder"
+  | "licensing_checkin";
 
 const emailTemplateLabels: Record<EmailTemplate, string> = {
   cold_licensed: "Cold Outreach (Licensed)",
   cold_unlicensed: "Cold Outreach (Unlicensed)",
   followup1_licensed: "Post-call Follow-up #1",
   followup2_licensed: "Post-call Follow-up #2",
+  followup1_unlicensed: "Licensing Progress Check",
+  followup2_unlicensed: "Opportunity Reminder",
+  licensing_reminder: "License Reminder",
+  licensing_checkin: "Check-in (Need Help?)",
 };
 
 export function QuickEmailMenu({
@@ -64,10 +76,19 @@ export function QuickEmailMenu({
   // Contextual templates (shown by default)
   const contextualTemplates: EmailTemplate[] = isLicensed 
     ? ["cold_licensed", "followup1_licensed", "followup2_licensed"]
-    : ["cold_unlicensed"];
+    : ["cold_unlicensed", "followup1_unlicensed", "followup2_unlicensed", "licensing_reminder", "licensing_checkin"];
 
   // All templates
-  const allTemplates: EmailTemplate[] = ["cold_licensed", "cold_unlicensed", "followup1_licensed", "followup2_licensed"];
+  const allTemplates: EmailTemplate[] = [
+    "cold_licensed", 
+    "cold_unlicensed", 
+    "followup1_licensed", 
+    "followup2_licensed",
+    "followup1_unlicensed",
+    "followup2_unlicensed",
+    "licensing_reminder",
+    "licensing_checkin",
+  ];
 
   const templatesToShow = showAllTemplates ? allTemplates : contextualTemplates;
 

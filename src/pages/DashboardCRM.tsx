@@ -120,26 +120,43 @@ const COLUMNS = [
     label: "In Course", 
     icon: BookOpen,
     stages: ["onboarding", "training_online"] as OnboardingStage[],
-    color: "text-blue-400",
-    bgColor: "bg-blue-500/20"
+    color: "text-primary",
+    bgColor: "bg-primary/10"
   },
   { 
     key: "in_training", 
     label: "In-Field Training", 
     icon: GraduationCap,
     stages: ["in_field_training"] as OnboardingStage[],
-    color: "text-amber-400",
-    bgColor: "bg-amber-500/20"
+    color: "text-primary",
+    bgColor: "bg-primary/10"
   },
   { 
     key: "in_field", 
-    label: "In Field Active", 
+    label: "Live", 
     icon: Briefcase,
     stages: ["evaluated"] as OnboardingStage[],
-    color: "text-green-400",
-    bgColor: "bg-green-500/20"
+    color: "text-primary",
+    bgColor: "bg-primary/10"
   },
 ];
+
+// Avatar color palette based on name hash
+const AVATAR_COLORS = [
+  "from-primary to-cyan-500",
+  "from-violet-500 to-purple-500",
+  "from-rose-500 to-pink-500",
+  "from-amber-500 to-orange-500",
+  "from-emerald-500 to-teal-500",
+  "from-blue-500 to-indigo-500",
+  "from-fuchsia-500 to-pink-500",
+  "from-cyan-500 to-blue-500",
+];
+
+const getAvatarColor = (name: string) => {
+  const hash = name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length];
+};
 
 export default function DashboardCRM() {
   const { user, isAdmin, isManager, isLoading: authLoading } = useAuth();
@@ -399,35 +416,37 @@ export default function DashboardCRM() {
     return (
       <motion.div
         key={agent.id}
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: index * 0.03 }}
+        transition={{ delay: index * 0.02 }}
       >
-        <GlassCard className={cn("p-4", agent.isDeactivated && "opacity-60")}>
-          <div className="flex flex-col gap-3">
-            {/* Top Row: Agent Info + Star Rating */}
+        <GlassCard className={cn("p-3", agent.isDeactivated && "opacity-60")}>
+          <div className="flex flex-col gap-2">
+            {/* Top Row: Agent Info + Star Rating + Deactivate */}
             <div className="flex items-start justify-between gap-2">
-              <div className="flex items-start gap-3 min-w-0">
-                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center text-white font-bold shrink-0">
+              <div className="flex items-start gap-2 min-w-0">
+                <div className={cn(
+                  "h-8 w-8 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-sm font-bold shrink-0",
+                  getAvatarColor(agent.name)
+                )}>
                   {agent.name.charAt(0).toUpperCase()}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-semibold text-sm truncate">{agent.name}</h3>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <h3 className="font-medium text-sm truncate">{agent.name}</h3>
                     {agent.isDeactivated && (
-                      <Badge variant="destructive" className="text-xs">
+                      <Badge variant="destructive" className="text-[10px] h-4 px-1">
                         Inactive
                       </Badge>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
-                    <a href={`mailto:${agent.email}`} className="flex items-center gap-1 hover:text-foreground transition-colors truncate">
-                      <Mail className="h-3 w-3 shrink-0" />
-                      <span className="truncate">{agent.email}</span>
+                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mt-0.5">
+                    <a href={`mailto:${agent.email}`} className="hover:text-foreground transition-colors truncate max-w-[120px]">
+                      {agent.email}
                     </a>
                     {agent.phone && (
-                      <a href={`tel:${agent.phone}`} className="flex items-center gap-1 hover:text-foreground transition-colors">
-                        <Phone className="h-3 w-3" />
+                      <a href={`tel:${agent.phone}`} className="hover:text-foreground transition-colors">
+                        <Phone className="h-2.5 w-2.5" />
                       </a>
                     )}
                     {agent.instagramHandle && (
@@ -435,20 +454,15 @@ export default function DashboardCRM() {
                         href={`https://instagram.com/${agent.instagramHandle.replace('@', '')}`} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1 hover:text-foreground transition-colors"
+                        className="hover:text-foreground transition-colors"
                       >
-                        <Instagram className="h-3 w-3" />
+                        <Instagram className="h-2.5 w-2.5" />
                       </a>
                     )}
                   </div>
-                  {agent.managerName && (
-                    <Badge variant="outline" className="text-[10px] mt-1">
-                      {agent.managerName}
-                    </Badge>
-                  )}
                 </div>
               </div>
-              <div className="flex flex-col items-end gap-1 shrink-0">
+              <div className="flex items-center gap-1 shrink-0">
                 <StarRating
                   agentId={agent.id}
                   rating={agent.potentialRating}
@@ -458,7 +472,7 @@ export default function DashboardCRM() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                  className="h-5 w-5 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                   onClick={() => setDeactivateAgent(agent)}
                 >
                   <X className="h-3 w-3" />
@@ -466,7 +480,7 @@ export default function DashboardCRM() {
               </div>
             </div>
 
-            {/* Badges for In Field Active agents */}
+            {/* Badges for Live agents */}
             {isInFieldActive && agent.weekly10kBadges > 0 && (
               <PerformanceBadges
                 agentId={agent.id}
@@ -475,7 +489,7 @@ export default function DashboardCRM() {
               />
             )}
 
-            {/* Checklist Row */}
+            {/* Checklist - Compact */}
             <AgentChecklist
               agentId={agent.id}
               hasTrainingCourse={agent.hasTrainingCourse}
@@ -484,19 +498,17 @@ export default function DashboardCRM() {
               onUpdate={fetchAgents}
             />
 
-            {/* Onboarding Stage */}
-            <div className="border-t border-border pt-3">
-              <OnboardingTracker
-                agentId={agent.id}
-                currentStage={agent.onboardingStage}
-                onStageUpdate={fetchAgents}
-                readOnly={false}
-              />
-            </div>
+            {/* Onboarding Stage - Compact */}
+            <OnboardingTracker
+              agentId={agent.id}
+              currentStage={agent.onboardingStage}
+              onStageUpdate={fetchAgents}
+              readOnly={false}
+            />
 
-            {/* Attendance Grids */}
-            {(agent.onboardingStage === "in_field_training" || agent.onboardingStage === "training_online") && (
-              <div className="border-t border-border pt-3 space-y-2">
+            {/* Attendance Grids - In-Field Training: Training + Meetings */}
+            {agent.onboardingStage === "in_field_training" && (
+              <div className="border-t border-border pt-2 space-y-1.5">
                 <AttendanceGrid
                   agentId={agent.id}
                   type="training"
@@ -512,9 +524,9 @@ export default function DashboardCRM() {
               </div>
             )}
 
-            {/* In Field Active - Show Meetings + Dialer Attendance */}
+            {/* Live agents: Meetings + Dialed */}
             {isInFieldActive && (
-              <div className="border-t border-border pt-3 space-y-2">
+              <div className="border-t border-border pt-2 space-y-1.5">
                 <AttendanceGrid
                   agentId={agent.id}
                   type="onboarded_meeting"
@@ -647,51 +659,51 @@ export default function DashboardCRM() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <GlassCard className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-500/20">
-                <BookOpen className="h-5 w-5 text-blue-400" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <GlassCard className="p-3">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-primary/10">
+                <BookOpen className="h-4 w-4 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{inCourse}</p>
-                <p className="text-sm text-muted-foreground">In Course</p>
+                <p className="text-xl font-bold">{inCourse}</p>
+                <p className="text-xs text-muted-foreground">In Course</p>
               </div>
             </div>
           </GlassCard>
 
-          <GlassCard className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-amber-500/20">
-                <GraduationCap className="h-5 w-5 text-amber-400" />
+          <GlassCard className="p-3">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-primary/10">
+                <GraduationCap className="h-4 w-4 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{inTraining}</p>
-                <p className="text-sm text-muted-foreground">In-Field Training</p>
+                <p className="text-xl font-bold">{inTraining}</p>
+                <p className="text-xs text-muted-foreground">In-Field Training</p>
               </div>
             </div>
           </GlassCard>
 
-          <GlassCard className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-500/20">
-                <Briefcase className="h-5 w-5 text-green-400" />
+          <GlassCard className="p-3">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-primary/10">
+                <Briefcase className="h-4 w-4 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{inField}</p>
-                <p className="text-sm text-muted-foreground">In Field Active</p>
+                <p className="text-xl font-bold">{inField}</p>
+                <p className="text-xs text-muted-foreground">Live</p>
               </div>
             </div>
           </GlassCard>
 
-          <GlassCard className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-red-500/20">
-                <AlertTriangle className="h-5 w-5 text-red-400" />
+          <GlassCard className="p-3">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-destructive/10">
+                <AlertTriangle className="h-4 w-4 text-destructive" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{criticalAttendance}</p>
-                <p className="text-sm text-muted-foreground">Attendance Issues</p>
+                <p className="text-xl font-bold">{criticalAttendance}</p>
+                <p className="text-xs text-muted-foreground">Attendance Issues</p>
               </div>
             </div>
           </GlassCard>

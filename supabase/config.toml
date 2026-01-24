@@ -39,3 +39,9 @@ verify_jwt = false
 
 [functions.validate-signup-token]
 verify_jwt = false
+
+[functions.check-abandoned-applications]
+verify_jwt = false
+
+[functions.test-email-flows]
+verify_jwt = false

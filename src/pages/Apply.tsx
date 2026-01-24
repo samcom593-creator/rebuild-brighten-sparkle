@@ -86,6 +86,14 @@ export default function Apply() {
   const [selectedReferrer, setSelectedReferrer] = useState<string>("");
   const [customReferrer, setCustomReferrer] = useState("");
   const [savedLicenseStatus, setSavedLicenseStatus] = useState<string>("unlicensed");
+  const [sessionId] = useState<string>(() => {
+    // Generate a unique session ID for partial application tracking
+    const stored = sessionStorage.getItem("apex_apply_session");
+    if (stored) return stored;
+    const newId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    sessionStorage.setItem("apex_apply_session", newId);
+    return newId;
+  });
 
   const {
     register,
@@ -93,6 +101,7 @@ export default function Apply() {
     watch,
     setValue,
     trigger,
+    getValues,
     formState: { errors },
   } = useForm<ApplicationFormData>({
     resolver: zodResolver(applicationSchema),
@@ -102,6 +111,67 @@ export default function Apply() {
       licensedStates: [],
     },
   });
+
+  // Auto-save partial application after Step 1 is completed
+  const savePartialApplication = async (stepCompleted: number) => {
+    try {
+      const values = getValues();
+      
+      // Only save if we have at least email or phone
+      if (!values.email && !values.phone) return;
+
+      const partialData = {
+        session_id: sessionId,
+        email: values.email || null,
+        phone: values.phone || null,
+        first_name: values.firstName || null,
+        last_name: values.lastName || null,
+        city: values.city || null,
+        state: values.state || null,
+        step_completed: stepCompleted,
+        form_data: {
+          hasInsuranceExperience: values.hasInsuranceExperience,
+          yearsExperience: values.yearsExperience,
+          previousCompany: values.previousCompany,
+          licenseStatus: values.licenseStatus,
+          instagramHandle: values.instagramHandle,
+          availability: values.availability,
+        },
+        user_agent: navigator.userAgent,
+      };
+
+      // Upsert partial application
+      const { error } = await supabase
+        .from("partial_applications")
+        .upsert(partialData, { 
+          onConflict: "session_id",
+          ignoreDuplicates: false 
+        });
+
+      if (error) {
+        console.error("Error saving partial application:", error);
+      } else {
+        console.log(`Partial application saved at step ${stepCompleted}`);
+      }
+    } catch (err) {
+      console.error("Error in savePartialApplication:", err);
+    }
+  };
+
+  // Mark partial application as converted when full submission succeeds
+  const markAsConverted = async () => {
+    try {
+      await supabase
+        .from("partial_applications")
+        .update({ converted_at: new Date().toISOString() })
+        .eq("session_id", sessionId);
+      
+      // Clear session storage
+      sessionStorage.removeItem("apex_apply_session");
+    } catch (err) {
+      console.error("Error marking as converted:", err);
+    }
+  };
 
   const hasExperience = watch("hasInsuranceExperience");
   const licenseStatus = watch("licenseStatus");
@@ -189,6 +259,12 @@ export default function Apply() {
       toast.error("Please fill in all required fields before continuing");
       return;
     }
+    
+    // Auto-save partial application after each step (except step 5 which is referral)
+    if (currentStep <= 4) {
+      savePartialApplication(currentStep);
+    }
+    
     if (currentStep < 5) {
       setCurrentStep(currentStep + 1);
     }
@@ -247,6 +323,9 @@ export default function Apply() {
 
       if (error) throw error;
       if (!submitResult?.applicationId) throw new Error("Missing application id");
+
+      // Mark partial application as converted
+      await markAsConverted();
 
       // Save application ID and license status for referral step
       setApplicationId(submitResult.applicationId);

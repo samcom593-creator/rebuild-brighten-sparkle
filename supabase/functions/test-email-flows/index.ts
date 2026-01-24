@@ -133,7 +133,7 @@ const handler = async (req: Request): Promise<Response> => {
 
                 <div style="background: #d1fae5; border-left: 4px solid #059669; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
                   <p style="margin: 0; color: #047857; font-weight: 500;">
-                    🎓 Don't worry about not having a license yet - we cover ALL licensing costs and will guide you through the entire process!
+                    🎓 Don't worry about not having a license yet - we cover most of the licensing costs and will guide you through the entire process!
                   </p>
                 </div>
 
@@ -417,7 +417,7 @@ const handler = async (req: Request): Promise<Response> => {
 
                 <div style="background: #d1fae5; border-left: 4px solid #059669; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
                   <p style="margin: 0; color: #047857; font-weight: 500;">
-                    Remember: We cover ALL licensing costs - the course, exam fees, and license application!
+                    Remember: We cover most of the licensing costs - the course, exam fees, and license application!
                   </p>
                 </div>
 

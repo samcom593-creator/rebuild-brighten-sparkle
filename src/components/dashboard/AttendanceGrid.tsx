@@ -127,11 +127,11 @@ export function AttendanceGrid({
   const getStatusIcon = (status: AttendanceMark) => {
     switch (status) {
       case "present":
-        return <Check className="h-3 w-3" />;
+        return <Check className="h-3.5 w-3.5" />;
       case "absent":
-        return <X className="h-3 w-3" />;
+        return <X className="h-3.5 w-3.5" />;
       default:
-        return <Minus className="h-3 w-3 opacity-50" />;
+        return <Minus className="h-3.5 w-3.5 opacity-50" />;
     }
   };
 
@@ -156,8 +156,8 @@ export function AttendanceGrid({
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs text-muted-foreground w-20 shrink-0">{label}:</span>
-      <div className="flex gap-1">
+      <span className="text-[11px] text-muted-foreground w-14 shrink-0 font-medium">{label}:</span>
+      <div className="flex gap-1.5">
         {weekDays.map((day, index) => {
           const record = attendance[index] || { status: "unmarked" };
           const isToday = isSameDay(day, today);
@@ -168,11 +168,11 @@ export function AttendanceGrid({
               onClick={() => handleToggle(index)}
               disabled={readOnly || updating === index}
               className={cn(
-                "w-7 h-7 rounded flex flex-col items-center justify-center border text-xs font-medium",
+                "w-8 h-8 rounded-md flex flex-col items-center justify-center border text-xs font-medium",
                 getStatusClass(record.status, day),
                 !readOnly && "hover:opacity-80 cursor-pointer",
                 updating === index && "opacity-50",
-                isToday && "ring-1 ring-primary"
+                isToday && "ring-2 ring-primary ring-offset-1 ring-offset-background"
               )}
               title={`${format(day, "EEEE, MMM d")} - ${record.status}`}
             >

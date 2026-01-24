@@ -21,6 +21,7 @@ import {
   Briefcase,
   Instagram,
   X,
+  Video,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -167,6 +168,7 @@ export default function DashboardCRM() {
   const [managerFilter, setManagerFilter] = useState<string>("all");
   const [showDeactivated, setShowDeactivated] = useState(false);
   const [deactivateAgent, setDeactivateAgent] = useState<AgentCRM | null>(null);
+  const [stageFilter, setStageFilter] = useState<"all" | "in_course" | "in_training" | "live" | "meeting_eligible" | "critical">("all");
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -384,9 +386,27 @@ export default function DashboardCRM() {
     return matchesSearch && matchesManager && matchesDeactivated;
   });
 
+  // Apply stage filter
+  const stageFilteredAgents = filteredAgents.filter(agent => {
+    switch (stageFilter) {
+      case "in_course":
+        return ["onboarding", "training_online"].includes(agent.onboardingStage);
+      case "in_training":
+        return agent.onboardingStage === "in_field_training";
+      case "live":
+        return agent.onboardingStage === "evaluated";
+      case "meeting_eligible":
+        return ["in_field_training", "evaluated"].includes(agent.onboardingStage);
+      case "critical":
+        return agent.attendanceStatus === "critical";
+      default:
+        return true;
+    }
+  });
+
   // Group agents by column
   const getAgentsForColumn = (stages: OnboardingStage[]) => {
-    return filteredAgents.filter(agent => stages.includes(agent.onboardingStage));
+    return stageFilteredAgents.filter(agent => stages.includes(agent.onboardingStage));
   };
 
   // Stats
@@ -394,6 +414,7 @@ export default function DashboardCRM() {
   const inCourse = activeAgents.filter(a => ["onboarding", "training_online"].includes(a.onboardingStage)).length;
   const inTraining = activeAgents.filter(a => a.onboardingStage === "in_field_training").length;
   const inField = activeAgents.filter(a => a.onboardingStage === "evaluated").length;
+  const meetingEligible = inTraining + inField;
   const criticalAttendance = activeAgents.filter(a => a.attendanceStatus === "critical").length;
 
   if (authLoading) {
@@ -658,9 +679,15 @@ export default function DashboardCRM() {
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <GlassCard className="p-3">
+        {/* Clickable Stats Filters */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <GlassCard 
+            className={cn(
+              "p-3 cursor-pointer transition-all hover:ring-2 hover:ring-primary/50",
+              stageFilter === "in_course" && "ring-2 ring-primary"
+            )}
+            onClick={() => setStageFilter(stageFilter === "in_course" ? "all" : "in_course")}
+          >
             <div className="flex items-center gap-2">
               <div className="p-1.5 rounded-lg bg-primary/10">
                 <BookOpen className="h-4 w-4 text-primary" />
@@ -672,7 +699,13 @@ export default function DashboardCRM() {
             </div>
           </GlassCard>
 
-          <GlassCard className="p-3">
+          <GlassCard 
+            className={cn(
+              "p-3 cursor-pointer transition-all hover:ring-2 hover:ring-primary/50",
+              stageFilter === "in_training" && "ring-2 ring-primary"
+            )}
+            onClick={() => setStageFilter(stageFilter === "in_training" ? "all" : "in_training")}
+          >
             <div className="flex items-center gap-2">
               <div className="p-1.5 rounded-lg bg-primary/10">
                 <GraduationCap className="h-4 w-4 text-primary" />
@@ -684,7 +717,13 @@ export default function DashboardCRM() {
             </div>
           </GlassCard>
 
-          <GlassCard className="p-3">
+          <GlassCard 
+            className={cn(
+              "p-3 cursor-pointer transition-all hover:ring-2 hover:ring-primary/50",
+              stageFilter === "live" && "ring-2 ring-primary"
+            )}
+            onClick={() => setStageFilter(stageFilter === "live" ? "all" : "live")}
+          >
             <div className="flex items-center gap-2">
               <div className="p-1.5 rounded-lg bg-primary/10">
                 <Briefcase className="h-4 w-4 text-primary" />
@@ -696,7 +735,31 @@ export default function DashboardCRM() {
             </div>
           </GlassCard>
 
-          <GlassCard className="p-3">
+          <GlassCard 
+            className={cn(
+              "p-3 cursor-pointer transition-all hover:ring-2 hover:ring-accent/50",
+              stageFilter === "meeting_eligible" && "ring-2 ring-accent"
+            )}
+            onClick={() => setStageFilter(stageFilter === "meeting_eligible" ? "all" : "meeting_eligible")}
+          >
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-accent/10">
+                <Video className="h-4 w-4 text-accent-foreground" />
+              </div>
+              <div>
+                <p className="text-xl font-bold">{meetingEligible}</p>
+                <p className="text-xs text-muted-foreground">Meeting Eligible</p>
+              </div>
+            </div>
+          </GlassCard>
+
+          <GlassCard 
+            className={cn(
+              "p-3 cursor-pointer transition-all hover:ring-2 hover:ring-destructive/50",
+              stageFilter === "critical" && "ring-2 ring-destructive"
+            )}
+            onClick={() => setStageFilter(stageFilter === "critical" ? "all" : "critical")}
+          >
             <div className="flex items-center gap-2">
               <div className="p-1.5 rounded-lg bg-destructive/10">
                 <AlertTriangle className="h-4 w-4 text-destructive" />

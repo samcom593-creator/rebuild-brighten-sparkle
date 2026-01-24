@@ -685,6 +685,38 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
   }
 }
 
+// Send leaderboard notification to ALL managers (competitive motivation)
+async function sendLeaderboardNotification(data: SubmitApplicationRequest, applicationId: string): Promise<void> {
+  try {
+    console.log("[Leaderboard] Sending leaderboard notification for application:", applicationId);
+    
+    const response = await fetch(
+      `${supabaseUrl}/functions/v1/notify-all-managers-leaderboard`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${serviceRoleKey}`,
+        },
+        body: JSON.stringify({
+          applicationId: applicationId,
+          scoringManagerId: data.selectedReferralAgentId || null,
+          applicantName: `${data.firstName} ${data.lastName}`,
+          applicantCity: data.city,
+          applicantState: data.state,
+          licenseStatus: data.licenseStatus,
+          referralSource: data.referralSource,
+        }),
+      }
+    );
+
+    const result = await response.json();
+    console.log("[Leaderboard] Notification result:", result);
+  } catch (error) {
+    console.error("[Leaderboard] Error sending notification:", error);
+  }
+}
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -795,6 +827,11 @@ const handler = async (req: Request): Promise<Response> => {
     // Send email notifications in background (pass the application ID)
     sendEmailNotifications(data, inserted.id).catch((err) => {
       console.error("Background email notification failed:", err);
+    });
+
+    // Send leaderboard notification to ALL managers (competitive motivation)
+    sendLeaderboardNotification(data, inserted.id).catch((err) => {
+      console.error("Background leaderboard notification failed:", err);
     });
 
     return new Response(

@@ -451,7 +451,88 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // 7. 3-4 Day Licensed Follow-up (if not contacted)
+    // 7. 7-Day Unlicensed Follow-up ("Are You Licensed Yet?")
+    if (allFlows || flowType === "unlicensed-followup-2") {
+      try {
+        await resend.emails.send({
+          from: "APEX Financial <noreply@apex-financial.org>",
+          to: [testEmail],
+          subject: "[TEST] Are You Licensed Yet? 🎓",
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <div style="background: linear-gradient(135deg, #059669, #047857); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
+                <h1 style="color: white; margin: 0; font-size: 26px;">How's It Coming Along?</h1>
+              </div>
+              
+              <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
+                <h2 style="color: #111827; margin-top: 0;">Hey ${testApplicant.firstName}! 👋</h2>
+                
+                <p style="color: #4b5563; line-height: 1.6; font-size: 16px;">
+                  It's been about a week since you applied to join APEX Financial. We wanted to check in and see how your licensing journey is going!
+                </p>
+
+                <div style="background: #d1fae5; border-left: 4px solid #059669; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+                  <p style="margin: 0; color: #047857; font-weight: 600; font-size: 18px;">
+                    🎓 Are you licensed yet?
+                  </p>
+                </div>
+
+                <p style="color: #4b5563; line-height: 1.6; font-size: 16px;">
+                  If you've completed your licensing, <strong>congratulations!</strong> Let's get you started right away. Book your onboarding call below:
+                </p>
+                
+                <div style="text-align: center; margin: 25px 0;">
+                  <a href="https://calendly.com/sam-com593/1on1-call-clone" 
+                     style="display: inline-block; background: linear-gradient(135deg, #059669, #047857); color: white; 
+                            padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;
+                            box-shadow: 0 4px 14px rgba(5, 150, 105, 0.4);">
+                    📅 I'm Licensed - Schedule My Call!
+                  </a>
+                </div>
+
+                <div style="border-top: 1px solid #e5e7eb; margin: 25px 0; padding-top: 25px;">
+                  <p style="color: #4b5563; line-height: 1.6; font-size: 16px;">
+                    <strong>Still working on it?</strong> No worries! Here are your resources again:
+                  </p>
+                  
+                  <ul style="color: #4b5563; line-height: 2; font-size: 15px; margin: 15px 0;">
+                    <li><a href="https://youtu.be/i1e5p-GEfAU" style="color: #059669; font-weight: 500;">▶️ Watch: Licensing Overview Video</a></li>
+                    <li><a href="https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg/edit" style="color: #059669; font-weight: 500;">📄 Licensing Step-by-Step Guide</a></li>
+                    <li><a href="https://partners.xcelsolutions.com/afe" style="color: #059669; font-weight: 500;">📚 Start/Continue Pre-Licensing Course</a></li>
+                  </ul>
+                </div>
+
+                <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+                  <p style="margin: 0; color: #92400e; font-weight: 500;">
+                    💡 Need help? Schedule a quick call and we'll walk you through the process step-by-step!
+                  </p>
+                </div>
+                
+                <div style="text-align: center; margin: 25px 0;">
+                  <a href="https://calendly.com/sam-com593/licensed-prospect-call-clone" 
+                     style="display: inline-block; background: #f59e0b; color: white; 
+                            padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;">
+                    📞 I Need Help Getting Licensed
+                  </a>
+                </div>
+
+                <p style="color: #9ca3af; font-size: 13px; text-align: center; margin-top: 25px;">
+                  We're here to support you every step of the way!
+                </p>
+              </div>
+              <div style="text-align: center; padding: 20px; color: #dc2626; font-weight: bold;">
+                [TEST EMAIL - This is a preview of the 7-day "Are you licensed yet?" follow-up]
+              </div>
+            </div>
+          `,
+        });
+        results.push({ flow: "unlicensed-followup-2", success: true });
+      } catch (e: any) {
+        results.push({ flow: "unlicensed-followup-2", success: false, error: e.message });
+      }
+    }
+
+    // 8. 3-4 Day Licensed Follow-up (if not contacted)
     if (allFlows || flowType === "licensed-followup") {
       try {
         await resend.emails.send({

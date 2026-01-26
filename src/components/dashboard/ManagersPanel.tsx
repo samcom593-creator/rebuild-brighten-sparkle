@@ -73,6 +73,7 @@ export function ManagersPanel() {
   const [editingIg, setEditingIg] = useState<string>("");
   const [savingIg, setSavingIg] = useState(false);
   const [expandedManagers, setExpandedManagers] = useState<Set<string>>(new Set());
+  const [hasAutoExpanded, setHasAutoExpanded] = useState(false);
 
   const toggleExpanded = (managerId: string) => {
     setExpandedManagers(prev => {
@@ -85,6 +86,17 @@ export function ManagersPanel() {
       return next;
     });
   };
+
+  // Auto-expand managers with team members on first load
+  useEffect(() => {
+    if (!hasAutoExpanded && managers.length > 0) {
+      const managersWithTeam = managers.filter(m => m.teamMembers.length > 0).map(m => m.agentId);
+      if (managersWithTeam.length > 0) {
+        setExpandedManagers(new Set(managersWithTeam));
+      }
+      setHasAutoExpanded(true);
+    }
+  }, [managers, hasAutoExpanded]);
 
   const fetchManagers = async () => {
     setLoading(true);

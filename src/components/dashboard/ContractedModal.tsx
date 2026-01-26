@@ -101,7 +101,40 @@ export function ContractedModal({
           .eq("id", agentId);
       }
 
-      // 3. Send contracted email with CRM link
+      // 3. Create a new agent record in the CRM
+      // First create a profile for the new agent
+      const newUserId = crypto.randomUUID();
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .insert({
+          user_id: newUserId,
+          email: application.email,
+          full_name: `${application.first_name} ${application.last_name}`,
+          phone: application.phone,
+        });
+
+      if (profileError) {
+        console.error("Profile creation error:", profileError);
+        // Continue anyway - we'll create the agent record
+      }
+
+      // Create the agent record linked to the manager
+      const { error: agentError } = await supabase
+        .from("agents")
+        .insert({
+          user_id: newUserId,
+          invited_by_manager_id: agentId,
+          onboarding_stage: "onboarding",
+          license_status: "licensed",
+          status: "active",
+        });
+
+      if (agentError) {
+        console.error("Agent creation error:", agentError);
+        toast.warning("Contracted but could not auto-add to CRM");
+      }
+
+      // 4. Send contracted email with CRM link
       const { error: emailError } = await supabase.functions.invoke("notify-agent-contracted", {
         body: {
           applicationId: application.id,
@@ -114,7 +147,7 @@ export function ContractedModal({
         console.error("Email send error:", emailError);
         toast.warning("Agent contracted but email notification failed");
       } else {
-        toast.success(`${application.first_name} contracted! CRM setup email sent.`);
+        toast.success(`${application.first_name} contracted and added to CRM!`);
       }
 
       onOpenChange(false);

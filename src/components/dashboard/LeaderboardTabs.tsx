@@ -5,6 +5,8 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { AnimatedNumber } from "./AnimatedNumber";
+import { ConfettiCelebration } from "./ConfettiCelebration";
+import { useTop3Celebration } from "@/hooks/useTop3Celebration";
 import { cn } from "@/lib/utils";
 import { subDays, format } from "date-fns";
 
@@ -49,8 +51,13 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
   const [period, setPeriod] = useState<Period>("day");
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showConfetti, setShowConfetti] = useState(false);
+  
+  const { checkForCelebration, resetTracking } = useTop3Celebration({ currentAgentId });
 
   useEffect(() => {
+    // Reset tracking when period changes
+    resetTracking();
     fetchLeaderboard();
     
     // Subscribe to realtime updates
@@ -66,7 +73,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [period, currentAgentId]);
+  }, [period, currentAgentId, resetTracking]);
 
   const fetchLeaderboard = async () => {
     try {
@@ -189,6 +196,12 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
         entry.rank = index + 1;
       });
 
+      // Check if current user moved into top 3
+      const currentUserEntry = leaderboardEntries.find((e) => e.isCurrentUser);
+      if (currentUserEntry && checkForCelebration(currentUserEntry.rank)) {
+        setShowConfetti(true);
+      }
+
       setEntries(leaderboardEntries);
     } catch (error) {
       console.error("Error fetching leaderboard:", error);
@@ -204,11 +217,16 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-    >
-      <GlassCard className="p-6">
+    <>
+      <ConfettiCelebration 
+        trigger={showConfetti} 
+        onComplete={() => setShowConfetti(false)} 
+      />
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <GlassCard className="p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold gradient-text flex items-center gap-2">
             <Trophy className="h-5 w-5 text-amber-400" />
@@ -366,5 +384,6 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
         )}
       </GlassCard>
     </motion.div>
+    </>
   );
 }

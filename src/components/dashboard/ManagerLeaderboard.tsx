@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Trophy, Medal, Award, Users, TrendingUp } from "lucide-react";
+import { Trophy, Medal, Award, Users, TrendingUp, Crown, Target, Radio } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { RankChangeIndicator } from "./RankChangeIndicator";
+import { useManagerRankChange } from "@/hooks/useManagerRankChange";
 import {
   BarChart,
   Bar,
@@ -13,7 +15,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Cell,
   Legend,
 } from "recharts";
 
@@ -38,6 +39,24 @@ export function ManagerLeaderboard() {
   const { user } = useAuth();
   const [rankings, setRankings] = useState<ManagerRanking[]>([]);
   const [loading, setLoading] = useState(true);
+  const { getRankChange, saveCurrentRanks, hasPreviousData } = useManagerRankChange();
+
+  // Find current user's stats
+  const currentUserStats = useMemo(() => {
+    return rankings.find((r) => r.isCurrentUser);
+  }, [rankings]);
+
+  // Find leader stats
+  const leaderStats = useMemo(() => {
+    return rankings.length > 0 ? rankings[0] : null;
+  }, [rankings]);
+
+  // Calculate gap to #1
+  const gapToFirst = useMemo(() => {
+    if (!currentUserStats || !leaderStats) return 0;
+    if (currentUserStats.rank === 1) return 0;
+    return leaderStats.totalRecruits - currentUserStats.totalRecruits;
+  }, [currentUserStats, leaderStats]);
 
   const fetchLeaderboard = async () => {
     try {
@@ -139,6 +158,11 @@ export function ManagerLeaderboard() {
         }));
 
       setRankings(managerRankings);
+      
+      // Save current ranks for future comparison (after a short delay to ensure we compare with previous)
+      setTimeout(() => {
+        saveCurrentRanks(managerRankings.map(m => ({ agentId: m.agentId, rank: m.rank })));
+      }, 1000);
     } catch (error) {
       console.error("Error fetching manager leaderboard:", error);
     } finally {
@@ -191,11 +215,79 @@ export function ManagerLeaderboard() {
 
   return (
     <div className="space-y-6">
+      {/* Your Stats Summary Card */}
+      {currentUserStats && (
+        <GlassCard className="p-6 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-primary/20">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Target className="h-5 w-5 text-primary" />
+              <h3 className="text-lg font-semibold">Your Recruiting Stats</h3>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full">
+              <Radio className="h-3 w-3 animate-pulse" />
+              <span>LIVE</span>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center">
+              <div className="flex items-center justify-center gap-2">
+                {currentUserStats.rank === 1 && (
+                  <Crown className="h-5 w-5 text-yellow-400" />
+                )}
+                <p className="text-3xl font-bold text-foreground">
+                  #{currentUserStats.rank}
+                </p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                of {rankings.length} managers
+              </p>
+            </div>
+            
+            <div className="text-center">
+              <p className="text-3xl font-bold text-foreground">
+                {currentUserStats.totalRecruits}
+              </p>
+              <p className="text-xs text-muted-foreground">Total Recruits</p>
+            </div>
+            
+            <div className="text-center">
+              <p className="text-3xl font-bold text-emerald-500">
+                {currentUserStats.licensedRecruits}
+              </p>
+              <p className="text-xs text-muted-foreground">Licensed</p>
+            </div>
+            
+            <div className="text-center">
+              {currentUserStats.rank === 1 ? (
+                <>
+                  <p className="text-2xl font-bold text-yellow-500">👑</p>
+                  <p className="text-xs text-muted-foreground">You're #1!</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-3xl font-bold text-amber-500">
+                    {gapToFirst}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Away from #1</p>
+                </>
+              )}
+            </div>
+          </div>
+        </GlassCard>
+      )}
+
       {/* Bar Chart Visualization */}
       <GlassCard className="p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <TrendingUp className="h-5 w-5 text-primary" />
-          <h3 className="text-lg font-semibold">Recruit Comparison</h3>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            <h3 className="text-lg font-semibold">Recruit Comparison</h3>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full">
+            <Radio className="h-3 w-3 animate-pulse" />
+            <span>LIVE</span>
+          </div>
         </div>
         <p className="text-sm text-muted-foreground mb-4">
           Visual breakdown of recruits by manager
@@ -254,9 +346,15 @@ export function ManagerLeaderboard() {
 
       {/* Rankings Table */}
       <GlassCard className="p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Trophy className="h-5 w-5 text-primary" />
-          <h3 className="text-lg font-semibold">Manager Leaderboard</h3>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Trophy className="h-5 w-5 text-primary" />
+            <h3 className="text-lg font-semibold">Manager Leaderboard</h3>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-full">
+            <Radio className="h-3 w-3 animate-pulse" />
+            <span>LIVE</span>
+          </div>
         </div>
         <p className="text-sm text-muted-foreground mb-4">
           Total applicants recruited by each manager
@@ -268,61 +366,79 @@ export function ManagerLeaderboard() {
               <p className="text-sm">No managers with recruits yet</p>
             </div>
           ) : (
-            rankings.map((manager, index) => (
-              <motion.div
-                key={manager.agentId}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className={cn(
-                  "flex items-center gap-3 p-3 rounded-lg transition-colors",
-                  manager.isCurrentUser
-                    ? "bg-primary/20 border border-primary/30"
-                    : "bg-muted/50"
-                )}
-              >
-                <div className="w-8 flex justify-center flex-shrink-0">
-                  {manager.rank <= 3 ? (
-                    rankIcons[manager.rank as 1 | 2 | 3]
-                  ) : (
-                    <span className="text-muted-foreground font-medium">
-                      {manager.rank}
-                    </span>
+            rankings.map((manager, index) => {
+              const rankChange = getRankChange(manager.agentId, manager.rank);
+              const isTop3 = manager.rank <= 3;
+              
+              return (
+                <motion.div
+                  key={manager.agentId}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className={cn(
+                    "flex items-center gap-3 p-3 rounded-lg transition-all",
+                    manager.isCurrentUser
+                      ? "bg-primary/20 border border-primary/30 shadow-lg shadow-primary/10"
+                      : "bg-muted/50",
+                    isTop3 && manager.isCurrentUser && "animate-pulse"
                   )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p
-                    className={cn(
-                      "font-medium text-sm truncate",
-                      manager.isCurrentUser && "text-primary"
+                >
+                  <div className="w-8 flex justify-center flex-shrink-0">
+                    {manager.rank <= 3 ? (
+                      rankIcons[manager.rank as 1 | 2 | 3]
+                    ) : (
+                      <span className="text-muted-foreground font-medium">
+                        {manager.rank}
+                      </span>
                     )}
-                  >
-                    {manager.name}
-                    {manager.isCurrentUser && (
-                      <span className="ml-2 text-xs">(You)</span>
-                    )}
-                  </p>
-                </div>
-                <div className="flex items-center gap-4 text-right flex-shrink-0">
-                  <div>
-                    <p className="font-bold text-foreground">{manager.totalRecruits}</p>
-                    <p className="text-xs text-muted-foreground">total</p>
                   </div>
-                  <div className="hidden sm:block">
-                    <p className="font-semibold text-emerald-500">{manager.licensedRecruits}</p>
-                    <p className="text-xs text-muted-foreground">licensed</p>
+                  
+                  {/* Rank Change Indicator */}
+                  {hasPreviousData && (
+                    <div className="w-8 flex justify-center flex-shrink-0">
+                      <RankChangeIndicator
+                        change={rankChange.change}
+                        previousRank={rankChange.previousRank}
+                        compact
+                      />
+                    </div>
+                  )}
+                  
+                  <div className="flex-1 min-w-0">
+                    <p
+                      className={cn(
+                        "font-medium text-sm truncate",
+                        manager.isCurrentUser && "text-primary"
+                      )}
+                    >
+                      {manager.name}
+                      {manager.isCurrentUser && (
+                        <span className="ml-2 text-xs">(You)</span>
+                      )}
+                    </p>
                   </div>
-                  <div className="hidden sm:block">
-                    <p className="font-semibold text-blue-500">{manager.unlicensedRecruits}</p>
-                    <p className="text-xs text-muted-foreground">unlicensed</p>
+                  <div className="flex items-center gap-4 text-right flex-shrink-0">
+                    <div>
+                      <p className="font-bold text-foreground">{manager.totalRecruits}</p>
+                      <p className="text-xs text-muted-foreground">total</p>
+                    </div>
+                    <div className="hidden sm:block">
+                      <p className="font-semibold text-emerald-500">{manager.licensedRecruits}</p>
+                      <p className="text-xs text-muted-foreground">licensed</p>
+                    </div>
+                    <div className="hidden sm:block">
+                      <p className="font-semibold text-blue-500">{manager.unlicensedRecruits}</p>
+                      <p className="text-xs text-muted-foreground">unlicensed</p>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-yellow-500">{manager.closedRecruits}</p>
+                      <p className="text-xs text-muted-foreground">closed</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-semibold text-yellow-500">{manager.closedRecruits}</p>
-                    <p className="text-xs text-muted-foreground">closed</p>
-                  </div>
-                </div>
-              </motion.div>
-            ))
+                </motion.div>
+              );
+            })
           )}
         </div>
       </GlassCard>

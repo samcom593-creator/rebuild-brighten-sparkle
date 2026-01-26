@@ -33,6 +33,20 @@ export function ClosingRateLeaderboard({ currentAgentId, period = "week" }: Clos
 
   useEffect(() => {
     fetchLeaderboard();
+
+    // Subscribe to realtime updates
+    const channel = supabase
+      .channel("closing-rate-leaderboard")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "daily_production" },
+        () => fetchLeaderboard()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [period, currentAgentId]);
 
   const fetchLeaderboard = async () => {

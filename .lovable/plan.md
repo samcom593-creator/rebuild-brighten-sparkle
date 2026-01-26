@@ -1,240 +1,271 @@
 
-## Plan: Agent Production Quick-Entry Link & Enhanced Stats
+## Plan: Comprehensive Agent Portal Enhancement & Automated Notifications
 
 ### Overview
-This plan creates a shareable direct link for agents to log their daily numbers, adds real-time animations/notifications when numbers are submitted, displays weekly stats on Live agent cards, and ensures comprehensive daily summaries are sent to admin and leaders.
+This plan implements: scheduled email notifications (9 PM admin summary, 9 AM top performers, 8 PM "no deal" alerts), an income goal calculator dashboard, monthly leaderboard emails, refined light mode styling, and UX improvements to make the portal an agent's "best friend."
 
 ---
 
-## Part 1: Public Agent Production Entry Link
+## Part 1: Scheduled Email Notifications
 
-### 1.1 Create New Page: `/log-numbers`
+### 1.1 Daily Admin Summary at 9 PM CST (for Admin + Managers)
 
-**File: `src/pages/LogNumbers.tsx` (NEW)**
+**File: `supabase/functions/notify-admin-daily-summary/index.ts`**
 
-A standalone public page accessible via direct link that:
-1. Shows a form asking for the agent's name/email
-2. Looks up if they exist in the CRM as a Live agent
-3. **If found:** Shows the production entry form directly
-4. **If not found:** Asks qualifying questions to add them to the CRM first
+**Modifications:**
+- Update to send to BOTH admin (info@kingofsales.net) AND all managers
+- Add manager-specific filtering (show their team's data)
+- Schedule via pg_cron at 9 PM CST (3 AM UTC)
 
-**User Flow:**
-```
-User clicks link → Enter name/email →
-  ├─ Agent found? → Show production entry form → Submit → Animated leaderboard reveal
-  └─ Agent NOT found? → Show quick add form → Add to CRM → Show production entry
+```text
+New pg_cron schedule:
+schedule: '0 3 * * *'  -- 9 PM CST = 3 AM UTC
+jobname: 'admin-daily-summary-9pm-cst'
 ```
 
-**Direct Link Format:**
+### 1.2 Top 3 Performers Email at 9 AM CST
+
+**File: `supabase/functions/notify-top-performers-morning/index.ts` (NEW)**
+
+Sends to ALL agents every morning with:
+- Top 3 performers from previous day
+- Their ALP, deals, and closing rate
+- Motivational message
+- Clean, visually appealing design with medal icons
+
+```text
+pg_cron schedule:
+schedule: '0 15 * * *'  -- 9 AM CST = 3 PM UTC
+jobname: 'top-performers-morning-9am'
 ```
-https://rebuild-brighten-sparkle.lovable.app/log-numbers
+
+### 1.3 Monthly Leaderboard Email at 9 AM on 1st of Month
+
+**File: `supabase/functions/notify-monthly-leaderboard/index.ts` (NEW)**
+
+Sends on the 1st of each month:
+- Full monthly rankings (all agents)
+- Total ALP, deals, closing rate for the month
+- "Start fresh" motivational message
+- Link to set income goal for new month
+
+```text
+pg_cron schedule:
+schedule: '0 15 1 * *'  -- 9 AM CST on 1st = 3 PM UTC
+jobname: 'monthly-leaderboard-1st'
 ```
 
-### 1.2 Page Features
+### 1.4 "No Deal Today" Alert at 8 PM CST
 
-**Search/Match Logic:**
-- Query `agents` table joined with `profiles` by name/email
-- Match against `onboarding_stage = 'evaluated'` (Live agents only)
-- If multiple matches, show list to select
-- If no match, show "New Agent" form
+**File: `supabase/functions/notify-no-deal-today/index.ts` (NEW)**
 
-**New Agent Form (if not found):**
-- Full name
-- Email
-- Phone
-- License status (licensed/unlicensed)
-- Auto-creates agent record and profile
+At 8 PM, agents with 0 deals get:
+- "Below Standard" alert (tactful, not harsh)
+- Reminder that ONE day can change the week
+- Calendly booking link for 1-on-1 support call
+- Motivational but direct message
 
-**Production Entry:**
-- All 8 production fields (presentations, passed_price, hours_called, referrals_caught, booked_inhome, referral_presentations, deals_closed, aop)
-- Submit button
-
-### 1.3 Animated Leaderboard Reveal
-
-**After submission:**
-1. Trigger canvas-confetti celebration
-2. Show animated "Your Numbers Are In!" message
-3. Display leaderboard with their position highlighted
-4. Animate their entry "flying in" to its rank position
-5. Show comparison stats:
-   - "You're #X of Y agents"
-   - "Your closing rate: X%"
-   - "Weekly total: $X,XXX"
-
----
-
-## Part 2: Real-Time Notifications for Admin
-
-### 2.1 Create Edge Function: `notify-production-submitted`
-
-**File: `supabase/functions/notify-production-submitted/index.ts` (NEW)**
-
-Triggered when production is saved, sends real-time notification to admin:
-
-**Email content:**
-- Agent name
-- Today's numbers (ALP, deals, presentations, close rate)
-- Weekly running total
-- Timestamp
-
-### 2.2 Update ProductionEntry to Trigger Notification
-
-**File: `src/components/dashboard/ProductionEntry.tsx`**
-
-After successful save, invoke the notification function:
-```typescript
-await supabase.functions.invoke("notify-production-submitted", {
-  body: { agentId, productionData: formData }
-});
+```text
+pg_cron schedule:
+schedule: '0 2 * * *'  -- 8 PM CST = 2 AM UTC next day
+jobname: 'no-deal-alert-8pm'
 ```
 
 ---
 
-## Part 3: Weekly Stats on Live Agent Cards
+## Part 2: Income Goal Calculator & Dashboard
 
-### 3.1 Update DashboardCRM to Fetch Weekly Production
+### 2.1 New Database Table: `agent_goals`
 
-**File: `src/pages/DashboardCRM.tsx`**
+```sql
+CREATE TABLE public.agent_goals (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  agent_id UUID NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+  month_year TEXT NOT NULL,  -- e.g., "2026-02"
+  income_goal NUMERIC NOT NULL,
+  comp_percentage NUMERIC DEFAULT 75,  -- 9-month advance default
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  UNIQUE(agent_id, month_year)
+);
 
-**New data fetch:**
-- When loading agents, also query `daily_production` for the past 7 days
-- Aggregate: weekly total ALP, total presentations, total deals, closing rate
+ALTER TABLE public.agent_goals ENABLE ROW LEVEL SECURITY;
 
-**Update AgentCRM interface:**
-```typescript
-interface AgentCRM {
-  // ... existing fields
-  weeklyALP: number;
-  weeklyPresentations: number;
-  weeklyDeals: number;
-  weeklyClosingRate: number;
+-- RLS Policies
+CREATE POLICY "Agents can manage own goals"
+ON public.agent_goals FOR ALL
+USING (agent_id = current_agent_id())
+WITH CHECK (agent_id = current_agent_id());
+
+CREATE POLICY "Admins can view all goals"
+ON public.agent_goals FOR SELECT
+USING (has_role(auth.uid(), 'admin'));
+```
+
+### 2.2 New Component: `IncomeGoalTracker.tsx`
+
+**File: `src/components/dashboard/IncomeGoalTracker.tsx` (NEW)**
+
+Features:
+- Income goal input (monthly target earnings)
+- 9-month advance comp calculator (default 75%)
+- "Locked" state until 7 days of production data exists
+- Progress bar showing current vs goal
+- Presentations/deals needed calculation based on:
+  - Agent's average closing rate (from their 7+ days of data)
+  - Average premium per deal
+- Clean, visually appealing card with gradient styling
+
+**Calculation Logic:**
+```
+Required ALP = Income Goal / (Comp Percentage / 100)
+Deals Needed = Required ALP / Agent's Avg Deal Size
+Presentations Needed = Deals Needed / Agent's Closing Rate
+```
+
+**Locked State Logic:**
+- Query `daily_production` for this agent
+- If < 7 records exist, show locked state with countdown
+- Once unlocked, calculate using their personal averages
+
+### 2.3 Integrate into AgentPortal
+
+**File: `src/pages/AgentPortal.tsx`**
+
+Add IncomeGoalTracker component:
+- Place prominently after Quick Stats section
+- Show in both mobile and desktop views
+- Add tab option for mobile: "Goals"
+
+---
+
+## Part 3: Enhanced Light Mode
+
+### 3.1 Refine Light Mode CSS
+
+**File: `src/index.css`**
+
+Light mode improvements:
+- Warmer background: slight cream tint (not pure white)
+- Softer shadows with warm undertones
+- Better card contrast without harsh borders
+- Teal accent colors remain vibrant
+- Glass morphism with subtle warmth
+
+```css
+.light {
+  --background: 40 20% 98%;        /* Warm cream instead of pure white */
+  --card: 0 0% 100%;
+  --glass-bg: hsl(40 20% 100% / 0.92);
+  --glass-border: hsl(220 13% 80% / 0.4);
+  --glass-shadow: 0 4px 20px hsl(220 15% 40% / 0.06);
 }
 ```
 
-### 3.2 Display Stats on Live Agent Cards
-
-**In renderAgentCard(), for `evaluated` agents:**
-```tsx
-{isInFieldActive && (
-  <div className="flex items-center gap-2 text-xs border-t border-border pt-1.5 mt-1.5">
-    <span className="text-muted-foreground">Week:</span>
-    <Badge variant="outline" className="text-[10px]">
-      ${agent.weeklyALP.toLocaleString()} ALP
-    </Badge>
-    <Badge variant="outline" className="text-[10px]">
-      {agent.weeklyPresentations} pres
-    </Badge>
-    <Badge variant="outline" className="text-[10px] text-emerald-400">
-      {agent.weeklyClosingRate}% close
-    </Badge>
-  </div>
-)}
-```
+- Add `.light` specific utility classes for softer shadows
+- Ensure all gradients look good in light mode
+- Test all dashboard components in light mode
 
 ---
 
-## Part 4: Enhanced Daily Summary Emails
+## Part 4: UX Improvements (Make It Their Best Friend)
 
-### 4.1 Create Admin Daily Summary
+### 4.1 Dashboard Polish
 
-**File: `supabase/functions/notify-admin-daily-summary/index.ts` (NEW)**
+**File: `src/pages/AgentPortal.tsx`**
 
-Sends end-of-day summary to admin with:
-- Total agency production for the day
-- Breakdown by agent (who logged, who didn't)
-- Top performers
-- Overall close rate
-- Comparison to previous day/week
+Improvements:
+- Larger, more prominent Quick Stats cards
+- Subtle animations on hover (scale, glow)
+- "Welcome back" message with first name
+- Daily motivational quote (random from curated list)
+- Progress celebration micro-animations
 
-### 4.2 Update Daily Leaderboard for All Leaders
+### 4.2 Clean Leaderboard Design
 
-**File: `supabase/functions/send-daily-leaderboard-summary/index.ts`**
+**File: `src/components/dashboard/LeaderboardTabs.tsx`**
 
-Add production stats to the existing manager leaderboard email:
-- Include team production numbers
-- Show agents who haven't logged numbers
+Refinements:
+- Cleaner table rows with more spacing
+- Highlight current user's row prominently
+- Smooth scroll behavior
+- Medal icons for top 3 (🥇🥈🥉)
+- Rank change indicators (+/- from yesterday)
 
----
+### 4.3 Mobile-First Responsive
 
-## Part 5: Email Reminders for Missing Numbers
-
-### 5.1 Existing System Already in Place
-
-The `notify-fill-numbers` Edge Function already handles this with reminders at:
-- 7 PM - "Time to Log Your Numbers!"
-- 9 PM - "Don't Forget Your Daily Numbers"
-- 9 AM next day - "Yesterday's Numbers Still Missing"
-
-**Verify pg_cron schedules are active:**
-```sql
--- Check cron jobs
-SELECT * FROM cron.job;
-```
-
-If not scheduled, add:
-```sql
-SELECT cron.schedule('fill-numbers-7pm', '0 0 * * *', -- 7 PM CST = 0 UTC
-  $$SELECT net.http_post('...', ...)$$);
-```
+All components optimized for mobile access from group chat link:
+- Touch-friendly tap targets
+- Swipeable tabs
+- Collapsible sections
+- Fast loading (lazy load charts)
 
 ---
 
-## Part 6: Add Route to App Router
+## Part 5: pg_cron Schedules to Add
 
-**File: `src/App.tsx`**
+The following cron jobs need to be scheduled:
 
-Add the new public route:
-```tsx
-<Route path="/log-numbers" element={<LogNumbers />} />
-```
+| Job Name | Schedule | UTC | CST | Function |
+|----------|----------|-----|-----|----------|
+| admin-daily-summary-9pm | `0 3 * * *` | 3 AM | 9 PM | notify-admin-daily-summary |
+| top-performers-morning | `0 15 * * *` | 3 PM | 9 AM | notify-top-performers-morning |
+| monthly-leaderboard | `0 15 1 * *` | 3 PM 1st | 9 AM 1st | notify-monthly-leaderboard |
+| no-deal-alert-8pm | `0 2 * * *` | 2 AM | 8 PM | notify-no-deal-today |
 
 ---
 
-## Summary of Files to Create/Modify
+## Files to Create/Modify
 
 | File | Action | Description |
 |------|--------|-------------|
-| `src/pages/LogNumbers.tsx` | CREATE | Public page for agents to log numbers via direct link |
-| `src/App.tsx` | MODIFY | Add `/log-numbers` route |
-| `src/components/dashboard/ProductionEntry.tsx` | MODIFY | Add notification trigger after save |
-| `src/pages/DashboardCRM.tsx` | MODIFY | Add weekly production stats to agent cards |
-| `supabase/functions/notify-production-submitted/index.ts` | CREATE | Real-time admin notification on submission |
-| `supabase/functions/notify-admin-daily-summary/index.ts` | CREATE | End-of-day summary for admin |
+| `supabase/functions/notify-admin-daily-summary/index.ts` | MODIFY | Add managers as recipients |
+| `supabase/functions/notify-top-performers-morning/index.ts` | CREATE | 9 AM top 3 performers email |
+| `supabase/functions/notify-monthly-leaderboard/index.ts` | CREATE | Monthly leaderboard on 1st |
+| `supabase/functions/notify-no-deal-today/index.ts` | CREATE | 8 PM no-deal alert with booking link |
+| `src/components/dashboard/IncomeGoalTracker.tsx` | CREATE | Income goal calculator dashboard |
+| `src/pages/AgentPortal.tsx` | MODIFY | Integrate goal tracker, UX polish |
+| `src/index.css` | MODIFY | Enhanced light mode styling |
 | `supabase/config.toml` | MODIFY | Add new function configs |
+| Database Migration | CREATE | `agent_goals` table with RLS |
 
 ---
 
-## Direct Link for Group Chat
+## Technical Details
 
-Once implemented, the shareable link will be:
+### Calendly Link (for 8 PM alert)
 ```
-https://rebuild-brighten-sparkle.lovable.app/log-numbers
+https://calendly.com/sam-com593/licensed-prospect-call-clone-1
 ```
 
-This link:
-- Works for any agent in your group chat
-- Auto-matches them by name/email
-- If new, adds them to CRM first
-- Shows animated leaderboard after submission
-- Notifies you (admin) in real-time
+### Income Goal Calculation (9-month advance)
+- Default comp: 75% of written premium
+- Formula: `Required ALP = Goal / 0.75`
+- Locked until 7 days of data for accurate personal averages
 
----
-
-## Technical Considerations
-
-1. **Authentication:** The `/log-numbers` page will be public but verify agent identity via name/email matching
-2. **Duplicate Prevention:** Use upsert on `agent_id + production_date` to prevent duplicate entries
-3. **Real-time Updates:** Use Supabase realtime subscriptions on `daily_production` table for live updates
-4. **Animation:** Use framer-motion for the leaderboard reveal animation with staggered entry effects
-5. **Mobile-First:** The quick entry page must be fully responsive for phone access from group chat
+### Email Styling
+All emails will use consistent APEX branding:
+- Dark navy background (#0a0f1a)
+- Teal accent (#14b8a6)
+- Clean typography (Segoe UI)
+- Mobile-responsive design
 
 ---
 
 ## Expected Outcomes
 
-1. **Shareable Link:** Direct link to paste in group chat for agents to log numbers
-2. **Auto-Recognition:** System recognizes existing agents or onboards new ones
-3. **Animated Feedback:** Exciting leaderboard reveal after submission
-4. **Real-Time Notifications:** Admin gets notified every time someone submits
-5. **Weekly Stats on Cards:** Live agent cards show weekly performance at a glance
-6. **Daily Summaries:** Comprehensive end-of-day reports to admin and leaders
+1. **9 PM Daily Summary**: Admin + all managers receive comprehensive EOD report
+2. **9 AM Top Performers**: All agents see yesterday's top 3, inspiring competition
+3. **8 PM No-Deal Alert**: Agents with 0 deals get supportive nudge + booking link
+4. **Monthly Leaderboard**: Fresh start motivation on the 1st
+5. **Income Goal Tracker**: Personal goal setting with smart calculations
+6. **Clean Light Mode**: Professional, warm light theme option
+7. **Polished UX**: Dashboard agents WANT to check every day
+
+---
+
+## Shareable Links
+
+- **Log Numbers**: `https://rebuild-brighten-sparkle.lovable.app/log-numbers`
+- **Agent Portal**: `https://rebuild-brighten-sparkle.lovable.app/agent-portal`
+- **Support Call**: `https://calendly.com/sam-com593/licensed-prospect-call-clone-1`

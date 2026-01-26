@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo } from "react";
 import { motion } from "framer-motion";
 import { TrendingUp, TrendingDown, Calendar, DollarSign } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -13,7 +13,27 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { format, subDays, parseISO } from "date-fns";
+import { format, subDays } from "date-fns";
+
+// Memoized tooltip component to prevent ref warnings
+const CustomTooltip = memo(({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg p-3 shadow-lg">
+        <p className="font-medium text-sm mb-1">{label}</p>
+        <p className="text-primary font-bold">
+          ${payload[0]?.value?.toLocaleString() || 0}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {payload[1]?.value || 0} deals
+        </p>
+      </div>
+    );
+  }
+  return null;
+});
+
+CustomTooltip.displayName = "CustomTooltip";
 
 interface ProductionHistoryChartProps {
   agentId: string;
@@ -115,22 +135,6 @@ export function ProductionHistoryChart({ agentId }: ProductionHistoryChartProps)
     );
   }
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg p-3 shadow-lg">
-          <p className="font-medium text-sm mb-1">{label}</p>
-          <p className="text-primary font-bold">
-            ${payload[0]?.value?.toLocaleString() || 0}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {payload[1]?.value || 0} deals
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
 
   return (
     <motion.div

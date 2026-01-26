@@ -28,7 +28,9 @@ type EmailTemplate =
   | "followup1_unlicensed"
   | "followup2_unlicensed"
   | "licensing_reminder"
-  | "licensing_checkin";
+  | "licensing_checkin"
+  | "course_help"
+  | "schedule_consultation";
 
 const emailTemplateLabels: Record<EmailTemplate, string> = {
   cold_licensed: "Cold Outreach (Licensed)",
@@ -39,6 +41,8 @@ const emailTemplateLabels: Record<EmailTemplate, string> = {
   followup2_unlicensed: "Opportunity Reminder",
   licensing_reminder: "License Reminder",
   licensing_checkin: "Check-in (Need Help?)",
+  course_help: "Course Help Request",
+  schedule_consultation: "Schedule Consultation",
 };
 
 export function QuickEmailMenu({
@@ -88,6 +92,8 @@ export function QuickEmailMenu({
     "followup2_unlicensed",
     "licensing_reminder",
     "licensing_checkin",
+    "course_help",
+    "schedule_consultation",
   ];
 
   const templatesToShow = showAllTemplates ? allTemplates : contextualTemplates;

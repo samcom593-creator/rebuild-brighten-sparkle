@@ -4,7 +4,9 @@ import { Percent, Trophy, Medal, Award, Target, TrendingUp } from "lucide-react"
 import { GlassCard } from "@/components/ui/glass-card";
 import { supabase } from "@/integrations/supabase/client";
 import { ConfettiCelebration } from "./ConfettiCelebration";
+import { RankChangeIndicator } from "./RankChangeIndicator";
 import { useTop3Celebration } from "@/hooks/useTop3Celebration";
+import { useRankChange } from "@/hooks/useRankChange";
 import { cn } from "@/lib/utils";
 import { subDays } from "date-fns";
 
@@ -35,6 +37,7 @@ export function ClosingRateLeaderboard({ currentAgentId, period = "week" }: Clos
   const [showConfetti, setShowConfetti] = useState(false);
   
   const { checkForCelebration, resetTracking } = useTop3Celebration({ currentAgentId });
+  const { getRankChange } = useRankChange("closing-rate");
 
   useEffect(() => {
     resetTracking();
@@ -195,8 +198,12 @@ export function ClosingRateLeaderboard({ currentAgentId, period = "week" }: Clos
                   {rankIcons[entry.rank] || (
                     <span className="w-4 text-center text-xs text-muted-foreground">{entry.rank}</span>
                   )}
+                  {(() => {
+                    const { change, previousRank } = getRankChange(entry.agentId, entry.rank);
+                    return <RankChangeIndicator change={change} previousRank={previousRank} compact />;
+                  })()}
                   <span className={cn(
-                    "font-medium truncate max-w-[100px]",
+                    "font-medium truncate max-w-[80px]",
                     entry.isCurrentUser && "text-primary"
                   )}>
                     {entry.name.split(" ")[0]}

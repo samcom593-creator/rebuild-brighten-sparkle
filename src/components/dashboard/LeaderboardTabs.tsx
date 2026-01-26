@@ -6,7 +6,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { AnimatedNumber } from "./AnimatedNumber";
 import { ConfettiCelebration } from "./ConfettiCelebration";
+import { RankChangeIndicator } from "./RankChangeIndicator";
 import { useTop3Celebration } from "@/hooks/useTop3Celebration";
+import { useRankChange } from "@/hooks/useRankChange";
 import { cn } from "@/lib/utils";
 import { subDays, format } from "date-fns";
 
@@ -54,6 +56,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
   const [showConfetti, setShowConfetti] = useState(false);
   
   const { checkForCelebration, resetTracking } = useTop3Celebration({ currentAgentId });
+  const { getRankChange } = useRankChange("alp");
 
   useEffect(() => {
     // Reset tracking when period changes
@@ -242,8 +245,9 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
         </div>
 
         {/* Table Header */}
-        <div className="grid grid-cols-12 gap-2 px-3 py-2 text-xs font-medium text-muted-foreground border-b border-border/50 mb-2">
+        <div className="grid grid-cols-13 gap-2 px-3 py-2 text-xs font-medium text-muted-foreground border-b border-border/50 mb-2">
           <div className="col-span-1">#</div>
+          <div className="col-span-1"></div>
           <div className="col-span-3">Agent</div>
           <div className="col-span-2 text-center">Deals</div>
           <div className="col-span-2 text-center">Presentations</div>
@@ -277,7 +281,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                   exit={{ opacity: 0, x: 20 }}
                   transition={{ delay: index * 0.05 }}
                   className={cn(
-                    "grid grid-cols-12 gap-2 items-center px-3 py-3 rounded-lg transition-all",
+                    "grid grid-cols-13 gap-2 items-center px-3 py-3 rounded-lg transition-all",
                     entry.isCurrentUser
                       ? "bg-primary/10 border border-primary/30 shadow-[0_0_20px_rgba(20,184,166,0.15)]"
                       : entry.rank <= 3
@@ -292,6 +296,14 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                         {entry.rank}
                       </span>
                     )}
+                  </div>
+
+                  {/* Rank Change */}
+                  <div className="col-span-1 flex items-center justify-center">
+                    {period === "day" && (() => {
+                      const { change, previousRank } = getRankChange(entry.agentId, entry.rank);
+                      return <RankChangeIndicator change={change} previousRank={previousRank} compact />;
+                    })()}
                   </div>
 
                   {/* Agent */}

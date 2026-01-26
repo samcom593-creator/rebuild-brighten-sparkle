@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { format, differenceInDays } from "date-fns";
 import {
   Users,
@@ -23,6 +23,7 @@ import {
   X,
   Video,
   Send,
+  ArrowLeft,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { GlassCard } from "@/components/ui/glass-card";

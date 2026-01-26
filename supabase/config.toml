@@ -120,3 +120,12 @@ verify_jwt = false
 
 [functions.notify-admin-daily-summary]
 verify_jwt = false
+
+[functions.notify-top-performers-morning]
+verify_jwt = false
+
+[functions.notify-monthly-leaderboard]
+verify_jwt = false
+
+[functions.notify-no-deal-today]
+verify_jwt = false

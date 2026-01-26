@@ -1,5 +1,4 @@
 import { useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 import { ReactNode } from "react";
 
@@ -19,10 +18,12 @@ export function DraggableAgentCard({ id, children, disabled = false }: Draggable
     isDragging,
   } = useSortable({ id, disabled });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
+  // Only apply transform when actively dragging to prevent continuous animations
+  const style = isDragging && transform ? {
+    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
     transition,
-  };
+    zIndex: 50,
+  } : undefined;
 
   return (
     <div
@@ -32,7 +33,7 @@ export function DraggableAgentCard({ id, children, disabled = false }: Draggable
       {...listeners}
       className={cn(
         "touch-none",
-        isDragging && "opacity-50 z-50 cursor-grabbing",
+        isDragging && "opacity-50 cursor-grabbing",
         !isDragging && !disabled && "cursor-grab"
       )}
     >

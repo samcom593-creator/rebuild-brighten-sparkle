@@ -20,6 +20,8 @@ import {
   UserMinus,
   RotateCcw,
 } from "lucide-react";
+import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
@@ -103,6 +105,8 @@ export default function DashboardAdmin() {
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
   const [inactiveAgents, setInactiveAgents] = useState<InactiveAgent[]>([]);
   const [reactivatingId, setReactivatingId] = useState<string | null>(null);
+  const [showReactivateConfetti, setShowReactivateConfetti] = useState(false);
+  const { playSound } = useSoundEffects();
 
   useEffect(() => {
     fetchAdminData();
@@ -264,8 +268,9 @@ export default function DashboardAdmin() {
     setTeamOverview(prev => ({ ...prev, inactiveAgents: inactive.length }));
   };
 
-  const handleReactivateAgent = async (agentId: string) => {
+  const handleReactivateAgent = async (agentId: string, agentName: string) => {
     setReactivatingId(agentId);
+    playSound("click");
 
     try {
       const { error } = await supabase
@@ -275,11 +280,18 @@ export default function DashboardAdmin() {
 
       if (error) throw error;
 
-      toast.success("Agent reactivated successfully!");
+      // Trigger celebration effects
+      setShowReactivateConfetti(true);
+      playSound("celebrate");
+
+      toast.success(`🎉 ${agentName} is back in action!`, {
+        description: "Agent has been reactivated and will appear in the CRM.",
+      });
       fetchInactiveAgents();
       fetchAdminData();
     } catch (error: any) {
       console.error("Error reactivating agent:", error);
+      playSound("error");
       toast.error("Failed to reactivate agent");
     } finally {
       setReactivatingId(null);
@@ -477,6 +489,10 @@ export default function DashboardAdmin() {
 
   return (
     <DashboardLayout>
+      <ConfettiCelebration 
+        trigger={showReactivateConfetti} 
+        onComplete={() => setShowReactivateConfetti(false)} 
+      />
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -619,7 +635,7 @@ export default function DashboardAdmin() {
                     </span>
                     <Button
                       size="sm"
-                      onClick={() => handleReactivateAgent(agent.id)}
+                      onClick={() => handleReactivateAgent(agent.id, agent.name)}
                       disabled={reactivatingId === agent.id}
                       className="bg-primary hover:bg-primary/90"
                     >

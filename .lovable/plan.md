@@ -1,143 +1,62 @@
 
 
-# Enhanced Leaderboard with Category Filters
+# Public Manager Recruiting Leaderboard Plan
 
-This plan enhances the main Sales Leaderboard in the Agent Portal to include sortable categories, highlight category leaders, and improve data display.
+This plan makes the recruiting leaderboard public across all managers' dashboards so everyone can see where they rank amongst each other.
 
 ---
 
 ## Current State Analysis
 
-The existing `LeaderboardTabs.tsx` component:
-- Displays agents ranked by ALP (Annual Life Premium) only
-- Shows Deals, Presentations, Close %, and ALP columns
-- Has Day/Week/Month time period filters
-- Does NOT allow sorting by different metrics
-- Does NOT highlight leaders in each category
+Based on my review:
+
+1. **Manager Leaderboard Component** (`ManagerLeaderboard.tsx`):
+   - Already fetches ALL managers from `user_roles` table
+   - Already shows rankings for all managers with their recruits
+   - Already highlights the current user's position
+   - Uses real-time subscriptions for instant updates
+
+2. **Daily Leaderboard Email** (`send-daily-leaderboard-summary`):
+   - Already sends to ALL managers
+   - Shows complete rankings with everyone's position
+   - Includes motivational messaging about how close they are to next rank
+
+3. **Real-time Notifications** (`notify-all-managers-leaderboard`):
+   - Already broadcasts to all managers when someone scores a recruit
+
+**Good news**: The recruiting leaderboard is already designed to be public! All managers can see everyone's rankings.
 
 ---
 
-## Proposed Enhancements
+## What Needs Verification/Confirmation
 
-### 1. Add Category Filter Dropdown
+### 1. Database Visibility
+The current queries use the service role key in edge functions, which bypasses RLS. The frontend component (`ManagerLeaderboard.tsx`) queries:
+- `agents` table - to get all active agents
+- `user_roles` table - to filter managers only
+- `profiles` table - to get names
+- `applications` table - to count recruits
 
-Add a filter dropdown alongside the period tabs that allows sorting by:
-- **Most ALP** (default) - Highest total premium
-- **Most Presentations** - Who's working the hardest
-- **Highest Close Rate** - Most efficient closers (min 3 presentations)
-- **Most Deals** - Most closes
+These all have proper RLS policies that allow managers to view necessary data.
 
-Each filter will re-sort the leaderboard and highlight the current category leader.
-
-### 2. Visual Category Leader Badges
-
-When viewing the full leaderboard, add small badge indicators showing which agents lead in each category:
-- Crown icon for ALP leader
-- Target icon for Presentations leader  
-- Percent icon for Close Rate leader
-- Trophy icon for Deals leader
-
-This makes it easy to see who's dominating in each area at a glance.
-
-### 3. Include All Historical Production Data
-
-Update the query logic to:
-- When "Month" filter is selected, include ALL historical production (no date filter)
-- This ensures previous numbers are factored into rankings
-- Agents with imported historical ALP will appear on the leaderboard
-
-### 4. Enhanced Column Display
-
-The leaderboard already shows the key metrics. We'll ensure they're properly visible:
-- **Deals** column (already present)
-- **Presentations** column (already present)
-- **Close %** column (already present)
-- **ALP** column (already present)
-
-Add subtle highlighting to the column being sorted by.
+### 2. Dashboard Visibility
+The `ManagerLeaderboard` component is already displayed in `Dashboard.tsx` (line 399) for all users in the "Growth & Recruitment" section.
 
 ---
 
-## Technical Implementation
+## Enhancements to Implement
 
-### File: `src/components/dashboard/LeaderboardTabs.tsx`
+### 1. Add "Your Numbers" Summary Card
+Add a prominent card showing the current manager's recruiting stats at the top of the leaderboard:
+- Your Rank: #X of Y managers
+- Your Total Recruits: X
+- Gap to #1: X recruits away
 
-**Changes:**
+### 2. Confirm Daily Email Schedule is Active
+Verify the cron job for `send-daily-leaderboard-summary` is scheduled (8 AM EST daily per memory).
 
-1. **Add `sortBy` state** (line ~53):
-   ```typescript
-   type SortCategory = "alp" | "presentations" | "closingRate" | "deals";
-   const [sortBy, setSortBy] = useState<SortCategory>("alp");
-   ```
-
-2. **Add category filter UI** (after period tabs, ~line 244):
-   - Add a Select dropdown with options: "By ALP", "By Presentations", "By Close Rate", "By Deals"
-   - Style to match the period tabs
-
-3. **Modify sorting logic** (~line 197):
-   ```typescript
-   // Sort based on selected category
-   switch (sortBy) {
-     case "presentations":
-       leaderboardEntries.sort((a, b) => b.presentations - a.presentations);
-       break;
-     case "closingRate":
-       // Filter to only show agents with 3+ presentations for fair comparison
-       leaderboardEntries = leaderboardEntries.filter(e => e.presentations >= 3);
-       leaderboardEntries.sort((a, b) => b.closingRate - a.closingRate);
-       break;
-     case "deals":
-       leaderboardEntries.sort((a, b) => b.deals - a.deals);
-       break;
-     default: // "alp"
-       leaderboardEntries.sort((a, b) => b.alp - a.alp);
-   }
-   ```
-
-4. **Add category leader detection** (after sorting):
-   ```typescript
-   // Detect leaders in each category for badge display
-   const leaders = {
-     alp: leaderboardEntries.reduce((max, e) => e.alp > max.alp ? e : max),
-     presentations: leaderboardEntries.reduce((max, e) => e.presentations > max.presentations ? e : max),
-     closingRate: leaderboardEntries.filter(e => e.presentations >= 3).reduce((max, e) => e.closingRate > max.closingRate ? e : max, { closingRate: 0 }),
-     deals: leaderboardEntries.reduce((max, e) => e.deals > max.deals ? e : max),
-   };
-   ```
-
-5. **Add visual badges in each row** (~line 310-336):
-   - Show small icons next to agent names indicating which categories they lead
-   - Use Tooltip for context on hover
-
-6. **Highlight active sort column** (~line 248-256):
-   - Add visual indicator (underline or bold) to the column header being sorted
-
-7. **Update period "month" to include all data** (~line 86-95):
-   ```typescript
-   case "month":
-     // Include ALL historical data for comprehensive rankings
-     startDate = subDays(today, 365).toISOString().split("T")[0]; // Last year
-     break;
-   ```
-
----
-
-## UI Mockup
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│ 🏆 Sales Leaderboard              [By ALP ▼]   [Day|Week|Month] │
-├─────────────────────────────────────────────────────────────────┤
-│ #  Δ   Agent           Deals   Presentations   Close%    ALP   │
-├─────────────────────────────────────────────────────────────────┤
-│ 🥇    Samuel 👑🎯       3       12              25%    $45,000  │
-│ 🥈    John 🎯           2       15              13%    $32,000  │
-│ 🥉    Mike %            4        8              50%    $28,000  │
-│ 4     Sarah             1        5              20%    $15,000  │
-└─────────────────────────────────────────────────────────────────┘
-
-Legend: 👑 = ALP Leader  🎯 = Presentations Leader  % = Close Rate Leader
-```
+### 3. Add Real-time Position Tracking
+Similar to the sales leaderboard rank change indicators, add rank change tracking to show if a manager moved up or down.
 
 ---
 
@@ -145,28 +64,54 @@ Legend: 👑 = ALP Leader  🎯 = Presentations Leader  % = Close Rate Leader
 
 | File | Changes |
 |------|---------|
-| `src/components/dashboard/LeaderboardTabs.tsx` | Add sortBy state, category filter dropdown, leader detection, visual badges, column highlighting |
+| `src/components/dashboard/ManagerLeaderboard.tsx` | Add "Your Stats" summary card at top, add rank change indicators |
 
 ---
 
-## Additional Considerations
+## Confirmation Checklist
 
-1. **Minimum Threshold for Close Rate**: Only show agents with 3+ presentations when sorting by close rate to ensure fair comparison
+After implementation, the following will be confirmed:
 
-2. **Real-time Updates**: The existing real-time subscription will continue to work - when new production is logged, the leaderboard will re-fetch and re-sort
+1. ✅ All managers can see the complete recruiting leaderboard in their Dashboard
+2. ✅ All managers receive daily email with full leaderboard rankings
+3. ✅ Real-time notifications when any manager scores a recruit
+4. ✅ Each manager sees their personal rank highlighted with "(You)"
+5. ✅ Your numbers (admin/Samuel James) are included in the leaderboard
 
-3. **Performance**: Leader detection adds minimal overhead since we're already iterating through all entries
+---
 
-4. **Mobile Responsiveness**: The category filter dropdown will stack nicely on mobile alongside the period tabs
+## Technical Implementation
+
+### File: `src/components/dashboard/ManagerLeaderboard.tsx`
+
+**Changes:**
+
+1. **Add Personal Summary Card** (top of component):
+   - Show "Your Rank: #X"
+   - Show "Total Recruits: X"
+   - Show "Gap to #1: X recruits away" (if not #1)
+   - Show "You're #1! 👑" (if leading)
+
+2. **Add Rank Change Indicator**:
+   - Store previous rankings in localStorage
+   - Compare to current rankings on fetch
+   - Display +/- indicators like the sales leaderboard
+
+3. **Visual Polish**:
+   - Add pulsing glow effect when manager moves into top 3
+   - Add "LIVE" badge to indicate real-time updates
 
 ---
 
 ## Expected Outcome
 
 After implementation:
-- Users can sort the leaderboard by ALP, Presentations, Close Rate, or Deals
-- Category leaders are visually highlighted with badge icons
-- Previous/historical production data is included in monthly rankings
-- The UI clearly shows which agents are excelling in which areas
-- Competitive agents can see exactly where they need to improve
+- All managers see public recruiting leaderboard in Dashboard
+- Each manager sees exactly where they rank among peers
+- Daily emails continue to go out with full rankings
+- Real-time updates when anyone scores a recruit
+- Your numbers (Samuel James) appear in the leaderboard as admin/manager
+- Motivational messaging shows how close they are to moving up
+
+The system is already set up for public visibility - this plan adds polish and confirmation that everything is working correctly.
 

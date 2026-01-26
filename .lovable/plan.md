@@ -1,271 +1,214 @@
 
-## Plan: Comprehensive Agent Portal Enhancement & Automated Notifications
+# Comprehensive Platform Enhancement Plan
 
-### Overview
-This plan implements: scheduled email notifications (9 PM admin summary, 9 AM top performers, 8 PM "no deal" alerts), an income goal calculator dashboard, monthly leaderboard emails, refined light mode styling, and UX improvements to make the portal an agent's "best friend."
-
----
-
-## Part 1: Scheduled Email Notifications
-
-### 1.1 Daily Admin Summary at 9 PM CST (for Admin + Managers)
-
-**File: `supabase/functions/notify-admin-daily-summary/index.ts`**
-
-**Modifications:**
-- Update to send to BOTH admin (info@kingofsales.net) AND all managers
-- Add manager-specific filtering (show their team's data)
-- Schedule via pg_cron at 9 PM CST (3 AM UTC)
-
-```text
-New pg_cron schedule:
-schedule: '0 3 * * *'  -- 9 PM CST = 3 AM UTC
-jobname: 'admin-daily-summary-9pm-cst'
-```
-
-### 1.2 Top 3 Performers Email at 9 AM CST
-
-**File: `supabase/functions/notify-top-performers-morning/index.ts` (NEW)**
-
-Sends to ALL agents every morning with:
-- Top 3 performers from previous day
-- Their ALP, deals, and closing rate
-- Motivational message
-- Clean, visually appealing design with medal icons
-
-```text
-pg_cron schedule:
-schedule: '0 15 * * *'  -- 9 AM CST = 3 PM UTC
-jobname: 'top-performers-morning-9am'
-```
-
-### 1.3 Monthly Leaderboard Email at 9 AM on 1st of Month
-
-**File: `supabase/functions/notify-monthly-leaderboard/index.ts` (NEW)**
-
-Sends on the 1st of each month:
-- Full monthly rankings (all agents)
-- Total ALP, deals, closing rate for the month
-- "Start fresh" motivational message
-- Link to set income goal for new month
-
-```text
-pg_cron schedule:
-schedule: '0 15 1 * *'  -- 9 AM CST on 1st = 3 PM UTC
-jobname: 'monthly-leaderboard-1st'
-```
-
-### 1.4 "No Deal Today" Alert at 8 PM CST
-
-**File: `supabase/functions/notify-no-deal-today/index.ts` (NEW)**
-
-At 8 PM, agents with 0 deals get:
-- "Below Standard" alert (tactful, not harsh)
-- Reminder that ONE day can change the week
-- Calendly booking link for 1-on-1 support call
-- Motivational but direct message
-
-```text
-pg_cron schedule:
-schedule: '0 2 * * *'  -- 8 PM CST = 2 AM UTC next day
-jobname: 'no-deal-alert-8pm'
-```
+This plan addresses your extensive list of feature requests and optimizations across the Applicants page, CRM, Dashboard, Agent Portal, Team Directory, and automated notifications.
 
 ---
 
-## Part 2: Income Goal Calculator & Dashboard
+## 1. Applicants Page Enhancements
 
-### 2.1 New Database Table: `agent_goals`
+### 1.1 Add "Contracted" Button to All Applicable States
+**Current State:** The "Contracted" button only appears for leads in "qualified" or "closed" status.
+**Change:** Add the "Contracted" button to all non-terminated licensed leads, including those in "contacted" status.
+- Modify `DashboardApplicants.tsx` lines 667-724 to show "Contracted" for any licensed lead that isn't already contracted
+- When clicked, triggers the existing `ContractedModal` which sends the CRM setup email and transfers the lead
 
-```sql
-CREATE TABLE public.agent_goals (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  agent_id UUID NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
-  month_year TEXT NOT NULL,  -- e.g., "2026-02"
-  income_goal NUMERIC NOT NULL,
-  comp_percentage NUMERIC DEFAULT 75,  -- 9-month advance default
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(agent_id, month_year)
-);
+### 1.2 Make Stat Boxes Clickable/Filterable
+**Current State:** Stat boxes are display-only.
+**Change:** Make each stat box (Total Leads, Contacted, Closed, Terminated) clickable to filter the applicant list.
+- Add `onClick` handlers to each stat card that sets the appropriate `statusFilter`
+- Add visual feedback (ring/border) to indicate the active filter
+- Remove the "Qualified" stat box as it's not being used in the workflow
 
-ALTER TABLE public.agent_goals ENABLE ROW LEVEL SECURITY;
+### 1.3 Remove "Qualified" Box
+**Rationale:** The "Qualified" status is not part of the actual workflow - leads go from Contacted → Closed → Contracted.
+- Remove the "Qualified" stat card from the grid (line 770-771)
+- Keep the "Qualified" button as a progression option but simplify to skip directly to close when needed
 
--- RLS Policies
-CREATE POLICY "Agents can manage own goals"
-ON public.agent_goals FOR ALL
-USING (agent_id = current_agent_id())
-WITH CHECK (agent_id = current_agent_id());
+---
 
-CREATE POLICY "Admins can view all goals"
-ON public.agent_goals FOR SELECT
-USING (has_role(auth.uid(), 'admin'));
+## 2. CRM Improvements
+
+### 2.1 Remove Abandoned Applications Panel
+**Status:** Already completed - the comment on line 59 confirms this was removed.
+
+### 2.2 Full-Screen View for Each Stage
+**Current State:** Clicking a stage stat card expands to a full-screen view with animation.
+**Enhancement:** Ensure smooth transitions and add an inline search bar within the expanded view.
+- The expanded view already exists (lines 967-1100+)
+- Add search input to the expanded header for filtering agents within that stage
+- Improve exit animation timing for smoother transitions
+
+### 2.3 Celebration Sound on "Sold" Toggle
+**Current State:** The AttendanceGrid toggles between present/absent/unmarked with no audio.
+**Change:** When marking "Sold" (daily_sale type) as "present", play the celebration sound.
+- Import `useSoundEffects` hook into `AttendanceGrid.tsx`
+- In `handleToggle`, detect when `type === "daily_sale"` and `nextStatus === "present"`, then call `playSound("celebrate")`
+
+### 2.4 Include Weekends in Attendance Grid
+**Current State:** Attendance grid shows Monday-Friday only (5 days).
+**Change:** Extend to all 7 days of the week.
+- Modify `AttendanceGrid.tsx` to change `DAYS` array to include Saturday and Sunday
+- Update `weekDays` calculation to use 7 days instead of 5
+- Adjust the grid layout width accordingly
+
+---
+
+## 3. Dashboard Reorganization
+
+### 3.1 Two-Section Layout: Sales vs Growth
+**Current State:** Dashboard mixes sales leaderboards with growth charts randomly.
+**Change:** Reorganize into two distinct sections:
+1. **Sales Section**: Personal stats, Sales Leaderboards (ALP, Deals, Closing Rate), Personal Production
+2. **Growth Section**: Recruitment stats, Manager Leaderboard, Growth Charts, Downline performance
+
+### 3.2 Remove Dead Space
+- Condense the welcome message and stat rows
+- Remove redundant/duplicate chart sections
+- Tighten grid gaps and padding for a more compact layout
+
+### 3.3 Show Downline Sales for Managers
+**Current State:** Managers see their personal sales only.
+**Change:** Add a "Team Production" summary card showing:
+- Total ALP from all agents under them this week
+- Total deals from their downline
+- Team's average closing rate
+- Fetch via `invited_by_manager_id` in `daily_production` table
+
+---
+
+## 4. Navigation/UX Improvements
+
+### 4.1 Fix Tab Transition Jank
+**Issue:** When tapping between tabs, options briefly shift/flash before loading.
+**Solution:**
+- Add explicit height containers to prevent layout shift
+- Use `AnimatePresence` with `mode="wait"` consistently
+- Add skeleton loaders that match the expected content dimensions
+- Pre-fetch data where possible to avoid flash of empty content
+
+---
+
+## 5. Agent Portal Enhancements
+
+### 5.1 Agent Referral Link in Portal
+**Current State:** Only managers have referral links via `ManagerInviteLinks`.
+**Change:** Add a shareable referral link for agents in the Agent Portal.
+- Add a "Refer a Friend" card with a link to the main application form
+- Format: `https://[domain]/apply?ref=[agent_name_or_code]`
+- The referral goes to the homepage/apply form, not manager signup
+
+### 5.2 Direct Login Link for Agent Portal
+**Current State:** Agents must navigate through the main login.
+**Change:** Add a direct shareable link at the bottom of the portal.
+- Display: "Share this link with your team: rebuild-brighten-sparkle.lovable.app/log-numbers"
+- Add a "Copy Link" button for easy sharing
+- This uses the existing `/log-numbers` public route for quick number entry
+
+### 5.3 Confirm Portal is Ready
+**Status:** The Agent Portal is fully functional with:
+- Production logging with confetti celebration
+- Real-time leaderboards with rank change indicators
+- Weekly badges system
+- Income goal tracker
+- Production history charts
+- Personal stats benchmarking
+
+---
+
+## 6. Team Directory Reorganization
+
+### 6.1 Categorize Managers vs Agents
+**Current State:** `ManagersPanel` shows all managers in a flat grid.
+**Change:** Add hierarchy visualization showing:
+1. **Managers Section**: List of all managers with their stats
+2. **Under each manager**: Expandable/collapsible list of their agents (fetched via `invited_by_manager_id`)
+
+This will require:
+- Fetch agents grouped by `invited_by_manager_id`
+- Create an expandable accordion or tree structure
+- Show agent count badge on each manager card
+
+---
+
+## 7. Profile/Settings
+
+### 7.1 Allow Account Changes
+**Status:** Already implemented in `ProfileSettings.tsx`:
+- Email change via `update-user-email` edge function
+- Password reset via `send-password-reset` edge function
+- Phone number, Instagram handle, name editing
+
+---
+
+## 8. Automated Email Notifications
+
+### 8.1 Daily Production Summary Email (Story-Worthy)
+**Current State:** `notify-production-submitted` exists but scope unclear.
+**Enhancement:** Create/enhance the daily production email to include:
+- Agent's daily production numbers
+- Closing rate for the day
+- Weekly comparison stats
+- Encouraging message with shareable graphics styling
+- Send after each production submission or via daily cron
+
+**Email Template Design:**
+```
+Subject: 🔥 [Agent Name] | [Date] Production Report
+
+Body:
+- Today's ALP: $X,XXX
+- Deals Closed: X
+- Presentations: X
+- Closing Rate: X%
+- Weekly Total: $X,XXX
+
+"Great work today! Keep crushing it! 🚀"
+[Stylized card design suitable for Instagram stories]
 ```
 
-### 2.2 New Component: `IncomeGoalTracker.tsx`
+---
 
-**File: `src/components/dashboard/IncomeGoalTracker.tsx` (NEW)**
+## 9. Attendance Grid Weekend Support
 
-Features:
-- Income goal input (monthly target earnings)
-- 9-month advance comp calculator (default 75%)
-- "Locked" state until 7 days of production data exists
-- Progress bar showing current vs goal
-- Presentations/deals needed calculation based on:
-  - Agent's average closing rate (from their 7+ days of data)
-  - Average premium per deal
-- Clean, visually appealing card with gradient styling
-
-**Calculation Logic:**
-```
-Required ALP = Income Goal / (Comp Percentage / 100)
-Deals Needed = Required ALP / Agent's Avg Deal Size
-Presentations Needed = Deals Needed / Agent's Closing Rate
-```
-
-**Locked State Logic:**
-- Query `daily_production` for this agent
-- If < 7 records exist, show locked state with countdown
-- Once unlocked, calculate using their personal averages
-
-### 2.3 Integrate into AgentPortal
-
-**File: `src/pages/AgentPortal.tsx`**
-
-Add IncomeGoalTracker component:
-- Place prominently after Quick Stats section
-- Show in both mobile and desktop views
-- Add tab option for mobile: "Goals"
+**Technical Change:**
+- In `AttendanceGrid.tsx`, change:
+  - `DAYS` from `["M", "T", "W", "T", "F"]` to `["Su", "M", "T", "W", "Th", "F", "Sa"]`
+  - `weekDays` from 5 days to 7 days
+  - Adjust the grid to accommodate 7 boxes instead of 5
 
 ---
 
-## Part 3: Enhanced Light Mode
+## Technical Implementation Summary
 
-### 3.1 Refine Light Mode CSS
-
-**File: `src/index.css`**
-
-Light mode improvements:
-- Warmer background: slight cream tint (not pure white)
-- Softer shadows with warm undertones
-- Better card contrast without harsh borders
-- Teal accent colors remain vibrant
-- Glass morphism with subtle warmth
-
-```css
-.light {
-  --background: 40 20% 98%;        /* Warm cream instead of pure white */
-  --card: 0 0% 100%;
-  --glass-bg: hsl(40 20% 100% / 0.92);
-  --glass-border: hsl(220 13% 80% / 0.4);
-  --glass-shadow: 0 4px 20px hsl(220 15% 40% / 0.06);
-}
-```
-
-- Add `.light` specific utility classes for softer shadows
-- Ensure all gradients look good in light mode
-- Test all dashboard components in light mode
+| File | Changes |
+|------|---------|
+| `src/pages/DashboardApplicants.tsx` | Add clickable stat cards, always show Contracted button for licensed leads, remove Qualified stat |
+| `src/pages/DashboardCRM.tsx` | Add search to expanded views, ensure smooth animations |
+| `src/components/dashboard/AttendanceGrid.tsx` | Extend to 7 days, add celebration sound on Sold toggle |
+| `src/pages/Dashboard.tsx` | Reorganize into Sales/Growth sections, add downline stats for managers, remove dead space |
+| `src/pages/TeamDirectory.tsx` | Add hierarchical view with managers and their agents |
+| `src/pages/AgentPortal.tsx` | Add agent referral link card, add shareable login link |
+| `supabase/functions/notify-production-submitted/index.ts` | Enhance email template with story-worthy design |
+| Create new: `src/components/dashboard/DownlineStatsCard.tsx` | Show manager's team production totals |
 
 ---
 
-## Part 4: UX Improvements (Make It Their Best Friend)
+## Priority Order
 
-### 4.1 Dashboard Polish
+1. **High Priority (Core Workflow)**
+   - Contracted button visibility fix
+   - Clickable stat boxes in Applicants
+   - CRM celebration sound on Sold
+   - Attendance grid weekend support
 
-**File: `src/pages/AgentPortal.tsx`**
+2. **Medium Priority (UX/Polish)**
+   - Dashboard reorganization (Sales vs Growth)
+   - Remove dead space
+   - Fix navigation jank
+   - Team Directory hierarchy
 
-Improvements:
-- Larger, more prominent Quick Stats cards
-- Subtle animations on hover (scale, glow)
-- "Welcome back" message with first name
-- Daily motivational quote (random from curated list)
-- Progress celebration micro-animations
-
-### 4.2 Clean Leaderboard Design
-
-**File: `src/components/dashboard/LeaderboardTabs.tsx`**
-
-Refinements:
-- Cleaner table rows with more spacing
-- Highlight current user's row prominently
-- Smooth scroll behavior
-- Medal icons for top 3 (🥇🥈🥉)
-- Rank change indicators (+/- from yesterday)
-
-### 4.3 Mobile-First Responsive
-
-All components optimized for mobile access from group chat link:
-- Touch-friendly tap targets
-- Swipeable tabs
-- Collapsible sections
-- Fast loading (lazy load charts)
-
----
-
-## Part 5: pg_cron Schedules to Add
-
-The following cron jobs need to be scheduled:
-
-| Job Name | Schedule | UTC | CST | Function |
-|----------|----------|-----|-----|----------|
-| admin-daily-summary-9pm | `0 3 * * *` | 3 AM | 9 PM | notify-admin-daily-summary |
-| top-performers-morning | `0 15 * * *` | 3 PM | 9 AM | notify-top-performers-morning |
-| monthly-leaderboard | `0 15 1 * *` | 3 PM 1st | 9 AM 1st | notify-monthly-leaderboard |
-| no-deal-alert-8pm | `0 2 * * *` | 2 AM | 8 PM | notify-no-deal-today |
-
----
-
-## Files to Create/Modify
-
-| File | Action | Description |
-|------|--------|-------------|
-| `supabase/functions/notify-admin-daily-summary/index.ts` | MODIFY | Add managers as recipients |
-| `supabase/functions/notify-top-performers-morning/index.ts` | CREATE | 9 AM top 3 performers email |
-| `supabase/functions/notify-monthly-leaderboard/index.ts` | CREATE | Monthly leaderboard on 1st |
-| `supabase/functions/notify-no-deal-today/index.ts` | CREATE | 8 PM no-deal alert with booking link |
-| `src/components/dashboard/IncomeGoalTracker.tsx` | CREATE | Income goal calculator dashboard |
-| `src/pages/AgentPortal.tsx` | MODIFY | Integrate goal tracker, UX polish |
-| `src/index.css` | MODIFY | Enhanced light mode styling |
-| `supabase/config.toml` | MODIFY | Add new function configs |
-| Database Migration | CREATE | `agent_goals` table with RLS |
-
----
-
-## Technical Details
-
-### Calendly Link (for 8 PM alert)
-```
-https://calendly.com/sam-com593/licensed-prospect-call-clone-1
-```
-
-### Income Goal Calculation (9-month advance)
-- Default comp: 75% of written premium
-- Formula: `Required ALP = Goal / 0.75`
-- Locked until 7 days of data for accurate personal averages
-
-### Email Styling
-All emails will use consistent APEX branding:
-- Dark navy background (#0a0f1a)
-- Teal accent (#14b8a6)
-- Clean typography (Segoe UI)
-- Mobile-responsive design
-
----
-
-## Expected Outcomes
-
-1. **9 PM Daily Summary**: Admin + all managers receive comprehensive EOD report
-2. **9 AM Top Performers**: All agents see yesterday's top 3, inspiring competition
-3. **8 PM No-Deal Alert**: Agents with 0 deals get supportive nudge + booking link
-4. **Monthly Leaderboard**: Fresh start motivation on the 1st
-5. **Income Goal Tracker**: Personal goal setting with smart calculations
-6. **Clean Light Mode**: Professional, warm light theme option
-7. **Polished UX**: Dashboard agents WANT to check every day
-
----
-
-## Shareable Links
-
-- **Log Numbers**: `https://rebuild-brighten-sparkle.lovable.app/log-numbers`
-- **Agent Portal**: `https://rebuild-brighten-sparkle.lovable.app/agent-portal`
-- **Support Call**: `https://calendly.com/sam-com593/licensed-prospect-call-clone-1`
+3. **Enhancement (Nice-to-Have)**
+   - Agent referral link in portal
+   - Enhanced production summary email
+   - Downline stats for managers

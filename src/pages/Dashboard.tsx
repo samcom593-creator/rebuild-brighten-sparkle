@@ -294,24 +294,24 @@ export default function Dashboard() {
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-4"
+        className="mb-3"
       >
-        <h2 className="text-xl font-bold">Welcome back, {userName}! 👋</h2>
+        <h2 className="text-lg font-bold">Welcome back, {userName}! 👋</h2>
       </motion.div>
 
       {/* ====== SALES SECTION ====== */}
-      <div className="mb-6">
+      <div className="mb-4">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-2 mb-3"
+          className="flex items-center gap-2 mb-2"
         >
-          <DollarSign className="h-5 w-5 text-primary" />
-          <h3 className="text-lg font-bold">Sales Performance</h3>
+          <DollarSign className="h-4 w-4 text-primary" />
+          <h3 className="text-base font-bold">Sales Performance</h3>
         </motion.div>
 
         {/* Primary Stats Row - Compact */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-3">
           <StatCard
             title="Total Leads"
             value={stats.totalLeads}
@@ -343,30 +343,30 @@ export default function Dashboard() {
         {(isManager || isAdmin) && <DownlineStatsCard />}
 
         {/* Sales Leaderboard */}
-        <div className="mt-4">
+        <div className="mt-3">
           <LeaderboardTabs />
         </div>
 
         {/* Performance Leaderboards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
           <ClosingRateLeaderboard />
           <ReferralLeaderboard />
         </div>
       </div>
 
       {/* ====== GROWTH SECTION ====== */}
-      <div className="mb-6">
+      <div className="mb-4">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-2 mb-3"
+          className="flex items-center gap-2 mb-2"
         >
-          <TrendingUp className="h-5 w-5 text-emerald-400" />
-          <h3 className="text-lg font-bold">Growth & Recruitment</h3>
+          <TrendingUp className="h-4 w-4 text-emerald-400" />
+          <h3 className="text-base font-bold">Growth & Recruitment</h3>
         </motion.div>
 
         {/* Stats Row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
           <StatCard
             title="Licensed"
             value={stats.licensed}
@@ -395,7 +395,7 @@ export default function Dashboard() {
         </div>
 
         {/* Manager Leaderboard + Growth Chart */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           <ManagerLeaderboard />
           <GrowthChart
             dailyData={dailyData}
@@ -407,22 +407,22 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* License Distribution */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+      {/* License Distribution - Condensed */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
         <AnalyticsPieChart
           title="Lead Sources"
-          icon={<MapPin className="h-5 w-5 text-primary" />}
+          icon={<MapPin className="h-4 w-4 text-primary" />}
           data={sourceData}
         />
         <AnalyticsPieChart
           title="License Status"
-          icon={<Award className="h-5 w-5 text-primary" />}
+          icon={<Award className="h-4 w-4 text-primary" />}
           data={licenseData}
         />
       </div>
 
-      {/* AI Features */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+      {/* AI Features - Side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-4">
         <AIInsightsCard 
           stats={{
             totalLeads: stats.totalLeads,
@@ -451,21 +451,21 @@ export default function Dashboard() {
 
       {/* Admin Quick Actions */}
       {isAdmin && (
-        <div className="mb-6">
+        <div className="mb-4">
           <InviteManagerCard />
         </div>
       )}
 
       {/* Manager Team View */}
       {(isManager || isAdmin) && (
-        <div className="mb-6">
+        <div className="mb-4">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-2 mb-3"
+            className="flex items-center gap-2 mb-2"
           >
-            <Users className="h-5 w-5 text-primary" />
-            <h3 className="text-lg font-bold">Your Team</h3>
+            <Users className="h-4 w-4 text-primary" />
+            <h3 className="text-base font-bold">Your Team</h3>
           </motion.div>
           <ManagerTeamView />
         </div>

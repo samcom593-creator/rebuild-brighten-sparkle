@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ScrollToTop } from "@/components/ui/scroll-to-top";
 import Index from "./pages/Index";
+import LogNumbers from "./pages/LogNumbers";
 import Apply from "./pages/Apply";
 import ApplySuccess from "./pages/ApplySuccess";
 import ApplySuccessLicensed from "./pages/ApplySuccessLicensed";
@@ -38,6 +39,7 @@ const App = () => (
         <ScrollToTop />
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/log-numbers" element={<LogNumbers />} />
           <Route path="/apply" element={<Apply />} />
           <Route path="/apply/success" element={<ApplySuccess />} />
           <Route path="/apply/success/licensed" element={<ApplySuccessLicensed />} />

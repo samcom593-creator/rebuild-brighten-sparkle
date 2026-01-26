@@ -177,6 +177,7 @@ export default function DashboardCRM() {
   const [deactivateAgent, setDeactivateAgent] = useState<AgentCRM | null>(null);
   const [stageFilter, setStageFilter] = useState<"all" | "in_course" | "in_training" | "live" | "meeting_eligible" | "critical">("all");
   const [instagramPromptAgent, setInstagramPromptAgent] = useState<AgentCRM | null>(null);
+  const [expandedColumn, setExpandedColumn] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -731,181 +732,371 @@ export default function DashboardCRM() {
         </div>
 
         {/* Clickable Stats Filters - Reordered: In Course, Meeting Eligible, In-Field, Live, Attendance */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-          <GlassCard 
-            className={cn(
-              "p-2 cursor-pointer transition-all hover:ring-2 hover:ring-primary/50",
-              stageFilter === "in_course" && "ring-2 ring-primary"
-            )}
-            onClick={() => setStageFilter(stageFilter === "in_course" ? "all" : "in_course")}
-          >
-            <div className="flex items-center gap-2">
-              <div className="p-1 rounded-lg bg-primary/10">
-                <BookOpen className="h-3.5 w-3.5 text-primary" />
-              </div>
-              <div>
-                <p className="text-lg font-bold">{inCourse}</p>
-                <p className="text-[10px] text-muted-foreground">In Course</p>
-              </div>
-            </div>
-          </GlassCard>
-
-          <GlassCard 
-            className={cn(
-              "p-2 cursor-pointer transition-all hover:ring-2 hover:ring-accent/50",
-              stageFilter === "meeting_eligible" && "ring-2 ring-accent"
-            )}
-            onClick={() => setStageFilter(stageFilter === "meeting_eligible" ? "all" : "meeting_eligible")}
-          >
-            <div className="flex items-center gap-2">
-              <div className="p-1 rounded-lg bg-accent/10">
-                <Video className="h-3.5 w-3.5 text-accent-foreground" />
-              </div>
-              <div>
-                <p className="text-lg font-bold">{meetingEligible}</p>
-                <p className="text-[10px] text-muted-foreground">Meeting Eligible</p>
-              </div>
-            </div>
-          </GlassCard>
-
-          <GlassCard 
-            className={cn(
-              "p-2 cursor-pointer transition-all hover:ring-2 hover:ring-primary/50",
-              stageFilter === "in_training" && "ring-2 ring-primary"
-            )}
-            onClick={() => setStageFilter(stageFilter === "in_training" ? "all" : "in_training")}
-          >
-            <div className="flex items-center gap-2">
-              <div className="p-1 rounded-lg bg-primary/10">
-                <GraduationCap className="h-3.5 w-3.5 text-primary" />
-              </div>
-              <div>
-                <p className="text-lg font-bold">{inTraining}</p>
-                <p className="text-[10px] text-muted-foreground">In-Field Training</p>
-              </div>
-            </div>
-          </GlassCard>
-
-          <GlassCard 
-            className={cn(
-              "p-2 cursor-pointer transition-all hover:ring-2 hover:ring-primary/50",
-              stageFilter === "live" && "ring-2 ring-primary"
-            )}
-            onClick={() => setStageFilter(stageFilter === "live" ? "all" : "live")}
-          >
-            <div className="flex items-center gap-2">
-              <div className="p-1 rounded-lg bg-primary/10">
-                <Briefcase className="h-3.5 w-3.5 text-primary" />
-              </div>
-              <div>
-                <p className="text-lg font-bold">{inField}</p>
-                <p className="text-[10px] text-muted-foreground">Live</p>
-              </div>
-            </div>
-          </GlassCard>
-
-          <GlassCard 
-            className={cn(
-              "p-2 cursor-pointer transition-all hover:ring-2 hover:ring-destructive/50",
-              stageFilter === "critical" && "ring-2 ring-destructive"
-            )}
-            onClick={() => setStageFilter(stageFilter === "critical" ? "all" : "critical")}
-          >
-            <div className="flex items-center gap-2">
-              <div className="p-1 rounded-lg bg-destructive/10">
-                <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
-              </div>
-              <div>
-                <p className="text-lg font-bold">{criticalAttendance}</p>
-                <p className="text-[10px] text-muted-foreground">Attendance Issues</p>
-              </div>
-            </div>
-          </GlassCard>
-        </div>
-
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
-          <div className="relative flex-1 min-w-[180px]">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Search agents..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8 h-8 text-sm"
-            />
-          </div>
-
-          {isAdmin && managers.length > 0 && (
-            <Select value={managerFilter} onValueChange={setManagerFilter}>
-              <SelectTrigger className="w-[160px] h-8 text-sm">
-                <Filter className="h-3.5 w-3.5 mr-1.5" />
-                <SelectValue placeholder="Filter by manager" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Managers</SelectItem>
-                {managers.map((manager) => (
-                  <SelectItem key={manager.id} value={manager.id}>
-                    {manager.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-
-          <Button
-            variant={showDeactivated ? "secondary" : "outline"}
-            size="sm"
-            onClick={() => setShowDeactivated(!showDeactivated)}
-            className="gap-1.5 h-8"
-          >
-            <UserX className="h-3.5 w-3.5" />
-            {showDeactivated ? "Showing Inactive" : "Show Inactive"}
-          </Button>
-        </div>
-
-        {/* 3-Column Layout with Drag & Drop */}
-        {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {COLUMNS.map((column) => {
-              const columnAgents = getAgentsForColumn(column.stages);
-              const Icon = column.icon;
-              
-              return (
-                <div key={column.key} className="space-y-3">
-                  <div className={cn("flex items-center gap-2 p-2 rounded-lg", column.bgColor)}>
-                    <Icon className={cn("h-4 w-4", column.color)} />
-                    <h2 className={cn("font-semibold text-sm", column.color)}>
-                      {column.label}
-                    </h2>
-                    <Badge variant="secondary" className="ml-auto text-xs">
-                      {columnAgents.length}
-                    </Badge>
+        <AnimatePresence mode="wait">
+          {!expandedColumn && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="grid grid-cols-2 md:grid-cols-5 gap-2"
+            >
+              <GlassCard 
+                className={cn(
+                  "p-2 cursor-pointer transition-all hover:ring-2 hover:ring-primary/50 hover:scale-[1.02]",
+                  stageFilter === "in_course" && "ring-2 ring-primary"
+                )}
+                onClick={() => setExpandedColumn("in_course")}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="p-1 rounded-lg bg-primary/10">
+                    <BookOpen className="h-3.5 w-3.5 text-primary" />
                   </div>
-                  
-                  {columnAgents.length === 0 ? (
-                    <GlassCard className="p-4 text-center">
-                      <p className="text-xs text-muted-foreground">
-                        No agents in this stage
-                      </p>
-                    </GlassCard>
-                  ) : (
-                    <div className="space-y-2">
-                      {columnAgents.map((agent, index) => (
-                        <div key={agent.id}>
-                          {renderAgentCard(agent, index)}
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <div>
+                    <p className="text-lg font-bold">{inCourse}</p>
+                    <p className="text-[10px] text-muted-foreground">In Course</p>
+                  </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
+              </GlassCard>
+
+              <GlassCard 
+                className={cn(
+                  "p-2 cursor-pointer transition-all hover:ring-2 hover:ring-accent/50 hover:scale-[1.02]",
+                  stageFilter === "meeting_eligible" && "ring-2 ring-accent"
+                )}
+                onClick={() => setExpandedColumn("meeting_eligible")}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="p-1 rounded-lg bg-accent/10">
+                    <Video className="h-3.5 w-3.5 text-accent-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold">{meetingEligible}</p>
+                    <p className="text-[10px] text-muted-foreground">Meeting Eligible</p>
+                  </div>
+                </div>
+              </GlassCard>
+
+              <GlassCard 
+                className={cn(
+                  "p-2 cursor-pointer transition-all hover:ring-2 hover:ring-primary/50 hover:scale-[1.02]",
+                  stageFilter === "in_training" && "ring-2 ring-primary"
+                )}
+                onClick={() => setExpandedColumn("in_training")}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="p-1 rounded-lg bg-primary/10">
+                    <GraduationCap className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold">{inTraining}</p>
+                    <p className="text-[10px] text-muted-foreground">In-Field Training</p>
+                  </div>
+                </div>
+              </GlassCard>
+
+              <GlassCard 
+                className={cn(
+                  "p-2 cursor-pointer transition-all hover:ring-2 hover:ring-primary/50 hover:scale-[1.02]",
+                  stageFilter === "live" && "ring-2 ring-primary"
+                )}
+                onClick={() => setExpandedColumn("live")}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="p-1 rounded-lg bg-primary/10">
+                    <Briefcase className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold">{inField}</p>
+                    <p className="text-[10px] text-muted-foreground">Live</p>
+                  </div>
+                </div>
+              </GlassCard>
+
+              <GlassCard 
+                className={cn(
+                  "p-2 cursor-pointer transition-all hover:ring-2 hover:ring-destructive/50 hover:scale-[1.02]",
+                  stageFilter === "critical" && "ring-2 ring-destructive"
+                )}
+                onClick={() => setExpandedColumn("critical")}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="p-1 rounded-lg bg-destructive/10">
+                    <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold">{criticalAttendance}</p>
+                    <p className="text-[10px] text-muted-foreground">Attendance Issues</p>
+                  </div>
+                </div>
+              </GlassCard>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Filters - Only show when not expanded */}
+        <AnimatePresence mode="wait">
+          {!expandedColumn && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="flex flex-col sm:flex-row gap-3 flex-wrap"
+            >
+              <div className="relative flex-1 min-w-[180px]">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Search agents..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-8 h-8 text-sm"
+                />
+              </div>
+
+              {isAdmin && managers.length > 0 && (
+                <Select value={managerFilter} onValueChange={setManagerFilter}>
+                  <SelectTrigger className="w-[160px] h-8 text-sm">
+                    <Filter className="h-3.5 w-3.5 mr-1.5" />
+                    <SelectValue placeholder="Filter by manager" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Managers</SelectItem>
+                    {managers.map((manager) => (
+                      <SelectItem key={manager.id} value={manager.id}>
+                        {manager.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+
+              <Button
+                variant={showDeactivated ? "secondary" : "outline"}
+                size="sm"
+                onClick={() => setShowDeactivated(!showDeactivated)}
+                className="gap-1.5 h-8"
+              >
+                <UserX className="h-3.5 w-3.5" />
+                {showDeactivated ? "Showing Inactive" : "Show Inactive"}
+              </Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Main Content - Either 3-Column Overview or Full-Screen Expanded View */}
+        <AnimatePresence mode="wait">
+          {loading ? (
+            <motion.div
+              key="loading"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex items-center justify-center h-64"
+            >
+              <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+            </motion.div>
+          ) : expandedColumn ? (
+            <motion.div
+              key={`expanded-${expandedColumn}`}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="space-y-4"
+            >
+              {/* Expanded View Header */}
+              {(() => {
+                const columnConfig = {
+                  in_course: { 
+                    label: "In Course", 
+                    icon: BookOpen, 
+                    stages: ["onboarding", "training_online"] as OnboardingStage[],
+                    color: "text-primary",
+                    bgColor: "bg-primary/10"
+                  },
+                  in_training: { 
+                    label: "In-Field Training", 
+                    icon: GraduationCap, 
+                    stages: ["in_field_training"] as OnboardingStage[],
+                    color: "text-primary",
+                    bgColor: "bg-primary/10"
+                  },
+                  live: { 
+                    label: "Live", 
+                    icon: Briefcase, 
+                    stages: ["evaluated"] as OnboardingStage[],
+                    color: "text-primary",
+                    bgColor: "bg-primary/10"
+                  },
+                  meeting_eligible: { 
+                    label: "Meeting Eligible", 
+                    icon: Video, 
+                    stages: ["in_field_training", "evaluated"] as OnboardingStage[],
+                    color: "text-accent-foreground",
+                    bgColor: "bg-accent/10"
+                  },
+                  critical: { 
+                    label: "Attendance Issues", 
+                    icon: AlertTriangle, 
+                    stages: [] as OnboardingStage[],
+                    color: "text-destructive",
+                    bgColor: "bg-destructive/10"
+                  },
+                };
+
+                const config = columnConfig[expandedColumn as keyof typeof columnConfig];
+                if (!config) return null;
+
+                const Icon = config.icon;
+                const expandedAgents = expandedColumn === "critical"
+                  ? filteredAgents.filter(a => a.attendanceStatus === "critical")
+                  : filteredAgents.filter(a => config.stages.includes(a.onboardingStage));
+
+                return (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setExpandedColumn(null)}
+                          className="gap-1.5"
+                        >
+                          <ArrowLeft className="h-4 w-4" />
+                          Back
+                        </Button>
+                        <div className={cn("flex items-center gap-2 px-3 py-2 rounded-lg", config.bgColor)}>
+                          <Icon className={cn("h-5 w-5", config.color)} />
+                          <h2 className={cn("font-bold text-lg", config.color)}>
+                            {config.label}
+                          </h2>
+                          <Badge variant="secondary" className="ml-2">
+                            {expandedAgents.length}
+                          </Badge>
+                        </div>
+                      </div>
+                      
+                      {/* Search in expanded view */}
+                      <div className="relative w-64">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                        <Input
+                          placeholder="Search agents..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          className="pl-8 h-8 text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Full-Screen Grid */}
+                    {expandedAgents.length === 0 ? (
+                      <GlassCard className="p-8 text-center">
+                        <Icon className={cn("h-12 w-12 mx-auto mb-3 opacity-50", config.color)} />
+                        <p className="text-muted-foreground">
+                          No agents in this category
+                        </p>
+                      </GlassCard>
+                    ) : (
+                      <motion.div 
+                        className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
+                        initial="hidden"
+                        animate="visible"
+                        variants={{
+                          hidden: { opacity: 0 },
+                          visible: {
+                            opacity: 1,
+                            transition: {
+                              staggerChildren: 0.05
+                            }
+                          }
+                        }}
+                      >
+                        {expandedAgents.map((agent, index) => (
+                          <motion.div
+                            key={agent.id}
+                            variants={{
+                              hidden: { opacity: 0, y: 20 },
+                              visible: { opacity: 1, y: 0 }
+                            }}
+                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                          >
+                            {renderAgentCard(agent, index)}
+                          </motion.div>
+                        ))}
+                      </motion.div>
+                    )}
+                  </>
+                );
+              })()}
+            </motion.div>
+          ) : (
+            <motion.div
+              key="overview"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.2 }}
+              className="grid grid-cols-1 lg:grid-cols-3 gap-4"
+            >
+              {COLUMNS.map((column) => {
+                const columnAgents = getAgentsForColumn(column.stages);
+                const Icon = column.icon;
+                
+                return (
+                  <motion.div 
+                    key={column.key} 
+                    className="space-y-3"
+                    whileHover={{ scale: 1.01 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  >
+                    <div 
+                      className={cn(
+                        "flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all hover:ring-2 hover:ring-primary/50",
+                        column.bgColor
+                      )}
+                      onClick={() => setExpandedColumn(column.key)}
+                    >
+                      <Icon className={cn("h-4 w-4", column.color)} />
+                      <h2 className={cn("font-semibold text-sm", column.color)}>
+                        {column.label}
+                      </h2>
+                      <Badge variant="secondary" className="ml-auto text-xs">
+                        {columnAgents.length}
+                      </Badge>
+                    </div>
+                    
+                    {columnAgents.length === 0 ? (
+                      <GlassCard className="p-4 text-center">
+                        <p className="text-xs text-muted-foreground">
+                          No agents in this stage
+                        </p>
+                      </GlassCard>
+                    ) : (
+                      <div className="space-y-2">
+                        {columnAgents.slice(0, 3).map((agent, index) => (
+                          <div key={agent.id}>
+                            {renderAgentCard(agent, index)}
+                          </div>
+                        ))}
+                        {columnAgents.length > 3 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full text-xs text-muted-foreground hover:text-foreground"
+                            onClick={() => setExpandedColumn(column.key)}
+                          >
+                            View all {columnAgents.length} agents →
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Deactivate Dialog */}

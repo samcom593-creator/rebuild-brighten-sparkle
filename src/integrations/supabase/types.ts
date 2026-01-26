@@ -956,6 +956,50 @@ export type Database = {
           },
         ]
       }
+      email_tracking: {
+        Row: {
+          agent_id: string | null
+          created_at: string
+          email_type: string
+          id: string
+          metadata: Json | null
+          open_count: number | null
+          opened_at: string | null
+          recipient_email: string
+          sent_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          created_at?: string
+          email_type: string
+          id?: string
+          metadata?: Json | null
+          open_count?: number | null
+          opened_at?: string | null
+          recipient_email: string
+          sent_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          created_at?: string
+          email_type?: string
+          id?: string
+          metadata?: Json | null
+          open_count?: number | null
+          opened_at?: string | null
+          recipient_email?: string
+          sent_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_tracking_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       interview_recordings: {
         Row: {
           agent_id: string | null

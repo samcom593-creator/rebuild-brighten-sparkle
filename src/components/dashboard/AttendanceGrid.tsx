@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Database } from "@/integrations/supabase/types";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 type AttendanceMark = Database["public"]["Enums"]["attendance_mark"];
 type AttendanceType = Database["public"]["Enums"]["attendance_type"];
@@ -23,7 +24,8 @@ interface AttendanceGridProps {
   readOnly?: boolean;
 }
 
-const DAYS = ["M", "T", "W", "T", "F"];
+// 7 days: Sun-Sat (weekStartsOn: 0) or Su M T W Th F Sa
+const DAYS = ["Su", "M", "T", "W", "Th", "F", "Sa"];
 
 export function AttendanceGrid({
   agentId,
@@ -33,13 +35,14 @@ export function AttendanceGrid({
   readOnly = false,
 }: AttendanceGridProps) {
   const { user } = useAuth();
+  const { playSound } = useSoundEffects();
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [updating, setUpdating] = useState<number | null>(null);
 
-  // Get current week's Mon-Fri dates
+  // Get current week's Sun-Sat dates (7 days)
   const today = new Date();
-  const weekStart = startOfWeek(today, { weekStartsOn: 1 }); // Monday
-  const weekDays = Array.from({ length: 5 }, (_, i) => addDays(weekStart, i));
+  const weekStart = startOfWeek(today, { weekStartsOn: 0 }); // Sunday
+  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
   useEffect(() => {
     fetchAttendance();
@@ -48,8 +51,7 @@ export function AttendanceGrid({
   const fetchAttendance = async () => {
     try {
       const startDate = format(weekDays[0], "yyyy-MM-dd");
-      const endDate = format(weekDays[4], "yyyy-MM-dd");
-
+      const endDate = format(weekDays[6], "yyyy-MM-dd"); // Now includes full week
       const { data, error } = await supabase
         .from("agent_attendance")
         .select("attendance_date, status")
@@ -116,6 +118,11 @@ export function AttendanceGrid({
       if (nextStatus === "absent") {
         onMarkAbsent?.();
       }
+      
+      // Play celebration sound when marking "Sold" as present
+      if (type === "daily_sale" && nextStatus === "present") {
+        playSound("celebrate");
+      }
     } catch (error) {
       console.error("Error updating attendance:", error);
       toast.error("Failed to update attendance");
@@ -156,8 +163,8 @@ export function AttendanceGrid({
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-[11px] text-muted-foreground w-14 shrink-0 font-medium">{label}:</span>
-      <div className="flex gap-1.5">
+      <span className="text-[11px] text-muted-foreground w-12 shrink-0 font-medium">{label}:</span>
+      <div className="flex gap-1">
         {weekDays.map((day, index) => {
           const record = attendance[index] || { status: "unmarked" };
           const isToday = isSameDay(day, today);
@@ -168,7 +175,7 @@ export function AttendanceGrid({
               onClick={() => handleToggle(index)}
               disabled={readOnly || updating === index}
               className={cn(
-                "w-8 h-8 rounded-md flex flex-col items-center justify-center border text-xs font-medium",
+                "w-7 h-7 rounded-md flex flex-col items-center justify-center border text-xs font-medium",
                 getStatusClass(record.status, day),
                 !readOnly && "hover:opacity-80 cursor-pointer",
                 updating === index && "opacity-50",
@@ -176,7 +183,7 @@ export function AttendanceGrid({
               )}
               title={`${format(day, "EEEE, MMM d")} - ${record.status}`}
             >
-              <span className="text-[10px] leading-none mb-0.5">{DAYS[index]}</span>
+              <span className="text-[8px] leading-none mb-0.5">{DAYS[index]}</span>
               {getStatusIcon(record.status)}
             </button>
           );

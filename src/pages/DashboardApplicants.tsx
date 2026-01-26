@@ -677,14 +677,28 @@ export default function DashboardApplicants() {
                   )}
                   
                   {status === "contacted" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleMarkAsQualified(app.id)}
-                    >
-                      <UserCheck className="h-4 w-4 mr-1" />
-                      Qualified
-                    </Button>
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleMarkAsQualified(app.id)}
+                      >
+                        <UserCheck className="h-4 w-4 mr-1" />
+                        Qualified
+                      </Button>
+                      {/* Show Contracted button for licensed leads in contacted status */}
+                      {app.license_status === "licensed" && !app.contracted_at && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setContractedApp(app)}
+                          className="text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
+                        >
+                          <FileCheck className="h-4 w-4 mr-1" />
+                          Contracted
+                        </Button>
+                      )}
+                    </>
                   )}
                   
                   {status === "qualified" && (
@@ -697,7 +711,7 @@ export default function DashboardApplicants() {
                         <CheckCircle className="h-4 w-4 mr-1" />
                         Close
                       </Button>
-                      {app.license_status === "licensed" && (
+                      {app.license_status === "licensed" && !app.contracted_at && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -757,21 +771,27 @@ export default function DashboardApplicants() {
         </p>
       </motion.div>
 
-      {/* Stats */}
+      {/* Stats - Clickable to filter */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8"
+        className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"
       >
         {[
-          { label: "Total Leads", value: totalLeads, icon: Users, color: "text-primary" },
-          { label: "Contacted", value: contacted, icon: Phone, color: "text-yellow-400" },
-          { label: "Qualified", value: qualified, icon: UserCheck, color: "text-purple-400" },
-          { label: "Closed", value: closed, icon: CheckCircle, color: "text-emerald-400" },
-          { label: "Terminated", value: terminated, icon: XCircle, color: "text-red-400" },
+          { label: "Total Leads", value: totalLeads, icon: Users, color: "text-primary", filter: "all" },
+          { label: "Contacted", value: contacted, icon: Phone, color: "text-yellow-400", filter: "contacted" },
+          { label: "Closed", value: closed, icon: CheckCircle, color: "text-emerald-400", filter: "closed" },
+          { label: "Terminated", value: terminated, icon: XCircle, color: "text-red-400", filter: "terminated" },
         ].map((stat) => (
-          <GlassCard key={stat.label} className="p-4">
+          <GlassCard 
+            key={stat.label} 
+            className={cn(
+              "p-4 cursor-pointer transition-all hover:scale-[1.02]",
+              statusFilter === stat.filter && "ring-2 ring-primary ring-offset-2 ring-offset-background"
+            )}
+            onClick={() => setStatusFilter(stat.filter === "terminated" ? "all" : stat.filter)}
+          >
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-muted">
                 <stat.icon className={cn("h-5 w-5", stat.color)} />

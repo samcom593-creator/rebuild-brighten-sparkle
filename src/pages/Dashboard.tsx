@@ -10,6 +10,8 @@ import {
   Clock,
   MapPin,
   BarChart3,
+  TrendingUp,
+  DollarSign,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
@@ -27,6 +29,8 @@ import { ManagerLeaderboard } from "@/components/dashboard/ManagerLeaderboard";
 import { LeaderboardTabs } from "@/components/dashboard/LeaderboardTabs";
 import { ClosingRateLeaderboard } from "@/components/dashboard/ClosingRateLeaderboard";
 import { ReferralLeaderboard } from "@/components/dashboard/ReferralLeaderboard";
+import { DownlineStatsCard } from "@/components/dashboard/DownlineStatsCard";
+import { GlassCard } from "@/components/ui/glass-card";
 import { useAuth } from "@/hooks/useAuth";
 
 interface DashboardStats {
@@ -286,87 +290,112 @@ export default function Dashboard() {
 
   return (
     <DashboardLayout>
-      {/* Welcome Message */}
+      {/* Compact Welcome */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-8"
+        className="mb-4"
       >
-        <h2 className="text-2xl font-bold">Welcome back, {userName}! 👋</h2>
-        <p className="text-muted-foreground">Here's your recruiting performance overview</p>
+        <h2 className="text-xl font-bold">Welcome back, {userName}! 👋</h2>
       </motion.div>
 
-      {/* Primary Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
-        <StatCard
-          title="Total Leads"
-          value={stats.totalLeads}
-          icon={Users}
-          variant="primary"
-        />
-        <StatCard
-          title="Contacted"
-          value={stats.contacted}
-          icon={Phone}
-          variant="default"
-        />
-        <StatCard
-          title="Closed"
-          value={stats.closed}
-          icon={CheckCircle}
-          variant="success"
-        />
-        <StatCard
-          title="Licensed"
-          value={stats.licensed}
-          icon={Award}
-          variant="primary"
-        />
-        <StatCard
-          title="Unlicensed"
-          value={stats.unlicensed}
-          icon={GraduationCap}
-          variant="default"
-        />
-      </div>
-
-      {/* Secondary Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <StatCard
-          title="Close Rate"
-          value={`${stats.closeRate.toFixed(1)}%`}
-          icon={Percent}
-          variant="success"
-        />
-        <StatCard
-          title="Avg Wait Time (Licensed)"
-          value={`${stats.avgWaitTime.toFixed(1)}h`}
-          icon={Clock}
-          variant={stats.avgWaitTime > 24 ? "warning" : "default"}
-        />
-        <StatCard
-          title="Growth"
-          value={`+${stats.growthPercent}%`}
-          icon={BarChart3}
-          trend={{ value: stats.growthPercent, isPositive: true }}
-          variant="success"
-        />
-        <EarningsPotentialCard leadCount={stats.totalLeads} />
-      </div>
-
-      {/* Manager Leaderboard - Visible to EVERYONE */}
-      <div className="mb-8">
+      {/* ====== SALES SECTION ====== */}
+      <div className="mb-6">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-4"
+          className="flex items-center gap-2 mb-3"
         >
-          <h3 className="text-xl font-bold">Recruiter Rankings</h3>
-          <p className="text-muted-foreground text-sm">
-            See who's leading the recruitment competition
-          </p>
+          <DollarSign className="h-5 w-5 text-primary" />
+          <h3 className="text-lg font-bold">Sales Performance</h3>
         </motion.div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        {/* Primary Stats Row - Compact */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 mb-4">
+          <StatCard
+            title="Total Leads"
+            value={stats.totalLeads}
+            icon={Users}
+            variant="primary"
+          />
+          <StatCard
+            title="Contacted"
+            value={stats.contacted}
+            icon={Phone}
+            variant="default"
+          />
+          <StatCard
+            title="Closed"
+            value={stats.closed}
+            icon={CheckCircle}
+            variant="success"
+          />
+          <StatCard
+            title="Close Rate"
+            value={`${stats.closeRate.toFixed(1)}%`}
+            icon={Percent}
+            variant="success"
+          />
+          <EarningsPotentialCard leadCount={stats.totalLeads} />
+        </div>
+
+        {/* Downline Stats for Managers */}
+        {(isManager || isAdmin) && <DownlineStatsCard />}
+
+        {/* Sales Leaderboard */}
+        <div className="mt-4">
+          <LeaderboardTabs />
+        </div>
+
+        {/* Performance Leaderboards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <ClosingRateLeaderboard />
+          <ReferralLeaderboard />
+        </div>
+      </div>
+
+      {/* ====== GROWTH SECTION ====== */}
+      <div className="mb-6">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-2 mb-3"
+        >
+          <TrendingUp className="h-5 w-5 text-emerald-400" />
+          <h3 className="text-lg font-bold">Growth & Recruitment</h3>
+        </motion.div>
+
+        {/* Stats Row */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+          <StatCard
+            title="Licensed"
+            value={stats.licensed}
+            icon={Award}
+            variant="primary"
+          />
+          <StatCard
+            title="Unlicensed"
+            value={stats.unlicensed}
+            icon={GraduationCap}
+            variant="default"
+          />
+          <StatCard
+            title="Avg Wait (Licensed)"
+            value={`${stats.avgWaitTime.toFixed(1)}h`}
+            icon={Clock}
+            variant={stats.avgWaitTime > 24 ? "warning" : "default"}
+          />
+          <StatCard
+            title="Growth"
+            value={`+${stats.growthPercent}%`}
+            icon={BarChart3}
+            trend={{ value: stats.growthPercent, isPositive: true }}
+            variant="success"
+          />
+        </div>
+
+        {/* Manager Leaderboard + Growth Chart */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <ManagerLeaderboard />
           <GrowthChart
             dailyData={dailyData}
@@ -378,41 +407,22 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Sales Leaderboard - Visible to EVERYONE */}
-      <div className="mb-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-4"
-        >
-          <h3 className="text-xl font-bold">Sales Leaderboard</h3>
-          <p className="text-muted-foreground text-sm">
-            Top producers by ALP, deals closed, and presentations
-          </p>
-        </motion.div>
-        <LeaderboardTabs />
-      </div>
-
-      {/* Performance Leaderboards - Visible to EVERYONE */}
-      <div className="mb-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-4"
-        >
-          <h3 className="text-xl font-bold">Performance Rankings</h3>
-          <p className="text-muted-foreground text-sm">
-            Closing rates and referral production leaders
-          </p>
-        </motion.div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <ClosingRateLeaderboard />
-          <ReferralLeaderboard />
-        </div>
+      {/* License Distribution */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <AnalyticsPieChart
+          title="Lead Sources"
+          icon={<MapPin className="h-5 w-5 text-primary" />}
+          data={sourceData}
+        />
+        <AnalyticsPieChart
+          title="License Status"
+          icon={<Award className="h-5 w-5 text-primary" />}
+          data={licenseData}
+        />
       </div>
 
       {/* AI Features */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <AIInsightsCard 
           stats={{
             totalLeads: stats.totalLeads,
@@ -439,61 +449,23 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Lead Qualification Chat */}
-      <LeadQualificationChat />
-
-      {/* Growth Analytics - For non-managers or additional charts */}
-      {!(isManager || isAdmin) && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <GrowthChart
-            dailyData={dailyData}
-            weeklyData={weeklyData}
-            monthlyData={monthlyData}
-            currentPeriodTotal={stats.totalLeads}
-            previousPeriodTotal={Math.round(stats.totalLeads * 0.87)}
-            className="lg:col-span-2"
-          />
-          <AnalyticsPieChart
-            title="Lead Sources"
-            icon={<MapPin className="h-5 w-5 text-primary" />}
-            data={sourceData}
-          />
-        </div>
-      )}
-
-      {/* Quick Analytics & License Distribution */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <AnalyticsPieChart
-          title="Lead Sources"
-          icon={<MapPin className="h-5 w-5 text-primary" />}
-          data={sourceData}
-        />
-        <AnalyticsPieChart
-          title="License Status"
-          icon={<Award className="h-5 w-5 text-primary" />}
-          data={licenseData}
-        />
-      </div>
-
-      {/* Admin Quick Actions - Invite Manager Card */}
+      {/* Admin Quick Actions */}
       {isAdmin && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div className="mb-6">
           <InviteManagerCard />
         </div>
       )}
 
       {/* Manager Team View */}
       {(isManager || isAdmin) && (
-        <div className="mb-8">
+        <div className="mb-6">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-4"
+            className="flex items-center gap-2 mb-3"
           >
-            <h3 className="text-xl font-bold">Your Team</h3>
-            <p className="text-muted-foreground text-sm">
-              Manage and track your team's onboarding progress
-            </p>
+            <Users className="h-5 w-5 text-primary" />
+            <h3 className="text-lg font-bold">Your Team</h3>
           </motion.div>
           <ManagerTeamView />
         </div>

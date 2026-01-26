@@ -14,7 +14,11 @@ import {
   DollarSign,
   BarChart3,
   Award,
-  Zap
+  Zap,
+  Share2,
+  Copy,
+  Link,
+  UserPlus
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -513,6 +517,68 @@ export default function AgentPortal() {
               period="week" 
             />
           </div>
+        </motion.section>
+
+        {/* Referral & Sharing Section */}
+        <motion.section
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.55 }}
+          className="grid sm:grid-cols-2 gap-4"
+        >
+          {/* Agent Referral Link */}
+          <GlassCard className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <UserPlus className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold">Refer a Friend</h3>
+            </div>
+            <p className="text-xs text-muted-foreground mb-3">
+              Know someone who'd be great at this? Share your referral link!
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 text-xs bg-muted p-2 rounded truncate">
+                {typeof window !== 'undefined' ? `${window.location.origin}/apply?ref=${profile?.full_name?.replace(/\s+/g, '-').toLowerCase() || 'agent'}` : ''}
+              </code>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  const refLink = `${window.location.origin}/apply?ref=${profile?.full_name?.replace(/\s+/g, '-').toLowerCase() || 'agent'}`;
+                  navigator.clipboard.writeText(refLink);
+                  toast.success("Referral link copied!");
+                }}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+          </GlassCard>
+
+          {/* Direct Portal Link */}
+          <GlassCard className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Link className="h-5 w-5 text-emerald-400" />
+              <h3 className="font-semibold">Quick Log Numbers Link</h3>
+            </div>
+            <p className="text-xs text-muted-foreground mb-3">
+              Share this link with your team for quick number entry:
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 text-xs bg-muted p-2 rounded truncate">
+                {typeof window !== 'undefined' ? `${window.location.origin}/log-numbers` : ''}
+              </code>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  const logLink = `${window.location.origin}/log-numbers`;
+                  navigator.clipboard.writeText(logLink);
+                  toast.success("Link copied!");
+                }}
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+          </GlassCard>
         </motion.section>
 
         {/* Motivational Footer */}

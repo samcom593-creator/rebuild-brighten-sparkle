@@ -54,7 +54,7 @@ import { AgentNotes } from "@/components/dashboard/AgentNotes";
 import { EvaluationButtons } from "@/components/dashboard/EvaluationButtons";
 import { PerformanceBadges } from "@/components/dashboard/PerformanceBadges";
 import { DeactivateAgentDialog } from "@/components/dashboard/DeactivateAgentDialog";
-
+import { InstagramPromptDialog } from "@/components/dashboard/InstagramPromptDialog";
 import { AbandonedLeadsPanel } from "@/components/dashboard/AbandonedLeadsPanel";
 import { cn } from "@/lib/utils";
 import { Database } from "@/integrations/supabase/types";
@@ -88,6 +88,7 @@ interface AgentCRM {
   potentialRating: number;
   evaluationResult?: string | null;
   isDeactivated: boolean;
+  isInactive: boolean;
   managerId?: string;
   managerName?: string;
   weekly10kBadges: number;
@@ -171,9 +172,10 @@ export default function DashboardCRM() {
   const [searchTerm, setSearchTerm] = useState("");
   const [managerFilter, setManagerFilter] = useState<string>("all");
   const [showDeactivated, setShowDeactivated] = useState(false);
+  const [showInactive, setShowInactive] = useState(false);
   const [deactivateAgent, setDeactivateAgent] = useState<AgentCRM | null>(null);
   const [stageFilter, setStageFilter] = useState<"all" | "in_course" | "in_training" | "live" | "meeting_eligible" | "critical">("all");
-
+  const [instagramPromptAgent, setInstagramPromptAgent] = useState<AgentCRM | null>(null);
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -313,6 +315,7 @@ export default function DashboardCRM() {
           potentialRating: agent.potential_rating || 0,
           evaluationResult: agent.evaluation_result,
           isDeactivated: agent.is_deactivated || false,
+          isInactive: (agent as any).is_inactive || false,
           managerId: agent.invited_by_manager_id || undefined,
           managerName: agent.invited_by_manager_id 
             ? managerProfileMap.get(agent.invited_by_manager_id) 
@@ -403,10 +406,13 @@ export default function DashboardCRM() {
     const matchesManager = managerFilter === "all" || agent.managerId === managerFilter;
     const matchesDeactivated = showDeactivated ? agent.isDeactivated : !agent.isDeactivated;
     
+    // Hide inactive agents unless specifically viewing them (admin only)
+    const matchesInactive = showInactive ? agent.isInactive : !agent.isInactive;
+    
     // Hide failed evaluations from non-admins
     const matchesEvaluation = isAdmin || agent.evaluationResult !== "failed";
 
-    return matchesSearch && matchesManager && matchesDeactivated && matchesEvaluation;
+    return matchesSearch && matchesManager && matchesDeactivated && matchesInactive && matchesEvaluation;
   });
 
   // Apply stage filter
@@ -549,8 +555,10 @@ export default function DashboardCRM() {
           {/* Onboarding Stage - Compact */}
           <OnboardingTracker
             agentId={agent.id}
+            agentName={agent.name}
             currentStage={agent.onboardingStage}
             onStageUpdate={fetchAgents}
+            onGoLive={() => setInstagramPromptAgent(agent)}
             readOnly={false}
           />
 
@@ -907,6 +915,15 @@ export default function DashboardCRM() {
         agentId={deactivateAgent?.id || ""}
         agentName={deactivateAgent?.name || ""}
         currentManagerId={deactivateAgent?.managerId}
+        onComplete={fetchAgents}
+      />
+
+      {/* Instagram Prompt Dialog */}
+      <InstagramPromptDialog
+        open={!!instagramPromptAgent}
+        onOpenChange={(open) => !open && setInstagramPromptAgent(null)}
+        agentId={instagramPromptAgent?.id || ""}
+        agentName={instagramPromptAgent?.name || ""}
         onComplete={fetchAgents}
       />
     </DashboardLayout>

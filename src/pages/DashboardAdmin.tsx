@@ -38,6 +38,7 @@ import { LeadImporter } from "@/components/dashboard/LeadImporter";
 import { BulkLeadAssignment } from "@/components/dashboard/BulkLeadAssignment";
 import { AbandonedLeadsPanel } from "@/components/dashboard/AbandonedLeadsPanel";
 import { AllLeadsPanel } from "@/components/dashboard/AllLeadsPanel";
+import { TerminatedAgentLeadsPanel } from "@/components/dashboard/TerminatedAgentLeadsPanel";
 import {
   Table,
   TableBody,
@@ -646,9 +647,19 @@ export default function DashboardAdmin() {
                 </div>
               ))}
             </div>
-          </GlassCard>
+        </GlassCard>
         </motion.div>
       )}
+
+      {/* Terminated Agent Leads */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.075 }}
+        className="mb-8"
+      >
+        <TerminatedAgentLeadsPanel />
+      </motion.div>
 
       {/* Abandoned Applications */}
       <motion.div

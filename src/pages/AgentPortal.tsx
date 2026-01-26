@@ -29,6 +29,7 @@ import { ReferralLeaderboard } from "@/components/dashboard/ReferralLeaderboard"
 import { TeamGoalsTracker } from "@/components/dashboard/TeamGoalsTracker";
 import { IncomeGoalTracker } from "@/components/dashboard/IncomeGoalTracker";
 import { PerformanceDashboardSection } from "@/components/dashboard/PerformanceDashboardSection";
+import { WeeklyBadgesCard } from "@/components/dashboard/WeeklyBadges";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -416,6 +417,18 @@ export default function AgentPortal() {
             </motion.section>
           )}
         </AnimatePresence>
+
+        {/* Weekly Badges Card */}
+        {agentId && (
+          <motion.section
+            id="weekly-badges"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.32 }}
+          >
+            <WeeklyBadgesCard key={`badges-${refreshKey}`} agentId={agentId} />
+          </motion.section>
+        )}
 
         {/* Performance Dashboard Navigation - Desktop only */}
         <div className="hidden sm:block">

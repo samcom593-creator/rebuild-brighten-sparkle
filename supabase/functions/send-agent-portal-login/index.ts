@@ -11,6 +11,7 @@ const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const BASE_URL = "https://rebuild-brighten-sparkle.lovable.app";
 const PORTAL_URL = `${BASE_URL}/agent-portal`;
 const LOG_NUMBERS_URL = `${BASE_URL}/log-numbers`;
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 
 interface SendLoginRequest {
   agentId: string;
@@ -25,7 +26,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { agentId }: SendLoginRequest = await req.json();
 
     const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
+      SUPABASE_URL,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
@@ -58,6 +59,30 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const firstName = profile.full_name?.split(" ")[0] || "Agent";
+
+    // Create tracking record first to get the ID for the tracking pixel
+    const { data: trackingRecord, error: trackingError } = await supabaseClient
+      .from("email_tracking")
+      .insert({
+        agent_id: agentId,
+        email_type: "portal_login",
+        recipient_email: profile.email,
+        metadata: {
+          agent_name: profile.full_name,
+          onboarding_stage: agent.onboarding_stage
+        }
+      })
+      .select("id")
+      .single();
+
+    if (trackingError) {
+      console.error("Failed to create tracking record:", trackingError);
+    }
+
+    // Generate tracking pixel URL
+    const trackingPixelUrl = trackingRecord 
+      ? `${SUPABASE_URL}/functions/v1/track-email-open?id=${trackingRecord.id}`
+      : "";
 
     try {
       await resend.emails.send({
@@ -156,6 +181,7 @@ const handler = async (req: Request): Promise<Response> => {
                   </p>
                 </div>
                 
+                ${trackingPixelUrl ? `<img src="${trackingPixelUrl}" width="1" height="1" style="display:none;" alt="" />` : ""}
               </div>
             </div>
           </body>
@@ -169,10 +195,13 @@ const handler = async (req: Request): Promise<Response> => {
         .update({ portal_password_set: false })
         .eq("id", agentId);
 
+      console.log(`Portal login email sent to ${profile.email}, tracking ID: ${trackingRecord?.id || 'none'}`);
+
       return new Response(
         JSON.stringify({ 
           success: true, 
-          message: `Portal login sent to ${profile.email}`
+          message: `Portal login sent to ${profile.email}`,
+          trackingId: trackingRecord?.id
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );

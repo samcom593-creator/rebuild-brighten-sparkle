@@ -2,21 +2,6 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { format, differenceInDays } from "date-fns";
 import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import {
   Users,
   Search,
   RefreshCw,
@@ -69,7 +54,7 @@ import { AgentNotes } from "@/components/dashboard/AgentNotes";
 import { EvaluationButtons } from "@/components/dashboard/EvaluationButtons";
 import { PerformanceBadges } from "@/components/dashboard/PerformanceBadges";
 import { DeactivateAgentDialog } from "@/components/dashboard/DeactivateAgentDialog";
-import { DraggableAgentCard } from "@/components/dashboard/DraggableAgentCard";
+
 import { AbandonedLeadsPanel } from "@/components/dashboard/AbandonedLeadsPanel";
 import { cn } from "@/lib/utils";
 import { Database } from "@/integrations/supabase/types";
@@ -189,12 +174,6 @@ export default function DashboardCRM() {
   const [deactivateAgent, setDeactivateAgent] = useState<AgentCRM | null>(null);
   const [stageFilter, setStageFilter] = useState<"all" | "in_course" | "in_training" | "live" | "meeting_eligible" | "critical">("all");
 
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -415,44 +394,6 @@ export default function DashboardCRM() {
     }
   };
 
-  const handleDragEnd = async (event: DragEndEvent, columnStages: OnboardingStage[]) => {
-    const { active, over } = event;
-    
-    if (!over || active.id === over.id) return;
-
-    const columnAgents = agents.filter(a => columnStages.includes(a.onboardingStage));
-    const oldIndex = columnAgents.findIndex(a => a.id === active.id);
-    const newIndex = columnAgents.findIndex(a => a.id === over.id);
-
-    if (oldIndex === -1 || newIndex === -1) return;
-
-    const reorderedColumnAgents = arrayMove(columnAgents, oldIndex, newIndex);
-    
-    // Update sort_order for reordered agents
-    const updates = reorderedColumnAgents.map((agent, index) => ({
-      id: agent.id,
-      sortOrder: index,
-    }));
-
-    // Optimistic update
-    setAgents(prev => {
-      const otherAgents = prev.filter(a => !columnStages.includes(a.onboardingStage));
-      const updatedColumnAgents = reorderedColumnAgents.map((agent, index) => ({
-        ...agent,
-        sortOrder: index,
-      }));
-      return [...otherAgents, ...updatedColumnAgents].sort((a, b) => a.sortOrder - b.sortOrder);
-    });
-
-    // Persist to database
-    for (const update of updates) {
-      await supabase
-        .from("agents")
-        .update({ sort_order: update.sortOrder })
-        .eq("id", update.id);
-    }
-  };
-
   // Filter agents
   const filteredAgents = agents.filter(agent => {
     const matchesSearch =
@@ -461,8 +402,11 @@ export default function DashboardCRM() {
 
     const matchesManager = managerFilter === "all" || agent.managerId === managerFilter;
     const matchesDeactivated = showDeactivated ? agent.isDeactivated : !agent.isDeactivated;
+    
+    // Hide failed evaluations from non-admins
+    const matchesEvaluation = isAdmin || agent.evaluationResult !== "failed";
 
-    return matchesSearch && matchesManager && matchesDeactivated;
+    return matchesSearch && matchesManager && matchesDeactivated && matchesEvaluation;
   });
 
   // Apply stage filter
@@ -941,24 +885,13 @@ export default function DashboardCRM() {
                       </p>
                     </GlassCard>
                   ) : (
-                    <DndContext
-                      sensors={sensors}
-                      collisionDetection={closestCenter}
-                      onDragEnd={(event) => handleDragEnd(event, column.stages)}
-                    >
-                      <SortableContext
-                        items={columnAgents.map(a => a.id)}
-                        strategy={verticalListSortingStrategy}
-                      >
-                        <div className="space-y-2">
-                          {columnAgents.map((agent, index) => (
-                            <DraggableAgentCard key={agent.id} id={agent.id}>
-                              {renderAgentCard(agent, index)}
-                            </DraggableAgentCard>
-                          ))}
+                    <div className="space-y-2">
+                      {columnAgents.map((agent, index) => (
+                        <div key={agent.id}>
+                          {renderAgentCard(agent, index)}
                         </div>
-                      </SortableContext>
-                    </DndContext>
+                      ))}
+                    </div>
                   )}
                 </div>
               );

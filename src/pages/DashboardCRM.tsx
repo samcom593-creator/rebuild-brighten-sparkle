@@ -94,6 +94,11 @@ interface AgentCRM {
   managerName?: string;
   weekly10kBadges: number;
   sortOrder: number;
+  // Weekly production stats for Live agents
+  weeklyALP: number;
+  weeklyPresentations: number;
+  weeklyDeals: number;
+  weeklyClosingRate: number;
 }
 
 const attendanceColors: Record<AttendanceStatus, string> = {
@@ -295,8 +300,45 @@ export default function DashboardCRM() {
         }
       }
 
+      // Fetch weekly production stats for Live agents (evaluated stage)
+      const liveAgentIds = agentData
+        .filter(a => a.onboarding_stage === "evaluated")
+        .map(a => a.id);
+
+      // Get this week's start date (Sunday)
+      const today = new Date();
+      const dayOfWeek = today.getDay();
+      const weekStart = new Date(today);
+      weekStart.setDate(today.getDate() - dayOfWeek);
+      const weekStartStr = weekStart.toISOString().split("T")[0];
+
+      let weeklyProductionMap = new Map<string, { aop: number; presentations: number; deals: number }>();
+
+      if (liveAgentIds.length > 0) {
+        const { data: weeklyProduction } = await supabase
+          .from("daily_production")
+          .select("agent_id, aop, presentations, deals_closed")
+          .in("agent_id", liveAgentIds)
+          .gte("production_date", weekStartStr);
+
+        // Aggregate by agent
+        for (const prod of weeklyProduction || []) {
+          const existing = weeklyProductionMap.get(prod.agent_id) || { aop: 0, presentations: 0, deals: 0 };
+          weeklyProductionMap.set(prod.agent_id, {
+            aop: existing.aop + (Number(prod.aop) || 0),
+            presentations: existing.presentations + (prod.presentations || 0),
+            deals: existing.deals + (prod.deals_closed || 0),
+          });
+        }
+      }
+
       const crmAgents: AgentCRM[] = agentData.map((agent, index) => {
         const profile = profileMap.get(agent.user_id);
+        const weeklyStats = weeklyProductionMap.get(agent.id) || { aop: 0, presentations: 0, deals: 0 };
+        const weeklyClosingRate = weeklyStats.presentations > 0 
+          ? Math.round((weeklyStats.deals / weeklyStats.presentations) * 100) 
+          : 0;
+
         return {
           id: agent.id,
           userId: agent.user_id || "",
@@ -324,6 +366,10 @@ export default function DashboardCRM() {
             : undefined,
           weekly10kBadges: agent.weekly_10k_badges || 0,
           sortOrder: agent.sort_order ?? index,
+          weeklyALP: weeklyStats.aop,
+          weeklyPresentations: weeklyStats.presentations,
+          weeklyDeals: weeklyStats.deals,
+          weeklyClosingRate,
         };
       });
 
@@ -699,7 +745,29 @@ export default function DashboardCRM() {
             </DropdownMenu>
           </div>
 
-          {/* Notes Section */}
+          {/* Weekly Production Stats for Live Agents */}
+          {isInFieldActive && (agent.weeklyALP > 0 || agent.weeklyPresentations > 0) && (
+            <div className="flex items-center gap-2 text-xs border-t border-border pt-2 mt-2">
+              <span className="text-muted-foreground">Week:</span>
+              <Badge variant="outline" className="text-[10px] h-5 px-1.5 gap-0.5">
+                <TrendingUp className="h-2.5 w-2.5" />
+                ${agent.weeklyALP.toLocaleString()}
+              </Badge>
+              <Badge variant="outline" className="text-[10px] h-5 px-1.5">
+                {agent.weeklyPresentations} pres
+              </Badge>
+              <Badge 
+                variant="outline" 
+                className={cn(
+                  "text-[10px] h-5 px-1.5",
+                  agent.weeklyClosingRate >= 30 && "border-primary/50 text-primary"
+                )}
+              >
+                {agent.weeklyClosingRate}% close
+              </Badge>
+            </div>
+          )}
+
           <AgentNotes
             agentId={agent.id}
             onNoteAdded={fetchAgents}

@@ -114,3 +114,9 @@ verify_jwt = false
 
 [functions.confirm-agent-removal]
 verify_jwt = false
+
+[functions.notify-production-submitted]
+verify_jwt = false
+
+[functions.notify-admin-daily-summary]
+verify_jwt = false

@@ -1,214 +1,185 @@
 
-# Comprehensive Platform Enhancement Plan
+# Platform Refinement Plan
 
-This plan addresses your extensive list of feature requests and optimizations across the Applicants page, CRM, Dashboard, Agent Portal, Team Directory, and automated notifications.
-
----
-
-## 1. Applicants Page Enhancements
-
-### 1.1 Add "Contracted" Button to All Applicable States
-**Current State:** The "Contracted" button only appears for leads in "qualified" or "closed" status.
-**Change:** Add the "Contracted" button to all non-terminated licensed leads, including those in "contacted" status.
-- Modify `DashboardApplicants.tsx` lines 667-724 to show "Contracted" for any licensed lead that isn't already contracted
-- When clicked, triggers the existing `ContractedModal` which sends the CRM setup email and transfers the lead
-
-### 1.2 Make Stat Boxes Clickable/Filterable
-**Current State:** Stat boxes are display-only.
-**Change:** Make each stat box (Total Leads, Contacted, Closed, Terminated) clickable to filter the applicant list.
-- Add `onClick` handlers to each stat card that sets the appropriate `statusFilter`
-- Add visual feedback (ring/border) to indicate the active filter
-- Remove the "Qualified" stat box as it's not being used in the workflow
-
-### 1.3 Remove "Qualified" Box
-**Rationale:** The "Qualified" status is not part of the actual workflow - leads go from Contacted → Closed → Contracted.
-- Remove the "Qualified" stat card from the grid (line 770-771)
-- Keep the "Qualified" button as a progression option but simplify to skip directly to close when needed
+This plan addresses the user's specific feedback to polish the CRM, Applicants page, Dashboard, and Agent Portal systems.
 
 ---
 
-## 2. CRM Improvements
+## Issues Identified from User Feedback
 
-### 2.1 Remove Abandoned Applications Panel
-**Status:** Already completed - the comment on line 59 confirms this was removed.
-
-### 2.2 Full-Screen View for Each Stage
-**Current State:** Clicking a stage stat card expands to a full-screen view with animation.
-**Enhancement:** Ensure smooth transitions and add an inline search bar within the expanded view.
-- The expanded view already exists (lines 967-1100+)
-- Add search input to the expanded header for filtering agents within that stage
-- Improve exit animation timing for smoother transitions
-
-### 2.3 Celebration Sound on "Sold" Toggle
-**Current State:** The AttendanceGrid toggles between present/absent/unmarked with no audio.
-**Change:** When marking "Sold" (daily_sale type) as "present", play the celebration sound.
-- Import `useSoundEffects` hook into `AttendanceGrid.tsx`
-- In `handleToggle`, detect when `type === "daily_sale"` and `nextStatus === "present"`, then call `playSound("celebrate")`
-
-### 2.4 Include Weekends in Attendance Grid
-**Current State:** Attendance grid shows Monday-Friday only (5 days).
-**Change:** Extend to all 7 days of the week.
-- Modify `AttendanceGrid.tsx` to change `DAYS` array to include Saturday and Sunday
-- Update `weekDays` calculation to use 7 days instead of 5
-- Adjust the grid layout width accordingly
+1. **CRM Attendance Grid**: The 7-day grid is too cramped - need a compact view with hover popup to show detailed dates
+2. **Agent Portal Login Flow**: Confirm that login emails direct to the production logging interface
+3. **Team Directory**: Shows managers but NOT their agents underneath (hierarchy not displaying)
+4. **Dashboard Layout**: Too much blank space, not sales-focused enough
+5. **Applicants Page**: Contracted button should automatically transfer leads to CRM
+6. **Overall UX**: Site needs to run more smoothly with better space utilization
 
 ---
 
-## 3. Dashboard Reorganization
+## Technical Implementation
 
-### 3.1 Two-Section Layout: Sales vs Growth
-**Current State:** Dashboard mixes sales leaderboards with growth charts randomly.
-**Change:** Reorganize into two distinct sections:
-1. **Sales Section**: Personal stats, Sales Leaderboards (ALP, Deals, Closing Rate), Personal Production
-2. **Growth Section**: Recruitment stats, Manager Leaderboard, Growth Charts, Downline performance
+### 1. Compact Attendance Grid with Hover Popup
 
-### 3.2 Remove Dead Space
-- Condense the welcome message and stat rows
-- Remove redundant/duplicate chart sections
-- Tighten grid gaps and padding for a more compact layout
+**File**: `src/components/dashboard/AttendanceGrid.tsx`
 
-### 3.3 Show Downline Sales for Managers
-**Current State:** Managers see their personal sales only.
-**Change:** Add a "Team Production" summary card showing:
-- Total ALP from all agents under them this week
-- Total deals from their downline
-- Team's average closing rate
-- Fetch via `invited_by_manager_id` in `daily_production` table
+**Changes**:
+- Reduce the grid to ultra-compact mode (5px smaller cells, minimal spacing)
+- Wrap each day's button in a `HoverCard` (Radix UI) that shows:
+  - Full date (e.g., "Sunday, January 26")
+  - Current status with icon
+  - Click instruction
+- Keep the core toggle functionality intact
+- Use the existing `HoverCard` component from `src/components/ui/hover-card.tsx`
+
+**Before**: 7 boxes inline taking too much space
+**After**: 7 tiny dots/squares that expand on hover to show full details
 
 ---
 
-## 4. Navigation/UX Improvements
+### 2. Agent Portal Login Confirmation
 
-### 4.1 Fix Tab Transition Jank
-**Issue:** When tapping between tabs, options briefly shift/flash before loading.
-**Solution:**
-- Add explicit height containers to prevent layout shift
-- Use `AnimatePresence` with `mode="wait"` consistently
-- Add skeleton loaders that match the expected content dimensions
-- Pre-fetch data where possible to avoid flash of empty content
+**Current State**: The `send-agent-portal-login` edge function sends an email with:
+- Link to `/agent-portal`
+- Instructions to log in with their email
+- Information about logging daily numbers
 
----
+**Issue**: Agents may not have accounts set up yet
 
-## 5. Agent Portal Enhancements
+**Solution**: Update the welcome email to include BOTH:
+1. Link to `/agent-portal` (for logged-in access)
+2. Link to `/log-numbers` (for quick number entry without login)
 
-### 5.1 Agent Referral Link in Portal
-**Current State:** Only managers have referral links via `ManagerInviteLinks`.
-**Change:** Add a shareable referral link for agents in the Agent Portal.
-- Add a "Refer a Friend" card with a link to the main application form
-- Format: `https://[domain]/apply?ref=[agent_name_or_code]`
-- The referral goes to the homepage/apply form, not manager signup
+**File**: `supabase/functions/send-agent-portal-login/index.ts`
 
-### 5.2 Direct Login Link for Agent Portal
-**Current State:** Agents must navigate through the main login.
-**Change:** Add a direct shareable link at the bottom of the portal.
-- Display: "Share this link with your team: rebuild-brighten-sparkle.lovable.app/log-numbers"
-- Add a "Copy Link" button for easy sharing
-- This uses the existing `/log-numbers` public route for quick number entry
-
-### 5.3 Confirm Portal is Ready
-**Status:** The Agent Portal is fully functional with:
-- Production logging with confetti celebration
-- Real-time leaderboards with rank change indicators
-- Weekly badges system
-- Income goal tracker
-- Production history charts
-- Personal stats benchmarking
+**Changes**:
+- Add a secondary link for `/log-numbers` with explanation
+- Clarify that they can log numbers immediately without account setup
+- Include manager's Discord link for onboarding support
 
 ---
 
-## 6. Team Directory Reorganization
+### 3. Team Directory Agent Display Fix
 
-### 6.1 Categorize Managers vs Agents
-**Current State:** `ManagersPanel` shows all managers in a flat grid.
-**Change:** Add hierarchy visualization showing:
-1. **Managers Section**: List of all managers with their stats
-2. **Under each manager**: Expandable/collapsible list of their agents (fetched via `invited_by_manager_id`)
+**File**: `src/components/dashboard/ManagersPanel.tsx`
 
-This will require:
-- Fetch agents grouped by `invited_by_manager_id`
-- Create an expandable accordion or tree structure
-- Show agent count badge on each manager card
+**Current Issue**: The `teamMembers` array is populated but appears to be empty in the UI because:
+- The query filters by `invited_by_manager_id` correctly
+- However, agents may not have `invited_by_manager_id` set properly
 
----
+**Verification**: Check if agents have the correct `invited_by_manager_id` linking to their manager
 
-## 7. Profile/Settings
-
-### 7.1 Allow Account Changes
-**Status:** Already implemented in `ProfileSettings.tsx`:
-- Email change via `update-user-email` edge function
-- Password reset via `send-password-reset` edge function
-- Phone number, Instagram handle, name editing
+**Changes**:
+1. Add debug logging to verify agents are being fetched
+2. Ensure the Collapsible component expands properly
+3. Add a fallback message if no team members exist
+4. Auto-expand managers with team members for better visibility
 
 ---
 
-## 8. Automated Email Notifications
+### 4. Dashboard Sales-Pro Focus + Space Optimization
 
-### 8.1 Daily Production Summary Email (Story-Worthy)
-**Current State:** `notify-production-submitted` exists but scope unclear.
-**Enhancement:** Create/enhance the daily production email to include:
-- Agent's daily production numbers
-- Closing rate for the day
-- Weekly comparison stats
-- Encouraging message with shareable graphics styling
-- Send after each production submission or via daily cron
+**File**: `src/pages/Dashboard.tsx`
 
-**Email Template Design:**
-```
-Subject: 🔥 [Agent Name] | [Date] Production Report
+**Changes**:
+1. **Tighten layout**:
+   - Reduce `mb-6` to `mb-4` between sections
+   - Reduce `gap-4` to `gap-3` in grids
+   - Remove redundant spacing around section headers
 
-Body:
-- Today's ALP: $X,XXX
-- Deals Closed: X
-- Presentations: X
-- Closing Rate: X%
-- Weekly Total: $X,XXX
+2. **Sales Section Priority**:
+   - Move Sales Performance section above Growth section
+   - Make sales leaderboards more prominent
+   - Add personal production stats inline with leaderboards
 
-"Great work today! Keep crushing it! 🚀"
-[Stylized card design suitable for Instagram stories]
-```
+3. **Remove dead space**:
+   - Condense the AI Features section (currently takes full width)
+   - Move License Distribution charts to a collapsible section
+   - Combine redundant stat cards
+
+4. **Grid optimization**:
+   - Use `lg:grid-cols-3` for leaderboards instead of 2
+   - Stack mobile views more efficiently
 
 ---
 
-## 9. Attendance Grid Weekend Support
+### 5. Contracted Button Auto-Transfer to CRM
 
-**Technical Change:**
-- In `AttendanceGrid.tsx`, change:
-  - `DAYS` from `["M", "T", "W", "T", "F"]` to `["Su", "M", "T", "W", "Th", "F", "Sa"]`
-  - `weekDays` from 5 days to 7 days
-  - Adjust the grid to accommodate 7 boxes instead of 5
+**Current Flow**: 
+1. Click "Contracted" button on Applicants page
+2. `ContractedModal` opens and marks `contracted_at`
+3. Sends email with CRM setup link
+4. **MISSING**: Does NOT create agent record in CRM
+
+**Required Changes**:
+
+**File**: `src/components/dashboard/ContractedModal.tsx`
+
+**Changes**:
+1. After marking as contracted, automatically:
+   - Create a new `agents` table record for the applicant
+   - Link to the manager via `invited_by_manager_id`
+   - Set `onboarding_stage` to "onboarding" (they start fresh in CRM)
+   - Copy profile data from application
+
+2. Show success message: "Agent added to CRM - they'll appear in 'In Course' column"
+
+**File**: `supabase/functions/notify-agent-contracted/index.ts`
+
+**Changes**:
+1. After sending the email, create the agent record in the database
+2. Link to the referring manager
+3. Log the creation in contact_history
 
 ---
 
-## Technical Implementation Summary
+### 6. Overall UX Smoothness
+
+**Files**: Various pages
+
+**Changes**:
+1. **Consistent loading states**: Add skeleton loaders matching content dimensions
+2. **Transition animations**: Use `AnimatePresence mode="wait"` consistently
+3. **Pre-fetch data**: On Dashboard mount, prefetch leaderboard data in background
+4. **Reduce layout shift**: Set explicit min-heights on dynamic content areas
+
+---
+
+## Implementation Order
+
+### Phase 1: Core Workflow Fixes (High Priority)
+1. Fix Contracted button to auto-create CRM agent record
+2. Fix Team Directory to show agents under managers
+3. Update portal login email with /log-numbers link
+
+### Phase 2: UI Compactness (Medium Priority)
+4. Implement compact attendance grid with hover
+5. Tighten Dashboard layout and remove dead space
+6. Make Dashboard more sales-focused
+
+### Phase 3: Polish (Enhancement)
+7. Add skeleton loaders for smooth loading
+8. Optimize transition animations
+
+---
+
+## Files to be Modified
 
 | File | Changes |
 |------|---------|
-| `src/pages/DashboardApplicants.tsx` | Add clickable stat cards, always show Contracted button for licensed leads, remove Qualified stat |
-| `src/pages/DashboardCRM.tsx` | Add search to expanded views, ensure smooth animations |
-| `src/components/dashboard/AttendanceGrid.tsx` | Extend to 7 days, add celebration sound on Sold toggle |
-| `src/pages/Dashboard.tsx` | Reorganize into Sales/Growth sections, add downline stats for managers, remove dead space |
-| `src/pages/TeamDirectory.tsx` | Add hierarchical view with managers and their agents |
-| `src/pages/AgentPortal.tsx` | Add agent referral link card, add shareable login link |
-| `supabase/functions/notify-production-submitted/index.ts` | Enhance email template with story-worthy design |
-| Create new: `src/components/dashboard/DownlineStatsCard.tsx` | Show manager's team production totals |
+| `src/components/dashboard/AttendanceGrid.tsx` | Add HoverCard wrapper for compact view with hover details |
+| `src/components/dashboard/ContractedModal.tsx` | Auto-create agent record in CRM after contracting |
+| `src/components/dashboard/ManagersPanel.tsx` | Debug and fix team member display |
+| `src/pages/Dashboard.tsx` | Tighten spacing, sales-focus layout |
+| `supabase/functions/send-agent-portal-login/index.ts` | Add /log-numbers link to email |
+| `supabase/functions/notify-agent-contracted/index.ts` | Auto-create agent in CRM |
 
 ---
 
-## Priority Order
+## Expected Outcomes
 
-1. **High Priority (Core Workflow)**
-   - Contracted button visibility fix
-   - Clickable stat boxes in Applicants
-   - CRM celebration sound on Sold
-   - Attendance grid weekend support
-
-2. **Medium Priority (UX/Polish)**
-   - Dashboard reorganization (Sales vs Growth)
-   - Remove dead space
-   - Fix navigation jank
-   - Team Directory hierarchy
-
-3. **Enhancement (Nice-to-Have)**
-   - Agent referral link in portal
-   - Enhanced production summary email
-   - Downline stats for managers
+1. **CRM Grid**: Compact day indicators that expand on hover to show full date/status
+2. **Agent Login**: Clear path to both full portal and quick number entry
+3. **Team Directory**: Managers show their agents underneath in expandable list
+4. **Dashboard**: Denser, sales-focused layout with minimal blank space
+5. **Contracted Flow**: One-click from Applicants → CRM with automated record creation
+6. **Overall**: Smoother transitions, less layout jank, professional feel

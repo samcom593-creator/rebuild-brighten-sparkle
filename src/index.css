@@ -9,24 +9,24 @@
 
 @layer base {
   :root {
-    /* Light mode - Clean white professional theme */
-    --background: 0 0% 98%;
+    /* Light mode - Warm cream professional theme */
+    --background: 40 30% 97%;
     --foreground: 222 47% 11%;
 
-    --card: 0 0% 100%;
+    --card: 40 25% 99%;
     --card-foreground: 222 47% 11%;
 
-    --popover: 0 0% 100%;
+    --popover: 40 25% 99%;
     --popover-foreground: 222 47% 11%;
 
     --primary: 168 84% 32%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 20% 96%;
+    --secondary: 38 25% 95%;
     --secondary-foreground: 222 47% 11%;
 
-    --muted: 210 15% 95%;
-    --muted-foreground: 220 15% 45%;
+    --muted: 35 20% 94%;
+    --muted-foreground: 220 15% 40%;
 
     --accent: 168 84% 32%;
     --accent-foreground: 0 0% 100%;
@@ -34,8 +34,8 @@
     --destructive: 0 72% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 13% 88%;
-    --input: 220 13% 91%;
+    --border: 35 15% 85%;
+    --input: 35 15% 90%;
     --ring: 168 84% 32%;
 
     --radius: 0.75rem;
@@ -54,47 +54,47 @@
     --apex-warning: 38 92% 50%;
     --apex-error: 0 84% 60%;
 
-    /* Glass morphism - lighter for light mode */
-    --glass-bg: hsl(0 0% 100% / 0.8);
-    --glass-border: hsl(220 13% 85% / 0.6);
-    --glass-shadow: 0 4px 16px hsl(220 15% 50% / 0.1);
+    /* Glass morphism - warm tones for light mode */
+    --glass-bg: hsl(40 30% 100% / 0.85);
+    --glass-border: hsl(35 20% 80% / 0.5);
+    --glass-shadow: 0 4px 20px hsl(35 30% 40% / 0.08);
 
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(168 84% 42%), hsl(160 84% 39%));
-    --gradient-hero: linear-gradient(180deg, hsl(0 0% 98%) 0%, hsl(210 20% 96%) 100%);
-    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(210 20% 98%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(40 30% 97%) 0%, hsl(38 25% 95%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(40 25% 99%) 0%, hsl(38 20% 97%) 100%);
     --gradient-glow: radial-gradient(ellipse at center, hsl(168 84% 42% / 0.08) 0%, transparent 70%);
 
     /* Sidebar */
-    --sidebar-background: 0 0% 100%;
+    --sidebar-background: 40 25% 99%;
     --sidebar-foreground: 222 47% 11%;
     --sidebar-primary: 168 84% 32%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 20% 96%;
+    --sidebar-accent: 38 25% 95%;
     --sidebar-accent-foreground: 222 47% 11%;
-    --sidebar-border: 220 13% 88%;
+    --sidebar-border: 35 15% 85%;
     --sidebar-ring: 168 84% 32%;
   }
 
   .light {
-    /* Clean, high-contrast light mode */
-    --background: 0 0% 98%;
+    /* Warm cream light mode with soft shadows */
+    --background: 40 30% 97%;
     --foreground: 222 47% 11%;
 
-    --card: 0 0% 100%;
+    --card: 40 25% 99%;
     --card-foreground: 222 47% 11%;
 
-    --popover: 0 0% 100%;
+    --popover: 40 25% 99%;
     --popover-foreground: 222 47% 11%;
 
     --primary: 168 84% 32%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 20% 96%;
+    --secondary: 38 25% 95%;
     --secondary-foreground: 222 47% 11%;
 
-    --muted: 210 15% 95%;
-    --muted-foreground: 220 15% 45%;
+    --muted: 35 20% 94%;
+    --muted-foreground: 220 15% 40%;
 
     --accent: 168 84% 32%;
     --accent-foreground: 0 0% 100%;
@@ -102,24 +102,24 @@
     --destructive: 0 72% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 13% 88%;
-    --input: 220 13% 91%;
+    --border: 35 15% 85%;
+    --input: 35 15% 90%;
     --ring: 168 84% 32%;
 
-    /* Sidebar - clean white with subtle borders */
-    --sidebar-background: 0 0% 100%;
+    /* Sidebar - warm cream with subtle borders */
+    --sidebar-background: 40 25% 99%;
     --sidebar-foreground: 222 47% 11%;
     --sidebar-primary: 168 84% 32%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 20% 96%;
+    --sidebar-accent: 38 25% 95%;
     --sidebar-accent-foreground: 222 47% 11%;
-    --sidebar-border: 220 13% 88%;
+    --sidebar-border: 35 15% 85%;
     --sidebar-ring: 168 84% 32%;
 
-    /* Glass morphism - lighter for light mode */
-    --glass-bg: hsl(0 0% 100% / 0.9);
-    --glass-border: hsl(220 13% 85% / 0.5);
-    --glass-shadow: 0 4px 16px hsl(220 15% 50% / 0.08);
+    /* Glass morphism - warm tones */
+    --glass-bg: hsl(40 30% 100% / 0.92);
+    --glass-border: hsl(35 20% 80% / 0.4);
+    --glass-shadow: 0 4px 24px hsl(35 30% 30% / 0.06);
   }
 
   .dark {
@@ -198,16 +198,26 @@
     border: 1px solid hsl(222 30% 20% / 0.6);
   }
 
-  /* Light mode glass override */
+  /* Light mode glass override - warm cream tones */
   .light .glass {
     background: var(--glass-bg);
     border: 1px solid var(--glass-border);
-    box-shadow: var(--glass-shadow);
+    box-shadow: 0 2px 16px hsl(35 30% 30% / 0.05), 0 1px 3px hsl(35 30% 30% / 0.04);
   }
 
   .light .glass-strong {
-    background: hsl(0 0% 100% / 0.95);
-    border: 1px solid hsl(220 13% 85% / 0.7);
+    background: hsl(40 25% 100% / 0.95);
+    border: 1px solid hsl(35 20% 82% / 0.6);
+    box-shadow: 0 4px 20px hsl(35 30% 30% / 0.06);
+  }
+
+  /* Light mode card enhancements */
+  .light .stat-card {
+    box-shadow: 0 2px 12px hsl(35 30% 30% / 0.04), 0 1px 3px hsl(35 30% 30% / 0.03);
+  }
+
+  .light .stat-card:hover {
+    box-shadow: 0 4px 20px hsl(168 84% 42% / 0.12), 0 2px 6px hsl(35 30% 30% / 0.04);
   }
 
   /* Glow effects */

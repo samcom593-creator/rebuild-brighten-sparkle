@@ -20,6 +20,20 @@ export function MiniLeaderboard() {
 
   useEffect(() => {
     fetchLeaderboard();
+
+    // Subscribe to realtime updates for applications (recruitment leaderboard)
+    const channel = supabase
+      .channel("mini-leaderboard")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "applications" },
+        () => fetchLeaderboard()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   const fetchLeaderboard = async () => {

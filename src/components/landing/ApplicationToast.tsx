@@ -58,7 +58,7 @@ export function ApplicationToast() {
     // Then show periodically
     const interval = setInterval(() => {
       showNotification();
-    }, 55000 + Math.random() * 15000); // Between 55-70 seconds
+    }, 35000 + Math.random() * 10000); // Between 35-45 seconds (more frequent)
 
     return () => {
       clearTimeout(initialDelay);

@@ -58,6 +58,11 @@ const applicationSchema = z.object({
   availability: z.string().min(1, "Please select your availability"),
   referralSource: z.string().optional(),
   whyJoin: z.string().optional(),
+  
+  // SMS Consent
+  smsConsent: z.boolean().refine(val => val === true, {
+    message: "You must agree to receive SMS messages to submit",
+  }),
 });
 
 type ApplicationFormData = z.infer<typeof applicationSchema>;
@@ -109,6 +114,7 @@ export default function Apply() {
       hasInsuranceExperience: false,
       licenseStatus: "unlicensed",
       licensedStates: [],
+      smsConsent: false,
     },
   });
 
@@ -217,7 +223,7 @@ export default function Apply() {
         fieldsToValidate = ["licenseStatus"];
         break;
       case 4:
-        fieldsToValidate = ["availability"];
+        fieldsToValidate = ["availability", "smsConsent"];
         break;
     }
     
@@ -747,6 +753,24 @@ export default function Apply() {
                           </SelectContent>
                         </Select>
                       </div>
+
+                      {/* SMS Consent Disclosure */}
+                      <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50 border border-border">
+                        <Checkbox
+                          id="smsConsent"
+                          checked={watch("smsConsent") || false}
+                          onCheckedChange={(checked) => 
+                            setValue("smsConsent", checked === true, { shouldValidate: true })
+                          }
+                          className="mt-0.5"
+                        />
+                        <Label htmlFor="smsConsent" className="text-sm text-muted-foreground cursor-pointer leading-relaxed">
+                          I agree to receive SMS/text messages from Apex Financial at the phone number provided for application updates and onboarding steps. Message frequency varies. Message and data rates may apply. Reply STOP to cancel.
+                        </Label>
+                      </div>
+                      {errors.smsConsent && (
+                        <p className="text-sm text-destructive">{errors.smsConsent.message}</p>
+                      )}
                     </div>
                   )}
 

@@ -1,7 +1,21 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
-import { RefreshCw, User, Calendar, LogOut, Trophy, TrendingUp, Sparkles, Quote } from "lucide-react";
+import { 
+  RefreshCw, 
+  User, 
+  Calendar, 
+  LogOut, 
+  Trophy, 
+  TrendingUp, 
+  Sparkles, 
+  Quote,
+  Target,
+  DollarSign,
+  BarChart3,
+  Award,
+  Zap
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
@@ -16,6 +30,7 @@ import { TeamGoalsTracker } from "@/components/dashboard/TeamGoalsTracker";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 const motivationalQuotes = [
   "Success is not final, failure is not fatal: it's the courage to continue that counts.",
@@ -28,6 +43,56 @@ const motivationalQuotes = [
   "The harder you work, the luckier you get.",
 ];
 
+// Quick stat card component for the hero section
+function QuickStat({ 
+  icon: Icon, 
+  label, 
+  value, 
+  color = "primary",
+  delay = 0 
+}: { 
+  icon: React.ElementType; 
+  label: string; 
+  value: string | number; 
+  color?: "primary" | "amber" | "emerald" | "violet";
+  delay?: number;
+}) {
+  const colorClasses = {
+    primary: "from-primary/20 to-primary/5 border-primary/20 text-primary",
+    amber: "from-amber-500/20 to-amber-500/5 border-amber-500/20 text-amber-400",
+    emerald: "from-emerald-500/20 to-emerald-500/5 border-emerald-500/20 text-emerald-400",
+    violet: "from-violet-500/20 to-violet-500/5 border-violet-500/20 text-violet-400",
+  };
+  
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ delay, duration: 0.3, type: "spring", stiffness: 200 }}
+    >
+      <div className={cn(
+        "relative overflow-hidden rounded-xl border bg-gradient-to-br p-4 backdrop-blur-sm transition-all hover:scale-[1.02] hover:shadow-lg",
+        colorClasses[color]
+      )}>
+        <div className="flex items-center gap-3">
+          <div className={cn(
+            "flex h-10 w-10 items-center justify-center rounded-lg bg-background/50",
+            colorClasses[color]
+          )}>
+            <Icon className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-xs font-medium text-muted-foreground">{label}</p>
+            <p className="text-xl font-bold text-foreground">{value}</p>
+          </div>
+        </div>
+        {/* Decorative glow */}
+        <div className="absolute -right-4 -top-4 h-16 w-16 rounded-full bg-current opacity-10 blur-xl" />
+      </div>
+    </motion.div>
+  );
+}
+
 export default function AgentPortal() {
   const navigate = useNavigate();
   const { user, profile, isLoading: authLoading, isAdmin, isManager } = useAuth();
@@ -36,6 +101,7 @@ export default function AgentPortal() {
   const [loading, setLoading] = useState(true);
   const [isAdminViewing, setIsAdminViewing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [activeTab, setActiveTab] = useState<"numbers" | "leaderboard" | "stats">("numbers");
 
   // Random quote for the day (consistent per session)
   const [quote] = useState(() => 
@@ -132,39 +198,80 @@ export default function AgentPortal() {
     navigate("/login");
   };
 
+  // Calculate quick stats from today's production
+  const todayALP = todayProduction?.aop || 0;
+  const todayDeals = todayProduction?.deals_closed || 0;
+  const todayPresentations = todayProduction?.presentations || 0;
+  const todayCloseRate = todayPresentations > 0 
+    ? Math.round((todayDeals / todayPresentations) * 100) 
+    : 0;
+
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading your portal...</p>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center"
+        >
+          <div className="relative">
+            <RefreshCw className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+            <div className="absolute inset-0 h-12 w-12 mx-auto rounded-full bg-primary/20 blur-xl animate-pulse" />
+          </div>
+          <p className="text-muted-foreground font-medium">Loading your portal...</p>
+        </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-cyan-500 flex items-center justify-center text-white font-bold shadow-lg shadow-primary/20">
-              {profile?.full_name?.charAt(0).toUpperCase() || "A"}
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+      {/* Modern Header */}
+      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
+        <div className="container mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              {/* Avatar with gradient ring */}
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 200, delay: 0.1 }}
+                className="relative"
+              >
+                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary via-violet-500 to-amber-500 p-[2px] animate-[spin_4s_linear_infinite]" style={{ animationDirection: "reverse" }}>
+                  <div className="h-full w-full rounded-full bg-background" />
+                </div>
+                <div className="relative h-12 w-12 rounded-full bg-gradient-to-br from-primary to-violet-500 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-primary/20">
+                  {profile?.full_name?.charAt(0).toUpperCase() || "A"}
+                </div>
+              </motion.div>
+              
+              <div>
+                <motion.h1 
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="font-bold text-lg"
+                >
+                  {profile?.full_name || "Agent"}
+                </motion.h1>
+                <motion.p 
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="text-xs text-muted-foreground flex items-center gap-1.5"
+                >
+                  <Calendar className="h-3 w-3" />
+                  {format(new Date(), "EEEE, MMMM d, yyyy")}
+                </motion.p>
+              </div>
             </div>
-            <div>
-              <h1 className="font-semibold">{profile?.full_name || "Agent"}</h1>
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <Calendar className="h-3 w-3" />
-                {format(new Date(), "EEEE, MMMM d, yyyy")}
-              </p>
+            
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <Button variant="ghost" size="icon" onClick={handleLogout} className="hover:bg-destructive/10 hover:text-destructive transition-colors">
+                <LogOut className="h-4 w-4" />
+              </Button>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <Button variant="ghost" size="icon" onClick={handleLogout}>
-              <LogOut className="h-4 w-4" />
-            </Button>
           </div>
         </div>
       </header>
@@ -172,85 +279,192 @@ export default function AgentPortal() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6 space-y-6">
         {/* Admin Notice */}
-        {isAdminViewing && (
+        <AnimatePresence>
+          {isAdminViewing && (
+            <motion.div
+              initial={{ opacity: 0, y: -10, height: 0 }}
+              animate={{ opacity: 1, y: 0, height: "auto" }}
+              exit={{ opacity: 0, y: -10, height: 0 }}
+              className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 backdrop-blur-sm"
+            >
+              <p className="text-sm text-amber-500 font-medium flex items-center gap-2">
+                <Zap className="h-4 w-4" />
+                Admin View — You are viewing the Agent Portal for testing purposes
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Hero Section with Quick Stats */}
+        <section className="space-y-4">
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3"
+            className="text-center sm:text-left"
           >
-            <p className="text-sm text-amber-600 dark:text-amber-400 font-medium">
-              Admin View — You are viewing the Agent Portal for testing purposes
+            <h2 className="text-2xl sm:text-3xl font-bold">
+              <span className="bg-gradient-to-r from-primary via-violet-500 to-amber-500 bg-clip-text text-transparent">
+                Performance Dashboard
+              </span>
+            </h2>
+            <p className="text-muted-foreground mt-1 text-sm sm:text-base">
+              Track your numbers, compete with the team, and crush your goals
             </p>
           </motion.div>
-        )}
 
-        {/* Welcome Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          {/* Quick Stats Grid */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <QuickStat
+              icon={DollarSign}
+              label="Today's ALP"
+              value={`$${todayALP.toLocaleString()}`}
+              color="primary"
+              delay={0.1}
+            />
+            <QuickStat
+              icon={Trophy}
+              label="Deals Today"
+              value={todayDeals}
+              color="amber"
+              delay={0.15}
+            />
+            <QuickStat
+              icon={Target}
+              label="Presentations"
+              value={todayPresentations}
+              color="violet"
+              delay={0.2}
+            />
+            <QuickStat
+              icon={BarChart3}
+              label="Close Rate"
+              value={`${todayCloseRate}%`}
+              color="emerald"
+              delay={0.25}
+            />
+          </div>
+        </section>
+
+        {/* Tab Navigation for Mobile */}
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+          transition={{ delay: 0.3 }}
+          className="flex gap-2 overflow-x-auto pb-2 sm:hidden"
         >
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-bold gradient-text flex items-center gap-2">
-              <Sparkles className="h-6 w-6 sm:h-7 sm:w-7" />
-              Agent Performance Portal
-            </h2>
-            <p className="text-muted-foreground mt-1">
-              Track your numbers, compete with peers, and crush your goals
-            </p>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <TrendingUp className="h-4 w-4 text-emerald-500" />
-            <span className="text-muted-foreground">Live updates</span>
-          </div>
+          {[
+            { key: "numbers", label: "Log Numbers", icon: Sparkles },
+            { key: "leaderboard", label: "Leaderboard", icon: Trophy },
+            { key: "stats", label: "My Stats", icon: BarChart3 },
+          ].map((tab) => (
+            <Button
+              key={tab.key}
+              variant={activeTab === tab.key ? "default" : "outline"}
+              size="sm"
+              onClick={() => setActiveTab(tab.key as any)}
+              className="flex-shrink-0 gap-1.5"
+            >
+              <tab.icon className="h-4 w-4" />
+              {tab.label}
+            </Button>
+          ))}
         </motion.div>
 
-        {/* SECTION 1: Production Entry (Always at top) */}
-        <section>
-          {agentId ? (
-            <ProductionEntry
-              agentId={agentId}
-              existingData={todayProduction}
-              onSaved={handleSaved}
-            />
-          ) : isAdminViewing ? (
-            <GlassCard className="p-6 text-center">
-              <User className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-              <p className="text-muted-foreground">No agent record found. Production entry is view-only.</p>
-            </GlassCard>
-          ) : null}
-        </section>
+        {/* Production Entry - Always visible on desktop, tab-controlled on mobile */}
+        <AnimatePresence mode="wait">
+          {(activeTab === "numbers" || window.innerWidth >= 640) && (
+            <motion.section
+              key="production"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className={cn(
+                activeTab !== "numbers" && "hidden sm:block"
+              )}
+            >
+              {agentId ? (
+                <ProductionEntry
+                  agentId={agentId}
+                  existingData={todayProduction}
+                  onSaved={handleSaved}
+                />
+              ) : isAdminViewing ? (
+                <GlassCard className="p-8 text-center">
+                  <User className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
+                  <p className="text-muted-foreground">No agent record found. Production entry is view-only.</p>
+                </GlassCard>
+              ) : null}
+            </motion.section>
+          )}
+        </AnimatePresence>
 
-        {/* SECTION 2: Main Leaderboard with Day/Week/Month Tabs */}
-        <section>
-          <LeaderboardTabs key={`leaderboard-${refreshKey}`} currentAgentId={agentId || undefined} />
-        </section>
+        {/* Main Leaderboard */}
+        <AnimatePresence mode="wait">
+          {(activeTab === "leaderboard" || window.innerWidth >= 640) && (
+            <motion.section
+              key="leaderboard"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className={cn(
+                activeTab !== "leaderboard" && "hidden sm:block"
+              )}
+            >
+              <LeaderboardTabs key={`leaderboard-${refreshKey}`} currentAgentId={agentId || undefined} />
+            </motion.section>
+          )}
+        </AnimatePresence>
 
-        {/* SECTION 3: Personal Stats vs Agency Averages */}
+        {/* Personal Stats */}
+        <AnimatePresence mode="wait">
+          {agentId && (activeTab === "stats" || window.innerWidth >= 640) && (
+            <motion.section
+              key="stats"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className={cn(
+                activeTab !== "stats" && "hidden sm:block"
+              )}
+            >
+              <PersonalStatsCard 
+                key={`stats-${refreshKey}`}
+                agentId={agentId} 
+                todayProduction={todayProduction} 
+              />
+            </motion.section>
+          )}
+        </AnimatePresence>
+
+        {/* Production History Chart - Desktop only */}
         {agentId && (
-          <section>
-            <PersonalStatsCard 
-              key={`stats-${refreshKey}`}
-              agentId={agentId} 
-              todayProduction={todayProduction} 
-            />
-          </section>
-        )}
-
-        {/* SECTION 4: 4-Week Production History Chart */}
-        {agentId && (
-          <section>
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="hidden sm:block"
+          >
             <ProductionHistoryChart key={`history-${refreshKey}`} agentId={agentId} />
-          </section>
+          </motion.section>
         )}
 
-        {/* SECTION 5: Team Goals Tracker */}
-        <section>
+        {/* Team Goals */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.45 }}
+          className="hidden sm:block"
+        >
           <TeamGoalsTracker key={`goals-${refreshKey}`} />
-        </section>
+        </motion.section>
 
-        {/* SECTION 6: Additional Leaderboards (Closing Rate & Referrals) */}
-        <section>
+        {/* Additional Leaderboards */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="hidden sm:block"
+        >
           <div className="grid md:grid-cols-2 gap-4">
             <ClosingRateLeaderboard 
               key={`closing-${refreshKey}`}
@@ -263,24 +477,29 @@ export default function AgentPortal() {
               period="week" 
             />
           </div>
-        </section>
+        </motion.section>
 
-        {/* SECTION 6: Motivational Footer */}
+        {/* Motivational Footer */}
         <motion.section
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
+          transition={{ delay: 0.6 }}
         >
-          <GlassCard className="p-6 text-center bg-gradient-to-br from-primary/5 via-transparent to-emerald-500/5">
-            <Quote className="h-6 w-6 mx-auto mb-3 text-primary/50" />
-            <p className="text-sm sm:text-base italic text-muted-foreground max-w-2xl mx-auto">
-              "{quote}"
-            </p>
-            <div className="mt-4 flex items-center justify-center gap-2">
-              <Trophy className="h-4 w-4 text-amber-400" />
-              <span className="text-xs text-muted-foreground">
-                Keep grinding. Your success is built one day at a time.
-              </span>
+          <GlassCard className="p-6 text-center relative overflow-hidden">
+            {/* Gradient background */}
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-violet-500/5" />
+            
+            <div className="relative">
+              <Quote className="h-8 w-8 mx-auto mb-4 text-primary/30" />
+              <p className="text-base sm:text-lg italic text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+                "{quote}"
+              </p>
+              <div className="mt-6 flex items-center justify-center gap-2">
+                <Award className="h-5 w-5 text-amber-400" />
+                <span className="text-sm text-muted-foreground font-medium">
+                  Keep grinding. Your success is built one day at a time.
+                </span>
+              </div>
             </div>
           </GlassCard>
         </motion.section>

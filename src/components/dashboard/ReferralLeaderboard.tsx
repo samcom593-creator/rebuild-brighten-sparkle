@@ -34,6 +34,20 @@ export function ReferralLeaderboard({ currentAgentId, period = "week" }: Referra
 
   useEffect(() => {
     fetchLeaderboard();
+
+    // Subscribe to realtime updates
+    const channel = supabase
+      .channel("referral-leaderboard")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "daily_production" },
+        () => fetchLeaderboard()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [period, currentAgentId]);
 
   const fetchLeaderboard = async () => {

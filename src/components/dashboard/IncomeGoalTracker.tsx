@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, Fragment } from "react";
+import { motion } from "framer-motion";
 import { Target, Lock, DollarSign, TrendingUp, Calendar, Sparkles, AlertCircle } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
@@ -178,7 +178,7 @@ export function IncomeGoalTracker({ agentId }: IncomeGoalTrackerProps) {
       </div>
 
       <div className="p-4 sm:p-6">
-        <AnimatePresence mode="wait">
+        <Fragment>
           {/* Locked State */}
           {isLocked && (
             <motion.div
@@ -339,7 +339,7 @@ export function IncomeGoalTracker({ agentId }: IncomeGoalTrackerProps) {
               </div>
             </motion.div>
           )}
-        </AnimatePresence>
+        </Fragment>
       </div>
     </GlassCard>
   );

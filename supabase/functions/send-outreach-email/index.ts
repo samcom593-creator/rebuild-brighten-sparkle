@@ -442,6 +442,130 @@ const emailTemplates = {
 </html>
     `,
   },
+  course_help: {
+    subject: "Need help with your licensing course? 📚",
+    getHtml: (firstName: string, agentName: string) => `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#0a0a0a;color:#ffffff;">
+  <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
+    <div style="text-align:center;margin-bottom:32px;">
+      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">APEX FINANCIAL</h1>
+    </div>
+    
+    <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:16px;padding:32px;border:1px solid rgba(20,184,166,0.2);">
+      <h2 style="font-size:24px;margin:0 0 16px 0;color:#14b8a6;">Hey ${firstName}!</h2>
+      
+      <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 16px 0;">
+        Congrats on purchasing your pre-licensing course! That's a big step toward building your career in financial services.
+      </p>
+      
+      <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 16px 0;">
+        I wanted to reach out and make sure you have everything you need to succeed. If you're feeling stuck, have questions about the material, or just want some study tips—I'm here to help!
+      </p>
+      
+      <div style="background:rgba(20,184,166,0.1);border-radius:8px;padding:20px;margin:20px 0;">
+        <p style="font-size:16px;color:#14b8a6;margin:0 0 12px 0;font-weight:bold;">Common questions I can help with:</p>
+        <ul style="margin:0;padding-left:20px;color:#d1d5db;">
+          <li style="margin-bottom:8px;">How to access your course materials</li>
+          <li style="margin-bottom:8px;">Best study schedule for your situation</li>
+          <li style="margin-bottom:8px;">Tips for passing on your first attempt</li>
+          <li>What to do after you pass the exam</li>
+        </ul>
+      </div>
+      
+      <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 24px 0;">
+        <strong style="color:#ffffff;">Let's hop on a quick call</strong> so I can answer your questions and make sure you're on the fastest path to getting licensed!
+      </p>
+      
+      <div style="text-align:center;margin:32px 0;">
+        <a href="https://calendly.com/sam-com593/licensed-prospect-call-clone" 
+           style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#ffffff;padding:16px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;">
+          Get Course Help
+        </a>
+      </div>
+      
+      <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
+        Here to help you succeed,<br>
+        <strong style="color:#ffffff;">${agentName}</strong><br>
+        Apex Financial
+      </p>
+    </div>
+    
+    <p style="font-size:12px;color:#6b7280;text-align:center;margin-top:32px;">
+      © ${new Date().getFullYear()} Apex Financial. All rights reserved.
+    </p>
+  </div>
+</body>
+</html>
+    `,
+  },
+  schedule_consultation: {
+    subject: "Let's schedule a quick consultation call 📞",
+    getHtml: (firstName: string, agentName: string) => `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#0a0a0a;color:#ffffff;">
+  <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
+    <div style="text-align:center;margin-bottom:32px;">
+      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">APEX FINANCIAL</h1>
+    </div>
+    
+    <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:16px;padding:32px;border:1px solid rgba(20,184,166,0.2);">
+      <h2 style="font-size:24px;margin:0 0 16px 0;color:#14b8a6;">Hey ${firstName}!</h2>
+      
+      <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 16px 0;">
+        I'd love to schedule a quick consultation call with you to discuss your career goals and answer any questions you have about joining Apex Financial.
+      </p>
+      
+      <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 16px 0;">
+        In our 15-minute call, I can walk you through:
+      </p>
+      
+      <div style="background:rgba(20,184,166,0.1);border-radius:8px;padding:20px;margin:20px 0;">
+        <ul style="margin:0;padding-left:20px;color:#d1d5db;">
+          <li style="margin-bottom:8px;">How our training program works</li>
+          <li style="margin-bottom:8px;">Realistic income expectations for new agents</li>
+          <li style="margin-bottom:8px;">The licensing process (if you're not yet licensed)</li>
+          <li style="margin-bottom:8px;">Next steps to get started</li>
+          <li>Any other questions you have</li>
+        </ul>
+      </div>
+      
+      <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 24px 0;">
+        <strong style="color:#ffffff;">No pressure, no sales pitch</strong>—just a real conversation to see if this is the right fit for you.
+      </p>
+      
+      <div style="text-align:center;margin:32px 0;">
+        <a href="https://calendly.com/sam-com593/licensed-prospect-call-clone" 
+           style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#ffffff;padding:16px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;">
+          Schedule Your Consultation
+        </a>
+      </div>
+      
+      <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
+        Looking forward to connecting,<br>
+        <strong style="color:#ffffff;">${agentName}</strong><br>
+        Apex Financial
+      </p>
+    </div>
+    
+    <p style="font-size:12px;color:#6b7280;text-align:center;margin-top:32px;">
+      © ${new Date().getFullYear()} Apex Financial. All rights reserved.
+    </p>
+  </div>
+</body>
+</html>
+    `,
+  },
 };
 
 type EmailTemplate = keyof typeof emailTemplates;

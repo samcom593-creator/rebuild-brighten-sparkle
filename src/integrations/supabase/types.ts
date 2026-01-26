@@ -207,6 +207,44 @@ export type Database = {
           },
         ]
       }
+      agent_goals: {
+        Row: {
+          agent_id: string
+          comp_percentage: number | null
+          created_at: string | null
+          id: string
+          income_goal: number
+          month_year: string
+          updated_at: string | null
+        }
+        Insert: {
+          agent_id: string
+          comp_percentage?: number | null
+          created_at?: string | null
+          id?: string
+          income_goal: number
+          month_year: string
+          updated_at?: string | null
+        }
+        Update: {
+          agent_id?: string
+          comp_percentage?: number | null
+          created_at?: string | null
+          id?: string
+          income_goal?: number
+          month_year?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_lead_stats: {
         Row: {
           agent_id: string

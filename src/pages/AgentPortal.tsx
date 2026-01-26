@@ -27,6 +27,7 @@ import { ProductionHistoryChart } from "@/components/dashboard/ProductionHistory
 import { ClosingRateLeaderboard } from "@/components/dashboard/ClosingRateLeaderboard";
 import { ReferralLeaderboard } from "@/components/dashboard/ReferralLeaderboard";
 import { TeamGoalsTracker } from "@/components/dashboard/TeamGoalsTracker";
+import { IncomeGoalTracker } from "@/components/dashboard/IncomeGoalTracker";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -445,6 +446,18 @@ export default function AgentPortal() {
             className="hidden sm:block"
           >
             <ProductionHistoryChart key={`history-${refreshKey}`} agentId={agentId} />
+          </motion.section>
+        )}
+
+        {/* Income Goal Tracker */}
+        {agentId && (
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+            className="hidden sm:block"
+          >
+            <IncomeGoalTracker key={`income-goal-${refreshKey}`} agentId={agentId} />
           </motion.section>
         )}
 

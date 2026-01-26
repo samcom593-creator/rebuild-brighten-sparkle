@@ -17,6 +17,8 @@ import {
   Wifi,
   WifiOff,
   FileText,
+  UserMinus,
+  RotateCcw,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -66,12 +68,20 @@ interface PendingAgent {
   createdAt: string;
 }
 
+interface InactiveAgent {
+  id: string;
+  name: string;
+  email: string;
+  deactivatedAt: string;
+}
+
 interface TeamOverview {
   totalAgents: number;
   totalLeads: number;
   totalClosed: number;
   teamCloseRate: number;
   pendingAgents: number;
+  inactiveAgents: number;
 }
 
 export default function DashboardAdmin() {
@@ -85,15 +95,19 @@ export default function DashboardAdmin() {
     totalClosed: 0,
     teamCloseRate: 0,
     pendingAgents: 0,
+    inactiveAgents: 0,
   });
   const [needsAttention, setNeedsAttention] = useState<AgentStats[]>([]);
   const [fastestGrowers, setFastestGrowers] = useState<{ rank: number; name: string; value: number }[]>([]);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
+  const [inactiveAgents, setInactiveAgents] = useState<InactiveAgent[]>([]);
+  const [reactivatingId, setReactivatingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAdminData();
     fetchPendingAgents();
+    fetchInactiveAgents();
 
     // Set up real-time subscriptions for agents
     const agentsChannel = supabase
@@ -108,6 +122,7 @@ export default function DashboardAdmin() {
         (payload) => {
           console.log('Agent change received:', payload);
           fetchPendingAgents();
+          fetchInactiveAgents();
           fetchAdminData();
           
           if (payload.eventType === 'INSERT') {
@@ -210,6 +225,67 @@ export default function DashboardAdmin() {
     }
   };
 
+  const fetchInactiveAgents = async () => {
+    const { data: inactiveData, error } = await supabase
+      .from("agents")
+      .select("id, user_id, updated_at")
+      .eq("is_inactive", true)
+      .order("updated_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching inactive agents:", error);
+      return;
+    }
+
+    if (!inactiveData || inactiveData.length === 0) {
+      setInactiveAgents([]);
+      setTeamOverview(prev => ({ ...prev, inactiveAgents: 0 }));
+      return;
+    }
+
+    // Get profile info for these users
+    const userIds = inactiveData.map(a => a.user_id).filter(Boolean);
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("user_id, full_name, email")
+      .in("user_id", userIds);
+
+    const inactive: InactiveAgent[] = inactiveData.map(agent => {
+      const profile = profiles?.find(p => p.user_id === agent.user_id);
+      return {
+        id: agent.id,
+        name: profile?.full_name || "Unknown",
+        email: profile?.email || "Unknown",
+        deactivatedAt: agent.updated_at,
+      };
+    });
+
+    setInactiveAgents(inactive);
+    setTeamOverview(prev => ({ ...prev, inactiveAgents: inactive.length }));
+  };
+
+  const handleReactivateAgent = async (agentId: string) => {
+    setReactivatingId(agentId);
+
+    try {
+      const { error } = await supabase
+        .from("agents")
+        .update({ is_inactive: false })
+        .eq("id", agentId);
+
+      if (error) throw error;
+
+      toast.success("Agent reactivated successfully!");
+      fetchInactiveAgents();
+      fetchAdminData();
+    } catch (error: any) {
+      console.error("Error reactivating agent:", error);
+      toast.error("Failed to reactivate agent");
+    } finally {
+      setReactivatingId(null);
+    }
+  };
+
   const handleApproveAgent = async (agentId: string) => {
     if (!user) return;
     setApprovingId(agentId);
@@ -274,6 +350,7 @@ export default function DashboardAdmin() {
         totalLeads: 0,
         totalClosed: 0,
         teamCloseRate: 0,
+        inactiveAgents: prev.inactiveAgents,
       }));
       setNeedsAttention([]);
       setFastestGrowers([]);
@@ -496,6 +573,58 @@ export default function DashboardAdmin() {
                     >
                       <XCircle className="h-4 w-4 mr-1" />
                       Reject
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </GlassCard>
+        </motion.div>
+      )}
+
+      {/* Inactive Agents Section */}
+      {inactiveAgents.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.07 }}
+          className="mb-8"
+        >
+          <GlassCard className="p-6 border border-muted">
+            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <UserMinus className="h-5 w-5 text-muted-foreground" />
+              Inactive Agents
+              <Badge variant="outline" className="bg-muted text-muted-foreground border-border ml-2">
+                {inactiveAgents.length}
+              </Badge>
+            </h3>
+            <div className="space-y-3">
+              {inactiveAgents.map((agent) => (
+                <div
+                  key={agent.id}
+                  className="flex items-center justify-between p-4 rounded-lg bg-background/50 border border-border"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                      <UserMinus className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="font-medium">{agent.name}</p>
+                      <p className="text-sm text-muted-foreground">{agent.email}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground mr-4">
+                      Deactivated {new Date(agent.deactivatedAt).toLocaleDateString()}
+                    </span>
+                    <Button
+                      size="sm"
+                      onClick={() => handleReactivateAgent(agent.id)}
+                      disabled={reactivatingId === agent.id}
+                      className="bg-primary hover:bg-primary/90"
+                    >
+                      <RotateCcw className="h-4 w-4 mr-1" />
+                      {reactivatingId === agent.id ? "Reactivating..." : "Reactivate"}
                     </Button>
                   </div>
                 </div>

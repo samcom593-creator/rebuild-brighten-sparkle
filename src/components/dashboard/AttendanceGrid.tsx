@@ -7,6 +7,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Database } from "@/integrations/supabase/types";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 type AttendanceMark = Database["public"]["Enums"]["attendance_mark"];
 type AttendanceType = Database["public"]["Enums"]["attendance_type"];
@@ -161,34 +167,55 @@ export function AttendanceGrid({
     }
   };
 
+  const getStatusLabel = (status: AttendanceMark) => {
+    switch (status) {
+      case "present": return "✓ Present";
+      case "absent": return "✗ Absent";
+      default: return "— Not marked";
+    }
+  };
+
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-[11px] text-muted-foreground w-12 shrink-0 font-medium">{label}:</span>
-      <div className="flex gap-1">
-        {weekDays.map((day, index) => {
-          const record = attendance[index] || { status: "unmarked" };
-          const isToday = isSameDay(day, today);
-          
-          return (
-            <button
-              key={index}
-              onClick={() => handleToggle(index)}
-              disabled={readOnly || updating === index}
-              className={cn(
-                "w-7 h-7 rounded-md flex flex-col items-center justify-center border text-xs font-medium",
-                getStatusClass(record.status, day),
-                !readOnly && "hover:opacity-80 cursor-pointer",
-                updating === index && "opacity-50",
-                isToday && "ring-2 ring-primary ring-offset-1 ring-offset-background"
-              )}
-              title={`${format(day, "EEEE, MMM d")} - ${record.status}`}
-            >
-              <span className="text-[8px] leading-none mb-0.5">{DAYS[index]}</span>
-              {getStatusIcon(record.status)}
-            </button>
-          );
-        })}
+    <TooltipProvider delayDuration={200}>
+      <div className="flex items-center gap-1.5">
+        <span className="text-[10px] text-muted-foreground w-10 shrink-0 font-medium">{label}:</span>
+        <div className="flex gap-0.5">
+          {weekDays.map((day, index) => {
+            const record = attendance[index] || { status: "unmarked" };
+            const isToday = isSameDay(day, today);
+            
+            return (
+              <Tooltip key={index}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => handleToggle(index)}
+                    disabled={readOnly || updating === index}
+                    className={cn(
+                      "w-5 h-5 rounded flex items-center justify-center border text-[9px] font-medium transition-all",
+                      getStatusClass(record.status, day),
+                      !readOnly && "hover:scale-110 cursor-pointer",
+                      updating === index && "opacity-50 animate-pulse",
+                      isToday && "ring-1 ring-primary ring-offset-1 ring-offset-background"
+                    )}
+                  >
+                    {getStatusIcon(record.status)}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent 
+                  side="top" 
+                  className="bg-popover border border-border shadow-lg px-3 py-2"
+                >
+                  <div className="text-xs space-y-0.5">
+                    <p className="font-semibold">{format(day, "EEEE, MMM d")}</p>
+                    <p className="text-muted-foreground">{getStatusLabel(record.status)}</p>
+                    {!readOnly && <p className="text-[10px] text-muted-foreground/70">Click to toggle</p>}
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }

@@ -8,7 +8,9 @@ const corsHeaders = {
 };
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-const PORTAL_URL = "https://rebuild-brighten-sparkle.lovable.app/agent-portal";
+const BASE_URL = "https://rebuild-brighten-sparkle.lovable.app";
+const PORTAL_URL = `${BASE_URL}/agent-portal`;
+const LOG_NUMBERS_URL = `${BASE_URL}/log-numbers`;
 
 interface SendLoginRequest {
   agentId: string;
@@ -111,6 +113,19 @@ const handler = async (req: Request): Promise<Response> => {
                 <p style="color: #94a3b8; font-size: 14px; text-align: center; margin: 0;">
                   Log in with your email: <strong style="color: #14b8a6;">${profile.email}</strong>
                 </p>
+
+                <!-- Quick Log Numbers Link -->
+                <div style="background: rgba(245, 158, 11, 0.1); border-radius: 12px; padding: 20px; margin: 24px 0; text-align: center;">
+                  <p style="color: #f59e0b; font-size: 14px; font-weight: bold; margin: 0 0 8px 0;">
+                    ⚡ Quick Access - No Login Required
+                  </p>
+                  <p style="color: #94a3b8; font-size: 13px; margin: 0 0 12px 0;">
+                    Need to log your numbers quickly? Use this direct link:
+                  </p>
+                  <a href="${LOG_NUMBERS_URL}" style="display: inline-block; background: rgba(245, 158, 11, 0.2); color: #f59e0b; text-decoration: none; padding: 10px 24px; border-radius: 6px; font-weight: bold; font-size: 14px; border: 1px solid rgba(245, 158, 11, 0.3);">
+                    Log Numbers Now →
+                  </a>
+                </div>
                 
                 <div style="background: rgba(245, 158, 11, 0.1); border-left: 4px solid #f59e0b; padding: 16px; margin: 24px 0; border-radius: 0 12px 12px 0;">
                   <p style="color: #f59e0b; font-size: 14px; font-weight: bold; margin: 0 0 4px 0;">
@@ -119,6 +134,19 @@ const handler = async (req: Request): Promise<Response> => {
                   <p style="color: #94a3b8; font-size: 14px; margin: 0;">
                     Log your numbers every day by 7 PM to stay on track!
                   </p>
+                </div>
+
+                <!-- Discord Link -->
+                <div style="background: rgba(88, 101, 242, 0.1); border-radius: 12px; padding: 20px; margin: 24px 0; text-align: center;">
+                  <p style="color: #5865F2; font-size: 14px; font-weight: bold; margin: 0 0 8px 0;">
+                    💬 Join Our Team Discord
+                  </p>
+                  <p style="color: #94a3b8; font-size: 13px; margin: 0 0 12px 0;">
+                    Get daily training, support, and connect with the team:
+                  </p>
+                  <a href="https://discord.gg/GygkGEhb" style="display: inline-block; background: #5865F2; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 6px; font-weight: bold; font-size: 14px;">
+                    Join Discord →
+                  </a>
                 </div>
                 
                 <div style="border-top: 1px solid rgba(148, 163, 184, 0.2); padding-top: 24px; margin-top: 32px;">

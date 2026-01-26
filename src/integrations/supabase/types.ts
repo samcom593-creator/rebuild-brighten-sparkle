@@ -415,6 +415,47 @@ export type Database = {
           },
         ]
       }
+      agent_removal_requests: {
+        Row: {
+          agent_id: string
+          created_at: string | null
+          id: string
+          reason: string | null
+          requested_by: string
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string | null
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string | null
+          id?: string
+          reason?: string | null
+          requested_by: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string | null
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string | null
+          id?: string
+          reason?: string | null
+          requested_by?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_removal_requests_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agents: {
         Row: {
           agent_code: string | null
@@ -436,6 +477,7 @@ export type Database = {
           id: string
           invited_by_manager_id: string | null
           is_deactivated: boolean | null
+          is_inactive: boolean | null
           license_states: string[] | null
           license_status: Database["public"]["Enums"]["license_status"]
           manager_id: string | null
@@ -483,6 +525,7 @@ export type Database = {
           id?: string
           invited_by_manager_id?: string | null
           is_deactivated?: boolean | null
+          is_inactive?: boolean | null
           license_states?: string[] | null
           license_status?: Database["public"]["Enums"]["license_status"]
           manager_id?: string | null
@@ -530,6 +573,7 @@ export type Database = {
           id?: string
           invited_by_manager_id?: string | null
           is_deactivated?: boolean | null
+          is_inactive?: boolean | null
           license_states?: string[] | null
           license_status?: Database["public"]["Enums"]["license_status"]
           manager_id?: string | null

@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useCallback, useMemo } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -34,7 +34,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { user, isAdmin, isManager } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const navItems = [
+  // Memoize nav items to prevent unnecessary re-renders
+  const navItems = useMemo(() => [
     { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
     { icon: Users, label: "Applicants", href: "/dashboard/applicants" },
     ...(isAdmin || isManager ? [
@@ -47,12 +48,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       { icon: UserCog, label: "Accounts", href: "/dashboard/accounts" },
     ] : []),
     { icon: Settings, label: "Settings", href: "/dashboard/settings" },
-  ];
+  ], [isAdmin, isManager]);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     await supabase.auth.signOut();
     navigate("/login");
-  };
+  }, [navigate]);
+
+  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -101,9 +104,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 <Link
                   key={item.href}
                   to={item.href}
-                  onClick={() => setSidebarOpen(false)}
+                  onClick={closeSidebar}
                   className={cn(
-                    "flex items-center gap-3 px-4 py-3 rounded-lg transition-all",
+                    "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200",
                     isActive
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -150,7 +153,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-30 bg-background/80 backdrop-blur-sm lg:hidden"
-          onClick={() => setSidebarOpen(false)}
+          onClick={closeSidebar}
         />
       )}
 

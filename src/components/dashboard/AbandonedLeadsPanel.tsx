@@ -36,11 +36,19 @@ export function AbandonedLeadsPanel() {
   const fetchAbandonedLeads = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
+      console.log("Fetching abandoned leads from partial_applications...");
+      
+      const { data, error, count } = await supabase
         .from("partial_applications")
-        .select("*")
+        .select("*", { count: "exact" })
         .is("converted_at", null)
         .order("created_at", { ascending: false });
+
+      console.log("Abandoned leads query result:", { 
+        count, 
+        dataLength: data?.length,
+        error: error?.message 
+      });
 
       if (error) throw error;
 
@@ -57,6 +65,7 @@ export function AbandonedLeadsPanel() {
         followupSentAt: (row.form_data as any)?.followup_sent_at || null,
       }));
 
+      console.log(`Found ${mappedLeads.length} abandoned applications`);
       setLeads(mappedLeads);
     } catch (error) {
       console.error("Error fetching abandoned leads:", error);

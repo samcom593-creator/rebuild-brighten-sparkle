@@ -55,7 +55,7 @@ import { EvaluationButtons } from "@/components/dashboard/EvaluationButtons";
 import { PerformanceBadges } from "@/components/dashboard/PerformanceBadges";
 import { DeactivateAgentDialog } from "@/components/dashboard/DeactivateAgentDialog";
 import { InstagramPromptDialog } from "@/components/dashboard/InstagramPromptDialog";
-import { AbandonedLeadsPanel } from "@/components/dashboard/AbandonedLeadsPanel";
+// AbandonedLeadsPanel removed from CRM - exists only in Admin Panel
 import { cn } from "@/lib/utils";
 import { Database } from "@/integrations/supabase/types";
 
@@ -710,8 +710,7 @@ export default function DashboardCRM() {
   return (
     <DashboardLayout>
       <div className="space-y-4">
-        {/* Abandoned Leads Panel - Top Priority */}
-        <AbandonedLeadsPanel />
+        {/* AbandonedLeadsPanel removed - exists only in Admin Panel now */}
 
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

@@ -109,7 +109,7 @@ const handler = async (req: Request): Promise<Response> => {
                 </div>
                 
                 <p style="color: #94a3b8; font-size: 14px; text-align: center; margin: 0;">
-                  Use your existing account credentials to log in.
+                  Log in with your email: <strong style="color: #14b8a6;">${profile.email}</strong>
                 </p>
                 
                 <div style="background: rgba(245, 158, 11, 0.1); border-left: 4px solid #f59e0b; padding: 16px; margin: 24px 0; border-radius: 0 12px 12px 0;">

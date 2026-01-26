@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Users, Trophy, Medal, Award, Handshake, Home } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { supabase } from "@/integrations/supabase/client";
+import { ConfettiCelebration } from "./ConfettiCelebration";
+import { useTop3Celebration } from "@/hooks/useTop3Celebration";
 import { cn } from "@/lib/utils";
 import { subDays } from "date-fns";
 
@@ -31,8 +33,12 @@ const rankIcons: Record<number, JSX.Element> = {
 export function ReferralLeaderboard({ currentAgentId, period = "week" }: ReferralLeaderboardProps) {
   const [entries, setEntries] = useState<ReferralEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showConfetti, setShowConfetti] = useState(false);
+  
+  const { checkForCelebration, resetTracking } = useTop3Celebration({ currentAgentId });
 
   useEffect(() => {
+    resetTracking();
     fetchLeaderboard();
 
     // Subscribe to realtime updates
@@ -48,7 +54,7 @@ export function ReferralLeaderboard({ currentAgentId, period = "week" }: Referra
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [period, currentAgentId]);
+  }, [period, currentAgentId, resetTracking]);
 
   const fetchLeaderboard = async () => {
     try {
@@ -152,6 +158,12 @@ export function ReferralLeaderboard({ currentAgentId, period = "week" }: Referra
         entry.rank = index + 1;
       });
 
+      // Check if current user moved into top 3
+      const currentUserEntry = referralEntries.find((e) => e.isCurrentUser);
+      if (currentUserEntry && checkForCelebration(currentUserEntry.rank)) {
+        setShowConfetti(true);
+      }
+
       setEntries(referralEntries.slice(0, 10));
     } catch (error) {
       console.error("Error fetching referral leaderboard:", error);
@@ -161,11 +173,16 @@ export function ReferralLeaderboard({ currentAgentId, period = "week" }: Referra
   };
 
   return (
-    <GlassCard className="p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <Handshake className="h-4 w-4 text-primary" />
-        <h4 className="font-semibold text-sm">Top Referral Producers</h4>
-      </div>
+    <>
+      <ConfettiCelebration 
+        trigger={showConfetti} 
+        onComplete={() => setShowConfetti(false)} 
+      />
+      <GlassCard className="p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <Handshake className="h-4 w-4 text-primary" />
+          <h4 className="font-semibold text-sm">Top Referral Producers</h4>
+        </div>
 
       <div className="space-y-2">
         <AnimatePresence mode="popLayout">
@@ -220,6 +237,7 @@ export function ReferralLeaderboard({ currentAgentId, period = "week" }: Referra
           )}
         </AnimatePresence>
       </div>
-    </GlassCard>
+      </GlassCard>
+    </>
   );
 }

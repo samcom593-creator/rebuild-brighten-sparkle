@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Percent, Trophy, Medal, Award, Target, TrendingUp } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { supabase } from "@/integrations/supabase/client";
+import { ConfettiCelebration } from "./ConfettiCelebration";
+import { useTop3Celebration } from "@/hooks/useTop3Celebration";
 import { cn } from "@/lib/utils";
 import { subDays } from "date-fns";
 
@@ -30,8 +32,12 @@ const rankIcons: Record<number, JSX.Element> = {
 export function ClosingRateLeaderboard({ currentAgentId, period = "week" }: ClosingRateLeaderboardProps) {
   const [entries, setEntries] = useState<RateEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showConfetti, setShowConfetti] = useState(false);
+  
+  const { checkForCelebration, resetTracking } = useTop3Celebration({ currentAgentId });
 
   useEffect(() => {
+    resetTracking();
     fetchLeaderboard();
 
     // Subscribe to realtime updates
@@ -47,7 +53,7 @@ export function ClosingRateLeaderboard({ currentAgentId, period = "week" }: Clos
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [period, currentAgentId]);
+  }, [period, currentAgentId, resetTracking]);
 
   const fetchLeaderboard = async () => {
     try {
@@ -135,6 +141,12 @@ export function ClosingRateLeaderboard({ currentAgentId, period = "week" }: Clos
         entry.rank = index + 1;
       });
 
+      // Check if current user moved into top 3
+      const currentUserEntry = rateEntries.find((e) => e.isCurrentUser);
+      if (currentUserEntry && checkForCelebration(currentUserEntry.rank)) {
+        setShowConfetti(true);
+      }
+
       setEntries(rateEntries.slice(0, 10));
     } catch (error) {
       console.error("Error fetching closing rate leaderboard:", error);
@@ -144,7 +156,12 @@ export function ClosingRateLeaderboard({ currentAgentId, period = "week" }: Clos
   };
 
   return (
-    <GlassCard className="p-4">
+    <>
+      <ConfettiCelebration 
+        trigger={showConfetti} 
+        onComplete={() => setShowConfetti(false)} 
+      />
+      <GlassCard className="p-4">
       <div className="flex items-center gap-2 mb-3">
         <Percent className="h-4 w-4 text-emerald-500" />
         <h4 className="font-semibold text-sm">Highest Closing Rates</h4>
@@ -202,6 +219,7 @@ export function ClosingRateLeaderboard({ currentAgentId, period = "week" }: Clos
           )}
         </AnimatePresence>
       </div>
-    </GlassCard>
+      </GlassCard>
+    </>
   );
 }

@@ -28,6 +28,7 @@ import { ClosingRateLeaderboard } from "@/components/dashboard/ClosingRateLeader
 import { ReferralLeaderboard } from "@/components/dashboard/ReferralLeaderboard";
 import { TeamGoalsTracker } from "@/components/dashboard/TeamGoalsTracker";
 import { IncomeGoalTracker } from "@/components/dashboard/IncomeGoalTracker";
+import { PerformanceDashboardSection } from "@/components/dashboard/PerformanceDashboardSection";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -416,10 +417,16 @@ export default function AgentPortal() {
           )}
         </AnimatePresence>
 
+        {/* Performance Dashboard Navigation - Desktop only */}
+        <div className="hidden sm:block">
+          <PerformanceDashboardSection />
+        </div>
+
         {/* Personal Stats */}
         <AnimatePresence mode="wait">
           {agentId && (activeTab === "stats" || window.innerWidth >= 640) && (
             <motion.section
+              id="personal-stats"
               key="stats"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -440,6 +447,7 @@ export default function AgentPortal() {
         {/* Production History Chart - Desktop only */}
         {agentId && (
           <motion.section
+            id="production-history"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
@@ -452,6 +460,7 @@ export default function AgentPortal() {
         {/* Income Goal Tracker */}
         {agentId && (
           <motion.section
+            id="income-goals"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.35 }}
@@ -463,6 +472,7 @@ export default function AgentPortal() {
 
         {/* Team Goals */}
         <motion.section
+          id="team-goals"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.45 }}

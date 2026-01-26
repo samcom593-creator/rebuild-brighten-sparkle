@@ -1,185 +1,172 @@
 
-# Platform Refinement Plan
 
-This plan addresses the user's specific feedback to polish the CRM, Applicants page, Dashboard, and Agent Portal systems.
+# Enhanced Leaderboard with Category Filters
+
+This plan enhances the main Sales Leaderboard in the Agent Portal to include sortable categories, highlight category leaders, and improve data display.
 
 ---
 
-## Issues Identified from User Feedback
+## Current State Analysis
 
-1. **CRM Attendance Grid**: The 7-day grid is too cramped - need a compact view with hover popup to show detailed dates
-2. **Agent Portal Login Flow**: Confirm that login emails direct to the production logging interface
-3. **Team Directory**: Shows managers but NOT their agents underneath (hierarchy not displaying)
-4. **Dashboard Layout**: Too much blank space, not sales-focused enough
-5. **Applicants Page**: Contracted button should automatically transfer leads to CRM
-6. **Overall UX**: Site needs to run more smoothly with better space utilization
+The existing `LeaderboardTabs.tsx` component:
+- Displays agents ranked by ALP (Annual Life Premium) only
+- Shows Deals, Presentations, Close %, and ALP columns
+- Has Day/Week/Month time period filters
+- Does NOT allow sorting by different metrics
+- Does NOT highlight leaders in each category
+
+---
+
+## Proposed Enhancements
+
+### 1. Add Category Filter Dropdown
+
+Add a filter dropdown alongside the period tabs that allows sorting by:
+- **Most ALP** (default) - Highest total premium
+- **Most Presentations** - Who's working the hardest
+- **Highest Close Rate** - Most efficient closers (min 3 presentations)
+- **Most Deals** - Most closes
+
+Each filter will re-sort the leaderboard and highlight the current category leader.
+
+### 2. Visual Category Leader Badges
+
+When viewing the full leaderboard, add small badge indicators showing which agents lead in each category:
+- Crown icon for ALP leader
+- Target icon for Presentations leader  
+- Percent icon for Close Rate leader
+- Trophy icon for Deals leader
+
+This makes it easy to see who's dominating in each area at a glance.
+
+### 3. Include All Historical Production Data
+
+Update the query logic to:
+- When "Month" filter is selected, include ALL historical production (no date filter)
+- This ensures previous numbers are factored into rankings
+- Agents with imported historical ALP will appear on the leaderboard
+
+### 4. Enhanced Column Display
+
+The leaderboard already shows the key metrics. We'll ensure they're properly visible:
+- **Deals** column (already present)
+- **Presentations** column (already present)
+- **Close %** column (already present)
+- **ALP** column (already present)
+
+Add subtle highlighting to the column being sorted by.
 
 ---
 
 ## Technical Implementation
 
-### 1. Compact Attendance Grid with Hover Popup
+### File: `src/components/dashboard/LeaderboardTabs.tsx`
 
-**File**: `src/components/dashboard/AttendanceGrid.tsx`
+**Changes:**
 
-**Changes**:
-- Reduce the grid to ultra-compact mode (5px smaller cells, minimal spacing)
-- Wrap each day's button in a `HoverCard` (Radix UI) that shows:
-  - Full date (e.g., "Sunday, January 26")
-  - Current status with icon
-  - Click instruction
-- Keep the core toggle functionality intact
-- Use the existing `HoverCard` component from `src/components/ui/hover-card.tsx`
+1. **Add `sortBy` state** (line ~53):
+   ```typescript
+   type SortCategory = "alp" | "presentations" | "closingRate" | "deals";
+   const [sortBy, setSortBy] = useState<SortCategory>("alp");
+   ```
 
-**Before**: 7 boxes inline taking too much space
-**After**: 7 tiny dots/squares that expand on hover to show full details
+2. **Add category filter UI** (after period tabs, ~line 244):
+   - Add a Select dropdown with options: "By ALP", "By Presentations", "By Close Rate", "By Deals"
+   - Style to match the period tabs
 
----
+3. **Modify sorting logic** (~line 197):
+   ```typescript
+   // Sort based on selected category
+   switch (sortBy) {
+     case "presentations":
+       leaderboardEntries.sort((a, b) => b.presentations - a.presentations);
+       break;
+     case "closingRate":
+       // Filter to only show agents with 3+ presentations for fair comparison
+       leaderboardEntries = leaderboardEntries.filter(e => e.presentations >= 3);
+       leaderboardEntries.sort((a, b) => b.closingRate - a.closingRate);
+       break;
+     case "deals":
+       leaderboardEntries.sort((a, b) => b.deals - a.deals);
+       break;
+     default: // "alp"
+       leaderboardEntries.sort((a, b) => b.alp - a.alp);
+   }
+   ```
 
-### 2. Agent Portal Login Confirmation
+4. **Add category leader detection** (after sorting):
+   ```typescript
+   // Detect leaders in each category for badge display
+   const leaders = {
+     alp: leaderboardEntries.reduce((max, e) => e.alp > max.alp ? e : max),
+     presentations: leaderboardEntries.reduce((max, e) => e.presentations > max.presentations ? e : max),
+     closingRate: leaderboardEntries.filter(e => e.presentations >= 3).reduce((max, e) => e.closingRate > max.closingRate ? e : max, { closingRate: 0 }),
+     deals: leaderboardEntries.reduce((max, e) => e.deals > max.deals ? e : max),
+   };
+   ```
 
-**Current State**: The `send-agent-portal-login` edge function sends an email with:
-- Link to `/agent-portal`
-- Instructions to log in with their email
-- Information about logging daily numbers
+5. **Add visual badges in each row** (~line 310-336):
+   - Show small icons next to agent names indicating which categories they lead
+   - Use Tooltip for context on hover
 
-**Issue**: Agents may not have accounts set up yet
+6. **Highlight active sort column** (~line 248-256):
+   - Add visual indicator (underline or bold) to the column header being sorted
 
-**Solution**: Update the welcome email to include BOTH:
-1. Link to `/agent-portal` (for logged-in access)
-2. Link to `/log-numbers` (for quick number entry without login)
-
-**File**: `supabase/functions/send-agent-portal-login/index.ts`
-
-**Changes**:
-- Add a secondary link for `/log-numbers` with explanation
-- Clarify that they can log numbers immediately without account setup
-- Include manager's Discord link for onboarding support
-
----
-
-### 3. Team Directory Agent Display Fix
-
-**File**: `src/components/dashboard/ManagersPanel.tsx`
-
-**Current Issue**: The `teamMembers` array is populated but appears to be empty in the UI because:
-- The query filters by `invited_by_manager_id` correctly
-- However, agents may not have `invited_by_manager_id` set properly
-
-**Verification**: Check if agents have the correct `invited_by_manager_id` linking to their manager
-
-**Changes**:
-1. Add debug logging to verify agents are being fetched
-2. Ensure the Collapsible component expands properly
-3. Add a fallback message if no team members exist
-4. Auto-expand managers with team members for better visibility
-
----
-
-### 4. Dashboard Sales-Pro Focus + Space Optimization
-
-**File**: `src/pages/Dashboard.tsx`
-
-**Changes**:
-1. **Tighten layout**:
-   - Reduce `mb-6` to `mb-4` between sections
-   - Reduce `gap-4` to `gap-3` in grids
-   - Remove redundant spacing around section headers
-
-2. **Sales Section Priority**:
-   - Move Sales Performance section above Growth section
-   - Make sales leaderboards more prominent
-   - Add personal production stats inline with leaderboards
-
-3. **Remove dead space**:
-   - Condense the AI Features section (currently takes full width)
-   - Move License Distribution charts to a collapsible section
-   - Combine redundant stat cards
-
-4. **Grid optimization**:
-   - Use `lg:grid-cols-3` for leaderboards instead of 2
-   - Stack mobile views more efficiently
+7. **Update period "month" to include all data** (~line 86-95):
+   ```typescript
+   case "month":
+     // Include ALL historical data for comprehensive rankings
+     startDate = subDays(today, 365).toISOString().split("T")[0]; // Last year
+     break;
+   ```
 
 ---
 
-### 5. Contracted Button Auto-Transfer to CRM
+## UI Mockup
 
-**Current Flow**: 
-1. Click "Contracted" button on Applicants page
-2. `ContractedModal` opens and marks `contracted_at`
-3. Sends email with CRM setup link
-4. **MISSING**: Does NOT create agent record in CRM
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ 🏆 Sales Leaderboard              [By ALP ▼]   [Day|Week|Month] │
+├─────────────────────────────────────────────────────────────────┤
+│ #  Δ   Agent           Deals   Presentations   Close%    ALP   │
+├─────────────────────────────────────────────────────────────────┤
+│ 🥇    Samuel 👑🎯       3       12              25%    $45,000  │
+│ 🥈    John 🎯           2       15              13%    $32,000  │
+│ 🥉    Mike %            4        8              50%    $28,000  │
+│ 4     Sarah             1        5              20%    $15,000  │
+└─────────────────────────────────────────────────────────────────┘
 
-**Required Changes**:
-
-**File**: `src/components/dashboard/ContractedModal.tsx`
-
-**Changes**:
-1. After marking as contracted, automatically:
-   - Create a new `agents` table record for the applicant
-   - Link to the manager via `invited_by_manager_id`
-   - Set `onboarding_stage` to "onboarding" (they start fresh in CRM)
-   - Copy profile data from application
-
-2. Show success message: "Agent added to CRM - they'll appear in 'In Course' column"
-
-**File**: `supabase/functions/notify-agent-contracted/index.ts`
-
-**Changes**:
-1. After sending the email, create the agent record in the database
-2. Link to the referring manager
-3. Log the creation in contact_history
+Legend: 👑 = ALP Leader  🎯 = Presentations Leader  % = Close Rate Leader
+```
 
 ---
 
-### 6. Overall UX Smoothness
-
-**Files**: Various pages
-
-**Changes**:
-1. **Consistent loading states**: Add skeleton loaders matching content dimensions
-2. **Transition animations**: Use `AnimatePresence mode="wait"` consistently
-3. **Pre-fetch data**: On Dashboard mount, prefetch leaderboard data in background
-4. **Reduce layout shift**: Set explicit min-heights on dynamic content areas
-
----
-
-## Implementation Order
-
-### Phase 1: Core Workflow Fixes (High Priority)
-1. Fix Contracted button to auto-create CRM agent record
-2. Fix Team Directory to show agents under managers
-3. Update portal login email with /log-numbers link
-
-### Phase 2: UI Compactness (Medium Priority)
-4. Implement compact attendance grid with hover
-5. Tighten Dashboard layout and remove dead space
-6. Make Dashboard more sales-focused
-
-### Phase 3: Polish (Enhancement)
-7. Add skeleton loaders for smooth loading
-8. Optimize transition animations
-
----
-
-## Files to be Modified
+## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/components/dashboard/AttendanceGrid.tsx` | Add HoverCard wrapper for compact view with hover details |
-| `src/components/dashboard/ContractedModal.tsx` | Auto-create agent record in CRM after contracting |
-| `src/components/dashboard/ManagersPanel.tsx` | Debug and fix team member display |
-| `src/pages/Dashboard.tsx` | Tighten spacing, sales-focus layout |
-| `supabase/functions/send-agent-portal-login/index.ts` | Add /log-numbers link to email |
-| `supabase/functions/notify-agent-contracted/index.ts` | Auto-create agent in CRM |
+| `src/components/dashboard/LeaderboardTabs.tsx` | Add sortBy state, category filter dropdown, leader detection, visual badges, column highlighting |
 
 ---
 
-## Expected Outcomes
+## Additional Considerations
 
-1. **CRM Grid**: Compact day indicators that expand on hover to show full date/status
-2. **Agent Login**: Clear path to both full portal and quick number entry
-3. **Team Directory**: Managers show their agents underneath in expandable list
-4. **Dashboard**: Denser, sales-focused layout with minimal blank space
-5. **Contracted Flow**: One-click from Applicants → CRM with automated record creation
-6. **Overall**: Smoother transitions, less layout jank, professional feel
+1. **Minimum Threshold for Close Rate**: Only show agents with 3+ presentations when sorting by close rate to ensure fair comparison
+
+2. **Real-time Updates**: The existing real-time subscription will continue to work - when new production is logged, the leaderboard will re-fetch and re-sort
+
+3. **Performance**: Leader detection adds minimal overhead since we're already iterating through all entries
+
+4. **Mobile Responsiveness**: The category filter dropdown will stack nicely on mobile alongside the period tabs
+
+---
+
+## Expected Outcome
+
+After implementation:
+- Users can sort the leaderboard by ALP, Presentations, Close Rate, or Deals
+- Category leaders are visually highlighted with badge icons
+- Previous/historical production data is included in monthly rankings
+- The UI clearly shows which agents are excelling in which areas
+- Competitive agents can see exactly where they need to improve
+

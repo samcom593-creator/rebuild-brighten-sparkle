@@ -108,7 +108,7 @@ export default function AgentPortal() {
   const [loading, setLoading] = useState(true);
   const [isAdminViewing, setIsAdminViewing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [activeTab, setActiveTab] = useState<"numbers" | "leaderboard" | "stats">("numbers");
+  const [activeTab, setActiveTab] = useState<"numbers" | "leaderboard" | "stats">("leaderboard");
 
   // Random quote for the day (consistent per session)
   const [quote] = useState(() => 
@@ -365,8 +365,8 @@ export default function AgentPortal() {
           className="flex gap-2 overflow-x-auto pb-2 sm:hidden"
         >
           {[
-            { key: "numbers", label: "Log Numbers", icon: Sparkles },
             { key: "leaderboard", label: "Leaderboard", icon: Trophy },
+            { key: "numbers", label: "Log Numbers", icon: Sparkles },
             { key: "stats", label: "My Stats", icon: BarChart3 },
           ].map((tab) => (
             <Button
@@ -382,7 +382,25 @@ export default function AgentPortal() {
           ))}
         </motion.div>
 
-        {/* Production Entry - Always visible on desktop, tab-controlled on mobile */}
+        {/* Main Leaderboard - FIRST so agents see their rank immediately */}
+        <AnimatePresence mode="wait">
+          {(activeTab === "leaderboard" || window.innerWidth >= 640) && (
+            <motion.section
+              key="leaderboard"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ delay: 0.3 }}
+              className={cn(
+                activeTab !== "leaderboard" && "hidden sm:block"
+              )}
+            >
+              <LeaderboardTabs key={`leaderboard-${refreshKey}`} currentAgentId={agentId || undefined} />
+            </motion.section>
+          )}
+        </AnimatePresence>
+
+        {/* Production Entry - Below leaderboard for motivation flow */}
         <AnimatePresence mode="wait">
           {(activeTab === "numbers" || window.innerWidth >= 640) && (
             <motion.section
@@ -390,6 +408,7 @@ export default function AgentPortal() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
+              transition={{ delay: 0.35 }}
               className={cn(
                 activeTab !== "numbers" && "hidden sm:block"
               )}
@@ -410,7 +429,7 @@ export default function AgentPortal() {
           )}
         </AnimatePresence>
 
-        {/* Performance Dashboard - Now MORE PROMINENT and always visible */}
+        {/* Performance Dashboard */}
         <PerformanceDashboardSection />
 
         {/* Personal Stats */}
@@ -422,6 +441,7 @@ export default function AgentPortal() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
+              transition={{ delay: 0.4 }}
               className={cn(
                 activeTab !== "stats" && "hidden sm:block"
               )}
@@ -431,23 +451,6 @@ export default function AgentPortal() {
                 agentId={agentId} 
                 todayProduction={todayProduction} 
               />
-            </motion.section>
-          )}
-        </AnimatePresence>
-
-        {/* Main Leaderboard - Now below Performance Dashboard */}
-        <AnimatePresence mode="wait">
-          {(activeTab === "leaderboard" || window.innerWidth >= 640) && (
-            <motion.section
-              key="leaderboard"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className={cn(
-                activeTab !== "leaderboard" && "hidden sm:block"
-              )}
-            >
-              <LeaderboardTabs key={`leaderboard-${refreshKey}`} currentAgentId={agentId || undefined} />
             </motion.section>
           )}
         </AnimatePresence>

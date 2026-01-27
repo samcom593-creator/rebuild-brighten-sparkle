@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trophy, Medal, Award, Target, Percent, Crown, Users, Flame, Circle } from "lucide-react";
+import { Trophy, Medal, Award, Target, Percent, Crown, Users, Flame, Circle, Building2 } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -9,11 +9,11 @@ import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { ConfettiCelebration } from "./ConfettiCelebration";
 import { RankChangeIndicator } from "./RankChangeIndicator";
+import { BuildingLeaderboard } from "./BuildingLeaderboard";
 import { useTop3Celebration } from "@/hooks/useTop3Celebration";
 import { useRankChange } from "@/hooks/useRankChange";
 import { cn } from "@/lib/utils";
 import { subDays } from "date-fns";
-
 interface LeaderboardTabsProps {
   currentAgentId?: string;
 }
@@ -65,6 +65,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [leaderboardMode, setLeaderboardMode] = useState<"production" | "building">("production");
   
   const { checkForCelebration, resetTracking } = useTop3Celebration({ currentAgentId });
   const { getRankChange } = useRankChange("alp");
@@ -336,23 +337,66 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
             <div className="flex items-center gap-2.5">
               <Trophy className="h-5 w-5 text-amber-400" />
               <h3 className="text-base font-bold">Leaderboard</h3>
+              
+              {/* Production/Building Toggle Button */}
+              <motion.button
+                onClick={() => setLeaderboardMode(mode => mode === "production" ? "building" : "production")}
+                className={cn(
+                  "relative px-3 py-1 rounded-full text-[10px] font-bold transition-all ml-1",
+                  "bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600",
+                  "text-black shadow-md shadow-amber-500/20",
+                  "hover:shadow-amber-500/40",
+                  "border border-amber-300/50"
+                )}
+                whileHover={{ 
+                  y: [0, -2, 0],
+                  transition: { repeat: Infinity, duration: 0.5 }
+                }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={leaderboardMode}
+                    initial={{ rotateY: 90, opacity: 0 }}
+                    animate={{ rotateY: 0, opacity: 1 }}
+                    exit={{ rotateY: -90, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="flex items-center gap-1"
+                  >
+                    {leaderboardMode === "production" ? (
+                      <>
+                        <Trophy className="h-3 w-3" />
+                        Production
+                      </>
+                    ) : (
+                      <>
+                        <Building2 className="h-3 w-3" />
+                        Building
+                      </>
+                    )}
+                  </motion.span>
+                </AnimatePresence>
+              </motion.button>
+              
               <div className="flex items-center gap-1">
                 <Circle className="h-2 w-2 fill-emerald-500 text-emerald-500 animate-live-pulse" />
                 <span className="text-xs text-muted-foreground">Live</span>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortCategory)}>
-                <SelectTrigger className="w-[110px] h-8 text-xs bg-background">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-popover">
-                  <SelectItem value="alp" className="text-xs">By ALP</SelectItem>
-                  <SelectItem value="presentations" className="text-xs">By Pres</SelectItem>
-                  <SelectItem value="closingRate" className="text-xs">By Close %</SelectItem>
-                  <SelectItem value="deals" className="text-xs">By Deals</SelectItem>
-                </SelectContent>
-              </Select>
+              {leaderboardMode === "production" && (
+                <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortCategory)}>
+                  <SelectTrigger className="w-[110px] h-8 text-xs bg-background">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover">
+                    <SelectItem value="alp" className="text-xs">By ALP</SelectItem>
+                    <SelectItem value="presentations" className="text-xs">By Pres</SelectItem>
+                    <SelectItem value="closingRate" className="text-xs">By Close %</SelectItem>
+                    <SelectItem value="deals" className="text-xs">By Deals</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
               <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)} className="w-auto">
                 <TabsList className="h-8 p-0.5">
                   <TabsTrigger value="day" className="text-xs px-2 h-7">Day</TabsTrigger>
@@ -364,18 +408,28 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
             </div>
           </div>
 
-          {/* Table Header - Slightly Larger */}
-          {/* Table Header - Full labels for clarity */}
-          <div className="grid grid-cols-12 gap-1 px-2 py-2 text-[9px] sm:text-[10px] font-semibold text-muted-foreground border-b border-border/50 mb-1.5">
-            <div className="col-span-1">#</div>
-            <div className="col-span-2 sm:col-span-3">Agent</div>
-            <div className="col-span-1 text-center hidden sm:block">Hours</div>
-            <div className={cn("col-span-2 sm:col-span-1 text-center", sortBy === "presentations" && "text-primary")}>Pres</div>
-            <div className={cn("col-span-2 sm:col-span-1 text-center", sortBy === "deals" && "text-primary")}>Closes</div>
-            <div className="col-span-1 text-center hidden sm:block">Refs</div>
-            <div className={cn("col-span-2 sm:col-span-1 text-center whitespace-nowrap", sortBy === "closingRate" && "text-primary")}>Close %</div>
-            <div className={cn("col-span-2 sm:col-span-2 text-right", sortBy === "alp" && "text-primary")}>ALP</div>
-          </div>
+          {/* Leaderboard Content with Flip Animation */}
+          <AnimatePresence mode="wait">
+            {leaderboardMode === "production" ? (
+              <motion.div
+                key="production-leaderboard"
+                initial={{ rotateY: 90, opacity: 0 }}
+                animate={{ rotateY: 0, opacity: 1 }}
+                exit={{ rotateY: -90, opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                style={{ transformStyle: "preserve-3d" }}
+              >
+                {/* Table Header - Full labels for clarity */}
+                <div className="grid grid-cols-12 gap-1 px-2 py-2 text-[9px] sm:text-[10px] font-semibold text-muted-foreground border-b border-border/50 mb-1.5">
+                  <div className="col-span-1">#</div>
+                  <div className="col-span-2 sm:col-span-3">Agent</div>
+                  <div className="col-span-1 text-center hidden sm:block">Hours</div>
+                  <div className={cn("col-span-2 sm:col-span-1 text-center", sortBy === "presentations" && "text-primary")}>Pres</div>
+                  <div className={cn("col-span-2 sm:col-span-1 text-center", sortBy === "deals" && "text-primary")}>Closes</div>
+                  <div className="col-span-1 text-center hidden sm:block">Refs</div>
+                  <div className={cn("col-span-2 sm:col-span-1 text-center whitespace-nowrap", sortBy === "closingRate" && "text-primary")}>Close %</div>
+                  <div className={cn("col-span-2 sm:col-span-2 text-right", sortBy === "alp" && "text-primary")}>ALP</div>
+                </div>
 
           {/* Leaderboard Rows - Slightly Larger */}
           <div className="space-y-1 max-h-[380px] overflow-y-auto scrollbar-custom">
@@ -520,6 +574,20 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
               </div>
             </div>
           )}
+              </motion.div>
+            ) : (
+              <motion.div
+                key="building-leaderboard"
+                initial={{ rotateY: -90, opacity: 0 }}
+                animate={{ rotateY: 0, opacity: 1 }}
+                exit={{ rotateY: 90, opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                style={{ transformStyle: "preserve-3d" }}
+              >
+                <BuildingLeaderboard currentAgentId={currentAgentId} period={period} />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </GlassCard>
       </motion.div>
     </>

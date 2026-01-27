@@ -75,7 +75,27 @@ const handler = async (req: Request): Promise<Response> => {
     const newUserId = newAuthUser.user.id;
     console.log(`Created auth user: ${newUserId}`);
 
-    // 4. Update the profile to link to the new auth user
+    // 4. Delete the trigger-created profile (it has newUserId) to avoid unique constraint violation
+    const { error: deleteProfileError } = await supabaseAdmin
+      .from("profiles")
+      .delete()
+      .eq("user_id", newUserId);
+
+    if (deleteProfileError) {
+      console.log("No trigger-created profile to delete or error:", deleteProfileError.message);
+    }
+
+    // 5. Delete the trigger-created role to avoid duplicates
+    const { error: deleteRoleError } = await supabaseAdmin
+      .from("user_roles")
+      .delete()
+      .eq("user_id", newUserId);
+
+    if (deleteRoleError) {
+      console.log("No trigger-created role to delete or error:", deleteRoleError.message);
+    }
+
+    // 6. Now safely update the EXISTING profile to link to new auth user
     const { error: profileUpdateError } = await supabaseAdmin
       .from("profiles")
       .update({ user_id: newUserId })
@@ -86,7 +106,7 @@ const handler = async (req: Request): Promise<Response> => {
       // Don't fail - the user can still log in
     }
 
-    // 5. Find and update the agent record
+    // 7. Find and update the agent record
     const { data: agent, error: agentError } = await supabaseAdmin
       .from("agents")
       .select("id")
@@ -122,22 +142,13 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // 6. Ensure user has agent role
-    const { data: existingRole } = await supabaseAdmin
+    // 8. Add agent role cleanly (we deleted the trigger-created one)
+    const { error: roleError } = await supabaseAdmin
       .from("user_roles")
-      .select("id")
-      .eq("user_id", newUserId)
-      .eq("role", "agent")
-      .maybeSingle();
+      .insert({ user_id: newUserId, role: "agent" });
 
-    if (!existingRole) {
-      const { error: roleError } = await supabaseAdmin
-        .from("user_roles")
-        .insert({ user_id: newUserId, role: "agent" });
-
-      if (roleError) {
-        console.error("Error adding agent role:", roleError);
-      }
+    if (roleError) {
+      console.error("Error adding agent role:", roleError);
     }
 
     console.log(`Password setup complete for: ${normalizedEmail}`);

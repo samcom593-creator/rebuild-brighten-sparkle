@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { format } from "date-fns";
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 import { Link } from "react-router-dom";
 import { 
   RefreshCw, 
-  User, 
+  User,
   Calendar, 
   LogOut, 
   Trophy, 
@@ -116,7 +116,8 @@ export default function AgentPortal() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [activeTab, setActiveTab] = useState<"numbers" | "leaderboard" | "stats">("leaderboard");
   
-  // Team stats for managers/admins
+  // Team stats for managers/admins - now with time range support
+  const [statsTimeRange, setStatsTimeRange] = useState<"week" | "month" | "all">("week");
   const [teamTodayStats, setTeamTodayStats] = useState({
     totalALP: 0,
     totalDeals: 0,
@@ -139,20 +140,38 @@ export default function AgentPortal() {
     }
   }, [user, authLoading, isAdmin, isManager]);
 
-  // Fetch team stats for managers/admins
-  const fetchTeamStats = async (currentAgentId: string | null) => {
+  // Helper to get date range based on selection
+  const getDateRange = (range: "week" | "month" | "all") => {
+    const now = new Date();
+    switch (range) {
+      case "week":
+        return {
+          start: format(startOfWeek(now, { weekStartsOn: 0 }), "yyyy-MM-dd"),
+          end: format(endOfWeek(now, { weekStartsOn: 0 }), "yyyy-MM-dd"),
+        };
+      case "month":
+        return {
+          start: format(startOfMonth(now), "yyyy-MM-dd"),
+          end: format(endOfMonth(now), "yyyy-MM-dd"),
+        };
+      case "all":
+        return { start: "2020-01-01", end: "2099-12-31" };
+    }
+  };
+
+  // Fetch team stats for managers/admins with dynamic time range
+  const fetchTeamStats = async (currentAgentId: string | null, timeRange: "week" | "month" | "all" = "week") => {
     try {
       let agentIds: string[] = [];
       
       if (isAdmin) {
-        // Admin sees ALL agents
+        // Admin sees ALL agents INCLUDING terminated ones for totals
         const { data: allAgents } = await supabase
           .from("agents")
-          .select("id")
-          .eq("is_deactivated", false);
+          .select("id");
         agentIds = allAgents?.map(a => a.id) || [];
       } else if (isManager && currentAgentId) {
-        // Manager sees their direct reports + themselves
+        // Manager sees their direct reports + themselves (active only)
         const { data: teamAgents } = await supabase
           .from("agents")
           .select("id")
@@ -163,28 +182,34 @@ export default function AgentPortal() {
       
       if (agentIds.length === 0) return;
       
-      // Fetch today's production for all team members
-      const today = new Date().toISOString().split("T")[0];
+      // Fetch production based on time range
+      const { start, end } = getDateRange(timeRange);
       const { data: teamProduction } = await supabase
         .from("daily_production")
         .select("aop, deals_closed, presentations, closing_rate")
         .in("agent_id", agentIds)
-        .eq("production_date", today);
+        .gte("production_date", start)
+        .lte("production_date", end);
       
-      if (teamProduction && teamProduction.length > 0) {
-        const totalALP = teamProduction.reduce((sum, p) => sum + Number(p.aop || 0), 0);
-        const totalDeals = teamProduction.reduce((sum, p) => sum + (p.deals_closed || 0), 0);
-        const totalPresentations = teamProduction.reduce((sum, p) => sum + (p.presentations || 0), 0);
-        const avgCloseRate = totalPresentations > 0 
-          ? Math.round((totalDeals / totalPresentations) * 100) 
-          : 0;
-        
-        setTeamTodayStats({ totalALP, totalDeals, totalPresentations, avgCloseRate });
-      }
+      const totalALP = (teamProduction || []).reduce((sum, p) => sum + Number(p.aop || 0), 0);
+      const totalDeals = (teamProduction || []).reduce((sum, p) => sum + (p.deals_closed || 0), 0);
+      const totalPresentations = (teamProduction || []).reduce((sum, p) => sum + (p.presentations || 0), 0);
+      const avgCloseRate = totalPresentations > 0 
+        ? Math.round((totalDeals / totalPresentations) * 100) 
+        : 0;
+      
+      setTeamTodayStats({ totalALP, totalDeals, totalPresentations, avgCloseRate });
     } catch (error) {
       console.error("Error fetching team stats:", error);
     }
   };
+
+  // Re-fetch team stats when time range changes
+  useEffect(() => {
+    if (isAdmin && agentId) {
+      fetchTeamStats(agentId, statsTimeRange);
+    }
+  }, [statsTimeRange]);
 
   const fetchAgentData = async () => {
     try {
@@ -431,11 +456,33 @@ export default function AgentPortal() {
             </p>
           </motion.div>
 
+          {/* Time Range Toggle for Admin */}
+          {isAdmin && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex gap-2 flex-wrap"
+            >
+              {(["week", "month", "all"] as const).map((range) => (
+                <Button
+                  key={range}
+                  variant={statsTimeRange === range ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setStatsTimeRange(range)}
+                  className="text-xs"
+                >
+                  {range === "week" ? "This Week" : range === "month" ? "This Month" : "All Time"}
+                </Button>
+              ))}
+            </motion.div>
+          )}
+
           {/* Quick Stats Grid */}
           {(() => {
             // Show team stats ONLY for admin (not managers)
-            const showTeamStats = isAdmin && teamTodayStats.totalALP > 0;
-            const statsLabel = showTeamStats ? "Team's" : "Today's";
+            const showTeamStats = isAdmin;
+            const timeLabel = statsTimeRange === "week" ? "Week" : statsTimeRange === "month" ? "Month" : "All Time";
+            const statsLabel = showTeamStats ? `Team (${timeLabel})` : "Today's";
             const displayALP = showTeamStats ? teamTodayStats.totalALP : todayALP;
             const displayDeals = showTeamStats ? teamTodayStats.totalDeals : todayDeals;
             const displayPresentations = showTeamStats ? teamTodayStats.totalPresentations : todayPresentations;
@@ -445,28 +492,28 @@ export default function AgentPortal() {
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 <QuickStat
                   icon={DollarSign}
-                  label={`${statsLabel} ALP`}
+                  label={showTeamStats ? `${timeLabel} ALP` : "Today's ALP"}
                   value={`$${displayALP.toLocaleString()}`}
                   color="primary"
                   delay={0.1}
                 />
                 <QuickStat
                   icon={Trophy}
-                  label={showTeamStats ? "Team Deals" : "Deals Today"}
+                  label={showTeamStats ? `${timeLabel} Deals` : "Deals Today"}
                   value={displayDeals}
                   color="amber"
                   delay={0.15}
                 />
                 <QuickStat
                   icon={Target}
-                  label={showTeamStats ? "Team Pres" : "Presentations"}
+                  label={showTeamStats ? `${timeLabel} Pres` : "Presentations"}
                   value={displayPresentations}
                   color="violet"
                   delay={0.2}
                 />
                 <QuickStat
                   icon={BarChart3}
-                  label={showTeamStats ? "Team Close %" : "Close Rate"}
+                  label={showTeamStats ? `${timeLabel} Close %` : "Close Rate"}
                   value={`${displayCloseRate}%`}
                   color="emerald"
                   delay={0.25}

@@ -54,7 +54,7 @@ const handler = async (req: Request): Promise<Response> => {
         type: "recovery",
         email: normalizedEmail,
         options: {
-          redirectTo: "https://apex-financial.org/apex-daily-numbers",
+          redirectTo: "https://apex-financial.org/agent-portal",
         },
       });
 

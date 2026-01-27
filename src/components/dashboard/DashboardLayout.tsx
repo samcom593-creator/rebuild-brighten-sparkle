@@ -15,6 +15,7 @@ import {
   UsersRound,
   Briefcase,
   Archive,
+  BarChart3,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -39,6 +40,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
     { icon: Users, label: "Applicants", href: "/dashboard/applicants" },
     ...(isAdmin || isManager ? [
+      { icon: BarChart3, label: "Agent Portal", href: "/agent-portal" },
       { icon: Briefcase, label: "CRM", href: "/dashboard/crm" },
       { icon: Archive, label: "Aged Leads", href: "/dashboard/aged-leads" },
     ] : []),

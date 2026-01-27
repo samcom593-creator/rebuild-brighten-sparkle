@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trophy, Medal, Award, Target, Percent, Crown, Users, Flame } from "lucide-react";
+import { Trophy, Medal, Award, Target, Percent, Crown, Users, Flame, Circle } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { ConfettiCelebration } from "./ConfettiCelebration";
 import { RankChangeIndicator } from "./RankChangeIndicator";
@@ -40,29 +41,20 @@ interface CategoryLeaders {
   deals: string | null;
 }
 
-const rankIcons: Record<number, JSX.Element> = {
-  1: <Trophy className="h-5 w-5 text-amber-400" />,
-  2: <Medal className="h-5 w-5 text-slate-300" />,
-  3: <Award className="h-5 w-5 text-amber-600" />,
-};
-
 const getAvatarColor = (name: string) => {
   const colors = [
-    "bg-gradient-to-br from-primary to-primary/60",
-    "bg-gradient-to-br from-emerald-500 to-emerald-600",
-    "bg-gradient-to-br from-amber-500 to-orange-500",
-    "bg-gradient-to-br from-purple-500 to-pink-500",
-    "bg-gradient-to-br from-cyan-500 to-blue-500",
+    "from-primary to-primary/60",
+    "from-emerald-500 to-emerald-600",
+    "from-amber-500 to-orange-500",
+    "from-purple-500 to-pink-500",
+    "from-cyan-500 to-blue-500",
   ];
   const index = name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
   return colors[index % colors.length];
 };
 
-const sortCategoryLabels: Record<SortCategory, string> = {
-  alp: "By ALP",
-  presentations: "By Presentations",
-  closingRate: "By Close Rate",
-  deals: "By Deals",
+const getInitials = (name: string) => {
+  return name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
 };
 
 export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
@@ -103,7 +95,6 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
           startDate = subDays(today, 7).toISOString().split("T")[0];
           break;
         case "month":
-          // Include ALL historical data for comprehensive rankings
           startDate = subDays(today, 365).toISOString().split("T")[0];
           break;
         default:
@@ -205,7 +196,6 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
         };
       });
 
-      // Default sort by ALP for ranking
       leaderboardEntries.sort((a, b) => b.alp - a.alp);
       leaderboardEntries.forEach((entry, index) => {
         entry.rank = index + 1;
@@ -224,7 +214,6 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
     }
   };
 
-  // Detect category leaders
   const leaders = useMemo<CategoryLeaders>(() => {
     if (entries.length === 0) {
       return { alp: null, presentations: null, closingRate: null, deals: null };
@@ -246,7 +235,6 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
     };
   }, [entries]);
 
-  // Sort entries based on selected category
   const sortedEntries = useMemo(() => {
     let sorted = [...entries];
     
@@ -255,19 +243,20 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
         sorted.sort((a, b) => b.presentations - a.presentations);
         break;
       case "closingRate":
-        // Filter to only show agents with 3+ presentations for fair comparison
         sorted = sorted.filter(e => e.presentations >= 3);
         sorted.sort((a, b) => b.closingRate - a.closingRate);
         break;
       case "deals":
         sorted.sort((a, b) => b.deals - a.deals);
         break;
-      default: // "alp"
+      default:
         sorted.sort((a, b) => b.alp - a.alp);
     }
     
     return sorted;
   }, [entries, sortBy]);
+
+  const maxALP = sortedEntries[0]?.alp || 1;
 
   const periodLabels = {
     day: "Today",
@@ -275,70 +264,44 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
     month: "All Time",
   };
 
-  const getLeaderBadges = (agentId: string) => {
-    const badges: JSX.Element[] = [];
-    
-    if (leaders.alp === agentId) {
-      badges.push(
-        <TooltipProvider key="alp">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Crown className="h-3.5 w-3.5 text-amber-400 inline ml-1" />
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>ALP Leader</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+  const renderRankBadge = (rank: number, isCurrentUser: boolean) => {
+    if (rank === 1) {
+      return (
+        <div className="flex items-center justify-center h-5 w-5 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 animate-rank-glow">
+          <span className="text-[10px] font-bold text-white">1</span>
+        </div>
       );
     }
-    
-    if (leaders.presentations === agentId) {
-      badges.push(
-        <TooltipProvider key="presentations">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Target className="h-3.5 w-3.5 text-blue-400 inline ml-1" />
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Presentations Leader</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+    if (rank === 2) {
+      return (
+        <div className="flex items-center justify-center h-5 w-5 rounded-full bg-gradient-to-br from-slate-300 to-slate-400">
+          <span className="text-[10px] font-bold text-slate-700">2</span>
+        </div>
       );
     }
-    
-    if (leaders.closingRate === agentId) {
-      badges.push(
-        <TooltipProvider key="closingRate">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Percent className="h-3.5 w-3.5 text-emerald-400 inline ml-1" />
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Close Rate Leader (3+ presentations)</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+    if (rank === 3) {
+      return (
+        <div className="flex items-center justify-center h-5 w-5 rounded-full bg-gradient-to-br from-amber-600 to-amber-800">
+          <span className="text-[10px] font-bold text-white">3</span>
+        </div>
       );
     }
-    
-    if (leaders.deals === agentId) {
-      badges.push(
-        <TooltipProvider key="deals">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Trophy className="h-3.5 w-3.5 text-purple-400 inline ml-1" />
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Deals Leader</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      );
-    }
-    
-    return badges;
+    return (
+      <span className={cn(
+        "text-[11px] font-medium w-5 text-center",
+        isCurrentUser ? "text-primary" : "text-muted-foreground"
+      )}>
+        {rank}
+      </span>
+    );
+  };
+
+  const getLeaderBadge = (agentId: string) => {
+    if (leaders.alp === agentId) return <Crown className="h-3 w-3 text-amber-400" />;
+    if (leaders.presentations === agentId) return <Target className="h-3 w-3 text-blue-400" />;
+    if (leaders.closingRate === agentId) return <Percent className="h-3 w-3 text-emerald-400" />;
+    if (leaders.deals === agentId) return <Trophy className="h-3 w-3 text-purple-400" />;
+    return null;
   };
 
   return (
@@ -351,103 +314,91 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <GlassCard className="p-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
-            <h3 className="text-lg font-semibold gradient-text flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-amber-400" />
-              Sales Leaderboard
-            </h3>
-            <div className="flex flex-wrap items-center gap-2">
+        <GlassCard className="p-4">
+          {/* Header */}
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <div className="flex items-center gap-2">
+              <Trophy className="h-4 w-4 text-amber-400" />
+              <h3 className="text-sm font-semibold">Leaderboard</h3>
+              <div className="flex items-center gap-1">
+                <Circle className="h-2 w-2 fill-emerald-500 text-emerald-500 animate-live-pulse" />
+                <span className="text-[10px] text-muted-foreground">Live</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5">
               <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortCategory)}>
-                <SelectTrigger className="w-[140px] h-8 text-xs bg-background">
-                  <SelectValue placeholder="Sort by..." />
+                <SelectTrigger className="w-[100px] h-7 text-[10px] bg-background">
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-popover">
-                  <SelectItem value="alp">By ALP</SelectItem>
-                  <SelectItem value="presentations">By Presentations</SelectItem>
-                  <SelectItem value="closingRate">By Close Rate</SelectItem>
-                  <SelectItem value="deals">By Deals</SelectItem>
+                  <SelectItem value="alp" className="text-xs">By ALP</SelectItem>
+                  <SelectItem value="presentations" className="text-xs">By Pres</SelectItem>
+                  <SelectItem value="closingRate" className="text-xs">By Close %</SelectItem>
+                  <SelectItem value="deals" className="text-xs">By Deals</SelectItem>
                 </SelectContent>
               </Select>
               <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)} className="w-auto">
-                <TabsList className="h-8">
-                  <TabsTrigger value="day" className="text-xs px-3">Day</TabsTrigger>
-                  <TabsTrigger value="week" className="text-xs px-3">Week</TabsTrigger>
-                  <TabsTrigger value="month" className="text-xs px-3">All</TabsTrigger>
+                <TabsList className="h-7 p-0.5">
+                  <TabsTrigger value="day" className="text-[10px] px-2 h-6">Day</TabsTrigger>
+                  <TabsTrigger value="week" className="text-[10px] px-2 h-6">Wk</TabsTrigger>
+                  <TabsTrigger value="month" className="text-[10px] px-2 h-6">All</TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>
           </div>
 
-          {/* Table Header */}
-          <div className="grid grid-cols-13 gap-2 px-3 py-2 text-xs font-medium text-muted-foreground border-b border-border/50 mb-2">
+          {/* Table Header - Compact */}
+          <div className="grid grid-cols-12 gap-1 px-2 py-1.5 text-[10px] font-medium text-muted-foreground border-b border-border/50 mb-1">
             <div className="col-span-1">#</div>
-            <div className="col-span-1"></div>
-            <div className="col-span-3">Agent</div>
-            <div className={cn("col-span-2 text-center", sortBy === "deals" && "text-primary font-bold")}>Deals</div>
-            <div className={cn("col-span-2 text-center", sortBy === "presentations" && "text-primary font-bold")}>Presentations</div>
-            <div className={cn("col-span-2 text-center", sortBy === "closingRate" && "text-primary font-bold")}>Close %</div>
-            <div className={cn("col-span-2 text-right", sortBy === "alp" && "text-primary font-bold")}>ALP</div>
+            <div className="col-span-4">Agent</div>
+            <div className={cn("col-span-1 text-center", sortBy === "deals" && "text-primary")}>D</div>
+            <div className={cn("col-span-1 text-center", sortBy === "presentations" && "text-primary")}>P</div>
+            <div className={cn("col-span-2 text-center", sortBy === "closingRate" && "text-primary")}>%</div>
+            <div className={cn("col-span-3 text-right", sortBy === "alp" && "text-primary")}>ALP</div>
           </div>
 
-          {/* Leaderboard Rows */}
-          <div className="space-y-1 max-h-[400px] overflow-y-auto scrollbar-custom">
+          {/* Leaderboard Rows - Compact */}
+          <div className="space-y-0.5 max-h-[320px] overflow-y-auto scrollbar-custom">
             <AnimatePresence mode="popLayout">
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="animate-pulse flex items-center gap-3 p-3">
-                    <div className="h-8 w-8 rounded-full bg-muted" />
-                    <div className="flex-1 space-y-2">
-                      <div className="h-4 bg-muted rounded w-1/3" />
-                    </div>
+                  <div key={i} className="animate-pulse flex items-center gap-2 p-2">
+                    <div className="h-5 w-5 rounded-full bg-muted" />
+                    <div className="flex-1 h-3 bg-muted rounded" />
                   </div>
                 ))
               ) : sortedEntries.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p>No production logged {periodLabels[period].toLowerCase()}</p>
-                  {sortBy === "closingRate" && (
-                    <p className="text-xs mt-1">Close rate requires 3+ presentations</p>
-                  )}
+                <div className="text-center py-6 text-muted-foreground">
+                  <Users className="h-6 w-6 mx-auto mb-2 opacity-50" />
+                  <p className="text-xs">No production logged {periodLabels[period].toLowerCase()}</p>
                 </div>
               ) : (
                 sortedEntries.map((entry, index) => (
                   <motion.div
                     key={entry.agentId}
-                    initial={{ opacity: 0, x: -20 }}
+                    initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20 }}
-                    transition={{ delay: index * 0.05 }}
+                    exit={{ opacity: 0, x: 10 }}
+                    transition={{ delay: index * 0.02 }}
                     className={cn(
-                      "grid grid-cols-13 gap-2 items-center px-3 py-3 rounded-lg transition-all",
+                      "grid grid-cols-12 gap-1 items-center px-2 py-1.5 rounded-md transition-all",
                       entry.isCurrentUser
-                        ? "bg-primary/10 border border-primary/30 shadow-[0_0_20px_rgba(20,184,166,0.15)]"
+                        ? "bg-primary/10 border border-primary/30"
                         : index < 3
-                          ? "bg-gradient-to-r from-amber-500/5 to-transparent"
+                          ? "bg-amber-500/5"
                           : "hover:bg-muted/30"
                     )}
+                    style={{ minHeight: "36px" }}
                   >
                     {/* Rank */}
                     <div className="col-span-1 flex items-center justify-center">
-                      {index < 3 ? rankIcons[index + 1] : (
-                        <span className="text-sm font-bold text-muted-foreground">
-                          {index + 1}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Rank Change */}
-                    <div className="col-span-1 flex items-center justify-center">
-                      {period === "day" && (() => {
-                        const { change, previousRank } = getRankChange(entry.agentId, entry.rank);
-                        return <RankChangeIndicator change={change} previousRank={previousRank} compact />;
-                      })()}
+                      {renderRankBadge(index + 1, entry.isCurrentUser)}
                     </div>
 
                     {/* Agent */}
-                    <div className="col-span-3 flex items-center gap-2">
+                    <div className="col-span-4 flex items-center gap-1.5 min-w-0">
                       <div className={cn(
-                        "h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0",
+                        "h-6 w-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0 bg-gradient-to-br",
                         entry.avatarUrl ? "" : getAvatarColor(entry.name)
                       )}>
                         {entry.avatarUrl ? (
@@ -457,57 +408,58 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                             className="h-full w-full rounded-full object-cover"
                           />
                         ) : (
-                          entry.name.split(" ").map((n) => n[0]).join("").slice(0, 2)
+                          getInitials(entry.name)
                         )}
                       </div>
-                      <div className="min-w-0">
-                        <p className={cn(
-                          "font-medium text-sm truncate",
+                      <div className="min-w-0 flex items-center gap-1">
+                        <span className={cn(
+                          "text-xs font-medium truncate",
                           entry.isCurrentUser && "text-primary"
                         )}>
-                          {entry.name}
-                          {entry.isCurrentUser && (
-                            <span className="ml-1 text-[10px] opacity-75">(You)</span>
-                          )}
-                          {getLeaderBadges(entry.agentId)}
-                        </p>
+                          {entry.name.split(" ")[0]}
+                          {entry.isCurrentUser && <span className="text-[9px] opacity-70 ml-0.5">•</span>}
+                        </span>
+                        {getLeaderBadge(entry.agentId)}
                       </div>
                     </div>
 
                     {/* Deals */}
-                    <div className={cn("col-span-2 text-center", sortBy === "deals" && "text-primary")}>
-                      <span className="font-bold text-lg">{entry.deals}</span>
+                    <div className={cn("col-span-1 text-center", sortBy === "deals" && "text-primary")}>
+                      <span className="text-xs font-semibold">{entry.deals}</span>
                     </div>
 
                     {/* Presentations */}
-                    <div className={cn("col-span-2 text-center", sortBy === "presentations" && "text-primary")}>
-                      <span className="text-sm">{entry.presentations}</span>
-                      {entry.passedPrice > 0 && (
-                        <span className="text-[10px] text-muted-foreground ml-1">
-                          ({entry.passedPrice} PP)
-                        </span>
-                      )}
+                    <div className={cn("col-span-1 text-center", sortBy === "presentations" && "text-primary")}>
+                      <span className="text-[11px]">{entry.presentations}</span>
                     </div>
 
                     {/* Closing Rate */}
                     <div className={cn("col-span-2 text-center", sortBy === "closingRate" && "text-primary")}>
                       <span className={cn(
-                        "font-medium",
+                        "text-[11px] font-medium",
                         entry.closingRate >= 30 && "text-emerald-500",
                         entry.closingRate >= 50 && "text-amber-400"
                       )}>
                         {entry.closingRate.toFixed(0)}%
                       </span>
                       {entry.closingRate >= 40 && (
-                        <Flame className="h-3 w-3 inline ml-1 text-orange-500" />
+                        <Flame className="h-2.5 w-2.5 inline ml-0.5 text-orange-500" />
                       )}
                     </div>
 
-                    {/* ALP */}
-                    <div className={cn("col-span-2 text-right", sortBy === "alp" && "text-primary")}>
-                      <span className="font-bold">
-                        ${entry.alp.toLocaleString()}
-                      </span>
+                    {/* ALP with Progress */}
+                    <div className={cn("col-span-3 text-right", sortBy === "alp" && "text-primary")}>
+                      <div className="flex flex-col items-end gap-0.5">
+                        <span className="text-xs font-bold">
+                          ${entry.alp >= 1000 ? `${(entry.alp / 1000).toFixed(1)}k` : entry.alp.toLocaleString()}
+                        </span>
+                        {index > 0 && (
+                          <Progress 
+                            value={(entry.alp / maxALP) * 100} 
+                            className="h-1 w-full max-w-[48px]"
+                          />
+                        )}
+                      </div>
                     </div>
                   </motion.div>
                 ))
@@ -515,24 +467,18 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
             </AnimatePresence>
           </div>
 
-          {/* Summary Footer */}
+          {/* Footer */}
           {sortedEntries.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-              className="mt-4 pt-4 border-t border-border/50 flex justify-between text-xs text-muted-foreground"
-            >
+            <div className="mt-2 pt-2 border-t border-border/50 flex justify-between text-[10px] text-muted-foreground">
               <span>
-                <span className="font-medium text-foreground">{sortedEntries.length}</span> agents ranked
-                {sortBy === "closingRate" && " (3+ presentations)"}
+                <span className="font-medium text-foreground">{sortedEntries.length}</span> ranked
               </span>
               <span>
-                Total ALP: <span className="font-medium text-primary">
+                Total: <span className="font-medium text-primary">
                   ${entries.reduce((sum, e) => sum + e.alp, 0).toLocaleString()}
                 </span>
               </span>
-            </motion.div>
+            </div>
           )}
         </GlassCard>
       </motion.div>

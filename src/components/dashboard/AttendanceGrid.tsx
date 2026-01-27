@@ -179,7 +179,20 @@ export function AttendanceGrid({
     <TooltipProvider delayDuration={200}>
       <div className="flex items-center gap-1.5">
         <span className="text-[10px] text-muted-foreground w-10 shrink-0 font-medium">{label}:</span>
-        <div className="flex gap-0.5">
+        <div className="flex flex-col gap-0.5">
+          {/* Day letter headers */}
+          <div className="flex gap-0.5">
+            {DAYS.map((dayLabel, index) => (
+              <div
+                key={`header-${index}`}
+                className="w-5 h-3 flex items-center justify-center text-[8px] text-muted-foreground font-medium"
+              >
+                {dayLabel}
+              </div>
+            ))}
+          </div>
+          {/* Attendance buttons */}
+          <div className="flex gap-0.5">
           {weekDays.map((day, index) => {
             const record = attendance[index] || { status: "unmarked" };
             const isToday = isSameDay(day, today);
@@ -214,6 +227,7 @@ export function AttendanceGrid({
               </Tooltip>
             );
           })}
+          </div>
         </div>
       </div>
     </TooltipProvider>

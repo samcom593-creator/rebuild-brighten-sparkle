@@ -37,11 +37,19 @@ interface ProductionEntryProps {
   onSaved?: () => void;
 }
 
+interface ManagerGroup {
+  managerId: string | null;
+  managerName: string;
+  agents: TeamMember[];
+}
+
 export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEntryProps) {
   const [saving, setSaving] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [isManager, setIsManager] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [allAgentsGrouped, setAllAgentsGrouped] = useState<ManagerGroup[]>([]);
   const [selectedAgentId, setSelectedAgentId] = useState(agentId);
   const [currentUserName, setCurrentUserName] = useState<string>("Myself");
   
@@ -56,34 +64,83 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
     aop: existingData?.aop || 0,
   });
 
-  // Check if user is manager and fetch team members
+  // Check if user is manager/admin and fetch team members
   useEffect(() => {
-    const checkManagerAndFetchTeam = async () => {
+    const checkRolesAndFetchTeam = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Check if user has manager or admin role
+      // Check roles
       const { data: roles } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", user.id);
 
+      const hasAdminRole = roles?.some(r => r.role === "admin");
       const hasManagerRole = roles?.some(r => r.role === "manager" || r.role === "admin");
+      setIsAdmin(hasAdminRole || false);
       setIsManager(hasManagerRole || false);
 
-      if (hasManagerRole) {
-        // Fetch current user's name
-        const { data: myProfile } = await supabase
-          .from("profiles")
-          .select("full_name")
-          .eq("user_id", user.id)
-          .maybeSingle();
-        
-        if (myProfile?.full_name) {
-          setCurrentUserName(myProfile.full_name.split(" ")[0]); // First name
-        }
+      // Fetch current user's name
+      const { data: myProfile } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      
+      if (myProfile?.full_name) {
+        setCurrentUserName(myProfile.full_name.split(" ")[0]);
+      }
 
-        // Fetch team members (agents invited by this manager)
+      // ADMIN: Fetch ALL agents grouped by manager
+      if (hasAdminRole) {
+        const { data: allAgents } = await supabase
+          .from("agents")
+          .select(`
+            id,
+            invited_by_manager_id,
+            profile:profiles!agents_profile_id_fkey(full_name)
+          `)
+          .eq("is_deactivated", false)
+          .order("profile(full_name)");
+
+        if (allAgents) {
+          // Get manager names
+          const managerIds = [...new Set(allAgents.map(a => a.invited_by_manager_id).filter(Boolean))] as string[];
+          const { data: managerAgents } = await supabase
+            .from("agents")
+            .select(`id, profile:profiles!agents_profile_id_fkey(full_name)`)
+            .in("id", managerIds);
+
+          const managerMap: Record<string, string> = {};
+          managerAgents?.forEach(m => {
+            managerMap[m.id] = m.profile?.full_name || "Unknown Manager";
+          });
+
+          // Group by manager
+          const groups: Record<string, ManagerGroup> = {};
+          
+          allAgents.forEach(a => {
+            const managerId = a.invited_by_manager_id || "unassigned";
+            if (!groups[managerId]) {
+              groups[managerId] = {
+                managerId: a.invited_by_manager_id,
+                managerName: managerMap[a.invited_by_manager_id || ""] || "No Manager",
+                agents: [],
+              };
+            }
+            if (a.profile?.full_name) {
+              groups[managerId].agents.push({
+                id: a.id,
+                name: a.profile.full_name,
+              });
+            }
+          });
+
+          setAllAgentsGrouped(Object.values(groups).sort((a, b) => a.managerName.localeCompare(b.managerName)));
+        }
+      } else if (hasManagerRole) {
+        // Manager: only their team
         const { data: myAgent } = await supabase
           .from("agents")
           .select("id")
@@ -113,7 +170,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
       }
     };
 
-    checkManagerAndFetchTeam();
+    checkRolesAndFetchTeam();
   }, []);
 
   // When selected agent changes, fetch their existing data for today
@@ -261,8 +318,34 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
               </h2>
               
               <div className="flex items-center gap-2">
-                {/* Manager team selector */}
-                {isManager && teamMembers.length > 0 && (
+                {/* Admin: All agents grouped by manager */}
+                {isAdmin && allAgentsGrouped.length > 0 && (
+                  <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
+                    <SelectTrigger className="w-[180px] h-8 text-xs">
+                      <SelectValue placeholder="Select agent" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[300px]">
+                      <SelectItem value={agentId}>
+                        🙋 {currentUserName} (Me)
+                      </SelectItem>
+                      {allAgentsGrouped.map((group) => (
+                        <div key={group.managerId || "unassigned"}>
+                          <div className="px-2 py-1.5 text-[10px] font-semibold text-muted-foreground bg-muted/50 sticky top-0">
+                            📋 {group.managerName}'s Team
+                          </div>
+                          {group.agents.map((agent) => (
+                            <SelectItem key={agent.id} value={agent.id} className="pl-4">
+                              👤 {agent.name}
+                            </SelectItem>
+                          ))}
+                        </div>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                
+                {/* Manager: Just their team */}
+                {!isAdmin && isManager && teamMembers.length > 0 && (
                   <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
                     <SelectTrigger className="w-[160px] h-8 text-xs">
                       <SelectValue placeholder="Select agent" />

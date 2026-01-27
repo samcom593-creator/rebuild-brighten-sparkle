@@ -557,10 +557,10 @@ export default function AgentPortal() {
           <GlassCard className="p-4">
             <div className="flex items-center gap-2 mb-3">
               <Link className="h-5 w-5 text-emerald-400" />
-              <h3 className="font-semibold">Quick Log Numbers Link</h3>
+              <h3 className="font-semibold">Apex Daily Numbers</h3>
             </div>
             <p className="text-xs text-muted-foreground mb-3">
-              Share this link with your team for quick number entry:
+              Share this link with your team for daily number entry:
             </p>
             <div className="flex items-center gap-2">
               <code className="flex-1 text-xs bg-muted p-2 rounded truncate">

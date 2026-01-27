@@ -226,8 +226,8 @@ export default function AgentNumbersLogin() {
 
     setIsLoading(true);
     try {
-      const { error } = await supabase.functions.invoke("send-password-reset", {
-        body: { email },
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: "https://apex-financial.org/agent-portal",
       });
 
       if (error) throw error;

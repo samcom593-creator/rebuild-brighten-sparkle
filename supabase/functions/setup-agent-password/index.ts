@@ -31,13 +31,16 @@ const handler = async (req: Request): Promise<Response> => {
     const normalizedEmail = email.toLowerCase().trim();
     console.log(`Setting up password for CRM user: ${normalizedEmail}`);
 
-    // 1. Verify email exists in profiles table
-    const { data: profile, error: profileError } = await supabaseAdmin
+    // 1. Verify email exists in profiles table - use limit(1) to handle duplicates
+    const { data: profiles, error: profileError } = await supabaseAdmin
       .from("profiles")
       .select("id, user_id, full_name")
       .ilike("email", normalizedEmail)
-      .maybeSingle();
+      .order("created_at", { ascending: false })
+      .limit(1);
 
+    const profile = profiles?.[0];
+    
     if (profileError || !profile) {
       console.error("Profile not found:", profileError);
       throw new Error("Email not found in CRM. Please create a new account instead.");

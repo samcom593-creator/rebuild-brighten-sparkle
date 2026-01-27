@@ -39,7 +39,7 @@ const handler = async (req: Request): Promise<Response> => {
     let profileError = null;
 
     if (isPhone) {
-      // Search by phone - try to match last 10 digits
+      // Search by phone - try to match last 10 digits, use limit(1) to handle duplicates
       const last10 = digitsOnly.slice(-10);
       console.log(`Searching by phone, last 10 digits: ${last10}`);
       
@@ -47,13 +47,13 @@ const handler = async (req: Request): Promise<Response> => {
         .from("profiles")
         .select("id, user_id, full_name, email, phone, city, state")
         .or(`phone.ilike.%${last10}%`)
-        .limit(1)
-        .maybeSingle();
+        .order("created_at", { ascending: false })
+        .limit(1);
       
-      profile = data;
+      profile = data?.[0] || null;
       profileError = error;
     } else {
-      // Search by email
+      // Search by email - use limit(1) to handle duplicates gracefully
       const normalizedEmail = trimmedInput.toLowerCase();
       console.log(`Searching by email: ${normalizedEmail}`);
       
@@ -61,9 +61,10 @@ const handler = async (req: Request): Promise<Response> => {
         .from("profiles")
         .select("id, user_id, full_name, email, phone, city, state")
         .ilike("email", normalizedEmail)
-        .maybeSingle();
+        .order("created_at", { ascending: false })
+        .limit(1);
       
-      profile = data;
+      profile = data?.[0] || null;
       profileError = error;
     }
 

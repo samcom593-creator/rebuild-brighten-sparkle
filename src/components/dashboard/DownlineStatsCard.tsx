@@ -1,10 +1,14 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Users, DollarSign, Target, TrendingUp } from "lucide-react";
+import { Users, DollarSign, Target, TrendingUp, Calendar } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { format, startOfWeek, endOfWeek } from "date-fns";
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
+import { cn } from "@/lib/utils";
+
+type TimePeriod = "week" | "month" | "all";
 
 interface DownlineStats {
   totalALP: number;
@@ -15,6 +19,7 @@ interface DownlineStats {
 
 export function DownlineStatsCard() {
   const { user, isAdmin } = useAuth();
+  const [period, setPeriod] = useState<TimePeriod>("week");
   const [stats, setStats] = useState<DownlineStats>({
     totalALP: 0,
     totalDeals: 0,
@@ -28,6 +33,8 @@ export function DownlineStatsCard() {
       if (!user) return;
 
       try {
+        setLoading(true);
+        
         // Get current user's agent ID
         const { data: currentAgent } = await supabase
           .from("agents")
@@ -68,17 +75,30 @@ export function DownlineStatsCard() {
           return;
         }
 
-        // Get this week's production data for agents
+        // Build date range based on period
         const today = new Date();
-        const weekStart = format(startOfWeek(today, { weekStartsOn: 0 }), "yyyy-MM-dd");
-        const weekEnd = format(endOfWeek(today, { weekStartsOn: 0 }), "yyyy-MM-dd");
+        let startDate: string | undefined;
+        let endDate: string | undefined;
 
-        const { data: productionData } = await supabase
+        if (period === "week") {
+          startDate = format(startOfWeek(today, { weekStartsOn: 0 }), "yyyy-MM-dd");
+          endDate = format(endOfWeek(today, { weekStartsOn: 0 }), "yyyy-MM-dd");
+        } else if (period === "month") {
+          startDate = format(startOfMonth(today), "yyyy-MM-dd");
+          endDate = format(endOfMonth(today), "yyyy-MM-dd");
+        }
+
+        // Query production data
+        let query = supabase
           .from("daily_production")
           .select("aop, deals_closed, presentations")
-          .in("agent_id", agentIds)
-          .gte("production_date", weekStart)
-          .lte("production_date", weekEnd);
+          .in("agent_id", agentIds);
+
+        if (startDate && endDate) {
+          query = query.gte("production_date", startDate).lte("production_date", endDate);
+        }
+
+        const { data: productionData } = await query;
 
         if (productionData) {
           const totalALP = productionData.reduce((sum, p) => sum + (Number(p.aop) || 0), 0);
@@ -103,13 +123,23 @@ export function DownlineStatsCard() {
     };
 
     fetchDownlineStats();
-  }, [user, isAdmin]);
+  }, [user, isAdmin, period]);
 
-  if (loading || stats.agentCount === 0) {
+  if (loading && stats.agentCount === 0) {
     return null;
   }
 
-  const label = isAdmin ? "Agency Production (This Week)" : "Team Production (This Week)";
+  if (stats.agentCount === 0 && !loading) {
+    return null;
+  }
+
+  const periodLabels = {
+    week: "This Week",
+    month: "This Month",
+    all: "All Time",
+  };
+
+  const label = isAdmin ? "Agency Production" : "Team Production";
 
   return (
     <motion.div
@@ -118,12 +148,36 @@ export function DownlineStatsCard() {
       transition={{ delay: 0.2 }}
     >
       <GlassCard className="p-5">
-        <div className="flex items-center gap-2 mb-4">
-          <Users className="h-5 w-5 text-primary" />
-          <h3 className="font-semibold">{label}</h3>
-          <span className="text-xs text-muted-foreground ml-auto">
-            {stats.agentCount} agent{stats.agentCount !== 1 ? 's' : ''}
-          </span>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-primary" />
+            <h3 className="font-semibold">{label}</h3>
+            <span className="text-xs text-muted-foreground">
+              ({periodLabels[period]})
+            </span>
+          </div>
+          
+          {/* Time Toggle */}
+          <div className="flex items-center gap-1 bg-muted/50 rounded-md p-0.5">
+            {(["week", "month", "all"] as TimePeriod[]).map((p) => (
+              <Button
+                key={p}
+                variant={period === p ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setPeriod(p)}
+                className={cn(
+                  "text-[10px] h-6 px-2",
+                  period === p && "bg-primary text-primary-foreground"
+                )}
+              >
+                {p === "week" ? "W" : p === "month" ? "M" : "All"}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
+          <span>{stats.agentCount} agent{stats.agentCount !== 1 ? 's' : ''}</span>
         </div>
         
         <div className="grid grid-cols-3 gap-4">
@@ -140,7 +194,7 @@ export function DownlineStatsCard() {
               <Target className="h-4 w-4" />
             </div>
             <p className="text-2xl font-bold">{stats.totalDeals}</p>
-            <p className="text-xs text-muted-foreground">Deals Closed</p>
+            <p className="text-xs text-muted-foreground">Deals</p>
           </div>
           
           <div className="text-center">

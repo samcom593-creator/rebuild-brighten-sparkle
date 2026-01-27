@@ -4,7 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { BarChart3, Mail, Lock, Loader2, TrendingUp, Trophy, Target, ArrowLeft, CheckCircle, User, Phone, UserPlus } from "lucide-react";
+import { BarChart3, Mail, Lock, Loader2, TrendingUp, Trophy, Target, ArrowLeft, CheckCircle, User, Phone, UserPlus, Check } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { GradientButton } from "@/components/ui/gradient-button";
@@ -49,6 +50,7 @@ export default function AgentNumbersLogin() {
   const [agentName, setAgentName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingIdentifier, setIsCheckingIdentifier] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
 
   // Check URL params for setup flow
   useEffect(() => {
@@ -442,6 +444,17 @@ export default function AgentNumbersLogin() {
                     {passwordForm.formState.errors.password && (
                       <p className="text-sm text-destructive">{passwordForm.formState.errors.password.message}</p>
                     )}
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="remember-me" 
+                      checked={rememberMe}
+                      onCheckedChange={(checked) => setRememberMe(checked === true)}
+                    />
+                    <Label htmlFor="remember-me" className="text-sm text-muted-foreground cursor-pointer">
+                      Remember me
+                    </Label>
                   </div>
 
                   <GradientButton 

@@ -192,7 +192,7 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
           avatarUrl: profile?.avatar_url || undefined,
           applications: stats.applications,
           contracted: stats.contracted,
-          projectedIncome: stats.contracted * INCOME_PER_HIRE,
+          projectedIncome: stats.applications * INCOME_PER_HIRE,
           growthPercent: Math.round(growthPercent),
           isCurrentUser: agent.id === currentAgentId,
         };

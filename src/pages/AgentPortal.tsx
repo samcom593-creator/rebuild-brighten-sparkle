@@ -325,6 +325,18 @@ export default function AgentPortal() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+      {/* Apex Financial Branding */}
+      <div className="bg-gradient-to-r from-primary/10 via-transparent to-primary/10 border-b border-primary/20">
+        <div className="container mx-auto px-4 py-2">
+          <div className="flex items-center justify-center gap-2">
+            <img src={apexIcon} alt="Apex" className="h-5 w-5" />
+            <span className="font-bold text-sm tracking-wide bg-gradient-to-r from-primary to-emerald-400 bg-clip-text text-transparent">
+              APEX FINANCIAL
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* Modern Header */}
       <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
         <div className="container mx-auto px-4 py-3">

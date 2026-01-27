@@ -1,9 +1,12 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Download, Smartphone, Check, Share, Plus, MoreVertical, Crown } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Input } from "@/components/ui/input";
+import { Download, Smartphone, Check, Share, Plus, MoreVertical, Crown, Mail, Loader2 } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -11,12 +14,33 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export default function Install() {
+  const navigate = useNavigate();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [isAndroid, setIsAndroid] = useState(false);
+  const [email, setEmail] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
+    // Check if user is already logged in
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        navigate("/agent-portal", { replace: true });
+        return;
+      }
+      setCheckingAuth(false);
+    };
+    checkAuth();
+
+    // Check for stored email
+    const storedEmail = localStorage.getItem("apex_agent_email");
+    if (storedEmail) {
+      setEmail(storedEmail);
+    }
+
     // Check if already installed
     if (window.matchMedia("(display-mode: standalone)").matches) {
       setIsInstalled(true);
@@ -47,7 +71,7 @@ export default function Install() {
     return () => {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstall);
     };
-  }, []);
+  }, [navigate]);
 
   const handleInstall = async () => {
     if (!deferredPrompt) return;
@@ -60,6 +84,46 @@ export default function Install() {
     }
     setDeferredPrompt(null);
   };
+
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) {
+      toast.error("Please enter your email");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // Store email for future auto-login
+      localStorage.setItem("apex_agent_email", email.trim().toLowerCase());
+
+      // Call simple-login to send magic link
+      const { data, error } = await supabase.functions.invoke("simple-login", {
+        body: { identifier: email.trim().toLowerCase() }
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast.success("Login link sent! Check your email.");
+      } else {
+        toast.error(data?.error || "Could not send login link");
+      }
+    } catch (err: any) {
+      console.error("Login error:", err);
+      toast.error("Failed to send login link");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -77,157 +141,94 @@ export default function Install() {
             </div>
             <CardTitle className="text-2xl gradient-text">APEX Numbers</CardTitle>
             <CardDescription>
-              Install the app for the best experience
+              Enter your email to access your portal
             </CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-6">
+            {/* Email Login Form */}
+            <form onSubmit={handleEmailLogin} className="space-y-4">
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input
+                  type="email"
+                  placeholder="your@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-10 h-12 text-base"
+                  autoComplete="email"
+                  autoFocus
+                />
+              </div>
+              <Button 
+                type="submit" 
+                className="w-full h-12 text-base font-semibold"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Sending link...
+                  </>
+                ) : (
+                  "Send Login Link"
+                )}
+              </Button>
+            </form>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">
+                  Install for quick access
+                </span>
+              </div>
+            </div>
+
             {isInstalled ? (
-              <div className="text-center space-y-4">
-                <div className="w-16 h-16 mx-auto rounded-full bg-primary/20 flex items-center justify-center">
-                  <Check className="w-8 h-8 text-primary" />
+              <div className="text-center space-y-3">
+                <div className="w-12 h-12 mx-auto rounded-full bg-primary/20 flex items-center justify-center">
+                  <Check className="w-6 h-6 text-primary" />
                 </div>
-                <p className="text-muted-foreground">
-                  App is already installed! Open it from your home screen.
+                <p className="text-sm text-muted-foreground">
+                  App installed! Open from home screen.
                 </p>
-                <Link to="/agent-portal">
-                  <Button className="w-full">
-                    Go to Portal
-                  </Button>
-                </Link>
               </div>
             ) : deferredPrompt ? (
-              // Android/Chrome install prompt available
-              <div className="space-y-4">
-                <Button onClick={handleInstall} className="w-full gap-2" size="lg">
-                  <Download className="w-5 h-5" />
-                  Install App
-                </Button>
-                <p className="text-sm text-muted-foreground text-center">
-                  One tap to add to your home screen
-                </p>
-              </div>
+              <Button onClick={handleInstall} variant="outline" className="w-full gap-2">
+                <Download className="w-4 h-4" />
+                Add to Home Screen
+              </Button>
             ) : isIOS ? (
-              // iOS instructions
-              <div className="space-y-4">
-                <div className="text-center mb-4">
-                  <Smartphone className="w-12 h-12 mx-auto text-primary mb-2" />
-                  <p className="font-medium">Install on iPhone/iPad</p>
-                </div>
-                
-                <div className="space-y-3 text-sm">
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                      <Share className="w-4 h-4 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium">1. Tap Share</p>
-                      <p className="text-muted-foreground">
-                        Tap the share button at the bottom of Safari
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                      <Plus className="w-4 h-4 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium">2. Add to Home Screen</p>
-                      <p className="text-muted-foreground">
-                        Scroll down and tap "Add to Home Screen"
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                      <Check className="w-4 h-4 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium">3. Confirm</p>
-                      <p className="text-muted-foreground">
-                        Tap "Add" in the top right corner
-                      </p>
-                    </div>
-                  </div>
+              <div className="space-y-3 text-sm">
+                <p className="text-center font-medium text-muted-foreground">
+                  <Smartphone className="w-4 h-4 inline mr-1" />
+                  Install on iPhone
+                </p>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Share className="w-4 h-4 shrink-0" />
+                  <span>Tap Share → Add to Home Screen</span>
                 </div>
               </div>
             ) : isAndroid ? (
-              // Android Chrome menu instructions
-              <div className="space-y-4">
-                <div className="text-center mb-4">
-                  <Smartphone className="w-12 h-12 mx-auto text-primary mb-2" />
-                  <p className="font-medium">Install on Android</p>
-                </div>
-                
-                <div className="space-y-3 text-sm">
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                      <MoreVertical className="w-4 h-4 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium">1. Open Menu</p>
-                      <p className="text-muted-foreground">
-                        Tap the three dots in Chrome's top right
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                      <Download className="w-4 h-4 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium">2. Install App</p>
-                      <p className="text-muted-foreground">
-                        Tap "Install app" or "Add to Home Screen"
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                      <Check className="w-4 h-4 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium">3. Confirm</p>
-                      <p className="text-muted-foreground">
-                        Tap "Install" to add the app
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              // Desktop/unknown browser
-              <div className="text-center space-y-4">
-                <Smartphone className="w-12 h-12 mx-auto text-muted-foreground" />
-                <p className="text-muted-foreground">
-                  Visit this page on your mobile device to install the app
+              <div className="space-y-3 text-sm">
+                <p className="text-center font-medium text-muted-foreground">
+                  <Smartphone className="w-4 h-4 inline mr-1" />
+                  Install on Android
                 </p>
-                <Link to="/agent-portal">
-                  <Button variant="outline" className="w-full">
-                    Continue to Portal
-                  </Button>
-                </Link>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <MoreVertical className="w-4 h-4 shrink-0" />
+                  <span>Tap menu → Install app</span>
+                </div>
               </div>
-            )}
-
-            {!isInstalled && (
-              <div className="pt-4 border-t border-border">
-                <Link to="/agent-portal">
-                  <Button variant="ghost" className="w-full text-muted-foreground">
-                    Skip for now
-                  </Button>
-                </Link>
-              </div>
-            )}
+            ) : null}
           </CardContent>
         </Card>
 
         <p className="text-center text-xs text-muted-foreground mt-4">
-          Works offline • Fast loading • Home screen access
+          Works offline • Fast loading • One-tap access
         </p>
       </motion.div>
     </div>

@@ -361,8 +361,8 @@ export default function LogNumbers() {
         className="w-full max-w-lg"
       >
         <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold gradient-text">Log Your Numbers</h1>
-          <p className="text-muted-foreground mt-1">Quick entry for daily production</p>
+          <h1 className="text-3xl font-bold gradient-text">Apex Daily Numbers</h1>
+          <p className="text-muted-foreground mt-1">Daily production entry</p>
         </div>
 
         <AnimatePresence mode="wait">

@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { CompactProductionEntry } from "@/components/dashboard/CompactProductionEntry";
 import { CompactLeaderboard } from "@/components/dashboard/CompactLeaderboard";
+import { AgentRankBadge } from "@/components/dashboard/AgentRankBadge";
 import { cn } from "@/lib/utils";
 
 export default function Numbers() {
@@ -199,9 +200,12 @@ export default function Numbers() {
             <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-emerald-400 bg-clip-text text-transparent">
               APEX Daily Numbers
             </h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Welcome, {agentName}
-            </p>
+            <div className="flex items-center justify-center gap-2 mt-0.5">
+              <p className="text-xs text-muted-foreground">
+                Welcome, {agentName}
+              </p>
+              <AgentRankBadge agentId={agentId} size="sm" />
+            </div>
           </motion.div>
 
           {/* Stat Entry */}

@@ -22,7 +22,7 @@ const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
 
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
-const DASHBOARD_URL = "https://rebuild-brighten-sparkle.lovable.app";
+const DASHBOARD_URL = "https://apex-financial.org";
 
 // Sanitize string for HTML output
 function sanitizeHtml(str: string | null | undefined): string {

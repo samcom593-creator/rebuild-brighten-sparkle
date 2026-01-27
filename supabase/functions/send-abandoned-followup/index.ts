@@ -22,7 +22,7 @@ const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
 
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
-const APPLY_URL = "https://rebuild-brighten-sparkle.lovable.app/apply";
+const APPLY_URL = "https://apex-financial.org/apply";
 const CALENDLY_URL = "https://calendly.com/sam-com593/licensed-prospect-call-clone";
 
 function sanitizeHtml(str: string | null | undefined): string {

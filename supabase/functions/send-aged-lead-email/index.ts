@@ -51,21 +51,21 @@ const getEmailHtml = (firstName: string) => `
       
       <!-- CTA Buttons -->
       <div style="text-align:center;margin:32px 0;">
-        <a href="https://rebuild-brighten-sparkle.lovable.app/apply" 
+        <a href="https://apex-financial.org/apply" 
            style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#ffffff;padding:16px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;margin:8px;">
           Apply Now
         </a>
       </div>
       
       <div style="text-align:center;margin:20px 0;">
-        <a href="https://rebuild-brighten-sparkle.lovable.app" 
+        <a href="https://apex-financial.org" 
            style="display:inline-block;color:#14b8a6;padding:12px 24px;text-decoration:none;border:1px solid #14b8a6;border-radius:8px;font-weight:bold;font-size:14px;margin:8px;">
           Learn More About Us
         </a>
       </div>
       
       <div style="text-align:center;margin:20px 0;">
-        <a href="https://rebuild-brighten-sparkle.lovable.app/schedule-call" 
+        <a href="https://apex-financial.org/schedule-call"
            style="display:inline-block;color:#ffffff;padding:12px 24px;text-decoration:none;border:1px solid rgba(255,255,255,0.3);border-radius:8px;font-size:14px;margin:8px;">
           📞 Schedule a Call
         </a>
@@ -79,7 +79,7 @@ const getEmailHtml = (firstName: string) => `
     
     <p style="font-size:12px;color:#6b7280;text-align:center;margin-top:32px;">
       © ${new Date().getFullYear()} Apex Financial. All rights reserved.<br>
-      <a href="https://rebuild-brighten-sparkle.lovable.app" style="color:#6b7280;">Visit our website</a>
+      <a href="https://apex-financial.org" style="color:#6b7280;">Visit our website</a>
     </p>
   </div>
 </body>

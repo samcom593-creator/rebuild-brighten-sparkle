@@ -9,7 +9,7 @@ const corsHeaders = {
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const CALENDLY_LINK = "https://calendly.com/sam-com593/licensed-prospect-call-clone-1";
-const DASHBOARD_URL = "https://rebuild-brighten-sparkle.lovable.app";
+const DASHBOARD_URL = "https://apex-financial.org";
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {

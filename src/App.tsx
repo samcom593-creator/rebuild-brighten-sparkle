@@ -29,6 +29,7 @@ import PendingApproval from "./pages/PendingApproval";
 import NotFound from "./pages/NotFound";
 import AgentPortal from "./pages/AgentPortal";
 import OnboardingCourse from "./pages/OnboardingCourse";
+import MagicLogin from "./pages/MagicLogin";
 
 const queryClient = new QueryClient();
 
@@ -59,6 +60,7 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/join" element={<AgentSignup />} />
+          <Route path="/magic-login" element={<MagicLogin />} />
           <Route path="/schedule-call" element={<ScheduleCall />} />
           <Route path="/pending-approval" element={<PendingApproval />} />
           <Route

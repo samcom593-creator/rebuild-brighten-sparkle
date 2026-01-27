@@ -147,3 +147,9 @@ verify_jwt = false
 
 [functions.send-bulk-portal-logins]
 verify_jwt = false
+
+[functions.generate-magic-link]
+verify_jwt = false
+
+[functions.verify-magic-link]
+verify_jwt = false

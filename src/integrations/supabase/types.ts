@@ -1060,6 +1060,47 @@ export type Database = {
         }
         Relationships: []
       }
+      magic_login_tokens: {
+        Row: {
+          agent_id: string
+          created_at: string | null
+          destination: string | null
+          email: string
+          expires_at: string | null
+          id: string
+          token: string
+          used_at: string | null
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string | null
+          destination?: string | null
+          email: string
+          expires_at?: string | null
+          id?: string
+          token: string
+          used_at?: string | null
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string | null
+          destination?: string | null
+          email?: string
+          expires_at?: string | null
+          id?: string
+          token?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "magic_login_tokens_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       manager_invite_links: {
         Row: {
           created_at: string

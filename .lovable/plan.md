@@ -1,203 +1,115 @@
 
+# Fix Leaderboard Unknown Agents & Add Inline Edit/Merge
 
-# Automated Plaque Recognition System
+## Problem Summary
 
-## Overview
-
-Create a fully automated, nightly plaque distribution system that triggers recognition for:
-1. **Daily Production Plaques** - Bronze ($1K+), Gold ($3K+), Platinum ($5K+)
-2. **Weekly Diamond Plaques** - $10K+ weekly production
-3. **Monthly Elite Plaques** - $25K+ monthly production
-4. **Recruiting Plaques** - Hiring milestones (3+ or 5+ contracted in a day)
-5. **Streak Plaques** - Multi-day deal streaks (5-day, 10-day, etc.)
-6. **Comeback Champion** - Biggest improvement week-over-week
+1. **12 agents have production data but show as "Unknown Agent"** because they have no `user_id` linked to a profile
+2. **Builders can't see your name** on the Building leaderboard due to RLS policy restrictions
+3. **No way to edit agent names** or merge records directly from the leaderboard
+4. **SMS notifications require Twilio** which is not yet configured
 
 ---
 
-## Current State
+## Solution Overview
 
-| Component | Status | Notes |
-|-----------|--------|-------|
-| `send-plaque-recognition` | Exists | Sends Bronze, Gold, Weekly, Monthly plaques |
-| `check-weekly-milestones` | Exists | Checks $10K+ weekly (not scheduled) |
-| `check-monthly-milestones` | Exists | Checks $25K+ monthly (not scheduled) |
-| Daily plaque check | Missing | No automated nightly check |
-| Recruiting plaques | Missing | No hiring milestone recognition |
-| Streak detection | Missing | No streak tracking for plaques |
+### 1. Add `display_name` Column to Agents Table
 
-**Existing Cron Jobs** (17 total):
-- No plaque-related cron jobs currently scheduled
+Store names directly on the agents table as a fallback when no profile exists.
 
----
-
-## Implementation Plan
-
-### 1. Create New Edge Function: `check-daily-plaques`
-
-**Purpose**: Run nightly at 11:00 PM CST to distribute that day's production plaques
-
-**File**: `supabase/functions/check-daily-plaques/index.ts`
-
-**Logic**:
-```text
-1. Get today's date (CST timezone)
-2. Query all daily_production for today
-3. For each agent with production:
-   - $5,000+ → Platinum Achievement (NEW tier)
-   - $3,000+ → Gold Achievement
-   - $1,000+ → Bronze Achievement
-4. Call send-plaque-recognition for each qualifier
-5. Log results
-```
-
-**Plaque Tiers**:
-| Tier | Threshold | Color | Badge |
-|------|-----------|-------|-------|
-| Bronze | $1,000+ | #CD7F32 | BRONZE ACHIEVEMENT |
-| Gold | $3,000+ | #C9A962 | GOLD ACHIEVEMENT |
-| Platinum | $5,000+ | #E5E4E2 | PLATINUM ACHIEVEMENT |
-
-### 2. Create New Edge Function: `check-recruiting-milestones`
-
-**Purpose**: Run nightly to recognize hiring achievements
-
-**File**: `supabase/functions/check-recruiting-milestones/index.ts`
-
-**Milestone Types**:
-| Achievement | Trigger | Badge |
-|-------------|---------|-------|
-| Recruiter Rising | 3 contracted in one day | RECRUITER RISING |
-| Hiring Champion | 5+ contracted in one day | HIRING CHAMPION |
-| Team Builder | 10+ contracted in one week | TEAM BUILDER |
-
-**Logic**:
-```text
-1. Query applications where contracted_at = today
-2. Group by assigned_agent_id (the recruiter)
-3. For recruiters with 3+ → Recruiter Rising plaque
-4. For recruiters with 5+ → Hiring Champion plaque
-5. Also check weekly: 10+ contracted → Team Builder plaque
-```
-
-### 3. Create New Edge Function: `check-streak-milestones`
-
-**Purpose**: Track consecutive days with deals and reward streaks
-
-**File**: `supabase/functions/check-streak-milestones/index.ts`
-
-**Streak Tiers**:
-| Streak | Days | Badge |
-|--------|------|-------|
-| Hot Streak | 5 consecutive deal days | HOT STREAK |
-| On Fire | 10 consecutive deal days | ON FIRE |
-| Unstoppable | 20 consecutive deal days | UNSTOPPABLE |
-
-**Logic**:
-```text
-1. For each active agent:
-   a. Query daily_production ordered by date DESC
-   b. Count consecutive days where deals_closed > 0
-   c. If streak crosses 5/10/20 threshold today → trigger plaque
-2. Prevent duplicate plaques by checking if streak plaque already sent
-```
-
-### 4. Create New Edge Function: `check-comeback-milestones`
-
-**Purpose**: Weekly check for biggest improvement (week-over-week)
-
-**File**: `supabase/functions/check-comeback-milestones/index.ts`
-
-**Logic**:
-```text
-1. Calculate this week's production per agent
-2. Calculate last week's production per agent
-3. Find agent with biggest $ improvement
-4. If improvement is $3,000+ → Comeback Champion plaque
-```
-
-### 5. Update `send-plaque-recognition` for New Milestone Types
-
-**Add to milestoneType union**:
-```typescript
-milestoneType: 
-  | "single_day_bronze" 
-  | "single_day" 
-  | "single_day_platinum"  // NEW
-  | "weekly" 
-  | "monthly"
-  | "recruiter_rising"     // NEW
-  | "hiring_champion"      // NEW
-  | "team_builder"         // NEW
-  | "hot_streak"           // NEW
-  | "on_fire"              // NEW
-  | "unstoppable"          // NEW
-  | "comeback_champion";   // NEW
-```
-
-**Add milestone details**:
-```typescript
-case "single_day_platinum":
-  return {
-    title: "Platinum Achievement",
-    description: `Elite single-day production of $${amount.toLocaleString()}`,
-    color: "#E5E4E2",  // Platinum silver
-    threshold: "$5,000+",
-    badge: "PLATINUM ACHIEVEMENT",
-  };
-
-case "recruiter_rising":
-  return {
-    title: "Recruiter Rising",
-    description: `Contracted ${amount} agents in a single day`,
-    color: "#22C55E",  // Green
-    threshold: "3+ Hired",
-    badge: "RECRUITER RISING",
-  };
-
-case "hiring_champion":
-  return {
-    title: "Hiring Champion",
-    description: `Exceptional recruiting: ${amount} agents contracted in one day`,
-    color: "#FBBF24",  // Yellow gold
-    threshold: "5+ Hired",
-    badge: "HIRING CHAMPION",
-  };
-
-// ... etc for other types
-```
-
-### 6. Schedule Cron Jobs
-
-**New Cron Jobs to Add**:
-
-| Job Name | Schedule | Time (CST) | Function |
-|----------|----------|------------|----------|
-| check-daily-plaques-11pm | `0 5 * * *` | 11 PM CST | check-daily-plaques |
-| check-weekly-milestones-sat | `0 6 * * 6` | 12 AM CST Sat | check-weekly-milestones |
-| check-monthly-milestones-1st | `0 6 1 * *` | 12 AM 1st | check-monthly-milestones |
-| check-recruiting-milestones | `0 5 * * *` | 11 PM CST | check-recruiting-milestones |
-| check-streak-milestones | `0 5 * * *` | 11 PM CST | check-streak-milestones |
-| check-comeback-weekly | `0 6 * * 0` | 12 AM Sun | check-comeback-milestones |
-
-**Note**: UTC offset for CST is UTC-6, so 11 PM CST = 5 AM UTC
-
-### 7. Add Duplicate Prevention
-
-**Create table**: `plaque_awards` (tracking table)
-
+**Database Migration:**
 ```sql
-CREATE TABLE plaque_awards (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  agent_id UUID NOT NULL,
-  milestone_type TEXT NOT NULL,
-  milestone_date DATE NOT NULL,
-  amount NUMERIC,
-  awarded_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(agent_id, milestone_type, milestone_date)
+ALTER TABLE public.agents 
+ADD COLUMN display_name TEXT;
+```
+
+This allows imported agents (without auth accounts) to have visible names.
+
+---
+
+### 2. Update Leaderboards to Use Fallback Name
+
+Modify the leaderboard components to check for name in this order:
+1. `profiles.full_name` (if user_id exists)
+2. `agents.display_name` (fallback for imported agents)
+3. "Unknown Agent" (last resort)
+
+**Files to modify:**
+- `src/components/dashboard/LeaderboardTabs.tsx`
+- `src/components/dashboard/BuildingLeaderboard.tsx`
+- `src/components/dashboard/LiveLeaderboard.tsx`
+
+---
+
+### 3. Add RLS Policy for Leaderboard Profile Visibility
+
+Allow all authenticated users to see basic profile info for leaderboard display.
+
+**Database Migration:**
+```sql
+CREATE POLICY "Authenticated users can view profile names for leaderboards"
+ON public.profiles FOR SELECT
+USING (auth.uid() IS NOT NULL);
+```
+
+This ensures builders can see your name on leaderboards.
+
+---
+
+### 4. Add Inline Edit/Merge on Leaderboard Rows
+
+Make leaderboard entries clickable to open an edit/merge dialog.
+
+**New Dialog Features:**
+- Edit agent `display_name` directly
+- View matching records (same email, phone, or similar name)
+- Merge with existing agent if duplicate detected
+- Quick "Set Name" for unknown agents
+
+**New Component:** `AgentQuickEditDialog.tsx`
+
+```text
+┌────────────────────────────────────────────┐
+│  Edit Agent: Unknown Agent                 │
+│  ──────────────────────────────────────    │
+│  Display Name: [___________________]       │
+│  Agent ID: 5e9e0bf4...                     │
+│  Total ALP: $6,952 | Deals: 6              │
+│  ──────────────────────────────────────    │
+│  🔍 Possible Matches:                      │
+│  ○ John Smith (john@email.com) - $3,420    │
+│  ○ Jane Doe (jane@email.com) - $1,200      │
+│  ──────────────────────────────────────    │
+│  [ Save Name ]  [ Merge With Selected ]    │
+└────────────────────────────────────────────┘
+```
+
+---
+
+### 5. SMS Notifications (Twilio Setup Required)
+
+To send text messages with schedule updates, Twilio integration is needed:
+
+1. **Twilio Account Required** - Need Account SID, Auth Token, and Phone Number
+2. **New Edge Function:** `send-leaderboard-sms`
+3. **Only send to known contacts** - Skip agents without phone numbers
+
+**Note:** This requires you to provide Twilio credentials. Would you like to set this up?
+
+---
+
+### 6. Fix Daily Leaderboard Email Schedule
+
+The existing `send-daily-leaderboard-summary` function sends emails to managers. Need to verify cron schedule and add it if missing.
+
+**Cron Schedule:** Run daily at 8:00 AM CST (14:00 UTC)
+```sql
+SELECT cron.schedule(
+  'daily-leaderboard-email',
+  '0 14 * * *',
+  -- 8 AM CST = 14:00 UTC
+  ...
 );
 ```
-
-This prevents sending duplicate plaques for the same achievement on the same day.
 
 ---
 
@@ -205,79 +117,44 @@ This prevents sending duplicate plaques for the same achievement on the same day
 
 | File | Purpose |
 |------|---------|
-| `supabase/functions/check-daily-plaques/index.ts` | Nightly daily production check |
-| `supabase/functions/check-recruiting-milestones/index.ts` | Hiring achievement check |
-| `supabase/functions/check-streak-milestones/index.ts` | Consecutive deal day tracking |
-| `supabase/functions/check-comeback-milestones/index.ts` | Week-over-week improvement |
+| `src/components/dashboard/AgentQuickEditDialog.tsx` | Inline edit/merge dialog for leaderboard entries |
+| `supabase/functions/send-leaderboard-sms/index.ts` | SMS notifications (requires Twilio) |
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `supabase/functions/send-plaque-recognition/index.ts` | Add new milestone types and designs |
-| `supabase/config.toml` | Add new function configs |
+| `src/components/dashboard/LeaderboardTabs.tsx` | Add click-to-edit, use display_name fallback |
+| `src/components/dashboard/BuildingLeaderboard.tsx` | Add click-to-edit, use display_name fallback |
+| `src/components/dashboard/LiveLeaderboard.tsx` | Add click-to-edit, use display_name fallback |
+| `src/components/admin/DuplicateMergeTool.tsx` | Include agents with no profile in detection |
 
 ## Database Changes
 
 | Change | Purpose |
 |--------|---------|
-| Create `plaque_awards` table | Track awarded plaques to prevent duplicates |
-| Add cron jobs | Schedule automated checks |
+| Add `display_name` column to `agents` | Fallback name for imported agents |
+| Add RLS policy on `profiles` | Allow leaderboard name visibility |
+| Schedule daily email cron | Automate 8 AM leaderboard emails |
 
 ---
 
-## Plaque Recognition Matrix
+## Implementation Order
 
-### Production Plaques (Daily)
-| Achievement | Threshold | Frequency |
-|-------------|-----------|-----------|
-| Bronze | $1,000/day | Nightly 11 PM |
-| Gold | $3,000/day | Nightly 11 PM |
-| Platinum | $5,000/day | Nightly 11 PM |
-
-### Production Plaques (Weekly/Monthly)
-| Achievement | Threshold | Frequency |
-|-------------|-----------|-----------|
-| Weekly Diamond | $10,000/week | Saturday midnight |
-| Monthly Elite | $25,000/month | 1st of month |
-
-### Recruiting Plaques
-| Achievement | Threshold | Frequency |
-|-------------|-----------|-----------|
-| Recruiter Rising | 3 hires/day | Nightly 11 PM |
-| Hiring Champion | 5 hires/day | Nightly 11 PM |
-| Team Builder | 10 hires/week | Saturday midnight |
-
-### Performance Plaques
-| Achievement | Threshold | Frequency |
-|-------------|-----------|-----------|
-| Hot Streak | 5 consecutive deal days | Nightly |
-| On Fire | 10 consecutive deal days | Nightly |
-| Unstoppable | 20 consecutive deal days | Nightly |
-| Comeback Champion | Biggest weekly improvement ($3K+) | Sunday midnight |
+1. **Database changes** - Add column and RLS policy
+2. **Update leaderboard queries** - Use display_name fallback
+3. **Create AgentQuickEditDialog** - Enable inline editing
+4. **Add click handlers** - Make leaderboard rows interactive
+5. **Schedule cron job** - Automate daily emails
+6. **Twilio setup** (optional) - If you provide credentials
 
 ---
 
-## Email Design Consistency
+## Expected Result
 
-All plaques follow the existing institutional design:
-- Dark background (#0a0a0a)
-- Playfair Display for headers
-- Inter for body text
-- Color-coded by achievement tier
-- Clean, hedge-fund aesthetic
-
----
-
-## Summary
-
-This system will:
-1. **Automatically** send daily production plaques every night at 11 PM CST
-2. **Track hiring milestones** and recognize top recruiters
-3. **Celebrate deal streaks** with escalating achievements
-4. **Highlight comebacks** with weekly improvement awards
-5. **Prevent duplicates** with a tracking table
-6. **Run on schedule** with no manual intervention needed
-
-Once implemented, you'll never need to manually trigger plaques again - the system handles everything automatically based on production data.
-
+After implementation:
+- All agents show names on leaderboards (no more "Unknown Agent")
+- You can tap any entry to edit the name or merge with existing records
+- Builders can see your name on the Building leaderboard
+- Daily leaderboard emails go out automatically at 8 AM CST
+- SMS notifications ready once Twilio is configured

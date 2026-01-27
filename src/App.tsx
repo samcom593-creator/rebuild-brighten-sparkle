@@ -36,6 +36,7 @@ import Numbers from "./pages/Numbers";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Disclosures from "./pages/Disclosures";
+import Install from "./pages/Install";
 
 const queryClient = new QueryClient();
 
@@ -163,6 +164,8 @@ const App = () => (
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/disclosures" element={<Disclosures />} />
+          {/* PWA Install page */}
+          <Route path="/install" element={<Install />} />
           {/* Legacy redirect */}
           <Route path="/dashboard/leads" element={<DashboardApplicants />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

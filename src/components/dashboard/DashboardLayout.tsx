@@ -38,6 +38,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   // Memoize nav items to prevent unnecessary re-renders
   const navItems = useMemo(() => [
     { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
+    ...(isAdmin ? [
+      { icon: Crown, label: "Command Center", href: "/dashboard/command" },
+    ] : []),
     { icon: Users, label: "Applicants", href: "/dashboard/applicants" },
     ...(isAdmin || isManager ? [
       { icon: BarChart3, label: "Agent Portal", href: "/agent-portal" },

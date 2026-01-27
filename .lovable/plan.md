@@ -1,123 +1,129 @@
 
-# Collapsible Sidebar with Full-Screen Toggle
+# Enhanced Duplicate Merge Tool: Email + Phone + Name Detection
 
-## What You're Getting
+## What You Need
 
-A persistent arrow/chevron button on the sidebar that:
-- **Collapses** the sidebar to give you full-screen content on any page
-- **Expands** it back when you need navigation
-- Works smoothly with animation
-- Remembers your preference (localStorage)
+The Duplicate Merge Tool should detect and merge agent records that share:
+1. **Same Email** (already works)
+2. **Same Phone Number** (NEW)
+3. **Same Name** (already works)
 
----
-
-## Current State
-
-The sidebar is:
-- **Fixed at 256px (w-64)** on desktop
-- **Only slides in/out on mobile** via hamburger menu
-- **No way to collapse on desktop** - always takes up screen space
+This ensures all duplicate contact info across the entire system gets consolidated.
 
 ---
 
-## Implementation
+## Current Duplicates in System
 
-### Visual Design
-
-```text
-EXPANDED (Current):                    COLLAPSED (New):
-+----------+-------------------+       +---+------------------------+
-| [Logo]   |                   |       |   |                        |
-| -------- |                   |       |[<]|     FULL SCREEN        |
-| [<] Nav  |    CONTENT        |       |   |       CONTENT          |
-| Items    |                   |       +---+------------------------+
-|          |                   |
-+----------+-------------------+
-     ^
-     |
-  Collapse arrow
-```
-
-### Collapse Button Placement
-
-A small chevron button positioned at:
-- **Bottom of the sidebar header** (next to APEX Financial logo)
-- Or as a **floating edge button** on the sidebar's right border
-
-When collapsed:
-- Sidebar shrinks to ~56px (icon-only mode) OR hides completely
-- A small expand arrow appears at the left edge
-- Main content expands to full width
+| Match Type | Agent 1 | Agent 2 | Matching Value |
+|------------|---------|---------|----------------|
+| Phone | KJ Vaughns ($0) | KJ TestV ($0) | 6015404885 |
+| Name | Joseph Sebasco ($4,640) | Joseph Sebasco ($0) | Same name |
 
 ---
 
-## Technical Changes
+## Current Tool Limitations
 
-### File: `src/components/dashboard/DashboardLayout.tsx`
+1. **No phone matching** - Only checks email and name
+2. **Phone not displayed** - Even if matched, you can't see phone in the UI
+3. **No profile query for phone** - The query doesn't fetch phone field
 
-**Add:**
-1. New state: `sidebarCollapsed` (boolean)
-2. Toggle button with `ChevronLeft` / `ChevronRight` icons
-3. Dynamic width classes: `w-64` (expanded) vs `w-14` (collapsed)
-4. Conditional text hiding when collapsed (icons only)
-5. Animated transitions for smooth expand/collapse
-6. LocalStorage persistence for user preference
+---
 
-**Behavior:**
-- When collapsed on desktop: show only icons, hide text labels
-- MiniLeaderboard hidden when collapsed
-- User info section condensed to just avatar
-- Keyboard shortcut: `Ctrl/Cmd + B` to toggle
+## Implementation Changes
 
-### Layout Changes
+### File: `src/components/admin/DuplicateMergeTool.tsx`
 
+**Changes:**
+
+1. **Update `DuplicateGroup` interface** to include `"phone"` as a matchType:
 ```typescript
-// Current
-<aside className="w-64 ...">
-
-// New
-<aside className={cn(
-  "transition-all duration-300",
-  sidebarCollapsed ? "w-14" : "w-64"
-)}>
+matchType: "email" | "name" | "phone";
 ```
 
-### Main Content Adjustment
-
+2. **Update agent interface** to include phone:
 ```typescript
-// Current
-<main className="lg:pl-64 ...">
+agents: Array<{
+  id: string;
+  profileId: string | null;
+  fullName: string;
+  email: string | null;
+  phone: string | null;  // NEW
+  totalAlp: number;
+  totalDeals: number;
+}>;
+```
 
-// New  
-<main className={cn(
-  "transition-all duration-300",
-  sidebarCollapsed ? "lg:pl-14" : "lg:pl-64"
-)}>
+3. **Update the Supabase query** to fetch phone from profiles:
+```typescript
+profiles!agents_profile_id_fkey (
+  id,
+  full_name,
+  email,
+  phone  // ADD THIS
+)
+```
+
+4. **Add phone-based duplicate detection** after email detection:
+```typescript
+// Detect duplicates by phone
+const phoneGroups = new Map<string, typeof agentList>();
+agentList.forEach((agent) => {
+  if (agent.phone && agent.phone.trim()) {
+    // Normalize phone: remove non-digits
+    const normalizedPhone = agent.phone.replace(/\D/g, "");
+    if (normalizedPhone.length >= 10) {
+      const group = phoneGroups.get(normalizedPhone) || [];
+      group.push(agent);
+      phoneGroups.set(normalizedPhone, group);
+    }
+  }
+});
+
+// Add phone duplicates to groups
+phoneGroups.forEach((group, phone) => {
+  if (group.length > 1) {
+    const ids = group.map((a) => a.id).sort().join(",");
+    if (!seenIds.has(ids)) {
+      seenIds.add(ids);
+      duplicateGroups.push({
+        key: phone,
+        matchType: "phone",
+        agents: group,
+      });
+    }
+  }
+});
+```
+
+5. **Update UI to show phone** in agent cards:
+```typescript
+<p className="text-xs text-muted-foreground truncate">
+  {agent.email || "No email"} 
+  {agent.phone && ` • ${agent.phone}`}
+  • ID: {agent.id.slice(0, 8)}...
+</p>
+```
+
+6. **Update Badge display** for phone matches:
+```typescript
+<Badge variant="outline">
+  {group.matchType === "email" 
+    ? "Same Email" 
+    : group.matchType === "phone" 
+      ? "Same Phone" 
+      : "Same Name"}
+</Badge>
 ```
 
 ---
 
-## Collapsed State Details
+## Detection Priority Order
 
-| Element | Expanded | Collapsed |
-|---------|----------|-----------|
-| Logo | "APEX Financial" | Crown icon only |
-| Nav Items | Icon + Label | Icon only (with tooltip) |
-| MiniLeaderboard | Visible | Hidden |
-| User Info | Name + Email | Avatar only |
-| Theme Toggle | Visible | Hidden |
-| Sign Out | Text + Icon | Icon only |
-| Collapse Button | `«` arrow | `»` arrow |
+1. **Email** - Highest confidence (unique identifier)
+2. **Phone** - High confidence (personal number)
+3. **Name** - Lower confidence (may have false positives)
 
----
-
-## Interaction Details
-
-1. **Click the arrow** → Sidebar collapses/expands with smooth animation
-2. **Hover on collapsed icons** → Tooltip shows the label (e.g., "Dashboard")
-3. **Keyboard shortcut** → `Ctrl+B` / `Cmd+B` toggles sidebar
-4. **Persistence** → State saved to localStorage, restored on page load
-5. **Mobile unchanged** → Hamburger menu still works as before
+If agents are already grouped by email, they won't be re-grouped by phone or name (prevents duplicates in the list).
 
 ---
 
@@ -125,11 +131,23 @@ When collapsed:
 
 | File | Changes |
 |------|---------|
-| `src/components/dashboard/DashboardLayout.tsx` | Add collapse state, toggle button, dynamic widths, tooltips |
-| `src/components/dashboard/MiniLeaderboard.tsx` | Add `collapsed` prop to hide when sidebar is collapsed |
+| `src/components/admin/DuplicateMergeTool.tsx` | Add phone to interface, query, detection logic, and UI display |
+
+---
+
+## Expected Result After Implementation
+
+The Duplicate Merge Tool will show:
+
+| Duplicate Group | Type | Action |
+|-----------------|------|--------|
+| KJ Vaughns + KJ TestV | Same Phone | Select primary → Merge |
+| Joseph Sebasco (x2) | Same Name | Select primary → Merge |
+
+With phone numbers visible in each agent card for easy verification.
 
 ---
 
 ## Summary
 
-This gives you the ability to push the sidebar in on any screen (Dashboard, Command Center, CRM, etc.) for maximum content space, while keeping the navigation always accessible via a single click or keyboard shortcut.
+This enhancement adds phone number matching to catch duplicates that the email/name detection misses, giving you complete coverage for merging all duplicate records across the system.

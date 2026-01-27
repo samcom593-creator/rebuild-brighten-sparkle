@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Resend } from "npm:resend@2.0.0";
+import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -86,7 +86,7 @@ serve(async (req) => {
       .eq("id", championId)
       .maybeSingle();
 
-    if (champError || !champion?.profile?.full_name) {
+    if (champError || !(champion as any)?.profile?.full_name) {
       console.error("Could not find champion profile");
       return new Response(
         JSON.stringify({ success: true, alert_sent: false, reason: "champion not found" }),
@@ -94,7 +94,7 @@ serve(async (req) => {
       );
     }
 
-    const championName = champion.profile.full_name;
+    const championName = (champion as any).profile.full_name;
     const closeRate = championStats.presentations > 0 
       ? Math.round((championStats.deals / championStats.presentations) * 100) 
       : 0;
@@ -112,8 +112,8 @@ serve(async (req) => {
     if (agentsError) throw agentsError;
 
     const recipients = agents
-      ?.filter(a => a.profile?.email)
-      .map(a => a.profile?.email)
+      ?.filter((a: any) => a.profile?.email)
+      .map((a: any) => a.profile?.email)
       .filter(Boolean) as string[];
 
     if (recipients.length === 0) {
@@ -131,7 +131,7 @@ serve(async (req) => {
         .eq("id", agentId)
         .maybeSingle();
       
-      const name = agent?.profile?.full_name || "Unknown";
+      const name = (agent as any)?.profile?.full_name || "Unknown";
       const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : "🥉";
       
       return `
@@ -268,7 +268,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error in notify-weekly-champion:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

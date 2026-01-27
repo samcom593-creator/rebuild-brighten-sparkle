@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Resend } from "npm:resend@2.0.0";
+import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -38,7 +38,7 @@ serve(async (req) => {
         id,
         is_deactivated,
         is_inactive,
-        profile:profiles!agents_profile_id_fkey(email, full_name)
+        user_id
       `)
       .eq("is_deactivated", false)
       .eq("is_inactive", false);
@@ -48,10 +48,22 @@ serve(async (req) => {
       throw agentsError;
     }
 
+    // Get profiles for these agents
+    const userIds = agents?.map(a => a.user_id).filter(Boolean) || [];
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("user_id, email, full_name")
+      .in("user_id", userIds);
+
+    const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
+
     // Filter to get valid emails
     const recipients = agents
-      ?.filter(a => a.profile?.email && a.id !== agentId) // Don't send to the person who closed
-      .map(a => a.profile?.email)
+      ?.filter(a => {
+        const profile = profileMap.get(a.user_id);
+        return profile?.email && a.id !== agentId;
+      })
+      .map(a => profileMap.get(a.user_id)?.email)
       .filter(Boolean) as string[];
 
     console.log(`📧 Sending deal alert to ${recipients.length} agents`);
@@ -181,7 +193,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("Error in notify-deal-alert:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

@@ -38,6 +38,7 @@ import { LeadImporter } from "@/components/dashboard/LeadImporter";
 import { BulkLeadAssignment } from "@/components/dashboard/BulkLeadAssignment";
 import { AbandonedLeadsPanel } from "@/components/dashboard/AbandonedLeadsPanel";
 import { AllLeadsPanel } from "@/components/dashboard/AllLeadsPanel";
+import { QuizQuestionsAdmin } from "@/components/dashboard/QuizQuestionsAdmin";
 import { TerminatedAgentLeadsPanel } from "@/components/dashboard/TerminatedAgentLeadsPanel";
 import {
   Table,
@@ -821,6 +822,16 @@ export default function DashboardAdmin() {
         className="mb-8"
       >
         <BulkLeadAssignment />
+      </motion.div>
+
+      {/* Quiz Questions Manager */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.42 }}
+        className="mb-8"
+      >
+        <QuizQuestionsAdmin />
       </motion.div>
 
       {/* Manager Invite Links & Lead Reassignment */}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Save, Loader2, TrendingUp, DollarSign, Users, Clock, Target, Home, Handshake, Sparkles, ChevronDown } from "lucide-react";
+import { Save, Loader2, TrendingUp, DollarSign, Users, Clock, Target, Home, Handshake, Sparkles } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,7 +51,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [allAgentsGrouped, setAllAgentsGrouped] = useState<ManagerGroup[]>([]);
   const [selectedAgentId, setSelectedAgentId] = useState(agentId);
-  const [currentUserName, setCurrentUserName] = useState<string>("Myself");
+  const [currentUserFullName, setCurrentUserFullName] = useState<string>("Myself");
   
   const [formData, setFormData] = useState({
     presentations: existingData?.presentations || 0,
@@ -81,7 +81,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
       setIsAdmin(hasAdminRole || false);
       setIsManager(hasManagerRole || false);
 
-      // Fetch current user's name
+      // Fetch current user's FULL name
       const { data: myProfile } = await supabase
         .from("profiles")
         .select("full_name")
@@ -89,7 +89,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
         .maybeSingle();
       
       if (myProfile?.full_name) {
-        setCurrentUserName(myProfile.full_name.split(" ")[0]);
+        setCurrentUserFullName(myProfile.full_name);
       }
 
       // ADMIN: Fetch ALL agents grouped by manager
@@ -254,9 +254,23 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
       // Trigger confetti celebration!
       setShowConfetti(true);
       
-      const selectedName = selectedAgentId === agentId 
-        ? "Your" 
-        : teamMembers.find(m => m.id === selectedAgentId)?.name + "'s";
+      // Find the selected agent's full name
+      let selectedName = "Your";
+      if (selectedAgentId !== agentId) {
+        const foundInTeam = teamMembers.find(m => m.id === selectedAgentId);
+        if (foundInTeam) {
+          selectedName = foundInTeam.name + "'s";
+        } else {
+          // Search in all agents grouped
+          for (const group of allAgentsGrouped) {
+            const found = group.agents.find(a => a.id === selectedAgentId);
+            if (found) {
+              selectedName = found.name + "'s";
+              break;
+            }
+          }
+        }
+      }
       
       toast.success(
         <div className="flex flex-col gap-1">
@@ -280,14 +294,14 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
   };
 
   const fields = [
-    { key: "presentations", label: "Presentations", icon: Target, type: "number" },
-    { key: "passed_price", label: "Passed Price", icon: DollarSign, type: "number" },
-    { key: "hours_called", label: "Hours Called", icon: Clock, type: "number", step: "0.5" },
-    { key: "referrals_caught", label: "Referrals Caught", icon: Users, type: "number" },
-    { key: "booked_inhome_referrals", label: "Booked In-Home", icon: Home, type: "number" },
-    { key: "referral_presentations", label: "Referral Pres.", icon: Handshake, type: "number" },
-    { key: "deals_closed", label: "Deals Closed", icon: TrendingUp, type: "number" },
-    { key: "aop", label: "ALP ($)", icon: DollarSign, type: "number", step: "0.01", highlight: true },
+    { key: "presentations", label: "Presentations", icon: Target, emoji: "🎯" },
+    { key: "passed_price", label: "Pitched Price", icon: DollarSign, emoji: "💰" },
+    { key: "hours_called", label: "Hours Called", icon: Clock, step: "0.5", emoji: "⏱️" },
+    { key: "referrals_caught", label: "Referrals Caught", icon: Users, emoji: "👥" },
+    { key: "booked_inhome_referrals", label: "Booked In-Home", icon: Home, emoji: "🏠" },
+    { key: "referral_presentations", label: "Referral Pres.", icon: Handshake, emoji: "🤝" },
+    { key: "deals_closed", label: "Deals Closed", icon: TrendingUp, emoji: "📈" },
+    { key: "aop", label: "ALP ($)", icon: DollarSign, step: "0.01", highlight: true, emoji: "💵" },
   ];
 
   const totalValue = Number(formData.aop) || 0;
@@ -304,38 +318,53 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <GlassCard className="p-4 sm:p-6 relative overflow-hidden">
-          {/* Subtle background gradient when has production */}
+        <GlassCard className="p-5 sm:p-8 relative overflow-hidden">
+          {/* Premium background gradient when has production */}
           {hasProduction && (
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-emerald-500/5 pointer-events-none" />
           )}
           
           <div className="relative">
-            <div className="flex items-center justify-between mb-4 gap-2">
-              <h2 className="text-lg font-semibold gradient-text flex items-center gap-2">
-                <Sparkles className="h-5 w-5" />
-                Log Today's Numbers
-              </h2>
+            {/* Header with elite styling */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center h-12 w-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 shadow-lg shadow-primary/10">
+                  <Sparkles className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold bg-gradient-to-r from-primary via-violet-500 to-primary bg-clip-text text-transparent">
+                    Log Today's Numbers
+                  </h2>
+                  <p className="text-xs text-muted-foreground">Enter your daily production stats</p>
+                </div>
+              </div>
               
-              <div className="flex items-center gap-2">
-                {/* Admin: All agents grouped by manager */}
+              <div className="flex items-center gap-3">
+                {/* Admin: All agents grouped by manager with FULL NAMES */}
                 {isAdmin && allAgentsGrouped.length > 0 && (
                   <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
-                    <SelectTrigger className="w-[180px] h-8 text-xs">
+                    <SelectTrigger className="w-[220px] h-10 text-sm border-2 border-primary/20 bg-background/80 backdrop-blur-sm">
                       <SelectValue placeholder="Select agent" />
                     </SelectTrigger>
-                    <SelectContent className="max-h-[300px]">
-                      <SelectItem value={agentId}>
-                        🙋 {currentUserName} (Me)
+                    <SelectContent className="max-h-[400px] min-w-[280px]">
+                      <SelectItem value={agentId} className="py-2.5">
+                        <span className="flex items-center gap-2">
+                          <span className="text-base">🙋</span>
+                          <span className="font-medium">{currentUserFullName}</span>
+                          <span className="text-xs text-muted-foreground">(Me)</span>
+                        </span>
                       </SelectItem>
                       {allAgentsGrouped.map((group) => (
                         <div key={group.managerId || "unassigned"}>
-                          <div className="px-2 py-1.5 text-[10px] font-semibold text-muted-foreground bg-muted/50 sticky top-0">
-                            📋 {group.managerName}'s Team
+                          <div className="px-3 py-2 text-xs font-bold text-primary bg-primary/5 border-y border-primary/10 sticky top-0 backdrop-blur-sm">
+                            📋 Manager: {group.managerName}
                           </div>
                           {group.agents.map((agent) => (
-                            <SelectItem key={agent.id} value={agent.id} className="pl-4">
-                              👤 {agent.name}
+                            <SelectItem key={agent.id} value={agent.id} className="pl-6 py-2">
+                              <span className="flex items-center gap-2">
+                                <span className="text-base">👤</span>
+                                <span>{agent.name}</span>
+                              </span>
                             </SelectItem>
                           ))}
                         </div>
@@ -344,19 +373,26 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
                   </Select>
                 )}
                 
-                {/* Manager: Just their team */}
+                {/* Manager: Just their team with FULL NAMES */}
                 {!isAdmin && isManager && teamMembers.length > 0 && (
                   <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
-                    <SelectTrigger className="w-[160px] h-8 text-xs">
+                    <SelectTrigger className="w-[200px] h-10 text-sm border-2 border-primary/20">
                       <SelectValue placeholder="Select agent" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={agentId}>
-                        🙋 {currentUserName} (Me)
+                    <SelectContent className="min-w-[240px]">
+                      <SelectItem value={agentId} className="py-2.5">
+                        <span className="flex items-center gap-2">
+                          <span className="text-base">🙋</span>
+                          <span className="font-medium">{currentUserFullName}</span>
+                          <span className="text-xs text-muted-foreground">(Me)</span>
+                        </span>
                       </SelectItem>
                       {teamMembers.map((member) => (
-                        <SelectItem key={member.id} value={member.id}>
-                          👤 {member.name}
+                        <SelectItem key={member.id} value={member.id} className="py-2">
+                          <span className="flex items-center gap-2">
+                            <span className="text-base">👤</span>
+                            <span>{member.name}</span>
+                          </span>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -364,19 +400,20 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
                 )}
                 
                 {hasProduction && (
-                  <motion.span
+                  <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    className="text-xs px-2 py-1 bg-primary/20 text-primary rounded-full font-medium"
+                    className="px-4 py-2 bg-gradient-to-r from-primary/20 to-emerald-500/20 border border-primary/30 rounded-xl font-bold text-primary shadow-lg shadow-primary/10"
                   >
                     ${totalValue.toLocaleString()} ALP
-                  </motion.span>
+                  </motion.div>
                 )}
               </div>
             </div>
             
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Premium Card-Style Input Grid */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {fields.map((field, index) => {
                   const Icon = field.icon;
                   const value = formData[field.key as keyof typeof formData];
@@ -387,62 +424,89 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
                       key={field.key}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.03 }}
+                      transition={{ delay: index * 0.04 }}
                       className={cn(
-                        "relative",
-                        field.highlight && "sm:col-span-2"
+                        field.highlight && "lg:col-span-2"
                       )}
                     >
-                      <Label 
-                        htmlFor={field.key} 
-                        className="text-xs text-muted-foreground flex items-center gap-1 mb-1"
-                      >
-                        <Icon className={cn(
-                          "h-3 w-3",
-                          hasValue && "text-primary"
-                        )} />
-                        {field.label}
-                      </Label>
-                      <Input
-                        id={field.key}
-                        type={field.type}
-                        step={field.step}
-                        min="0"
-                        value={value}
-                        onChange={(e) => setFormData(prev => ({
-                          ...prev,
-                          [field.key]: field.step ? parseFloat(e.target.value) || 0 : parseInt(e.target.value) || 0
-                        }))}
+                      <div 
                         className={cn(
-                          "h-12 text-lg font-bold text-center transition-all duration-200",
-                          hasValue && "border-primary/50 bg-primary/5 shadow-[0_0_10px_rgba(20,184,166,0.1)]",
-                          field.highlight && hasValue && "text-xl text-primary"
+                          "relative p-4 rounded-xl border-2 transition-all duration-300",
+                          "bg-gradient-to-br from-background to-muted/30",
+                          "hover:border-primary/30 hover:shadow-md",
+                          hasValue && "border-primary/50 bg-primary/5 shadow-lg shadow-primary/10",
+                          !hasValue && "border-border/50"
                         )}
-                      />
-                      {hasValue && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary"
-                        />
-                      )}
+                      >
+                        <Label 
+                          htmlFor={field.key} 
+                          className="text-[10px] uppercase tracking-wider text-muted-foreground mb-3 block font-semibold"
+                        >
+                          {field.label}
+                        </Label>
+                        
+                        <div className="relative">
+                          <div className={cn(
+                            "absolute left-0 top-1/2 -translate-y-1/2 h-10 w-10 rounded-lg flex items-center justify-center text-xl",
+                            hasValue ? "bg-primary/10" : "bg-muted/50"
+                          )}>
+                            {field.emoji}
+                          </div>
+                          <Input
+                            id={field.key}
+                            type="number"
+                            step={field.step}
+                            min="0"
+                            value={value}
+                            onChange={(e) => setFormData(prev => ({
+                              ...prev,
+                              [field.key]: field.step ? parseFloat(e.target.value) || 0 : parseInt(e.target.value) || 0
+                            }))}
+                            className={cn(
+                              "h-14 text-2xl font-bold text-center pl-12 border-0 bg-transparent focus:ring-0",
+                              hasValue && "text-foreground",
+                              field.highlight && hasValue && "text-3xl text-primary"
+                            )}
+                          />
+                        </div>
+                        
+                        {/* Active indicator dot */}
+                        {hasValue && (
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-primary shadow-lg shadow-primary/50"
+                          />
+                        )}
+                        
+                        {/* Decorative glow */}
+                        {hasValue && (
+                          <div className="absolute -right-2 -bottom-2 h-16 w-16 rounded-full bg-primary/20 blur-xl pointer-events-none" />
+                        )}
+                      </div>
                     </motion.div>
                   );
                 })}
               </div>
 
+              {/* Premium Submit Button */}
               <Button 
                 type="submit" 
-                className="w-full gap-2 h-12 text-base font-semibold" 
+                className={cn(
+                  "w-full gap-3 h-14 text-lg font-bold rounded-xl transition-all duration-300",
+                  "bg-gradient-to-r from-primary via-primary to-emerald-500 hover:from-primary/90 hover:to-emerald-500/90",
+                  "shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30",
+                  hasProduction && "animate-pulse"
+                )}
                 size="lg"
                 disabled={saving}
               >
                 {saving ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <Loader2 className="h-6 w-6 animate-spin" />
                 ) : (
-                  <Save className="h-5 w-5" />
+                  <Save className="h-6 w-6" />
                 )}
-                {saving ? "Saving..." : selectedAgentId === agentId ? "Save Today's Numbers" : "Save Numbers for Team Member"}
+                {saving ? "Saving..." : selectedAgentId === agentId ? "💾 Save Today's Numbers" : `💾 Save Numbers for ${allAgentsGrouped.flatMap(g => g.agents).find(a => a.id === selectedAgentId)?.name || teamMembers.find(m => m.id === selectedAgentId)?.name || "Agent"}`}
               </Button>
             </form>
           </div>

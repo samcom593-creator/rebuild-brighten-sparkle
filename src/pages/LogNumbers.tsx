@@ -348,7 +348,7 @@ export default function LogNumbers() {
 
   const productionFields = [
     { key: "presentations", label: "Presentations", icon: Target },
-    { key: "passed_price", label: "Passed Price", icon: CheckCircle2 },
+    { key: "passed_price", label: "Pitched Price", icon: CheckCircle2 },
     { key: "hours_called", label: "Hours Called", icon: Phone, step: "0.5" },
     { key: "referrals_caught", label: "Referrals Caught", icon: UserPlus },
     { key: "booked_inhome_referrals", label: "Booked In-Home", icon: User },

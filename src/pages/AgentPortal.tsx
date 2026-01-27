@@ -7,7 +7,6 @@ import {
   Calendar, 
   LogOut, 
   Trophy, 
-  TrendingUp, 
   Sparkles, 
   Quote,
   Target,
@@ -15,9 +14,7 @@ import {
   BarChart3,
   Award,
   Zap,
-  Share2,
   Copy,
-  Link,
   UserPlus
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -34,6 +31,7 @@ import { TeamGoalsTracker } from "@/components/dashboard/TeamGoalsTracker";
 import { IncomeGoalTracker } from "@/components/dashboard/IncomeGoalTracker";
 import { PerformanceDashboardSection } from "@/components/dashboard/PerformanceDashboardSection";
 import { WeeklyBadgesCard } from "@/components/dashboard/WeeklyBadges";
+import { YearPerformanceCard } from "@/components/dashboard/YearPerformanceCard";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -406,39 +404,8 @@ export default function AgentPortal() {
           )}
         </AnimatePresence>
 
-        {/* Main Leaderboard */}
-        <AnimatePresence mode="wait">
-          {(activeTab === "leaderboard" || window.innerWidth >= 640) && (
-            <motion.section
-              key="leaderboard"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className={cn(
-                activeTab !== "leaderboard" && "hidden sm:block"
-              )}
-            >
-              <LeaderboardTabs key={`leaderboard-${refreshKey}`} currentAgentId={agentId || undefined} />
-            </motion.section>
-          )}
-        </AnimatePresence>
-
-        {/* Weekly Badges Card */}
-        {agentId && (
-          <motion.section
-            id="weekly-badges"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.32 }}
-          >
-            <WeeklyBadgesCard key={`badges-${refreshKey}`} agentId={agentId} />
-          </motion.section>
-        )}
-
-        {/* Performance Dashboard Navigation - Desktop only */}
-        <div className="hidden sm:block">
-          <PerformanceDashboardSection />
-        </div>
+        {/* Performance Dashboard - Now MORE PROMINENT and always visible */}
+        <PerformanceDashboardSection />
 
         {/* Personal Stats */}
         <AnimatePresence mode="wait">
@@ -462,13 +429,43 @@ export default function AgentPortal() {
           )}
         </AnimatePresence>
 
-        {/* Production History Chart - Desktop only */}
+        {/* Main Leaderboard - Now below Performance Dashboard */}
+        <AnimatePresence mode="wait">
+          {(activeTab === "leaderboard" || window.innerWidth >= 640) && (
+            <motion.section
+              key="leaderboard"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className={cn(
+                activeTab !== "leaderboard" && "hidden sm:block"
+              )}
+            >
+              <LeaderboardTabs key={`leaderboard-${refreshKey}`} currentAgentId={agentId || undefined} />
+            </motion.section>
+          )}
+        </AnimatePresence>
+
+        {/* Year Performance Card - NEW, replaces Weekly Badges position */}
+        {agentId && (
+          <motion.section
+            id="year-performance"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.32 }}
+            className="hidden sm:block"
+          >
+            <YearPerformanceCard key={`year-${refreshKey}`} agentId={agentId} />
+          </motion.section>
+        )}
+
+        {/* Production History Chart */}
         {agentId && (
           <motion.section
             id="production-history"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
+            transition={{ delay: 0.35 }}
             className="hidden sm:block"
           >
             <ProductionHistoryChart key={`history-${refreshKey}`} agentId={agentId} />
@@ -481,7 +478,7 @@ export default function AgentPortal() {
             id="income-goals"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35 }}
+            transition={{ delay: 0.38 }}
             className="hidden sm:block"
           >
             <IncomeGoalTracker key={`income-goal-${refreshKey}`} agentId={agentId} />
@@ -493,7 +490,7 @@ export default function AgentPortal() {
           id="team-goals"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.45 }}
+          transition={{ delay: 0.42 }}
           className="hidden sm:block"
         >
           <TeamGoalsTracker key={`goals-${refreshKey}`} />
@@ -503,7 +500,7 @@ export default function AgentPortal() {
         <motion.section
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
+          transition={{ delay: 0.45 }}
           className="hidden sm:block"
         >
           <div className="grid md:grid-cols-2 gap-4">
@@ -524,7 +521,7 @@ export default function AgentPortal() {
         <motion.section
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.55 }}
+          transition={{ delay: 0.48 }}
           className="grid sm:grid-cols-2 gap-4"
         >
           {/* Agent Referral Link */}
@@ -591,11 +588,24 @@ export default function AgentPortal() {
           </GlassCard>
         </motion.section>
 
+        {/* Weekly Badges Card - MOVED TO BOTTOM */}
+        {agentId && (
+          <motion.section
+            id="weekly-badges"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.52 }}
+            className="hidden sm:block"
+          >
+            <WeeklyBadgesCard key={`badges-${refreshKey}`} agentId={agentId} />
+          </motion.section>
+        )}
+
         {/* Motivational Footer */}
         <motion.section
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
+          transition={{ delay: 0.55 }}
         >
           <GlassCard className="p-6 text-center relative overflow-hidden">
             {/* Gradient background */}

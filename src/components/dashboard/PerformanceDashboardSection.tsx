@@ -86,67 +86,72 @@ export function PerformanceDashboardSection({
     <motion.section
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.3 }}
+      transition={{ delay: 0.2 }}
     >
-      <GlassCard className="p-6">
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-violet-500 text-white shadow-lg shadow-primary/25">
-            <Zap className="h-5 w-5" />
+      <GlassCard className="p-8 relative overflow-hidden">
+        {/* Subtle background gradient for prominence */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-violet-500/5 pointer-events-none" />
+        
+        <div className="relative">
+          {/* Header - Larger */}
+          <div className="flex items-center gap-4 mb-6">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-violet-500 text-white shadow-lg shadow-primary/25">
+              <Zap className="h-6 w-6" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold">Performance Dashboard</h3>
+              <p className="text-sm text-muted-foreground">Track your growth and hit your goals</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-lg font-bold">Performance Dashboard</h3>
-            <p className="text-xs text-muted-foreground">Track your growth and hit your goals</p>
+
+          {/* Feature Cards Grid - Larger */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FeatureCard
+              icon={BarChart3}
+              title="Personal Stats"
+              description="View your benchmarks vs team averages"
+              color="primary"
+              onClick={() => scrollToElement('personal-stats')}
+              delay={0.1}
+            />
+            <FeatureCard
+              icon={Target}
+              title="Income Goals"
+              description="Calculate your path to financial goals"
+              color="amber"
+              onClick={() => scrollToElement('income-goals')}
+              delay={0.15}
+            />
+            <FeatureCard
+              icon={TrendingUp}
+              title="Production History"
+              description="Track your 4-week performance trend"
+              color="emerald"
+              onClick={() => scrollToElement('production-history')}
+              delay={0.2}
+            />
+            <FeatureCard
+              icon={Award}
+              title="Team Goals"
+              description="See how the team is crushing it"
+              color="violet"
+              onClick={() => scrollToElement('team-goals')}
+              delay={0.25}
+            />
           </div>
-        </div>
 
-        {/* Feature Cards Grid */}
-        <div className="grid gap-3 sm:grid-cols-2">
-          <FeatureCard
-            icon={BarChart3}
-            title="Personal Stats"
-            description="View your benchmarks vs team averages"
-            color="primary"
-            onClick={() => scrollToElement('personal-stats')}
-            delay={0.1}
-          />
-          <FeatureCard
-            icon={Target}
-            title="Income Goals"
-            description="Calculate your path to financial goals"
-            color="amber"
-            onClick={() => scrollToElement('income-goals')}
-            delay={0.15}
-          />
-          <FeatureCard
-            icon={TrendingUp}
-            title="Production History"
-            description="Track your 4-week performance trend"
-            color="emerald"
-            onClick={() => scrollToElement('production-history')}
-            delay={0.2}
-          />
-          <FeatureCard
-            icon={Award}
-            title="Team Goals"
-            description="See how the team is crushing it"
-            color="violet"
-            onClick={() => scrollToElement('team-goals')}
-            delay={0.25}
-          />
+          {/* Motivational Tip */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="mt-6 p-4 rounded-xl bg-primary/5 border border-primary/10 text-center"
+          >
+            <p className="text-sm text-muted-foreground">
+              <span className="font-semibold text-primary">Pro Tip:</span> Log your numbers daily to unlock personalized income projections and coaching insights
+            </p>
+          </motion.div>
         </div>
-
-        {/* Motivational Tip */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="mt-5 p-3 rounded-lg bg-primary/5 border border-primary/10 text-center"
-        >
-          <p className="text-xs text-muted-foreground">
-            <span className="font-medium text-primary">Pro Tip:</span> Log your numbers daily to unlock personalized income projections and coaching insights
-          </p>
-        </motion.div>
       </GlassCard>
     </motion.section>
   );

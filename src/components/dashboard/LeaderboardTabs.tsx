@@ -12,8 +12,10 @@ import { RankChangeIndicator } from "./RankChangeIndicator";
 import { BuildingLeaderboard } from "./BuildingLeaderboard";
 import { MyRankingChart } from "./MyRankingChart";
 import { AgentQuickEditDialog } from "./AgentQuickEditDialog";
+import { MobileLeaderboardCard } from "./MobileLeaderboardCard";
 import { useTop3Celebration } from "@/hooks/useTop3Celebration";
 import { useRankChange } from "@/hooks/useRankChange";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { subDays } from "date-fns";
 
@@ -72,6 +74,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<{ id: string; name: string; alp: number; deals: number } | null>(null);
   
+  const isMobile = useIsMobile();
   const { checkForCelebration, resetTracking } = useTop3Celebration({ currentAgentId });
   const { getRankChange } = useRankChange("alp");
 
@@ -361,27 +364,23 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <GlassCard className="p-5">
-          {/* Header - Slightly Larger */}
-          <div className="flex items-center justify-between gap-2 mb-4">
-            <div className="flex items-center gap-2.5">
-              <Trophy className="h-5 w-5 text-amber-400" />
+        <GlassCard className="p-4 sm:p-5">
+          {/* Header - Mobile Optimized */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Trophy className="h-5 w-5 text-amber-400 shrink-0" />
               <h3 className="text-base font-bold">Leaderboard</h3>
               
               {/* Production/Building Toggle Button */}
               <motion.button
                 onClick={() => setLeaderboardMode(mode => mode === "production" ? "building" : "production")}
                 className={cn(
-                  "relative px-3 py-1 rounded-full text-[10px] font-bold transition-all ml-1",
+                  "relative px-3 py-1 rounded-full text-[10px] font-bold transition-all",
                   "bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600",
                   "text-black shadow-md shadow-amber-500/20",
-                  "hover:shadow-amber-500/40",
+                  "hover:shadow-amber-500/40 active:scale-95",
                   "border border-amber-300/50"
                 )}
-                whileHover={{ 
-                  y: [0, -2, 0],
-                  transition: { repeat: Infinity, duration: 0.5 }
-                }}
                 whileTap={{ scale: 0.95 }}
               >
                 <AnimatePresence mode="wait">
@@ -396,12 +395,14 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                     {leaderboardMode === "production" ? (
                       <>
                         <Trophy className="h-3 w-3" />
-                        Production
+                        <span className="hidden xs:inline">Production</span>
+                        <span className="xs:hidden">Prod</span>
                       </>
                     ) : (
                       <>
                         <Building2 className="h-3 w-3" />
-                        Building
+                        <span className="hidden xs:inline">Building</span>
+                        <span className="xs:hidden">Build</span>
                       </>
                     )}
                   </motion.span>
@@ -413,22 +414,26 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                 <span className="text-xs text-muted-foreground">Live</span>
               </div>
               
-              {/* My Rank Button */}
-              <MyRankingChart 
-                currentAgentId={currentAgentId} 
-                entries={entries.map(e => ({
-                  rank: e.rank,
-                  agentId: e.agentId,
-                  name: e.name,
-                  alp: e.alp,
-                  isCurrentUser: e.isCurrentUser,
-                }))} 
-              />
+              {/* My Rank Button - hidden on very small screens */}
+              <div className="hidden sm:block">
+                <MyRankingChart 
+                  currentAgentId={currentAgentId} 
+                  entries={entries.map(e => ({
+                    rank: e.rank,
+                    agentId: e.agentId,
+                    name: e.name,
+                    alp: e.alp,
+                    isCurrentUser: e.isCurrentUser,
+                  }))} 
+                />
+              </div>
             </div>
-            <div className="flex items-center gap-2">
+            
+            {/* Controls Row - Stack on mobile */}
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               {leaderboardMode === "production" && (
                 <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortCategory)}>
-                  <SelectTrigger className="w-[110px] h-8 text-xs bg-background">
+                  <SelectTrigger className="flex-1 sm:flex-none sm:w-[100px] h-8 text-xs bg-background">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-popover">
@@ -439,12 +444,12 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                   </SelectContent>
                 </Select>
               )}
-              <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)} className="w-auto">
-                <TabsList className="h-8 p-0.5">
-                  <TabsTrigger value="day" className="text-xs px-2 h-7">Day</TabsTrigger>
-                  <TabsTrigger value="week" className="text-xs px-2 h-7">Week</TabsTrigger>
-                  <TabsTrigger value="month" className="text-xs px-2 h-7">Month</TabsTrigger>
-                  <TabsTrigger value="all" className="text-xs px-2 h-7">All</TabsTrigger>
+              <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)} className="flex-1 sm:flex-none">
+                <TabsList className="h-8 p-0.5 w-full sm:w-auto grid grid-cols-4 sm:flex">
+                  <TabsTrigger value="day" className="text-[10px] sm:text-xs px-2 h-7">Day</TabsTrigger>
+                  <TabsTrigger value="week" className="text-[10px] sm:text-xs px-2 h-7">Week</TabsTrigger>
+                  <TabsTrigger value="month" className="text-[10px] sm:text-xs px-2 h-7">Mo</TabsTrigger>
+                  <TabsTrigger value="all" className="text-[10px] sm:text-xs px-2 h-7">All</TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>
@@ -461,165 +466,216 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                 transition={{ duration: 0.3 }}
                 style={{ transformStyle: "preserve-3d" }}
               >
-                {/* Table Header - Full labels for clarity */}
-                <div className="grid grid-cols-12 gap-1 px-2 py-2 text-[9px] sm:text-[10px] font-semibold text-muted-foreground border-b border-border/50 mb-1.5">
-                  <div className="col-span-1">#</div>
-                  <div className="col-span-2 sm:col-span-3">Agent</div>
-                  <div className="col-span-1 text-center hidden sm:block">Hours</div>
-                  <div className={cn("col-span-2 sm:col-span-1 text-center", sortBy === "presentations" && "text-primary")}>Pres</div>
-                  <div className={cn("col-span-2 sm:col-span-1 text-center", sortBy === "deals" && "text-primary")}>Closes</div>
-                  <div className="col-span-1 text-center hidden sm:block">Refs</div>
-                  <div className={cn("col-span-2 sm:col-span-1 text-center whitespace-nowrap", sortBy === "closingRate" && "text-primary")}>Close %</div>
-                  <div className={cn("col-span-2 sm:col-span-2 text-right", sortBy === "alp" && "text-primary")}>ALP</div>
-                </div>
-
-          {/* Leaderboard Rows - Slightly Larger */}
-          <div className="space-y-1 max-h-[380px] overflow-y-auto scrollbar-custom">
-            <AnimatePresence mode="popLayout">
-              {loading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="animate-pulse flex items-center gap-2 p-2">
-                    <div className="h-6 w-6 rounded-full bg-muted" />
-                    <div className="flex-1 h-4 bg-muted rounded" />
-                  </div>
-                ))
-              ) : sortedEntries.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No production logged {periodLabels[period].toLowerCase()}</p>
-                </div>
-              ) : (
-                sortedEntries.map((entry, index) => (
-                  <motion.div
-                    key={entry.agentId}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 10 }}
-                    transition={{ delay: index * 0.02 }}
-                    className={cn(
-                      "grid grid-cols-12 gap-1 items-center px-2 py-2 rounded-lg transition-all cursor-pointer",
-                      entry.isCurrentUser
-                        ? "bg-primary/10 border border-primary/30"
-                        : index < 3
-                          ? "bg-amber-500/5"
-                          : "hover:bg-muted/30"
+                {/* Mobile Card Layout */}
+                {isMobile ? (
+                  <div className="space-y-2 max-h-[400px] overflow-y-auto scrollbar-custom">
+                    {loading ? (
+                      Array.from({ length: 5 }).map((_, i) => (
+                        <div key={i} className="animate-pulse p-4 rounded-xl bg-muted/30">
+                          <div className="flex items-center gap-3">
+                            <div className="h-8 w-8 rounded-full bg-muted" />
+                            <div className="h-10 w-10 rounded-full bg-muted" />
+                            <div className="flex-1 space-y-2">
+                              <div className="h-4 bg-muted rounded w-2/3" />
+                              <div className="h-3 bg-muted rounded w-1/2" />
+                            </div>
+                            <div className="h-6 w-16 bg-muted rounded" />
+                          </div>
+                        </div>
+                      ))
+                    ) : sortedEntries.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">No production logged {periodLabels[period].toLowerCase()}</p>
+                      </div>
+                    ) : (
+                      sortedEntries.map((entry, index) => (
+                        <MobileLeaderboardCard
+                          key={entry.agentId}
+                          entry={{
+                            rank: index + 1,
+                            agentId: entry.agentId,
+                            name: entry.name,
+                            avatarUrl: entry.avatarUrl,
+                            alp: entry.alp,
+                            deals: entry.deals,
+                            presentations: entry.presentations,
+                            closingRate: entry.closingRate,
+                            isCurrentUser: entry.isCurrentUser,
+                          }}
+                          index={index}
+                          onClick={() => {
+                            setSelectedAgent({ id: entry.agentId, name: entry.name, alp: entry.alp, deals: entry.deals });
+                            setEditDialogOpen(true);
+                          }}
+                          leaders={leaders}
+                        />
+                      ))
                     )}
-                    style={{ minHeight: "40px" }}
-                    onClick={() => {
-                      setSelectedAgent({ id: entry.agentId, name: entry.name, alp: entry.alp, deals: entry.deals });
-                      setEditDialogOpen(true);
-                    }}
-                  >
-                    {/* Rank */}
-                    <div className="col-span-1 flex items-center justify-center">
-                      {renderRankBadge(index + 1, entry.isCurrentUser)}
+                  </div>
+                ) : (
+                  <>
+                    {/* Desktop Table Header */}
+                    <div className="grid grid-cols-12 gap-1 px-2 py-2 text-[10px] font-semibold text-muted-foreground border-b border-border/50 mb-1.5">
+                      <div className="col-span-1">#</div>
+                      <div className="col-span-3">Agent</div>
+                      <div className="col-span-1 text-center">Hours</div>
+                      <div className={cn("col-span-1 text-center", sortBy === "presentations" && "text-primary")}>Pres</div>
+                      <div className={cn("col-span-1 text-center", sortBy === "deals" && "text-primary")}>Closes</div>
+                      <div className="col-span-1 text-center">Refs</div>
+                      <div className={cn("col-span-1 text-center whitespace-nowrap", sortBy === "closingRate" && "text-primary")}>Close %</div>
+                      <div className={cn("col-span-2 text-right", sortBy === "alp" && "text-primary")}>ALP</div>
                     </div>
 
-                    {/* Agent */}
-                    <div className="col-span-2 sm:col-span-3 flex items-center gap-1.5 min-w-0">
-                      <div className={cn(
-                        "h-6 w-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0 bg-gradient-to-br",
-                        entry.avatarUrl ? "" : getAvatarColor(entry.name)
-                      )}>
-                        {entry.avatarUrl ? (
-                          <img 
-                            src={entry.avatarUrl} 
-                            alt={entry.name} 
-                            className="h-full w-full rounded-full object-cover"
-                          />
+                    {/* Desktop Leaderboard Rows */}
+                    <div className="space-y-1 max-h-[380px] overflow-y-auto scrollbar-custom">
+                      <AnimatePresence mode="popLayout">
+                        {loading ? (
+                          Array.from({ length: 5 }).map((_, i) => (
+                            <div key={i} className="animate-pulse flex items-center gap-2 p-2">
+                              <div className="h-6 w-6 rounded-full bg-muted" />
+                              <div className="flex-1 h-4 bg-muted rounded" />
+                            </div>
+                          ))
+                        ) : sortedEntries.length === 0 ? (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                            <p className="text-sm">No production logged {periodLabels[period].toLowerCase()}</p>
+                          </div>
                         ) : (
-                          getInitials(entry.name)
+                          sortedEntries.map((entry, index) => (
+                            <motion.div
+                              key={entry.agentId}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: 10 }}
+                              transition={{ delay: index * 0.02 }}
+                              className={cn(
+                                "grid grid-cols-12 gap-1 items-center px-2 py-2 rounded-lg transition-all cursor-pointer",
+                                entry.isCurrentUser
+                                  ? "bg-primary/10 border border-primary/30"
+                                  : index < 3
+                                    ? "bg-amber-500/5"
+                                    : "hover:bg-muted/30"
+                              )}
+                              style={{ minHeight: "40px" }}
+                              onClick={() => {
+                                setSelectedAgent({ id: entry.agentId, name: entry.name, alp: entry.alp, deals: entry.deals });
+                                setEditDialogOpen(true);
+                              }}
+                            >
+                              {/* Rank */}
+                              <div className="col-span-1 flex items-center justify-center">
+                                {renderRankBadge(index + 1, entry.isCurrentUser)}
+                              </div>
+
+                              {/* Agent */}
+                              <div className="col-span-3 flex items-center gap-1.5 min-w-0">
+                                <div className={cn(
+                                  "h-6 w-6 rounded-full flex items-center justify-center text-[9px] font-bold text-primary-foreground shrink-0 bg-gradient-to-br",
+                                  entry.avatarUrl ? "" : getAvatarColor(entry.name)
+                                )}>
+                                  {entry.avatarUrl ? (
+                                    <img 
+                                      src={entry.avatarUrl} 
+                                      alt={entry.name} 
+                                      className="h-full w-full rounded-full object-cover"
+                                    />
+                                  ) : (
+                                    getInitials(entry.name)
+                                  )}
+                                </div>
+                                <div className="min-w-0 flex items-center gap-0.5">
+                                  <span className={cn(
+                                    "text-xs font-medium truncate",
+                                    entry.isCurrentUser && "text-primary"
+                                  )}>
+                                    {entry.name.split(" ")[0]}
+                                  </span>
+                                  {getLeaderBadge(entry.agentId)}
+                                </div>
+                              </div>
+
+                              {/* Hours Dialed */}
+                              <div className="col-span-1 text-center">
+                                <span className="text-[10px] text-muted-foreground">{entry.hoursCalled.toFixed(1)}</span>
+                              </div>
+
+                              {/* Presentations */}
+                              <div className={cn("col-span-1 text-center", sortBy === "presentations" && "text-primary")}>
+                                <span className="text-[10px]">{entry.presentations}</span>
+                              </div>
+
+                              {/* Closes */}
+                              <div className={cn("col-span-1 text-center", sortBy === "deals" && "text-primary")}>
+                                <span className="text-[10px] font-semibold">{entry.deals}</span>
+                              </div>
+
+                              {/* Referrals */}
+                              <div className="col-span-1 text-center">
+                                <span className="text-[10px] text-muted-foreground">{entry.referrals}</span>
+                              </div>
+
+                              {/* Close % */}
+                              <div className={cn("col-span-1 text-center", sortBy === "closingRate" && "text-primary")}>
+                                <span className={cn(
+                                  "text-[10px] font-medium",
+                                  entry.closingRate >= 30 && "text-emerald-500",
+                                  entry.closingRate >= 50 && "text-amber-400"
+                                )}>
+                                  {entry.closingRate.toFixed(0)}%
+                                </span>
+                              </div>
+
+                              {/* ALP with Progress */}
+                              <div className={cn("col-span-2 text-right", sortBy === "alp" && "text-primary")}>
+                                <div className="flex flex-col items-end gap-0.5">
+                                  <span className="text-xs font-bold">
+                                    ${entry.alp >= 1000 ? `${(entry.alp / 1000).toFixed(1)}k` : entry.alp.toLocaleString()}
+                                  </span>
+                                  {index > 0 && (
+                                    <Progress 
+                                      value={(entry.alp / maxALP) * 100} 
+                                      className="h-1 w-full max-w-[48px]"
+                                    />
+                                  )}
+                                </div>
+                              </div>
+                            </motion.div>
+                          ))
                         )}
-                      </div>
-                      <div className="min-w-0 flex items-center gap-0.5">
-                        <span className={cn(
-                          "text-xs font-medium truncate",
-                          entry.isCurrentUser && "text-primary"
-                        )}>
-                          {entry.name.split(" ")[0]}
-                        </span>
-                        {getLeaderBadge(entry.agentId)}
-                      </div>
+                      </AnimatePresence>
                     </div>
+                  </>
+                )}
 
-                    {/* Hours Dialed - Hidden on mobile */}
-                    <div className="col-span-1 text-center hidden sm:block">
-                      <span className="text-[10px] text-muted-foreground">{entry.hoursCalled.toFixed(1)}</span>
-                    </div>
-
-                    {/* Presentations */}
-                    <div className={cn("col-span-2 sm:col-span-1 text-center", sortBy === "presentations" && "text-primary")}>
-                      <span className="text-[10px]">{entry.presentations}</span>
-                    </div>
-
-                    {/* Closes */}
-                    <div className={cn("col-span-2 sm:col-span-1 text-center", sortBy === "deals" && "text-primary")}>
-                      <span className="text-[10px] font-semibold">{entry.deals}</span>
-                    </div>
-
-                    {/* Referrals - Hidden on mobile */}
-                    <div className="col-span-1 text-center hidden sm:block">
-                      <span className="text-[10px] text-muted-foreground">{entry.referrals}</span>
-                    </div>
-
-                    {/* Close % */}
-                    <div className={cn("col-span-2 sm:col-span-1 text-center", sortBy === "closingRate" && "text-primary")}>
-                      <span className={cn(
-                        "text-[10px] font-medium",
-                        entry.closingRate >= 30 && "text-emerald-500",
-                        entry.closingRate >= 50 && "text-amber-400"
-                      )}>
-                        {entry.closingRate.toFixed(0)}%
+                {/* Footer with Totals */}
+                {sortedEntries.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-border/50">
+                    <div className="flex flex-wrap justify-between gap-2 text-[10px] text-muted-foreground">
+                      <span>
+                        <span className="font-semibold text-foreground">{sortedEntries.length}</span> ranked
                       </span>
-                    </div>
-
-                    {/* ALP with Progress */}
-                    <div className={cn("col-span-2 text-right", sortBy === "alp" && "text-primary")}>
-                      <div className="flex flex-col items-end gap-0.5">
-                        <span className="text-xs font-bold">
-                          ${entry.alp >= 1000 ? `${(entry.alp / 1000).toFixed(1)}k` : entry.alp.toLocaleString()}
+                      <div className="flex items-center gap-3">
+                        <span>
+                          Pres: <span className="font-bold text-foreground">
+                            {entries.reduce((sum, e) => sum + e.presentations, 0)}
+                          </span>
                         </span>
-                        {index > 0 && (
-                          <Progress 
-                            value={(entry.alp / maxALP) * 100} 
-                            className="h-1 w-full max-w-[48px]"
-                          />
-                        )}
+                        <span>
+                          Refs: <span className="font-bold text-foreground">
+                            {entries.reduce((sum, e) => sum + e.referrals, 0)}
+                          </span>
+                        </span>
+                        <span>
+                          Total: <span className="font-bold text-primary">
+                            ${entries.reduce((sum, e) => sum + e.alp, 0).toLocaleString()}
+                          </span>
+                        </span>
                       </div>
                     </div>
-                  </motion.div>
-                ))
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* Footer with Totals */}
-          {sortedEntries.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-border/50">
-              <div className="flex flex-wrap justify-between gap-2 text-[10px] text-muted-foreground">
-                <span>
-                  <span className="font-semibold text-foreground">{sortedEntries.length}</span> ranked
-                </span>
-                <div className="flex items-center gap-3">
-                  <span>
-                    Pres: <span className="font-bold text-foreground">
-                      {entries.reduce((sum, e) => sum + e.presentations, 0)}
-                    </span>
-                  </span>
-                  <span>
-                    Refs: <span className="font-bold text-foreground">
-                      {entries.reduce((sum, e) => sum + e.referrals, 0)}
-                    </span>
-                  </span>
-                  <span>
-                    Total: <span className="font-bold text-primary">
-                      ${entries.reduce((sum, e) => sum + e.alp, 0).toLocaleString()}
-                    </span>
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
+                  </div>
+                )}
               </motion.div>
             ) : (
               <motion.div

@@ -192,3 +192,15 @@ verify_jwt = false
 
 [functions.merge-agent-records]
 verify_jwt = false
+
+[functions.check-daily-plaques]
+verify_jwt = false
+
+[functions.check-recruiting-milestones]
+verify_jwt = false
+
+[functions.check-streak-milestones]
+verify_jwt = false
+
+[functions.check-comeback-milestones]
+verify_jwt = false

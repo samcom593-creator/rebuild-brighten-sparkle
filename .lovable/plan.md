@@ -1,184 +1,180 @@
 
 
-# Team Hierarchy Manager - Admin Dashboard Enhancement
+# Update Agent Portal Link & Dashboard Navigation
 
-## Problem Identified
+## Summary
 
-Your dashboard's "Team Production" card is missing agents because:
-
-1. **Caden and Ruby are not in the database** - They need to be added as agents first
-2. **Duplicate admin records** - You have two agent entries (one active, one deactivated) which can cause confusion in hierarchy lookups
-3. **No admin tool exists** for quick hierarchy management - currently requires direct database edits
-
-## Current Data State
-
-| Agent Name | Status | Reports To | Notes |
-|------------|--------|------------|-------|
-| Samuel James | Active | (none) | Your primary active agent record |
-| Samuel James | Deactivated | (none) | Old duplicate record |
-| Aisha Kebbeh | Active | Samuel James | Already correctly linked |
-| KJ Vaughns | Active | Samuel James | Correctly linked |
-| Obi Ifediora | Active | Samuel James | Correctly linked |
-| Bryan Ross | Active | Samuel James | Correctly linked |
-| **Caden** | **NOT FOUND** | - | Needs to be added |
-| **Ruby** | **NOT FOUND** | - | Needs to be added |
-
-## Solution: Team Hierarchy Manager Component
-
-Create a new admin tool that allows quick hierarchy fixes and bulk reassignments.
-
-### 1. Create Hierarchy Manager Component
-
-**New File: `src/components/dashboard/TeamHierarchyManager.tsx`**
-
-Features:
-- View all agents with their current manager assignment
-- Dropdown to reassign any agent to a different manager
-- "Assign All to Me" button for admins
-- Shows orphaned agents (no manager assigned)
-- Filter by manager to see each team
-- Bulk reassignment capability
-
-### 2. Add to Admin Dashboard
-
-**Modify: `src/pages/DashboardAdmin.tsx`**
-
-Add a new "Team Hierarchy" section with the manager component.
-
-### 3. Update DownlineStatsCard for Admin
-
-**Modify: `src/components/dashboard/DownlineStatsCard.tsx`**
-
-For admins, show **ALL active agents** production instead of just direct reports.
-
-### 4. Data Cleanup Required
-
-Will need to run a database update to:
-- Reactivate your correct admin agent record OR ensure the active one is used
-- Ensure all agents point to the correct `invited_by_manager_id`
+This plan consolidates the login experience to use `/agent-portal` as the primary link for agents, adds "Agent Portal" to the manager/admin sidebar navigation, and ensures the forgot password flow is streamlined (email → reset → done).
 
 ---
 
-## UI Design
+## Official Link to Share
 
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│  ⚙️ Team Hierarchy Manager                                      │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │  🔍 Filter: [All Managers ▼]     [🔄 Assign All to Me]  │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│                                                                 │
-│  ┌────────────────────────────────────────────────────────────┐│
-│  │  Agent Name          │ Email               │ Reports To    ││
-│  ├──────────────────────┼─────────────────────┼───────────────┤│
-│  │  Aisha Kebbeh        │ kebbeh045@gmail.com │ [Samuel ▼]    ││
-│  │  KJ Vaughns          │ kjvaughns13@...     │ [Samuel ▼]    ││
-│  │  Obi Ifediora        │ obiajulu.ifediora...│ [Samuel ▼]    ││
-│  │  ⚠️ Chukwudi Ifediora │ Chukwudi...        │ [Obi ▼]       ││
-│  │  ⚠️ KJ TestV          │ kjvaughns1@...     │ [KJ Vaughns ▼]││
-│  └────────────────────────────────────────────────────────────┘│
-│                                                                 │
-│  ⚠️ 2 agents report to sub-managers                            │
-│  [📊 Flatten All Hierarchies to Admin]                         │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+The **official link** you'll send via emails and iMessage group chats:
+
+```
+https://apex-financial.org/agent-portal
 ```
 
----
-
-## Files to Create/Modify
-
-| File | Action | Description |
-|------|--------|-------------|
-| `src/components/dashboard/TeamHierarchyManager.tsx` | **Create** | New admin tool for hierarchy management |
-| `src/pages/DashboardAdmin.tsx` | **Modify** | Add Hierarchy Manager section |
-| `src/components/dashboard/DownlineStatsCard.tsx` | **Modify** | Admin sees all agents, not just direct reports |
+When agents tap this link:
+1. If logged in → They land directly on the Agent Portal (ready to log numbers)
+2. If not logged in → Redirected to `/agent-login` with a simple login flow
 
 ---
 
-## Technical Implementation
+## Changes Required
 
-### TeamHierarchyManager Component
+### 1. Add "Agent Portal" to Sidebar Navigation
+
+**File: `src/components/dashboard/DashboardLayout.tsx`**
+
+Add an "Agent Portal" link for managers and admins in the sidebar navigation so they can quickly access it.
 
 ```typescript
-// Key features:
-// 1. Fetch all active agents with their current manager
-// 2. Fetch all managers for dropdown options
-// 3. Allow reassignment with one click
-// 4. "Assign All to Me" bulk action for admin
-// 5. Show nested hierarchy (agents under managers under admin)
+// Add to navItems array (line 38-51)
+import { BarChart3 } from "lucide-react"; // Add to imports
 
-interface AgentHierarchyEntry {
-  id: string;
-  name: string;
-  email: string;
-  managerId: string | null;
-  managerName: string | null;
-  isManager: boolean;
-}
-
-// Reassign agent function
-const reassignAgent = async (agentId: string, newManagerId: string | null) => {
-  await supabase
-    .from("agents")
-    .update({ invited_by_manager_id: newManagerId })
-    .eq("id", agentId);
-};
-
-// Bulk reassign to admin
-const assignAllToAdmin = async (adminAgentId: string) => {
-  await supabase
-    .from("agents")
-    .update({ invited_by_manager_id: adminAgentId })
-    .neq("id", adminAgentId)
-    .eq("is_deactivated", false);
-};
+const navItems = useMemo(() => [
+  { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
+  { icon: Users, label: "Applicants", href: "/dashboard/applicants" },
+  ...(isAdmin || isManager ? [
+    { icon: BarChart3, label: "Agent Portal", href: "/agent-portal" }, // NEW
+    { icon: Briefcase, label: "CRM", href: "/dashboard/crm" },
+    { icon: Archive, label: "Aged Leads", href: "/dashboard/aged-leads" },
+  ] : []),
+  // ... rest of items
+], [isAdmin, isManager]);
 ```
 
-### DownlineStatsCard Admin Enhancement
+### 2. Update Login Redirect Destination
+
+**File: `src/pages/AgentNumbersLogin.tsx`**
+
+Change the default redirect after login from `/apex-daily-numbers` to `/agent-portal`.
+
+Lines to update:
+- Line 71: `navigate("/agent-portal", { replace: true });`
+- Line 141-142: Change default `from` to `/agent-portal`
+- Line 176-177: Change default `from` to `/agent-portal`
+- Line 210-211: Change default `from` to `/agent-portal`
 
 ```typescript
-// For admins, fetch ALL active agents, not just direct reports
-if (isAdmin) {
-  const { data: allAgents } = await supabase
-    .from("agents")
-    .select("id")
-    .eq("is_deactivated", false)
-    .neq("id", currentAgent.id);
-  
-  agentIds = allAgents?.map(a => a.id) || [];
-} else {
-  // Managers still see only their direct reports
-  const { data: downlineAgents } = await supabase
-    .from("agents")
-    .select("id")
-    .eq("invited_by_manager_id", currentAgent.id)
-    .eq("is_deactivated", false);
-  
-  agentIds = downlineAgents?.map(a => a.id) || [];
-}
+// Line 141-142 - existing user login redirect
+const from = (location.state as any)?.from?.pathname || "/agent-portal";
+
+// Line 176-177 - set password redirect
+const from = (location.state as any)?.from?.pathname || "/agent-portal";
+
+// Line 210-211 - create account redirect
+const from = (location.state as any)?.from?.pathname || "/agent-portal";
 ```
+
+### 3. Update Password Reset Redirect
+
+**File: `supabase/functions/send-password-reset/index.ts`**
+
+Change the redirect after password reset from `/apex-daily-numbers` to `/agent-portal`.
+
+```typescript
+// Line 57-58
+options: {
+  redirectTo: "https://apex-financial.org/agent-portal",
+},
+```
+
+### 4. Update Magic Link Default Destination
+
+**File: `src/pages/MagicLogin.tsx`**
+
+The magic link already redirects to `/agent-portal` by default (line 57-58), so no changes needed here. Just confirming the flow:
+- `destination === "numbers"` → goes to `/apex-daily-numbers`
+- Otherwise → goes to `/agent-portal` ✓
+
+### 5. Update Email Links to Use Agent Portal
+
+**File: `supabase/functions/send-agent-portal-login/index.ts`**
+
+The email already generates magic links that go to `/agent-portal`. No changes needed.
+
+**File: `supabase/functions/send-bulk-portal-logins/index.ts`**
+
+Same as above - already configured correctly.
+
+### 6. Verify Forgot Password Flow is Simple
+
+Current flow in `AgentNumbersLogin.tsx` (lines 221-243):
+1. User enters email/phone → Continue
+2. User clicks "Forgot password?" 
+3. Email is sent with reset link
+4. User clicks link → lands on password reset page
+5. User enters new password → done
+
+The flow is already simple! The `send-password-reset` edge function:
+- Takes just the email
+- Sends a branded reset email
+- Link expires in 1 hour
+- User clicks → sets new password → auto-logged in
 
 ---
 
-## Database Fix (One-Time)
+## Summary of File Changes
 
-After implementation, you'll use the new tool to:
+| File | Action | What Changes |
+|------|--------|--------------|
+| `src/components/dashboard/DashboardLayout.tsx` | **Modify** | Add "Agent Portal" link to sidebar for managers/admins |
+| `src/pages/AgentNumbersLogin.tsx` | **Modify** | Change default redirect from `/apex-daily-numbers` to `/agent-portal` |
+| `supabase/functions/send-password-reset/index.ts` | **Modify** | Change password reset redirect to `/agent-portal` |
 
-1. Click "Assign All to Me" to flatten hierarchy
-2. Or manually reassign specific agents using dropdowns
+---
 
-For Caden and Ruby - they need to be added via the CRM's "Add Agent" functionality first, then they'll appear in the hierarchy manager.
+## Flow After Changes
+
+### Agent Taps Link (https://apex-financial.org/agent-portal)
+
+```
+User taps link
+     ↓
+ProtectedRoute checks auth
+     ↓
+┌─────────────────┐     ┌──────────────────────────────┐
+│ Already logged  │ YES │     Agent Portal Loads       │
+│ in?             │────→│  (Leaderboard, Log Numbers)  │
+└─────────────────┘     └──────────────────────────────┘
+     │ NO
+     ↓
+┌──────────────────┐
+│ /agent-login     │
+│ - Enter email    │
+│ - Enter password │
+│ → Redirect to    │
+│   /agent-portal  │
+└──────────────────┘
+```
+
+### Forgot Password Flow
+
+```
+User on login page
+     ↓
+Clicks "Forgot password?"
+     ↓
+Edge function sends email
+     ↓
+User opens email, clicks link
+     ↓
+Supabase auth handles reset
+     ↓
+User sets new password
+     ↓
+Redirects to /agent-portal ✓
+```
 
 ---
 
 ## Benefits
 
-1. **Visual Hierarchy Control** - See exactly who reports to whom
-2. **One-Click Fixes** - Reassign agents without SQL
-3. **Admin Global View** - See ALL production, not just direct reports
-4. **Orphan Detection** - Easily spot agents without managers
-5. **Bulk Actions** - Flatten hierarchy with one button
+1. **Single Link** - `apex-financial.org/agent-portal` works for everything
+2. **Sidebar Access** - Managers can quickly jump to the portal from any dashboard page
+3. **Streamlined Password Reset** - Just email → reset → done (no extra questions)
+4. **Better UX** - All paths lead to the Agent Portal with leaderboard + log numbers in one place
 

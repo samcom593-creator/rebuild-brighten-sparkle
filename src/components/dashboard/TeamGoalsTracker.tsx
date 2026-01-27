@@ -25,12 +25,12 @@ export function TeamGoalsTracker({ className }: TeamGoalsTrackerProps) {
   const [loading, setLoading] = useState(true);
   const [celebratedGoals, setCelebratedGoals] = useState<Set<string>>(new Set());
 
-  // Monthly targets - these could be made configurable
+  // Monthly targets - January 2026 adjusted goals
   const MONTHLY_TARGETS = {
-    alp: 100000, // $100k team ALP
-    deals: 50, // 50 deals
-    presentations: 200, // 200 presentations
-    referrals: 30, // 30 referrals caught
+    alp: 75000, // $75k team ALP for January
+    deals: 40, // 40 deals
+    presentations: 150, // 150 presentations
+    referrals: 25, // 25 referrals caught
   };
 
   useEffect(() => {

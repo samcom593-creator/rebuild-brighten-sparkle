@@ -49,42 +49,26 @@ export default function MagicLogin() {
         return;
       }
 
-      setDestination(data.destination === "numbers" ? "apex-daily-numbers" : "agent-portal");
+      const dest = data.destination === "numbers" ? "apex-daily-numbers" : "agent-portal";
+      setDestination(dest);
       setState("signing-in");
 
-      // Use the auth link returned from the edge function
+      // The authLink from the edge function is a Supabase magic link URL
+      // We need to redirect to it - Supabase will handle the session creation
+      // and then redirect back to our app
       if (data.authLink) {
-        // Redirect to Supabase auth link which will handle the session
+        // Redirect to the Supabase auth link
+        // This will create the session and redirect to the destination
         window.location.href = data.authLink;
         return;
       }
 
-      // Fallback: try OTP verification if we have the token hash
-      if (data.tokenHash) {
-        const { error: verifyError } = await supabase.auth.verifyOtp({
-          token_hash: data.tokenHash,
-          type: "magiclink",
-        });
-
-        if (verifyError) {
-          console.error("OTP verification failed:", verifyError);
-          setError({
-            message: "Login failed. Please try again or use manual login.",
-            code: "AUTH_FAILED",
-          });
-          setState("error");
-          return;
-        }
-      }
-
-      setState("success");
-
-      // Redirect to destination after brief success display
-      setTimeout(() => {
-        navigate(`/${data.destination === "numbers" ? "apex-daily-numbers" : "agent-portal"}`, {
-          replace: true,
-        });
-      }, 1000);
+      // Fallback: If no auth link, show error
+      setError({
+        message: "Login link generation failed. Please try again.",
+        code: "NO_AUTH_LINK",
+      });
+      setState("error");
     } catch (err: any) {
       console.error("Magic login error:", err);
       setError({
@@ -126,7 +110,7 @@ export default function MagicLogin() {
             </h1>
             <p className="text-muted-foreground text-sm">
               {state === "verifying" && "Please wait while we verify your access."}
-              {state === "signing-in" && "Setting up your session..."}
+              {state === "signing-in" && "Redirecting to sign you in..."}
               {state === "success" && "Redirecting to your portal..."}
               {state === "error" && "We encountered a problem with your login link."}
             </p>
@@ -140,8 +124,8 @@ export default function MagicLogin() {
               </div>
             )}
             {state === "success" && (
-              <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center">
-                <CheckCircle className="w-8 h-8 text-green-500" />
+              <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center">
+                <CheckCircle className="w-8 h-8 text-accent-foreground" />
               </div>
             )}
             {state === "error" && (
@@ -161,7 +145,7 @@ export default function MagicLogin() {
               <div className="space-y-3">
                 <Button
                   onClick={() => navigate("/agent-login")}
-                  className="w-full bg-primary hover:bg-primary/90"
+                  className="w-full"
                 >
                   Sign In Manually
                 </Button>

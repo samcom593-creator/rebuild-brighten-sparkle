@@ -565,7 +565,7 @@ export default function AgentPortal() {
             <div className="flex items-center gap-3 mb-4">
               <img src={apexIcon} alt="Apex" className="h-10 w-10 rounded-xl shadow-lg" />
               <div>
-                <h3 className="font-semibold">Apex Daily Numbers</h3>
+                <h3 className="font-semibold">Agent Portal</h3>
                 <p className="text-xs text-muted-foreground">
                   Share with your team for daily entry
                 </p>
@@ -577,8 +577,8 @@ export default function AgentPortal() {
               <div className="flex items-center gap-3">
                 <img src={apexIcon} alt="Apex" className="h-12 w-12 rounded-lg" />
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm">Apex Daily Numbers</p>
-                  <p className="text-xs text-muted-foreground truncate">/apex-daily-numbers</p>
+                  <p className="font-semibold text-sm">Agent Portal</p>
+                  <p className="text-xs text-muted-foreground truncate">apex-financial.org/agent-portal</p>
                 </div>
               </div>
             </div>
@@ -586,7 +586,7 @@ export default function AgentPortal() {
             <Button 
               className="w-full gap-2"
               onClick={() => {
-                const logLink = `${window.location.origin}/apex-daily-numbers`;
+                const logLink = "https://apex-financial.org/agent-portal";
                 navigator.clipboard.writeText(logLink);
                 toast.success("Link copied to clipboard!");
               }}

@@ -144,3 +144,6 @@ verify_jwt = false
 
 [functions.create-new-agent-account]
 verify_jwt = false
+
+[functions.send-bulk-portal-logins]
+verify_jwt = false

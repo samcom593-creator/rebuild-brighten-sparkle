@@ -68,7 +68,7 @@ export default function AgentNumbersLogin() {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        navigate("/apex-daily-numbers", { replace: true });
+        navigate("/agent-portal", { replace: true });
       }
     };
     checkSession();
@@ -138,7 +138,7 @@ export default function AgentNumbersLogin() {
       if (error) throw error;
 
       toast.success("Welcome! Let's log your numbers 🎯");
-      const from = (location.state as any)?.from?.pathname || "/apex-daily-numbers";
+      const from = (location.state as any)?.from?.pathname || "/agent-portal";
       navigate(from, { replace: true });
     } catch (error: any) {
       console.error("Login error:", error);
@@ -173,7 +173,7 @@ export default function AgentNumbersLogin() {
 
       if (signInError) throw signInError;
 
-      const from = (location.state as any)?.from?.pathname || "/apex-daily-numbers";
+      const from = (location.state as any)?.from?.pathname || "/agent-portal";
       navigate(from, { replace: true });
     } catch (error: any) {
       console.error("Setup error:", error);
@@ -208,7 +208,7 @@ export default function AgentNumbersLogin() {
 
       if (signInError) throw signInError;
 
-      const from = (location.state as any)?.from?.pathname || "/apex-daily-numbers";
+      const from = (location.state as any)?.from?.pathname || "/agent-portal";
       navigate(from, { replace: true });
     } catch (error: any) {
       console.error("Create account error:", error);

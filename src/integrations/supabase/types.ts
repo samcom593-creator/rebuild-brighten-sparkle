@@ -524,6 +524,7 @@ export type Database = {
           onboarding_stage:
             | Database["public"]["Enums"]["onboarding_stage"]
             | null
+          password_required: boolean | null
           performance_tier:
             | Database["public"]["Enums"]["performance_tier"]
             | null
@@ -572,6 +573,7 @@ export type Database = {
           onboarding_stage?:
             | Database["public"]["Enums"]["onboarding_stage"]
             | null
+          password_required?: boolean | null
           performance_tier?:
             | Database["public"]["Enums"]["performance_tier"]
             | null
@@ -620,6 +622,7 @@ export type Database = {
           onboarding_stage?:
             | Database["public"]["Enums"]["onboarding_stage"]
             | null
+          password_required?: boolean | null
           performance_tier?:
             | Database["public"]["Enums"]["performance_tier"]
             | null

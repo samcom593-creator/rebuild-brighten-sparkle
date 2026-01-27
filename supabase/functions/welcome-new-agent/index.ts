@@ -63,6 +63,12 @@ const handler = async (req: Request): Promise<Response> => {
               <a href="${discordLink}" class="button">Join Discord</a>
             </div>
             
+            <div class="highlight">
+              <h3>📊 Log Your Daily Numbers</h3>
+              <p>Track your production and compete on the leaderboard:</p>
+              <a href="https://apex-financial.org/numbers" class="button">Access Portal</a>
+            </div>
+            
             <p>If you have any questions, don't hesitate to reach out to your manager.</p>
             
             <p>Let's build something great together!</p>
@@ -84,7 +90,7 @@ const handler = async (req: Request): Promise<Response> => {
         Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "Apex Financial <onboarding@resend.dev>",
+        from: "APEX Financial <notifications@tx.apex-financial.org>",
         to: [agentEmail],
         subject: "Welcome to Apex Financial!",
         html: emailHtml,

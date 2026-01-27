@@ -365,16 +365,16 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
           </div>
 
           {/* Table Header - Slightly Larger */}
-          {/* Table Header - H=Hours, P=Presentations, C=Closed, R=Referrals, %=Closing Rate */}
-          <div className="grid grid-cols-12 gap-1 px-2 py-2 text-[10px] font-semibold text-muted-foreground border-b border-border/50 mb-1.5">
+          {/* Table Header - Full labels for clarity */}
+          <div className="grid grid-cols-12 gap-1 px-2 py-2 text-[9px] sm:text-[10px] font-semibold text-muted-foreground border-b border-border/50 mb-1.5">
             <div className="col-span-1">#</div>
-            <div className="col-span-3">Agent</div>
-            <div className="col-span-1 text-center" title="Hours Dialed">H</div>
-            <div className={cn("col-span-1 text-center", sortBy === "presentations" && "text-primary")} title="Presentations">P</div>
-            <div className={cn("col-span-1 text-center", sortBy === "deals" && "text-primary")} title="Deals Closed">C</div>
-            <div className="col-span-1 text-center" title="Referrals Generated">R</div>
-            <div className={cn("col-span-1 text-center", sortBy === "closingRate" && "text-primary")} title="Closing Rate">%</div>
-            <div className={cn("col-span-3 text-right", sortBy === "alp" && "text-primary")}>ALP</div>
+            <div className="col-span-2 sm:col-span-3">Agent</div>
+            <div className="col-span-1 text-center hidden sm:block">Hours</div>
+            <div className={cn("col-span-2 sm:col-span-1 text-center", sortBy === "presentations" && "text-primary")}>Pres</div>
+            <div className={cn("col-span-2 sm:col-span-1 text-center", sortBy === "deals" && "text-primary")}>Closes</div>
+            <div className="col-span-1 text-center hidden sm:block">Refs</div>
+            <div className={cn("col-span-2 sm:col-span-1 text-center whitespace-nowrap", sortBy === "closingRate" && "text-primary")}>Close %</div>
+            <div className={cn("col-span-2 sm:col-span-2 text-right", sortBy === "alp" && "text-primary")}>ALP</div>
           </div>
 
           {/* Leaderboard Rows - Slightly Larger */}
@@ -416,7 +416,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                     </div>
 
                     {/* Agent */}
-                    <div className="col-span-3 flex items-center gap-1.5 min-w-0">
+                    <div className="col-span-2 sm:col-span-3 flex items-center gap-1.5 min-w-0">
                       <div className={cn(
                         "h-6 w-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0 bg-gradient-to-br",
                         entry.avatarUrl ? "" : getAvatarColor(entry.name)
@@ -442,28 +442,28 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                       </div>
                     </div>
 
-                    {/* Hours Dialed */}
-                    <div className="col-span-1 text-center">
+                    {/* Hours Dialed - Hidden on mobile */}
+                    <div className="col-span-1 text-center hidden sm:block">
                       <span className="text-[10px] text-muted-foreground">{entry.hoursCalled.toFixed(1)}</span>
                     </div>
 
                     {/* Presentations */}
-                    <div className={cn("col-span-1 text-center", sortBy === "presentations" && "text-primary")}>
+                    <div className={cn("col-span-2 sm:col-span-1 text-center", sortBy === "presentations" && "text-primary")}>
                       <span className="text-[10px]">{entry.presentations}</span>
                     </div>
 
-                    {/* Closed */}
-                    <div className={cn("col-span-1 text-center", sortBy === "deals" && "text-primary")}>
+                    {/* Closes */}
+                    <div className={cn("col-span-2 sm:col-span-1 text-center", sortBy === "deals" && "text-primary")}>
                       <span className="text-[10px] font-semibold">{entry.deals}</span>
                     </div>
 
-                    {/* Referrals */}
-                    <div className="col-span-1 text-center">
+                    {/* Referrals - Hidden on mobile */}
+                    <div className="col-span-1 text-center hidden sm:block">
                       <span className="text-[10px] text-muted-foreground">{entry.referrals}</span>
                     </div>
 
-                    {/* Closing Rate */}
-                    <div className={cn("col-span-1 text-center", sortBy === "closingRate" && "text-primary")}>
+                    {/* Close % */}
+                    <div className={cn("col-span-2 sm:col-span-1 text-center", sortBy === "closingRate" && "text-primary")}>
                       <span className={cn(
                         "text-[10px] font-medium",
                         entry.closingRate >= 30 && "text-emerald-500",
@@ -474,7 +474,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                     </div>
 
                     {/* ALP with Progress */}
-                    <div className={cn("col-span-3 text-right", sortBy === "alp" && "text-primary")}>
+                    <div className={cn("col-span-2 text-right", sortBy === "alp" && "text-primary")}>
                       <div className="flex flex-col items-end gap-0.5">
                         <span className="text-xs font-bold">
                           ${entry.alp >= 1000 ? `${(entry.alp / 1000).toFixed(1)}k` : entry.alp.toLocaleString()}

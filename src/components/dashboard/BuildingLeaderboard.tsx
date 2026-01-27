@@ -4,6 +4,7 @@ import { Users, UserPlus, Briefcase, DollarSign, TrendingUp, TrendingDown } from
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { subDays, subMonths } from "date-fns";
+import { AgentQuickEditDialog } from "./AgentQuickEditDialog";
 
 interface BuildingLeaderboardProps {
   currentAgentId?: string;
@@ -44,6 +45,8 @@ const getInitials = (name: string) => {
 export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderboardProps) {
   const [entries, setEntries] = useState<BuildingEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState<{ id: string; name: string; production: number; deals: number } | null>(null);
 
   useEffect(() => {
     fetchBuildingLeaderboard();
@@ -92,10 +95,10 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
           previousEndDate = today.toISOString().split("T")[0];
       }
 
-      // Get all active agents
+      // Get all active agents with display_name
       const { data: allAgents } = await supabase
         .from("agents")
-        .select("id, user_id")
+        .select("id, user_id, display_name")
         .eq("is_deactivated", false);
 
       if (!allAgents) {
@@ -191,10 +194,13 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
           ? (stats.contracted / stats.applications) * 100 
           : 0;
 
+        // Use profile name, then agent display_name, then fallback
+        const displayName = profile?.full_name || agent.display_name || "Unknown";
+
         return {
           rank: 0,
           agentId: agent.id,
-          name: profile?.full_name || "Unknown",
+          name: displayName,
           avatarUrl: profile?.avatar_url || undefined,
           applications: stats.applications,
           contracted: stats.contracted,
@@ -269,6 +275,17 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
 
   return (
     <div className="space-y-2">
+      {selectedAgent && (
+        <AgentQuickEditDialog
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          agentId={selectedAgent.id}
+          currentName={selectedAgent.name}
+          production={selectedAgent.production}
+          deals={selectedAgent.deals}
+          onUpdate={fetchBuildingLeaderboard}
+        />
+      )}
       {/* Table Header */}
       <div className="grid grid-cols-12 gap-2 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/50">
         <div className="col-span-3">Builder</div>
@@ -304,13 +321,17 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ delay: index * 0.03 }}
                 className={cn(
-                  "grid grid-cols-12 gap-2 items-center px-3 py-2.5 rounded-xl transition-all",
+                  "grid grid-cols-12 gap-2 items-center px-3 py-2.5 rounded-xl transition-all cursor-pointer",
                   entry.isCurrentUser
                     ? "bg-primary/10 border border-primary/30 shadow-sm"
                     : index < 3
                       ? "bg-gradient-to-r from-amber-500/5 to-transparent border border-amber-500/10"
                       : "hover:bg-muted/40"
                 )}
+                onClick={() => {
+                  setSelectedAgent({ id: entry.agentId, name: entry.name, production: entry.projectedIncome, deals: entry.contracted });
+                  setEditDialogOpen(true);
+                }}
               >
                 {/* Rank + Name */}
                 <div className="col-span-3 flex items-center gap-2 min-w-0">

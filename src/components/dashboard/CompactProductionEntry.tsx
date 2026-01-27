@@ -110,7 +110,7 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
 
   const fields = [
     { key: "presentations", label: "Presentations", icon: Target },
-    { key: "passed_price", label: "Passed Price", icon: DollarSign },
+    { key: "passed_price", label: "Pitched Price", icon: DollarSign },
     { key: "hours_called", label: "Hours Called", icon: Clock, step: "0.5" },
     { key: "referrals_caught", label: "Referrals", icon: Users },
     { key: "booked_inhome_referrals", label: "Booked Home", icon: Home },

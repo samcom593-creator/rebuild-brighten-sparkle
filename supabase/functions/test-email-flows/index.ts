@@ -10,7 +10,7 @@ const corsHeaders = {
 const resendApiKey = Deno.env.get("RESEND_API_KEY");
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
-const DASHBOARD_URL = "https://rebuild-brighten-sparkle.lovable.app";
+const DASHBOARD_URL = "https://apex-financial.org";
 
 // Test data
 const testApplicant = {

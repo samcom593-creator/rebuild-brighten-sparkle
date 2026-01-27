@@ -177,7 +177,7 @@ serve(async (req) => {
             <p style="color: rgba(255,255,255,0.9); font-size: 15px; margin: 0 0 20px 0;">
               Set your income goal for the new month and track your progress!
             </p>
-            <a href="https://rebuild-brighten-sparkle.lovable.app/agent-portal" 
+            <a href="https://apex-financial.org/agent-portal" 
                style="display: inline-block; background: #0a0f1a; color: #14b8a6; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
               Set My Monthly Goal →
             </a>

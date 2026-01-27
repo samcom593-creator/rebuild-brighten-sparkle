@@ -242,7 +242,7 @@ async function sendManagerNotification(
             </div>
 
             <div style="text-align: center; margin-top: 20px;">
-              <a href="https://rebuild-brighten-sparkle.lovable.app/dashboard/applicants?lead=${applicationId}" style="display: inline-block; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px; margin-bottom: 15px;">
+              <a href="https://apex-financial.org/dashboard/applicants?lead=${applicationId}" style="display: inline-block; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px; margin-bottom: 15px;">
                 📞 View Lead & Call Now →
               </a>
               <p style="color: #6b7280; font-size: 14px; margin-top: 15px;">
@@ -436,7 +436,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
             </div>
 
             <div style="margin-top: 25px; text-align: center;">
-              <a href="https://rebuild-brighten-sparkle.lovable.app/dashboard/applicants?lead=${applicationId}" style="${callToActionStyle}">
+              <a href="https://apex-financial.org/dashboard/applicants?lead=${applicationId}" style="${callToActionStyle}">
                 ${callToActionText}
               </a>
               ${isLicensedApplicant ? `

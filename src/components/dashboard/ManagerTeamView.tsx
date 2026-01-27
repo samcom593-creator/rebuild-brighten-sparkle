@@ -7,6 +7,7 @@ import {
   TrendingUp,
   ChevronDown,
   ChevronUp,
+  DollarSign,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,6 +15,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { OnboardingTracker } from "./OnboardingTracker";
 import { cn } from "@/lib/utils";
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 
 interface TeamMember {
   id: string;
@@ -27,6 +29,9 @@ interface TeamMember {
   closed: number;
   closeRate: number;
   joinedAt: string;
+  weekALP: number;
+  monthALP: number;
+  monthDeals: number;
 }
 
 interface TeamStats {
@@ -105,6 +110,27 @@ export function ManagerTeamView() {
         .select("assigned_agent_id, status, contacted_at, closed_at")
         .in("assigned_agent_id", agentIds);
 
+      // Get production data for week and month
+      const today = new Date();
+      const weekStart = format(startOfWeek(today, { weekStartsOn: 0 }), "yyyy-MM-dd");
+      const weekEnd = format(endOfWeek(today, { weekStartsOn: 0 }), "yyyy-MM-dd");
+      const monthStart = format(startOfMonth(today), "yyyy-MM-dd");
+      const monthEnd = format(endOfMonth(today), "yyyy-MM-dd");
+
+      const { data: weekProduction } = await supabase
+        .from("daily_production")
+        .select("agent_id, aop, deals_closed")
+        .in("agent_id", agentIds)
+        .gte("production_date", weekStart)
+        .lte("production_date", weekEnd);
+
+      const { data: monthProduction } = await supabase
+        .from("daily_production")
+        .select("agent_id, aop, deals_closed")
+        .in("agent_id", agentIds)
+        .gte("production_date", monthStart)
+        .lte("production_date", monthEnd);
+
       // Build team member data
       const members: TeamMember[] = teamAgents.map(agent => {
         const profile = profiles?.find(p => p.user_id === agent.user_id);
@@ -112,6 +138,14 @@ export function ManagerTeamView() {
         const totalLeads = agentApps.length;
         const contacted = agentApps.filter(a => a.contacted_at).length;
         const closed = agentApps.filter(a => a.closed_at).length;
+
+        // Calculate production
+        const agentWeekProduction = weekProduction?.filter(p => p.agent_id === agent.id) || [];
+        const agentMonthProduction = monthProduction?.filter(p => p.agent_id === agent.id) || [];
+
+        const weekALP = agentWeekProduction.reduce((sum, p) => sum + (Number(p.aop) || 0), 0);
+        const monthALP = agentMonthProduction.reduce((sum, p) => sum + (Number(p.aop) || 0), 0);
+        const monthDeals = agentMonthProduction.reduce((sum, p) => sum + (p.deals_closed || 0), 0);
 
         return {
           id: agent.id,
@@ -125,8 +159,14 @@ export function ManagerTeamView() {
           closed,
           closeRate: totalLeads > 0 ? (closed / totalLeads) * 100 : 0,
           joinedAt: agent.created_at,
+          weekALP,
+          monthALP,
+          monthDeals,
         };
       });
+
+      // Sort by month ALP descending
+      members.sort((a, b) => b.monthALP - a.monthALP);
 
       setTeamMembers(members);
 
@@ -269,18 +309,31 @@ export function ManagerTeamView() {
                       <p className="text-xs text-muted-foreground">{member.email}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3">
+                    {/* Production Stats - Desktop */}
                     <div className="hidden md:flex items-center gap-4 text-sm">
-                      <span className="text-muted-foreground">
-                        <span className="font-semibold text-foreground">{member.totalLeads}</span> leads
-                      </span>
-                      <span className="text-muted-foreground">
-                        <span className="font-semibold text-foreground">{member.closed}</span> closed
-                      </span>
-                      <span className="text-muted-foreground">
-                        <span className="font-semibold text-foreground">{member.closeRate.toFixed(0)}%</span> rate
-                      </span>
+                      <div className="text-center">
+                        <span className="font-semibold text-primary">${member.weekALP.toLocaleString()}</span>
+                        <p className="text-[10px] text-muted-foreground">Week ALP</p>
+                      </div>
+                      <div className="text-center">
+                        <span className="font-semibold text-emerald-500">${member.monthALP.toLocaleString()}</span>
+                        <p className="text-[10px] text-muted-foreground">Month ALP</p>
+                      </div>
+                      <div className="text-center">
+                        <span className="font-semibold">{member.monthDeals}</span>
+                        <p className="text-[10px] text-muted-foreground">Deals</p>
+                      </div>
                     </div>
+                    <Badge className={cn(
+                      "text-[10px] capitalize",
+                      member.onboardingStage === "evaluated" && "bg-emerald-500/20 text-emerald-400",
+                      member.onboardingStage === "in_field_training" && "bg-violet-500/20 text-violet-400",
+                      member.onboardingStage === "training_online" && "bg-amber-500/20 text-amber-400",
+                      member.onboardingStage === "onboarding" && "bg-blue-500/20 text-blue-400"
+                    )}>
+                      {member.onboardingStage.replace(/_/g, ' ')}
+                    </Badge>
                     <Badge className={cn("text-xs", getStatusColor(member.status))}>
                       {member.status}
                     </Badge>
@@ -301,7 +354,24 @@ export function ManagerTeamView() {
                   exit={{ height: 0, opacity: 0 }}
                   className="border-t border-border bg-muted/30 p-4"
                 >
+                  {/* Mobile Production Stats */}
                   <div className="grid grid-cols-3 gap-4 mb-4 md:hidden">
+                    <div className="text-center">
+                      <p className="text-lg font-semibold text-primary">${member.weekALP.toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground">Week ALP</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-lg font-semibold text-emerald-500">${member.monthALP.toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground">Month ALP</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-lg font-semibold">{member.monthDeals}</p>
+                      <p className="text-xs text-muted-foreground">Deals</p>
+                    </div>
+                  </div>
+
+                  {/* CRM Stats */}
+                  <div className="grid grid-cols-3 gap-4 mb-4">
                     <div className="text-center">
                       <p className="text-lg font-semibold">{member.totalLeads}</p>
                       <p className="text-xs text-muted-foreground">Leads</p>

@@ -155,20 +155,11 @@ export function ProfileSettings() {
 
     setResetLoading(true);
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-password-reset`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: formData.email }),
-        }
-      );
+      const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
+        redirectTo: "https://apex-financial.org/agent-portal",
+      });
 
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to send reset email");
-      }
+      if (error) throw error;
 
       toast({
         title: "Password Reset Sent! 📧",

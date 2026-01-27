@@ -80,6 +80,18 @@ const handler = async (req: Request): Promise<Response> => {
     const agentEmail = profile?.email || null;
     const profileUserId = profile?.user_id || null;
 
+    // Check if agent requires password
+    let passwordRequired = false;
+    if (inCRM && profileUserId) {
+      const { data: agentData } = await supabaseAdmin
+        .from("agents")
+        .select("password_required")
+        .eq("user_id", profileUserId)
+        .maybeSingle();
+      
+      passwordRequired = agentData?.password_required ?? false;
+    }
+
     // Check if there's an auth user with this email
     let hasAuthAccount = false;
     
@@ -108,17 +120,18 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    console.log(`Status: inCRM=${inCRM}, hasAuthAccount=${hasAuthAccount}, name=${agentName}, email=${agentEmail}`);
+    console.log(`Status: inCRM=${inCRM}, hasAuthAccount=${hasAuthAccount}, passwordRequired=${passwordRequired}, name=${agentName}`);
 
     return new Response(
       JSON.stringify({
         inCRM,
         hasAuthAccount,
+        passwordRequired,
         agentName,
         agentPhone,
         agentCity,
         agentState,
-        agentEmail, // Return the CRM email for auth (important for phone lookups)
+        agentEmail,
       }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );

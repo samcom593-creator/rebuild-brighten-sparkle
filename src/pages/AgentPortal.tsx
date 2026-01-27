@@ -32,6 +32,7 @@ import { IncomeGoalTracker } from "@/components/dashboard/IncomeGoalTracker";
 import { PerformanceDashboardSection } from "@/components/dashboard/PerformanceDashboardSection";
 import { WeeklyBadgesCard } from "@/components/dashboard/WeeklyBadges";
 import { YearPerformanceCard } from "@/components/dashboard/YearPerformanceCard";
+import { AgentRankBadge } from "@/components/dashboard/AgentRankBadge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -253,13 +254,18 @@ export default function AgentPortal() {
               </motion.div>
               
               <div>
-                <motion.h1 
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="font-bold text-lg"
-                >
-                  {profile?.full_name || "Agent"}
-                </motion.h1>
+                <div className="flex items-center gap-2">
+                  <motion.h1 
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="font-bold text-lg"
+                  >
+                    {profile?.full_name || "Agent"}
+                  </motion.h1>
+                  {agentId && (
+                    <AgentRankBadge agentId={agentId} size="sm" />
+                  )}
+                </div>
                 <motion.p 
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}

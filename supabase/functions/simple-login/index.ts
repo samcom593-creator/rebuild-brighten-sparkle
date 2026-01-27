@@ -175,6 +175,21 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Simple login successful for: ${profile.full_name}`);
 
+    // Send login notification in background (don't await)
+    const userAgent = req.headers.get("user-agent") || "";
+    fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/notify-agent-login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+      },
+      body: JSON.stringify({
+        email: authUser.user.email,
+        name: profile.full_name,
+        userAgent,
+      }),
+    }).catch(err => console.error("Login notification failed:", err));
+
     return new Response(
       JSON.stringify({ 
         success: true,

@@ -153,3 +153,12 @@ verify_jwt = false
 
 [functions.verify-magic-link]
 verify_jwt = false
+
+[functions.notify-rank-passed]
+verify_jwt = false
+
+[functions.notify-agent-login]
+verify_jwt = false
+
+[functions.simple-login]
+verify_jwt = false

@@ -25,7 +25,7 @@ const resend = resendApiKey ? new Resend(resendApiKey) : null;
 // Calendly URLs
 const UNLICENSED_CALENDLY = "https://calendly.com/sam-com593/licensed-prospect-call-clone";
 const LICENSED_CALENDLY = "https://calendly.com/sam-com593/1on1-call-clone";
-const DASHBOARD_URL = "https://rebuild-brighten-sparkle.lovable.app/dashboard/applicants";
+const DASHBOARD_URL = "https://apex-financial.org/dashboard/applicants";
 
 // Send unlicensed follow-up (3 days after application)
 async function sendUnlicensedFollowup(app: {

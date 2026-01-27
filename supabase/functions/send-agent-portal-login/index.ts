@@ -8,9 +8,9 @@ const corsHeaders = {
 };
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-const BASE_URL = "https://rebuild-brighten-sparkle.lovable.app";
+const BASE_URL = "https://apex-financial.org";
 const PORTAL_URL = `${BASE_URL}/agent-portal`;
-const LOG_NUMBERS_URL = `${BASE_URL}/log-numbers`;
+const LOG_NUMBERS_URL = `${BASE_URL}/apex-daily-numbers`;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 
 interface SendLoginRequest {

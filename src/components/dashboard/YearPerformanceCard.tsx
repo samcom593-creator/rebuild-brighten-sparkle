@@ -6,7 +6,8 @@ import {
   Target, 
   DollarSign,
   BarChart3,
-  Award
+  Award,
+  Users
 } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +15,8 @@ import { cn } from "@/lib/utils";
 
 interface YearPerformanceCardProps {
   agentId: string;
+  isAdmin?: boolean;
+  isManager?: boolean;
 }
 
 interface YearStats {
@@ -24,24 +27,41 @@ interface YearStats {
   avgDealSize: number;
 }
 
-export function YearPerformanceCard({ agentId }: YearPerformanceCardProps) {
+export function YearPerformanceCard({ agentId, isAdmin = false, isManager = false }: YearPerformanceCardProps) {
   const [stats, setStats] = useState<YearStats | null>(null);
   const [loading, setLoading] = useState(true);
   const currentYear = new Date().getFullYear();
 
-  useEffect(() => {
-    if (!agentId) return;
-    fetchYearStats();
-  }, [agentId]);
-
   const fetchYearStats = async () => {
     try {
+      setLoading(true);
       const yearStart = `${currentYear}-01-01`;
-      const { data, error } = await supabase
+      
+      let query = supabase
         .from("daily_production")
-        .select("aop, deals_closed, presentations")
-        .eq("agent_id", agentId)
+        .select("aop, deals_closed, presentations, agent_id")
         .gte("production_date", yearStart);
+
+      if (isAdmin) {
+        // Admin sees ALL agents' production
+        // No filter needed - fetch everything
+      } else if (isManager) {
+        // Manager sees their team + self
+        // Get team agent IDs first
+        const { data: teamAgents } = await supabase
+          .from("agents")
+          .select("id")
+          .or(`id.eq.${agentId},invited_by_manager_id.eq.${agentId}`)
+          .eq("is_deactivated", false);
+        
+        const teamIds = teamAgents?.map(a => a.id) || [agentId];
+        query = query.in("agent_id", teamIds);
+      } else {
+        // Agent sees only personal
+        query = query.eq("agent_id", agentId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -74,6 +94,27 @@ export function YearPerformanceCard({ agentId }: YearPerformanceCardProps) {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!agentId) return;
+    fetchYearStats();
+
+    // Real-time subscription for live updates
+    const channel = supabase
+      .channel("year-performance-live")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "daily_production" },
+        () => {
+          fetchYearStats();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [agentId, isAdmin, isManager]);
 
   if (loading) {
     return (
@@ -120,16 +161,20 @@ export function YearPerformanceCard({ agentId }: YearPerformanceCardProps) {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20">
-            <CalendarDays className="h-5 w-5 text-primary" />
+            {isAdmin ? <Users className="h-5 w-5 text-primary" /> : <CalendarDays className="h-5 w-5 text-primary" />}
           </div>
           <div>
-            <h3 className="font-bold text-lg">{currentYear} Year Performance</h3>
-            <p className="text-xs text-muted-foreground">Year-to-date stats</p>
+            <h3 className="font-bold text-lg">
+              {currentYear} {isAdmin ? "Agency" : isManager ? "Team" : ""} Performance
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              {isAdmin ? "All agents YTD" : isManager ? "Team + personal YTD" : "Your YTD stats"}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
           <BarChart3 className="h-3.5 w-3.5 text-primary" />
-          <span className="text-xs font-medium text-primary">Annual</span>
+          <span className="text-xs font-medium text-primary">{isAdmin ? "Agency" : "Annual"}</span>
         </div>
       </div>
 

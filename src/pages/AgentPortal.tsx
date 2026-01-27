@@ -669,7 +669,7 @@ export default function AgentPortal() {
             transition={{ delay: 0.32 }}
             className="hidden sm:block"
           >
-            <YearPerformanceCard key={`year-${refreshKey}`} agentId={agentId} />
+            <YearPerformanceCard key={`year-${refreshKey}`} agentId={agentId} isAdmin={isAdmin} isManager={isManager} />
           </motion.section>
         )}
 

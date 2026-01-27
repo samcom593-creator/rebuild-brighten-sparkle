@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Edit2, Merge, User, AlertCircle, Check, Loader2 } from "lucide-react";
+import { Edit2, Merge, User, Check, Loader2, Mail, Phone, Send, Instagram, UserPlus } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +17,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
 interface AgentQuickEditDialogProps {
   open: boolean;
@@ -40,6 +41,13 @@ interface PossibleMatch {
 interface LinkedProfile {
   full_name: string | null;
   email: string | null;
+  phone: string | null;
+}
+
+interface AgentData {
+  user_id: string | null;
+  profile_id: string | null;
+  display_name: string | null;
 }
 
 export function AgentQuickEditDialog({
@@ -51,19 +59,29 @@ export function AgentQuickEditDialog({
   deals = 0,
   onUpdate,
 }: AgentQuickEditDialogProps) {
+  const { isAdmin } = useAuth();
   const [displayName, setDisplayName] = useState(currentName);
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [instagram, setInstagram] = useState("");
   const [possibleMatches, setPossibleMatches] = useState<PossibleMatch[]>([]);
   const [selectedMergeId, setSelectedMergeId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [merging, setMerging] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [loading, setLoading] = useState(false);
   const [linkedProfile, setLinkedProfile] = useState<LinkedProfile | null>(null);
+  const [agentData, setAgentData] = useState<AgentData | null>(null);
 
   useEffect(() => {
     if (open && agentId) {
       setDisplayName(currentName);
       setSelectedMergeId(null);
       setLinkedProfile(null);
+      setAgentData(null);
+      setEmail("");
+      setPhone("");
+      setInstagram("");
       fetchAgentData();
       fetchPossibleMatches();
     }
@@ -72,25 +90,42 @@ export function AgentQuickEditDialog({
   const fetchAgentData = async () => {
     try {
       // Fetch agent with linked profile via profile_id
-      const { data: agentData } = await supabase
+      const { data: agent } = await supabase
         .from("agents")
         .select(`
           id, 
+          user_id,
+          profile_id,
           display_name,
-          profile:profiles!agents_profile_id_fkey(full_name, email)
+          profile:profiles!agents_profile_id_fkey(full_name, email, phone)
         `)
         .eq("id", agentId)
         .maybeSingle();
 
-      if (agentData?.profile) {
-        const profile = agentData.profile as { full_name?: string; email?: string };
-        setLinkedProfile({
-          full_name: profile.full_name || null,
-          email: profile.email || null,
+      if (agent) {
+        setAgentData({
+          user_id: agent.user_id,
+          profile_id: agent.profile_id,
+          display_name: agent.display_name,
         });
-        // Pre-fill display name with profile name if current is unknown
-        if (currentName === "Unknown Agent" && profile.full_name) {
-          setDisplayName(profile.full_name);
+
+        if (agent.profile) {
+          const profile = agent.profile as { full_name?: string; email?: string; phone?: string };
+          setLinkedProfile({
+            full_name: profile.full_name || null,
+            email: profile.email || null,
+            phone: profile.phone || null,
+          });
+          // Pre-fill form fields from profile
+          if (profile.full_name && currentName === "Unknown Agent") {
+            setDisplayName(profile.full_name);
+          }
+          if (profile.email) {
+            setEmail(profile.email);
+          }
+          if (profile.phone) {
+            setPhone(profile.phone);
+          }
         }
       }
     } catch (error) {
@@ -246,20 +281,75 @@ export function AgentQuickEditDialog({
     }
   };
 
+  const handleCreateAndSendLogin = async () => {
+    if (!email.trim()) {
+      toast({
+        title: "Email required",
+        description: "Please enter an email address to send the login.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!displayName.trim()) {
+      toast({
+        title: "Name required",
+        description: "Please enter a name for this agent.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setCreating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-agent-from-leaderboard", {
+        body: {
+          agentId,
+          email: email.trim(),
+          fullName: displayName.trim(),
+          phone: phone.trim() || null,
+          instagramHandle: instagram.trim() || null,
+        },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Login Sent! 🎉",
+        description: `Portal access sent to ${email}. Agent is now LIVE.`,
+      });
+      
+      onUpdate?.();
+      onOpenChange(false);
+    } catch (error: any) {
+      console.error("Error creating agent login:", error);
+      toast({
+        title: "Creation failed",
+        description: error.message || "Failed to create agent login. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const formatCurrency = (amount: number) => {
     return amount >= 1000 ? `$${(amount / 1000).toFixed(1)}k` : `$${amount}`;
   };
 
+  // Check if agent already has login (has user_id)
+  const hasExistingLogin = !!agentData?.user_id;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Edit2 className="h-4 w-4 text-primary" />
             Edit Agent
           </DialogTitle>
           <DialogDescription>
-            Update the display name or merge with an existing record.
+            Update the display name, merge with an existing record, or create login access.
           </DialogDescription>
         </DialogHeader>
 
@@ -268,7 +358,7 @@ export function AgentQuickEditDialog({
           <div className="p-3 rounded-lg bg-muted/50 border border-border">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
-                <User className="h-5 w-5 text-white" />
+                <User className="h-5 w-5 text-primary-foreground" />
               </div>
               <div>
                 <p className="font-medium">{currentName}</p>
@@ -276,11 +366,16 @@ export function AgentQuickEditDialog({
                   {formatCurrency(production)} ALP • {deals} deals
                 </p>
               </div>
+              {hasExistingLogin && (
+                <Badge variant="secondary" className="ml-auto text-[10px]">
+                  Has Login
+                </Badge>
+              )}
             </div>
             {/* Show linked profile name if available */}
             {linkedProfile?.full_name && (
-              <div className="mt-2 p-2 rounded bg-amber-500/10 border border-amber-500/20">
-                <p className="text-xs text-amber-600 dark:text-amber-400">
+              <div className="mt-2 p-2 rounded bg-accent/50 border border-border">
+                <p className="text-xs text-foreground">
                   📋 Imported as: <span className="font-semibold">{linkedProfile.full_name}</span>
                 </p>
                 {linkedProfile.email && (
@@ -304,6 +399,69 @@ export function AgentQuickEditDialog({
             />
           </div>
 
+          {/* Admin: Create & Send Login Section */}
+          {isAdmin && !hasExistingLogin && (
+            <div className="space-y-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
+              <Label className="flex items-center gap-2 text-primary">
+                <UserPlus className="h-4 w-4" />
+                Create Profile & Send Login
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Create a new profile and send magic link login to this agent.
+              </p>
+              
+              <div className="space-y-2">
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Email (required)"
+                    className="pl-10"
+                    type="email"
+                  />
+                </div>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="Phone (optional)"
+                    className="pl-10"
+                  />
+                </div>
+                <div className="relative">
+                  <Instagram className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    value={instagram}
+                    onChange={(e) => setInstagram(e.target.value)}
+                    placeholder="Instagram handle (optional)"
+                    className="pl-10"
+                  />
+                </div>
+              </div>
+
+              <Button
+                onClick={handleCreateAndSendLogin}
+                disabled={creating || !email.trim()}
+                className="w-full"
+                size="sm"
+              >
+                {creating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    Creating & Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Create & Send Login
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+
           {/* Possible Matches for Merge */}
           {possibleMatches.length > 0 && (
             <div className="space-y-2">
@@ -311,7 +469,7 @@ export function AgentQuickEditDialog({
                 <Merge className="h-3.5 w-3.5" />
                 Merge with existing agent
               </Label>
-              <div className="max-h-[200px] overflow-y-auto space-y-1 pr-1">
+              <div className="max-h-[150px] overflow-y-auto space-y-1 pr-1">
                 <RadioGroup
                   value={selectedMergeId || ""}
                   onValueChange={setSelectedMergeId}
@@ -358,7 +516,7 @@ export function AgentQuickEditDialog({
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={saving || merging}
+            disabled={saving || merging || creating}
           >
             Cancel
           </Button>
@@ -366,7 +524,7 @@ export function AgentQuickEditDialog({
             <Button
               onClick={handleMerge}
               disabled={merging}
-              className="bg-amber-500 hover:bg-amber-600"
+              variant="secondary"
             >
               {merging ? (
                 <>

@@ -40,7 +40,7 @@ const App = () => (
         <ScrollToTop />
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/log-numbers" element={<LogNumbers />} />
+          <Route path="/apex-daily-numbers" element={<LogNumbers />} />
           <Route path="/apply" element={<Apply />} />
           <Route path="/apply/success" element={<ApplySuccess />} />
           <Route path="/apply/success/licensed" element={<ApplySuccessLicensed />} />

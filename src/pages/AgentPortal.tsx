@@ -565,13 +565,13 @@ export default function AgentPortal() {
             </p>
             <div className="flex items-center gap-2">
               <code className="flex-1 text-xs bg-muted p-2 rounded truncate">
-                {typeof window !== 'undefined' ? `${window.location.origin}/log-numbers` : ''}
+                {typeof window !== 'undefined' ? `${window.location.origin}/apex-daily-numbers` : ''}
               </code>
               <Button 
                 variant="outline" 
                 size="sm"
                 onClick={() => {
-                  const logLink = `${window.location.origin}/log-numbers`;
+                  const logLink = `${window.location.origin}/apex-daily-numbers`;
                   navigator.clipboard.writeText(logLink);
                   toast.success("Link copied!");
                 }}

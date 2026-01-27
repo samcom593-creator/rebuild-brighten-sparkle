@@ -1,177 +1,248 @@
 
-# Add Date Picker + Fix Leaderboard Names via Profile ID
+# Live Performance, Team Scoping, Fast Profile Creation & Merge System
 
-## Issues Identified
+## Overview
 
-1. **Leaderboards show "Unknown Agent"** because they query names via `user_id` but imported agents only have `profile_id` linked
-2. **No date selection for production entry** - agents can't backdate their numbers
-3. **Edit dialog doesn't show the original profile name** for unknown agents
+This is a comprehensive update to fix production data accuracy, implement proper metric scoping by role, and add the ability for admins to create new agent profiles + send magic login links directly from the leaderboard.
 
 ---
 
-## Solution Overview
+## Part 1: Live Data with Real-Time Updates
 
-### Part 1: Add Date Picker to Production Entry
+### Problem
+- 2026 YTD and 4-week production history may not be updating in real-time
+- Data requires manual refresh to see latest changes
 
-Add a calendar date picker next to the Day/Week/Month tabs that allows agents to select any past date (up to 30 days back) for entering their numbers.
+### Solution
+Add Supabase real-time subscriptions to auto-update stats when production data changes.
 
-**UI Design:**
-```text
-┌─────────────────────────────────────────────┐
-│  Log Numbers                     $12,340    │
-│  ─────────────────────────────────────────  │
-│  📅 [Jan 27, 2026 ▼]  ← Date Picker        │
-│  ─────────────────────────────────────────  │
-│  Presentations    Pitched Price            │
-│  [___]            [___]                    │
-│  ...                                        │
-└─────────────────────────────────────────────┘
+**Files to modify:**
+- `src/components/dashboard/YearPerformanceCard.tsx` - Add real-time subscription
+- `src/components/dashboard/ProductionHistoryChart.tsx` - Add real-time subscription
+- `src/components/dashboard/TeamSnapshotCard.tsx` - Add real-time subscription
+
+**Implementation:**
+```typescript
+// Add to each component
+useEffect(() => {
+  const channel = supabase
+    .channel("live-production")
+    .on("postgres_changes", { event: "*", schema: "public", table: "daily_production" }, () => {
+      fetchStats(); // Re-fetch on any change
+    })
+    .subscribe();
+  return () => { supabase.removeChannel(channel); };
+}, [agentId]);
 ```
 
-**Changes to `CompactProductionEntry.tsx`:**
-- Add `selectedDate` state (defaults to today)
-- Add date picker with Popover + Calendar component
-- Disable future dates
-- Allow up to 30 days in the past
-- Update the `production_date` in submit to use selected date
+---
+
+## Part 2: Metric Scope Rules by Role
+
+### Admin View (Sam)
+- Dashboard shows **TEAM TOTAL** production (not personal-only)
+- YearPerformanceCard fetches ALL agents' production
+- TeamSnapshotCard already scopes correctly for admin
+
+### Manager View
+- Dashboard shows **team totals + personal production**
+- Scoped to `invited_by_manager_id = current_agent_id`
+
+### Agent View
+- Dashboard shows **personal numbers only**
+- No team totals visible
+
+**Files to modify:**
+- `src/components/dashboard/YearPerformanceCard.tsx` - Add role-aware scoping
+- `src/pages/AgentPortal.tsx` - Already handles admin/manager scoping, verify logic
+
+**Changes to YearPerformanceCard:**
+- Accept optional `isAdmin` and `isManager` props
+- If admin: query ALL agents' production for YTD
+- If manager: query team + self
+- If agent: query personal only
 
 ---
 
-### Part 2: Fix Leaderboard Name Resolution
+## Part 3: Leaderboard Admin Tools - Create Profile + Login
 
-The root cause is that leaderboards query for profiles using `user_id`, but imported agents only have `profile_id` set.
+### New Capability
+Admin can tap any leaderboard entry (especially "Unknown Agent") and either:
+1. **MERGE** with existing agent (already implemented)
+2. **CREATE PROFILE + SEND LOGIN** (new feature)
 
-**Fix for `LeaderboardTabs.tsx`:**
-1. Query agents with BOTH `user_id` AND `profile_id`
-2. Query profiles via `profile_id` foreign key (like `ProductionEntry.tsx` does)
-3. Name fallback order: `profile.full_name` → `agent.display_name` → "Unknown Agent"
+### UI Flow in AgentQuickEditDialog
+```text
+┌─────────────────────────────────────────────────────┐
+│  Edit Agent: Unknown Agent                          │
+│  ─────────────────────────────────────────────────  │
+│  📋 Imported as: KJ Vaughns (kj@email.com)         │
+│  ─────────────────────────────────────────────────  │
+│  Display Name: [___________________]                │
+│  Email: [_____________] (required for login)       │
+│  Phone: [_____________] (optional)                 │
+│  Instagram: [___________] (optional)               │
+│  ─────────────────────────────────────────────────  │
+│  🔍 Possible Matches: (for merge)                  │
+│  ○ John Smith (john@email.com) - $3,420            │
+│  ─────────────────────────────────────────────────  │
+│  [ Save Name ]  [ Merge ]  [ Create & Send Login ] │
+└─────────────────────────────────────────────────────┘
+```
 
-**Fix for `LiveLeaderboard.tsx`:**
-- Same approach - use `profiles!agents_profile_id_fkey(full_name)` join
+### "Create & Send Login" Button Logic
+1. If agent has no `user_id` (orphan record):
+   - Create Supabase Auth user with **no password** (magic link only)
+   - Create profile record
+   - Link agent record to new `user_id` and `profile_id`
+   - Set `onboarding_stage = "evaluated"` (LIVE status)
+   - Set `is_deactivated = false`, `is_inactive = false`
+   - Generate magic link via `generate-magic-link`
+   - Send welcome email with magic link
+   - Sync to CRM automatically
 
-**Fix for `BuildingLeaderboard.tsx`:**
-- Same approach
+2. If agent already has `user_id`:
+   - Just generate new magic link and send it
+
+**New Edge Function: `create-agent-from-leaderboard`**
+```typescript
+// Input: { agentId, email, fullName, phone?, instagramHandle? }
+// Steps:
+// 1. Create auth user (no password, email_confirm: true)
+// 2. Create profile
+// 3. Update agent record with user_id, profile_id, onboarding_stage = "evaluated"
+// 4. Add agent role
+// 5. Generate magic link
+// 6. Send welcome email with magic link
+// 7. Return success with magic link for display
+```
+
+**Files to modify:**
+- `src/components/dashboard/AgentQuickEditDialog.tsx` - Add "Create & Send Login" button and form fields
+- Create `supabase/functions/create-agent-from-leaderboard/index.ts`
 
 ---
 
-### Part 3: Show Profile Name in Edit Dialog
+## Part 4: Magic Link Login - No Password Required
 
-Update `AgentQuickEditDialog.tsx` to:
-1. Query the agent's linked profile via `profile_id`
-2. Display the profile name at the top: "Imported as: KJ Vaughns"
-3. Pre-fill the display name input with the profile name
-4. Show email from profile for verification
+### Current State
+- Magic links work via `generate-magic-link` + `verify-magic-link`
+- Links expire in 24 hours
+
+### Enhancements
+1. **Persistent Sessions**: Already implemented via Supabase client config
+2. **"Remember This Device"**: Sessions persist in localStorage by default
+3. **Re-entry Flow**: If session expires, agent enters email/phone to receive new magic link
+
+### First-Time Agent Experience
+1. Agent receives email: "Your portal access is ready"
+2. Clicks magic link → opens directly into portal (no password prompt)
+3. Inside dashboard, they can **optionally**:
+   - Set password (not required)
+   - Add Instagram handle
+   - Upload profile picture
 
 ---
 
-## Files to Modify
+## Part 5: Optional Profile Completion
 
+### Profile Tab in Agent Dashboard
+Make it clear that profile fields are optional and non-blocking.
+
+**Already implemented in `ProfileSettings.tsx`:**
+- Full name (required for display)
+- Email (required for login)
+- Phone (optional)
+- City/State (optional)
+- Instagram handle (optional)
+- Bio (optional)
+- Avatar upload (optional)
+
+### Change Needed
+Add a banner/note in Settings indicating: "Complete your profile for a personalized experience. All fields except name and email are optional."
+
+---
+
+## Part 6: Database Changes
+
+### Add columns for quick profile creation (if not present):
+None needed - existing schema supports all required fields.
+
+### Enable real-time on daily_production (if not enabled):
+```sql
+ALTER PUBLICATION supabase_realtime ADD TABLE public.daily_production;
+```
+Note: This may already be enabled based on existing real-time subscriptions.
+
+---
+
+## Implementation Summary
+
+### New Files to Create
+| File | Purpose |
+|------|---------|
+| `supabase/functions/create-agent-from-leaderboard/index.ts` | Create profile + send magic link from leaderboard |
+
+### Files to Modify
 | File | Changes |
 |------|---------|
-| `src/components/dashboard/CompactProductionEntry.tsx` | Add date picker with Calendar + Popover, update submit to use selected date |
-| `src/components/dashboard/LeaderboardTabs.tsx` | Query profiles via `profile_id` foreign key, fix name resolution |
-| `src/components/dashboard/LiveLeaderboard.tsx` | Query profiles via `profile_id` foreign key, fix name resolution |
-| `src/components/dashboard/BuildingLeaderboard.tsx` | Query profiles via `profile_id` foreign key if applicable |
-| `src/components/dashboard/AgentQuickEditDialog.tsx` | Fetch linked profile, show "Imported as: [name]", prefill display name |
-| `src/components/ui/calendar.tsx` | Add `pointer-events-auto` to fix interaction in Popover |
+| `src/components/dashboard/YearPerformanceCard.tsx` | Add role-aware scoping, real-time subscription |
+| `src/components/dashboard/ProductionHistoryChart.tsx` | Add real-time subscription |
+| `src/components/dashboard/TeamSnapshotCard.tsx` | Add real-time subscription (verify existing logic) |
+| `src/components/dashboard/AgentQuickEditDialog.tsx` | Add Create & Send Login button, email/phone fields |
+| `src/components/dashboard/ProfileSettings.tsx` | Add "optional fields" clarification banner |
 
----
-
-## Technical Details
-
-### Date Picker Implementation
-
-```typescript
-// Add to CompactProductionEntry.tsx
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { format, subDays } from "date-fns";
-import { CalendarIcon } from "lucide-react";
-
-// State
-const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-
-// In submit
-const productionDate = format(selectedDate, "yyyy-MM-dd");
-
-// JSX - Date picker button above the form
-<Popover>
-  <PopoverTrigger asChild>
-    <Button variant="outline" className="w-full justify-start">
-      <CalendarIcon className="mr-2 h-4 w-4" />
-      {format(selectedDate, "EEEE, MMM d, yyyy")}
-    </Button>
-  </PopoverTrigger>
-  <PopoverContent className="w-auto p-0" align="start">
-    <Calendar
-      mode="single"
-      selected={selectedDate}
-      onSelect={(date) => date && setSelectedDate(date)}
-      disabled={(date) => date > new Date() || date < subDays(new Date(), 30)}
-      className="pointer-events-auto"
-    />
-  </PopoverContent>
-</Popover>
-```
-
-### Leaderboard Query Fix
-
-```typescript
-// Get agents WITH profile_id
-const { data: agents } = await supabase
-  .from("agents")
-  .select(`
-    id, 
-    user_id, 
-    profile_id,
-    display_name,
-    profile:profiles!agents_profile_id_fkey(full_name, avatar_url, email)
-  `)
-  .in("id", agentIds);
-
-// Name resolution
-const name = agent?.profile?.full_name || agent?.display_name || "Unknown Agent";
-const avatarUrl = agent?.profile?.avatar_url;
-```
-
-### AgentQuickEditDialog Enhancement
-
-```typescript
-// Fetch agent with linked profile
-const { data: agentData } = await supabase
-  .from("agents")
-  .select(`
-    id, 
-    display_name,
-    profile:profiles!agents_profile_id_fkey(full_name, email)
-  `)
-  .eq("id", agentId)
-  .single();
-
-// Display in dialog
-{agentData?.profile?.full_name && (
-  <p className="text-sm text-muted-foreground">
-    📋 Imported as: <span className="font-medium">{agentData.profile.full_name}</span>
-  </p>
-)}
-```
+### Edge Functions
+| Function | Purpose |
+|----------|---------|
+| `create-agent-from-leaderboard` | New - creates auth user + profile + sends magic link |
+| `generate-magic-link` | Existing - generates magic link |
+| `send-agent-portal-login` | Existing - sends portal access email |
 
 ---
 
 ## Expected Results
 
 After implementation:
-- ✅ Agents can select any date in the past 30 days to log numbers
-- ✅ All leaderboards display correct names for imported agents
-- ✅ Tapping "Unknown Agent" shows the original imported name
-- ✅ Edit dialog prefills with the profile name for easy verification
-- ✅ No more "Unknown Agent" entries with production data
+- ✅ **2026 YTD and 4-week production update in real-time** - no manual refresh needed
+- ✅ **Admin sees TEAM totals** on dashboard by default
+- ✅ **Manager sees team + personal** production
+- ✅ **Agent sees personal only**
+- ✅ **Admin can tap any leaderboard entry** and create profile + send login in seconds
+- ✅ **New agents get magic link email** - no password required
+- ✅ **Persistent sessions** - agents stay logged in
+- ✅ **Optional profile fields** - Instagram, photo, etc. are non-blocking
+- ✅ **Created agents auto-set to LIVE status** (if on scoreboard = selling)
+- ✅ **Agents pushed to CRM automatically** on creation
 
 ---
 
-## Summary
+## Technical Flow: Admin Creates Agent from Leaderboard
 
-This fix addresses the core issues:
-1. **Date picker** lets agents accurately backdate their numbers
-2. **Profile ID query** ensures names are correctly fetched for imported agents
-3. **Enhanced edit dialog** shows the original name for easy verification before merging
+```text
+Admin taps "Unknown Agent" on leaderboard
+           ↓
+AgentQuickEditDialog opens
+           ↓
+Shows "Imported as: [name]" from linked profile
+           ↓
+Admin enters/confirms:
+- Full Name (pre-filled from import)
+- Email (required)
+- Phone (optional)
+- Instagram (optional)
+           ↓
+Admin clicks "Create & Send Login"
+           ↓
+Edge Function: create-agent-from-leaderboard
+  1. Create Supabase Auth user (no password)
+  2. Create profile record
+  3. Update agent: user_id, profile_id, onboarding_stage = "evaluated"
+  4. Add "agent" role
+  5. Generate magic link
+  6. Send welcome email
+           ↓
+Toast: "Login sent to [email]! Agent is now LIVE."
+           ↓
+Leaderboard refreshes with correct name
+```

@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { motion } from "framer-motion";
-import { Save, Loader2, Target, DollarSign, Users, Clock, Home, Handshake, TrendingUp, Sparkles } from "lucide-react";
+import { useState, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Save, Loader2, Target, DollarSign, Users, Clock, Home, Handshake, TrendingUp, Sparkles, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,7 +19,10 @@ interface CompactProductionEntryProps {
 export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactProductionEntryProps) {
   const [saving, setSaving] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [pulsingField, setPulsingField] = useState<string | null>(null);
   const { playSound } = useSoundEffects();
+  const formRef = useRef<HTMLFormElement>(null);
   
   const [formData, setFormData] = useState({
     presentations: 0,
@@ -31,6 +34,12 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
     deals_closed: 0,
     aop: 0,
   });
+
+  const handleFieldChange = (key: string, value: number) => {
+    setFormData(prev => ({ ...prev, [key]: value }));
+    setPulsingField(key);
+    setTimeout(() => setPulsingField(null), 200);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,6 +61,10 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
         });
 
       if (error) throw error;
+
+      // Success flash
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 500);
 
       // Celebration!
       setShowConfetti(true);
@@ -115,84 +128,169 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
         onComplete={() => setShowConfetti(false)} 
       />
       
-      <div className="bg-card/50 backdrop-blur-sm rounded-xl border border-border/50 p-4">
+      <motion.div 
+        className="relative bg-card/60 backdrop-blur-md rounded-2xl border border-border/40 p-5 shadow-lg overflow-hidden"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        {/* Success flash overlay */}
+        <AnimatePresence>
+          {showSuccess && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-primary/10 pointer-events-none z-10"
+            />
+          )}
+        </AnimatePresence>
+
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-semibold flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
+            <motion.div
+              animate={{ rotate: [0, 10, -10, 0] }}
+              transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 3 }}
+            >
+              <Sparkles className="h-4 w-4 text-primary" />
+            </motion.div>
             Log Numbers
           </h2>
-          {totalALP > 0 && (
-            <motion.span
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              className="text-xs px-2 py-1 bg-primary/20 text-primary rounded-full font-bold"
-            >
-              ${totalALP.toLocaleString()}
-            </motion.span>
-          )}
+          <AnimatePresence mode="wait">
+            {totalALP > 0 && (
+              <motion.span
+                key={totalALP}
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.8, opacity: 0 }}
+                className="text-xs px-3 py-1.5 bg-gradient-to-r from-primary/20 to-primary/10 text-primary rounded-full font-bold border border-primary/30"
+              >
+                ${totalALP.toLocaleString()}
+              </motion.span>
+            )}
+          </AnimatePresence>
         </div>
         
-        <form onSubmit={handleSubmit}>
-          {/* 2x4 compact grid */}
-          <div className="grid grid-cols-2 gap-2 mb-4">
+        <form ref={formRef} onSubmit={handleSubmit}>
+          {/* 2x4 compact grid with staggered animation */}
+          <div className="grid grid-cols-2 gap-3 mb-5">
             {fields.map((field, index) => {
               const Icon = field.icon;
               const value = formData[field.key as keyof typeof formData];
               const hasValue = Number(value) > 0;
+              const isPulsing = pulsingField === field.key;
               
               return (
                 <motion.div
                   key={field.key}
-                  initial={{ opacity: 0, y: 5 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.02 }}
-                  className="relative"
+                  transition={{ delay: index * 0.04, duration: 0.25 }}
+                  className="relative group"
                 >
                   <Label 
                     htmlFor={field.key} 
-                    className="text-[10px] text-muted-foreground flex items-center gap-1 mb-0.5"
+                    className="text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5 mb-1 font-medium"
                   >
-                    <Icon className={cn("h-2.5 w-2.5", hasValue && "text-primary")} />
+                    <Icon className={cn(
+                      "h-3 w-3 transition-colors duration-200", 
+                      hasValue ? "text-primary" : "text-muted-foreground/60"
+                    )} />
                     {field.label}
                   </Label>
-                  <Input
-                    id={field.key}
-                    type="number"
-                    step={field.step}
-                    min="0"
-                    inputMode="numeric"
-                    value={value || ""}
-                    placeholder="0"
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      [field.key]: field.step ? parseFloat(e.target.value) || 0 : parseInt(e.target.value) || 0
-                    }))}
-                    className={cn(
-                      "h-12 text-lg font-bold text-center transition-all",
-                      hasValue && "border-primary/50 bg-primary/5",
-                      field.highlight && hasValue && "text-primary ring-1 ring-primary/30"
+                  <div className="relative">
+                    <Input
+                      id={field.key}
+                      type="number"
+                      step={field.step}
+                      min="0"
+                      inputMode="numeric"
+                      value={value || ""}
+                      placeholder="0"
+                      onChange={(e) => handleFieldChange(
+                        field.key, 
+                        field.step ? parseFloat(e.target.value) || 0 : parseInt(e.target.value) || 0
+                      )}
+                      className={cn(
+                        "h-14 text-xl font-bold text-center transition-all duration-200 input-focus-glow",
+                        "bg-background/50 hover:bg-background/80",
+                        hasValue && "border-primary/40 bg-primary/5",
+                        field.highlight && hasValue && "text-primary ring-2 ring-primary/20 border-primary/50",
+                        isPulsing && "animate-value-pop"
+                      )}
+                    />
+                    {/* Value indicator glow */}
+                    {hasValue && (
+                      <motion.div 
+                        className="absolute inset-0 rounded-md pointer-events-none"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        style={{
+                          background: `radial-gradient(ellipse at center, hsl(168 84% 42% / 0.08) 0%, transparent 70%)`
+                        }}
+                      />
                     )}
-                  />
+                  </div>
                 </motion.div>
               );
             })}
           </div>
 
-          <Button 
-            type="submit" 
-            className="w-full gap-2 h-12 text-base font-bold" 
-            size="lg"
-            disabled={saving}
+          <motion.div
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.98 }}
           >
-            {saving ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <Save className="h-5 w-5" />
-            )}
-            {saving ? "Saving..." : "Submit Numbers"}
-          </Button>
+            <Button 
+              type="submit" 
+              className={cn(
+                "w-full gap-2 h-14 text-base font-bold rounded-xl transition-all duration-300",
+                "bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary",
+                "shadow-lg hover:shadow-xl hover:shadow-primary/20",
+                saving && "opacity-80"
+              )} 
+              size="lg"
+              disabled={saving}
+            >
+              <AnimatePresence mode="wait">
+                {saving ? (
+                  <motion.div
+                    key="saving"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    className="flex items-center gap-2"
+                  >
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    Saving...
+                  </motion.div>
+                ) : showSuccess ? (
+                  <motion.div
+                    key="success"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    className="flex items-center gap-2"
+                  >
+                    <Check className="h-5 w-5" />
+                    Saved!
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="default"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    className="flex items-center gap-2"
+                  >
+                    <Save className="h-5 w-5" />
+                    Submit Numbers
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </Button>
+          </motion.div>
         </form>
-      </div>
+      </motion.div>
     </>
   );
 }

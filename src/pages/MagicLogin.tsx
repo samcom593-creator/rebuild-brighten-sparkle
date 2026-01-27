@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, AlertCircle, CheckCircle } from "lucide-react";
+import { Loader2, AlertCircle, CheckCircle, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 type LoginState = "verifying" | "signing-in" | "success" | "error";
 
@@ -17,6 +19,9 @@ export default function MagicLogin() {
   const [state, setState] = useState<LoginState>("verifying");
   const [error, setError] = useState<ErrorInfo | null>(null);
   const [destination, setDestination] = useState<string>("agent-portal");
+  const [showResendForm, setShowResendForm] = useState(false);
+  const [resendEmail, setResendEmail] = useState("");
+  const [resending, setResending] = useState(false);
 
   useEffect(() => {
     const token = searchParams.get("token");
@@ -34,7 +39,7 @@ export default function MagicLogin() {
     try {
       setState("verifying");
 
-      // Call verify edge function
+      // Call verify edge function to get tokenHash
       const { data, error: fnError } = await supabase.functions.invoke("verify-magic-link", {
         body: { token },
       });
@@ -53,20 +58,38 @@ export default function MagicLogin() {
       setDestination(dest);
       setState("signing-in");
 
-      // The authLink from the edge function is a Supabase magic link URL
-      // We need to redirect to it - Supabase will handle the session creation
-      // and then redirect back to our app
-      if (data.authLink) {
-        // Redirect to the Supabase auth link
-        // This will create the session and redirect to the destination
-        window.location.href = data.authLink;
+      // Use verifyOtp directly - no external redirect needed
+      if (data.tokenHash && data.email) {
+        const { error: verifyError } = await supabase.auth.verifyOtp({
+          email: data.email,
+          token: data.tokenHash,
+          type: "magiclink",
+        });
+
+        if (verifyError) {
+          console.error("verifyOtp error:", verifyError);
+          setError({
+            message: "Session creation failed. Please try signing in manually.",
+            code: "VERIFY_OTP_ERROR",
+          });
+          setState("error");
+          return;
+        }
+
+        // Success! Navigate to destination
+        setState("success");
+        
+        // Small delay for UX then navigate
+        setTimeout(() => {
+          navigate(`/${dest}`, { replace: true });
+        }, 500);
         return;
       }
 
-      // Fallback: If no auth link, show error
+      // Fallback: If no tokenHash, show error
       setError({
         message: "Login link generation failed. Please try again.",
-        code: "NO_AUTH_LINK",
+        code: "NO_TOKEN_HASH",
       });
       setState("error");
     } catch (err: any) {
@@ -76,6 +99,40 @@ export default function MagicLogin() {
         code: "UNKNOWN_ERROR",
       });
       setState("error");
+    }
+  };
+
+  const handleResendLink = async () => {
+    if (!resendEmail.trim()) {
+      toast.error("Please enter your email address");
+      return;
+    }
+
+    setResending(true);
+    try {
+      // Find the agent by email and send a new magic link
+      const { error: fnError } = await supabase.functions.invoke("send-password-reset", {
+        body: { email: resendEmail.trim(), type: "magic_link" },
+      });
+
+      if (fnError) {
+        toast.error("Failed to send new link. Please try again.");
+      } else {
+        toast.success("New login link sent! Check your email.");
+        setShowResendForm(false);
+      }
+    } catch (err) {
+      toast.error("Failed to send new link. Please try again.");
+    } finally {
+      setResending(false);
+    }
+  };
+
+  const handleRetry = () => {
+    const token = searchParams.get("token");
+    if (token) {
+      setError(null);
+      verifyAndLogin(token);
     }
   };
 
@@ -91,6 +148,8 @@ export default function MagicLogin() {
         return "This link is invalid. Please check your email for the correct link.";
       case "NO_ACCOUNT":
         return "No account found. Please contact your manager to set up your portal access.";
+      case "VERIFY_OTP_ERROR":
+        return "We couldn't create your session. Please sign in manually.";
       default:
         return error.message;
     }
@@ -110,7 +169,7 @@ export default function MagicLogin() {
             </h1>
             <p className="text-muted-foreground text-sm">
               {state === "verifying" && "Please wait while we verify your access."}
-              {state === "signing-in" && "Redirecting to sign you in..."}
+              {state === "signing-in" && "Creating your session..."}
               {state === "success" && "Redirecting to your portal..."}
               {state === "error" && "We encountered a problem with your login link."}
             </p>
@@ -142,21 +201,68 @@ export default function MagicLogin() {
                 <p className="text-sm text-foreground">{getErrorMessage()}</p>
               </div>
 
-              <div className="space-y-3">
-                <Button
-                  onClick={() => navigate("/agent-login")}
-                  className="w-full"
-                >
-                  Sign In Manually
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => navigate("/")}
-                  className="w-full"
-                >
-                  Go to Homepage
-                </Button>
-              </div>
+              {/* Resend Link Form */}
+              {showResendForm ? (
+                <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
+                  <p className="text-sm text-muted-foreground">Enter your email to receive a new login link:</p>
+                  <Input
+                    type="email"
+                    placeholder="your.email@example.com"
+                    value={resendEmail}
+                    onChange={(e) => setResendEmail(e.target.value)}
+                    className="w-full"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleResendLink}
+                      disabled={resending}
+                      className="flex-1"
+                    >
+                      {resending ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <Mail className="w-4 h-4 mr-2" />
+                          Send Link
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowResendForm(false)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <Button
+                    onClick={handleRetry}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    Try Again
+                  </Button>
+                  <Button
+                    onClick={() => navigate("/agent-login")}
+                    className="w-full"
+                  >
+                    Sign In Manually
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => setShowResendForm(true)}
+                    className="w-full text-muted-foreground"
+                  >
+                    <Mail className="w-4 h-4 mr-2" />
+                    Send Me a Fresh Link
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 

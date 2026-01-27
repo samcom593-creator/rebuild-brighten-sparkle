@@ -37,6 +37,11 @@ interface PossibleMatch {
   deals: number;
 }
 
+interface LinkedProfile {
+  full_name: string | null;
+  email: string | null;
+}
+
 export function AgentQuickEditDialog({
   open,
   onOpenChange,
@@ -52,14 +57,46 @@ export function AgentQuickEditDialog({
   const [saving, setSaving] = useState(false);
   const [merging, setMerging] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [linkedProfile, setLinkedProfile] = useState<LinkedProfile | null>(null);
 
   useEffect(() => {
     if (open && agentId) {
       setDisplayName(currentName);
       setSelectedMergeId(null);
+      setLinkedProfile(null);
+      fetchAgentData();
       fetchPossibleMatches();
     }
   }, [open, agentId, currentName]);
+
+  const fetchAgentData = async () => {
+    try {
+      // Fetch agent with linked profile via profile_id
+      const { data: agentData } = await supabase
+        .from("agents")
+        .select(`
+          id, 
+          display_name,
+          profile:profiles!agents_profile_id_fkey(full_name, email)
+        `)
+        .eq("id", agentId)
+        .maybeSingle();
+
+      if (agentData?.profile) {
+        const profile = agentData.profile as { full_name?: string; email?: string };
+        setLinkedProfile({
+          full_name: profile.full_name || null,
+          email: profile.email || null,
+        });
+        // Pre-fill display name with profile name if current is unknown
+        if (currentName === "Unknown Agent" && profile.full_name) {
+          setDisplayName(profile.full_name);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching agent data:", error);
+    }
+  };
 
   const fetchPossibleMatches = async () => {
     setLoading(true);
@@ -240,6 +277,17 @@ export function AgentQuickEditDialog({
                 </p>
               </div>
             </div>
+            {/* Show linked profile name if available */}
+            {linkedProfile?.full_name && (
+              <div className="mt-2 p-2 rounded bg-amber-500/10 border border-amber-500/20">
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  📋 Imported as: <span className="font-semibold">{linkedProfile.full_name}</span>
+                </p>
+                {linkedProfile.email && (
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{linkedProfile.email}</p>
+                )}
+              </div>
+            )}
             <p className="text-[10px] text-muted-foreground mt-2 font-mono">
               ID: {agentId.slice(0, 8)}...
             </p>

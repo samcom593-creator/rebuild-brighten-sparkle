@@ -92,36 +92,41 @@ export function LiveLeaderboard({ currentAgentId, showAISummary = true }: LiveLe
         return;
       }
 
-      // Get agent names with display_name fallback
+      // Get agent names with profile_id fallback for imported agents
       const agentIds = productionData.map(p => p.agent_id);
       const { data: agents } = await supabase
         .from("agents")
-        .select("id, user_id, display_name")
+        .select(`
+          id, 
+          user_id, 
+          profile_id,
+          display_name,
+          profile:profiles!agents_profile_id_fkey(full_name, avatar_url)
+        `)
         .in("id", agentIds);
 
       const userIds = agents?.map(a => a.user_id).filter(Boolean) || [];
-      const { data: profiles } = await supabase
+      const { data: profilesByUserId } = await supabase
         .from("profiles")
         .select("user_id, full_name, avatar_url")
         .in("user_id", userIds);
 
-      const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
-      const agentUserMap = new Map(agents?.map(a => [a.id, a.user_id]) || []);
-
-      // Build agent display_name map
-      const agentDisplayNameMap = new Map(agents?.map(a => [a.id, a.display_name]) || []);
+      const profileByUserIdMap = new Map(profilesByUserId?.map(p => [p.user_id, p]) || []);
 
       // Build leaderboard
       const leaderboard: LeaderboardEntry[] = productionData
         .map(prod => {
-          const userId = agentUserMap.get(prod.agent_id);
-          const profile = userId ? profileMap.get(userId) : null;
-          const displayName = profile?.full_name || agentDisplayNameMap.get(prod.agent_id) || "Unknown Agent";
+          const agent = agents?.find(a => a.id === prod.agent_id);
+          // First check profile via profile_id (for imported agents), then via user_id
+          const profileViaId = agent?.profile as { full_name?: string; avatar_url?: string } | null;
+          const profileViaUserId = agent?.user_id ? profileByUserIdMap.get(agent.user_id) : null;
+          const displayName = profileViaId?.full_name || profileViaUserId?.full_name || agent?.display_name || "Unknown Agent";
+          const avatarUrl = profileViaId?.avatar_url || profileViaUserId?.avatar_url;
           return {
             rank: 0,
             agentId: prod.agent_id,
             name: displayName,
-            avatarUrl: profile?.avatar_url,
+            avatarUrl,
             production: Number(prod.aop) || 0,
             presentations: prod.presentations || 0,
             closingRate: Number(prod.closing_rate) || 0,

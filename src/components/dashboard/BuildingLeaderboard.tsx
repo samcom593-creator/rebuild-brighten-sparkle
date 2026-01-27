@@ -95,10 +95,16 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
           previousEndDate = today.toISOString().split("T")[0];
       }
 
-      // Get all active agents with display_name
+      // Get all active agents with profile_id join for imported agents
       const { data: allAgents } = await supabase
         .from("agents")
-        .select("id, user_id, display_name")
+        .select(`
+          id, 
+          user_id, 
+          profile_id,
+          display_name,
+          profile:profiles!agents_profile_id_fkey(full_name, avatar_url)
+        `)
         .eq("is_deactivated", false);
 
       if (!allAgents) {
@@ -171,14 +177,18 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
       const relevantAgents = allAgents.filter(a => activeAgentIds.includes(a.id));
       const userIds = relevantAgents.map(a => a.user_id).filter(Boolean);
 
-      const { data: profiles } = await supabase
+      const { data: profilesByUserId } = await supabase
         .from("profiles")
         .select("user_id, full_name, avatar_url")
         .in("user_id", userIds);
 
+      const profileByUserIdMap = new Map(profilesByUserId?.map(p => [p.user_id, p]) || []);
+
       // Build entries
       const leaderboardEntries: BuildingEntry[] = relevantAgents.map(agent => {
-        const profile = profiles?.find(p => p.user_id === agent.user_id);
+        // First check profile via profile_id (for imported agents), then via user_id
+        const profileViaId = agent.profile as { full_name?: string; avatar_url?: string } | null;
+        const profileViaUserId = agent.user_id ? profileByUserIdMap.get(agent.user_id) : null;
         const stats = agentStats[agent.id];
         
         // Calculate growth percentage
@@ -194,14 +204,15 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
           ? (stats.contracted / stats.applications) * 100 
           : 0;
 
-        // Use profile name, then agent display_name, then fallback
-        const displayName = profile?.full_name || agent.display_name || "Unknown";
+        // Name fallback: profile_id profile -> user_id profile -> display_name -> Unknown
+        const displayName = profileViaId?.full_name || profileViaUserId?.full_name || agent.display_name || "Unknown";
+        const avatarUrl = profileViaId?.avatar_url || profileViaUserId?.avatar_url;
 
         return {
           rank: 0,
           agentId: agent.id,
           name: displayName,
-          avatarUrl: profile?.avatar_url || undefined,
+          avatarUrl: avatarUrl || undefined,
           applications: stats.applications,
           contracted: stats.contracted,
           projectedIncome: stats.applications * INCOME_PER_HIRE,

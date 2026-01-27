@@ -1,15 +1,18 @@
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Save, Loader2, Target, DollarSign, Users, Clock, Home, Handshake, TrendingUp, Sparkles, Check } from "lucide-react";
+import { Save, Loader2, Target, DollarSign, Users, Clock, Home, Handshake, TrendingUp, Sparkles, Check, CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ConfettiCelebration } from "./ConfettiCelebration";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { ALPCalculator } from "./ALPCalculator";
+import { format, subDays } from "date-fns";
 
 interface CompactProductionEntryProps {
   agentId: string;
@@ -22,6 +25,8 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
   const [showConfetti, setShowConfetti] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [pulsingField, setPulsingField] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   const { playSound } = useSoundEffects();
   const formRef = useRef<HTMLFormElement>(null);
   
@@ -57,13 +62,13 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
     setSaving(true);
 
     try {
-      const today = new Date().toISOString().split("T")[0];
+      const productionDate = format(selectedDate, "yyyy-MM-dd");
       
       const { error } = await supabase
         .from("daily_production")
         .upsert({
           agent_id: agentId,
-          production_date: today,
+          production_date: productionDate,
           ...formData,
           hours_called: Number(formData.hours_called),
           aop: Number(formData.aop),
@@ -123,7 +128,7 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
             await supabase.functions.invoke("notify-rank-passed", {
               body: {
                 submittingAgentId: agentId,
-                productionDate: today,
+                productionDate,
               },
             });
           } catch (rankError) {
@@ -230,6 +235,41 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
               </motion.span>
             )}
           </AnimatePresence>
+        </div>
+
+        {/* Date Picker */}
+        <div className="mb-4">
+          <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-full justify-start text-left font-medium h-11",
+                  selectedDate.toDateString() !== new Date().toDateString() && "border-primary/50 bg-primary/5"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
+                {format(selectedDate, "EEEE, MMM d, yyyy")}
+                {selectedDate.toDateString() !== new Date().toDateString() && (
+                  <span className="ml-auto text-[10px] text-primary font-semibold uppercase">Past Date</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={(date) => {
+                  if (date) {
+                    setSelectedDate(date);
+                    setDatePickerOpen(false);
+                  }
+                }}
+                disabled={(date) => date > new Date() || date < subDays(new Date(), 30)}
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
         </div>
         
         <form ref={formRef} onSubmit={handleSubmit}>

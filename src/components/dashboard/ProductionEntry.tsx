@@ -484,11 +484,16 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
                             type="number"
                             step={field.step}
                             min="0"
+                            inputMode="numeric"
                             value={value}
                             onChange={(e) => setFormData(prev => ({
                               ...prev,
                               [field.key]: field.step ? parseFloat(e.target.value) || 0 : parseInt(e.target.value) || 0
                             }))}
+                            onFocus={(e) => {
+                              // Select all on focus for easy editing on mobile - fixes cursor position bug
+                              e.target.select();
+                            }}
                             className={cn(
                               "h-14 text-2xl font-bold text-center pl-12 border-0 bg-transparent focus:ring-0",
                               hasValue && "text-foreground",

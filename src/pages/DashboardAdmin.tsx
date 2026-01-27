@@ -40,6 +40,7 @@ import { AbandonedLeadsPanel } from "@/components/dashboard/AbandonedLeadsPanel"
 import { AllLeadsPanel } from "@/components/dashboard/AllLeadsPanel";
 import { QuizQuestionsAdmin } from "@/components/dashboard/QuizQuestionsAdmin";
 import { TerminatedAgentLeadsPanel } from "@/components/dashboard/TerminatedAgentLeadsPanel";
+import { TeamHierarchyManager } from "@/components/dashboard/TeamHierarchyManager";
 import {
   Table,
   TableBody,
@@ -802,6 +803,16 @@ export default function DashboardAdmin() {
             </Table>
           </div>
         </GlassCard>
+      </motion.div>
+
+      {/* Team Hierarchy Manager */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.32 }}
+        className="mb-8"
+      >
+        <TeamHierarchyManager />
       </motion.div>
 
       {/* Manager Account Invites (Admin-only) */}

@@ -1,49 +1,46 @@
 
 
-# Rename "Quick Log Numbers Link" to "Apex Daily Numbers"
+# Fix Apex Daily Numbers Link - Urgent
 
-## Summary
+## Problem Summary
 
-This is a simple text update to rebrand the quick log numbers feature to "Apex Daily Numbers" for clearer branding consistency.
+The `/apex-daily-numbers` route exists in the code but the published site hasn't been updated. People clicking the link are hitting a 404 or getting redirected to an unexpected page.
 
----
+## Solution
 
-## Changes
+### 1. Add Backward Compatibility Redirect
 
-### 1. Agent Portal Link Section (Primary Change)
+Add a redirect from the old `/log-numbers` URL to `/apex-daily-numbers` so any old links still work.
 
-**File:** `src/pages/AgentPortal.tsx`
+**File: `src/App.tsx`**
+- Add: `<Route path="/log-numbers" element={<Navigate to="/apex-daily-numbers" replace />} />`
+- Import `Navigate` from react-router-dom
 
-Update the card heading and description:
+### 2. Protect the Route (Login Required)
 
-| Current Text | New Text |
-|--------------|----------|
-| "Quick Log Numbers Link" | "Apex Daily Numbers" |
-| "Share this link with your team for quick number entry:" | "Share this link with your team for daily number entry:" |
+Wrap the `/apex-daily-numbers` route in `ProtectedRoute` so users must log in before submitting numbers.
 
-### 2. Log Numbers Page Title (Optional Consistency)
+**File: `src/App.tsx`**
+- Change the route to use ProtectedRoute wrapper
 
-**File:** `src/pages/LogNumbers.tsx`
+### 3. Republish the Site
 
-Update the page heading:
-
-| Current Text | New Text |
-|--------------|----------|
-| "Log Your Numbers" | "Apex Daily Numbers" |
-| "Quick entry for daily production" | "Daily production entry" |
+After these changes, the site needs to be **published** so the live site at apex-financial.org gets the new route.
 
 ---
 
-## Files to Modify
+## Technical Changes
 
 | File | Change |
 |------|--------|
-| `src/pages/AgentPortal.tsx` | Update section heading from "Quick Log Numbers Link" to "Apex Daily Numbers" |
-| `src/pages/LogNumbers.tsx` | Update page title to match the new branding |
+| `src/App.tsx` | Import `Navigate`, wrap `/apex-daily-numbers` in ProtectedRoute, add redirect from `/log-numbers` |
 
 ---
 
-## Result
+## After Implementation
 
-After implementation, the Agent Portal will show "Apex Daily Numbers" as the heading for the shareable link section, providing clearer branding alignment.
+1. Changes will be applied to the preview
+2. You need to **publish** the site for changes to go live
+3. Share the full link: `https://apex-financial.org/apex-daily-numbers`
+4. Users will need to log in before they can submit their numbers
 

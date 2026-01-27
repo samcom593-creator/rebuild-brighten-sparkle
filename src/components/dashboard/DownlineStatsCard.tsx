@@ -14,7 +14,7 @@ interface DownlineStats {
 }
 
 export function DownlineStatsCard() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [stats, setStats] = useState<DownlineStats>({
     totalALP: 0,
     totalDeals: 0,
@@ -33,6 +33,7 @@ export function DownlineStatsCard() {
           .from("agents")
           .select("id")
           .eq("user_id", user.id)
+          .eq("is_deactivated", false)
           .maybeSingle();
 
         if (!currentAgent) {
@@ -40,21 +41,34 @@ export function DownlineStatsCard() {
           return;
         }
 
-        // Get agents under this manager
-        const { data: downlineAgents } = await supabase
-          .from("agents")
-          .select("id")
-          .eq("invited_by_manager_id", currentAgent.id)
-          .eq("is_deactivated", false);
+        let agentIds: string[] = [];
 
-        if (!downlineAgents || downlineAgents.length === 0) {
+        // For admins, fetch ALL active agents (not just direct reports)
+        if (isAdmin) {
+          const { data: allAgents } = await supabase
+            .from("agents")
+            .select("id")
+            .eq("is_deactivated", false)
+            .neq("id", currentAgent.id);
+
+          agentIds = allAgents?.map(a => a.id) || [];
+        } else {
+          // For managers, fetch only direct reports
+          const { data: downlineAgents } = await supabase
+            .from("agents")
+            .select("id")
+            .eq("invited_by_manager_id", currentAgent.id)
+            .eq("is_deactivated", false);
+
+          agentIds = downlineAgents?.map(a => a.id) || [];
+        }
+
+        if (agentIds.length === 0) {
           setLoading(false);
           return;
         }
 
-        const agentIds = downlineAgents.map(a => a.id);
-
-        // Get this week's production data for downline
+        // Get this week's production data for agents
         const today = new Date();
         const weekStart = format(startOfWeek(today, { weekStartsOn: 0 }), "yyyy-MM-dd");
         const weekEnd = format(endOfWeek(today, { weekStartsOn: 0 }), "yyyy-MM-dd");
@@ -77,7 +91,7 @@ export function DownlineStatsCard() {
           setStats({
             totalALP,
             totalDeals,
-            agentCount: downlineAgents.length,
+            agentCount: agentIds.length,
             avgCloseRate,
           });
         }
@@ -89,11 +103,13 @@ export function DownlineStatsCard() {
     };
 
     fetchDownlineStats();
-  }, [user]);
+  }, [user, isAdmin]);
 
   if (loading || stats.agentCount === 0) {
     return null;
   }
+
+  const label = isAdmin ? "Agency Production (This Week)" : "Team Production (This Week)";
 
   return (
     <motion.div
@@ -104,9 +120,9 @@ export function DownlineStatsCard() {
       <GlassCard className="p-5">
         <div className="flex items-center gap-2 mb-4">
           <Users className="h-5 w-5 text-primary" />
-          <h3 className="font-semibold">Team Production (This Week)</h3>
+          <h3 className="font-semibold">{label}</h3>
           <span className="text-xs text-muted-foreground ml-auto">
-            {stats.agentCount} agents
+            {stats.agentCount} agent{stats.agentCount !== 1 ? 's' : ''}
           </span>
         </div>
         
@@ -116,7 +132,7 @@ export function DownlineStatsCard() {
               <DollarSign className="h-4 w-4" />
             </div>
             <p className="text-2xl font-bold">${stats.totalALP.toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground">Team ALP</p>
+            <p className="text-xs text-muted-foreground">Total ALP</p>
           </div>
           
           <div className="text-center">

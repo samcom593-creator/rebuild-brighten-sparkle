@@ -174,3 +174,6 @@ verify_jwt = false
 
 [functions.notify-weekly-champion]
 verify_jwt = false
+
+[functions.notify-stage-change]
+verify_jwt = false

@@ -30,7 +30,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Check if email exists in profiles table (CRM)
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
-      .select("id, user_id, full_name, email")
+      .select("id, user_id, full_name, email, phone, city, state")
       .ilike("email", normalizedEmail)
       .maybeSingle();
 
@@ -40,6 +40,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     const inCRM = !!profile;
     const agentName = profile?.full_name || null;
+    const agentPhone = profile?.phone || null;
+    const agentCity = profile?.city || null;
+    const agentState = profile?.state || null;
     const profileUserId = profile?.user_id || null;
 
     // Check if there's an auth user with this email
@@ -80,6 +83,9 @@ const handler = async (req: Request): Promise<Response> => {
         inCRM,
         hasAuthAccount,
         agentName,
+        agentPhone,
+        agentCity,
+        agentState,
       }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );

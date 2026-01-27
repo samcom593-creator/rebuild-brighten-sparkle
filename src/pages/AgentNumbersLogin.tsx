@@ -14,37 +14,27 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import apexIcon from "@/assets/apex-icon.png";
 
-type FlowStep = "email" | "password" | "set-password" | "create-account" | "reset-sent";
+type FlowStep = "identifier" | "password" | "set-password" | "create-account" | "reset-sent";
 
-const emailSchema = z.object({
-  email: z.string().email("Valid email is required"),
+const identifierSchema = z.object({
+  identifier: z.string().min(1, "Email or phone is required"),
 });
 
 const passwordSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
+// Simplified: only password required for CRM users
 const setPasswordSchema = z.object({
-  fullName: z.string().min(2, "Name is required"),
-  phone: z.string().optional(),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  confirmPassword: z.string().min(6, "Please confirm your password"),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
 });
 
 const createAccountSchema = z.object({
   fullName: z.string().min(2, "Name is required"),
-  phone: z.string().optional(),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  confirmPassword: z.string().min(6, "Please confirm your password"),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
 });
 
-type EmailFormData = z.infer<typeof emailSchema>;
+type IdentifierFormData = z.infer<typeof identifierSchema>;
 type PasswordFormData = z.infer<typeof passwordSchema>;
 type SetPasswordFormData = z.infer<typeof setPasswordSchema>;
 type CreateAccountFormData = z.infer<typeof createAccountSchema>;
@@ -54,12 +44,11 @@ export default function AgentNumbersLogin() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   
-  const [step, setStep] = useState<FlowStep>("email");
+  const [step, setStep] = useState<FlowStep>("identifier");
   const [email, setEmail] = useState("");
   const [agentName, setAgentName] = useState<string | null>(null);
-  const [agentPhone, setAgentPhone] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+  const [isCheckingIdentifier, setIsCheckingIdentifier] = useState(false);
 
   // Check URL params for setup flow
   useEffect(() => {
@@ -83,8 +72,8 @@ export default function AgentNumbersLogin() {
     checkSession();
   }, [navigate]);
 
-  const emailForm = useForm<EmailFormData>({
-    resolver: zodResolver(emailSchema),
+  const identifierForm = useForm<IdentifierFormData>({
+    resolver: zodResolver(identifierSchema),
   });
 
   const passwordForm = useForm<PasswordFormData>({
@@ -99,43 +88,39 @@ export default function AgentNumbersLogin() {
     resolver: zodResolver(createAccountSchema),
   });
 
-  const handleEmailSubmit = async (data: EmailFormData) => {
-    setIsCheckingEmail(true);
-    const normalizedEmail = data.email.toLowerCase().trim();
-    setEmail(normalizedEmail);
+  const handleIdentifierSubmit = async (data: IdentifierFormData) => {
+    setIsCheckingIdentifier(true);
+    const input = data.identifier.trim();
 
     try {
       const { data: result, error } = await supabase.functions.invoke("check-email-status", {
-        body: { email: normalizedEmail },
+        body: { identifier: input },
       });
 
       if (error) throw error;
 
-      const { inCRM, hasAuthAccount, agentName: name, agentPhone: phone } = result;
+      const { inCRM, hasAuthAccount, agentName: name, agentEmail } = result;
+      
+      // Use the email from CRM (important for phone lookups)
+      const emailToUse = agentEmail || input;
+      setEmail(emailToUse.toLowerCase().trim());
       setAgentName(name);
-      setAgentPhone(phone);
 
       if (inCRM && hasAuthAccount) {
         // Existing user with auth - show password field
         setStep("password");
       } else if (inCRM && !hasAuthAccount) {
-        // CRM user without auth - let them set password with pre-filled data
-        setPasswordForm.reset({
-          fullName: name || "",
-          phone: phone || "",
-          password: "",
-          confirmPassword: "",
-        });
+        // CRM user without auth - just need password (name already in CRM)
         setStep("set-password");
       } else {
         // Not in CRM - create new account
         setStep("create-account");
       }
     } catch (error: any) {
-      console.error("Error checking email:", error);
-      toast.error("Failed to check email. Please try again.");
+      console.error("Error checking identifier:", error);
+      toast.error("Failed to check. Please try again.");
     } finally {
-      setIsCheckingEmail(false);
+      setIsCheckingIdentifier(false);
     }
   };
 
@@ -170,12 +155,7 @@ export default function AgentNumbersLogin() {
     
     try {
       const { data: result, error } = await supabase.functions.invoke("setup-agent-password", {
-        body: { 
-          email, 
-          password: data.password,
-          fullName: data.fullName,
-          phone: data.phone || null,
-        },
+        body: { email, password: data.password },
       });
 
       if (error) throw error;
@@ -210,7 +190,6 @@ export default function AgentNumbersLogin() {
           email, 
           password: data.password,
           fullName: data.fullName,
-          phone: data.phone || null,
         },
       });
 
@@ -262,10 +241,10 @@ export default function AgentNumbersLogin() {
   };
 
   const handleBack = () => {
-    setStep("email");
+    setStep("identifier");
     setEmail("");
     setAgentName(null);
-    setAgentPhone(null);
+    identifierForm.reset();
     passwordForm.reset();
     setPasswordForm.reset();
     createAccountForm.reset();
@@ -279,9 +258,9 @@ export default function AgentNumbersLogin() {
 
   const getStepTitle = () => {
     switch (step) {
-      case "email": return "Sign in to log your production";
+      case "identifier": return "Sign in to log your production";
       case "password": return agentName ? `Welcome back, ${agentName.split(" ")[0]}!` : "Enter your password";
-      case "set-password": return agentName ? `Set up your password, ${agentName.split(" ")[0]}` : "Set your password";
+      case "set-password": return agentName ? `Welcome, ${agentName.split(" ")[0]}! 👋` : "Set your password";
       case "create-account": return "Create your account";
       case "reset-sent": return "Check your email";
       default: return "";
@@ -341,9 +320,9 @@ export default function AgentNumbersLogin() {
           </motion.div>
         </div>
 
-        {/* Feature highlights - only show on email step */}
+        {/* Feature highlights - only show on identifier step */}
         <AnimatePresence mode="wait">
-          {step === "email" && (
+          {step === "identifier" && (
             <motion.div 
               className="flex justify-center gap-4 mb-6"
               initial={{ opacity: 0 }}
@@ -370,41 +349,41 @@ export default function AgentNumbersLogin() {
         </AnimatePresence>
 
         <AnimatePresence mode="wait">
-          {/* Step 1: Email Input */}
-          {step === "email" && (
+          {/* Step 1: Email/Phone Input */}
+          {step === "identifier" && (
             <motion.div
-              key="email-step"
+              key="identifier-step"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
             >
               <GlassCard className="p-8">
-                <form onSubmit={emailForm.handleSubmit(handleEmailSubmit)} className="space-y-5">
+                <form onSubmit={identifierForm.handleSubmit(handleIdentifierSubmit)} className="space-y-5">
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+                    <Label htmlFor="identifier" className="text-sm font-medium">Email or Phone</Label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
-                        id="email"
-                        type="email"
-                        {...emailForm.register("email")}
-                        placeholder="your@email.com"
+                        id="identifier"
+                        type="text"
+                        {...identifierForm.register("identifier")}
+                        placeholder="your@email.com or (555) 123-4567"
                         className="pl-10 bg-input h-11"
-                        autoComplete="email"
+                        autoComplete="email tel"
                         autoFocus
                       />
                     </div>
-                    {emailForm.formState.errors.email && (
-                      <p className="text-sm text-destructive">{emailForm.formState.errors.email.message}</p>
+                    {identifierForm.formState.errors.identifier && (
+                      <p className="text-sm text-destructive">{identifierForm.formState.errors.identifier.message}</p>
                     )}
                   </div>
 
                   <GradientButton 
                     type="submit" 
                     className="w-full h-11 text-base font-semibold" 
-                    disabled={isCheckingEmail}
+                    disabled={isCheckingIdentifier}
                   >
-                    {isCheckingEmail ? (
+                    {isCheckingIdentifier ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin mr-2" />
                         Checking...
@@ -497,7 +476,7 @@ export default function AgentNumbersLogin() {
             </motion.div>
           )}
 
-          {/* Step 2b: Set Password (CRM user, no auth) - with pre-filled data */}
+          {/* Step 2b: Set Password (CRM user, no auth) - SIMPLIFIED: just password */}
           {step === "set-password" && (
             <motion.div
               key="set-password-step"
@@ -506,11 +485,14 @@ export default function AgentNumbersLogin() {
               exit={{ opacity: 0, x: -20 }}
             >
               <GlassCard className="p-8">
-                <form onSubmit={setPasswordForm.handleSubmit(handleSetPasswordSubmit)} className="space-y-4">
-                  <div className="p-3 rounded-lg bg-accent/10 text-sm text-center mb-2 text-accent-foreground">
-                    <CheckCircle className="h-4 w-4 inline mr-2" />
-                    Welcome back! Confirm your info to continue.
-                  </div>
+                <form onSubmit={setPasswordForm.handleSubmit(handleSetPasswordSubmit)} className="space-y-5">
+                  {/* Welcome banner with name */}
+                  {agentName && (
+                    <div className="p-4 rounded-lg bg-gradient-to-r from-primary/20 to-primary/5 border border-primary/20 text-center">
+                      <CheckCircle className="h-5 w-5 inline mr-2 text-primary" />
+                      <span className="font-medium">We found you, {agentName}!</span>
+                    </div>
+                  )}
 
                   <div className="p-2 rounded-lg bg-muted/50 text-xs text-center text-muted-foreground">
                     <Mail className="h-3 w-3 inline mr-1" />
@@ -518,47 +500,14 @@ export default function AgentNumbersLogin() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="set-fullName" className="text-sm font-medium">Full Name</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="set-fullName"
-                        type="text"
-                        {...setPasswordForm.register("fullName")}
-                        placeholder="Your full name"
-                        className="pl-10 bg-input h-11"
-                        autoComplete="name"
-                      />
-                    </div>
-                    {setPasswordForm.formState.errors.fullName && (
-                      <p className="text-sm text-destructive">{setPasswordForm.formState.errors.fullName.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="set-phone" className="text-sm font-medium">Phone (optional)</Label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="set-phone"
-                        type="tel"
-                        {...setPasswordForm.register("phone")}
-                        placeholder="(555) 123-4567"
-                        className="pl-10 bg-input h-11"
-                        autoComplete="tel"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="set-password" className="text-sm font-medium">Password</Label>
+                    <Label htmlFor="set-password" className="text-sm font-medium">Create a Password</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="set-password"
                         type="password"
                         {...setPasswordForm.register("password")}
-                        placeholder="Choose a password"
+                        placeholder="Choose a password (6+ characters)"
                         className="pl-10 bg-input h-11"
                         autoComplete="new-password"
                         autoFocus
@@ -566,24 +515,6 @@ export default function AgentNumbersLogin() {
                     </div>
                     {setPasswordForm.formState.errors.password && (
                       <p className="text-sm text-destructive">{setPasswordForm.formState.errors.password.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="set-confirmPassword" className="text-sm font-medium">Confirm Password</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="set-confirmPassword"
-                        type="password"
-                        {...setPasswordForm.register("confirmPassword")}
-                        placeholder="Confirm your password"
-                        className="pl-10 bg-input h-11"
-                        autoComplete="new-password"
-                      />
-                    </div>
-                    {setPasswordForm.formState.errors.confirmPassword && (
-                      <p className="text-sm text-destructive">{setPasswordForm.formState.errors.confirmPassword.message}</p>
                     )}
                   </div>
 
@@ -600,7 +531,7 @@ export default function AgentNumbersLogin() {
                     ) : (
                       <>
                         <Target className="h-4 w-4 mr-2" />
-                        Complete Setup & Log In
+                        Set Password & Log In
                       </>
                     )}
                   </GradientButton>
@@ -659,21 +590,6 @@ export default function AgentNumbersLogin() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="phone" className="text-sm font-medium">Phone (optional)</Label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="phone"
-                        type="tel"
-                        {...createAccountForm.register("phone")}
-                        placeholder="(555) 123-4567"
-                        className="pl-10 bg-input h-11"
-                        autoComplete="tel"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
                     <Label htmlFor="create-password" className="text-sm font-medium">Password</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -688,24 +604,6 @@ export default function AgentNumbersLogin() {
                     </div>
                     {createAccountForm.formState.errors.password && (
                       <p className="text-sm text-destructive">{createAccountForm.formState.errors.password.message}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="confirm-password" className="text-sm font-medium">Confirm Password</Label>
-                    <div className="relative">
-                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="confirm-password"
-                        type="password"
-                        {...createAccountForm.register("confirmPassword")}
-                        placeholder="Confirm your password"
-                        className="pl-10 bg-input h-11"
-                        autoComplete="new-password"
-                      />
-                    </div>
-                    {createAccountForm.formState.errors.confirmPassword && (
-                      <p className="text-sm text-destructive">{createAccountForm.formState.errors.confirmPassword.message}</p>
                     )}
                   </div>
 

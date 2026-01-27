@@ -591,6 +591,19 @@ export default function DashboardCRM() {
             />
           )}
 
+          {/* Course Link for In Course agents */}
+          {["onboarding", "training_online"].includes(agent.onboardingStage) && (
+            <a 
+              href="/onboarding-course" 
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors"
+            >
+              <GraduationCap className="h-3.5 w-3.5" />
+              View Training Course
+            </a>
+          )}
+
           {/* Checklist - Compact */}
           <AgentChecklist
             agentId={agent.id}

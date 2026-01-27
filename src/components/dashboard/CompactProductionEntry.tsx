@@ -117,6 +117,32 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
               agentName: agentName || "Agent",
             },
           });
+          
+          // 📊 Check if we passed anyone on the leaderboard
+          try {
+            await supabase.functions.invoke("notify-rank-passed", {
+              body: {
+                submittingAgentId: agentId,
+                productionDate: today,
+              },
+            });
+          } catch (rankError) {
+            console.error("Failed to check rank changes:", rankError);
+          }
+          
+          // ⚡ Trigger comeback alert for big moves
+          try {
+            await supabase.functions.invoke("notify-comeback-alert", {
+              body: {
+                agentId,
+                agentName: agentName || "Agent",
+                previousRank: 0,
+                newRank: 0,
+              },
+            });
+          } catch (comebackError) {
+            console.error("Failed to check comeback:", comebackError);
+          }
         } catch (notifyError) {
           console.error("Failed to send deal/streak notifications:", notifyError);
         }

@@ -10,10 +10,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { ConfettiCelebration } from "./ConfettiCelebration";
 import { RankChangeIndicator } from "./RankChangeIndicator";
 import { BuildingLeaderboard } from "./BuildingLeaderboard";
+import { MyRankingChart } from "./MyRankingChart";
 import { useTop3Celebration } from "@/hooks/useTop3Celebration";
 import { useRankChange } from "@/hooks/useRankChange";
 import { cn } from "@/lib/utils";
 import { subDays } from "date-fns";
+
 interface LeaderboardTabsProps {
   currentAgentId?: string;
 }
@@ -382,6 +384,18 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                 <Circle className="h-2 w-2 fill-emerald-500 text-emerald-500 animate-live-pulse" />
                 <span className="text-xs text-muted-foreground">Live</span>
               </div>
+              
+              {/* My Rank Button */}
+              <MyRankingChart 
+                currentAgentId={currentAgentId} 
+                entries={entries.map(e => ({
+                  rank: e.rank,
+                  agentId: e.agentId,
+                  name: e.name,
+                  alp: e.alp,
+                  isCurrentUser: e.isCurrentUser,
+                }))} 
+              />
             </div>
             <div className="flex items-center gap-2">
               {leaderboardMode === "production" && (

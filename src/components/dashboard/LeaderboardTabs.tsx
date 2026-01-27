@@ -173,9 +173,16 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
       });
 
       const agentIds = Object.keys(agentTotals);
+      // Query agents with profile_id join for imported agents
       const { data: agents } = await supabase
         .from("agents")
-        .select("id, user_id, display_name")
+        .select(`
+          id, 
+          user_id, 
+          profile_id,
+          display_name,
+          profile:profiles!agents_profile_id_fkey(full_name, avatar_url)
+        `)
         .in("id", agentIds);
 
       if (!agents) {
@@ -184,15 +191,18 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
         return;
       }
 
+      // Also get profiles via user_id for agents who have accounts
       const userIds = agents.map((a) => a.user_id).filter(Boolean);
-      const { data: profiles } = await supabase
+      const { data: profilesByUserId } = await supabase
         .from("profiles")
         .select("user_id, full_name, avatar_url")
         .in("user_id", userIds);
 
       const leaderboardEntries: LeaderboardEntry[] = agentIds.map((agentId) => {
         const agent = agents.find((a) => a.id === agentId);
-        const profile = profiles?.find((p) => p.user_id === agent?.user_id);
+        // First check profile via profile_id (for imported agents), then via user_id
+        const profileViaId = agent?.profile as { full_name?: string; avatar_url?: string } | null;
+        const profileViaUserId = profilesByUserId?.find((p) => p.user_id === agent?.user_id);
         const totals = agentTotals[agentId];
         
         const avgClosingRate = totals.closingRates.length > 0
@@ -201,14 +211,15 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
             ? (totals.deals / totals.presentations) * 100
             : 0;
 
-        // Use profile name, then agent display_name, then fallback
-        const displayName = profile?.full_name || agent?.display_name || "Unknown Agent";
+        // Name fallback: profile_id profile -> user_id profile -> display_name -> Unknown
+        const displayName = profileViaId?.full_name || profileViaUserId?.full_name || agent?.display_name || "Unknown Agent";
+        const avatarUrl = profileViaId?.avatar_url || profileViaUserId?.avatar_url;
 
         return {
           rank: 0,
           agentId,
           name: displayName,
-          avatarUrl: profile?.avatar_url,
+          avatarUrl,
           alp: totals.alp,
           deals: totals.deals,
           presentations: totals.presentations,

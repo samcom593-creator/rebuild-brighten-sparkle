@@ -1,0 +1,258 @@
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { ArrowLeft, BookOpen, PlayCircle, HelpCircle, Award } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/hooks/useAuth";
+import { useOnboardingCourse } from "@/hooks/useOnboardingCourse";
+import { CourseModuleSidebar } from "@/components/course/CourseModuleSidebar";
+import { CourseVideoPlayer } from "@/components/course/CourseVideoPlayer";
+import { CourseQuiz } from "@/components/course/CourseQuiz";
+import { supabase } from "@/integrations/supabase/client";
+
+export default function OnboardingCourse() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [agentId, setAgentId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"video" | "quiz">("video");
+
+  // Fetch agent ID for current user
+  useEffect(() => {
+    const fetchAgentId = async () => {
+      if (!user?.id) return;
+      
+      const { data } = await supabase
+        .from("agents")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      
+      if (data) {
+        setAgentId(data.id);
+      }
+    };
+    fetchAgentId();
+  }, [user?.id]);
+
+  const {
+    modules,
+    questions,
+    progress,
+    currentModuleIndex,
+    setCurrentModuleIndex,
+    loading,
+    updateVideoProgress,
+    submitQuiz,
+    isModuleUnlocked,
+    canTakeQuiz,
+    getOverallProgress,
+    isCourseComplete,
+    currentModule
+  } = useOnboardingCourse(agentId);
+
+  const currentQuestions = currentModule ? questions[currentModule.id] || [] : [];
+  const currentProgress = currentModule ? progress[currentModule.id] : null;
+
+  const handleVideoComplete = () => {
+    if (currentQuestions.length > 0) {
+      setActiveTab("quiz");
+    }
+  };
+
+  const handleQuizSubmit = async (answers: number[], score: number, passed: boolean) => {
+    if (!currentModule) return false;
+    const success = await submitQuiz(currentModule.id, answers, score, passed);
+    
+    if (success && passed && currentModuleIndex < modules.length - 1) {
+      // Auto-advance to next module after passing
+      setTimeout(() => {
+        setCurrentModuleIndex(currentModuleIndex + 1);
+        setActiveTab("video");
+      }, 2000);
+    }
+    
+    return success;
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background p-4 md:p-8">
+        <div className="max-w-7xl mx-auto">
+          <Skeleton className="h-8 w-48 mb-6" />
+          <div className="flex flex-col lg:flex-row gap-6">
+            <Skeleton className="w-full lg:w-80 h-[400px]" />
+            <Skeleton className="flex-1 h-[600px]" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (modules.length === 0) {
+    return (
+      <div className="min-h-screen bg-background p-4 md:p-8">
+        <div className="max-w-4xl mx-auto text-center py-20">
+          <BookOpen className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+          <h1 className="text-2xl font-bold mb-2">Course Coming Soon</h1>
+          <p className="text-muted-foreground mb-6">
+            The onboarding course is being prepared. Check back soon!
+          </p>
+          <Button onClick={() => navigate(-1)} variant="outline">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Go Back
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-xl font-bold">Onboarding Course</h1>
+              <p className="text-sm text-muted-foreground">
+                Complete all modules to begin field training
+              </p>
+            </div>
+          </div>
+          
+          {isCourseComplete() && (
+            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <Award className="h-5 w-5" />
+              <span className="font-medium">Course Complete!</span>
+            </div>
+          )}
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto p-4 md:p-8">
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Sidebar */}
+          <CourseModuleSidebar
+            modules={modules}
+            progress={progress}
+            currentIndex={currentModuleIndex}
+            onSelectModule={setCurrentModuleIndex}
+            isModuleUnlocked={isModuleUnlocked}
+            overallProgress={getOverallProgress()}
+          />
+
+          {/* Content Area */}
+          <div className="flex-1">
+            {currentModule && (
+              <motion.div
+                key={currentModule.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <span className="text-primary">Module {currentModuleIndex + 1}:</span>
+                      {currentModule.title}
+                    </CardTitle>
+                    {currentModule.description && (
+                      <CardDescription>{currentModule.description}</CardDescription>
+                    )}
+                  </CardHeader>
+                  
+                  <CardContent>
+                    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "video" | "quiz")}>
+                      <TabsList className="grid w-full grid-cols-2 mb-6">
+                        <TabsTrigger value="video" className="gap-2">
+                          <PlayCircle className="h-4 w-4" />
+                          Video Lesson
+                        </TabsTrigger>
+                        <TabsTrigger 
+                          value="quiz" 
+                          className="gap-2"
+                          disabled={!canTakeQuiz(currentModule.id) && !currentProgress?.passed}
+                        >
+                          <HelpCircle className="h-4 w-4" />
+                          Quiz
+                          {!canTakeQuiz(currentModule.id) && !currentProgress?.passed && (
+                            <span className="text-xs opacity-60">(Watch 90%)</span>
+                          )}
+                        </TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="video" className="mt-0">
+                        <CourseVideoPlayer
+                          videoUrl={currentModule.video_url}
+                          onProgressUpdate={(percent) => updateVideoProgress(currentModule.id, percent)}
+                          watchedPercent={currentProgress?.video_watched_percent || 0}
+                          onVideoComplete={handleVideoComplete}
+                        />
+                        
+                        {currentProgress?.passed && (
+                          <div className="mt-4 p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+                            <p className="text-emerald-600 dark:text-emerald-400 font-medium">
+                              ✓ You've already passed this module with a score of {currentProgress.score}%
+                            </p>
+                          </div>
+                        )}
+                      </TabsContent>
+
+                      <TabsContent value="quiz" className="mt-0">
+                        {currentQuestions.length > 0 ? (
+                          currentProgress?.passed ? (
+                            <Card className="border-2 border-emerald-500/30">
+                              <CardContent className="pt-8 pb-8 text-center">
+                                <Award className="h-16 w-16 text-emerald-500 mx-auto mb-4" />
+                                <h3 className="text-xl font-bold mb-2">Module Completed!</h3>
+                                <p className="text-muted-foreground mb-4">
+                                  You passed with a score of {currentProgress.score}%
+                                </p>
+                                {currentModuleIndex < modules.length - 1 && (
+                                  <Button onClick={() => {
+                                    setCurrentModuleIndex(currentModuleIndex + 1);
+                                    setActiveTab("video");
+                                  }}>
+                                    Continue to Next Module
+                                  </Button>
+                                )}
+                              </CardContent>
+                            </Card>
+                          ) : (
+                            <CourseQuiz
+                              questions={currentQuestions}
+                              passThreshold={currentModule.pass_threshold}
+                              attempts={currentProgress?.attempts || 0}
+                              onSubmit={handleQuizSubmit}
+                              onRetry={() => {}}
+                            />
+                          )
+                        ) : (
+                          <Card>
+                            <CardContent className="pt-8 pb-8 text-center">
+                              <HelpCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                              <p className="text-muted-foreground">
+                                Quiz questions are being prepared for this module.
+                              </p>
+                            </CardContent>
+                          </Card>
+                        )}
+                      </TabsContent>
+                    </Tabs>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}

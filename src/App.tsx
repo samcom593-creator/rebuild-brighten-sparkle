@@ -27,6 +27,7 @@ import TeamDirectory from "./pages/TeamDirectory";
 import PendingApproval from "./pages/PendingApproval";
 import NotFound from "./pages/NotFound";
 import AgentPortal from "./pages/AgentPortal";
+import OnboardingCourse from "./pages/OnboardingCourse";
 
 const queryClient = new QueryClient();
 
@@ -119,6 +120,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <AgentPortal />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/onboarding-course"
+            element={
+              <ProtectedRoute>
+                <OnboardingCourse />
               </ProtectedRoute>
             }
           />

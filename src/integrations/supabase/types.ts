@@ -1131,6 +1131,127 @@ export type Database = {
         }
         Relationships: []
       }
+      onboarding_modules: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          order_index: number
+          pass_threshold: number | null
+          title: string
+          video_url: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          order_index: number
+          pass_threshold?: number | null
+          title: string
+          video_url: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          order_index?: number
+          pass_threshold?: number | null
+          title?: string
+          video_url?: string
+        }
+        Relationships: []
+      }
+      onboarding_progress: {
+        Row: {
+          agent_id: string
+          answers: Json | null
+          attempts: number | null
+          completed_at: string | null
+          id: string
+          module_id: string
+          passed: boolean | null
+          score: number | null
+          started_at: string | null
+          video_watched_percent: number | null
+        }
+        Insert: {
+          agent_id: string
+          answers?: Json | null
+          attempts?: number | null
+          completed_at?: string | null
+          id?: string
+          module_id: string
+          passed?: boolean | null
+          score?: number | null
+          started_at?: string | null
+          video_watched_percent?: number | null
+        }
+        Update: {
+          agent_id?: string
+          answers?: Json | null
+          attempts?: number | null
+          completed_at?: string | null
+          id?: string
+          module_id?: string
+          passed?: boolean | null
+          score?: number | null
+          started_at?: string | null
+          video_watched_percent?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_progress_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onboarding_questions: {
+        Row: {
+          correct_answer: number
+          created_at: string | null
+          explanation: string | null
+          id: string
+          module_id: string
+          options: Json
+          order_index: number | null
+          question: string
+        }
+        Insert: {
+          correct_answer: number
+          created_at?: string | null
+          explanation?: string | null
+          id?: string
+          module_id: string
+          options: Json
+          order_index?: number | null
+          question: string
+        }
+        Update: {
+          correct_answer?: number
+          created_at?: string | null
+          explanation?: string | null
+          id?: string
+          module_id?: string
+          options?: Json
+          order_index?: number | null
+          question?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_questions_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       partial_applications: {
         Row: {
           admin_notified_at: string | null

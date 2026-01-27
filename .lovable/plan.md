@@ -1,139 +1,131 @@
 
-# Fix Agent Login Flow - Simplified Email-First Experience
+# Fix Agent Login RLS Error - Immediate Solution
 
-## Problems Identified
+## Root Cause Found
 
-1. **Password Reset Fails**: The `send-password-reset` function uses `generateLink` which requires users to already exist in Supabase Auth. But most CRM agents have placeholder UUIDs (like `a1111111-...`) without real auth accounts.
+When an existing CRM agent sets up their password for the first time:
 
-2. **Login UX is Wrong**: Current flow asks for email+password upfront. Users want:
-   - Enter email first
-   - If email matches CRM → let them set a password and log in (first-time setup)
-   - If email doesn't match → let them create a new account on the spot
+1. Edge function calls `supabaseAdmin.auth.admin.createUser()`
+2. This fires the database trigger `handle_new_user()` which auto-creates a NEW profile AND adds an 'agent' role
+3. Edge function then tries to UPDATE the old profile's `user_id` to the new auth ID
+4. **FAILS** because the trigger already created a profile with that `user_id` (unique constraint violation)
+5. The 'role violates RLS' error happens because duplicate records are being created
 
-3. **No Create Account Button**: Current page says "Contact your manager" instead of allowing self-signup.
+## The Fix - 2 Parts
 
-## Solution Overview
+### Part 1: Update Edge Functions to Handle Trigger Behavior
 
-Create a smart, email-first login flow with 4 states:
+The edge functions need to:
+1. **Delete the auto-created profile** (created by trigger) before linking the existing one
+2. **Delete the auto-created role** (if duplicate) before assigning
 
-```text
-[Enter Email] 
-     ↓
-[Check CRM & Auth]
-     ↓
-┌────────────────────────────────────────┐
-│                                        │
-▼                                        ▼
-Email in CRM,                      Email NOT in CRM
-Auth account exists                     │
-│                                       ▼
-▼                                  [Create New Account]
-[Enter Password]                   Name + Email + Password
-│                                       │
-│    ┌───────────────────┐              │
-│    │                   │              │
-▼    ▼                   │              │
-Email in CRM,            │              ▼
-NO Auth account          │         [Create Agent + Auth]
-│                        │              │
-▼                        │              │
-[Set First Password]     │              │
-│                        │              │
-▼                        │              │
-[Create Auth Account  ◄──┘              │
- Link to Existing Agent]                │
-│                                       │
-└───────────────────────────────────────┘
-                    │
-                    ▼
-            [Logged In → /apex-daily-numbers]
-```
+This requires updating both `setup-agent-password` and `create-new-agent-account` edge functions.
+
+### Part 2: Simplify the Flow Per Your Request
+
+When email matches CRM:
+- Pre-fill name from CRM data
+- Allow user to confirm/edit name + phone
+- Only ask for password
+- One-click setup
+
+When email doesn't match CRM:
+- Ask for name, email, password
+- Create everything fresh
 
 ## Technical Changes
 
-### 1. Rewrite AgentNumbersLogin.tsx (Complete Overhaul)
+### File: `supabase/functions/setup-agent-password/index.ts`
 
-**New Component States:**
-- `step: "email" | "password" | "set-password" | "create-account"`
-- `crmMatch: Profile | null` (if email found in profiles table)
-- `hasAuthAccount: boolean` (if email found in auth.users)
-
-**New Flow Logic:**
-1. User enters email → click "Continue"
-2. Check if email exists in `profiles` table (public RLS allows checking by email for authenticated users only - need edge function)
-3. Check if email exists in `auth.users` (via Supabase client sign-in attempt or edge function)
-4. Based on results:
-   - **CRM match + Auth exists** → Show password field
-   - **CRM match + No auth** → Show "Set Password" form (first-time setup)
-   - **No CRM match** → Show "Create Account" form (name + email + password)
-
-### 2. Create `check-email-status` Edge Function
-
-Check if an email exists in CRM and/or auth, without exposing sensitive data:
-
+**Current Problem:**
 ```typescript
-// Returns: { inCRM: boolean, hasAuthAccount: boolean, agentName?: string }
+// Creates auth user (trigger fires, creates new profile + role)
+const { data: newAuthUser } = await supabaseAdmin.auth.admin.createUser({ ... });
+
+// Then tries to update old profile - FAILS with unique constraint!
+await supabaseAdmin.from("profiles").update({ user_id: newUserId }).eq("id", profile.id);
 ```
 
-This function will:
-- Query `profiles` table for email match
-- Query `auth.users` (via admin API) for email match
-- Return status flags (not sensitive data)
-
-### 3. Create `setup-agent-password` Edge Function
-
-For first-time password setup (CRM user without auth account):
-
+**Fixed Logic:**
 ```typescript
-// Input: { email: string, password: string }
-// Logic:
-// 1. Verify email exists in profiles table
-// 2. Create Supabase auth user with that email
-// 3. Update the existing agent record to link user_id
-// 4. Return success (user can now log in)
+// 1. Create auth user (trigger fires, creates unwanted profile + role)
+const { data: newAuthUser } = await supabaseAdmin.auth.admin.createUser({ ... });
+const newUserId = newAuthUser.user.id;
+
+// 2. Delete the trigger-created profile (it has newUserId)
+await supabaseAdmin.from("profiles").delete().eq("user_id", newUserId);
+
+// 3. Delete the trigger-created role (duplicate prevention)
+await supabaseAdmin.from("user_roles").delete().eq("user_id", newUserId);
+
+// 4. Now safely update the EXISTING profile to link to new auth user
+await supabaseAdmin.from("profiles").update({ user_id: newUserId }).eq("id", profile.id);
+
+// 5. Add the agent role cleanly
+await supabaseAdmin.from("user_roles").insert({ user_id: newUserId, role: "agent" });
 ```
 
-### 4. Create `create-new-agent-account` Edge Function
+### File: `supabase/functions/check-email-status/index.ts`
 
-For users not in CRM who want to create an account:
-
+Return additional CRM data for pre-filling:
 ```typescript
-// Input: { email: string, password: string, fullName: string, phone?: string }
-// Logic:
-// 1. Create Supabase auth user
-// 2. Create profile record
-// 3. Create agent record (onboarding_stage: 'evaluated', status: 'active')
-// 4. Add 'agent' role
-// 5. Return success
+return {
+  inCRM,
+  hasAuthAccount,
+  agentName: profile?.full_name || null,
+  agentPhone: profile?.phone || null,  // NEW - for pre-fill
+  agentCity: profile?.city || null,    // NEW - optional
+  agentState: profile?.state || null,  // NEW - optional
+};
 ```
 
-### 5. Update Password Reset Logic
+### File: `src/pages/AgentNumbersLogin.tsx`
 
-Fix `send-password-reset` to handle both cases:
-- **User exists in auth** → Generate recovery link (current logic)
-- **User in CRM but no auth** → Send "Set up your password" email instead (same flow as first-time setup)
+**Update the "set-password" step:**
+- Pre-fill name and phone from CRM data
+- Show editable fields for user to confirm
+- Only require password entry
+- Make it feel like "completing" their profile, not "creating" an account
+
+**Simplified Flow:**
+```text
+[Enter Email]
+     ↓
+[Check CRM]
+     ↓
+Found in CRM? → Show "Hi {Name}!" + pre-filled info + password field
+Not in CRM?  → Show "Create Account" with name + password fields
+```
+
+## Files to Update
 
 | File | Change |
 |------|--------|
-| `src/pages/AgentNumbersLogin.tsx` | Complete rewrite with email-first flow |
-| `supabase/functions/check-email-status/index.ts` | New - check CRM/auth status |
-| `supabase/functions/setup-agent-password/index.ts` | New - first-time password for CRM users |
-| `supabase/functions/create-new-agent-account/index.ts` | New - self-signup for non-CRM users |
-| `supabase/functions/send-password-reset/index.ts` | Update to handle "no auth account" case |
-| `supabase/config.toml` | Add new function configs |
+| `supabase/functions/setup-agent-password/index.ts` | Delete trigger-created records before linking |
+| `supabase/functions/check-email-status/index.ts` | Return phone/city/state for pre-fill |
+| `src/pages/AgentNumbersLogin.tsx` | Pre-fill CRM data, simplify forms |
 
-## After Implementation
+## User Experience After Fix
 
-1. User clicks link → sees **email-only** input field
-2. Enters email → system checks CRM + auth
-3. **If in CRM with account**: enters password → logs in
-4. **If in CRM without account**: sets password → account created → logs in
-5. **If not in CRM**: enters name + password → new account created → logs in
-6. Password reset works for all cases
+**For Aisha (existing CRM agent):**
+1. Goes to login page
+2. Enters email: `kebbeh045@gmail.com`
+3. System shows: "Welcome, Aisha! 👋" with her name pre-filled
+4. She confirms her info and creates a password
+5. Done - logged in and ready to enter numbers
 
-## Security Considerations
+**For new person (not in CRM):**
+1. Goes to login page
+2. Enters email
+3. System shows: "Let's get you set up"
+4. Enters name + password
+5. Done - account created, logged in
 
-- Email check function returns minimal info (boolean flags only)
-- Password setup requires valid email in CRM
-- All auth operations use service role key server-side
-- RLS still enforced for data access after login
+## Why This Fixes the RLS Error
+
+The error "role violates role level security" was caused by:
+1. Trigger creating a duplicate profile/role
+2. Unique constraints blocking the UPDATE
+3. Cascading confusion in the data
+
+By deleting the trigger-created records FIRST, we avoid all conflicts and cleanly link the existing CRM data to the new auth account.

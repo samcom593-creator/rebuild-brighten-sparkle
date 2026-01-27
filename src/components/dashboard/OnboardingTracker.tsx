@@ -1,18 +1,15 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   ClipboardCheck,
   Monitor,
   Users,
   Award,
-  ChevronRight,
-  ChevronLeft,
   Loader2,
   Check,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration";
@@ -118,6 +115,20 @@ export function OnboardingTracker({
         setShowConfetti(true);
         playSound("celebrate");
         
+        // Send stage change email notification
+        try {
+          await supabase.functions.invoke("notify-stage-change", {
+            body: {
+              agentId,
+              previousStage: currentStage,
+              newStage: targetStage.key,
+              agentName,
+            }
+          });
+        } catch (err) {
+          console.error("Error sending stage change notification:", err);
+        }
+        
         toast({
           title: `🎉 ${targetStage.label} Unlocked!`,
           description: agentName ? `${agentName} is now in ${targetStage.label}` : `Advanced to ${targetStage.label}`,
@@ -164,6 +175,16 @@ export function OnboardingTracker({
     }
   };
 
+  const handleStageClick = async (targetIndex: number) => {
+    if (loading || !canNavigate) return;
+    if (targetIndex === currentIndex) return;
+    // Only allow clicking adjacent stages
+    if (Math.abs(targetIndex - currentIndex) !== 1) return;
+    
+    const direction = targetIndex > currentIndex ? "forward" : "backward";
+    await handleStageChange(direction);
+  };
+
   return (
     <>
       <ConfettiCelebration 
@@ -172,83 +193,62 @@ export function OnboardingTracker({
       />
       
       <div className="space-y-2">
-        {/* Compact Progress Steps */}
+        {/* Clickable Progress Circles */}
         <div className="flex items-center gap-1">
           {ONBOARDING_STAGES.map((stage, index) => {
             const isCompleted = index < currentIndex;
             const isCurrent = index === currentIndex;
+            const isClickable = canNavigate && Math.abs(index - currentIndex) === 1;
             const Icon = stage.icon;
 
             return (
               <div key={stage.key} className="flex items-center">
-                <motion.div
+                <motion.button
+                  type="button"
+                  disabled={!isClickable || loading}
+                  onClick={() => handleStageClick(index)}
+                  whileHover={isClickable ? { scale: 1.15 } : undefined}
+                  whileTap={isClickable ? { scale: 0.95 } : undefined}
                   initial={false}
                   animate={{
                     scale: isCurrent ? 1.05 : 1,
                   }}
+                  transition={{ type: "spring", stiffness: 400, damping: 20 }}
                   className={cn(
-                    "w-7 h-7 rounded-full flex items-center justify-center transition-all",
-                    isCompleted && "bg-primary text-primary-foreground",
-                    isCurrent && "bg-primary/20 ring-1 ring-primary text-primary",
-                    !isCompleted && !isCurrent && "bg-muted text-muted-foreground"
+                    "w-8 h-8 rounded-full flex items-center justify-center transition-all",
+                    isCompleted && "bg-primary text-primary-foreground shadow-lg shadow-primary/30",
+                    isCurrent && "bg-primary/20 ring-2 ring-primary text-primary",
+                    !isCompleted && !isCurrent && "bg-muted text-muted-foreground",
+                    isClickable && "cursor-pointer hover:ring-2 hover:ring-primary/50",
+                    !isClickable && "cursor-default"
                   )}
-                  title={stage.label}
+                  title={isClickable ? `Click to move to ${stage.label}` : stage.label}
                 >
-                  {isCompleted ? (
-                    <Check className="h-3 w-3" />
+                  {loading && isCurrent ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : isCompleted ? (
+                    <Check className="h-3.5 w-3.5" />
                   ) : (
-                    <Icon className="h-3 w-3" />
+                    <Icon className="h-3.5 w-3.5" />
                   )}
-                </motion.div>
+                </motion.button>
                 
-                {/* Connector Line */}
+                {/* Animated Connector Line */}
                 {index < ONBOARDING_STAGES.length - 1 && (
-                  <div className={cn(
-                    "w-4 h-0.5 mx-0.5",
-                    index < currentIndex ? "bg-primary" : "bg-muted"
-                  )} />
+                  <motion.div 
+                    className={cn(
+                      "w-6 h-0.5 mx-1",
+                      index < currentIndex ? "bg-primary" : "bg-muted"
+                    )}
+                    animate={{
+                      backgroundColor: index < currentIndex ? "hsl(var(--primary))" : "hsl(var(--muted))"
+                    }}
+                    transition={{ duration: 0.3 }}
+                  />
                 )}
               </div>
             );
           })}
-          
-          {/* Navigation Buttons */}
-          {canNavigate && (
-            <div className="flex items-center gap-1 ml-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 transition-transform hover:scale-110 active:scale-95"
-                onClick={() => handleStageChange("backward")}
-                disabled={!canGoBack || loading}
-              >
-                <ChevronLeft className="h-3 w-3" />
-              </Button>
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={loading ? "loading" : "ready"}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  transition={{ duration: 0.15 }}
-                >
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 transition-transform hover:scale-110 active:scale-95"
-                    onClick={() => handleStageChange("forward")}
-                    disabled={!canAdvance || loading}
-                  >
-                    {loading ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <ChevronRight className="h-3 w-3" />
-                    )}
-                  </Button>
-                </motion.div>
-              </AnimatePresence>
-            </div>
-          )}
         </div>
 
         {/* Current Stage Label */}

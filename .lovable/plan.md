@@ -1,192 +1,159 @@
 
-# UI Polish & Leaderboard Redesign
+# Agent Portal Refinement: UI Polish, Admin Editing & Domain Clarity
 
-## Summary
+## Current Issues Analysis
 
-Based on your feedback, I'll clean up the stat entry experience with smoother animations, redesign the leaderboard to be more modern and high-tech with less dead space, and confirm the login flow is working correctly. The live link you can share is:
+### 1. Email Domain Concern
+The codebase is already configured correctly - all edge functions use `apex-financial.org` for:
+- Email sender addresses (`noreply@apex-financial.org`, `notifications@tx.apex-financial.org`)  
+- All portal links and redirects
+- Magic link destinations
 
-**Live Portal Link:** `https://apex-financial.org/numbers` (or `https://rebuild-brighten-sparkle.lovable.app/numbers`)
+The `rebuild-brighten-sparkle.lovable.app` URL you're seeing is Lovable's default **published URL** for the preview system. Your code already sends all emails and links to `apex-financial.org`. No code changes needed here - everything is correct.
 
----
+### 2. UI Not Updating / Looking the Same
+You're viewing `/agent-portal` which uses the **old** `LeaderboardTabs.tsx` component. The new compact design was built for `/numbers` route with `CompactLeaderboard.tsx`. The agent-portal page needs to be updated to use the refined components.
 
-## Current State Assessment
+### 3. Admin Number Editing
+Currently, admins can only edit numbers for agents in their **direct team** (via `invited_by_manager_id`). As the primary admin, you need the ability to edit **any agent's numbers**. The RLS policies support this, but the UI needs enhancement.
 
-The `/numbers` page login screen looks clean and functional:
-- Simple email/phone input
-- "No password required" messaging
-- Clean APEX branding
-
-However, the authenticated view (stat entry + leaderboard) needs polish based on your feedback about dead space and visual appeal.
-
----
-
-## Planned Improvements
-
-### 1. Enhanced Stat Entry Animations
-
-**Current Issues:**
-- Input fields have basic animations
-- Success feedback could be more rewarding
-- Transitions feel slightly choppy
-
-**Enhancements:**
-- Add focus ring glow animation on input fields
-- Staggered entry animations for each field
-- Input value change pulse effect (subtle scale when number changes)
-- Submit button hover glow effect
-- Enhanced success celebration with particle burst + screen flash
-- Smooth number counter animation when ALP updates
-
-**Technical Changes:**
-```
-CompactProductionEntry.tsx:
-- Add focus:ring-2 focus:ring-primary/50 focus:shadow-apex-glow transitions
-- Add layoutId for framer-motion position animations
-- Add whileTap={{ scale: 0.98 }} on submit button
-- Add success state with pulsing glow effect
-```
-
-### 2. Modern High-Tech Leaderboard Redesign
-
-**Current Issues:**
-- 40px rows feel dense but lack visual hierarchy
-- Column spacing creates dead space
-- Design feels "functional" not "high-tech"
-- Top 3 icons are plain
-
-**New Design Direction:**
-- **Glassmorphism cards** for top 3 performers (horizontal podium style)
-- **Gradient rank badges** instead of plain icons
-- **Animated rank numbers** with glow effects for top positions
-- **Compact data-dense rows** for positions 4+ with better spacing
-- **Subtle grid lines** instead of blank space
-- **Live pulse indicator** showing real-time updates
-- **Progress bar** showing ALP relative to #1
-
-**Visual Hierarchy:**
-```
-┌─────────────────────────────────────────────────────────┐
-│ 🔥 LEADERBOARD          [Day] [Week] [All] ● Live      │
-├─────────────────────────────────────────────────────────┤
-│  ┌─────────┐ ┌──────────────┐ ┌─────────┐               │
-│  │ 🥈 #2   │ │   🏆 #1      │ │ 🥉 #3   │  ← Top 3     │
-│  │ Avatar  │ │   Avatar     │ │ Avatar  │    Podium    │
-│  │ Name    │ │   Name       │ │ Name    │    Cards     │
-│  │ $8,400  │ │  $12,400     │ │ $6,200  │               │
-│  └─────────┘ └──────────────┘ └─────────┘               │
-├─────────────────────────────────────────────────────────┤
-│ 4  ▪ MK  Mike Kim       ●● 2   $4,500  ███████░░ 36%  │ ← Progress
-│ ▸5 ▪ YOU Your Name      ●  1   $2,100  ███░░░░░░ 17%  │    bar to #1
-│ 6  ▪ TW  Tom Wilson     ●  1   $1,800  ██░░░░░░░ 14%  │
-└─────────────────────────────────────────────────────────┘
-```
-
-**Key Visual Changes:**
-- **Top 3 Podium:** Horizontal card layout (silver-gold-bronze) with larger avatars
-- **Gradient badges:** `bg-gradient-to-br from-amber-400 to-amber-600` for gold, silver, bronze
-- **ALP progress bars:** Visual comparison to #1 position
-- **Micro-interactions:** Row hover effects, subtle shadows
-- **Live indicator:** Pulsing green dot showing real-time connection
-- **Deals shown as dots:** `●●●` instead of "3" for quick visual scan
-
-### 3. Login Flow Verification
-
-**Confirmed Working:**
-- The `/numbers` route shows the clean login form
-- Simple login (email/phone only) is implemented via `simple-login` edge function
-- Session persistence is handled via Supabase auth state
-
-**Potential Issues to Address:**
-- If `simple-login` edge function hasn't been deployed/tested, need to verify it works
-- Some agents may have `password_required = true` which would add an extra step
-
-**Testing Checklist:**
-1. Enter known agent email → should grant immediate access
-2. Enter phone number → should normalize and find CRM match
-3. Session should persist across page refreshes
-4. Bookmark link should work without re-login
+### 4. Leaderboard Visual Issues
+The `LeaderboardTabs.tsx` on `/agent-portal` uses oversized rows and has too much dead space. Needs complete visual overhaul.
 
 ---
 
-## File Changes
+## Implementation Plan
 
-### Modified Files
+### Phase 1: Refined Leaderboard for Agent Portal
+
+**File: `src/components/dashboard/LeaderboardTabs.tsx`**
+
+Complete visual redesign to match modern, high-tech aesthetic:
+
+| Change | Details |
+|--------|---------|
+| Row height | Reduce from 48px to 36px |
+| Font sizes | Rank: 12px, Name: 13px, Stats: 11px |
+| Column widths | Tighter grid with less padding |
+| Top 3 display | Inline medals instead of large icons |
+| Progress bars | Add ALP comparison to #1 |
+| Remove excess | Less margins, tighter spacing |
+| Live indicator | Add pulsing green dot |
+
+**Before → After Layout:**
+```text
+BEFORE (current):
+│ 🏆  │ ↑ │ [Avatar]  Agent Name [badges]           │ 5  │ 12  │ 42% │ $12,400 │
+     ^large spacing^                                   ^oversized columns^
+
+AFTER (refined):
+│#1│○│JD Agent Name 👑│5│12│42%│$12,400 ███████░ 85%│
+   ^compact^            ^tight cols^    ^progress bar^
+```
+
+### Phase 2: Admin Universal Editing
+
+**File: `src/components/dashboard/ProductionEntry.tsx`**
+
+Add admin capability to select ANY agent from the entire roster:
+
+1. Check if user has `admin` role
+2. If admin: fetch ALL active agents (not just team)
+3. Show full roster in dropdown grouped by manager
+4. Allow editing any agent's numbers
+
+**Changes:**
+- Line ~62-115: Add admin logic branch
+- Fetch all agents with `is_deactivated = false` for admins
+- Group dropdown by `invited_by_manager_id` 
+
+### Phase 3: Apply Compact Leaderboard to Agent Portal
+
+**File: `src/pages/AgentPortal.tsx`**
+
+Replace `LeaderboardTabs` import with refined version OR use the new `CompactLeaderboard` component for consistency:
+
+Option A: Swap component on agent portal
+Option B: Enhance `LeaderboardTabs` with compact mode prop
+
+Recommend Option B - add `compact` prop to `LeaderboardTabs` that triggers slimmer design.
+
+### Phase 4: CSS Animation Classes
+
+**File: `src/index.css`**
+
+Ensure these animation classes exist (some may already be added):
+- `.animate-rank-glow` - subtle pulse for top positions
+- `.animate-live-pulse` - green dot pulsing indicator
+- Tighter scrollbar styles for leaderboard
+
+---
+
+## Technical Changes Summary
+
+### Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/components/dashboard/CompactProductionEntry.tsx` | Enhanced animations, input focus effects, submit button glow, success celebration improvements |
-| `src/components/dashboard/CompactLeaderboard.tsx` | Complete redesign with podium layout for top 3, progress bars, live indicator, modern styling |
-| `src/index.css` | Add new animation keyframes for input pulse, rank glow effects |
+| `src/components/dashboard/LeaderboardTabs.tsx` | Complete visual redesign: smaller rows (36px), tighter grid, slimmer fonts, inline medals, ALP progress bars, live indicator |
+| `src/components/dashboard/ProductionEntry.tsx` | Add admin check, fetch all agents for admins, grouped dropdown |
+| `src/pages/AgentPortal.tsx` | Pass compact props to leaderboard, ensure refined UI is visible |
+| `src/index.css` | Add any missing animation utilities |
 
-### Technical Details
+### RLS Policy Note
 
-**New Animations (index.css):**
-```css
-@keyframes input-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 hsl(168 84% 42% / 0); }
-  50% { box-shadow: 0 0 0 4px hsl(168 84% 42% / 0.2); }
-}
-
-@keyframes rank-glow {
-  0%, 100% { filter: brightness(1); }
-  50% { filter: brightness(1.2); }
-}
-
-.animate-input-pulse { animation: input-pulse 0.3s ease-out; }
-.animate-rank-glow { animation: rank-glow 2s ease-in-out infinite; }
+The `daily_production` table already has this policy:
+```sql
+"Admins can manage all production" - Command: ALL
+Using: (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = ANY (ARRAY['admin', 'manager'])))
 ```
 
-**Leaderboard Component Structure:**
-```tsx
-// Top 3 Podium Section
-<div className="flex justify-center items-end gap-3 mb-4">
-  <PodiumCard rank={2} ... className="h-28" /> {/* Silver - shorter */}
-  <PodiumCard rank={1} ... className="h-32" /> {/* Gold - tallest */}
-  <PodiumCard rank={3} ... className="h-24" /> {/* Bronze - shortest */}
-</div>
-
-// Remaining positions with progress bars
-<div className="space-y-1">
-  {entries.slice(3).map(entry => (
-    <LeaderboardRow 
-      entry={entry} 
-      maxALP={entries[0]?.alp}  // For progress calculation
-    />
-  ))}
-</div>
-```
+This means admins can already INSERT/UPDATE any production record. The UI just needs to expose this capability.
 
 ---
 
-## Live Link Confirmation
+## Visual Design Specs
 
-Your agents can access the portal at:
+### Leaderboard Rows
+- Height: 36px
+- Avatar: 24px circle
+- Rank: 12px font, 24px width
+- Name: 13px font, flex-grow
+- Stats: 11px font, 48px each column
+- ALP: 13px bold + tiny progress bar
 
-**Primary Domain:** 
+### Color Palette
+- Gold (#fbbf24) for 1st place
+- Silver (#cbd5e1) for 2nd place  
+- Bronze (#f97316) for 3rd place
+- Teal (#14b8a6) for current user highlight
+- Muted text for secondary info
+
+### Animations
+- Row entry: 30ms staggered fade-in
+- Rank changes: slide animation with direction indicator
+- Live indicator: 2s pulse cycle
+- Hover: subtle background lightening
+
+---
+
+## Confirmation: Live Portal Link
+
+Your agents should use:
 ```
 https://apex-financial.org/numbers
 ```
 
-**Backup (Lovable direct):**
-```
-https://rebuild-brighten-sparkle.lovable.app/numbers
-```
-
-**How it works:**
-1. Agent clicks link → sees simple login form
-2. Enters email or phone → instantly logs in (no password by default)
-3. Sees stat entry form + leaderboard on single screen
-4. Enters numbers → hits Submit → confetti + sound + saved
-5. Session persists for future visits
+This is the primary link for daily stat entry. All emails already link here. The `rebuild-brighten-sparkle` URL is just Lovable's internal preview - it's not used in any agent-facing communications.
 
 ---
 
-## Success Metrics After Implementation
+## Success Criteria
 
-| Metric | Target |
-|--------|--------|
-| Time to log numbers | < 30 seconds |
-| Input field animations | Smooth focus/blur transitions |
-| Leaderboard density | 8+ entries visible on mobile |
-| Top 3 visibility | Instantly recognizable podium |
-| Live updates | Real-time with visual indicator |
+1. Leaderboard rows are 40% smaller (36px vs 48px)
+2. More entries visible on screen without scrolling
+3. Admin can select any agent from dropdown
+4. Live indicator shows real-time connection
+5. No dead space between elements
+6. Modern, high-tech aesthetic
+

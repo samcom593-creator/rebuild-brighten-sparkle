@@ -80,11 +80,11 @@ async function getManagerLeaderboard(): Promise<ManagerRanking[]> {
       .eq("user_id", agent.user_id)
       .single();
 
-    // Count applications referred by this manager
+    // Count applications referred by this manager (referral_source stores the manager's agent ID)
     const { data: apps, error: appsError } = await supabaseAdmin
       .from("applications")
       .select("id, license_status, status")
-      .or(`referral_source.eq.${agent.id},scoring_manager_id.eq.${agent.id}`);
+      .eq("referral_source", agent.id);
 
     if (appsError) {
       console.warn(`[DailyLeaderboard] Error fetching apps for agent ${agent.id}:`, appsError);

@@ -86,7 +86,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     try {
       await resend.emails.send({
-        from: "APEX Financial Empire <notifications@tx.apex-financial.org>",
+        from: "APEX Financial <noreply@apex-financial.org>",
         to: [profile.email],
         subject: "🎉 Welcome to the Agent Portal - You're LIVE!",
         html: `

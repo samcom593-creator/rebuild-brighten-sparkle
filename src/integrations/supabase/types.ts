@@ -505,6 +505,7 @@ export type Database = {
           deactivation_reason:
             | Database["public"]["Enums"]["deactivation_reason"]
             | null
+          display_name: string | null
           evaluated_at: string | null
           evaluated_by: string | null
           evaluation_result: string | null
@@ -554,6 +555,7 @@ export type Database = {
           deactivation_reason?:
             | Database["public"]["Enums"]["deactivation_reason"]
             | null
+          display_name?: string | null
           evaluated_at?: string | null
           evaluated_by?: string | null
           evaluation_result?: string | null
@@ -603,6 +605,7 @@ export type Database = {
           deactivation_reason?:
             | Database["public"]["Enums"]["deactivation_reason"]
             | null
+          display_name?: string | null
           evaluated_at?: string | null
           evaluated_by?: string | null
           evaluation_result?: string | null

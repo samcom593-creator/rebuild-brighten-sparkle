@@ -11,6 +11,7 @@ import { ConfettiCelebration } from "./ConfettiCelebration";
 import { RankChangeIndicator } from "./RankChangeIndicator";
 import { BuildingLeaderboard } from "./BuildingLeaderboard";
 import { MyRankingChart } from "./MyRankingChart";
+import { AgentQuickEditDialog } from "./AgentQuickEditDialog";
 import { useTop3Celebration } from "@/hooks/useTop3Celebration";
 import { useRankChange } from "@/hooks/useRankChange";
 import { cn } from "@/lib/utils";
@@ -68,6 +69,8 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
   const [loading, setLoading] = useState(true);
   const [showConfetti, setShowConfetti] = useState(false);
   const [leaderboardMode, setLeaderboardMode] = useState<"production" | "building">("production");
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState<{ id: string; name: string; alp: number; deals: number } | null>(null);
   
   const { checkForCelebration, resetTracking } = useTop3Celebration({ currentAgentId });
   const { getRankChange } = useRankChange("alp");
@@ -172,7 +175,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
       const agentIds = Object.keys(agentTotals);
       const { data: agents } = await supabase
         .from("agents")
-        .select("id, user_id")
+        .select("id, user_id, display_name")
         .in("id", agentIds);
 
       if (!agents) {
@@ -198,10 +201,13 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
             ? (totals.deals / totals.presentations) * 100
             : 0;
 
+        // Use profile name, then agent display_name, then fallback
+        const displayName = profile?.full_name || agent?.display_name || "Unknown Agent";
+
         return {
           rank: 0,
           agentId,
-          name: profile?.full_name || "Unknown Agent",
+          name: displayName,
           avatarUrl: profile?.avatar_url,
           alp: totals.alp,
           deals: totals.deals,
@@ -329,6 +335,17 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
         trigger={showConfetti} 
         onComplete={() => setShowConfetti(false)} 
       />
+      {selectedAgent && (
+        <AgentQuickEditDialog
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          agentId={selectedAgent.id}
+          currentName={selectedAgent.name}
+          production={selectedAgent.alp}
+          deals={selectedAgent.deals}
+          onUpdate={fetchLeaderboard}
+        />
+      )}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -469,7 +486,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                     exit={{ opacity: 0, x: 10 }}
                     transition={{ delay: index * 0.02 }}
                     className={cn(
-                      "grid grid-cols-12 gap-1 items-center px-2 py-2 rounded-lg transition-all",
+                      "grid grid-cols-12 gap-1 items-center px-2 py-2 rounded-lg transition-all cursor-pointer",
                       entry.isCurrentUser
                         ? "bg-primary/10 border border-primary/30"
                         : index < 3
@@ -477,6 +494,10 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                           : "hover:bg-muted/30"
                     )}
                     style={{ minHeight: "40px" }}
+                    onClick={() => {
+                      setSelectedAgent({ id: entry.agentId, name: entry.name, alp: entry.alp, deals: entry.deals });
+                      setEditDialogOpen(true);
+                    }}
                   >
                     {/* Rank */}
                     <div className="col-span-1 flex items-center justify-center">

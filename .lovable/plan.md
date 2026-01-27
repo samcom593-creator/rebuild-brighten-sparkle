@@ -1,120 +1,151 @@
 
-# Fix Agent Portal Access - Magic Link Login
+## Goal (what “working” means)
+Agents can tap a link from any email client/device and be taken straight into:
+- **Daily numbers entry** (primary goal), and/or
+- **Agent portal**
+…without getting sent to a Lovable login screen, without “nothing happens”, and with a clean fallback when something is wrong.
 
-## The Problem
+## What’s actually going wrong (based on the current code)
+There are two independent failure sources:
 
-The emails are being sent and received (logs confirm 9 sent, 3+ opened). **The issue is what happens when agents click the link:**
+### A) Redirect / environment mismatch (very likely)
+Your email links always go to:
+- `https://apex-financial.org/magic-login?token=...`
 
-1. Agent clicks "Access Your Portal" → Goes to `/agent-portal`
-2. `/agent-portal` is protected by `ProtectedRoute`
-3. No session exists → Redirected to `/login`
-4. Agent sees the wrong login page and is stuck
+But the token is created in whichever backend environment the “send email” function was triggered from. If a bulk send is triggered from the **preview/test** environment but the link points to the **live/public** domain, then:
+- token exists in **test DB**
+- click happens on **live site** → it calls **live backend**
+- token is missing → flow fails / falls back / appears broken
 
-## The Solution: One-Tap Magic Link
+This also explains why some auth emails (password reset, magic link) “open and nothing happens” or route users somewhere unexpected: the auth system will fall back to configured “Site URL / Redirect URLs” rules when it can’t use the redirect you requested.
 
-Replace the current email links with **magic links** that automatically sign the agent in when clicked. No password required on first access.
+### B) The current magic login method depends on an external redirect
+Right now `MagicLogin.tsx` does:
+1) call `verify-magic-link`
+2) receive `otpData.properties.action_link`
+3) `window.location.href = action_link`
 
-### How Magic Links Work
+That `action_link` sends the user through the auth provider’s `/verify` endpoint and then redirects back to your site. If Redirect URLs are not perfectly allowlisted (and consistent across environments/domains), users can end up on:
+- a Lovable login wall (preview URL), or
+- the wrong site URL,
+- or a dead-end in an in-app browser.
 
-1. Generate a one-time token (OTT) tied to the agent's email
-2. Store token in database with expiration (24 hours)
-3. Email contains link: `https://apex-financial.org/magic-login?token=ABC123`
-4. When clicked: validate token → create auth session → redirect to portal
-5. Token is immediately invalidated after use
+## The fix (design decision)
+We remove the “external redirect” dependency completely.
 
-### Implementation
+Instead of redirecting the user to `action_link`, we will:
+1) use the backend to generate a **hashed token** (token_hash) for that user
+2) return that hash to the frontend
+3) the frontend calls **`supabase.auth.verifyOtp()`** directly to create the session in-app
+4) then we navigate to `/apex-daily-numbers` or `/agent-portal`
 
-**1. New Database Table: `magic_login_tokens`**
-```sql
-CREATE TABLE magic_login_tokens (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  agent_id UUID NOT NULL,
-  email TEXT NOT NULL,
-  token TEXT NOT NULL UNIQUE,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  expires_at TIMESTAMPTZ DEFAULT (now() + interval '24 hours'),
-  used_at TIMESTAMPTZ
-);
+This eliminates the biggest source of “Lovable login / nothing happens” behavior because it keeps the whole login inside your app (same origin).
 
-CREATE INDEX idx_magic_token ON magic_login_tokens(token);
-```
+## Planned changes
 
-**2. New Edge Function: `generate-magic-link`**
-- Creates a secure random token
-- Stores in `magic_login_tokens`
-- Returns the full magic link URL
+### 1) Update the backend auth configuration (required)
+In Lovable Cloud backend settings, we will ensure:
+- **Site URL** is your primary domain (apex-financial.org)
+- **Redirect URLs** include:
+  - `https://apex-financial.org/*`
+  - your published Lovable domain `https://rebuild-brighten-sparkle.lovable.app/*`
+  - your preview domain `https://id-preview--f583945a-f8ff-4a81-8442-9fc61f88a855.lovable.app/*` (so preview testing doesn’t bounce to a login wall)
 
-**3. New Edge Function: `verify-magic-link`**
-- Validates token exists and isn't expired/used
-- Gets agent's email
-- Signs them in via Supabase Auth (using `signInWithOtp` or admin API)
-- Marks token as used
-- Returns session or redirect
+Why this still matters even after the in-app verifyOtp approach:
+- It fixes password reset flows and any other auth links that rely on redirects.
+- It prevents “wrong domain fallback” behavior.
 
-**4. New Page: `/magic-login`**
-- Reads `?token=` from URL
-- Calls `verify-magic-link` edge function
-- On success: Automatically redirects to `/agent-portal`
-- On failure: Shows error with link to manual login
+### 2) Change `verify-magic-link` to return `hashed_token` (not `action_link`)
+Current behavior:
+- returns `authLink: otpData.properties.action_link`
 
-**5. Update Email Templates**
-- Replace `/agent-portal` links with magic link URLs
-- Keep secondary "Log Numbers Now" button going to `/apex-daily-numbers`
+New behavior:
+- returns:
+  - `email`
+  - `destination`
+  - `tokenHash` (from `otpData.properties.hashed_token` or equivalent field)
+  - `type` = `"magiclink"` (so frontend knows what to pass to verifyOtp)
 
-### Updated Email Flow
+Also improve token consumption safety:
+- Do **not** mark `magic_login_tokens.used_at` before we have successfully generated the OTP payload.
+- Preferably: mark it used **after** OTP payload is generated (and optionally after successful verifyOtp via a second “consume token” call).
+- Add extra logging (token prefix, destination, and whether otp payload contained hashed_token) so we can prove where it fails.
 
-| Button | Action |
-|--------|--------|
-| "Access Your Portal →" | Magic link → auto-login → `/agent-portal` |
-| "Log Numbers Now →" | Magic link → auto-login → `/apex-daily-numbers` |
+### 3) Change `MagicLogin.tsx` to use `verifyOtp` and then navigate
+Replace:
+- `window.location.href = data.authLink`
 
-### Security Considerations
+With:
+- `await supabase.auth.verifyOtp({ email: data.email, token: data.tokenHash, type: "magiclink" })`
+- then `navigate("/apex-daily-numbers")` or `navigate("/agent-portal")`
 
-- Tokens are single-use (marked `used_at` after first use)
-- 24-hour expiration
-- Cryptographically random tokens (32 chars)
-- If token is invalid/expired, fallback to password login
+Add robust UX behavior:
+- If verification fails, show a clear error and three buttons:
+  1) “Try again”
+  2) “Go to Agent Login”
+  3) “Send me a fresh link” (input email → calls a backend function to send a new magic link)
+- This gives agents a way out even if their token was already used/expired.
 
-## Files to Create/Update
+### 4) Fix `ProtectedRoute` so agents never land on the wrong login screen
+Right now:
+- `/apex-daily-numbers` redirects to `/agent-login`
+- `/agent-portal` redirects to `/login` (manager login)
 
-| File | Change |
-|------|--------|
-| Database | New `magic_login_tokens` table |
-| `supabase/functions/generate-magic-link/index.ts` | NEW - Create magic tokens |
-| `supabase/functions/verify-magic-link/index.ts` | NEW - Validate & sign in |
-| `src/pages/MagicLogin.tsx` | NEW - Handle magic link arrival |
-| `src/App.tsx` | Add `/magic-login` route |
-| `supabase/functions/send-bulk-portal-logins/index.ts` | Use magic links |
-| `supabase/functions/send-agent-portal-login/index.ts` | Use magic links |
-| `supabase/config.toml` | Register new functions |
+We’ll update ProtectedRoute so **both**:
+- `/apex-daily-numbers`
+- `/agent-portal`
+redirect to `/agent-login` when unauthenticated.
 
-## New User Experience
+This prevents the “I clicked it and got the wrong login page” failure mode even if magic login fails.
 
-**For any agent receiving the email:**
-1. Opens email in inbox
-2. Taps "Access Your Portal →"
-3. **Instantly signed in** - lands on Agent Portal
-4. Done. No password, no forms, no friction.
+### 5) Make email link base URL environment-safe
+Right now both email functions hardcode:
+- `const BASE_URL = "https://apex-financial.org";`
 
-**Fallback if magic link expires:**
-1. Taps expired link
-2. Sees friendly message: "This link has expired"
-3. Button: "Sign in with your email" → goes to `/agent-login`
-4. Enters email → password flow as before
+We will make base URL deterministic and safe:
+- Prefer `Deno.env.get("APP_BASE_URL")` (configurable per environment)
+- Else fall back to request Origin (when invoked from the web UI)
+- Else fall back to apex-financial.org
 
-## Technical Details
+This prevents “tokens created in test, link points to live” mistakes during testing, and also allows you to intentionally test flows in preview without sending agents to a domain they can’t access.
 
-**Token Generation (in edge function):**
-```typescript
-const token = crypto.randomUUID().replace(/-/g, '') + 
-              crypto.randomUUID().replace(/-/g, '');
-// 64-char hex string, cryptographically random
-```
+### 6) Testing strategy (how we prove it works)
+We will test in a way that mirrors real user behavior:
 
-**Magic Link URL Format:**
-```
-https://apex-financial.org/magic-login?token=abc123...&dest=portal
-```
+**Backend-level tests**
+1) Trigger `send-bulk-portal-logins`
+2) Pick one generated token from the DB
+3) Call `verify-magic-link` directly (tooling) and confirm it returns:
+   - `success: true`
+   - `email`
+   - `tokenHash`
+4) Call `verifyOtp` from the frontend flow (by opening the `/magic-login?token=...` route in the browser) and confirm:
+   - session is created
+   - navigation to destination happens
+   - `/apex-daily-numbers` loads without redirect loops
 
-**Supabase Auth Integration:**
-Using `signInWithOtp` with `shouldCreateUser: false` or admin API to create session for existing user.
+**Real click test**
+- Open the email on mobile + desktop and confirm it lands in numbers entry.
+- Confirm the fallback buttons function when token is expired/used.
+
+### 7) Rollback / safety
+If anything goes wrong, the changes are isolated:
+- `/magic-login` remains a standalone route.
+- We can revert to manual login easily.
+- Tokens are time-limited and single-use; we will avoid burning tokens prematurely during verification.
+
+## What I still need from you (only the minimum)
+Because your last answers were understandably frustrated/unclear, I need one precise fact to avoid chasing ghosts:
+
+- When you click the email link and it fails, what domain is in the address bar?
+  - `apex-financial.org/...`
+  - or an `id-preview--...lovable.app/...`
+  - or something else
+
+This single detail confirms whether we’re dealing with environment mismatch vs redirect allowlist vs in-app-browser behavior.
+
+## What you’ll get after this
+- Agents can tap the link and immediately log numbers.
+- If they’re on weird email clients/in-app browsers, it still works because the session is created in-app via `verifyOtp`.
+- If anything fails, they get a clear “send fresh link” option instead of being stuck.
+

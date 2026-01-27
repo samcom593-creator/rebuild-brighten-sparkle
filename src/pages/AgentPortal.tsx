@@ -38,6 +38,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import apexIcon from "@/assets/apex-icon.png";
 
 const motivationalQuotes = [
   "Success is not final, failure is not fatal: it's the courage to continue that counts.",
@@ -555,8 +556,8 @@ export default function AgentPortal() {
 
           {/* Direct Portal Link */}
           <GlassCard className="p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Link className="h-5 w-5 text-emerald-400" />
+            <div className="flex items-center gap-3 mb-3">
+              <img src={apexIcon} alt="Apex" className="h-8 w-8 rounded-lg shadow-md" />
               <h3 className="font-semibold">Apex Daily Numbers</h3>
             </div>
             <p className="text-xs text-muted-foreground mb-3">

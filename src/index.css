@@ -399,3 +399,43 @@
 .animate-shimmer {
   animation: shimmer 2s infinite;
 }
+
+/* Input focus pulse animation */
+@keyframes input-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(168 84% 42% / 0); }
+  50% { box-shadow: 0 0 0 6px hsl(168 84% 42% / 0.15); }
+}
+
+@keyframes rank-glow {
+  0%, 100% { filter: brightness(1) drop-shadow(0 0 0 transparent); }
+  50% { filter: brightness(1.15) drop-shadow(0 0 8px hsl(45 93% 58% / 0.5)); }
+}
+
+@keyframes value-pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+@keyframes success-flash {
+  0% { opacity: 0; }
+  50% { opacity: 0.15; }
+  100% { opacity: 0; }
+}
+
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.1); }
+}
+
+.animate-input-pulse { animation: input-pulse 0.4s ease-out; }
+.animate-rank-glow { animation: rank-glow 2s ease-in-out infinite; }
+.animate-value-pop { animation: value-pop 0.2s ease-out; }
+.animate-success-flash { animation: success-flash 0.5s ease-out; }
+.animate-live-pulse { animation: live-pulse 1.5s ease-in-out infinite; }
+
+/* Focus glow for inputs */
+.input-focus-glow:focus {
+  box-shadow: 0 0 0 3px hsl(168 84% 42% / 0.2), 0 0 20px hsl(168 84% 42% / 0.15);
+  border-color: hsl(168 84% 42%);
+}

@@ -328,12 +328,39 @@ export default function AgentPortal() {
       {/* Apex Financial Branding */}
       <div className="bg-gradient-to-r from-primary/10 via-transparent to-primary/10 border-b border-primary/20">
         <div className="container mx-auto px-4 py-2">
-          <div className="flex items-center justify-center gap-2">
-            <img src={apexIcon} alt="Apex" className="h-5 w-5" />
-            <span className="font-bold text-sm tracking-wide bg-gradient-to-r from-primary to-emerald-400 bg-clip-text text-transparent">
+          <a 
+            href="https://apex-financial.org/c" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 group hover-scale"
+          >
+            <motion.img 
+              src={apexIcon} 
+              alt="Apex" 
+              className="h-5 w-5 drop-shadow-[0_0_8px_hsl(var(--primary)/0.6)]"
+              animate={{ 
+                filter: [
+                  "drop-shadow(0 0 4px hsl(var(--primary)/0.4))",
+                  "drop-shadow(0 0 12px hsl(var(--primary)/0.8))",
+                  "drop-shadow(0 0 4px hsl(var(--primary)/0.4))"
+                ]
+              }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.span 
+              className="font-bold text-sm tracking-wide bg-gradient-to-r from-primary to-emerald-400 bg-clip-text text-transparent"
+              animate={{ 
+                textShadow: [
+                  "0 0 8px hsl(var(--primary)/0.3)",
+                  "0 0 16px hsl(var(--primary)/0.6)",
+                  "0 0 8px hsl(var(--primary)/0.3)"
+                ]
+              }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            >
               APEX FINANCIAL
-            </span>
-          </div>
+            </motion.span>
+          </a>
         </div>
       </div>
 

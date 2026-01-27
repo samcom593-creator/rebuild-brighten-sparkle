@@ -18,21 +18,54 @@ const handler = async (req: Request): Promise<Response> => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    const { email } = await req.json();
+    const { identifier, email } = await req.json();
+    
+    // Support both 'identifier' (new) and 'email' (legacy) params
+    const input = identifier || email;
 
-    if (!email) {
-      throw new Error("Email is required");
+    if (!input) {
+      throw new Error("Email or phone is required");
     }
 
-    const normalizedEmail = email.toLowerCase().trim();
-    console.log(`Checking email status for: ${normalizedEmail}`);
+    const trimmedInput = input.trim();
+    
+    // Detect if input is a phone number (contains mostly digits)
+    const digitsOnly = trimmedInput.replace(/\D/g, "");
+    const isPhone = /^[\d\s\-\(\)\+]+$/.test(trimmedInput) && digitsOnly.length >= 10;
 
-    // Check if email exists in profiles table (CRM)
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from("profiles")
-      .select("id, user_id, full_name, email, phone, city, state")
-      .ilike("email", normalizedEmail)
-      .maybeSingle();
+    console.log(`Checking status for: ${trimmedInput} (isPhone: ${isPhone})`);
+
+    let profile = null;
+    let profileError = null;
+
+    if (isPhone) {
+      // Search by phone - try to match last 10 digits
+      const last10 = digitsOnly.slice(-10);
+      console.log(`Searching by phone, last 10 digits: ${last10}`);
+      
+      const { data, error } = await supabaseAdmin
+        .from("profiles")
+        .select("id, user_id, full_name, email, phone, city, state")
+        .or(`phone.ilike.%${last10}%`)
+        .limit(1)
+        .maybeSingle();
+      
+      profile = data;
+      profileError = error;
+    } else {
+      // Search by email
+      const normalizedEmail = trimmedInput.toLowerCase();
+      console.log(`Searching by email: ${normalizedEmail}`);
+      
+      const { data, error } = await supabaseAdmin
+        .from("profiles")
+        .select("id, user_id, full_name, email, phone, city, state")
+        .ilike("email", normalizedEmail)
+        .maybeSingle();
+      
+      profile = data;
+      profileError = error;
+    }
 
     if (profileError) {
       console.error("Error checking profiles:", profileError);
@@ -43,6 +76,7 @@ const handler = async (req: Request): Promise<Response> => {
     const agentPhone = profile?.phone || null;
     const agentCity = profile?.city || null;
     const agentState = profile?.state || null;
+    const agentEmail = profile?.email || null;
     const profileUserId = profile?.user_id || null;
 
     // Check if there's an auth user with this email
@@ -50,33 +84,30 @@ const handler = async (req: Request): Promise<Response> => {
     
     if (inCRM && profileUserId) {
       // Check if the user_id is a real auth user (not a placeholder UUID)
-      // Placeholder UUIDs follow pattern like a1111111-1111-1111-1111-111111111111
       const isPlaceholderUUID = /^[a-f]1{7}-1{4}-1{4}-1{4}-1{12}$/i.test(profileUserId);
       
       if (!isPlaceholderUUID) {
-        // Try to get the auth user by ID
         const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(profileUserId);
         hasAuthAccount = !authError && !!authUser?.user;
       }
     }
     
-    // Also check directly by email in auth.users
-    if (!hasAuthAccount) {
+    // Also check directly by email in auth.users if profile email exists
+    if (!hasAuthAccount && agentEmail) {
       const { data: authUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers({
         page: 1,
         perPage: 1000,
       });
       
       if (!listError && authUsers?.users) {
-        // Search for user by email in the list
         const foundUser = authUsers.users.find(
-          (u) => u.email?.toLowerCase() === normalizedEmail
+          (u) => u.email?.toLowerCase() === agentEmail.toLowerCase()
         );
         hasAuthAccount = !!foundUser;
       }
     }
 
-    console.log(`Email status: inCRM=${inCRM}, hasAuthAccount=${hasAuthAccount}, name=${agentName}`);
+    console.log(`Status: inCRM=${inCRM}, hasAuthAccount=${hasAuthAccount}, name=${agentName}, email=${agentEmail}`);
 
     return new Response(
       JSON.stringify({
@@ -86,6 +117,7 @@ const handler = async (req: Request): Promise<Response> => {
         agentPhone,
         agentCity,
         agentState,
+        agentEmail, // Return the CRM email for auth (important for phone lookups)
       }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );

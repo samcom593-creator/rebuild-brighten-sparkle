@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Save, Loader2, TrendingUp, DollarSign, Users, Clock, Target, Home, Handshake, Sparkles } from "lucide-react";
+import { Save, Loader2, TrendingUp, DollarSign, Users, Clock, Target, Home, Handshake, Sparkles, ChevronDown } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ConfettiCelebration } from "./ConfettiCelebration";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+interface TeamMember {
+  id: string;
+  name: string;
+}
 
 interface ProductionEntryProps {
   agentId: string;
@@ -28,6 +40,11 @@ interface ProductionEntryProps {
 export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEntryProps) {
   const [saving, setSaving] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [isManager, setIsManager] = useState(false);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [selectedAgentId, setSelectedAgentId] = useState(agentId);
+  const [currentUserName, setCurrentUserName] = useState<string>("Myself");
+  
   const [formData, setFormData] = useState({
     presentations: existingData?.presentations || 0,
     passed_price: existingData?.passed_price || 0,
@@ -39,6 +56,123 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
     aop: existingData?.aop || 0,
   });
 
+  // Check if user is manager and fetch team members
+  useEffect(() => {
+    const checkManagerAndFetchTeam = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Check if user has manager or admin role
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id);
+
+      const hasManagerRole = roles?.some(r => r.role === "manager" || r.role === "admin");
+      setIsManager(hasManagerRole || false);
+
+      if (hasManagerRole) {
+        // Fetch current user's name
+        const { data: myProfile } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        
+        if (myProfile?.full_name) {
+          setCurrentUserName(myProfile.full_name.split(" ")[0]); // First name
+        }
+
+        // Fetch team members (agents invited by this manager)
+        const { data: myAgent } = await supabase
+          .from("agents")
+          .select("id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (myAgent) {
+          const { data: team } = await supabase
+            .from("agents")
+            .select(`
+              id,
+              profile:profiles!agents_profile_id_fkey(full_name)
+            `)
+            .eq("invited_by_manager_id", myAgent.id)
+            .eq("is_deactivated", false);
+
+          if (team) {
+            const members: TeamMember[] = team
+              .filter(t => t.profile?.full_name)
+              .map(t => ({
+                id: t.id,
+                name: t.profile?.full_name || "Unknown",
+              }));
+            setTeamMembers(members);
+          }
+        }
+      }
+    };
+
+    checkManagerAndFetchTeam();
+  }, []);
+
+  // When selected agent changes, fetch their existing data for today
+  useEffect(() => {
+    const fetchExistingData = async () => {
+      if (selectedAgentId === agentId && existingData) {
+        // Reset to original data if selecting self
+        setFormData({
+          presentations: existingData.presentations || 0,
+          passed_price: existingData.passed_price || 0,
+          hours_called: existingData.hours_called || 0,
+          referrals_caught: existingData.referrals_caught || 0,
+          booked_inhome_referrals: existingData.booked_inhome_referrals || 0,
+          referral_presentations: existingData.referral_presentations || 0,
+          deals_closed: existingData.deals_closed || 0,
+          aop: existingData.aop || 0,
+        });
+        return;
+      }
+
+      if (selectedAgentId !== agentId) {
+        const today = new Date().toISOString().split("T")[0];
+        const { data } = await supabase
+          .from("daily_production")
+          .select("*")
+          .eq("agent_id", selectedAgentId)
+          .eq("production_date", today)
+          .maybeSingle();
+
+        if (data) {
+          setFormData({
+            presentations: data.presentations || 0,
+            passed_price: data.passed_price || 0,
+            hours_called: data.hours_called || 0,
+            referrals_caught: data.referrals_caught || 0,
+            booked_inhome_referrals: data.booked_inhome_referrals || 0,
+            referral_presentations: data.referral_presentations || 0,
+            deals_closed: data.deals_closed || 0,
+            aop: data.aop || 0,
+          });
+        } else {
+          // Reset form for new entry
+          setFormData({
+            presentations: 0,
+            passed_price: 0,
+            hours_called: 0,
+            referrals_caught: 0,
+            booked_inhome_referrals: 0,
+            referral_presentations: 0,
+            deals_closed: 0,
+            aop: 0,
+          });
+        }
+      }
+    };
+
+    fetchExistingData();
+  }, [selectedAgentId, agentId, existingData]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -49,7 +183,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
       const { error } = await supabase
         .from("daily_production")
         .upsert({
-          agent_id: agentId,
+          agent_id: selectedAgentId,
           production_date: today,
           ...formData,
           hours_called: Number(formData.hours_called),
@@ -63,11 +197,15 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
       // Trigger confetti celebration!
       setShowConfetti(true);
       
+      const selectedName = selectedAgentId === agentId 
+        ? "Your" 
+        : teamMembers.find(m => m.id === selectedAgentId)?.name + "'s";
+      
       toast.success(
         <div className="flex flex-col gap-1">
           <span className="font-bold flex items-center gap-1">
             <Sparkles className="h-4 w-4 text-amber-400" />
-            Numbers Saved!
+            {selectedName} Numbers Saved!
           </span>
           <span className="text-sm opacity-80">
             {formData.deals_closed} deals • ${Number(formData.aop).toLocaleString()} ALP
@@ -116,20 +254,42 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
           )}
           
           <div className="relative">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 gap-2">
               <h2 className="text-lg font-semibold gradient-text flex items-center gap-2">
                 <Sparkles className="h-5 w-5" />
                 Log Today's Numbers
               </h2>
-              {hasProduction && (
-                <motion.span
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="text-xs px-2 py-1 bg-primary/20 text-primary rounded-full font-medium"
-                >
-                  ${totalValue.toLocaleString()} ALP
-                </motion.span>
-              )}
+              
+              <div className="flex items-center gap-2">
+                {/* Manager team selector */}
+                {isManager && teamMembers.length > 0 && (
+                  <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
+                    <SelectTrigger className="w-[160px] h-8 text-xs">
+                      <SelectValue placeholder="Select agent" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={agentId}>
+                        🙋 {currentUserName} (Me)
+                      </SelectItem>
+                      {teamMembers.map((member) => (
+                        <SelectItem key={member.id} value={member.id}>
+                          👤 {member.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                
+                {hasProduction && (
+                  <motion.span
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="text-xs px-2 py-1 bg-primary/20 text-primary rounded-full font-medium"
+                  >
+                    ${totalValue.toLocaleString()} ALP
+                  </motion.span>
+                )}
+              </div>
             </div>
             
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -199,7 +359,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
                 ) : (
                   <Save className="h-5 w-5" />
                 )}
-                {saving ? "Saving..." : "Save Today's Numbers"}
+                {saving ? "Saving..." : selectedAgentId === agentId ? "Save Today's Numbers" : "Save Numbers for Team Member"}
               </Button>
             </form>
           </div>

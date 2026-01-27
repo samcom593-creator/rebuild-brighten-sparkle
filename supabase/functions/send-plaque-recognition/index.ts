@@ -9,7 +9,19 @@ const corsHeaders = {
 
 interface PlaqueRequest {
   agentId: string;
-  milestoneType: "single_day_bronze" | "single_day" | "weekly" | "monthly";
+  milestoneType: 
+    | "single_day_bronze" 
+    | "single_day" 
+    | "single_day_platinum"
+    | "weekly" 
+    | "monthly"
+    | "recruiter_rising"
+    | "hiring_champion"
+    | "team_builder"
+    | "hot_streak"
+    | "on_fire"
+    | "unstoppable"
+    | "comeback_champion";
   amount: number;
   date: string;
 }
@@ -32,16 +44,25 @@ const getMilestoneDetails = (type: string, amount: number) => {
       return {
         title: "Gold Achievement", 
         description: `Exceptional single-day production of $${roundedAmount.toLocaleString()}`,
-        color: "#C9A962", // Muted institutional gold
+        color: "#C9A962",
         threshold: "$3,000+",
         badge: "GOLD ACHIEVEMENT",
+        amount: roundedAmount,
+      };
+    case "single_day_platinum":
+      return {
+        title: "Platinum Achievement",
+        description: `Elite single-day production of $${roundedAmount.toLocaleString()}`,
+        color: "#E5E4E2",
+        threshold: "$5,000+",
+        badge: "PLATINUM ACHIEVEMENT",
         amount: roundedAmount,
       };
     case "weekly":
       return {
         title: "Weekly Diamond",
         description: `Exceptional weekly production of $${roundedAmount.toLocaleString()}`,
-        color: "#7DD3FC", // Diamond blue
+        color: "#7DD3FC",
         threshold: "$10,000+",
         badge: "WEEKLY DIAMOND",
         amount: roundedAmount,
@@ -50,9 +71,72 @@ const getMilestoneDetails = (type: string, amount: number) => {
       return {
         title: "Elite Producer",
         description: `Outstanding monthly production of $${roundedAmount.toLocaleString()}`,
-        color: "#A78BFA", // Purple elite
+        color: "#A78BFA",
         threshold: "$25,000+",
         badge: "ELITE PRODUCER",
+        amount: roundedAmount,
+      };
+    case "recruiter_rising":
+      return {
+        title: "Recruiter Rising",
+        description: `Contracted ${roundedAmount} agents in a single day`,
+        color: "#22C55E",
+        threshold: "3+ Hired",
+        badge: "RECRUITER RISING",
+        amount: roundedAmount,
+      };
+    case "hiring_champion":
+      return {
+        title: "Hiring Champion",
+        description: `Exceptional recruiting: ${roundedAmount} agents contracted in one day`,
+        color: "#FBBF24",
+        threshold: "5+ Hired",
+        badge: "HIRING CHAMPION",
+        amount: roundedAmount,
+      };
+    case "team_builder":
+      return {
+        title: "Team Builder",
+        description: `Built a powerhouse: ${roundedAmount} agents contracted this week`,
+        color: "#F97316",
+        threshold: "10+ Weekly",
+        badge: "TEAM BUILDER",
+        amount: roundedAmount,
+      };
+    case "hot_streak":
+      return {
+        title: "Hot Streak",
+        description: `${roundedAmount} consecutive days closing deals`,
+        color: "#EF4444",
+        threshold: "5+ Days",
+        badge: "HOT STREAK",
+        amount: roundedAmount,
+      };
+    case "on_fire":
+      return {
+        title: "On Fire",
+        description: `${roundedAmount} consecutive days dominating the leaderboard`,
+        color: "#F97316",
+        threshold: "10+ Days",
+        badge: "ON FIRE",
+        amount: roundedAmount,
+      };
+    case "unstoppable":
+      return {
+        title: "Unstoppable",
+        description: `Legendary ${roundedAmount}-day deal streak`,
+        color: "#DC2626",
+        threshold: "20+ Days",
+        badge: "UNSTOPPABLE",
+        amount: roundedAmount,
+      };
+    case "comeback_champion":
+      return {
+        title: "Comeback Champion",
+        description: `Massive week-over-week improvement: +$${roundedAmount.toLocaleString()}`,
+        color: "#8B5CF6",
+        threshold: "$3,000+ Improvement",
+        badge: "COMEBACK CHAMPION",
         amount: roundedAmount,
       };
     default:

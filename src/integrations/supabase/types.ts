@@ -1353,6 +1353,41 @@ export type Database = {
         }
         Relationships: []
       }
+      plaque_awards: {
+        Row: {
+          agent_id: string
+          amount: number | null
+          awarded_at: string | null
+          id: string
+          milestone_date: string
+          milestone_type: string
+        }
+        Insert: {
+          agent_id: string
+          amount?: number | null
+          awarded_at?: string | null
+          id?: string
+          milestone_date: string
+          milestone_type: string
+        }
+        Update: {
+          agent_id?: string
+          amount?: number | null
+          awarded_at?: string | null
+          id?: string
+          milestone_date?: string
+          milestone_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plaque_awards_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null

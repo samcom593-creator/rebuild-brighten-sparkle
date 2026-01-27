@@ -13,12 +13,13 @@ import { cn } from "@/lib/utils";
 
 interface DuplicateGroup {
   key: string;
-  matchType: "email" | "name";
+  matchType: "email" | "name" | "phone";
   agents: Array<{
     id: string;
     profileId: string | null;
     fullName: string;
     email: string | null;
+    phone: string | null;
     totalAlp: number;
     totalDeals: number;
   }>;
@@ -48,7 +49,8 @@ export function DuplicateMergeTool({ open, onClose, onMergeComplete }: Duplicate
           profiles!agents_profile_id_fkey (
             id,
             full_name,
-            email
+            email,
+            phone
           )
         `);
 
@@ -77,6 +79,7 @@ export function DuplicateMergeTool({ open, onClose, onMergeComplete }: Duplicate
         profileId: a.profile_id,
         fullName: a.profiles?.full_name || "",
         email: a.profiles?.email || null,
+        phone: a.profiles?.phone || null,
         totalAlp: productionMap.get(a.id)?.alp || 0,
         totalDeals: productionMap.get(a.id)?.deals || 0,
       }));
@@ -123,7 +126,36 @@ export function DuplicateMergeTool({ open, onClose, onMergeComplete }: Duplicate
         }
       });
 
-      // Name duplicates (only if not already grouped by email)
+      // Detect duplicates by phone
+      const phoneGroups = new Map<string, typeof agentList>();
+      agentList.forEach((agent) => {
+        if (agent.phone && agent.phone.trim()) {
+          // Normalize phone: remove non-digits
+          const normalizedPhone = agent.phone.replace(/\D/g, "");
+          if (normalizedPhone.length >= 10) {
+            const group = phoneGroups.get(normalizedPhone) || [];
+            group.push(agent);
+            phoneGroups.set(normalizedPhone, group);
+          }
+        }
+      });
+
+      // Phone duplicates (only if not already grouped by email)
+      phoneGroups.forEach((group, phone) => {
+        if (group.length > 1) {
+          const ids = group.map((a) => a.id).sort().join(",");
+          if (!seenIds.has(ids)) {
+            seenIds.add(ids);
+            duplicateGroups.push({
+              key: phone,
+              matchType: "phone",
+              agents: group,
+            });
+          }
+        }
+      });
+
+      // Name duplicates (only if not already grouped by email or phone)
       nameGroups.forEach((group, name) => {
         if (group.length > 1) {
           const ids = group.map((a) => a.id).sort().join(",");
@@ -232,7 +264,11 @@ export function DuplicateMergeTool({ open, onClose, onMergeComplete }: Duplicate
                   <AlertTriangle className="h-4 w-4 text-amber-500" />
                   <span className="font-medium">Potential Duplicate</span>
                   <Badge variant="outline">
-                    {group.matchType === "email" ? "Same Email" : "Same Name"}
+                    {group.matchType === "email" 
+                      ? "Same Email" 
+                      : group.matchType === "phone" 
+                        ? "Same Phone" 
+                        : "Same Name"}
                   </Badge>
                 </div>
 
@@ -262,7 +298,9 @@ export function DuplicateMergeTool({ open, onClose, onMergeComplete }: Duplicate
                             {agent.fullName || "Unknown"}
                           </Label>
                           <p className="text-xs text-muted-foreground truncate">
-                            {agent.email || "No email"} • ID: {agent.id.slice(0, 8)}...
+                            {agent.email || "No email"}
+                            {agent.phone && ` • ${agent.phone}`}
+                            {" "}• ID: {agent.id.slice(0, 8)}...
                           </p>
                         </div>
                         <div className="text-right">

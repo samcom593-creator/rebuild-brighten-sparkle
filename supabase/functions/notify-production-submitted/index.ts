@@ -42,6 +42,34 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Get agent's manager for CC
+    const { data: agentRecord } = await supabase
+      .from("agents")
+      .select("invited_by_manager_id")
+      .eq("id", agentId)
+      .maybeSingle();
+
+    let managerEmail: string | null = null;
+    if (agentRecord?.invited_by_manager_id) {
+      const { data: managerAgent } = await supabase
+        .from("agents")
+        .select("user_id")
+        .eq("id", agentRecord.invited_by_manager_id)
+        .maybeSingle();
+
+      if (managerAgent?.user_id) {
+        const { data: managerProfile } = await supabase
+          .from("profiles")
+          .select("email")
+          .eq("user_id", managerAgent.user_id)
+          .maybeSingle();
+
+        managerEmail = managerProfile?.email || null;
+      }
+    }
+
+    console.log("Manager email for CC:", managerEmail);
+
     // Get weekly totals for this agent
     const today = new Date();
     const dayOfWeek = today.getDay();
@@ -67,18 +95,24 @@ serve(async (req) => {
       ? Math.round((productionData.deals_closed / productionData.presentations) * 100)
       : 0;
 
-    // Admin email
+    // Admin email + CC manager if available
     const adminEmail = "info@kingofsales.net";
+    const recipients = managerEmail && managerEmail !== adminEmail 
+      ? [adminEmail, managerEmail]
+      : [adminEmail];
+    
     const timestamp = new Date().toLocaleString("en-US", { 
       timeZone: "America/Chicago",
       dateStyle: "short",
       timeStyle: "short"
     });
 
+    console.log("Sending production email to:", recipients);
+
     // Send notification email with story-worthy design
     const emailResponse = await resend.emails.send({
       from: "APEX Production <noreply@apex-financial.org>",
-      to: [adminEmail],
+      to: recipients,
       subject: `🔥 ${agentName} | ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} Production Report`,
       html: `
         <!DOCTYPE html>

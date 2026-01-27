@@ -19,6 +19,7 @@ interface BuildingEntry {
   contracted: number;
   projectedIncome: number;
   growthPercent: number;
+  conversionRate: number;
   isCurrentUser: boolean;
 }
 
@@ -185,6 +186,11 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
           growthPercent = 100; // 100% growth if they had 0 before
         }
 
+        // Calculate conversion rate
+        const conversionRate = stats.applications > 0 
+          ? (stats.contracted / stats.applications) * 100 
+          : 0;
+
         return {
           rank: 0,
           agentId: agent.id,
@@ -194,6 +200,7 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
           contracted: stats.contracted,
           projectedIncome: stats.applications * INCOME_PER_HIRE,
           growthPercent: Math.round(growthPercent),
+          conversionRate: Math.round(conversionRate),
           isCurrentUser: agent.id === currentAgentId,
         };
       });
@@ -264,11 +271,12 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
     <div className="space-y-2">
       {/* Table Header */}
       <div className="grid grid-cols-12 gap-2 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/50">
-        <div className="col-span-4">Builder</div>
+        <div className="col-span-3">Builder</div>
         <div className="col-span-2 text-center">Apps</div>
         <div className="col-span-2 text-center">Hired</div>
+        <div className="col-span-2 text-center">Conv %</div>
         <div className="col-span-2 text-center">Income</div>
-        <div className="col-span-2 text-center">Growth</div>
+        <div className="col-span-1 text-center">+/-</div>
       </div>
 
       {/* Entries */}
@@ -305,7 +313,7 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
                 )}
               >
                 {/* Rank + Name */}
-                <div className="col-span-4 flex items-center gap-2 min-w-0">
+                <div className="col-span-3 flex items-center gap-2 min-w-0">
                   {renderRankBadge(entry.rank, entry.isCurrentUser)}
                   <div className={cn(
                     "h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 bg-gradient-to-br",
@@ -331,18 +339,23 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
 
                 {/* Applications */}
                 <div className="col-span-2 text-center">
-                  <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/10">
-                    <UserPlus className="h-3 w-3 text-blue-400" />
-                    <span className="text-xs font-semibold text-blue-400">{entry.applications}</span>
-                  </div>
+                  <span className="text-xs font-semibold text-blue-400">{entry.applications}</span>
                 </div>
 
                 {/* Contracted (Hired) */}
                 <div className="col-span-2 text-center">
-                  <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10">
-                    <Briefcase className="h-3 w-3 text-emerald-400" />
-                    <span className="text-xs font-bold text-emerald-400">{entry.contracted}</span>
-                  </div>
+                  <span className="text-xs font-bold text-emerald-400">{entry.contracted}</span>
+                </div>
+
+                {/* Conversion Rate */}
+                <div className="col-span-2 text-center">
+                  <span className={cn(
+                    "text-xs font-semibold",
+                    entry.conversionRate >= 50 ? "text-emerald-400" : 
+                    entry.conversionRate >= 25 ? "text-amber-400" : "text-muted-foreground"
+                  )}>
+                    {entry.applications > 0 ? `${entry.conversionRate}%` : "-"}
+                  </span>
                 </div>
 
                 {/* Projected Income */}
@@ -356,21 +369,21 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
                 </div>
 
                 {/* Growth % */}
-                <div className="col-span-2 text-center">
+                <div className="col-span-1 text-center">
                   {entry.growthPercent !== 0 ? (
                     <div className={cn(
-                      "inline-flex items-center gap-0.5 text-xs font-semibold",
+                      "inline-flex items-center gap-0.5 text-[10px] font-semibold",
                       entry.growthPercent > 0 ? "text-emerald-400" : "text-red-400"
                     )}>
                       {entry.growthPercent > 0 ? (
-                        <TrendingUp className="h-3 w-3" />
+                        <TrendingUp className="h-2.5 w-2.5" />
                       ) : (
-                        <TrendingDown className="h-3 w-3" />
+                        <TrendingDown className="h-2.5 w-2.5" />
                       )}
                       <span>{entry.growthPercent > 0 ? "+" : ""}{entry.growthPercent}%</span>
                     </div>
                   ) : (
-                    <span className="text-xs text-muted-foreground">-</span>
+                    <span className="text-[10px] text-muted-foreground">-</span>
                   )}
                 </div>
               </motion.div>

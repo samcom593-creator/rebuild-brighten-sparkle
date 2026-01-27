@@ -9,9 +9,27 @@ const corsHeaders = {
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const BASE_URL = "https://apex-financial.org";
-const PORTAL_URL = `${BASE_URL}/agent-portal`;
-const LOG_NUMBERS_URL = `${BASE_URL}/apex-daily-numbers`;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+
+// Generate magic link token
+async function generateMagicToken(
+  supabaseClient: any,
+  agentId: string,
+  email: string,
+  destination: "portal" | "numbers"
+): Promise<string> {
+  const token = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
+  
+  await supabaseClient.from("magic_login_tokens").insert({
+    agent_id: agentId,
+    email: email.toLowerCase().trim(),
+    token,
+    destination,
+    expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+  });
+
+  return `${BASE_URL}/magic-login?token=${token}`;
+}
 
 interface SendLoginRequest {
   agentId: string;
@@ -60,6 +78,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     const firstName = profile.full_name?.split(" ")[0] || "Agent";
 
+    // Generate magic links
+    const portalMagicLink = await generateMagicToken(supabaseClient, agentId, profile.email, "portal");
+    const numbersMagicLink = await generateMagicToken(supabaseClient, agentId, profile.email, "numbers");
+
     // Create tracking record first to get the ID for the tracking pixel
     const { data: trackingRecord, error: trackingError } = await supabaseClient
       .from("email_tracking")
@@ -69,7 +91,8 @@ const handler = async (req: Request): Promise<Response> => {
         recipient_email: profile.email,
         metadata: {
           agent_name: profile.full_name,
-          onboarding_stage: agent.onboarding_stage
+          onboarding_stage: agent.onboarding_stage,
+          magic_link: true,
         }
       })
       .select("id")
@@ -88,7 +111,7 @@ const handler = async (req: Request): Promise<Response> => {
       await resend.emails.send({
         from: "APEX Financial <noreply@apex-financial.org>",
         to: [profile.email],
-        subject: "🎉 Welcome to the Agent Portal - You're LIVE!",
+        subject: "🎉 Welcome to the Agent Portal - One-Tap Access Inside!",
         html: `
           <!DOCTYPE html>
           <html>
@@ -113,7 +136,7 @@ const handler = async (req: Request): Promise<Response> => {
                 </h2>
                 
                 <p style="color: #e2e8f0; font-size: 16px; line-height: 1.8; margin: 0 0 24px 0;">
-                  You've officially made it through training and are now a live agent. This is where the real journey begins!
+                  You've officially made it through training and are now a live agent. Just tap the button below to access your portal - no password needed!
                 </p>
                 
                 <div style="background: rgba(20, 184, 166, 0.1); border-radius: 12px; padding: 24px; margin: 24px 0;">
@@ -129,26 +152,27 @@ const handler = async (req: Request): Promise<Response> => {
                   </ul>
                 </div>
                 
+                <!-- Main CTA - Magic Link -->
                 <div style="text-align: center; margin: 32px 0;">
-                  <a href="${PORTAL_URL}" style="display: inline-block; background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); color: #0a0f1a; text-decoration: none; padding: 16px 48px; border-radius: 8px; font-weight: bold; font-size: 16px;">
-                    Access Agent Portal →
+                  <a href="${portalMagicLink}" style="display: inline-block; background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); color: #0a0f1a; text-decoration: none; padding: 18px 48px; border-radius: 8px; font-weight: bold; font-size: 18px;">
+                    🚀 Open My Portal →
                   </a>
                 </div>
                 
-                <p style="color: #94a3b8; font-size: 14px; text-align: center; margin: 0;">
-                  Log in with your email: <strong style="color: #14b8a6;">${profile.email}</strong>
+                <p style="color: #64748b; font-size: 12px; text-align: center; margin: 0 0 24px 0;">
+                  One-tap login • No password needed
                 </p>
 
-                <!-- Quick Log Numbers Link -->
+                <!-- Quick Log Numbers Link - Also Magic Link -->
                 <div style="background: rgba(245, 158, 11, 0.1); border-radius: 12px; padding: 20px; margin: 24px 0; text-align: center;">
                   <p style="color: #f59e0b; font-size: 14px; font-weight: bold; margin: 0 0 8px 0;">
-                    ⚡ Quick Access - No Login Required
+                    ⚡ Quick Access
                   </p>
                   <p style="color: #94a3b8; font-size: 13px; margin: 0 0 12px 0;">
-                    Need to log your numbers quickly? Use this direct link:
+                    Need to log your numbers quickly?
                   </p>
-                  <a href="${LOG_NUMBERS_URL}" style="display: inline-block; background: rgba(245, 158, 11, 0.2); color: #f59e0b; text-decoration: none; padding: 10px 24px; border-radius: 6px; font-weight: bold; font-size: 14px; border: 1px solid rgba(245, 158, 11, 0.3);">
-                    Log Numbers Now →
+                  <a href="${numbersMagicLink}" style="display: inline-block; background: rgba(245, 158, 11, 0.2); color: #f59e0b; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: bold; font-size: 14px; border: 1px solid rgba(245, 158, 11, 0.3);">
+                    📊 Log Numbers Now →
                   </a>
                 </div>
                 
@@ -173,6 +197,14 @@ const handler = async (req: Request): Promise<Response> => {
                     Join Discord →
                   </a>
                 </div>
+
+                <!-- Fallback note -->
+                <div style="background: rgba(148, 163, 184, 0.1); border-radius: 8px; padding: 16px; margin: 24px 0;">
+                  <p style="color: #94a3b8; font-size: 12px; margin: 0; text-align: center;">
+                    Link not working? You can also sign in at <a href="${BASE_URL}/agent-login" style="color: #14b8a6;">apex-financial.org/agent-login</a><br>
+                    using your email: <strong style="color: #e2e8f0;">${profile.email}</strong>
+                  </p>
+                </div>
                 
                 <div style="border-top: 1px solid rgba(148, 163, 184, 0.2); padding-top: 24px; margin-top: 32px;">
                   <p style="color: #64748b; font-size: 12px; margin: 0; text-align: center;">
@@ -195,12 +227,12 @@ const handler = async (req: Request): Promise<Response> => {
         .update({ portal_password_set: false })
         .eq("id", agentId);
 
-      console.log(`Portal login email sent to ${profile.email}, tracking ID: ${trackingRecord?.id || 'none'}`);
+      console.log(`Magic link portal login email sent to ${profile.email}, tracking ID: ${trackingRecord?.id || 'none'}`);
 
       return new Response(
         JSON.stringify({ 
           success: true, 
-          message: `Portal login sent to ${profile.email}`,
+          message: `Portal login with magic link sent to ${profile.email}`,
           trackingId: trackingRecord?.id
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }

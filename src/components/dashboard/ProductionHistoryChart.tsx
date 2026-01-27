@@ -61,6 +61,22 @@ export function ProductionHistoryChart({ agentId }: ProductionHistoryChartProps)
   useEffect(() => {
     if (agentId) {
       fetchHistory();
+
+      // Real-time subscription for live updates
+      const channel = supabase
+        .channel("production-history-live")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "daily_production" },
+          () => {
+            fetchHistory();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [agentId]);
 

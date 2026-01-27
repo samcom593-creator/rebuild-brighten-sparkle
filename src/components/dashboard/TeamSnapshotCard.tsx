@@ -32,6 +32,22 @@ export function TeamSnapshotCard() {
 
   useEffect(() => {
     fetchStats();
+
+    // Real-time subscription for live updates
+    const channel = supabase
+      .channel("team-snapshot-live")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "daily_production" },
+        () => {
+          fetchStats();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user, isAdmin, period]);
 
   const fetchStats = async () => {

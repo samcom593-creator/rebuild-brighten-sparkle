@@ -15,6 +15,7 @@ import GetLicensed from "./pages/GetLicensed";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import AgentSignup from "./pages/AgentSignup";
+import AgentNumbersLogin from "./pages/AgentNumbersLogin";
 import Dashboard from "./pages/Dashboard";
 import DashboardApplicants from "./pages/DashboardApplicants";
 import DashboardAdmin from "./pages/DashboardAdmin";
@@ -49,6 +50,7 @@ const App = () => (
             }
           />
           <Route path="/log-numbers" element={<Navigate to="/apex-daily-numbers" replace />} />
+          <Route path="/agent-login" element={<AgentNumbersLogin />} />
           <Route path="/apply" element={<Apply />} />
           <Route path="/apply/success" element={<ApplySuccess />} />
           <Route path="/apply/success/licensed" element={<ApplySuccessLicensed />} />

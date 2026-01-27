@@ -555,30 +555,39 @@ export default function AgentPortal() {
           </GlassCard>
 
           {/* Direct Portal Link */}
-          <GlassCard className="p-4">
-            <div className="flex items-center gap-3 mb-3">
-              <img src={apexIcon} alt="Apex" className="h-8 w-8 rounded-lg shadow-md" />
-              <h3 className="font-semibold">Apex Daily Numbers</h3>
+          <GlassCard className="p-4 overflow-hidden">
+            <div className="flex items-center gap-3 mb-4">
+              <img src={apexIcon} alt="Apex" className="h-10 w-10 rounded-xl shadow-lg" />
+              <div>
+                <h3 className="font-semibold">Apex Daily Numbers</h3>
+                <p className="text-xs text-muted-foreground">
+                  Share with your team for daily entry
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground mb-3">
-              Share this link with your team for daily number entry:
-            </p>
-            <div className="flex items-center gap-2">
-              <code className="flex-1 text-xs bg-muted p-2 rounded truncate">
-                {typeof window !== 'undefined' ? `${window.location.origin}/apex-daily-numbers` : ''}
-              </code>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => {
-                  const logLink = `${window.location.origin}/apex-daily-numbers`;
-                  navigator.clipboard.writeText(logLink);
-                  toast.success("Link copied!");
-                }}
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
+            
+            {/* Branded Preview Card */}
+            <div className="bg-gradient-to-br from-primary/10 via-violet-500/10 to-amber-500/10 border border-border/50 rounded-xl p-4 mb-4">
+              <div className="flex items-center gap-3">
+                <img src={apexIcon} alt="Apex" className="h-12 w-12 rounded-lg" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm">Apex Daily Numbers</p>
+                  <p className="text-xs text-muted-foreground truncate">/apex-daily-numbers</p>
+                </div>
+              </div>
             </div>
+            
+            <Button 
+              className="w-full gap-2"
+              onClick={() => {
+                const logLink = `${window.location.origin}/apex-daily-numbers`;
+                navigator.clipboard.writeText(logLink);
+                toast.success("Link copied to clipboard!");
+              }}
+            >
+              <Copy className="h-4 w-4" />
+              Copy Link
+            </Button>
           </GlassCard>
         </motion.section>
 

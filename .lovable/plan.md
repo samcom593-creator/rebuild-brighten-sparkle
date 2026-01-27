@@ -1,95 +1,139 @@
 
-# Fix Apex Daily Numbers Link - Complete Solution
+# Fix Agent Login Flow - Simplified Email-First Experience
 
-## Root Cause Analysis
+## Problems Identified
 
-The link isn't working because:
-1. **The site hasn't been published** - Your code changes only exist in preview mode
-2. **Users are being sent to the wrong URL** - The published site still has old code without the `/apex-daily-numbers` route
-3. **Edge functions have hardcoded Lovable URLs** - 15+ email templates use `rebuild-brighten-sparkle.lovable.app` instead of your custom domain
+1. **Password Reset Fails**: The `send-password-reset` function uses `generateLink` which requires users to already exist in Supabase Auth. But most CRM agents have placeholder UUIDs (like `a1111111-...`) without real auth accounts.
 
-## What Users See Now vs What They Should See
+2. **Login UX is Wrong**: Current flow asks for email+password upfront. Users want:
+   - Enter email first
+   - If email matches CRM → let them set a password and log in (first-time setup)
+   - If email doesn't match → let them create a new account on the spot
 
-| Currently | After Fix |
-|-----------|-----------|
-| Clicking link → redirects to homepage or random page | Clicking link → Apex branded login page |
-| See "lovable.app" in URLs | See "apex-financial.org" everywhere |
-| Emails link to Lovable URL | Emails link to apex-financial.org |
+3. **No Create Account Button**: Current page says "Contact your manager" instead of allowing self-signup.
 
-## Solution - 3 Parts
+## Solution Overview
 
-### Part 1: Publish the Site (Required!)
-The `/apex-daily-numbers` route and `/agent-login` page only exist in preview. You MUST click **Publish** to make them live on your custom domain.
+Create a smart, email-first login flow with 4 states:
 
-### Part 2: Update All Edge Functions to Use Custom Domain
-Replace all instances of `rebuild-brighten-sparkle.lovable.app` with `apex-financial.org` in these files:
-
-| Edge Function File | What It Does |
-|-------------------|--------------|
-| `send-followup-emails` | Follow-up emails to applicants |
-| `test-email-flows` | Test email system |
-| `notify-missed-dialer` | Missed call notifications |
-| `send-agent-portal-login` | Agent portal login emails |
-| `notify-lead-closed` | Lead closed notifications |
-| `notify-top-performers-morning` | Morning performance emails |
-| `send-aged-lead-email` | Aged lead outreach |
-| `submit-application` | Application confirmation emails |
-| `notify-daily-summary` | Daily summary emails |
-| `check-abandoned-applications` | Abandoned application alerts |
-| `send-abandoned-followup` | Abandoned follow-up emails |
-| `notify-monthly-leaderboard` | Monthly leaderboard emails |
-| `notify-manager-referral` | Manager referral notifications |
-| + more... | |
-
-### Part 3: Share the Correct Link
-You need to share the FULL URL, not just the path:
-
-**Correct Link to Share:**
-```
-https://apex-financial.org/apex-daily-numbers
-```
-
-**NOT:**
-```
-/apex-daily-numbers
-apex-daily-numbers
+```text
+[Enter Email] 
+     ↓
+[Check CRM & Auth]
+     ↓
+┌────────────────────────────────────────┐
+│                                        │
+▼                                        ▼
+Email in CRM,                      Email NOT in CRM
+Auth account exists                     │
+│                                       ▼
+▼                                  [Create New Account]
+[Enter Password]                   Name + Email + Password
+│                                       │
+│    ┌───────────────────┐              │
+│    │                   │              │
+▼    ▼                   │              │
+Email in CRM,            │              ▼
+NO Auth account          │         [Create Agent + Auth]
+│                        │              │
+▼                        │              │
+[Set First Password]     │              │
+│                        │              │
+▼                        │              │
+[Create Auth Account  ◄──┘              │
+ Link to Existing Agent]                │
+│                                       │
+└───────────────────────────────────────┘
+                    │
+                    ▼
+            [Logged In → /apex-daily-numbers]
 ```
 
 ## Technical Changes
 
-### Files to Update (Edge Functions)
-All edge function files that contain `rebuild-brighten-sparkle.lovable.app` will be updated to use `apex-financial.org`:
+### 1. Rewrite AgentNumbersLogin.tsx (Complete Overhaul)
 
-```text
-supabase/functions/send-followup-emails/index.ts
-supabase/functions/test-email-flows/index.ts
-supabase/functions/notify-missed-dialer/index.ts
-supabase/functions/send-agent-portal-login/index.ts
-supabase/functions/notify-lead-closed/index.ts
-supabase/functions/notify-top-performers-morning/index.ts
-supabase/functions/send-aged-lead-email/index.ts
-supabase/functions/submit-application/index.ts
-supabase/functions/notify-daily-summary/index.ts
-supabase/functions/check-abandoned-applications/index.ts
-supabase/functions/send-abandoned-followup/index.ts
-supabase/functions/notify-monthly-leaderboard/index.ts
-supabase/functions/notify-manager-referral/index.ts
-supabase/functions/notify-all-managers-leaderboard/index.ts
-supabase/functions/welcome-new-agent/index.ts
+**New Component States:**
+- `step: "email" | "password" | "set-password" | "create-account"`
+- `crmMatch: Profile | null` (if email found in profiles table)
+- `hasAuthAccount: boolean` (if email found in auth.users)
+
+**New Flow Logic:**
+1. User enters email → click "Continue"
+2. Check if email exists in `profiles` table (public RLS allows checking by email for authenticated users only - need edge function)
+3. Check if email exists in `auth.users` (via Supabase client sign-in attempt or edge function)
+4. Based on results:
+   - **CRM match + Auth exists** → Show password field
+   - **CRM match + No auth** → Show "Set Password" form (first-time setup)
+   - **No CRM match** → Show "Create Account" form (name + email + password)
+
+### 2. Create `check-email-status` Edge Function
+
+Check if an email exists in CRM and/or auth, without exposing sensitive data:
+
+```typescript
+// Returns: { inCRM: boolean, hasAuthAccount: boolean, agentName?: string }
 ```
 
-### URL Updates
-| Old URL | New URL |
-|---------|---------|
-| `https://rebuild-brighten-sparkle.lovable.app` | `https://apex-financial.org` |
-| `https://rebuild-brighten-sparkle.lovable.app/dashboard/applicants` | `https://apex-financial.org/dashboard/applicants` |
-| `https://rebuild-brighten-sparkle.lovable.app/agent-portal` | `https://apex-financial.org/agent-portal` |
-| `https://rebuild-brighten-sparkle.lovable.app/log-numbers` | `https://apex-financial.org/apex-daily-numbers` |
-| `https://rebuild-brighten-sparkle.lovable.app/apply` | `https://apex-financial.org/apply` |
+This function will:
+- Query `profiles` table for email match
+- Query `auth.users` (via admin API) for email match
+- Return status flags (not sensitive data)
+
+### 3. Create `setup-agent-password` Edge Function
+
+For first-time password setup (CRM user without auth account):
+
+```typescript
+// Input: { email: string, password: string }
+// Logic:
+// 1. Verify email exists in profiles table
+// 2. Create Supabase auth user with that email
+// 3. Update the existing agent record to link user_id
+// 4. Return success (user can now log in)
+```
+
+### 4. Create `create-new-agent-account` Edge Function
+
+For users not in CRM who want to create an account:
+
+```typescript
+// Input: { email: string, password: string, fullName: string, phone?: string }
+// Logic:
+// 1. Create Supabase auth user
+// 2. Create profile record
+// 3. Create agent record (onboarding_stage: 'evaluated', status: 'active')
+// 4. Add 'agent' role
+// 5. Return success
+```
+
+### 5. Update Password Reset Logic
+
+Fix `send-password-reset` to handle both cases:
+- **User exists in auth** → Generate recovery link (current logic)
+- **User in CRM but no auth** → Send "Set up your password" email instead (same flow as first-time setup)
+
+| File | Change |
+|------|--------|
+| `src/pages/AgentNumbersLogin.tsx` | Complete rewrite with email-first flow |
+| `supabase/functions/check-email-status/index.ts` | New - check CRM/auth status |
+| `supabase/functions/setup-agent-password/index.ts` | New - first-time password for CRM users |
+| `supabase/functions/create-new-agent-account/index.ts` | New - self-signup for non-CRM users |
+| `supabase/functions/send-password-reset/index.ts` | Update to handle "no auth account" case |
+| `supabase/config.toml` | Add new function configs |
 
 ## After Implementation
 
-1. All edge functions will use `apex-financial.org` - no more Lovable URLs
-2. You **MUST publish the site** for changes to go live
-3. Share this exact link with agents: **`https://apex-financial.org/apex-daily-numbers`**
-4. They will see the branded Apex login page, log in, and be able to enter their numbers
+1. User clicks link → sees **email-only** input field
+2. Enters email → system checks CRM + auth
+3. **If in CRM with account**: enters password → logs in
+4. **If in CRM without account**: sets password → account created → logs in
+5. **If not in CRM**: enters name + password → new account created → logs in
+6. Password reset works for all cases
+
+## Security Considerations
+
+- Email check function returns minimal info (boolean flags only)
+- Password setup requires valid email in CRM
+- All auth operations use service role key server-side
+- RLS still enforced for data access after login

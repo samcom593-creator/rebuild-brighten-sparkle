@@ -1,117 +1,146 @@
 
+# Bug Fix Plan: Critical Issues
 
-# Public Manager Recruiting Leaderboard Plan
-
-This plan makes the recruiting leaderboard public across all managers' dashboards so everyone can see where they rank amongst each other.
-
----
-
-## Current State Analysis
-
-Based on my review:
-
-1. **Manager Leaderboard Component** (`ManagerLeaderboard.tsx`):
-   - Already fetches ALL managers from `user_roles` table
-   - Already shows rankings for all managers with their recruits
-   - Already highlights the current user's position
-   - Uses real-time subscriptions for instant updates
-
-2. **Daily Leaderboard Email** (`send-daily-leaderboard-summary`):
-   - Already sends to ALL managers
-   - Shows complete rankings with everyone's position
-   - Includes motivational messaging about how close they are to next rank
-
-3. **Real-time Notifications** (`notify-all-managers-leaderboard`):
-   - Already broadcasts to all managers when someone scores a recruit
-
-**Good news**: The recruiting leaderboard is already designed to be public! All managers can see everyone's rankings.
+This plan addresses four critical issues you reported, prioritized by impact:
 
 ---
 
-## What Needs Verification/Confirmation
+## Priority 1: Portal Login Email Not Sending (CRITICAL)
 
-### 1. Database Visibility
-The current queries use the service role key in edge functions, which bypasses RLS. The frontend component (`ManagerLeaderboard.tsx`) queries:
-- `agents` table - to get all active agents
-- `user_roles` table - to filter managers only
-- `profiles` table - to get names
-- `applications` table - to count recruits
+### Root Cause
+The edge function logs show the email was "sent" (`Portal login email sent to kebbeh045@gmail.com`) multiple times, and tracking records exist in the database with `open_count: 0`. However, the email is not being received.
 
-These all have proper RLS policies that allow managers to view necessary data.
+**Investigation reveals**: The "from" email domain is `notifications@tx.apex-financial.org` but previously it was `noreply@apex-financial.org`. This subdomain change may be causing deliverability issues.
 
-### 2. Dashboard Visibility
-The `ManagerLeaderboard` component is already displayed in `Dashboard.tsx` (line 399) for all users in the "Growth & Recruitment" section.
+### Fix
+1. Change the "from" address back to verified domain: `APEX Financial <noreply@apex-financial.org>`
+2. Redeploy the edge function
+3. Test with your email address first
 
 ---
 
-## Enhancements to Implement
+## Priority 2: Manager Leaderboard Only Shows Current User
 
-### 1. Add "Your Numbers" Summary Card
-Add a prominent card showing the current manager's recruiting stats at the top of the leaderboard:
-- Your Rank: #X of Y managers
-- Your Total Recruits: X
-- Gap to #1: X recruits away
+### Root Cause
+After reviewing the `ManagerLeaderboard.tsx` code, the component queries:
+1. All active agents
+2. Filters to only those with "manager" role in `user_roles` table
+3. Gets their application counts from the `applications` table
 
-### 2. Confirm Daily Email Schedule is Active
-Verify the cron job for `send-daily-leaderboard-summary` is scheduled (8 AM EST daily per memory).
+The issue is an **RLS (Row-Level Security) policy problem** on the `profiles` table. The current SELECT policies only allow:
+- Users to see their own profile
+- Managers to see their direct team's profiles
+- Admins to see all profiles
 
-### 3. Add Real-time Position Tracking
-Similar to the sales leaderboard rank change indicators, add rank change tracking to show if a manager moved up or down.
+This means when building the leaderboard, a manager cannot see other managers' names since they don't have permission to read other managers' profiles.
+
+### Fix
+Add a new RLS policy on the `profiles` table that allows any authenticated manager to view the profile names of other managers:
+
+```sql
+CREATE POLICY "Managers can view all manager profiles"
+ON public.profiles FOR SELECT
+USING (
+  has_role(auth.uid(), 'manager'::app_role) AND
+  EXISTS (
+    SELECT 1 FROM user_roles
+    WHERE user_roles.user_id = profiles.user_id
+    AND user_roles.role = 'manager'
+  )
+);
+```
+
+This allows managers to see other managers' profiles for leaderboard purposes while maintaining privacy for regular agent data.
+
+---
+
+## Priority 3: CRM Attendance Grid Missing Day Letters
+
+### Root Cause
+The `AttendanceGrid.tsx` component has `DAYS = ["Su", "M", "T", "W", "Th", "F", "Sa"]` defined but only displays icons (checkmark/X) inside the day buttons, not the day letters.
+
+### Fix
+Add day letter labels above the attendance grid. Update the component to show:
+```
+         Su  M  T  W  Th  F  Sa
+Meeting: [✓] [✓] [-] [-] [-] [-] [-]
+Sold:    [✓] [-] [-] [-] [-] [-] [-]
+```
+
+This adds minimal visual overhead while making the dates clear.
+
+---
+
+## Priority 4: CRM Expanded View Slow Loading / Stuck
+
+### Root Cause
+When clicking on a stage card (In Course, Live, etc.) to expand it, the `expandedColumn` state triggers a re-render. The animation with `AnimatePresence mode="wait"` combined with nested data fetching causes perceived slow loading.
+
+The issue is not an "infinite loop" but rather:
+1. Multiple cascading queries when expanding
+2. Animation transitions blocking UI
+3. All agent notes fetching on mount (AgentNotes has `useEffect` that fetches on initial render)
+
+### Fixes
+1. **Reduce animation transitions**: Use faster durations in the expand animation
+2. **Lazy-load agent notes**: Only fetch notes when the notes section is expanded, not on card mount
+3. **Add loading skeleton**: Show skeleton placeholders immediately while data loads
+4. **Debounce the expansion**: Add a small delay before triggering the expanded view to prevent double-clicks
+
+---
+
+## Technical Implementation Details
+
+### Email Fix (send-agent-portal-login)
+```typescript
+// Line 89: Change from
+from: "APEX Financial Empire <notifications@tx.apex-financial.org>"
+// To
+from: "APEX Financial <noreply@apex-financial.org>"
+```
+
+### RLS Policy (SQL Migration)
+```sql
+-- Allow managers to view other managers' profiles for leaderboard
+CREATE POLICY "Managers can view manager profiles for leaderboard"
+ON public.profiles FOR SELECT
+USING (
+  has_role(auth.uid(), 'manager'::app_role)
+  AND EXISTS (
+    SELECT 1 FROM public.user_roles
+    WHERE user_roles.user_id = profiles.user_id
+    AND user_roles.role = 'manager'
+  )
+);
+```
+
+### AttendanceGrid.tsx Changes
+- Add a header row showing day abbreviations (Su, M, T, W, Th, F, Sa)
+- Keep existing tooltip functionality for full date on hover
+
+### DashboardCRM.tsx Performance
+- Change animation duration from 0.15s to 0.1s
+- Add immediate loading skeleton when expanding
+- Modify AgentNotes to lazy-load
+
+---
+
+## Testing Plan
+
+After implementation:
+1. **Email**: Send a test portal login to your email (info@kingofsales.net) first
+2. **Leaderboard**: Log in as a non-admin manager and verify other managers appear
+3. **CRM Dates**: Check that day letters (Su, M, T, W, Th, F, Sa) appear above attendance grid
+4. **CRM Speed**: Test expanding each stage and verify it loads within 1-2 seconds
 
 ---
 
 ## Files to Modify
 
-| File | Changes |
-|------|---------|
-| `src/components/dashboard/ManagerLeaderboard.tsx` | Add "Your Stats" summary card at top, add rank change indicators |
-
----
-
-## Confirmation Checklist
-
-After implementation, the following will be confirmed:
-
-1. ✅ All managers can see the complete recruiting leaderboard in their Dashboard
-2. ✅ All managers receive daily email with full leaderboard rankings
-3. ✅ Real-time notifications when any manager scores a recruit
-4. ✅ Each manager sees their personal rank highlighted with "(You)"
-5. ✅ Your numbers (admin/Samuel James) are included in the leaderboard
-
----
-
-## Technical Implementation
-
-### File: `src/components/dashboard/ManagerLeaderboard.tsx`
-
-**Changes:**
-
-1. **Add Personal Summary Card** (top of component):
-   - Show "Your Rank: #X"
-   - Show "Total Recruits: X"
-   - Show "Gap to #1: X recruits away" (if not #1)
-   - Show "You're #1! 👑" (if leading)
-
-2. **Add Rank Change Indicator**:
-   - Store previous rankings in localStorage
-   - Compare to current rankings on fetch
-   - Display +/- indicators like the sales leaderboard
-
-3. **Visual Polish**:
-   - Add pulsing glow effect when manager moves into top 3
-   - Add "LIVE" badge to indicate real-time updates
-
----
-
-## Expected Outcome
-
-After implementation:
-- All managers see public recruiting leaderboard in Dashboard
-- Each manager sees exactly where they rank among peers
-- Daily emails continue to go out with full rankings
-- Real-time updates when anyone scores a recruit
-- Your numbers (Samuel James) appear in the leaderboard as admin/manager
-- Motivational messaging shows how close they are to moving up
-
-The system is already set up for public visibility - this plan adds polish and confirmation that everything is working correctly.
-
+| File | Change |
+|------|--------|
+| `supabase/functions/send-agent-portal-login/index.ts` | Fix "from" email address |
+| SQL Migration | Add RLS policy for manager profile visibility |
+| `src/components/dashboard/AttendanceGrid.tsx` | Add day letter header row |
+| `src/pages/DashboardCRM.tsx` | Optimize animations, add loading states |
+| `src/components/dashboard/AgentNotes.tsx` | Lazy-load notes instead of fetching on mount |

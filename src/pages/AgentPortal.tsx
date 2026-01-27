@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
+import { Link } from "react-router-dom";
 import { 
   RefreshCw, 
   User, 
@@ -15,7 +16,11 @@ import {
   Award,
   Zap,
   Copy,
-  UserPlus
+  UserPlus,
+  Menu,
+  LayoutDashboard,
+  Settings,
+  Users
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -33,6 +38,7 @@ import { PerformanceDashboardSection } from "@/components/dashboard/PerformanceD
 import { WeeklyBadgesCard } from "@/components/dashboard/WeeklyBadges";
 import { YearPerformanceCard } from "@/components/dashboard/YearPerformanceCard";
 import { AgentRankBadge } from "@/components/dashboard/AgentRankBadge";
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -109,6 +115,14 @@ export default function AgentPortal() {
   const [isAdminViewing, setIsAdminViewing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [activeTab, setActiveTab] = useState<"numbers" | "leaderboard" | "stats">("leaderboard");
+  
+  // Team stats for managers/admins
+  const [teamTodayStats, setTeamTodayStats] = useState({
+    totalALP: 0,
+    totalDeals: 0,
+    totalPresentations: 0,
+    avgCloseRate: 0,
+  });
 
   // Random quote for the day (consistent per session)
   const [quote] = useState(() => 
@@ -124,6 +138,53 @@ export default function AgentPortal() {
       fetchAgentData();
     }
   }, [user, authLoading, isAdmin, isManager]);
+
+  // Fetch team stats for managers/admins
+  const fetchTeamStats = async (currentAgentId: string | null) => {
+    try {
+      let agentIds: string[] = [];
+      
+      if (isAdmin) {
+        // Admin sees ALL agents
+        const { data: allAgents } = await supabase
+          .from("agents")
+          .select("id")
+          .eq("is_deactivated", false);
+        agentIds = allAgents?.map(a => a.id) || [];
+      } else if (isManager && currentAgentId) {
+        // Manager sees their direct reports + themselves
+        const { data: teamAgents } = await supabase
+          .from("agents")
+          .select("id")
+          .eq("invited_by_manager_id", currentAgentId)
+          .eq("is_deactivated", false);
+        agentIds = [currentAgentId, ...(teamAgents?.map(a => a.id) || [])];
+      }
+      
+      if (agentIds.length === 0) return;
+      
+      // Fetch today's production for all team members
+      const today = new Date().toISOString().split("T")[0];
+      const { data: teamProduction } = await supabase
+        .from("daily_production")
+        .select("aop, deals_closed, presentations, closing_rate")
+        .in("agent_id", agentIds)
+        .eq("production_date", today);
+      
+      if (teamProduction && teamProduction.length > 0) {
+        const totalALP = teamProduction.reduce((sum, p) => sum + Number(p.aop || 0), 0);
+        const totalDeals = teamProduction.reduce((sum, p) => sum + (p.deals_closed || 0), 0);
+        const totalPresentations = teamProduction.reduce((sum, p) => sum + (p.presentations || 0), 0);
+        const avgCloseRate = totalPresentations > 0 
+          ? Math.round((totalDeals / totalPresentations) * 100) 
+          : 0;
+        
+        setTeamTodayStats({ totalALP, totalDeals, totalPresentations, avgCloseRate });
+      }
+    } catch (error) {
+      console.error("Error fetching team stats:", error);
+    }
+  };
 
   const fetchAgentData = async () => {
     try {
@@ -149,6 +210,12 @@ export default function AgentPortal() {
             .eq("production_date", today)
             .single();
           if (production) setTodayProduction(production);
+          
+          // Fetch team stats for managers/admins
+          await fetchTeamStats(agent.id);
+        } else {
+          // Even without agent record, fetch team stats for admins
+          await fetchTeamStats(null);
         }
         // No redirect - admins can view even without agent record
         setLoading(false);
@@ -279,6 +346,46 @@ export default function AgentPortal() {
             </div>
             
             <div className="flex items-center gap-2">
+              {/* Dashboard Navigation Menu */}
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="hover:bg-muted">
+                    <Menu className="h-4 w-4" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-64">
+                  <SheetHeader>
+                    <SheetTitle className="flex items-center gap-2">
+                      <img src={apexIcon} alt="Apex" className="h-6 w-6" />
+                      Navigation
+                    </SheetTitle>
+                  </SheetHeader>
+                  <nav className="space-y-2 mt-6">
+                    <Link 
+                      to="/dashboard" 
+                      className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-muted transition-colors"
+                    >
+                      <LayoutDashboard className="h-5 w-5 text-primary" />
+                      <span>Dashboard</span>
+                    </Link>
+                    <Link 
+                      to="/dashboard/team" 
+                      className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-muted transition-colors"
+                    >
+                      <Users className="h-5 w-5 text-violet-500" />
+                      <span>My Team</span>
+                    </Link>
+                    <Link 
+                      to="/dashboard/settings" 
+                      className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-muted transition-colors"
+                    >
+                      <Settings className="h-5 w-5 text-muted-foreground" />
+                      <span>Settings</span>
+                    </Link>
+                  </nav>
+                </SheetContent>
+              </Sheet>
+              
               <ThemeToggle />
               <Button variant="ghost" size="icon" onClick={handleLogout} className="hover:bg-destructive/10 hover:text-destructive transition-colors">
                 <LogOut className="h-4 w-4" />
@@ -325,36 +432,48 @@ export default function AgentPortal() {
           </motion.div>
 
           {/* Quick Stats Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <QuickStat
-              icon={DollarSign}
-              label="Today's ALP"
-              value={`$${todayALP.toLocaleString()}`}
-              color="primary"
-              delay={0.1}
-            />
-            <QuickStat
-              icon={Trophy}
-              label="Deals Today"
-              value={todayDeals}
-              color="amber"
-              delay={0.15}
-            />
-            <QuickStat
-              icon={Target}
-              label="Presentations"
-              value={todayPresentations}
-              color="violet"
-              delay={0.2}
-            />
-            <QuickStat
-              icon={BarChart3}
-              label="Close Rate"
-              value={`${todayCloseRate}%`}
-              color="emerald"
-              delay={0.25}
-            />
-          </div>
+          {(() => {
+            // Show team stats for managers/admins if they have team data
+            const showTeamStats = (isAdmin || isManager) && teamTodayStats.totalALP > 0;
+            const statsLabel = showTeamStats ? "Team's" : "Today's";
+            const displayALP = showTeamStats ? teamTodayStats.totalALP : todayALP;
+            const displayDeals = showTeamStats ? teamTodayStats.totalDeals : todayDeals;
+            const displayPresentations = showTeamStats ? teamTodayStats.totalPresentations : todayPresentations;
+            const displayCloseRate = showTeamStats ? teamTodayStats.avgCloseRate : todayCloseRate;
+
+            return (
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <QuickStat
+                  icon={DollarSign}
+                  label={`${statsLabel} ALP`}
+                  value={`$${displayALP.toLocaleString()}`}
+                  color="primary"
+                  delay={0.1}
+                />
+                <QuickStat
+                  icon={Trophy}
+                  label={showTeamStats ? "Team Deals" : "Deals Today"}
+                  value={displayDeals}
+                  color="amber"
+                  delay={0.15}
+                />
+                <QuickStat
+                  icon={Target}
+                  label={showTeamStats ? "Team Pres" : "Presentations"}
+                  value={displayPresentations}
+                  color="violet"
+                  delay={0.2}
+                />
+                <QuickStat
+                  icon={BarChart3}
+                  label={showTeamStats ? "Team Close %" : "Close Rate"}
+                  value={`${displayCloseRate}%`}
+                  color="emerald"
+                  delay={0.25}
+                />
+              </div>
+            );
+          })()}
         </section>
 
         {/* Tab Navigation for Mobile */}

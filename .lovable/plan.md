@@ -1,159 +1,229 @@
 
-# Agent Portal Refinement: UI Polish, Admin Editing & Domain Clarity
+# Agent Portal V3: Premium UI Polish & Layout Restructure
 
-## Current Issues Analysis
+## Summary
 
-### 1. Email Domain Concern
-The codebase is already configured correctly - all edge functions use `apex-financial.org` for:
-- Email sender addresses (`noreply@apex-financial.org`, `notifications@tx.apex-financial.org`)  
-- All portal links and redirects
-- Magic link destinations
+This plan addresses all your feedback to create a cleaner, more elite experience for the Agent Portal:
 
-The `rebuild-brighten-sparkle.lovable.app` URL you're seeing is Lovable's default **published URL** for the preview system. Your code already sends all emails and links to `apex-financial.org`. No code changes needed here - everything is correct.
-
-### 2. UI Not Updating / Looking the Same
-You're viewing `/agent-portal` which uses the **old** `LeaderboardTabs.tsx` component. The new compact design was built for `/numbers` route with `CompactLeaderboard.tsx`. The agent-portal page needs to be updated to use the refined components.
-
-### 3. Admin Number Editing
-Currently, admins can only edit numbers for agents in their **direct team** (via `invited_by_manager_id`). As the primary admin, you need the ability to edit **any agent's numbers**. The RLS policies support this, but the UI needs enhancement.
-
-### 4. Leaderboard Visual Issues
-The `LeaderboardTabs.tsx` on `/agent-portal` uses oversized rows and has too much dead space. Needs complete visual overhaul.
+1. **"Log Today's Numbers" - Premium Input Experience**: Redesigning the production entry form with sleek, modern input styling, subtle animations, and a more visually pleasing layout
+2. **"Today's Logs" - Elite View**: Rearranging the quick stats display into a premium dashboard card format
+3. **Layout Restructure**: Moving Weekly Badges to the bottom, adding Year Performance section in its place
+4. **Text Change**: Renaming "Passed Price" to "Pitched Price" across all components
+5. **Admin Editing**: Ensuring you can change anyone's numbers with full name display
+6. **Leaderboard Sizing**: Making it slightly bigger with better proportions
+7. **Performance Dashboard**: Making it more prominent than the leaderboard
 
 ---
 
-## Implementation Plan
+## Detailed Changes
 
-### Phase 1: Refined Leaderboard for Agent Portal
+### 1. Premium "Log Today's Numbers" Form
 
-**File: `src/components/dashboard/LeaderboardTabs.tsx`**
+**Current Issues:**
+- Input fields feel basic
+- Too compact, not "elite" feeling
+- Labels are small and cramped
 
-Complete visual redesign to match modern, high-tech aesthetic:
+**New Design:**
+- Larger, more spacious input fields (h-14 instead of h-12)
+- Floating label effect with animated transitions
+- Soft gradient backgrounds on focused inputs
+- Subtle shadow depth when active
+- Card-style grouping with visual separation between metrics
+- Satisfying micro-interactions on value changes
 
-| Change | Details |
-|--------|---------|
-| Row height | Reduce from 48px to 36px |
-| Font sizes | Rank: 12px, Name: 13px, Stats: 11px |
-| Column widths | Tighter grid with less padding |
-| Top 3 display | Inline medals instead of large icons |
-| Progress bars | Add ALP comparison to #1 |
-| Remove excess | Less margins, tighter spacing |
-| Live indicator | Add pulsing green dot |
-
-**Before → After Layout:**
+**Visual Mockup:**
 ```text
-BEFORE (current):
-│ 🏆  │ ↑ │ [Avatar]  Agent Name [badges]           │ 5  │ 12  │ 42% │ $12,400 │
-     ^large spacing^                                   ^oversized columns^
-
-AFTER (refined):
-│#1│○│JD Agent Name 👑│5│12│42%│$12,400 ███████░ 85%│
-   ^compact^            ^tight cols^    ^progress bar^
+┌─────────────────────────────────────────────────────────────────┐
+│  ✨ Log Today's Numbers                         [Agent Dropdown]│
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌────────┐│
+│   │ PRESENTATIONS│  │PITCHED PRICE│  │HOURS CALLED │  │REFERRALS││
+│   │    ┌─────┐  │  │    ┌─────┐ │  │    ┌─────┐  │  │  ┌────┐ ││
+│   │    │  5  │  │  │    │  3  │ │  │    │ 4.5 │  │  │  │  2 │ ││
+│   │    └─────┘  │  │    └─────┘ │  │    └─────┘  │  │  └────┘ ││
+│   │      🎯     │  │      💰    │  │      ⏱️     │  │   👥    ││
+│   └─────────────┘  └─────────────┘  └─────────────┘  └────────┘│
+│                                                                 │
+│   ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌────────┐│
+│   │BOOKED IN-HOME│  │REF. PRESENT.│  │ DEALS CLOSED│  │  ALP   ││
+│   │    ┌─────┐  │  │    ┌─────┐ │  │    ┌─────┐  │  │ ┌─────┐││
+│   │    │  1  │  │  │    │  0  │ │  │    │  2  │  │  │ │$2,400│││
+│   │    └─────┘  │  │    └─────┘ │  │    └─────┘  │  │ └─────┘││
+│   │      🏠     │  │      🤝    │  │      📈     │  │   💵   ││
+│   └─────────────┘  └─────────────┘  └─────────────┘  └────────┘│
+│                                                                 │
+│   ┌───────────────────────────────────────────────────────────┐│
+│   │              💾  Save Today's Numbers                     ││
+│   └───────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### Phase 2: Admin Universal Editing
+### 2. Page Layout Restructure
 
-**File: `src/components/dashboard/ProductionEntry.tsx`**
+**New Order (top to bottom):**
+1. Header (user info, date, logout)
+2. Quick Stats Grid (Today's ALP, Deals, Presentations, Close Rate)
+3. **Log Today's Numbers** (premium form - PROMINENT)
+4. **Performance Dashboard** (moved UP, made larger) 
+5. **Personal Stats Card** (your benchmarks)
+6. **Leaderboard** (slightly bigger, but below Performance section)
+7. **Year Performance Card** (NEW - replaces Weekly Badges position)
+8. Production History Chart
+9. Income Goal Tracker
+10. Team Goals
+11. Additional Leaderboards (Closing Rate, Referral)
+12. Referral Links Section
+13. **Weekly Badges** (MOVED to bottom)
+14. Motivational Quote Footer
 
-Add admin capability to select ANY agent from the entire roster:
+### 3. New "Year Performance" Card
 
-1. Check if user has `admin` role
-2. If admin: fetch ALL active agents (not just team)
-3. Show full roster in dropdown grouped by manager
-4. Allow editing any agent's numbers
+A new component showing annual stats:
+
+**Data Displayed:**
+- Year-to-Date ALP Total
+- Total Deals Closed (YTD)
+- Average Close Rate (YTD)
+- Total Presentations (YTD)
+- Comparison to same period last year (if data exists)
+
+**Design:**
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│  📊 2026 Year Performance                              Annual   │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   ┌───────────────┐  ┌───────────────┐  ┌───────────────┐      │
+│   │    $45,200    │  │      28       │  │     42%       │      │
+│   │   YTD ALP     │  │  Total Deals  │  │  Avg Close %  │      │
+│   └───────────────┘  └───────────────┘  └───────────────┘      │
+│                                                                 │
+│   Total Presentations: 67  •  Avg Deal Size: $1,614            │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 4. Text Change: "Passed Price" → "Pitched Price"
+
+Updating across 4 files:
+- `ProductionEntry.tsx` - line 284
+- `CompactProductionEntry.tsx` - line 113
+- `LogNumbers.tsx` - line 351
+- Any leaderboard display references
+
+### 5. Admin Full Access with Full Names
+
+**Current State:** Admin dropdown shows first names only and grouped by manager
+
+**Enhancement:**
+- Show **full names** in dropdown (e.g., "Samuel James" not just "Samuel")
+- Add agent's manager name in parentheses for context
+- Ensure dropdown is wider to accommodate full names
+- Maintain ability to edit ANY agent's production
+
+**Dropdown Example:**
+```text
+┌────────────────────────────────────────┐
+│ 🙋 Samuel James (Me)                   │
+├────────────────────────────────────────┤
+│ 📋 Manager: John Smith                 │
+│    👤 Michael Johnson                  │
+│    👤 Sarah Williams                   │
+│    👤 David Brown                      │
+├────────────────────────────────────────┤
+│ 📋 Manager: Jane Doe                   │
+│    👤 Emily Davis                      │
+│    👤 Robert Wilson                    │
+└────────────────────────────────────────┘
+```
+
+### 6. Leaderboard Sizing Adjustments
 
 **Changes:**
-- Line ~62-115: Add admin logic branch
-- Fetch all agents with `is_deactivated = false` for admins
-- Group dropdown by `invited_by_manager_id` 
+- Increase card padding from p-4 to p-5
+- Row height from 36px to 40px
+- Font sizes: Rank 13px, Name 14px, Stats 12px
+- Avatar size from 24px to 28px
+- Header title from text-sm to text-base
 
-### Phase 3: Apply Compact Leaderboard to Agent Portal
+### 7. Performance Dashboard Prominence
 
-**File: `src/pages/AgentPortal.tsx`**
-
-Replace `LeaderboardTabs` import with refined version OR use the new `CompactLeaderboard` component for consistency:
-
-Option A: Swap component on agent portal
-Option B: Enhance `LeaderboardTabs` with compact mode prop
-
-Recommend Option B - add `compact` prop to `LeaderboardTabs` that triggers slimmer design.
-
-### Phase 4: CSS Animation Classes
-
-**File: `src/index.css`**
-
-Ensure these animation classes exist (some may already be added):
-- `.animate-rank-glow` - subtle pulse for top positions
-- `.animate-live-pulse` - green dot pulsing indicator
-- Tighter scrollbar styles for leaderboard
+**Changes:**
+- Move PerformanceDashboardSection **above** the Leaderboard
+- Increase padding from p-6 to p-8
+- Make feature cards slightly larger
+- Add subtle background gradient for visual weight
+- Remove the "hidden sm:block" restriction so it's always visible
 
 ---
 
-## Technical Changes Summary
-
-### Files to Modify
+## File Changes Summary
 
 | File | Changes |
 |------|---------|
-| `src/components/dashboard/LeaderboardTabs.tsx` | Complete visual redesign: smaller rows (36px), tighter grid, slimmer fonts, inline medals, ALP progress bars, live indicator |
-| `src/components/dashboard/ProductionEntry.tsx` | Add admin check, fetch all agents for admins, grouped dropdown |
-| `src/pages/AgentPortal.tsx` | Pass compact props to leaderboard, ensure refined UI is visible |
-| `src/index.css` | Add any missing animation utilities |
-
-### RLS Policy Note
-
-The `daily_production` table already has this policy:
-```sql
-"Admins can manage all production" - Command: ALL
-Using: (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = ANY (ARRAY['admin', 'manager'])))
-```
-
-This means admins can already INSERT/UPDATE any production record. The UI just needs to expose this capability.
+| `src/components/dashboard/ProductionEntry.tsx` | Premium input styling, "Pitched Price" text, full names in dropdown, larger inputs, card-style grouping |
+| `src/components/dashboard/CompactProductionEntry.tsx` | "Pitched Price" text change |
+| `src/pages/LogNumbers.tsx` | "Pitched Price" text change |
+| `src/pages/AgentPortal.tsx` | Layout restructure - move PerformanceDashboard up, WeeklyBadges down, add YearPerformanceCard |
+| `src/components/dashboard/LeaderboardTabs.tsx` | Slightly larger sizing (rows, fonts, avatars) |
+| `src/components/dashboard/PerformanceDashboardSection.tsx` | Larger padding, always visible |
+| `src/components/dashboard/YearPerformanceCard.tsx` | **NEW FILE** - Annual stats display |
 
 ---
 
-## Visual Design Specs
+## Technical Details
 
-### Leaderboard Rows
-- Height: 36px
-- Avatar: 24px circle
-- Rank: 12px font, 24px width
-- Name: 13px font, flex-grow
-- Stats: 11px font, 48px each column
-- ALP: 13px bold + tiny progress bar
+### New Component: YearPerformanceCard
 
-### Color Palette
-- Gold (#fbbf24) for 1st place
-- Silver (#cbd5e1) for 2nd place  
-- Bronze (#f97316) for 3rd place
-- Teal (#14b8a6) for current user highlight
-- Muted text for secondary info
+```tsx
+// Query: Get all production for current year
+const yearStart = `${new Date().getFullYear()}-01-01`;
+const { data } = await supabase
+  .from("daily_production")
+  .select("aop, deals_closed, presentations, closing_rate")
+  .eq("agent_id", agentId)
+  .gte("production_date", yearStart);
 
-### Animations
-- Row entry: 30ms staggered fade-in
-- Rank changes: slide animation with direction indicator
-- Live indicator: 2s pulse cycle
-- Hover: subtle background lightening
-
----
-
-## Confirmation: Live Portal Link
-
-Your agents should use:
-```
-https://apex-financial.org/numbers
+// Calculate aggregates
+const ytdALP = data.reduce((sum, p) => sum + Number(p.aop), 0);
+const ytdDeals = data.reduce((sum, p) => sum + Number(p.deals_closed), 0);
+const ytdPresentations = data.reduce((sum, p) => sum + Number(p.presentations), 0);
+const avgCloseRate = ytdPresentations > 0 ? (ytdDeals / ytdPresentations) * 100 : 0;
 ```
 
-This is the primary link for daily stat entry. All emails already link here. The `rebuild-brighten-sparkle` URL is just Lovable's internal preview - it's not used in any agent-facing communications.
+### ProductionEntry Input Styling
+
+```tsx
+// Premium input card styling
+<div className={cn(
+  "relative p-4 rounded-xl border-2 transition-all duration-300",
+  "bg-gradient-to-br from-background to-muted/30",
+  "hover:border-primary/30 hover:shadow-md",
+  hasValue && "border-primary/50 bg-primary/5 shadow-lg shadow-primary/10"
+)}>
+  <Label className="text-xs uppercase tracking-wide text-muted-foreground mb-2 block">
+    {field.label}
+  </Label>
+  <div className="relative">
+    <Icon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+    <Input
+      className="h-14 text-2xl font-bold text-center pl-10 border-0 bg-transparent"
+      ...
+    />
+  </div>
+</div>
+```
 
 ---
 
 ## Success Criteria
 
-1. Leaderboard rows are 40% smaller (36px vs 48px)
-2. More entries visible on screen without scrolling
-3. Admin can select any agent from dropdown
-4. Live indicator shows real-time connection
-5. No dead space between elements
-6. Modern, high-tech aesthetic
-
+1. Production entry feels premium and elite
+2. Full agent names visible in admin dropdown
+3. Year Performance card shows annual stats prominently
+4. Weekly Badges moved to bottom
+5. Leaderboard slightly larger but secondary to Performance Dashboard
+6. "Pitched Price" label throughout
+7. Admin can edit any agent's numbers easily

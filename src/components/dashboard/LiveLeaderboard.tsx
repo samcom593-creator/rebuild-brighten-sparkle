@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { AgentQuickEditDialog } from "./AgentQuickEditDialog";
 
 interface LeaderboardEntry {
   rank: number;
@@ -52,6 +53,8 @@ export function LiveLeaderboard({ currentAgentId, showAISummary = true }: LiveLe
     avgClosingRate: 0,
     activeAgents: 0,
   });
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState<{ id: string; name: string; production: number; deals: number } | null>(null);
 
   useEffect(() => {
     fetchLeaderboard();
@@ -89,11 +92,11 @@ export function LiveLeaderboard({ currentAgentId, showAISummary = true }: LiveLe
         return;
       }
 
-      // Get agent names
+      // Get agent names with display_name fallback
       const agentIds = productionData.map(p => p.agent_id);
       const { data: agents } = await supabase
         .from("agents")
-        .select("id, user_id")
+        .select("id, user_id, display_name")
         .in("id", agentIds);
 
       const userIds = agents?.map(a => a.user_id).filter(Boolean) || [];
@@ -105,15 +108,19 @@ export function LiveLeaderboard({ currentAgentId, showAISummary = true }: LiveLe
       const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
       const agentUserMap = new Map(agents?.map(a => [a.id, a.user_id]) || []);
 
+      // Build agent display_name map
+      const agentDisplayNameMap = new Map(agents?.map(a => [a.id, a.display_name]) || []);
+
       // Build leaderboard
       const leaderboard: LeaderboardEntry[] = productionData
         .map(prod => {
           const userId = agentUserMap.get(prod.agent_id);
           const profile = userId ? profileMap.get(userId) : null;
+          const displayName = profile?.full_name || agentDisplayNameMap.get(prod.agent_id) || "Unknown Agent";
           return {
             rank: 0,
             agentId: prod.agent_id,
-            name: profile?.full_name || "Unknown Agent",
+            name: displayName,
             avatarUrl: profile?.avatar_url,
             production: Number(prod.aop) || 0,
             presentations: prod.presentations || 0,
@@ -164,6 +171,17 @@ export function LiveLeaderboard({ currentAgentId, showAISummary = true }: LiveLe
 
   return (
     <div className="space-y-4">
+      {selectedAgent && (
+        <AgentQuickEditDialog
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          agentId={selectedAgent.id}
+          currentName={selectedAgent.name}
+          production={selectedAgent.production}
+          deals={selectedAgent.deals}
+          onUpdate={fetchLeaderboard}
+        />
+      )}
       {/* Team Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <GlassCard className="p-3 text-center">
@@ -249,9 +267,13 @@ export function LiveLeaderboard({ currentAgentId, showAISummary = true }: LiveLe
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.03 }}
                 className={cn(
-                  "flex items-center gap-3 p-2 rounded-lg transition-colors",
+                  "flex items-center gap-3 p-2 rounded-lg transition-colors cursor-pointer hover:bg-muted/50",
                   entry.isCurrentUser && "bg-primary/10 ring-1 ring-primary/30"
                 )}
+                onClick={() => {
+                  setSelectedAgent({ id: entry.agentId, name: entry.name, production: entry.production, deals: entry.dealsToday });
+                  setEditDialogOpen(true);
+                }}
               >
                 <div className="w-6 text-center font-bold text-muted-foreground">
                   {entry.rank <= 3 ? rankIcons[entry.rank] : `#${entry.rank}`}

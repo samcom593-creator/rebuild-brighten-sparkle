@@ -28,6 +28,8 @@ interface LeaderboardEntry {
   presentations: number;
   passedPrice: number;
   closingRate: number;
+  hoursCalled: number;
+  referrals: number;
   isCurrentUser: boolean;
 }
 
@@ -110,6 +112,8 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
           presentations,
           passed_price,
           closing_rate,
+          hours_called,
+          referrals_caught,
           production_date
         `)
         .gte("production_date", startDate);
@@ -131,6 +135,8 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
         deals: number;
         presentations: number;
         passedPrice: number;
+        hoursCalled: number;
+        referrals: number;
         closingRates: number[];
       }> = {};
 
@@ -141,6 +147,8 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
             deals: 0,
             presentations: 0,
             passedPrice: 0,
+            hoursCalled: 0,
+            referrals: 0,
             closingRates: [],
           };
         }
@@ -148,6 +156,8 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
         agentTotals[p.agent_id].deals += Number(p.deals_closed || 0);
         agentTotals[p.agent_id].presentations += Number(p.presentations || 0);
         agentTotals[p.agent_id].passedPrice += Number(p.passed_price || 0);
+        agentTotals[p.agent_id].hoursCalled += Number(p.hours_called || 0);
+        agentTotals[p.agent_id].referrals += Number(p.referrals_caught || 0);
         if (Number(p.closing_rate) > 0) {
           agentTotals[p.agent_id].closingRates.push(Number(p.closing_rate));
         }
@@ -192,6 +202,8 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
           presentations: totals.presentations,
           passedPrice: totals.passedPrice,
           closingRate: avgClosingRate,
+          hoursCalled: totals.hoursCalled,
+          referrals: totals.referrals,
           isCurrentUser: agentId === currentAgentId,
         };
       });
@@ -348,12 +360,15 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
           </div>
 
           {/* Table Header - Slightly Larger */}
-          <div className="grid grid-cols-12 gap-1.5 px-2 py-2 text-xs font-semibold text-muted-foreground border-b border-border/50 mb-1.5">
+          {/* Table Header - H=Hours, P=Presentations, C=Closed, R=Referrals, %=Closing Rate */}
+          <div className="grid grid-cols-12 gap-1 px-2 py-2 text-[10px] font-semibold text-muted-foreground border-b border-border/50 mb-1.5">
             <div className="col-span-1">#</div>
-            <div className="col-span-4">Agent</div>
-            <div className={cn("col-span-1 text-center", sortBy === "deals" && "text-primary")}>D</div>
-            <div className={cn("col-span-1 text-center", sortBy === "presentations" && "text-primary")}>P</div>
-            <div className={cn("col-span-2 text-center", sortBy === "closingRate" && "text-primary")}>%</div>
+            <div className="col-span-3">Agent</div>
+            <div className="col-span-1 text-center" title="Hours Dialed">H</div>
+            <div className={cn("col-span-1 text-center", sortBy === "presentations" && "text-primary")} title="Presentations">P</div>
+            <div className={cn("col-span-1 text-center", sortBy === "deals" && "text-primary")} title="Deals Closed">C</div>
+            <div className="col-span-1 text-center" title="Referrals Generated">R</div>
+            <div className={cn("col-span-1 text-center", sortBy === "closingRate" && "text-primary")} title="Closing Rate">%</div>
             <div className={cn("col-span-3 text-right", sortBy === "alp" && "text-primary")}>ALP</div>
           </div>
 
@@ -381,7 +396,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                     exit={{ opacity: 0, x: 10 }}
                     transition={{ delay: index * 0.02 }}
                     className={cn(
-                      "grid grid-cols-12 gap-1.5 items-center px-2 py-2 rounded-lg transition-all",
+                      "grid grid-cols-12 gap-1 items-center px-2 py-2 rounded-lg transition-all",
                       entry.isCurrentUser
                         ? "bg-primary/10 border border-primary/30"
                         : index < 3
@@ -395,10 +410,10 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                       {renderRankBadge(index + 1, entry.isCurrentUser)}
                     </div>
 
-                    {/* Agent - Slightly Larger */}
-                    <div className="col-span-4 flex items-center gap-2 min-w-0">
+                    {/* Agent */}
+                    <div className="col-span-3 flex items-center gap-1.5 min-w-0">
                       <div className={cn(
-                        "h-7 w-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 bg-gradient-to-br",
+                        "h-6 w-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0 bg-gradient-to-br",
                         entry.avatarUrl ? "" : getAvatarColor(entry.name)
                       )}>
                         {entry.avatarUrl ? (
@@ -411,52 +426,58 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                           getInitials(entry.name)
                         )}
                       </div>
-                      <div className="min-w-0 flex items-center gap-1">
+                      <div className="min-w-0 flex items-center gap-0.5">
                         <span className={cn(
-                          "text-sm font-medium truncate",
+                          "text-xs font-medium truncate",
                           entry.isCurrentUser && "text-primary"
                         )}>
                           {entry.name.split(" ")[0]}
-                          {entry.isCurrentUser && <span className="text-xs opacity-70 ml-0.5">•</span>}
                         </span>
                         {getLeaderBadge(entry.agentId)}
                       </div>
                     </div>
 
-                    {/* Deals - Slightly Larger */}
-                    <div className={cn("col-span-1 text-center", sortBy === "deals" && "text-primary")}>
-                      <span className="text-sm font-semibold">{entry.deals}</span>
+                    {/* Hours Dialed */}
+                    <div className="col-span-1 text-center">
+                      <span className="text-[10px] text-muted-foreground">{entry.hoursCalled.toFixed(1)}</span>
                     </div>
 
-                    {/* Presentations - Slightly Larger */}
+                    {/* Presentations */}
                     <div className={cn("col-span-1 text-center", sortBy === "presentations" && "text-primary")}>
-                      <span className="text-xs">{entry.presentations}</span>
+                      <span className="text-[10px]">{entry.presentations}</span>
                     </div>
 
-                    {/* Closing Rate - Slightly Larger */}
-                    <div className={cn("col-span-2 text-center", sortBy === "closingRate" && "text-primary")}>
+                    {/* Closed */}
+                    <div className={cn("col-span-1 text-center", sortBy === "deals" && "text-primary")}>
+                      <span className="text-[10px] font-semibold">{entry.deals}</span>
+                    </div>
+
+                    {/* Referrals */}
+                    <div className="col-span-1 text-center">
+                      <span className="text-[10px] text-muted-foreground">{entry.referrals}</span>
+                    </div>
+
+                    {/* Closing Rate */}
+                    <div className={cn("col-span-1 text-center", sortBy === "closingRate" && "text-primary")}>
                       <span className={cn(
-                        "text-xs font-medium",
+                        "text-[10px] font-medium",
                         entry.closingRate >= 30 && "text-emerald-500",
                         entry.closingRate >= 50 && "text-amber-400"
                       )}>
                         {entry.closingRate.toFixed(0)}%
                       </span>
-                      {entry.closingRate >= 40 && (
-                        <Flame className="h-3 w-3 inline ml-0.5 text-orange-500" />
-                      )}
                     </div>
 
-                    {/* ALP with Progress - Slightly Larger */}
+                    {/* ALP with Progress */}
                     <div className={cn("col-span-3 text-right", sortBy === "alp" && "text-primary")}>
                       <div className="flex flex-col items-end gap-0.5">
-                        <span className="text-sm font-bold">
+                        <span className="text-xs font-bold">
                           ${entry.alp >= 1000 ? `${(entry.alp / 1000).toFixed(1)}k` : entry.alp.toLocaleString()}
                         </span>
                         {index > 0 && (
                           <Progress 
                             value={(entry.alp / maxALP) * 100} 
-                            className="h-1.5 w-full max-w-[52px]"
+                            className="h-1 w-full max-w-[48px]"
                           />
                         )}
                       </div>
@@ -467,17 +488,31 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
             </AnimatePresence>
           </div>
 
-          {/* Footer - Slightly Larger */}
+          {/* Footer with Totals */}
           {sortedEntries.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-border/50 flex justify-between text-xs text-muted-foreground">
-              <span>
-                <span className="font-semibold text-foreground">{sortedEntries.length}</span> ranked
-              </span>
-              <span>
-                Total: <span className="font-bold text-primary">
-                  ${entries.reduce((sum, e) => sum + e.alp, 0).toLocaleString()}
+            <div className="mt-3 pt-3 border-t border-border/50">
+              <div className="flex flex-wrap justify-between gap-2 text-[10px] text-muted-foreground">
+                <span>
+                  <span className="font-semibold text-foreground">{sortedEntries.length}</span> ranked
                 </span>
-              </span>
+                <div className="flex items-center gap-3">
+                  <span>
+                    Pres: <span className="font-bold text-foreground">
+                      {entries.reduce((sum, e) => sum + e.presentations, 0)}
+                    </span>
+                  </span>
+                  <span>
+                    Refs: <span className="font-bold text-foreground">
+                      {entries.reduce((sum, e) => sum + e.referrals, 0)}
+                    </span>
+                  </span>
+                  <span>
+                    Total: <span className="font-bold text-primary">
+                      ${entries.reduce((sum, e) => sum + e.alp, 0).toLocaleString()}
+                    </span>
+                  </span>
+                </div>
+              </div>
             </div>
           )}
         </GlassCard>

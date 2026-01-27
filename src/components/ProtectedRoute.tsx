@@ -72,7 +72,10 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
   }
 
   if (!authenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    // Redirect to agent-specific login for the daily numbers page
+    const isApexDailyNumbers = location.pathname === "/apex-daily-numbers";
+    const loginPath = isApexDailyNumbers ? "/agent-login" : "/login";
+    return <Navigate to={loginPath} state={{ from: location }} replace />;
   }
 
   // Allow all authenticated users to access the dashboard

@@ -22,6 +22,7 @@ import DashboardAdmin from "./pages/DashboardAdmin";
 import DashboardAccounts from "./pages/DashboardAccounts";
 import DashboardCRM from "./pages/DashboardCRM";
 import DashboardAgedLeads from "./pages/DashboardAgedLeads";
+import DashboardCommandCenter from "./pages/DashboardCommandCenter";
 import ScheduleCall from "./pages/ScheduleCall";
 import Settings from "./pages/Settings";
 import TeamDirectory from "./pages/TeamDirectory";
@@ -129,6 +130,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <DashboardAgedLeads />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/command"
+            element={
+              <ProtectedRoute>
+                <DashboardCommandCenter />
               </ProtectedRoute>
             }
           />

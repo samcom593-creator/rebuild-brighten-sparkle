@@ -15,51 +15,54 @@ interface PlaqueRequest {
 }
 
 const getMilestoneDetails = (type: string, amount: number) => {
+  // CRITICAL: Round to whole dollars - NO CENTS
+  const roundedAmount = Math.round(amount);
+  
   switch (type) {
     case "single_day_bronze":
       return {
-        title: "Bronze Star Achievement",
-        description: `Outstanding single-day production of $${amount.toLocaleString()}`,
-        color: "#CD7F32", // Bronze
-        emoji: "🥉",
-        threshold: "$3,000+",
-        badge: "BRONZE STAR",
+        title: "Bronze Achievement",
+        description: `Outstanding single-day production of $${roundedAmount.toLocaleString()}`,
+        color: "#CD7F32",
+        threshold: "$1,000+",
+        badge: "BRONZE ACHIEVEMENT",
+        amount: roundedAmount,
       };
     case "single_day":
       return {
-        title: "Gold Star Achievement", 
-        description: `Exceptional single-day production of $${amount.toLocaleString()}`,
-        color: "#FFD700", // Gold
-        emoji: "🌟",
-        threshold: "$5,000+",
-        badge: "GOLD STAR",
+        title: "Gold Achievement", 
+        description: `Exceptional single-day production of $${roundedAmount.toLocaleString()}`,
+        color: "#C9A962", // Muted institutional gold
+        threshold: "$3,000+",
+        badge: "GOLD ACHIEVEMENT",
+        amount: roundedAmount,
       };
     case "weekly":
       return {
-        title: "Diamond Week Achievement",
-        description: `Incredible weekly production of $${amount.toLocaleString()}`,
-        color: "#B9F2FF", // Diamond/Platinum
-        emoji: "💎",
+        title: "Weekly Diamond",
+        description: `Exceptional weekly production of $${roundedAmount.toLocaleString()}`,
+        color: "#7DD3FC", // Diamond blue
         threshold: "$10,000+",
-        badge: "DIAMOND",
+        badge: "WEEKLY DIAMOND",
+        amount: roundedAmount,
       };
     case "monthly":
       return {
-        title: "Elite Producer Achievement",
-        description: `Legendary monthly production of $${amount.toLocaleString()}`,
-        color: "#1a1a1a", // Black & Gold
-        emoji: "🏆",
+        title: "Elite Producer",
+        description: `Outstanding monthly production of $${roundedAmount.toLocaleString()}`,
+        color: "#A78BFA", // Purple elite
         threshold: "$25,000+",
         badge: "ELITE PRODUCER",
+        amount: roundedAmount,
       };
     default:
       return {
-        title: "Achievement Unlocked",
-        description: `Production milestone of $${amount.toLocaleString()}`,
+        title: "Achievement",
+        description: `Production milestone of $${roundedAmount.toLocaleString()}`,
         color: "#14b8a6",
-        emoji: "⭐",
         threshold: "Milestone",
-        badge: "ACHIEVER",
+        badge: "ACHIEVEMENT",
+        amount: roundedAmount,
       };
   }
 };
@@ -67,8 +70,7 @@ const getMilestoneDetails = (type: string, amount: number) => {
 const generatePlaqueHTML = (
   agentName: string,
   milestone: ReturnType<typeof getMilestoneDetails>,
-  date: string,
-  amount: number
+  date: string
 ) => {
   const formattedDate = new Date(date).toLocaleDateString("en-US", {
     year: "numeric",
@@ -76,66 +78,57 @@ const generatePlaqueHTML = (
     day: "numeric",
   });
 
+  // INSTITUTIONAL DESIGN - Clean, minimalist, hedge-fund aesthetic
   return `
     <!DOCTYPE html>
     <html>
     <head>
       <style>
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Montserrat:wght@400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap');
       </style>
     </head>
-    <body style="margin:0;padding:40px;background:linear-gradient(135deg,#0a0a0a 0%,#1a1a2e 100%);font-family:'Montserrat',sans-serif;">
-      <div style="max-width:650px;margin:0 auto;">
-        <!-- Header Banner -->
-        <div style="background:linear-gradient(135deg,${milestone.color}22 0%,${milestone.color}44 100%);border:2px solid ${milestone.color};border-radius:16px 16px 0 0;padding:30px;text-align:center;">
-          <div style="font-size:72px;margin-bottom:10px;">${milestone.emoji}</div>
-          <h1 style="font-family:'Playfair Display',serif;font-size:28px;color:${milestone.color};margin:0;letter-spacing:2px;">
+    <body style="margin:0;padding:40px;background:#0a0a0a;font-family:'Inter',sans-serif;">
+      <div style="max-width:600px;margin:0 auto;">
+        <!-- Plaque Container -->
+        <div style="background:linear-gradient(180deg,#141414 0%,#0a0a0a 100%);border:1px solid #2a2a2a;border-radius:4px;padding:48px;text-align:center;">
+          
+          <!-- Header Line -->
+          <div style="width:60px;height:1px;background:${milestone.color};margin:0 auto 32px;"></div>
+          
+          <!-- Badge Type -->
+          <p style="font-family:'Inter',sans-serif;font-size:11px;font-weight:500;letter-spacing:3px;color:#666;margin:0 0 24px;text-transform:uppercase;">
             ${milestone.badge}
-          </h1>
-        </div>
-        
-        <!-- Main Certificate -->
-        <div style="background:linear-gradient(180deg,#1a1a2e 0%,#0f0f1a 100%);border:2px solid ${milestone.color};border-top:none;border-radius:0 0 16px 16px;padding:40px;text-align:center;">
-          <p style="color:#888;font-size:12px;text-transform:uppercase;letter-spacing:3px;margin:0 0 20px;">
-            This is to certify that
           </p>
           
-          <h2 style="font-family:'Playfair Display',serif;font-size:36px;color:#fff;margin:0 0 10px;text-shadow:0 0 30px ${milestone.color}44;">
+          <!-- Recipient Name -->
+          <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:32px;font-weight:600;color:#ffffff;margin:0 0 8px;letter-spacing:1px;">
             ${agentName}
-          </h2>
+          </h1>
           
-          <p style="color:#14b8a6;font-size:14px;margin:0 0 30px;font-weight:600;">
-            APEX Financial Group
+          <!-- Company -->
+          <p style="font-family:'Inter',sans-serif;font-size:12px;font-weight:400;color:#888;margin:0 0 40px;letter-spacing:1px;">
+            APEX FINANCIAL GROUP
           </p>
           
-          <div style="background:${milestone.color}11;border:1px solid ${milestone.color}33;border-radius:12px;padding:25px;margin:0 0 30px;">
-            <p style="color:#ccc;font-size:14px;margin:0 0 15px;">
-              ${milestone.description}
-            </p>
-            <div style="font-size:42px;font-weight:700;color:${milestone.color};text-shadow:0 0 20px ${milestone.color}66;">
-              $${amount.toLocaleString()}
-            </div>
-            <p style="color:#888;font-size:12px;margin:10px 0 0;">
-              ${milestone.threshold} Milestone Achieved
+          <!-- Amount - WHOLE DOLLARS ONLY -->
+          <div style="background:#141414;border:1px solid #222;border-radius:2px;padding:24px 32px;margin:0 0 32px;display:inline-block;">
+            <p style="font-family:'Playfair Display',Georgia,serif;font-size:42px;font-weight:700;color:${milestone.color};margin:0;">
+              $${milestone.amount.toLocaleString()}
             </p>
           </div>
           
-          <div style="border-top:1px solid #333;padding-top:25px;display:flex;justify-content:space-between;align-items:center;">
-            <div style="text-align:left;">
-              <p style="color:#666;font-size:11px;margin:0;">Date Achieved</p>
-              <p style="color:#fff;font-size:14px;margin:5px 0 0;font-weight:600;">${formattedDate}</p>
-            </div>
-            <div style="text-align:right;">
-              <img src="https://id-preview--f583945a-f8ff-4a81-8442-9fc61f88a855.lovable.app/apex-icon.png" alt="APEX" style="height:40px;opacity:0.8;" />
-            </div>
-          </div>
-        </div>
-        
-        <!-- Footer -->
-        <div style="text-align:center;padding:25px;">
-          <p style="color:#666;font-size:12px;margin:0;">
-            🎉 Screenshot this certificate to share your achievement! 🎉
+          <!-- Achievement Description -->
+          <p style="font-family:'Inter',sans-serif;font-size:13px;font-weight:400;color:#888;margin:0 0 8px;line-height:1.6;">
+            ${milestone.description}
           </p>
+          
+          <p style="font-family:'Inter',sans-serif;font-size:11px;font-weight:400;color:#555;margin:0 0 40px;">
+            ${formattedDate}
+          </p>
+          
+          <!-- Footer Line -->
+          <div style="width:60px;height:1px;background:#2a2a2a;margin:0 auto;"></div>
+          
         </div>
       </div>
     </body>
@@ -147,7 +140,6 @@ const generateEmailHTML = (
   agentName: string,
   milestone: ReturnType<typeof getMilestoneDetails>,
   date: string,
-  amount: number,
   isManager: boolean = false
 ) => {
   const formattedDate = new Date(date).toLocaleDateString("en-US", {
@@ -157,77 +149,75 @@ const generateEmailHTML = (
   });
 
   const recipientIntro = isManager 
-    ? `Your team member <strong>${agentName}</strong> just hit an incredible milestone!`
-    : `You just hit an incredible milestone!`;
+    ? `Your team member <strong>${agentName}</strong> has achieved an exceptional milestone.`
+    : `You have achieved an exceptional milestone.`;
 
+  // INSTITUTIONAL EMAIL DESIGN - Clean, professional, no emojis in body
   return `
     <!DOCTYPE html>
     <html>
     <head>
       <style>
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
       </style>
     </head>
-    <body style="margin:0;padding:0;background:#0a0a0a;font-family:'Montserrat',Arial,sans-serif;">
-      <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
-        <!-- Celebration Header -->
-        <div style="text-align:center;margin-bottom:30px;">
-          <div style="font-size:80px;line-height:1;">${milestone.emoji}</div>
-          <h1 style="color:${milestone.color};font-size:32px;margin:20px 0 10px;letter-spacing:1px;">
+    <body style="margin:0;padding:0;background:#0a0a0a;font-family:'Inter',Arial,sans-serif;">
+      <div style="max-width:560px;margin:0 auto;padding:48px 24px;">
+        
+        <!-- Header -->
+        <div style="text-align:center;margin-bottom:40px;">
+          <p style="font-size:11px;font-weight:500;letter-spacing:3px;color:#666;margin:0 0 8px;text-transform:uppercase;">
             ${milestone.badge}
-          </h1>
-          <p style="color:#888;font-size:14px;margin:0;">
+          </p>
+          <p style="font-size:12px;color:#888;margin:0;">
             ${formattedDate}
           </p>
         </div>
         
-        <!-- Main Content Card -->
-        <div style="background:linear-gradient(135deg,#1a1a2e 0%,#0f0f1a 100%);border:2px solid ${milestone.color}44;border-radius:16px;padding:35px;margin-bottom:25px;">
-          <p style="color:#ccc;font-size:16px;line-height:1.6;margin:0 0 25px;">
+        <!-- Main Content -->
+        <div style="background:#141414;border:1px solid #222;border-radius:4px;padding:40px;margin-bottom:32px;">
+          <p style="color:#ccc;font-size:15px;line-height:1.7;margin:0 0 32px;">
             ${recipientIntro}
           </p>
           
-          <div style="background:${milestone.color}11;border-radius:12px;padding:25px;text-align:center;margin-bottom:25px;">
-            <p style="color:#888;font-size:12px;text-transform:uppercase;letter-spacing:2px;margin:0 0 10px;">
+          <!-- Amount Card -->
+          <div style="background:#0a0a0a;border:1px solid #2a2a2a;border-radius:2px;padding:32px;text-align:center;margin-bottom:32px;">
+            <p style="font-size:11px;font-weight:500;letter-spacing:2px;color:#666;margin:0 0 12px;text-transform:uppercase;">
               ${isManager ? agentName + "'s " : "Your "}Production
             </p>
-            <div style="font-size:48px;font-weight:700;color:${milestone.color};">
-              $${amount.toLocaleString()}
-            </div>
-            <p style="color:#14b8a6;font-size:14px;margin:10px 0 0;font-weight:600;">
-              ${milestone.threshold} ${milestone.title.replace(' Achievement', '')}
+            <p style="font-size:40px;font-weight:600;color:${milestone.color};margin:0;">
+              $${milestone.amount.toLocaleString()}
+            </p>
+            <p style="font-size:12px;color:#888;margin:12px 0 0;">
+              ${milestone.threshold} ${milestone.title}
             </p>
           </div>
           
-          <p style="color:#aaa;font-size:14px;line-height:1.6;margin:0;">
+          <p style="color:#888;font-size:14px;line-height:1.7;margin:0;">
             ${isManager 
-              ? "This is a huge accomplishment that reflects their dedication and hard work. Make sure to congratulate them!"
-              : "This is a huge accomplishment that reflects your dedication and skill. Keep pushing—you're building something great!"
+              ? "This achievement reflects their dedication and skill. Ensure they receive appropriate recognition."
+              : "This achievement reflects your dedication and skill. Continue building on this momentum."
             }
           </p>
         </div>
         
-        <!-- Certificate Section -->
-        <div style="background:#111;border:1px solid #333;border-radius:12px;padding:25px;text-align:center;margin-bottom:25px;">
-          <h3 style="color:#fff;font-size:16px;margin:0 0 15px;">
-            📜 Your Achievement Certificate
-          </h3>
-          <p style="color:#888;font-size:13px;margin:0 0 20px;">
-            Below is your downloadable plaque. Screenshot it to share on social media!
-          </p>
+        <!-- Plaque Preview -->
+        <div style="margin-bottom:32px;">
+          ${generatePlaqueHTML(agentName, milestone, date)}
+        </div>
+        
+        <!-- CTA Button -->
+        <div style="text-align:center;margin-bottom:40px;">
           <a href="https://apex-financial.org/agent-portal" 
-             style="display:inline-block;background:linear-gradient(135deg,${milestone.color} 0%,${milestone.color}cc 100%);color:#000;font-weight:700;padding:14px 28px;border-radius:8px;text-decoration:none;font-size:14px;">
-            View Your Plaque →
+             style="display:inline-block;background:${milestone.color};color:#000;font-weight:600;padding:14px 32px;border-radius:2px;text-decoration:none;font-size:13px;letter-spacing:0.5px;">
+            View Portal
           </a>
         </div>
         
-        <!-- Embedded Certificate Preview -->
-        ${generatePlaqueHTML(agentName, milestone, date, amount)}
-        
         <!-- Footer -->
-        <div style="text-align:center;padding-top:20px;border-top:1px solid #222;">
-          <p style="color:#666;font-size:12px;margin:0;">
-            APEX Financial Group | Elite Performance Recognition
+        <div style="text-align:center;border-top:1px solid #222;padding-top:24px;">
+          <p style="font-size:11px;color:#555;margin:0;letter-spacing:1px;">
+            APEX FINANCIAL GROUP
           </p>
         </div>
       </div>
@@ -298,10 +288,10 @@ serve(async (req: Request) => {
       
       try {
         await resend.emails.send({
-          from: "APEX Recognition <noreply@apex-financial.org>",
+          from: "APEX Financial <noreply@apex-financial.org>",
           to: [agentEmail],
-          subject: `${milestone.emoji} ${milestone.badge} - Congratulations ${agentName}!`,
-          html: generateEmailHTML(agentName, milestone, date, amount, false),
+          subject: `${milestone.badge} - Congratulations ${agentName}`,
+          html: generateEmailHTML(agentName, milestone, date, false),
         });
         console.log(`✅ Plaque email sent to agent: ${agentEmail}`);
       } catch (emailError) {
@@ -326,10 +316,10 @@ serve(async (req: Request) => {
           if (managerProfile?.email) {
             try {
               await resend.emails.send({
-                from: "APEX Recognition <noreply@apex-financial.org>",
+                from: "APEX Financial <noreply@apex-financial.org>",
                 to: [managerProfile.email],
-                subject: `${milestone.emoji} Your Agent ${agentName} Earned: ${milestone.badge}!`,
-                html: generateEmailHTML(agentName, milestone, date, amount, true),
+                subject: `Team Achievement: ${agentName} - ${milestone.badge}`,
+                html: generateEmailHTML(agentName, milestone, date, true),
               });
               console.log(`✅ Manager notification sent to: ${managerProfile.email}`);
             } catch (emailError) {

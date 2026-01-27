@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { BarChart3, Mail, Lock, Loader2, TrendingUp, Trophy, Target, ArrowLeft, CheckCircle } from "lucide-react";
+import { BarChart3, Mail, Lock, Loader2, TrendingUp, Trophy, Target, ArrowLeft, CheckCircle, User, Phone, UserPlus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { GradientButton } from "@/components/ui/gradient-button";
@@ -14,25 +14,51 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import apexIcon from "@/assets/apex-icon.png";
 
-const loginSchema = z.object({
+type FlowStep = "email" | "password" | "set-password" | "create-account" | "reset-sent";
+
+const emailSchema = z.object({
   email: z.string().email("Valid email is required"),
+});
+
+const passwordSchema = z.object({
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
-const resetSchema = z.object({
-  email: z.string().email("Valid email is required"),
+const createAccountSchema = z.object({
+  fullName: z.string().min(2, "Name is required"),
+  phone: z.string().optional(),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  confirmPassword: z.string().min(6, "Please confirm your password"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
 });
 
-type LoginFormData = z.infer<typeof loginSchema>;
-type ResetFormData = z.infer<typeof resetSchema>;
+type EmailFormData = z.infer<typeof emailSchema>;
+type PasswordFormData = z.infer<typeof passwordSchema>;
+type CreateAccountFormData = z.infer<typeof createAccountSchema>;
 
 export default function AgentNumbersLogin() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  
+  const [step, setStep] = useState<FlowStep>("email");
+  const [email, setEmail] = useState("");
+  const [agentName, setAgentName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [resetEmailSent, setResetEmailSent] = useState(false);
-  const [isResetting, setIsResetting] = useState(false);
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+
+  // Check URL params for setup flow
+  useEffect(() => {
+    const setupParam = searchParams.get("setup");
+    const emailParam = searchParams.get("email");
+    
+    if (setupParam === "true" && emailParam) {
+      setEmail(emailParam);
+      setStep("set-password");
+    }
+  }, [searchParams]);
 
   // Check if already authenticated
   useEffect(() => {
@@ -45,44 +71,69 @@ export default function AgentNumbersLogin() {
     checkSession();
   }, [navigate]);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    getValues,
-  } = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
+  const emailForm = useForm<EmailFormData>({
+    resolver: zodResolver(emailSchema),
   });
 
-  const {
-    register: registerReset,
-    handleSubmit: handleResetSubmit,
-    formState: { errors: resetErrors },
-    reset: resetForm,
-    setValue: setResetValue,
-  } = useForm<ResetFormData>({
-    resolver: zodResolver(resetSchema),
+  const passwordForm = useForm<PasswordFormData>({
+    resolver: zodResolver(passwordSchema),
   });
 
-  const onSubmit = async (data: LoginFormData) => {
+  const createAccountForm = useForm<CreateAccountFormData>({
+    resolver: zodResolver(createAccountSchema),
+  });
+
+  const handleEmailSubmit = async (data: EmailFormData) => {
+    setIsCheckingEmail(true);
+    const normalizedEmail = data.email.toLowerCase().trim();
+    setEmail(normalizedEmail);
+
+    try {
+      const { data: result, error } = await supabase.functions.invoke("check-email-status", {
+        body: { email: normalizedEmail },
+      });
+
+      if (error) throw error;
+
+      const { inCRM, hasAuthAccount, agentName: name } = result;
+      setAgentName(name);
+
+      if (inCRM && hasAuthAccount) {
+        // Existing user with auth - show password field
+        setStep("password");
+      } else if (inCRM && !hasAuthAccount) {
+        // CRM user without auth - let them set password
+        setStep("set-password");
+      } else {
+        // Not in CRM - create new account
+        setStep("create-account");
+      }
+    } catch (error: any) {
+      console.error("Error checking email:", error);
+      toast.error("Failed to check email. Please try again.");
+    } finally {
+      setIsCheckingEmail(false);
+    }
+  };
+
+  const handlePasswordSubmit = async (data: PasswordFormData) => {
     setIsLoading(true);
     
     try {
       const { error } = await supabase.auth.signInWithPassword({
-        email: data.email,
+        email,
         password: data.password,
       });
 
       if (error) throw error;
 
       toast.success("Welcome! Let's log your numbers 🎯");
-      
       const from = (location.state as any)?.from?.pathname || "/apex-daily-numbers";
       navigate(from, { replace: true });
     } catch (error: any) {
       console.error("Login error:", error);
       if (error.message.includes("Invalid login")) {
-        toast.error("Invalid email or password. Please try again.");
+        toast.error("Invalid password. Please try again or reset your password.");
       } else {
         toast.error(error.message || "Failed to sign in");
       }
@@ -91,38 +142,103 @@ export default function AgentNumbersLogin() {
     }
   };
 
-  const onResetSubmit = async (data: ResetFormData) => {
-    setIsResetting(true);
+  const handleSetPasswordSubmit = async (data: PasswordFormData) => {
+    setIsLoading(true);
     
     try {
+      const { data: result, error } = await supabase.functions.invoke("setup-agent-password", {
+        body: { email, password: data.password },
+      });
+
+      if (error) throw error;
+      if (result.error) throw new Error(result.error);
+
+      toast.success("Password set! Signing you in...");
+
+      // Now sign in
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password: data.password,
+      });
+
+      if (signInError) throw signInError;
+
+      const from = (location.state as any)?.from?.pathname || "/apex-daily-numbers";
+      navigate(from, { replace: true });
+    } catch (error: any) {
+      console.error("Setup error:", error);
+      toast.error(error.message || "Failed to set password");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreateAccountSubmit = async (data: CreateAccountFormData) => {
+    setIsLoading(true);
+    
+    try {
+      const { data: result, error } = await supabase.functions.invoke("create-new-agent-account", {
+        body: { 
+          email, 
+          password: data.password,
+          fullName: data.fullName,
+          phone: data.phone || null,
+        },
+      });
+
+      if (error) throw error;
+      if (result.error) throw new Error(result.error);
+
+      toast.success("Account created! Signing you in...");
+
+      // Now sign in
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password: data.password,
+      });
+
+      if (signInError) throw signInError;
+
+      const from = (location.state as any)?.from?.pathname || "/apex-daily-numbers";
+      navigate(from, { replace: true });
+    } catch (error: any) {
+      console.error("Create account error:", error);
+      toast.error(error.message || "Failed to create account");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      toast.error("Please enter your email first");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
       const { error } = await supabase.functions.invoke("send-password-reset", {
-        body: { email: data.email },
+        body: { email },
       });
 
       if (error) throw error;
 
-      setResetEmailSent(true);
+      setStep("reset-sent");
       toast.success("Password reset email sent!");
     } catch (error: any) {
       console.error("Reset error:", error);
-      toast.error("Failed to send reset email. Please try again.");
+      toast.error("Failed to send reset email");
     } finally {
-      setIsResetting(false);
+      setIsLoading(false);
     }
   };
 
-  const handleForgotPasswordClick = () => {
-    const currentEmail = getValues("email");
-    if (currentEmail) {
-      setResetValue("email", currentEmail);
-    }
-    setShowForgotPassword(true);
-  };
-
-  const handleBackToLogin = () => {
-    setShowForgotPassword(false);
-    setResetEmailSent(false);
-    resetForm();
+  const handleBack = () => {
+    setStep("email");
+    setEmail("");
+    setAgentName(null);
+    passwordForm.reset();
+    createAccountForm.reset();
   };
 
   const features = [
@@ -130,6 +246,17 @@ export default function AgentNumbersLogin() {
     { icon: TrendingUp, text: "See your ranking" },
     { icon: Trophy, text: "Compete on leaderboard" },
   ];
+
+  const getStepTitle = () => {
+    switch (step) {
+      case "email": return "Sign in to log your production";
+      case "password": return agentName ? `Welcome back, ${agentName.split(" ")[0]}!` : "Enter your password";
+      case "set-password": return agentName ? `Set up your password, ${agentName.split(" ")[0]}` : "Set your password";
+      case "create-account": return "Create your account";
+      case "reset-sent": return "Check your email";
+      default: return "";
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 overflow-hidden">
@@ -180,15 +307,13 @@ export default function AgentNumbersLogin() {
             <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-primary via-violet-400 to-amber-400 bg-clip-text text-transparent">
               Apex Daily Numbers
             </h1>
-            <p className="text-muted-foreground">
-              {showForgotPassword ? "Reset your password" : "Sign in to log your production"}
-            </p>
+            <p className="text-muted-foreground">{getStepTitle()}</p>
           </motion.div>
         </div>
 
-        {/* Feature highlights - only show on login */}
+        {/* Feature highlights - only show on email step */}
         <AnimatePresence mode="wait">
-          {!showForgotPassword && (
+          {step === "email" && (
             <motion.div 
               className="flex justify-center gap-4 mb-6"
               initial={{ opacity: 0 }}
@@ -215,99 +340,16 @@ export default function AgentNumbersLogin() {
         </AnimatePresence>
 
         <AnimatePresence mode="wait">
-          {showForgotPassword ? (
-            /* Forgot Password Form */
+          {/* Step 1: Email Input */}
+          {step === "email" && (
             <motion.div
-              key="forgot-password"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-            >
-              <GlassCard className="p-8">
-                {resetEmailSent ? (
-                  /* Success State */
-                  <div className="text-center py-4">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500/10 text-green-500 mb-4">
-                      <CheckCircle className="h-8 w-8" />
-                    </div>
-                    <h3 className="text-lg font-semibold mb-2">Check Your Email</h3>
-                    <p className="text-sm text-muted-foreground mb-6">
-                      We've sent a password reset link to your email address. Click the link to set a new password.
-                    </p>
-                    <Button
-                      variant="outline"
-                      onClick={handleBackToLogin}
-                      className="w-full"
-                    >
-                      <ArrowLeft className="h-4 w-4 mr-2" />
-                      Back to Sign In
-                    </Button>
-                  </div>
-                ) : (
-                  /* Reset Form */
-                  <form onSubmit={handleResetSubmit(onResetSubmit)} className="space-y-5">
-                    <div className="space-y-2">
-                      <Label htmlFor="reset-email" className="text-sm font-medium">Email Address</Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          id="reset-email"
-                          type="email"
-                          {...registerReset("email")}
-                          placeholder="your@email.com"
-                          className="pl-10 bg-input h-11"
-                          autoComplete="email"
-                        />
-                      </div>
-                      {resetErrors.email && (
-                        <p className="text-sm text-destructive">{resetErrors.email.message}</p>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        Enter the email address associated with your account and we'll send you a link to reset your password.
-                      </p>
-                    </div>
-
-                    <GradientButton 
-                      type="submit" 
-                      className="w-full h-11 text-base font-semibold" 
-                      disabled={isResetting}
-                    >
-                      {isResetting ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                          Sending...
-                        </>
-                      ) : (
-                        <>
-                          <Mail className="h-4 w-4 mr-2" />
-                          Send Reset Link
-                        </>
-                      )}
-                    </GradientButton>
-
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={handleBackToLogin}
-                      className="w-full"
-                    >
-                      <ArrowLeft className="h-4 w-4 mr-2" />
-                      Back to Sign In
-                    </Button>
-                  </form>
-                )}
-              </GlassCard>
-            </motion.div>
-          ) : (
-            /* Login Form */
-            <motion.div
-              key="login"
+              key="email-step"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
             >
               <GlassCard className="p-8">
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+                <form onSubmit={emailForm.handleSubmit(handleEmailSubmit)} className="space-y-5">
                   <div className="space-y-2">
                     <Label htmlFor="email" className="text-sm font-medium">Email</Label>
                     <div className="relative">
@@ -315,15 +357,53 @@ export default function AgentNumbersLogin() {
                       <Input
                         id="email"
                         type="email"
-                        {...register("email")}
+                        {...emailForm.register("email")}
                         placeholder="your@email.com"
                         className="pl-10 bg-input h-11"
                         autoComplete="email"
+                        autoFocus
                       />
                     </div>
-                    {errors.email && (
-                      <p className="text-sm text-destructive">{errors.email.message}</p>
+                    {emailForm.formState.errors.email && (
+                      <p className="text-sm text-destructive">{emailForm.formState.errors.email.message}</p>
                     )}
+                  </div>
+
+                  <GradientButton 
+                    type="submit" 
+                    className="w-full h-11 text-base font-semibold" 
+                    disabled={isCheckingEmail}
+                  >
+                    {isCheckingEmail ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Checking...
+                      </>
+                    ) : (
+                      <>
+                        Continue
+                        <ArrowLeft className="h-4 w-4 ml-2 rotate-180" />
+                      </>
+                    )}
+                  </GradientButton>
+                </form>
+              </GlassCard>
+            </motion.div>
+          )}
+
+          {/* Step 2a: Password (existing user) */}
+          {step === "password" && (
+            <motion.div
+              key="password-step"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+            >
+              <GlassCard className="p-8">
+                <form onSubmit={passwordForm.handleSubmit(handlePasswordSubmit)} className="space-y-5">
+                  <div className="p-3 rounded-lg bg-primary/10 text-sm text-center mb-4">
+                    <Mail className="h-4 w-4 inline mr-2" />
+                    {email}
                   </div>
 
                   <div className="space-y-2">
@@ -331,8 +411,9 @@ export default function AgentNumbersLogin() {
                       <Label htmlFor="password" className="text-sm font-medium">Password</Label>
                       <button
                         type="button"
-                        onClick={handleForgotPasswordClick}
+                        onClick={handleForgotPassword}
                         className="text-xs text-primary hover:text-primary/80 transition-colors"
+                        disabled={isLoading}
                       >
                         Forgot password?
                       </button>
@@ -342,14 +423,15 @@ export default function AgentNumbersLogin() {
                       <Input
                         id="password"
                         type="password"
-                        {...register("password")}
+                        {...passwordForm.register("password")}
                         placeholder="••••••••"
                         className="pl-10 bg-input h-11"
                         autoComplete="current-password"
+                        autoFocus
                       />
                     </div>
-                    {errors.password && (
-                      <p className="text-sm text-destructive">{errors.password.message}</p>
+                    {passwordForm.formState.errors.password && (
+                      <p className="text-sm text-destructive">{passwordForm.formState.errors.password.message}</p>
                     )}
                   </div>
 
@@ -370,13 +452,238 @@ export default function AgentNumbersLogin() {
                       </>
                     )}
                   </GradientButton>
-                </form>
 
-                <div className="mt-6 pt-6 border-t border-border/50">
-                  <p className="text-center text-sm text-muted-foreground">
-                    Need an account? Contact your manager or admin.
-                  </p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={handleBack}
+                    className="w-full"
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Use different email
+                  </Button>
+                </form>
+              </GlassCard>
+            </motion.div>
+          )}
+
+          {/* Step 2b: Set Password (CRM user, no auth) */}
+          {step === "set-password" && (
+            <motion.div
+              key="set-password-step"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+            >
+              <GlassCard className="p-8">
+                <form onSubmit={passwordForm.handleSubmit(handleSetPasswordSubmit)} className="space-y-5">
+                  <div className="p-3 rounded-lg bg-accent/10 text-sm text-center mb-4 text-accent-foreground">
+                    <CheckCircle className="h-4 w-4 inline mr-2" />
+                    Found you in the system! Set your password to continue.
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-primary/10 text-sm text-center">
+                    <Mail className="h-4 w-4 inline mr-2" />
+                    {email}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="new-password" className="text-sm font-medium">Create Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="new-password"
+                        type="password"
+                        {...passwordForm.register("password")}
+                        placeholder="Choose a password (min 6 characters)"
+                        className="pl-10 bg-input h-11"
+                        autoComplete="new-password"
+                        autoFocus
+                      />
+                    </div>
+                    {passwordForm.formState.errors.password && (
+                      <p className="text-sm text-destructive">{passwordForm.formState.errors.password.message}</p>
+                    )}
+                  </div>
+
+                  <GradientButton 
+                    type="submit" 
+                    className="w-full h-11 text-base font-semibold" 
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Setting up...
+                      </>
+                    ) : (
+                      <>
+                        <Target className="h-4 w-4 mr-2" />
+                        Set Password & Log In
+                      </>
+                    )}
+                  </GradientButton>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={handleBack}
+                    className="w-full"
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Use different email
+                  </Button>
+                </form>
+              </GlassCard>
+            </motion.div>
+          )}
+
+          {/* Step 2c: Create Account (not in CRM) */}
+          {step === "create-account" && (
+            <motion.div
+              key="create-account-step"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+            >
+              <GlassCard className="p-8">
+                <form onSubmit={createAccountForm.handleSubmit(handleCreateAccountSubmit)} className="space-y-4">
+                  <div className="p-3 rounded-lg bg-primary/10 text-sm text-center mb-2">
+                    <UserPlus className="h-4 w-4 inline mr-2" />
+                    Create your APEX account
+                  </div>
+
+                  <div className="p-2 rounded-lg bg-muted/50 text-xs text-center text-muted-foreground">
+                    <Mail className="h-3 w-3 inline mr-1" />
+                    {email}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="fullName" className="text-sm font-medium">Full Name</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="fullName"
+                        type="text"
+                        {...createAccountForm.register("fullName")}
+                        placeholder="Your full name"
+                        className="pl-10 bg-input h-11"
+                        autoComplete="name"
+                        autoFocus
+                      />
+                    </div>
+                    {createAccountForm.formState.errors.fullName && (
+                      <p className="text-sm text-destructive">{createAccountForm.formState.errors.fullName.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="phone" className="text-sm font-medium">Phone (optional)</Label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="phone"
+                        type="tel"
+                        {...createAccountForm.register("phone")}
+                        placeholder="(555) 123-4567"
+                        className="pl-10 bg-input h-11"
+                        autoComplete="tel"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="create-password" className="text-sm font-medium">Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="create-password"
+                        type="password"
+                        {...createAccountForm.register("password")}
+                        placeholder="Choose a password"
+                        className="pl-10 bg-input h-11"
+                        autoComplete="new-password"
+                      />
+                    </div>
+                    {createAccountForm.formState.errors.password && (
+                      <p className="text-sm text-destructive">{createAccountForm.formState.errors.password.message}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-password" className="text-sm font-medium">Confirm Password</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="confirm-password"
+                        type="password"
+                        {...createAccountForm.register("confirmPassword")}
+                        placeholder="Confirm your password"
+                        className="pl-10 bg-input h-11"
+                        autoComplete="new-password"
+                      />
+                    </div>
+                    {createAccountForm.formState.errors.confirmPassword && (
+                      <p className="text-sm text-destructive">{createAccountForm.formState.errors.confirmPassword.message}</p>
+                    )}
+                  </div>
+
+                  <GradientButton 
+                    type="submit" 
+                    className="w-full h-11 text-base font-semibold" 
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Creating account...
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Create Account & Log In
+                      </>
+                    )}
+                  </GradientButton>
+
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={handleBack}
+                    className="w-full"
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Use different email
+                  </Button>
+                </form>
+              </GlassCard>
+            </motion.div>
+          )}
+
+          {/* Reset Email Sent */}
+          {step === "reset-sent" && (
+            <motion.div
+              key="reset-sent-step"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+            >
+              <GlassCard className="p-8 text-center">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-accent/10 text-accent-foreground mb-4">
+                  <CheckCircle className="h-8 w-8" />
                 </div>
+                <h3 className="text-lg font-semibold mb-2">Check Your Email</h3>
+                <p className="text-sm text-muted-foreground mb-6">
+                  We've sent a password reset link to <strong>{email}</strong>. Click the link to set a new password.
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={handleBack}
+                  className="w-full"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Sign In
+                </Button>
               </GlassCard>
             </motion.div>
           )}

@@ -135,3 +135,12 @@ verify_jwt = false
 
 [functions.generate-quiz-questions]
 verify_jwt = false
+
+[functions.check-email-status]
+verify_jwt = false
+
+[functions.setup-agent-password]
+verify_jwt = false
+
+[functions.create-new-agent-account]
+verify_jwt = false

@@ -30,6 +30,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration";
+import apexIcon from "@/assets/apex-icon.png";
 
 interface MatchedAgent {
   id: string;
@@ -84,6 +85,14 @@ export default function LogNumbers() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [agentRank, setAgentRank] = useState<number | null>(null);
   const [agentStats, setAgentStats] = useState<LeaderboardEntry | null>(null);
+
+  // Set document title
+  useEffect(() => {
+    document.title = "Apex Daily Numbers";
+    return () => {
+      document.title = "Apex";
+    };
+  }, []);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
@@ -361,6 +370,14 @@ export default function LogNumbers() {
         className="w-full max-w-lg"
       >
         <div className="text-center mb-6">
+          <motion.img 
+            src={apexIcon} 
+            alt="Apex" 
+            className="h-16 w-16 mx-auto mb-3 rounded-xl shadow-lg"
+            initial={{ scale: 0, rotate: -10 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ type: "spring", stiffness: 200, delay: 0.1 }}
+          />
           <h1 className="text-3xl font-bold gradient-text">Apex Daily Numbers</h1>
           <p className="text-muted-foreground mt-1">Daily production entry</p>
         </div>

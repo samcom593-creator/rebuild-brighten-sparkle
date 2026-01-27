@@ -86,6 +86,31 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
         </div>
       );
 
+      // 🚨 DEAL ALERT: If deals were closed, notify the whole team!
+      if (formData.deals_closed > 0) {
+        try {
+          console.log("🚨 Triggering deal alert for", agentName);
+          await supabase.functions.invoke("notify-deal-alert", {
+            body: {
+              agentId,
+              agentName: agentName || "Agent",
+              deals: formData.deals_closed,
+              aop: formData.aop,
+            },
+          });
+          
+          // 🔥 Also check for streaks
+          await supabase.functions.invoke("notify-streak-alert", {
+            body: {
+              agentId,
+              agentName: agentName || "Agent",
+            },
+          });
+        } catch (notifyError) {
+          console.error("Failed to send deal/streak notifications:", notifyError);
+        }
+      }
+
       // Notify admin/manager
       try {
         await supabase.functions.invoke("notify-production-submitted", {

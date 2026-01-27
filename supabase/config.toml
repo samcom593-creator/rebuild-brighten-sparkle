@@ -162,3 +162,15 @@ verify_jwt = false
 
 [functions.simple-login]
 verify_jwt = false
+
+[functions.notify-deal-alert]
+verify_jwt = false
+
+[functions.notify-streak-alert]
+verify_jwt = false
+
+[functions.notify-comeback-alert]
+verify_jwt = false
+
+[functions.notify-weekly-champion]
+verify_jwt = false

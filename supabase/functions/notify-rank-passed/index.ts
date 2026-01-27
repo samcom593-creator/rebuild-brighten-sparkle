@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Resend } from "npm:resend@4.0.0";
+import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const resend = new Resend(RESEND_API_KEY);
@@ -123,13 +123,13 @@ const handler = async (req: Request): Promise<Response> => {
         .eq("id", passed.passedBy)
         .single();
 
-      if (!passedAgent?.profile?.email || !passerAgent?.profile?.full_name) {
+      if (!(passedAgent as any)?.profile?.email || !(passerAgent as any)?.profile?.full_name) {
         console.log(`Missing data for notification: agent=${passed.agentId}`);
         continue;
       }
 
-      const passedName = passedAgent.profile.full_name || "Agent";
-      const passerName = passerAgent.profile.full_name;
+      const passedName = (passedAgent as any).profile.full_name || "Agent";
+      const passerName = (passerAgent as any).profile.full_name;
 
       const emailHtml = `
         <!DOCTYPE html>
@@ -195,16 +195,17 @@ const handler = async (req: Request): Promise<Response> => {
       `;
 
       try {
+        const recipientEmail = (passedAgent as any).profile.email;
         await resend.emails.send({
           from: "APEX Financial <noreply@apex-financial.org>",
-          to: [passedAgent.profile.email],
+          to: [recipientEmail],
           subject: `🏃 ${passerName} just passed you on the leaderboard!`,
           html: emailHtml,
         });
         emailsSent++;
-        console.log(`Sent passed notification to ${passedAgent.profile.email}`);
+        console.log(`Sent passed notification to ${recipientEmail}`);
       } catch (emailError) {
-        console.error(`Failed to send email to ${passedAgent.profile.email}:`, emailError);
+        console.error(`Failed to send email:`, emailError);
       }
     }
 

@@ -38,6 +38,24 @@ interface SummaryRequest {
   };
 }
 
+interface PerformanceBreakdownRequest {
+  type: 'performance_breakdown';
+  agentStats: {
+    alp: number;
+    presentations: number;
+    deals: number;
+    closingRate: number;
+  };
+  teamAverages: {
+    alp: number;
+    presentations: number;
+    deals: number;
+    closingRate: number;
+  };
+  rank: number;
+  totalAgents: number;
+}
+
 interface ChatRequest {
   type: 'chat';
   messages: Array<{ role: 'user' | 'assistant'; content: string }>;
@@ -51,7 +69,7 @@ interface ChatRequest {
   };
 }
 
-type AIRequest = CoachingRequest | SummaryRequest | ChatRequest;
+type AIRequest = CoachingRequest | SummaryRequest | ChatRequest | PerformanceBreakdownRequest;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -159,6 +177,30 @@ Provide helpful, actionable advice for qualifying leads, handling objections, an
 
         const messages = body.messages;
         userPrompt = messages[messages.length - 1]?.content || '';
+        break;
+      }
+
+      case 'performance_breakdown': {
+        const { agentStats, teamAverages, rank, totalAgents } = body as PerformanceBreakdownRequest;
+        systemPrompt = `You are an expert sales performance analyst and motivational coach. Provide a brief, encouraging analysis of an insurance agent's performance compared to their team. Be specific, data-driven, and actionable. Keep it to 3-4 sentences max.`;
+        
+        userPrompt = `Analyze this agent's performance and provide quick coaching:
+
+Rank: #${rank} out of ${totalAgents} agents
+
+Agent Stats:
+- ALP (Annual Life Premium): $${agentStats.alp?.toFixed(0) || 0}
+- Presentations: ${agentStats.presentations || 0}
+- Deals Closed: ${agentStats.deals || 0}
+- Closing Rate: ${agentStats.closingRate?.toFixed(1) || 0}%
+
+Team Averages:
+- ALP: $${teamAverages.alp?.toFixed(0) || 0}
+- Presentations: ${teamAverages.presentations?.toFixed(1) || 0}
+- Deals: ${teamAverages.deals?.toFixed(1) || 0}
+- Closing Rate: ${teamAverages.closingRate?.toFixed(1) || 0}%
+
+Provide a 3-4 sentence analysis: highlight their strongest metric vs team, identify the one area to improve, and give ONE specific tip to climb the rankings.`;
         break;
       }
 

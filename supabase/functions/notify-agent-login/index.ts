@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Resend } from "npm:resend@2.0.0";
+import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const resend = new Resend(RESEND_API_KEY);
@@ -145,15 +145,15 @@ const handler = async (req: Request): Promise<Response> => {
       html: emailHtml,
     });
 
-    if (!res.id) {
+    if (!res.data?.id) {
       console.error("Resend API error:", res);
       throw new Error("Failed to send email");
     }
 
-    console.log("Login notification sent successfully:", res.id);
+    console.log("Login notification sent successfully:", res.data.id);
 
     return new Response(
-      JSON.stringify({ success: true, emailId: res.id }),
+      JSON.stringify({ success: true, emailId: res.data.id }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }

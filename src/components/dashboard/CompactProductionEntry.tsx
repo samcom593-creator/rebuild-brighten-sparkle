@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ConfettiCelebration } from "./ConfettiCelebration";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { ALPCalculator } from "./ALPCalculator";
 
 interface CompactProductionEntryProps {
   agentId: string;
@@ -39,6 +40,16 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
     setFormData(prev => ({ ...prev, [key]: value }));
     setPulsingField(key);
     setTimeout(() => setPulsingField(null), 200);
+  };
+
+  // Handle ALP from calculator
+  const handleALPChange = (alp: number) => {
+    setFormData(prev => ({ ...prev, aop: alp }));
+  };
+
+  // Handle deals count from calculator
+  const handleDealsChange = (deals: number) => {
+    setFormData(prev => ({ ...prev, deals_closed: deals }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -133,6 +144,7 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
     }
   };
 
+  // Fields WITHOUT aop and deals_closed (handled by ALPCalculator)
   const fields = [
     { key: "presentations", label: "Presentations", icon: Target },
     { key: "passed_price", label: "Pitched Price", icon: DollarSign },
@@ -140,8 +152,6 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
     { key: "referrals_caught", label: "Referrals", icon: Users },
     { key: "booked_inhome_referrals", label: "Booked Home", icon: Home },
     { key: "referral_presentations", label: "Ref. Pres.", icon: Handshake },
-    { key: "deals_closed", label: "Deals", icon: TrendingUp },
-    { key: "aop", label: "ALP ($)", icon: DollarSign, step: "0.01", highlight: true },
   ];
 
   const totalALP = Number(formData.aop) || 0;
@@ -197,8 +207,8 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
         </div>
         
         <form ref={formRef} onSubmit={handleSubmit}>
-          {/* 2x4 compact grid with staggered animation */}
-          <div className="grid grid-cols-2 gap-3 mb-5">
+          {/* 2x3 compact grid for activity stats */}
+          <div className="grid grid-cols-2 gap-3 mb-4">
             {fields.map((field, index) => {
               const Icon = field.icon;
               const value = formData[field.key as keyof typeof formData];
@@ -244,7 +254,6 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
                         "h-14 text-xl font-bold text-center transition-all duration-200 input-focus-glow",
                         "bg-background/50 hover:bg-background/80",
                         hasValue && "border-primary/40 bg-primary/5",
-                        field.highlight && hasValue && "text-primary ring-2 ring-primary/20 border-primary/50",
                         isPulsing && "animate-value-pop"
                       )}
                     />
@@ -263,6 +272,20 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
                 </motion.div>
               );
             })}
+          </div>
+
+          {/* ALP Calculator Section */}
+          <div className="mb-5 p-4 rounded-xl bg-muted/30 border border-border/50">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+              <TrendingUp className="h-3.5 w-3.5" />
+              Deals & ALP
+            </h3>
+            <ALPCalculator
+              onALPChange={handleALPChange}
+              onDealsChange={handleDealsChange}
+              initialALP={formData.aop}
+              initialDeals={formData.deals_closed}
+            />
           </div>
 
           <motion.div

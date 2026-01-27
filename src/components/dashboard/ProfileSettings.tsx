@@ -193,9 +193,15 @@ export function ProfileSettings() {
         animate={{ opacity: 1, y: 0 }}
       >
         <h2 className="text-2xl font-bold mb-2">Profile Settings</h2>
-        <p className="text-muted-foreground">
+        <p className="text-muted-foreground mb-4">
           Update your contact information and preferences
         </p>
+        {/* Optional fields banner */}
+        <div className="p-3 rounded-lg bg-muted/50 border border-border">
+          <p className="text-sm text-muted-foreground">
+            💡 <strong>Quick tip:</strong> Only your name and email are required. All other fields (phone, Instagram, bio, photo) are optional and can be completed at any time.
+          </p>
+        </div>
       </motion.div>
 
       {/* Profile Form */}

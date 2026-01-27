@@ -7,6 +7,7 @@ const corsHeaders = {
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const BASE_URL = "https://apex-financial.org";
 
 interface VerifyMagicLinkRequest {
   token: string;
@@ -94,40 +95,44 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Generate a magic link using Supabase Admin API
-    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+    // Get the user's email from auth.users
+    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(agent.user_id);
+    
+    if (userError || !userData?.user) {
+      console.error("User not found:", userError);
+      return new Response(
+        JSON.stringify({ error: "User account not found", code: "NO_USER" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Generate a magic link that will work directly - use email OTP
+    const { data: otpData, error: otpError } = await supabaseAdmin.auth.admin.generateLink({
       type: "magiclink",
-      email: tokenRecord.email,
+      email: userData.user.email!,
       options: {
-        redirectTo: `https://apex-financial.org/${tokenRecord.destination === "numbers" ? "apex-daily-numbers" : "agent-portal"}`,
+        redirectTo: `${BASE_URL}/${tokenRecord.destination === "numbers" ? "apex-daily-numbers" : "agent-portal"}`,
       },
     });
 
-    if (linkError) {
-      console.error("Failed to generate auth link:", linkError);
+    if (otpError || !otpData) {
+      console.error("Failed to generate OTP link:", otpError);
       return new Response(
-        JSON.stringify({ error: "Failed to create session", code: "AUTH_ERROR" }),
+        JSON.stringify({ error: "Failed to create login session", code: "OTP_ERROR" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Extract the token_hash and type from the generated link
-    const url = new URL(linkData.properties.hashed_token ? 
-      `${SUPABASE_URL}/auth/v1/verify?token=${linkData.properties.hashed_token}&type=magiclink` :
-      linkData.properties.action_link || "");
-    
     console.log(`Magic link verified for ${tokenRecord.email}, destination: ${tokenRecord.destination}`);
 
+    // Return the properties needed for the frontend to complete the login
     return new Response(
       JSON.stringify({ 
         success: true,
         email: tokenRecord.email,
         destination: tokenRecord.destination,
-        // Return the Supabase auth link for the frontend to use
-        authLink: linkData.properties.action_link,
-        // Also return token info for OTP verification
-        tokenHash: linkData.properties.hashed_token,
-        type: "magiclink",
+        // The action_link is a Supabase auth URL that will sign in the user
+        authLink: otpData.properties.action_link,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

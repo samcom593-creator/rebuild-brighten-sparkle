@@ -1,148 +1,120 @@
 
-# Fix Agent Login & Send Portal Emails
+# Fix Agent Portal Access - Magic Link Login
 
-## Issues Found
+## The Problem
 
-### 1. Duplicate Profiles Causing Lookup Failures
-There are duplicate email entries in the `profiles` table (e.g., two "Aisha Kebbeh" records with `kebbeh045@gmail.com`). The edge function uses `.maybeSingle()` which throws an error when multiple rows are returned.
+The emails are being sent and received (logs confirm 9 sent, 3+ opened). **The issue is what happens when agents click the link:**
 
-**Error from logs:**
-```
-Results contain 2 rows, application/vnd.pgrst.object+json requires 1 row
-```
+1. Agent clicks "Access Your Portal" → Goes to `/agent-portal`
+2. `/agent-portal` is protected by `ProtectedRoute`
+3. No session exists → Redirected to `/login`
+4. Agent sees the wrong login page and is stuck
 
-### 2. No "Remember Me" Functionality
-The current login doesn't persist sessions for extended periods.
+## The Solution: One-Tap Magic Link
 
-### 3. Emails Not Sent Yet
-Need to send portal login emails to all active CRM contacts.
+Replace the current email links with **magic links** that automatically sign the agent in when clicked. No password required on first access.
 
----
+### How Magic Links Work
 
-## Fixes Required
+1. Generate a one-time token (OTT) tied to the agent's email
+2. Store token in database with expiration (24 hours)
+3. Email contains link: `https://apex-financial.org/magic-login?token=ABC123`
+4. When clicked: validate token → create auth session → redirect to portal
+5. Token is immediately invalidated after use
 
-### Part 1: Fix Duplicate Data Issue
+### Implementation
 
-**Data cleanup needed:** Remove the duplicate/orphaned profile for Aisha (the one without the real auth user):
-
+**1. New Database Table: `magic_login_tokens`**
 ```sql
-DELETE FROM profiles WHERE id = '9005aab6-b989-4416-a09a-7b6414023f7b';
+CREATE TABLE magic_login_tokens (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  agent_id UUID NOT NULL,
+  email TEXT NOT NULL,
+  token TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  expires_at TIMESTAMPTZ DEFAULT (now() + interval '24 hours'),
+  used_at TIMESTAMPTZ
+);
+
+CREATE INDEX idx_magic_token ON magic_login_tokens(token);
 ```
 
-**Edge function update:** Change `check-email-status` to use `.limit(1)` instead of `.maybeSingle()` to handle any remaining duplicates gracefully:
+**2. New Edge Function: `generate-magic-link`**
+- Creates a secure random token
+- Stores in `magic_login_tokens`
+- Returns the full magic link URL
 
-```typescript
-// Before
-.ilike("email", normalizedEmail)
-.maybeSingle();
+**3. New Edge Function: `verify-magic-link`**
+- Validates token exists and isn't expired/used
+- Gets agent's email
+- Signs them in via Supabase Auth (using `signInWithOtp` or admin API)
+- Marks token as used
+- Returns session or redirect
 
-// After
-.ilike("email", normalizedEmail)
-.order("created_at", { ascending: false })
-.limit(1)
-.single();
-```
+**4. New Page: `/magic-login`**
+- Reads `?token=` from URL
+- Calls `verify-magic-link` edge function
+- On success: Automatically redirects to `/agent-portal`
+- On failure: Shows error with link to manual login
 
-This ensures we get the most recently created profile if duplicates exist.
+**5. Update Email Templates**
+- Replace `/agent-portal` links with magic link URLs
+- Keep secondary "Log Numbers Now" button going to `/apex-daily-numbers`
 
-### Part 2: Add "Remember Me" Functionality
+### Updated Email Flow
 
-Update `AgentNumbersLogin.tsx`:
+| Button | Action |
+|--------|--------|
+| "Access Your Portal →" | Magic link → auto-login → `/agent-portal` |
+| "Log Numbers Now →" | Magic link → auto-login → `/apex-daily-numbers` |
 
-1. Add a checkbox for "Remember me" (default checked)
-2. When checked, configure Supabase session persistence
+### Security Considerations
 
-```typescript
-// In the login handler
-await supabase.auth.signInWithPassword({
-  email,
-  password: data.password,
-  options: {
-    // Session persists for 30 days when "Remember me" is checked
-    // Without it, session expires when browser closes
-  }
-});
-```
+- Tokens are single-use (marked `used_at` after first use)
+- 24-hour expiration
+- Cryptographically random tokens (32 chars)
+- If token is invalid/expired, fallback to password login
 
-**Note:** Supabase automatically persists sessions to localStorage by default. The "Remember Me" visual is already functionally true - adding the checkbox provides user clarity.
-
-### Part 3: Send Portal Login Emails to All CRM Contacts
-
-Create a new edge function `send-bulk-portal-logins` that:
-
-1. Queries all active agents with valid emails
-2. Filters out already-sent (using `email_tracking` table)
-3. Sends portal login email to each
-4. Tracks all sends in `email_tracking`
-
-**Recipients** (10 active agents found in CRM):
-| Name | Email | Stage |
-|------|-------|-------|
-| Aisha Kebbeh | kebbeh045@gmail.com | evaluated |
-| Bryan Ross | rossinsured@gmail.com | in_field_training |
-| Chukwudi Ifediora | Chukwudiifediora@gmail.com | evaluated |
-| Donavon Brikho | Donavon930565@gmail.com | in_field_training |
-| Joe Intwan | J.intwan@yahoo.com | in_field_training |
-| Joseph Sebasco | joseph.sebasco@placeholder.com | evaluated |
-| KJ TestV | kjvaughns1@gmail.com | evaluated |
-| KJ Vaughns | kjvaughns13@gmail.com | onboarding |
-| Mahmod Imran | moodyimran04@gmail.com | evaluated |
-| Obi Ifediora | obiajulu.ifediora@gmail.com | onboarding |
-
----
-
-## Implementation Steps
-
-### Step 1: Database Cleanup
-- Remove duplicate profile for Aisha Kebbeh
-
-### Step 2: Update Edge Functions
-
-**`check-email-status/index.ts`:**
-- Change from `.maybeSingle()` to `.limit(1).single()` with ordering
-- Add fallback handling if query returns no results
-
-**`setup-agent-password/index.ts`:**
-- Same fix for the profile lookup
-
-### Step 3: Update Login UI
-
-**`AgentNumbersLogin.tsx`:**
-- Add "Remember me" checkbox (visual confirmation, sessions already persist by default)
-- Clean UI presentation
-
-### Step 4: Create Bulk Email Function
-
-**New file: `supabase/functions/send-bulk-portal-logins/index.ts`:**
-- Fetches all active agents
-- Calls existing `send-agent-portal-login` for each
-- Returns success/failure counts
-
-### Step 5: Test & Deploy
-- Test login with email (kebbeh045@gmail.com)
-- Test login with phone (16084179264)
-- Verify password setup flow
-- Send bulk emails
-
----
-
-## Files to Update
+## Files to Create/Update
 
 | File | Change |
 |------|--------|
-| Database | Remove duplicate profile |
-| `supabase/functions/check-email-status/index.ts` | Fix duplicate handling |
-| `supabase/functions/setup-agent-password/index.ts` | Fix duplicate handling |
-| `src/pages/AgentNumbersLogin.tsx` | Add "Remember me" checkbox |
-| `supabase/functions/send-bulk-portal-logins/index.ts` | NEW - Bulk email sender |
-| `supabase/config.toml` | Add new function config |
+| Database | New `magic_login_tokens` table |
+| `supabase/functions/generate-magic-link/index.ts` | NEW - Create magic tokens |
+| `supabase/functions/verify-magic-link/index.ts` | NEW - Validate & sign in |
+| `src/pages/MagicLogin.tsx` | NEW - Handle magic link arrival |
+| `src/App.tsx` | Add `/magic-login` route |
+| `supabase/functions/send-bulk-portal-logins/index.ts` | Use magic links |
+| `supabase/functions/send-agent-portal-login/index.ts` | Use magic links |
+| `supabase/config.toml` | Register new functions |
 
----
+## New User Experience
 
-## Testing Checklist
+**For any agent receiving the email:**
+1. Opens email in inbox
+2. Taps "Access Your Portal →"
+3. **Instantly signed in** - lands on Agent Portal
+4. Done. No password, no forms, no friction.
 
-1. **Email login**: Type `kebbeh045@gmail.com` - should find Aisha, show password field
-2. **Phone login**: Type `16084179264` - should find Aisha by phone
-3. **Password setup**: For CRM user without auth - just password field, no extra questions
-4. **Remember me**: Checkbox present, session persists after browser restart
-5. **Bulk email**: Send to all 10 active agents, verify tracking records created
+**Fallback if magic link expires:**
+1. Taps expired link
+2. Sees friendly message: "This link has expired"
+3. Button: "Sign in with your email" → goes to `/agent-login`
+4. Enters email → password flow as before
+
+## Technical Details
+
+**Token Generation (in edge function):**
+```typescript
+const token = crypto.randomUUID().replace(/-/g, '') + 
+              crypto.randomUUID().replace(/-/g, '');
+// 64-char hex string, cryptographically random
+```
+
+**Magic Link URL Format:**
+```
+https://apex-financial.org/magic-login?token=abc123...&dest=portal
+```
+
+**Supabase Auth Integration:**
+Using `signInWithOtp` with `shouldCreateUser: false` or admin API to create session for existing user.

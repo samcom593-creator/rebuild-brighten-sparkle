@@ -38,6 +38,8 @@ const handler = async (req: Request): Promise<Response> => {
           .highlight { background: #dbeafe; padding: 15px; border-radius: 8px; margin: 20px 0; }
           .button { display: inline-block; background: #3b82f6; color: white !important; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 10px 0; }
           .footer { text-align: center; margin-top: 20px; color: #6b7280; font-size: 14px; }
+          ul { padding-left: 20px; margin: 10px 0; }
+          li { margin: 5px 0; }
         </style>
       </head>
       <body>
@@ -58,6 +60,27 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
             
             <div class="highlight">
+              <h3>⏰ Daily Numbers Deadline</h3>
+              <p>Please submit your daily production numbers <strong>by 8:00 PM CST</strong> each day.</p>
+              <p>This keeps our leaderboards accurate and ensures you don't miss out on recognition!</p>
+            </div>
+            
+            <div class="highlight">
+              <h3>🚨 Team Deal Alerts</h3>
+              <p>When any teammate closes a deal, you'll receive an instant <strong>DEAL ALERT</strong> email to keep you motivated and in the loop!</p>
+            </div>
+            
+            <div class="highlight">
+              <h3>🏆 Competition Updates You'll Receive</h3>
+              <ul>
+                <li>🌅 <strong>Morning Top Performers</strong> - Daily at 9 AM CST</li>
+                <li>🔥 <strong>Hot Streak Alerts</strong> - When you're on a winning streak</li>
+                <li>📊 <strong>Weekly Champion Announcements</strong> - Every Sunday</li>
+                <li>📈 <strong>Rank Change Notifications</strong> - When someone passes you</li>
+              </ul>
+            </div>
+            
+            <div class="highlight">
               <h3>💬 Join Our Discord Community</h3>
               <p>Connect with your team, get support, and stay updated:</p>
               <a href="${discordLink}" class="button">Join Discord</a>
@@ -66,7 +89,7 @@ const handler = async (req: Request): Promise<Response> => {
             <div class="highlight">
               <h3>📊 Log Your Daily Numbers</h3>
               <p>Track your production and compete on the leaderboard:</p>
-              <a href="https://apex-financial.org/numbers" class="button">Access Portal</a>
+              <a href="https://apex-financial.org/agent-portal" class="button">Access Agent Portal</a>
             </div>
             
             <p>If you have any questions, don't hesitate to reach out to your manager.</p>
@@ -92,7 +115,7 @@ const handler = async (req: Request): Promise<Response> => {
       body: JSON.stringify({
         from: "APEX Financial <notifications@tx.apex-financial.org>",
         to: [agentEmail],
-        subject: "Welcome to Apex Financial!",
+        subject: "Welcome to Apex Financial! 🎉",
         html: emailHtml,
       }),
     });

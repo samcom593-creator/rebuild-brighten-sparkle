@@ -439,3 +439,25 @@
   box-shadow: 0 0 0 3px hsl(168 84% 42% / 0.2), 0 0 20px hsl(168 84% 42% / 0.15);
   border-color: hsl(168 84% 42%);
 }
+
+/* Mobile number input improvements */
+@media (max-width: 640px) {
+  input[type="number"] {
+    font-size: 16px !important; /* Prevents iOS zoom on focus */
+    -webkit-appearance: none;
+    -moz-appearance: textfield;
+  }
+  
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+}
+
+/* Smoother transitions and touch improvements */
+@media (prefers-reduced-motion: no-preference) {
+  .transition-all {
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}

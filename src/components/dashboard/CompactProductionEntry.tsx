@@ -236,6 +236,10 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
                         field.key, 
                         field.step ? parseFloat(e.target.value) || 0 : parseInt(e.target.value) || 0
                       )}
+                      onFocus={(e) => {
+                        // Select all on focus for easy editing on mobile - fixes cursor position bug
+                        e.target.select();
+                      }}
                       className={cn(
                         "h-14 text-xl font-bold text-center transition-all duration-200 input-focus-glow",
                         "bg-background/50 hover:bg-background/80",

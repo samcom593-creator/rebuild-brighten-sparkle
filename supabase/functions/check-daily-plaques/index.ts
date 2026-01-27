@@ -98,6 +98,25 @@ serve(async (req: Request) => {
           }),
         });
 
+        // Also notify manager of downline production
+        try {
+          await fetch(`${supabaseUrl}/functions/v1/notify-manager-downline-production`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${supabaseKey}`,
+            },
+            body: JSON.stringify({
+              agentId: record.agent_id,
+              amount: aop,
+              date: todayStr,
+            }),
+          });
+          console.log(`📧 Manager notification triggered for ${record.agent_id}`);
+        } catch (notifyErr) {
+          console.error("Manager notify failed:", notifyErr);
+        }
+
         const result = await response.json();
         results.push({ 
           agentId: record.agent_id, 
@@ -125,6 +144,21 @@ serve(async (req: Request) => {
       gold: results.filter(r => r.tier === "GOLD" && r.success).length,
       bronze: results.filter(r => r.tier === "BRONZE" && r.success).length,
     };
+
+    // Also run team milestone check
+    try {
+      await fetch(`${supabaseUrl}/functions/v1/check-team-milestones`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${supabaseKey}`,
+        },
+        body: JSON.stringify({}),
+      });
+      console.log("✅ Team milestone check triggered");
+    } catch (teamErr) {
+      console.error("Team milestone check failed:", teamErr);
+    }
 
     console.log(`🏆 Daily plaque check complete:`, summary);
 

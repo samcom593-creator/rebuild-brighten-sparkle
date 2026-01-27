@@ -7,7 +7,6 @@ const corsHeaders = {
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
-const BASE_URL = "https://apex-financial.org";
 
 interface VerifyMagicLinkRequest {
   token: string;
@@ -28,12 +27,14 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    console.log(`Verifying magic token: ${token.substring(0, 8)}...`);
+
     const supabaseAdmin = createClient(
       SUPABASE_URL,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Find and validate token
+    // Find and validate token - DO NOT mark as used yet
     const { data: tokenRecord, error: fetchError } = await supabaseAdmin
       .from("magic_login_tokens")
       .select("*")
@@ -74,12 +75,6 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Mark token as used immediately to prevent race conditions
-    await supabaseAdmin
-      .from("magic_login_tokens")
-      .update({ used_at: new Date().toISOString() })
-      .eq("id", tokenRecord.id);
-
     // Get the agent's user_id
     const { data: agent, error: agentError } = await supabaseAdmin
       .from("agents")
@@ -106,13 +101,10 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Generate a magic link that will work directly - use email OTP
+    // Generate a magic link to get the OTP token hash
     const { data: otpData, error: otpError } = await supabaseAdmin.auth.admin.generateLink({
       type: "magiclink",
       email: userData.user.email!,
-      options: {
-        redirectTo: `${BASE_URL}/${tokenRecord.destination === "numbers" ? "apex-daily-numbers" : "agent-portal"}`,
-      },
     });
 
     if (otpError || !otpData) {
@@ -123,16 +115,33 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    console.log(`Magic link verified for ${tokenRecord.email}, destination: ${tokenRecord.destination}`);
+    // Extract the token hash from properties
+    const tokenHash = otpData.properties?.hashed_token;
+    
+    if (!tokenHash) {
+      console.error("No hashed_token in OTP response:", JSON.stringify(otpData.properties));
+      return new Response(
+        JSON.stringify({ error: "Authentication token generation failed", code: "NO_HASH" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
-    // Return the properties needed for the frontend to complete the login
+    // NOW mark token as used - after successful OTP generation
+    await supabaseAdmin
+      .from("magic_login_tokens")
+      .update({ used_at: new Date().toISOString() })
+      .eq("id", tokenRecord.id);
+
+    console.log(`Magic link verified for ${tokenRecord.email}, destination: ${tokenRecord.destination}, tokenHash present: true`);
+
+    // Return the data needed for frontend verifyOtp
     return new Response(
       JSON.stringify({ 
         success: true,
-        email: tokenRecord.email,
+        email: userData.user.email,
         destination: tokenRecord.destination,
-        // The action_link is a Supabase auth URL that will sign in the user
-        authLink: otpData.properties.action_link,
+        tokenHash: tokenHash,
+        type: "magiclink",
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

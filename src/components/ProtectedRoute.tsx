@@ -72,9 +72,10 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
   }
 
   if (!authenticated) {
-    // Redirect to agent-specific login for the daily numbers page
-    const isApexDailyNumbers = location.pathname === "/apex-daily-numbers";
-    const loginPath = isApexDailyNumbers ? "/agent-login" : "/login";
+    // Redirect to agent-login for agent-facing pages, /login for admin pages
+    const agentPages = ["/apex-daily-numbers", "/agent-portal"];
+    const isAgentPage = agentPages.some(page => location.pathname.startsWith(page));
+    const loginPath = isAgentPage ? "/agent-login" : "/login";
     return <Navigate to={loginPath} state={{ from: location }} replace />;
   }
 

@@ -1,146 +1,217 @@
 
-# Bug Fix Plan: Critical Issues
+# Comprehensive Fix Plan: Leaderboard Visibility + Onboarding Course
 
-This plan addresses four critical issues you reported, prioritized by impact:
+## Part 1: Fix ALL Leaderboard Visibility Issues
 
----
+### Root Cause Analysis
+The leaderboards are failing because of a **cascading RLS failure**:
 
-## Priority 1: Portal Login Email Not Sending (CRITICAL)
+```
+ManagerLeaderboard.tsx Flow:
+1. Query `agents` table for all active agents → RLS blocks other managers ❌
+2. Query `user_roles` for role='manager' → RLS only returns YOUR role ❌  
+3. Query `profiles` for names → No user_ids to query, returns nothing ❌
 
-### Root Cause
-The edge function logs show the email was "sent" (`Portal login email sent to kebbeh045@gmail.com`) multiple times, and tracking records exist in the database with `open_count: 0`. However, the email is not being received.
+Result: Manager only sees themselves!
+```
 
-**Investigation reveals**: The "from" email domain is `notifications@tx.apex-financial.org` but previously it was `noreply@apex-financial.org`. This subdomain change may be causing deliverability issues.
+### Solution: Add 3 New RLS Policies
 
-### Fix
-1. Change the "from" address back to verified domain: `APEX Financial <noreply@apex-financial.org>`
-2. Redeploy the edge function
-3. Test with your email address first
-
----
-
-## Priority 2: Manager Leaderboard Only Shows Current User
-
-### Root Cause
-After reviewing the `ManagerLeaderboard.tsx` code, the component queries:
-1. All active agents
-2. Filters to only those with "manager" role in `user_roles` table
-3. Gets their application counts from the `applications` table
-
-The issue is an **RLS (Row-Level Security) policy problem** on the `profiles` table. The current SELECT policies only allow:
-- Users to see their own profile
-- Managers to see their direct team's profiles
-- Admins to see all profiles
-
-This means when building the leaderboard, a manager cannot see other managers' names since they don't have permission to read other managers' profiles.
-
-### Fix
-Add a new RLS policy on the `profiles` table that allows any authenticated manager to view the profile names of other managers:
-
+**1. Allow Managers to View Manager User Roles**
 ```sql
-CREATE POLICY "Managers can view all manager profiles"
-ON public.profiles FOR SELECT
+CREATE POLICY "Managers can view manager roles"
+ON public.user_roles FOR SELECT
 USING (
-  has_role(auth.uid(), 'manager'::app_role) AND
-  EXISTS (
-    SELECT 1 FROM user_roles
-    WHERE user_roles.user_id = profiles.user_id
-    AND user_roles.role = 'manager'
+  has_role(auth.uid(), 'manager'::app_role)
+  AND role = 'manager'
+);
+```
+This allows any manager to see which users have the 'manager' role.
+
+**2. Allow Managers to View Other Manager Agent Records**
+```sql
+CREATE POLICY "Managers can view other manager agents"
+ON public.agents FOR SELECT
+USING (
+  has_role(auth.uid(), 'manager'::app_role)
+  AND user_id IN (
+    SELECT ur.user_id 
+    FROM public.user_roles ur 
+    WHERE ur.role = 'manager'
   )
 );
 ```
+This allows managers to see other managers' agent records (needed for leaderboard calculations).
 
-This allows managers to see other managers' profiles for leaderboard purposes while maintaining privacy for regular agent data.
+**3. Allow All Authenticated Users to View All Agent Production Data**
+The current policy already allows managers to view all production, but the agents table blocks the name lookup. We need to ensure the full chain works.
 
----
+### Additional Fix: Update Profile Visibility for Leaderboards
 
-## Priority 3: CRM Attendance Grid Missing Day Letters
+The existing policy "Managers can view manager profiles for leaderboard" is good, but we need to ensure agents with production data can also have their profiles viewed by managers. Add:
 
-### Root Cause
-The `AttendanceGrid.tsx` component has `DAYS = ["Su", "M", "T", "W", "Th", "F", "Sa"]` defined but only displays icons (checkmark/X) inside the day buttons, not the day letters.
-
-### Fix
-Add day letter labels above the attendance grid. Update the component to show:
-```
-         Su  M  T  W  Th  F  Sa
-Meeting: [✓] [✓] [-] [-] [-] [-] [-]
-Sold:    [✓] [-] [-] [-] [-] [-] [-]
-```
-
-This adds minimal visual overhead while making the dates clear.
-
----
-
-## Priority 4: CRM Expanded View Slow Loading / Stuck
-
-### Root Cause
-When clicking on a stage card (In Course, Live, etc.) to expand it, the `expandedColumn` state triggers a re-render. The animation with `AnimatePresence mode="wait"` combined with nested data fetching causes perceived slow loading.
-
-The issue is not an "infinite loop" but rather:
-1. Multiple cascading queries when expanding
-2. Animation transitions blocking UI
-3. All agent notes fetching on mount (AgentNotes has `useEffect` that fetches on initial render)
-
-### Fixes
-1. **Reduce animation transitions**: Use faster durations in the expand animation
-2. **Lazy-load agent notes**: Only fetch notes when the notes section is expanded, not on card mount
-3. **Add loading skeleton**: Show skeleton placeholders immediately while data loads
-4. **Debounce the expansion**: Add a small delay before triggering the expanded view to prevent double-clicks
-
----
-
-## Technical Implementation Details
-
-### Email Fix (send-agent-portal-login)
-```typescript
-// Line 89: Change from
-from: "APEX Financial Empire <notifications@tx.apex-financial.org>"
-// To
-from: "APEX Financial <noreply@apex-financial.org>"
-```
-
-### RLS Policy (SQL Migration)
 ```sql
--- Allow managers to view other managers' profiles for leaderboard
-CREATE POLICY "Managers can view manager profiles for leaderboard"
+CREATE POLICY "Managers can view all profiles for leaderboards"
 ON public.profiles FOR SELECT
 USING (
   has_role(auth.uid(), 'manager'::app_role)
-  AND EXISTS (
-    SELECT 1 FROM public.user_roles
-    WHERE user_roles.user_id = profiles.user_id
-    AND user_roles.role = 'manager'
-  )
+);
+```
+This is broader but safe - profile data (name, avatar) isn't sensitive.
+
+---
+
+## Part 2: Onboarding Course Integration
+
+### What You Want
+Based on your description, you want an interactive onboarding course that:
+- Uses video content to train new agents
+- Includes quiz questions to test understanding
+- Prevents progression until questions are answered correctly
+- Gets agents in the right "mindset" before going live
+
+### Proposed Course Structure
+
+**Page: `/onboarding-course`**
+
+A multi-module course with:
+1. **Video Player** - Embedded videos for each module
+2. **AI-Powered Quiz Questions** - Generated from video content
+3. **Progress Tracking** - Database-backed, shows completion status
+4. **Gate System** - Must pass each module to unlock the next
+5. **Integration with CRM** - Updates agent onboarding_stage when complete
+
+### Database Schema
+
+```sql
+-- Onboarding modules table
+CREATE TABLE onboarding_modules (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_index INTEGER NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  video_url TEXT NOT NULL,
+  pass_threshold INTEGER DEFAULT 80, -- % correct needed to pass
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Questions for each module
+CREATE TABLE onboarding_questions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  module_id UUID REFERENCES onboarding_modules(id) ON DELETE CASCADE,
+  question TEXT NOT NULL,
+  options JSONB NOT NULL, -- ["Option A", "Option B", "Option C", "Option D"]
+  correct_answer INTEGER NOT NULL, -- 0-3 index
+  explanation TEXT,
+  order_index INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Agent progress tracking
+CREATE TABLE onboarding_progress (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  agent_id UUID NOT NULL,
+  module_id UUID REFERENCES onboarding_modules(id) ON DELETE CASCADE,
+  started_at TIMESTAMPTZ DEFAULT now(),
+  completed_at TIMESTAMPTZ,
+  score INTEGER,
+  attempts INTEGER DEFAULT 0,
+  answers JSONB, -- Store their answers for review
+  passed BOOLEAN DEFAULT false,
+  UNIQUE(agent_id, module_id)
 );
 ```
 
-### AttendanceGrid.tsx Changes
-- Add a header row showing day abbreviations (Su, M, T, W, Th, F, Sa)
-- Keep existing tooltip functionality for full date on hover
+### Course Components
 
-### DashboardCRM.tsx Performance
-- Change animation duration from 0.15s to 0.1s
-- Add immediate loading skeleton when expanding
-- Modify AgentNotes to lazy-load
+**1. OnboardingCourse.tsx** - Main course page
+- Module list sidebar with lock/unlock icons
+- Current module content area
+- Video player with required watch time
+- Quiz section that appears after video
+
+**2. OnboardingModule.tsx** - Individual module
+- Video embed (YouTube or custom)
+- Progress bar for video completion
+- "Take Quiz" button unlocks after 90% video watched
+
+**3. OnboardingQuiz.tsx** - Quiz interface
+- Multiple choice questions
+- Immediate feedback on answers
+- Score summary at end
+- "Retry" if below pass threshold
+- Confetti celebration on pass
+
+**4. OnboardingProgress.tsx** - Progress tracker
+- Visual progress bar
+- Module completion checkmarks
+- Estimated time remaining
+
+### AI Question Enhancement
+
+Use the AI assistant edge function to:
+1. Analyze video transcripts (provided by you)
+2. Generate additional quiz questions
+3. Create scenario-based questions
+4. Generate "gotcha" questions to catch those not paying attention
+
+### Integration with CRM
+
+When all modules are complete:
+1. Update `agents.onboarding_stage` to 'training_online' or 'in_field_training'
+2. Log completion in `agent_onboarding` table
+3. Trigger notification to manager
+4. Show "Ready for Field Training" status in CRM
 
 ---
 
-## Testing Plan
+## Implementation Order
 
-After implementation:
-1. **Email**: Send a test portal login to your email (info@kingofsales.net) first
-2. **Leaderboard**: Log in as a non-admin manager and verify other managers appear
-3. **CRM Dates**: Check that day letters (Su, M, T, W, Th, F, Sa) appear above attendance grid
-4. **CRM Speed**: Test expanding each stage and verify it loads within 1-2 seconds
+### Phase 1: Fix Leaderboards (Immediate)
+1. Add RLS policy for `user_roles` - managers can see manager roles
+2. Add RLS policy for `agents` - managers can see other managers
+3. Update profile visibility policy to be more permissive for managers
+4. Test all leaderboards with manager accounts (KJ, OB)
+
+### Phase 2: Basic Course Structure
+1. Create database tables for modules/questions/progress
+2. Build OnboardingCourse.tsx page with module navigation
+3. Build video player with watch time tracking
+4. Build quiz component with scoring
+
+### Phase 3: Content & AI Enhancement
+1. You provide video URLs and any existing questions
+2. AI generates additional questions from video transcripts
+3. Fine-tune pass thresholds and difficulty
+
+### Phase 4: CRM Integration
+1. Connect course completion to onboarding stage
+2. Add "Course Progress" indicator to agent cards in CRM
+3. Manager notifications when agents complete course
 
 ---
 
-## Files to Modify
+## Files to Create/Modify
 
-| File | Change |
-|------|--------|
-| `supabase/functions/send-agent-portal-login/index.ts` | Fix "from" email address |
-| SQL Migration | Add RLS policy for manager profile visibility |
-| `src/components/dashboard/AttendanceGrid.tsx` | Add day letter header row |
-| `src/pages/DashboardCRM.tsx` | Optimize animations, add loading states |
-| `src/components/dashboard/AgentNotes.tsx` | Lazy-load notes instead of fetching on mount |
+| File | Action | Purpose |
+|------|--------|---------|
+| SQL Migration | Create | Add 3 new RLS policies for leaderboard visibility |
+| `src/pages/OnboardingCourse.tsx` | Create | Main course page |
+| `src/components/course/OnboardingModule.tsx` | Create | Module display component |
+| `src/components/course/OnboardingQuiz.tsx` | Create | Quiz interface |
+| `src/components/course/OnboardingProgress.tsx` | Create | Progress tracker |
+| SQL Migration | Create | New tables for course content |
+| `src/App.tsx` | Modify | Add `/onboarding-course` route |
+
+---
+
+## Next Steps
+
+I need from you:
+1. **Video URLs** - Links to your training videos (YouTube, Vimeo, etc.)
+2. **Existing Questions** - Any current quiz questions you want included
+3. **Module Structure** - How many modules? What topics?
+4. **Pass Threshold** - What score should be required? (80%? 90%?)
+
+For now, I'll proceed with **Phase 1 (fixing leaderboards)** immediately since that's blocking your managers from seeing competitive data. Ready to implement?

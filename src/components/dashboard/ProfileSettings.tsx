@@ -11,6 +11,8 @@ import {
   Check,
   KeyRound,
   Instagram,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -40,6 +42,14 @@ export function ProfileSettings() {
   });
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  // Password change state
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordSaved, setPasswordSaved] = useState(false);
 
   const [notifications, setNotifications] = useState({
     emailNewApplication: true,
@@ -140,6 +150,54 @@ export function ProfileSettings() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    if (newPassword.length < 6) {
+      toast({
+        title: "Password Too Short",
+        description: "Password must be at least 6 characters.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Passwords Don't Match",
+        description: "Please make sure both passwords match.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) throw error;
+
+      setNewPassword("");
+      setConfirmPassword("");
+      setPasswordSaved(true);
+      toast({
+        title: "Password Updated! 🔐",
+        description: "Your password has been changed successfully.",
+      });
+
+      setTimeout(() => setPasswordSaved(false), 3000);
+    } catch (err: any) {
+      console.error("Error updating password:", err);
+      toast({
+        title: "Error",
+        description: err.message || "Failed to update password. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
@@ -341,28 +399,91 @@ export function ProfileSettings() {
             {loading ? "Saving..." : saved ? "Saved!" : "Save Changes"}
           </Button>
 
-          {/* Password Reset Section */}
-          <div className="pt-4 border-t border-border">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">Need to change your password?</p>
-                <p className="text-sm text-muted-foreground">
-                  We'll send a reset link to your email
-                </p>
+          {/* Password Change Section */}
+          <div className="pt-4 border-t border-border space-y-4">
+            <h4 className="font-medium flex items-center gap-2">
+              <KeyRound className="h-4 w-4 text-primary" />
+              Change Password
+            </h4>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="newPassword">New Password</Label>
+                <div className="relative">
+                  <Input
+                    id="newPassword"
+                    type={showNewPassword ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter new password"
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showNewPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <div className="relative">
+                  <Input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm new password"
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
               <Button
                 type="button"
-                variant="outline"
-                onClick={handlePasswordReset}
-                disabled={resetLoading}
+                onClick={handlePasswordChange}
+                disabled={passwordLoading || !newPassword || !confirmPassword}
+                className="w-full"
               >
-                {resetLoading ? (
+                {passwordLoading ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : passwordSaved ? (
+                  <Check className="h-4 w-4 mr-2" />
                 ) : (
                   <KeyRound className="h-4 w-4 mr-2" />
                 )}
-                {resetLoading ? "Sending..." : "Reset Password"}
+                {passwordLoading ? "Updating..." : passwordSaved ? "Updated!" : "Update Password"}
               </Button>
+
+              <p className="text-xs text-muted-foreground text-center">
+                Or{" "}
+                <button
+                  type="button"
+                  onClick={handlePasswordReset}
+                  disabled={resetLoading}
+                  className="text-primary hover:underline"
+                >
+                  {resetLoading ? "Sending..." : "send a reset link to your email"}
+                </button>
+              </p>
             </div>
           </div>
         </form>

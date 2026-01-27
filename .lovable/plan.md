@@ -1,206 +1,100 @@
 
-# Data Import & Dynamic Team Totals Implementation
+# Complete Data Import - Final Steps
 
-## Overview
+## Current Status
 
-This plan covers three main areas:
-1. **Data Import**: Parse and add the January 2026 deals to the production database
-2. **Terminated Agent Handling**: Add terminated agent production to manager's team totals without showing them on the leaderboard
-3. **Dynamic Team Totals**: Make the admin's "Team Stats" section respond to Week/Month/All selection
+✅ **Moody's $5K Gold Star Plaque** - Successfully sent to moodyimran04@gmail.com
 
----
+⚠️ **Production Import** - Partially complete. Some deals failed because:
 
-## 1. Parse January 2026 Deals Data
-
-### Agent Name Mapping
-
-From the provided deals, here are the unique agents and their deal counts (Annual ALP):
-
-| Agent Name | Total Deals | Total ALP |
-|------------|-------------|-----------|
-| Obiajulu Ifediora | 16 | $23,195.00 |
-| Moody Imran | 17 | $22,175.44 |
-| Aisha Kebbeh | 12 | $12,348.68 |
-| Codey Salazar (TERMINATED) | 15 | $18,009.76 |
-| Kaeden Vaughns | 11 | $15,661.28 |
-| Samuel James | 4 | $9,942.40 |
-| Bryan Ross | 6 | $6,757.40 |
-| Joseph Sebasco | 6 | $5,900.64 |
-| Chukwudi Ifediora | 5 | $5,878.92 |
-| Josiah Darden | 4 | $6,612.68 |
-| Michael Kayembe | 2 | $1,824.96 |
-| Alex Wordu | 4 | $3,223.68 |
-| Richard Hall | 1 | $1,178.76 |
-| Joseph Intwan | 2 | $2,559.36 |
-
-**Total January 2026**: ~105 deals | ~$148,269
-
-### Missing Agents
-
-Many agents from this list are not in the current database. The system needs to:
-1. First create agent records for missing agents (or skip if not in system)
-2. Group production by posted date
-3. Insert/upsert daily_production records
-
-### Recommended Approach
-
-**Option A: Create a data import edge function**
-Create `import-production-data` edge function that:
-- Accepts agent name + date + annual ALP
-- Matches agent by name to existing records
-- Creates daily_production entries grouped by posted date
-
-**Option B: Run SQL migration to bulk insert**
-- Create a one-time SQL script that inserts the data directly
-- Requires knowing agent IDs for each name
+| Missing Agent | Deals | Total ALP | Issue |
+|---------------|-------|-----------|-------|
+| Obiajulu Ifediora | 16 | $23,195 | Profile exists as "Obi Ifediora" - needs agent record |
+| Michael Kayembe | 2 | $1,825 | No profile or agent exists |
+| Richard Hall | 1 | $1,179 | No profile or agent exists |
+| Codey Salazar | 15 | $18,010 | No agent record linked yet |
 
 ---
 
-## 2. Terminated Agent Production Attribution
+## Required Database Changes
 
-### Current Behavior
-- Terminated agents (is_deactivated = true OR status = "terminated") are excluded from leaderboards
-- Their production data still exists in daily_production
+Create agent records for the missing profiles, then re-import the failed deals:
 
-### Requested Behavior
-- Terminated agents' numbers should be added to their manager's (Samuel James) team totals
-- They should NOT appear on the leaderboard
+### SQL to Execute
 
-### Implementation
+```sql
+-- 1. Create agent for Obi Ifediora (Obiajulu Ifediora in deals)
+INSERT INTO agents (profile_id, invited_by_manager_id, status, is_deactivated, onboarding_stage)
+SELECT '6a6ea425-36f1-4ac7-ab09-6ad0215c342a', '11213154-5d01-4522-8019-fb3cc7c9672b', 'active', false, 'evaluated'
+WHERE NOT EXISTS (SELECT 1 FROM agents WHERE profile_id = '6a6ea425-36f1-4ac7-ab09-6ad0215c342a');
 
-**File: `src/pages/AgentPortal.tsx`**
+-- 2. Create profile + agent for Michael Kayembe (new person)
+INSERT INTO profiles (email, full_name) 
+VALUES ('michael.kayembe@placeholder.com', 'Michael Kayembe')
+ON CONFLICT DO NOTHING;
 
-Modify `fetchTeamStats()` to include terminated agents' production when calculating admin team totals:
+INSERT INTO agents (profile_id, invited_by_manager_id, status, is_deactivated, onboarding_stage)
+SELECT p.id, '11213154-5d01-4522-8019-fb3cc7c9672b', 'active', false, 'evaluated'
+FROM profiles p WHERE p.email = 'michael.kayembe@placeholder.com'
+AND NOT EXISTS (SELECT 1 FROM agents WHERE profile_id = p.id);
 
-```typescript
-const fetchTeamStats = async (currentAgentId: string | null) => {
-  try {
-    let agentIds: string[] = [];
-    
-    if (isAdmin) {
-      // Admin sees ALL agents including terminated ones for team totals
-      const { data: allAgents } = await supabase
-        .from("agents")
-        .select("id");  // Remove is_deactivated filter for totals
-      agentIds = allAgents?.map(a => a.id) || [];
-    }
-    // ... rest of logic
-  }
-};
-```
+-- 3. Create profile + agent for Richard Hall (new person)
+INSERT INTO profiles (email, full_name)
+VALUES ('richard.hall@placeholder.com', 'Richard Hall')
+ON CONFLICT DO NOTHING;
 
-The leaderboards already filter by `is_deactivated = false`, so terminated agents won't appear there.
+INSERT INTO agents (profile_id, invited_by_manager_id, status, is_deactivated, onboarding_stage)
+SELECT p.id, '11213154-5d01-4522-8019-fb3cc7c9672b', 'active', false, 'evaluated'
+FROM profiles p WHERE p.email = 'richard.hall@placeholder.com'
+AND NOT EXISTS (SELECT 1 FROM agents WHERE profile_id = p.id);
 
----
+-- 4. Create agent for Codey Salazar (TERMINATED)
+INSERT INTO agents (profile_id, invited_by_manager_id, status, is_deactivated, onboarding_stage)
+SELECT 'b2793b60-b5cf-4b9b-8e35-a456d83cebdf', '11213154-5d01-4522-8019-fb3cc7c9672b', 'terminated', true, 'evaluated'
+WHERE NOT EXISTS (SELECT 1 FROM agents WHERE profile_id = 'b2793b60-b5cf-4b9b-8e35-a456d83cebdf');
 
-## 3. Dynamic Week/Month/All Team Stats
-
-### Current State
-The admin's "Quick Stats" section shows only TODAY's stats - hardcoded to current date.
-
-### Requested Behavior
-When admin views the team stats, they should be able to toggle between:
-- **This Week** (default)
-- **This Month**
-- **All Time**
-
-### Implementation
-
-**File: `src/pages/AgentPortal.tsx`**
-
-Add a time range selector and modify the fetchTeamStats function:
-
-```typescript
-// Add state for time range
-const [statsTimeRange, setStatsTimeRange] = useState<"week" | "month" | "all">("week");
-
-// Modified fetchTeamStats with date range support
-const fetchTeamStats = async (currentAgentId: string | null, timeRange: string) => {
-  const { start, end } = getDateRange(timeRange); // Helper function
-  
-  const { data: teamProduction } = await supabase
-    .from("daily_production")
-    .select("aop, deals_closed, presentations, closing_rate")
-    .in("agent_id", agentIds)
-    .gte("production_date", start)
-    .lte("production_date", end);
-  
-  // ... calculate totals
-};
-
-// Helper function
-const getDateRange = (range: "week" | "month" | "all") => {
-  const now = new Date();
-  switch (range) {
-    case "week":
-      return {
-        start: format(startOfWeek(now, { weekStartsOn: 0 }), "yyyy-MM-dd"),
-        end: format(endOfWeek(now, { weekStartsOn: 0 }), "yyyy-MM-dd"),
-      };
-    case "month":
-      return {
-        start: format(startOfMonth(now), "yyyy-MM-dd"),
-        end: format(endOfMonth(now), "yyyy-MM-dd"),
-      };
-    case "all":
-      return { start: "2020-01-01", end: "2099-12-31" };
-  }
-};
-```
-
-**UI Changes**:
-Add toggle buttons above the Quick Stats grid for admin only:
-
-```tsx
-{isAdmin && (
-  <div className="flex gap-2 mb-3">
-    {["week", "month", "all"].map((range) => (
-      <Button
-        key={range}
-        variant={statsTimeRange === range ? "default" : "outline"}
-        size="sm"
-        onClick={() => setStatsTimeRange(range)}
-      >
-        {range === "week" ? "This Week" : range === "month" ? "This Month" : "All Time"}
-      </Button>
-    ))}
-  </div>
-)}
+-- 5. Update profile name matching (Obi → Obiajulu for import function)
+UPDATE profiles SET full_name = 'Obiajulu Ifediora' WHERE id = '6a6ea425-36f1-4ac7-ab09-6ad0215c342a';
 ```
 
 ---
 
-## 4. Data Import Action Required
+## After Database Updates
 
-Before the data can be added, I need to confirm:
-
-1. **Should I create missing agent records?**
-   - Many agents in the deals list don't exist yet (Moody Imran, Obiajulu Ifediora, etc.)
-   - Either create them or provide me with existing agent IDs
-
-2. **Which agents report to Samuel James?**
-   - Needed to set `invited_by_manager_id` correctly
-   - Especially for Cody Salazar's attribution
-
-3. **Cody Salazar status?**
-   - Confirm he should be marked as `is_deactivated = true` or `status = "terminated"`
-   - His production will still count in admin team totals
+Re-run the import function with only the failed deals:
+- 16 deals for Obiajulu Ifediora ($23,195)
+- 2 deals for Michael Kayembe ($1,825)
+- 1 deal for Richard Hall ($1,179)
+- 15 deals for Codey Salazar ($18,010)
 
 ---
 
-## Summary of Files to Modify
+## Files Changed So Far
 
-| File | Changes |
-|------|---------|
-| `src/pages/AgentPortal.tsx` | Add time range toggle for team stats, include terminated agents in totals |
-| `supabase/functions/import-production-data/index.ts` | NEW - Handle bulk data import |
+| File | Status |
+|------|--------|
+| `src/pages/AgentPortal.tsx` | ✅ Updated with animated branding + link |
+| `supabase/functions/send-plaque-recognition/index.ts` | ✅ Created |
+| `supabase/functions/import-production-data/index.ts` | ✅ Created |
+| `supabase/functions/check-weekly-milestones/index.ts` | ✅ Created |
+| `supabase/functions/check-monthly-milestones/index.ts` | ✅ Created |
+| `supabase/config.toml` | ✅ Updated with new functions |
+| `src/components/dashboard/TeamGoalsTracker.tsx` | ✅ Updated to $75K |
+| `src/components/dashboard/ProductionEntry.tsx` | ✅ Added milestone triggers |
 
 ---
 
-## Next Steps After Approval
+## Deals Successfully Imported
 
-1. Add the time range toggle UI for admin team stats
-2. Modify fetchTeamStats to support week/month/all ranges
-3. Include terminated agents in team totals calculation
-4. Create import function or SQL migration for the deals data (once agent mapping is confirmed)
-5. Send Muhammad (Moody) his $5,000 plaque for January 17, 2026
+~71 deals were successfully imported, including all production for:
+- Mahmod Imran (Moody) ✅
+- Aisha Kebbeh ✅
+- KJ Vaughns ✅
+- Samuel James ✅
+- Bryan Ross ✅
+- Chukwudi Ifediora ✅
+- Joseph Sebasco ✅
+- Josiah Darden ✅
+- Alex Wordu ✅
+- Joe Intwan ✅
+- Brennan Barker ✅

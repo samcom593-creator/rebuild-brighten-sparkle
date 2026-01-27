@@ -1,136 +1,158 @@
 
-# Layout Restructure: Leaderboard Above Log Numbers
 
-## Summary
+# Fix Missing Pages & Add "Remember Me" to Login
 
-Move the main leaderboard **above** the "Log Today's Numbers" section so agents immediately see their competitive standing when they open the portal. This creates a motivational workflow:
+## Overview
 
-1. See where you rank → 2. Get motivated → 3. Log your numbers to climb!
+This plan addresses the broken footer links and adds "Remember Me" functionality to ensure all authentication flows are consistent across the application.
 
----
+## Issues Identified
 
-## Current Layout vs. New Layout
+| Issue | Current State | Solution |
+|-------|---------------|----------|
+| Footer `/privacy` link | 404 - Page not found | Create Privacy Policy page |
+| Footer `/terms` link | 404 - Page not found | Create Terms of Service page |
+| Footer `/disclosures` link | 404 - Page not found | Create Disclosures page |
+| `/login` "Remember Me" | Missing | Add checkbox like AgentNumbersLogin |
 
-| Position | Current | New |
-|----------|---------|-----|
-| 1 | Header + Rank Badge | Header + Rank Badge |
-| 2 | Quick Stats Grid | Quick Stats Grid |
-| 3 | Tab Nav (mobile) | Tab Nav (mobile) |
-| 4 | **Log Today's Numbers** | **Leaderboard** ← Moved UP |
-| 5 | Performance Dashboard | **Log Today's Numbers** ← Moved DOWN |
-| 6 | Personal Stats | Performance Dashboard |
-| 7 | **Leaderboard** | Personal Stats |
-| 8+ | Year Performance, etc. | Year Performance, etc. |
+## Implementation
 
----
+### 1. Create Privacy Policy Page
 
-## Changes Required
+**File: `src/pages/Privacy.tsx`**
 
-### File: `src/pages/AgentPortal.tsx`
+A styled legal page matching the APEX brand with sections for:
+- Information We Collect
+- How We Use Your Information
+- Information Sharing
+- Data Security
+- Your Rights
+- Contact Information
 
-**Move the Leaderboard section (lines 439-453) to come BEFORE the ProductionEntry section (lines 385-411)**
+### 2. Create Terms of Service Page
 
-Updated order in the JSX:
-1. Quick Stats Grid (lines 327-358) - no change
-2. Tab Navigation (lines 360-383) - update tab order to reflect new priority
-3. **Leaderboard** ← MOVE TO HERE
-4. **Log Today's Numbers** ← MOVE BELOW LEADERBOARD
-5. Performance Dashboard - no change
-6. Personal Stats - no change
-7. Rest unchanged
+**File: `src/pages/Terms.tsx`**
 
-### Mobile Tab Navigation Update
+A styled legal page with sections for:
+- Acceptance of Terms
+- Agent Relationship (independent contractor status)
+- Licensing Requirements
+- Code of Conduct
+- Intellectual Property
+- Limitation of Liability
+- Termination
+- Changes to Terms
+- Contact Information
 
-Also update the mobile tab order to reflect the new priority:
-- Current: `["numbers", "leaderboard", "stats"]`
-- New: `["leaderboard", "numbers", "stats"]`
+### 3. Create Disclosures Page
 
-This way on mobile, "Leaderboard" is the first tab, matching the visual hierarchy.
+**File: `src/pages/Disclosures.tsx`**
 
-### Animation Delays
+A styled legal page with sections for:
+- Income Disclosure (results not guaranteed)
+- Independent Contractor Status
+- Licensing Requirements
+- Carrier Relationships
+- No Employment Guarantee
+- Product Information
+- Contact Information
 
-Adjust the `transition.delay` values to maintain smooth staggered animations:
-- Leaderboard: delay 0.3
-- Log Numbers: delay 0.35
-- Performance Dashboard: delay 0.4
-- etc.
+### 4. Add Routes to App.tsx
 
----
+Add three new routes before the catch-all `*` route:
 
-## Visual Result
+```tsx
+<Route path="/privacy" element={<Privacy />} />
+<Route path="/terms" element={<Terms />} />
+<Route path="/disclosures" element={<Disclosures />} />
+```
 
-When an agent opens the portal:
+### 5. Add "Remember Me" to Login Page
+
+**File: `src/pages/Login.tsx`**
+
+Add the same "Remember Me" checkbox that exists in `AgentNumbersLogin.tsx`:
+
+- Add state: `const [rememberMe, setRememberMe] = useState(true);`
+- Add checkbox UI between password field and submit button
+- Import `Checkbox` component from `@/components/ui/checkbox`
+
+## Page Design
+
+All three legal pages will follow a consistent design pattern:
 
 ```text
 ┌─────────────────────────────────────────────────────────────────┐
-│  [Avatar]  Samuel James  #4 📈        🌙  [Logout]              │
-│            Monday, January 27, 2026                              │
+│  ← Back to Home                                                 │
 ├─────────────────────────────────────────────────────────────────┤
-│  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────┐    │
-│  │   $1,200  │  │     2     │  │     5     │  │    40%    │    │
-│  │ Today ALP │  │   Deals   │  │   Pres.   │  │Close Rate │    │
-│  └───────────┘  └───────────┘  └───────────┘  └───────────┘    │
+│                                                                 │
+│     📄  [Page Title]                                            │
+│         Last updated: January 27, 2026                          │
+│                                                                 │
+│     ┌───────────────────────────────────────────────────────┐  │
+│     │  Section 1: Title                                      │  │
+│     │  Content paragraph with legal text...                  │  │
+│     └───────────────────────────────────────────────────────┘  │
+│                                                                 │
+│     ┌───────────────────────────────────────────────────────┐  │
+│     │  Section 2: Title                                      │  │
+│     │  Content paragraph with legal text...                  │  │
+│     └───────────────────────────────────────────────────────┘  │
+│                                                                 │
+│     ... more sections ...                                       │
+│                                                                 │
+│     Contact: info@kingofsales.net | (469) 767-6068             │
+│                                                                 │
 ├─────────────────────────────────────────────────────────────────┤
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │ 🏆 Sales Leaderboard              [Day] [Week] [Month]    │  │
-│  │  #1  👤 Sarah J.  $2,400  ████████████████████  100%     │  │
-│  │  #2  👤 Mike R.   $1,800  ████████████████░░░░   75%     │  │
-│  │  #3  👤 David K.  $1,500  █████████████░░░░░░░   62%     │  │
-│  │  #4  👤 YOU       $1,200  ██████████░░░░░░░░░░   50%     │  │ ← See rank first!
-│  │  #5  👤 Lisa M.   $900    ███████░░░░░░░░░░░░░   37%     │  │
-│  └───────────────────────────────────────────────────────────┘  │
-├─────────────────────────────────────────────────────────────────┤
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │ ✨ Log Today's Numbers                    [Agent ▼]       │  │ ← Then log!
-│  │  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐       │  │
-│  │  │ Pres.   │  │ Pitched │  │ Hours   │  │ Deals   │       │  │
-│  │  │    5    │  │    3    │  │   4.5   │  │    2    │       │  │
-│  │  └─────────┘  └─────────┘  └─────────┘  └─────────┘       │  │
-│  └───────────────────────────────────────────────────────────┘  │
+│  [Footer]                                                       │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
----
+## Files to Create/Modify
 
-## Technical Implementation
+| File | Action | Description |
+|------|--------|-------------|
+| `src/pages/Privacy.tsx` | **Create** | Privacy Policy page |
+| `src/pages/Terms.tsx` | **Create** | Terms of Service page |
+| `src/pages/Disclosures.tsx` | **Create** | Disclosures page |
+| `src/pages/Login.tsx` | **Modify** | Add "Remember Me" checkbox |
+| `src/App.tsx` | **Modify** | Add routes for new pages |
 
-### Code Changes
+## Technical Details
 
-1. **Move LeaderboardTabs section** from lines 439-453 to just after the mobile tab navigation (after line 383)
+### Legal Page Template
 
-2. **Move ProductionEntry section** from lines 385-411 to come after the Leaderboard
+Each legal page will:
+- Use `GlassCard` component for content sections
+- Include "Back to Home" navigation link
+- Show last updated date dynamically
+- Include Footer component for consistency
+- Be fully responsive for mobile
 
-3. **Update mobile tab array** (line 367-382):
+### Remember Me Implementation
+
+The Supabase client already handles session persistence via localStorage. The "Remember Me" checkbox serves as a visual indicator and can be extended later to control session duration if needed.
+
 ```tsx
-// Change tab order from:
-["numbers", "leaderboard", "stats"]
-// To:
-["leaderboard", "numbers", "stats"]
+// In Login.tsx - add between password and submit button:
+<div className="flex items-center space-x-2">
+  <Checkbox 
+    id="remember-me" 
+    checked={rememberMe}
+    onCheckedChange={(checked) => setRememberMe(checked === true)}
+  />
+  <Label htmlFor="remember-me" className="text-sm text-muted-foreground cursor-pointer">
+    Remember me
+  </Label>
+</div>
 ```
 
-4. **Update default activeTab state** (line 111):
-```tsx
-// Change from:
-const [activeTab, setActiveTab] = useState<"numbers" | "leaderboard" | "stats">("numbers");
-// To:
-const [activeTab, setActiveTab] = useState<"numbers" | "leaderboard" | "stats">("leaderboard");
-```
+## Success Criteria
 
-This ensures mobile users see the leaderboard first when they load the page.
+1. ✅ Footer links to `/privacy`, `/terms`, `/disclosures` work
+2. ✅ All legal pages match APEX brand styling
+3. ✅ Pages are mobile responsive
+4. ✅ "Back to Home" navigation works
+5. ✅ Login page has "Remember Me" checkbox like agent login
+6. ✅ All routes registered in App.tsx
 
----
-
-## Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/pages/AgentPortal.tsx` | Reorder sections: Leaderboard above ProductionEntry, update mobile tab order, adjust animation delays |
-
----
-
-## Benefits
-
-1. **Immediate motivation** - Agents see their rank as soon as they enter
-2. **Competitive drive** - They can see who's ahead of them before logging
-3. **Clear call to action** - After seeing the leaderboard, the natural next step is to log numbers to improve rank
-4. **Consistent with gamification** - Matches the rank badge already shown in the header

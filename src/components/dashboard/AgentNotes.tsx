@@ -113,10 +113,8 @@ export function AgentNotes({ agentId, onNoteAdded, readOnly = false }: AgentNote
     }
   };
 
-  // Auto-expand and fetch on mount
-  useEffect(() => {
-    fetchNotes();
-  }, [agentId]);
+  // Notes are now fetched only when expanded (see useEffect on line 33-37)
+  // This improves performance by lazy-loading notes
 
   return (
     <div className="mt-4 pt-4 border-t border-border/50">

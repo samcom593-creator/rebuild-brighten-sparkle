@@ -1,71 +1,86 @@
 
+# Add Direct Password Change to Dashboard Settings
 
-# Fix Password Reset - Remove Daily Limit
-
-## Problem Identified
-
-The current password reset system uses **Resend** (via the `send-password-reset` Edge Function) to send emails. Resend's free tier has a **100 emails/day limit**, which is causing the error:
-
-```
-"You have reached your daily email sending quota."
-```
+## What You Want
+Users should be able to change their password directly from the dashboard settings page by typing in a new password and clicking save - no email links required.
 
 ## Solution
+Add a password change section with input fields right on the settings page. When they enter a new password and click "Update Password", it will change immediately using Supabase's built-in `updateUser` method.
 
-Replace the custom Edge Function with Supabase's **built-in `resetPasswordForEmail` method**. This uses Supabase's native email infrastructure with **no daily limits**.
+## Changes to Make
 
-## Changes Required
+### Update `ProfileSettings.tsx`
 
-### 1. Update `AgentNumbersLogin.tsx`
+1. **Add new state variables for password fields:**
+   - `newPassword` - for the new password input
+   - `confirmPassword` - to confirm they typed it correctly
+   - `passwordLoading` - loading state for the save button
+   - `passwordSaved` - success state
 
-Replace the Edge Function call with Supabase's native method:
+2. **Add password validation:**
+   - Minimum 6 characters
+   - Passwords must match
 
-```typescript
-// BEFORE (uses Resend with quota)
-const { error } = await supabase.functions.invoke("send-password-reset", {
-  body: { email },
-});
+3. **Create `handlePasswordChange` function:**
+   ```typescript
+   const handlePasswordChange = async () => {
+     // Validate passwords match and meet requirements
+     if (newPassword.length < 6) {
+       toast({ title: "Password too short", variant: "destructive" });
+       return;
+     }
+     if (newPassword !== confirmPassword) {
+       toast({ title: "Passwords don't match", variant: "destructive" });
+       return;
+     }
+     
+     // Update password directly - no email needed!
+     const { error } = await supabase.auth.updateUser({
+       password: newPassword
+     });
+     
+     if (error) throw error;
+     
+     toast({ title: "Password Updated!" });
+     // Clear the fields
+   };
+   ```
 
-// AFTER (uses Supabase built-in - no quota)
-const { error } = await supabase.auth.resetPasswordForEmail(email, {
-  redirectTo: "https://apex-financial.org/agent-portal",
-});
+4. **Replace the current "Reset Password" section with direct input fields:**
+   - New Password input (with eye icon to show/hide)
+   - Confirm Password input
+   - "Update Password" button
+   - Keep the old email reset as a secondary option ("Or send reset link")
+
+## UI Preview
+
+```text
+┌─────────────────────────────────────────────┐
+│  Change Password                            │
+├─────────────────────────────────────────────┤
+│  New Password                               │
+│  ┌─────────────────────────────────┐        │
+│  │ ••••••••                    👁  │        │
+│  └─────────────────────────────────┘        │
+│                                             │
+│  Confirm Password                           │
+│  ┌─────────────────────────────────┐        │
+│  │ ••••••••                    👁  │        │
+│  └─────────────────────────────────┘        │
+│                                             │
+│  [ Update Password ]                        │
+│                                             │
+│  Or send a reset link to your email         │
+└─────────────────────────────────────────────┘
 ```
-
-### 2. Update `ProfileSettings.tsx`
-
-Same change - switch from the Edge Function to Supabase's built-in method:
-
-```typescript
-// BEFORE
-const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-password-reset`, ...);
-
-// AFTER
-const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
-  redirectTo: "https://apex-financial.org/agent-portal",
-});
-```
-
-### 3. Optional: Delete `send-password-reset` Edge Function
-
-Since we're no longer using it, we can remove the Edge Function to clean up the codebase.
 
 ## Technical Details
 
-| Aspect | Current (Resend) | After (Supabase Built-in) |
-|--------|------------------|---------------------------|
-| Daily Limit | 100 emails/day | **Unlimited** |
-| Email Style | Custom branded | Supabase default template |
-| Reliability | Dependent on Resend | Native to Supabase |
-| Maintenance | Custom code to maintain | Zero maintenance |
-
-## Trade-off
-
-The Supabase default password reset email is more plain/simple compared to the custom APEX-branded template. However, it works reliably without limits. If branded emails are critical, you would need to upgrade Resend to a paid plan ($20/month for 5,000 emails/month).
+- Uses `supabase.auth.updateUser({ password: newPassword })` - this works instantly for logged-in users
+- No email verification needed - they're already authenticated
+- Password fields are cleared after successful update for security
+- Show/hide password toggle for better UX
 
 ## Files to Modify
 
-1. `src/pages/AgentNumbersLogin.tsx` - Update `handleForgotPassword` function
-2. `src/components/dashboard/ProfileSettings.tsx` - Update password reset handler
-3. `supabase/functions/send-password-reset/index.ts` - Delete (optional cleanup)
-
+1. `src/components/dashboard/ProfileSettings.tsx` - Add password input fields and update handler

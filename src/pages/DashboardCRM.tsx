@@ -99,6 +99,8 @@ interface AgentCRM {
   weeklyPresentations: number;
   weeklyDeals: number;
   weeklyClosingRate: number;
+  // Monthly production stats
+  monthlyALP: number;
 }
 
 const attendanceColors: Record<AttendanceStatus, string> = {
@@ -300,7 +302,7 @@ export default function DashboardCRM() {
         }
       }
 
-      // Fetch weekly production stats for Live agents (evaluated stage)
+      // Fetch weekly and monthly production stats for Live agents (evaluated stage)
       const liveAgentIds = agentData
         .filter(a => a.onboarding_stage === "evaluated")
         .map(a => a.id);
@@ -312,29 +314,43 @@ export default function DashboardCRM() {
       weekStart.setDate(today.getDate() - dayOfWeek);
       const weekStartStr = weekStart.toISOString().split("T")[0];
 
+      // Get this month's start date
+      const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+      const monthStartStr = monthStart.toISOString().split("T")[0];
+
       let weeklyProductionMap = new Map<string, { aop: number; presentations: number; deals: number }>();
+      let monthlyProductionMap = new Map<string, number>();
 
       if (liveAgentIds.length > 0) {
-        const { data: weeklyProduction } = await supabase
+        // Fetch all production for this month (which includes this week)
+        const { data: monthlyProduction } = await supabase
           .from("daily_production")
-          .select("agent_id, aop, presentations, deals_closed")
+          .select("agent_id, aop, presentations, deals_closed, production_date")
           .in("agent_id", liveAgentIds)
-          .gte("production_date", weekStartStr);
+          .gte("production_date", monthStartStr);
 
-        // Aggregate by agent
-        for (const prod of weeklyProduction || []) {
-          const existing = weeklyProductionMap.get(prod.agent_id) || { aop: 0, presentations: 0, deals: 0 };
-          weeklyProductionMap.set(prod.agent_id, {
-            aop: existing.aop + (Number(prod.aop) || 0),
-            presentations: existing.presentations + (prod.presentations || 0),
-            deals: existing.deals + (prod.deals_closed || 0),
-          });
+        // Aggregate by agent for both weekly and monthly
+        for (const prod of monthlyProduction || []) {
+          // Monthly aggregation
+          const existingMonthly = monthlyProductionMap.get(prod.agent_id) || 0;
+          monthlyProductionMap.set(prod.agent_id, existingMonthly + (Number(prod.aop) || 0));
+
+          // Weekly aggregation (only if within this week)
+          if (prod.production_date >= weekStartStr) {
+            const existing = weeklyProductionMap.get(prod.agent_id) || { aop: 0, presentations: 0, deals: 0 };
+            weeklyProductionMap.set(prod.agent_id, {
+              aop: existing.aop + (Number(prod.aop) || 0),
+              presentations: existing.presentations + (prod.presentations || 0),
+              deals: existing.deals + (prod.deals_closed || 0),
+            });
+          }
         }
       }
 
       const crmAgents: AgentCRM[] = agentData.map((agent, index) => {
         const profile = profileMap.get(agent.user_id);
         const weeklyStats = weeklyProductionMap.get(agent.id) || { aop: 0, presentations: 0, deals: 0 };
+        const monthlyALP = monthlyProductionMap.get(agent.id) || 0;
         const weeklyClosingRate = weeklyStats.presentations > 0 
           ? Math.round((weeklyStats.deals / weeklyStats.presentations) * 100) 
           : 0;
@@ -370,6 +386,7 @@ export default function DashboardCRM() {
           weeklyPresentations: weeklyStats.presentations,
           weeklyDeals: weeklyStats.deals,
           weeklyClosingRate,
+          monthlyALP,
         };
       });
 
@@ -758,26 +775,29 @@ export default function DashboardCRM() {
             </DropdownMenu>
           </div>
 
-          {/* Weekly Production Stats for Live Agents */}
-          {isInFieldActive && (agent.weeklyALP > 0 || agent.weeklyPresentations > 0) && (
-            <div className="flex items-center gap-2 text-xs border-t border-border pt-2 mt-2">
-              <span className="text-muted-foreground">Week:</span>
-              <Badge variant="outline" className="text-[10px] h-5 px-1.5 gap-0.5">
-                <TrendingUp className="h-2.5 w-2.5" />
-                ${agent.weeklyALP.toLocaleString()}
-              </Badge>
-              <Badge variant="outline" className="text-[10px] h-5 px-1.5">
-                {agent.weeklyPresentations} pres
-              </Badge>
-              <Badge 
-                variant="outline" 
-                className={cn(
-                  "text-[10px] h-5 px-1.5",
-                  agent.weeklyClosingRate >= 30 && "border-primary/50 text-primary"
-                )}
-              >
-                {agent.weeklyClosingRate}% close
-              </Badge>
+          {/* Week + Month AOP Stats - Prominent Display for Live Agents */}
+          {isInFieldActive && (
+            <div className="flex items-center justify-between gap-2 px-2 py-1.5 rounded-lg bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20 mt-2">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-muted-foreground">Week:</span>
+                <span className="text-sm font-bold text-primary">${agent.weeklyALP.toLocaleString()}</span>
+              </div>
+              <div className="w-px h-4 bg-border" />
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-muted-foreground">Month:</span>
+                <span className="text-sm font-bold text-foreground">${agent.monthlyALP.toLocaleString()}</span>
+              </div>
+              {agent.weeklyClosingRate > 0 && (
+                <>
+                  <div className="w-px h-4 bg-border" />
+                  <span className={cn(
+                    "text-[10px] font-medium",
+                    agent.weeklyClosingRate >= 30 && "text-primary"
+                  )}>
+                    {agent.weeklyClosingRate}%
+                  </span>
+                </>
+              )}
             </div>
           )}
 

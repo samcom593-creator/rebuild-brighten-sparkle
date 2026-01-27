@@ -254,29 +254,56 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
       // Trigger confetti celebration!
       setShowConfetti(true);
       
-      // Find the selected agent's full name
-      let selectedName = "Your";
+      // Find the selected agent's full name for notifications
+      let selectedAgentName = currentUserFullName;
       if (selectedAgentId !== agentId) {
         const foundInTeam = teamMembers.find(m => m.id === selectedAgentId);
         if (foundInTeam) {
-          selectedName = foundInTeam.name + "'s";
+          selectedAgentName = foundInTeam.name;
         } else {
-          // Search in all agents grouped
           for (const group of allAgentsGrouped) {
             const found = group.agents.find(a => a.id === selectedAgentId);
             if (found) {
-              selectedName = found.name + "'s";
+              selectedAgentName = found.name;
               break;
             }
           }
         }
       }
       
+      // 🚨 DEAL ALERT: If deals were closed, notify the whole team!
+      if (formData.deals_closed > 0) {
+        try {
+          console.log("🚨 Triggering deal alert for", selectedAgentName);
+          await supabase.functions.invoke("notify-deal-alert", {
+            body: {
+              agentId: selectedAgentId,
+              agentName: selectedAgentName,
+              deals: formData.deals_closed,
+              aop: formData.aop,
+            },
+          });
+          
+          // 🔥 Also check for streaks
+          await supabase.functions.invoke("notify-streak-alert", {
+            body: {
+              agentId: selectedAgentId,
+              agentName: selectedAgentName,
+            },
+          });
+        } catch (notifyError) {
+          console.error("Failed to send deal/streak notifications:", notifyError);
+          // Don't fail the whole submission for notification errors
+        }
+      }
+      
+      const displayName = selectedAgentId === agentId ? "Your" : selectedAgentName + "'s";
+      
       toast.success(
         <div className="flex flex-col gap-1">
           <span className="font-bold flex items-center gap-1">
             <Sparkles className="h-4 w-4 text-amber-400" />
-            {selectedName} Numbers Saved!
+            {displayName} Numbers Saved!
           </span>
           <span className="text-sm opacity-80">
             {formData.deals_closed} deals • ${Number(formData.aop).toLocaleString()} ALP

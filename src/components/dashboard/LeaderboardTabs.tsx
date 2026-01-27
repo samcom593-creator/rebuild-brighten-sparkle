@@ -33,7 +33,7 @@ interface LeaderboardEntry {
   isCurrentUser: boolean;
 }
 
-type Period = "day" | "week" | "month";
+type Period = "day" | "week" | "month" | "all";
 type SortCategory = "alp" | "presentations" | "closingRate" | "deals";
 
 interface CategoryLeaders {
@@ -97,6 +97,9 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
           startDate = subDays(today, 7).toISOString().split("T")[0];
           break;
         case "month":
+          startDate = subDays(today, 30).toISOString().split("T")[0];
+          break;
+        case "all":
           startDate = subDays(today, 365).toISOString().split("T")[0];
           break;
         default:
@@ -270,10 +273,11 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
 
   const maxALP = sortedEntries[0]?.alp || 1;
 
-  const periodLabels = {
+  const periodLabels: Record<Period, string> = {
     day: "Today",
     week: "This Week",
-    month: "All Time",
+    month: "This Month",
+    all: "All Time",
   };
 
   const renderRankBadge = (rank: number, isCurrentUser: boolean) => {
@@ -351,9 +355,10 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
               </Select>
               <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)} className="w-auto">
                 <TabsList className="h-8 p-0.5">
-                  <TabsTrigger value="day" className="text-xs px-2.5 h-7">Day</TabsTrigger>
-                  <TabsTrigger value="week" className="text-xs px-2.5 h-7">Wk</TabsTrigger>
-                  <TabsTrigger value="month" className="text-xs px-2.5 h-7">All</TabsTrigger>
+                  <TabsTrigger value="day" className="text-xs px-2 h-7">Day</TabsTrigger>
+                  <TabsTrigger value="week" className="text-xs px-2 h-7">Week</TabsTrigger>
+                  <TabsTrigger value="month" className="text-xs px-2 h-7">Month</TabsTrigger>
+                  <TabsTrigger value="all" className="text-xs px-2 h-7">All</TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>

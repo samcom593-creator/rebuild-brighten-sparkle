@@ -94,24 +94,61 @@ export default function Install() {
 
     setIsLoading(true);
     try {
-      // Store email for future auto-login
-      localStorage.setItem("apex_agent_email", email.trim().toLowerCase());
+      const normalizedEmail = email.trim().toLowerCase();
+      localStorage.setItem("apex_agent_email", normalizedEmail);
 
-      // Call simple-login to send magic link
+      // Call simple-login to get token for instant auth
       const { data, error } = await supabase.functions.invoke("simple-login", {
-        body: { identifier: email.trim().toLowerCase() }
+        body: { identifier: normalizedEmail }
       });
 
       if (error) throw error;
 
-      if (data?.success) {
-        toast.success("Login link sent! Check your email.");
-      } else {
-        toast.error(data?.error || "Could not send login link");
+      // No account found - redirect to signup
+      if (data?.needsAccount) {
+        toast.error("No account found. Please sign up first.");
+        navigate("/agent-signup");
+        return;
       }
+
+      // Password required - redirect to login page
+      if (data?.requiresPassword) {
+        toast.info("Password required for this account.");
+        navigate("/agent-login");
+        return;
+      }
+
+      // Success - verify OTP token to create session instantly
+      if (data?.success && data?.tokenHash) {
+        const { error: verifyError } = await supabase.auth.verifyOtp({
+          email: data.email,
+          token_hash: data.tokenHash,
+          type: "magiclink"
+        });
+
+        if (verifyError) {
+          console.error("OTP verify error:", verifyError);
+          toast.error("Login failed. Please try again.");
+          return;
+        }
+
+        toast.success(`Welcome back${data.name ? `, ${data.name.split(' ')[0]}` : ''}!`);
+        navigate("/agent-portal", { replace: true });
+        return;
+      }
+
+      // Session returned directly (password login)
+      if (data?.session) {
+        await supabase.auth.setSession(data.session);
+        toast.success(`Welcome back${data.name ? `, ${data.name.split(' ')[0]}` : ''}!`);
+        navigate("/agent-portal", { replace: true });
+        return;
+      }
+
+      toast.error("Login failed. Please try again.");
     } catch (err: any) {
       console.error("Login error:", err);
-      toast.error("Failed to send login link");
+      toast.error("Failed to log in");
     } finally {
       setIsLoading(false);
     }
@@ -165,13 +202,13 @@ export default function Install() {
                 className="w-full h-12 text-base font-semibold"
                 disabled={isLoading}
               >
-                {isLoading ? (
+              {isLoading ? (
                   <>
                     <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Sending link...
+                    Logging in...
                   </>
                 ) : (
-                  "Send Login Link"
+                  "Log In"
                 )}
               </Button>
             </form>

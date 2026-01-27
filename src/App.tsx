@@ -31,6 +31,9 @@ import AgentPortal from "./pages/AgentPortal";
 import OnboardingCourse from "./pages/OnboardingCourse";
 import MagicLogin from "./pages/MagicLogin";
 import Numbers from "./pages/Numbers";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
+import Disclosures from "./pages/Disclosures";
 
 const queryClient = new QueryClient();
 
@@ -145,6 +148,10 @@ const App = () => (
               </ProtectedRoute>
             }
           />
+          {/* Legal pages */}
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/disclosures" element={<Disclosures />} />
           {/* Legacy redirect */}
           <Route path="/dashboard/leads" element={<DashboardApplicants />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

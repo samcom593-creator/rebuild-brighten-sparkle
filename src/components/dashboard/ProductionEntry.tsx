@@ -323,6 +323,27 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
         }
       }
       
+      // 🏆 MILESTONE PLAQUES: Check for single-day milestones
+      const alpAmount = Number(formData.aop) || 0;
+      if (alpAmount >= 3000) {
+        try {
+          const milestoneType = alpAmount >= 5000 ? "single_day" : "single_day_bronze";
+          console.log(`🏆 Triggering ${milestoneType} plaque for ${selectedAgentName}: $${alpAmount.toLocaleString()}`);
+          
+          await supabase.functions.invoke("send-plaque-recognition", {
+            body: {
+              agentId: selectedAgentId,
+              milestoneType,
+              amount: alpAmount,
+              date: today,
+            },
+          });
+        } catch (plaqueError) {
+          console.error("Failed to send plaque recognition:", plaqueError);
+          // Don't fail the whole submission for plaque errors
+        }
+      }
+      
       const displayName = selectedAgentId === agentId ? "Your" : selectedAgentName + "'s";
       
       toast.success(

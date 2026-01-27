@@ -433,8 +433,8 @@ export default function AgentPortal() {
 
           {/* Quick Stats Grid */}
           {(() => {
-            // Show team stats for managers/admins if they have team data
-            const showTeamStats = (isAdmin || isManager) && teamTodayStats.totalALP > 0;
+            // Show team stats ONLY for admin (not managers)
+            const showTeamStats = isAdmin && teamTodayStats.totalALP > 0;
             const statsLabel = showTeamStats ? "Team's" : "Today's";
             const displayALP = showTeamStats ? teamTodayStats.totalALP : todayALP;
             const displayDeals = showTeamStats ? teamTodayStats.totalDeals : todayDeals;

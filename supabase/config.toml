@@ -177,3 +177,12 @@ verify_jwt = false
 
 [functions.notify-stage-change]
 verify_jwt = false
+
+[functions.send-plaque-recognition]
+verify_jwt = false
+
+[functions.check-weekly-milestones]
+verify_jwt = false
+
+[functions.check-monthly-milestones]
+verify_jwt = false

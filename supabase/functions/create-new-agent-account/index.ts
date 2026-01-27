@@ -74,7 +74,27 @@ const handler = async (req: Request): Promise<Response> => {
     const userId = newAuthUser.user.id;
     console.log(`Created auth user: ${userId}`);
 
-    // 4. Create profile record
+    // 4. Delete the trigger-created profile (it has userId) to avoid unique constraint violation
+    const { error: deleteProfileError } = await supabaseAdmin
+      .from("profiles")
+      .delete()
+      .eq("user_id", userId);
+
+    if (deleteProfileError) {
+      console.log("No trigger-created profile to delete or error:", deleteProfileError.message);
+    }
+
+    // 5. Delete the trigger-created role to avoid duplicates
+    const { error: deleteRoleError } = await supabaseAdmin
+      .from("user_roles")
+      .delete()
+      .eq("user_id", userId);
+
+    if (deleteRoleError) {
+      console.log("No trigger-created role to delete or error:", deleteRoleError.message);
+    }
+
+    // 6. Create profile record fresh
     const { data: newProfile, error: profileError } = await supabaseAdmin
       .from("profiles")
       .insert({
@@ -93,7 +113,7 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Failed to create profile. Please try again.");
     }
 
-    // 5. Create agent record
+    // 7. Create agent record
     const { error: agentError } = await supabaseAdmin
       .from("agents")
       .insert({
@@ -110,7 +130,7 @@ const handler = async (req: Request): Promise<Response> => {
       // Don't fail - user can still log in
     }
 
-    // 6. Add agent role
+    // 8. Add agent role (we deleted the trigger-created one)
     const { error: roleError } = await supabaseAdmin
       .from("user_roles")
       .insert({ user_id: userId, role: "agent" });

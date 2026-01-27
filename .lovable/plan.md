@@ -1,194 +1,116 @@
 
-# Comprehensive Fix Plan: Leaderboard Visibility + Onboarding Course
 
-## Part 1: Fix ALL Leaderboard Visibility Issues
+# Onboarding Course Content Population Plan
 
-### Root Cause Analysis
-The leaderboards are failing because of a **cascading RLS failure**:
+## Overview
 
-```
-ManagerLeaderboard.tsx Flow:
-1. Query `agents` table for all active agents → RLS blocks other managers ❌
-2. Query `user_roles` for role='manager' → RLS only returns YOUR role ❌  
-3. Query `profiles` for names → No user_ids to query, returns nothing ❌
-
-Result: Manager only sees themselves!
-```
-
-### Solution: Add 3 New RLS Policies
-
-**1. Allow Managers to View Manager User Roles**
-```sql
-CREATE POLICY "Managers can view manager roles"
-ON public.user_roles FOR SELECT
-USING (
-  has_role(auth.uid(), 'manager'::app_role)
-  AND role = 'manager'
-);
-```
-This allows any manager to see which users have the 'manager' role.
-
-**2. Allow Managers to View Other Manager Agent Records**
-```sql
-CREATE POLICY "Managers can view other manager agents"
-ON public.agents FOR SELECT
-USING (
-  has_role(auth.uid(), 'manager'::app_role)
-  AND user_id IN (
-    SELECT ur.user_id 
-    FROM public.user_roles ur 
-    WHERE ur.role = 'manager'
-  )
-);
-```
-This allows managers to see other managers' agent records (needed for leaderboard calculations).
-
-**3. Allow All Authenticated Users to View All Agent Production Data**
-The current policy already allows managers to view all production, but the agents table blocks the name lookup. We need to ensure the full chain works.
-
-### Additional Fix: Update Profile Visibility for Leaderboards
-
-The existing policy "Managers can view manager profiles for leaderboard" is good, but we need to ensure agents with production data can also have their profiles viewed by managers. Add:
-
-```sql
-CREATE POLICY "Managers can view all profiles for leaderboards"
-ON public.profiles FOR SELECT
-USING (
-  has_role(auth.uid(), 'manager'::app_role)
-);
-```
-This is broader but safe - profile data (name, avatar) isn't sensitive.
+This plan will populate your onboarding course database with 4 training modules and AI-generated quiz questions. Each module requires 90% correct answers to pass.
 
 ---
 
-## Part 2: Onboarding Course Integration
+## Module Structure
 
-### What You Want
-Based on your description, you want an interactive onboarding course that:
-- Uses video content to train new agents
-- Includes quiz questions to test understanding
-- Prevents progression until questions are answered correctly
-- Gets agents in the right "mindset" before going live
+Based on the YouTube videos you provided, here are the 4 modules:
 
-### Proposed Course Structure
-
-**Page: `/onboarding-course`**
-
-A multi-module course with:
-1. **Video Player** - Embedded videos for each module
-2. **AI-Powered Quiz Questions** - Generated from video content
-3. **Progress Tracking** - Database-backed, shows completion status
-4. **Gate System** - Must pass each module to unlock the next
-5. **Integration with CRM** - Updates agent onboarding_stage when complete
-
-### Database Schema
-
-```sql
--- Onboarding modules table
-CREATE TABLE onboarding_modules (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  order_index INTEGER NOT NULL,
-  title TEXT NOT NULL,
-  description TEXT,
-  video_url TEXT NOT NULL,
-  pass_threshold INTEGER DEFAULT 80, -- % correct needed to pass
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Questions for each module
-CREATE TABLE onboarding_questions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  module_id UUID REFERENCES onboarding_modules(id) ON DELETE CASCADE,
-  question TEXT NOT NULL,
-  options JSONB NOT NULL, -- ["Option A", "Option B", "Option C", "Option D"]
-  correct_answer INTEGER NOT NULL, -- 0-3 index
-  explanation TEXT,
-  order_index INTEGER DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Agent progress tracking
-CREATE TABLE onboarding_progress (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  agent_id UUID NOT NULL,
-  module_id UUID REFERENCES onboarding_modules(id) ON DELETE CASCADE,
-  started_at TIMESTAMPTZ DEFAULT now(),
-  completed_at TIMESTAMPTZ,
-  score INTEGER,
-  attempts INTEGER DEFAULT 0,
-  answers JSONB, -- Store their answers for review
-  passed BOOLEAN DEFAULT false,
-  UNIQUE(agent_id, module_id)
-);
-```
-
-### Course Components
-
-**1. OnboardingCourse.tsx** - Main course page
-- Module list sidebar with lock/unlock icons
-- Current module content area
-- Video player with required watch time
-- Quiz section that appears after video
-
-**2. OnboardingModule.tsx** - Individual module
-- Video embed (YouTube or custom)
-- Progress bar for video completion
-- "Take Quiz" button unlocks after 90% video watched
-
-**3. OnboardingQuiz.tsx** - Quiz interface
-- Multiple choice questions
-- Immediate feedback on answers
-- Score summary at end
-- "Retry" if below pass threshold
-- Confetti celebration on pass
-
-**4. OnboardingProgress.tsx** - Progress tracker
-- Visual progress bar
-- Module completion checkmarks
-- Estimated time remaining
-
-### AI Question Enhancement
-
-Use the AI assistant edge function to:
-1. Analyze video transcripts (provided by you)
-2. Generate additional quiz questions
-3. Create scenario-based questions
-4. Generate "gotcha" questions to catch those not paying attention
-
-### Integration with CRM
-
-When all modules are complete:
-1. Update `agents.onboarding_stage` to 'training_online' or 'in_field_training'
-2. Log completion in `agent_onboarding` table
-3. Trigger notification to manager
-4. Show "Ready for Field Training" status in CRM
+| Order | Title | Video URL | Duration |
+|-------|-------|-----------|----------|
+| 1 | Getting Started: Your First Week | `https://youtu.be/olXKn7OoH6I` | ~10 min |
+| 2 | The Sales System Blueprint | `https://youtu.be/4iVRFhe7Kxo` | 8:58 |
+| 3 | Handling Objections | `https://youtu.be/jOtqBnnLsR0` | 9:34 |
+| 4 | Script Mastery | `https://youtu.be/TggYZUIWQRE` | 45:08 |
 
 ---
 
-## Implementation Order
+## Implementation Steps
 
-### Phase 1: Fix Leaderboards (Immediate)
-1. Add RLS policy for `user_roles` - managers can see manager roles
-2. Add RLS policy for `agents` - managers can see other managers
-3. Update profile visibility policy to be more permissive for managers
-4. Test all leaderboards with manager accounts (KJ, OB)
+### Step 1: Database Population Migration
 
-### Phase 2: Basic Course Structure
-1. Create database tables for modules/questions/progress
-2. Build OnboardingCourse.tsx page with module navigation
-3. Build video player with watch time tracking
-4. Build quiz component with scoring
+Create a SQL migration to insert the 4 modules with their video URLs and 90% pass threshold:
 
-### Phase 3: Content & AI Enhancement
-1. You provide video URLs and any existing questions
-2. AI generates additional questions from video transcripts
-3. Fine-tune pass thresholds and difficulty
+```sql
+INSERT INTO onboarding_modules (order_index, title, description, video_url, pass_threshold)
+VALUES 
+  (0, 'Getting Started: Your First Week', 'Learn the fundamentals of your new role...', 'https://youtu.be/olXKn7OoH6I', 90),
+  (1, 'The Sales System Blueprint', 'Master the proven sales system...', 'https://youtu.be/4iVRFhe7Kxo', 90),
+  (2, 'Handling Objections', 'Learn to confidently handle common objections...', 'https://youtu.be/jOtqBnnLsR0', 90),
+  (3, 'Script Mastery', 'Perfect your word-for-word sales script...', 'https://youtu.be/TggYZUIWQRE', 90);
+```
 
-### Phase 4: CRM Integration
-1. Connect course completion to onboarding stage
-2. Add "Course Progress" indicator to agent cards in CRM
-3. Manager notifications when agents complete course
+### Step 2: Create AI Question Generation Edge Function
+
+Build an edge function that uses Lovable AI (Gemini) to generate quiz questions based on module topics. The function will:
+- Accept module title and topic keywords
+- Generate 5 multiple-choice questions per module
+- Return questions with 4 options each and correct answer index
+- Include explanations for why answers are correct
+
+### Step 3: Generate & Insert Quiz Questions
+
+Use the AI to generate relevant questions for each module:
+
+**Module 1: Getting Started** (5 questions)
+- Company culture and values
+- Daily schedule expectations
+- Tools and systems overview
+- Communication protocols
+- First-week goals
+
+**Module 2: Sales System Blueprint** (5 questions)
+- Sales process stages
+- Lead qualification criteria
+- Presentation structure
+- Follow-up timing
+- Conversion metrics
+
+**Module 3: Handling Objections** (5 questions)
+- Common objection types
+- Response frameworks
+- Empathy techniques
+- Turnaround phrases
+- When to walk away
+
+**Module 4: Script Mastery** (5 questions)
+- Opening statements
+- Discovery questions
+- Value proposition delivery
+- Closing techniques
+- Tone and pacing
+
+### Step 4: Admin Panel for Question Management (Optional)
+
+If you want to edit questions later, I can add an admin interface to:
+- View all modules and questions
+- Edit question text and options
+- Change correct answers
+- Add/remove questions
+- Reorder modules
+
+---
+
+## Technical Details
+
+### Edge Function: `generate-quiz-questions`
+
+```text
+supabase/functions/generate-quiz-questions/index.ts
+```
+
+This function will:
+1. Accept a module ID or title
+2. Call Lovable AI Gateway with a structured prompt
+3. Use tool calling to extract structured JSON output
+4. Return 5 questions per module
+
+### Database Changes
+
+No schema changes needed - tables already exist:
+- `onboarding_modules` - Store module content
+- `onboarding_questions` - Store quiz questions
+- `onboarding_progress` - Track agent progress
+
+### CRM Integration (Already Done)
+
+The "View Training Course" link was added in the previous update for agents in 'onboarding' or 'training_online' stages.
 
 ---
 
@@ -196,22 +118,39 @@ When all modules are complete:
 
 | File | Action | Purpose |
 |------|--------|---------|
-| SQL Migration | Create | Add 3 new RLS policies for leaderboard visibility |
-| `src/pages/OnboardingCourse.tsx` | Create | Main course page |
-| `src/components/course/OnboardingModule.tsx` | Create | Module display component |
-| `src/components/course/OnboardingQuiz.tsx` | Create | Quiz interface |
-| `src/components/course/OnboardingProgress.tsx` | Create | Progress tracker |
-| SQL Migration | Create | New tables for course content |
-| `src/App.tsx` | Modify | Add `/onboarding-course` route |
+| SQL Migration | Create | Insert 4 modules with video URLs |
+| `supabase/functions/generate-quiz-questions/index.ts` | Create | AI question generation |
+| SQL Migration | Create | Insert AI-generated questions |
 
 ---
 
-## Next Steps
+## Sample Quiz Question Format
 
-I need from you:
-1. **Video URLs** - Links to your training videos (YouTube, Vimeo, etc.)
-2. **Existing Questions** - Any current quiz questions you want included
-3. **Module Structure** - How many modules? What topics?
-4. **Pass Threshold** - What score should be required? (80%? 90%?)
+Each question follows this structure:
 
-For now, I'll proceed with **Phase 1 (fixing leaderboards)** immediately since that's blocking your managers from seeing competitive data. Ready to implement?
+```json
+{
+  "question": "What is the first step in the sales system?",
+  "options": [
+    "Close the deal immediately",
+    "Build rapport and qualify the lead",
+    "Present the full product catalog",
+    "Ask for referrals"
+  ],
+  "correct_answer": 1,
+  "explanation": "Building rapport and qualifying the lead is essential before presenting solutions."
+}
+```
+
+---
+
+## Expected Outcome
+
+After implementation:
+- 4 active modules visible in the course
+- 5 AI-generated quiz questions per module (20 total)
+- 90% pass threshold on all modules
+- Agents must watch 90% of video before taking quiz
+- Progress tracked in database
+- CRM shows course link for agents in training stages
+

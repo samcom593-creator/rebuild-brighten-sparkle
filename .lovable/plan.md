@@ -1,151 +1,292 @@
 
-## Goal (what “working” means)
-Agents can tap a link from any email client/device and be taken straight into:
-- **Daily numbers entry** (primary goal), and/or
-- **Agent portal**
-…without getting sent to a Lovable login screen, without “nothing happens”, and with a clean fallback when something is wrong.
+# Agent Portal V2: Zero-Friction Daily Stats & Leaderboard
 
-## What’s actually going wrong (based on the current code)
-There are two independent failure sources:
+## Executive Summary
+Rebuild the agent portal to be a lightning-fast, habit-forming daily tool. Primary goal: **agent clicks link → enters numbers → sees leaderboard → done in under 30 seconds**. Eliminate all forced re-logins, simplify authentication to email/phone only (no password by default), and create a high-density, visually intelligent leaderboard.
 
-### A) Redirect / environment mismatch (very likely)
-Your email links always go to:
-- `https://apex-financial.org/magic-login?token=...`
+---
 
-But the token is created in whichever backend environment the “send email” function was triggered from. If a bulk send is triggered from the **preview/test** environment but the link points to the **live/public** domain, then:
-- token exists in **test DB**
-- click happens on **live site** → it calls **live backend**
-- token is missing → flow fails / falls back / appears broken
+## Current State Analysis
 
-This also explains why some auth emails (password reset, magic link) “open and nothing happens” or route users somewhere unexpected: the auth system will fall back to configured “Site URL / Redirect URLs” rules when it can’t use the redirect you requested.
+### What Exists
+- **AgentPortal.tsx**: Full dashboard with stats, charts, goals, weekly badges (621 lines - too heavy for daily use)
+- **LogNumbers.tsx**: Standalone public entry (no auth) with search-by-name flow
+- **AgentNumbersLogin.tsx**: Email-first login with password/set-password flows
+- **ProductionEntry.tsx**: 8-field stat entry form with manager team selector
+- **LeaderboardTabs.tsx**: Full-featured leaderboard with day/week/month, sorting, rank changes
 
-### B) The current magic login method depends on an external redirect
-Right now `MagicLogin.tsx` does:
-1) call `verify-magic-link`
-2) receive `otpData.properties.action_link`
-3) `window.location.href = action_link`
+### Pain Points
+1. **Forced re-login**: Sessions expire or users hit login walls clicking email links
+2. **Too much friction**: Multiple steps to get to number entry
+3. **Heavy portal**: AgentPortal loads too much (charts, badges, goals) for quick daily use
+4. **Leaderboard UX**: Oversized rows, low density, too much dead space
+5. **Manager notifications**: Only admin gets production emails, not direct managers
 
-That `action_link` sends the user through the auth provider’s `/verify` endpoint and then redirects back to your site. If Redirect URLs are not perfectly allowlisted (and consistent across environments/domains), users can end up on:
-- a Lovable login wall (preview URL), or
-- the wrong site URL,
-- or a dead-end in an in-app browser.
+---
 
-## The fix (design decision)
-We remove the “external redirect” dependency completely.
+## Architecture Decisions
 
-Instead of redirecting the user to `action_link`, we will:
-1) use the backend to generate a **hashed token** (token_hash) for that user
-2) return that hash to the frontend
-3) the frontend calls **`supabase.auth.verifyOtp()`** directly to create the session in-app
-4) then we navigate to `/apex-daily-numbers` or `/agent-portal`
+### 1. Single Entry Point Strategy
+Create **one unified route** (`/numbers`) that handles everything:
+- Already authenticated? → Show entry form immediately
+- Not authenticated? → Show inline login (email/phone only)
+- No CRM match? → Create quick account inline
 
-This eliminates the biggest source of “Lovable login / nothing happens” behavior because it keeps the whole login inside your app (same origin).
+### 2. "Simple Login" as Default
+- First visit: Enter email OR phone
+- System checks CRM via `check-email-status`
+- **CRM match found**: Immediately grant access (no password)
+- **No match**: Quick inline signup (name + email/phone)
+- Session persists via Supabase auth with extended expiry
 
-## Planned changes
+### 3. Optional Password Lock
+After first login, agents can optionally enable "Require password" in settings. Default is **Simple Login** (identifier only).
 
-### 1) Update the backend auth configuration (required)
-In Lovable Cloud backend settings, we will ensure:
-- **Site URL** is your primary domain (apex-financial.org)
-- **Redirect URLs** include:
-  - `https://apex-financial.org/*`
-  - your published Lovable domain `https://rebuild-brighten-sparkle.lovable.app/*`
-  - your preview domain `https://id-preview--f583945a-f8ff-4a81-8442-9fc61f88a855.lovable.app/*` (so preview testing doesn’t bounce to a login wall)
+---
 
-Why this still matters even after the in-app verifyOtp approach:
-- It fixes password reset flows and any other auth links that rely on redirects.
-- It prevents “wrong domain fallback” behavior.
+## Implementation Plan
 
-### 2) Change `verify-magic-link` to return `hashed_token` (not `action_link`)
-Current behavior:
-- returns `authLink: otpData.properties.action_link`
+### Phase 1: Create Unified Portal Page (`/numbers`)
 
-New behavior:
-- returns:
-  - `email`
-  - `destination`
-  - `tokenHash` (from `otpData.properties.hashed_token` or equivalent field)
-  - `type` = `"magiclink"` (so frontend knows what to pass to verifyOtp)
+**New file: `src/pages/Numbers.tsx`**
 
-Also improve token consumption safety:
-- Do **not** mark `magic_login_tokens.used_at` before we have successfully generated the OTP payload.
-- Preferably: mark it used **after** OTP payload is generated (and optionally after successful verifyOtp via a second “consume token” call).
-- Add extra logging (token prefix, destination, and whether otp payload contained hashed_token) so we can prove where it fails.
+A single-screen experience combining:
+1. **Inline Auth Block** (only if not logged in)
+   - Email/phone input
+   - Auto-lookup against CRM
+   - If found: create session instantly (no password)
+   - If not found: show name field + create account
+   
+2. **Stat Entry Section**
+   - Compact 2x4 grid (same 8 fields)
+   - Large, touch-friendly inputs
+   - Single "Submit" button
+   - Micro-animation + sound on success
 
-### 3) Change `MagicLogin.tsx` to use `verifyOtp` and then navigate
-Replace:
-- `window.location.href = data.authLink`
+3. **Compact Leaderboard**
+   - High-density rows (avatar + name + key stats)
+   - Day/Week/All toggle
+   - Highlight current user position
+   - Real-time updates
 
-With:
-- `await supabase.auth.verifyOtp({ email: data.email, token: data.tokenHash, type: "magiclink" })`
-- then `navigate("/apex-daily-numbers")` or `navigate("/agent-portal")`
+**Key UX Features:**
+- Page remembers scroll position
+- Keyboard-optimized (tab through fields)
+- Works perfectly on mobile
+- No unnecessary sections (no charts, badges, goals on this page)
 
-Add robust UX behavior:
-- If verification fails, show a clear error and three buttons:
-  1) “Try again”
-  2) “Go to Agent Login”
-  3) “Send me a fresh link” (input email → calls a backend function to send a new magic link)
-- This gives agents a way out even if their token was already used/expired.
+### Phase 2: Passwordless Session System
 
-### 4) Fix `ProtectedRoute` so agents never land on the wrong login screen
-Right now:
-- `/apex-daily-numbers` redirects to `/agent-login`
-- `/agent-portal` redirects to `/login` (manager login)
+**Update `check-email-status` edge function:**
+- Return `passwordRequired: boolean` from agent settings
+- Default: `false` (simple login)
 
-We’ll update ProtectedRoute so **both**:
-- `/apex-daily-numbers`
-- `/agent-portal`
-redirect to `/agent-login` when unauthenticated.
+**New field on agents table:**
+```sql
+ALTER TABLE agents ADD COLUMN password_required boolean DEFAULT false;
+```
 
-This prevents the “I clicked it and got the wrong login page” failure mode even if magic login fails.
+**New edge function: `simple-login`**
+- Receives: email or phone
+- Checks CRM match
+- If match + `password_required = false`:
+  - Generate a session token via Supabase Admin API
+  - Return auth session to frontend
+- If match + `password_required = true`:
+  - Return `{ requiresPassword: true }`
+- If no match:
+  - Return `{ needsAccount: true }`
 
-### 5) Make email link base URL environment-safe
-Right now both email functions hardcode:
-- `const BASE_URL = "https://apex-financial.org";`
+**Frontend flow:**
+```
+User enters email/phone
+  ↓
+Call simple-login
+  ↓
+├─ Session returned → setSession → navigate to entry form
+├─ requiresPassword → show password field
+└─ needsAccount → show name field → create account → auto-login
+```
 
-We will make base URL deterministic and safe:
-- Prefer `Deno.env.get("APP_BASE_URL")` (configurable per environment)
-- Else fall back to request Origin (when invoked from the web UI)
-- Else fall back to apex-financial.org
+### Phase 3: Compact Leaderboard Component
 
-This prevents “tokens created in test, link points to live” mistakes during testing, and also allows you to intentionally test flows in preview without sending agents to a domain they can’t access.
+**New component: `src/components/dashboard/CompactLeaderboard.tsx`**
 
-### 6) Testing strategy (how we prove it works)
-We will test in a way that mirrors real user behavior:
+Design specifications:
+- **Row height**: 40px (currently ~60px)
+- **Avatar**: 28px circle (currently 32px)
+- **Columns**: Rank | Avatar+Name | Deals | ALP
+- **No hover cards or tooltips on mobile**
+- **Current user row**: Highlighted with subtle glow
+- **Top 3**: Gold/Silver/Bronze icons inline
 
-**Backend-level tests**
-1) Trigger `send-bulk-portal-logins`
-2) Pick one generated token from the DB
-3) Call `verify-magic-link` directly (tooling) and confirm it returns:
-   - `success: true`
-   - `email`
-   - `tokenHash`
-4) Call `verifyOtp` from the frontend flow (by opening the `/magic-login?token=...` route in the browser) and confirm:
-   - session is created
-   - navigation to destination happens
-   - `/apex-daily-numbers` loads without redirect loops
+**Layout:**
+```
+┌──────────────────────────────────────────────┐
+│ Today ▼   [Day] [Week] [All]                 │
+├──────────────────────────────────────────────┤
+│ 🥇 JD  John Doe         5    $12,400         │
+│ 🥈 AS  Alice Smith      4    $9,800          │
+│ 🥉 BJ  Bob Johnson      3    $7,200          │
+│ 4  MK  Mike Kim         2    $4,500          │
+│ ▸ 5  YOU  Your Name     1    $2,100  ◀       │
+│ 6  TW  Tom Wilson       1    $1,800          │
+└──────────────────────────────────────────────┘
+```
 
-**Real click test**
-- Open the email on mobile + desktop and confirm it lands in numbers entry.
-- Confirm the fallback buttons function when token is expired/used.
+### Phase 4: Manager Notifications on Submission
 
-### 7) Rollback / safety
-If anything goes wrong, the changes are isolated:
-- `/magic-login` remains a standalone route.
-- We can revert to manual login easily.
-- Tokens are time-limited and single-use; we will avoid burning tokens prematurely during verification.
+**Update `notify-production-submitted` edge function:**
 
-## What I still need from you (only the minimum)
-Because your last answers were understandably frustrated/unclear, I need one precise fact to avoid chasing ghosts:
+1. Lookup agent's `invited_by_manager_id`
+2. Fetch manager's profile email
+3. Send identical production email to:
+   - Admin (existing: `info@kingofsales.net`)
+   - Direct manager (new)
 
-- When you click the email link and it fails, what domain is in the address bar?
-  - `apex-financial.org/...`
-  - or an `id-preview--...lovable.app/...`
-  - or something else
+**Email subject for manager:**
+```
+🔥 [Agent Name] just logged production | $X,XXX ALP
+```
 
-This single detail confirms whether we’re dealing with environment mismatch vs redirect allowlist vs in-app-browser behavior.
+### Phase 5: CRM Manager Assignment Icon
 
-## What you’ll get after this
-- Agents can tap the link and immediately log numbers.
-- If they’re on weird email clients/in-app browsers, it still works because the session is created in-app via `verifyOtp`.
-- If anything fails, they get a clear “send fresh link” option instead of being stuck.
+**Update `DashboardCRM.tsx` agent cards:**
 
+Add a small icon button (e.g., `Users` icon) next to each agent that opens a quick menu to:
+- View current manager
+- Reassign to different manager
+
+**New component: `ManagerAssignMenu.tsx`**
+- Dropdown showing all managers
+- Click to reassign `invited_by_manager_id`
+- Immediately updates CRM
+
+### Phase 6: Manager Production Dashboard
+
+**Add section to `Dashboard.tsx` for managers:**
+
+**New component: `ManagerProductionStats.tsx`**
+- Shows aggregate stats for direct reports:
+  - Total team ALP (today/week/month)
+  - Total deals closed
+  - Average close rate
+  - Active agents count
+- Expandable to see individual agent stats
+
+---
+
+## Database Changes
+
+```sql
+-- Add password preference to agents
+ALTER TABLE agents ADD COLUMN password_required boolean DEFAULT false;
+
+-- Index for faster manager lookups
+CREATE INDEX IF NOT EXISTS idx_agents_invited_by_manager 
+ON agents(invited_by_manager_id) WHERE is_deactivated = false;
+```
+
+---
+
+## File Changes Summary
+
+### New Files
+| File | Purpose |
+|------|---------|
+| `src/pages/Numbers.tsx` | Unified entry point: auth + entry + leaderboard |
+| `src/components/dashboard/CompactLeaderboard.tsx` | High-density leaderboard |
+| `src/components/dashboard/ManagerProductionStats.tsx` | Manager's team production view |
+| `src/components/dashboard/ManagerAssignMenu.tsx` | Quick manager reassignment |
+| `supabase/functions/simple-login/index.ts` | Passwordless auth flow |
+
+### Modified Files
+| File | Changes |
+|------|---------|
+| `src/App.tsx` | Add `/numbers` route (unprotected, handles own auth) |
+| `supabase/functions/check-email-status/index.ts` | Return `passwordRequired` field |
+| `supabase/functions/notify-production-submitted/index.ts` | CC direct manager on production emails |
+| `src/pages/Dashboard.tsx` | Add ManagerProductionStats for managers |
+| `src/components/dashboard/DashboardCRM.tsx` | Add manager reassignment icon |
+
+---
+
+## Session Persistence Strategy
+
+**Current Supabase defaults:**
+- Session stored in localStorage
+- Auto-refresh enabled
+- Sessions last ~7 days
+
+**Enhancements:**
+1. In `Numbers.tsx`, check session on mount and skip login if valid
+2. Use `supabase.auth.getSession()` immediately on page load
+3. Never redirect to external login pages - handle all auth inline
+4. For "Simple Login" users, we'll use `signInWithOtp` style flow with server-generated tokens
+
+---
+
+## Roles & Visibility
+
+| Role | Can Log Numbers For | Can See Leaderboard | Can Reassign Manager |
+|------|---------------------|---------------------|----------------------|
+| Agent | Self only | Everyone | No |
+| Manager | Self + Team | Everyone | Own team |
+| Admin | Self + Anyone | Everyone | Anyone |
+
+---
+
+## Mobile-First Design Specs
+
+**Stat Entry Grid:**
+```
+┌─────────────┬─────────────┐
+│ Presentations│ Passed Price│
+├─────────────┼─────────────┤
+│ Hours Called │ Referrals   │
+├─────────────┼─────────────┤
+│ Booked Home │ Ref. Pres.  │
+├─────────────┼─────────────┤
+│ Deals Closed│   ALP ($)   │
+└─────────────┴─────────────┘
+        [ Submit Numbers ]
+```
+
+**Input sizing:**
+- Height: 48px (touch-friendly)
+- Font: 18px numeric
+- Label: 11px muted
+
+**Animations:**
+- Submit success: Confetti burst (existing)
+- Number update: Subtle scale pulse
+- Leaderboard position: Slide transition
+
+---
+
+## Success Metrics
+
+1. **Time to log numbers**: < 30 seconds from link click
+2. **Zero forced re-logins**: Session persists across visits
+3. **Leaderboard density**: 8+ entries visible without scroll on mobile
+4. **Manager awareness**: Direct managers receive instant production notifications
+
+---
+
+## Technical Notes
+
+### Simple Login Security
+- Uses Supabase Admin API to generate session tokens server-side
+- Token is single-use and short-lived (5 minutes)
+- Links email/phone to auth user if not already linked
+- Falls back to password flow if agent has opted in
+
+### Realtime Updates
+- Leaderboard subscribes to `daily_production` changes
+- Uses existing channel pattern from `LeaderboardTabs.tsx`
+- Updates trigger re-render without full page reload
+
+### CRM Integration
+- All lookups use `profiles` table (email, phone, name)
+- Agent records link via `agents.user_id` → `profiles.user_id`
+- Manager hierarchy via `agents.invited_by_manager_id`

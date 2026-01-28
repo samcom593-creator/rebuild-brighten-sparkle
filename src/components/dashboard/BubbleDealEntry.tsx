@@ -51,6 +51,8 @@ export function BubbleDealEntry({ onALPChange, onDealsChange, initialDeals }: Bu
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Stop propagation to prevent form submission while typing
+    e.stopPropagation();
     if (e.key === "Enter") {
       e.preventDefault();
       addDeal();
@@ -105,6 +107,7 @@ export function BubbleDealEntry({ onALPChange, onDealsChange, initialDeals }: Bu
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
+            onFocus={(e) => e.target.select()}
             className="flex-1 h-12 bg-transparent border-0 text-lg font-semibold placeholder:text-muted-foreground focus:outline-none px-2"
           />
         </div>

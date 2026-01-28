@@ -293,7 +293,9 @@ export function CompactLeaderboard({ currentAgentId, className }: CompactLeaderb
       const { data: agents } = await supabase
         .from("agents")
         .select("id, user_id")
-        .in("id", agentIds);
+        .in("id", agentIds)
+        .eq("is_deactivated", false)
+        .eq("is_inactive", false);
 
       if (!agents) {
         setEntries([]);
@@ -307,7 +309,11 @@ export function CompactLeaderboard({ currentAgentId, className }: CompactLeaderb
         .select("user_id, full_name, avatar_url")
         .in("user_id", userIds);
 
-      const leaderboardEntries: LeaderboardEntry[] = agentIds.map((agentId) => {
+      // Only include agents we can actually load (handles inactive/deactivated + deleted + RLS visibility)
+      const allowedAgentIds = new Set(agents.map((a) => a.id));
+      const visibleAgentIds = agentIds.filter((id) => allowedAgentIds.has(id));
+
+      const leaderboardEntries: LeaderboardEntry[] = visibleAgentIds.map((agentId) => {
         const agent = agents.find((a) => a.id === agentId);
         const profile = profiles?.find((p) => p.user_id === agent?.user_id);
         const totals = agentTotals[agentId];

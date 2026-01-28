@@ -267,6 +267,7 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
                 }}
                 disabled={(date) => date > new Date() || date < subDays(new Date(), 30)}
                 initialFocus
+                className="pointer-events-auto"
               />
             </PopoverContent>
           </Popover>

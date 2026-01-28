@@ -181,7 +181,7 @@ export function DownlineStatsCard() {
                     period === p && "bg-primary text-primary-foreground"
                   )}
                 >
-                  {p === "week" ? "W" : p === "month" ? "M" : "Custom"}
+                  {p === "week" ? "W" : p === "month" ? "M" : "Custom Dates"}
                 </Button>
               ))}
             </div>

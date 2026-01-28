@@ -1,5 +1,5 @@
-import { ReactNode, useState, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
+import { ReactNode, useState, useEffect, useRef, Suspense } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Menu } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { Crown } from "lucide-react";
@@ -15,6 +15,19 @@ interface SidebarLayoutProps {
   showPhoneBanner?: boolean;
 }
 
+// Page transition animation variants for smooth navigation
+const pageVariants = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0 },
+};
+
+const pageTransition = {
+  type: "tween" as const,
+  ease: "easeOut" as const,
+  duration: 0.15,
+};
+
 export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayoutProps) {
   const { isOpen, isFullscreen, toggleSidebar, toggleFullscreen, sidebarWidth } = useSidebarState();
   const location = useLocation();
@@ -22,11 +35,8 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
 
   // Mobile sidebar state (separate from desktop collapse)
   const [mobileOpen, setMobileOpen] = useState(false);
-  
-  // Track if we're transitioning to prevent double renders
-  const [isTransitioning, setIsTransitioning] = useState(false);
 
-  // Close mobile sidebar on route change and handle transitions smoothly
+  // Close mobile sidebar on route change
   useEffect(() => {
     if (prevPathRef.current !== location.pathname) {
       setMobileOpen(false);
@@ -34,7 +44,7 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
     }
   }, [location.pathname]);
 
-  // Calculate margin for main content - use CSS variable for smoother transitions
+  // Calculate margin for main content
   const marginLeft = isFullscreen ? 0 : sidebarWidth;
 
   return (
@@ -70,7 +80,7 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
         />
       </div>
 
-      {/* Mobile Sidebar Overlay - uses CSS transitions instead of AnimatePresence */}
+      {/* Mobile Sidebar Overlay */}
       <div
         className={cn(
           "fixed inset-0 z-30 bg-background/80 backdrop-blur-sm lg:hidden transition-opacity duration-200",
@@ -94,18 +104,28 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
         />
       </div>
 
-      {/* Main Content - unified for both mobile and desktop */}
+      {/* Main Content with smooth page transitions */}
       <main
         className={cn(
           "min-h-screen transition-[margin-left] duration-200 ease-out",
-          "pt-16 lg:pt-0" // Mobile has header padding, desktop doesn't
+          "pt-16 lg:pt-0"
         )}
         style={{ marginLeft: `${marginLeft}px` }}
       >
-        <div className="p-4 sm:p-6 lg:p-8">
-          {showPhoneBanner && <PhonePromptBanner />}
-          {children}
-        </div>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={location.pathname}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            variants={pageVariants}
+            transition={pageTransition}
+            className="p-4 sm:p-6 lg:p-8"
+          >
+            {showPhoneBanner && <PhonePromptBanner />}
+            {children}
+          </motion.div>
+        </AnimatePresence>
       </main>
     </div>
   );

@@ -1,11 +1,31 @@
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect } from "react";
 import { ArrowRight, Shield, TrendingUp, Users } from "lucide-react";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { useLeadCounter } from "@/hooks/useLeadCounter";
 
+// Carrier logos for rotating banner
+const carriers = [
+  { name: "National Life Group", shortName: "NLG" },
+  { name: "American Amicable", shortName: "AA" },
+  { name: "Aflac", shortName: "AFLAC" },
+  { name: "Ethos Life", shortName: "ETHOS" },
+  { name: "Mutual of Omaha", shortName: "MoO" },
+  { name: "American Home Life", shortName: "AHL" },
+];
+
 export function HeroSection() {
   const { count: dealCount, isLoading: isCountLoading } = useLeadCounter();
+  const [currentCarrierIndex, setCurrentCarrierIndex] = useState(0);
+
+  // Rotate carriers every 3 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentCarrierIndex((prev) => (prev + 1) % carriers.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-28">
@@ -112,7 +132,7 @@ export function HeroSection() {
 
           {/* Trust Indicators */}
           <motion.div
-            className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl mx-auto"
+            className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl mx-auto mb-12"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.4 }}
@@ -132,9 +152,60 @@ export function HeroSection() {
               </div>
             ))}
           </motion.div>
+
+          {/* Rotating Carrier Banner */}
+          <motion.div
+            className="glass rounded-xl p-4 max-w-lg mx-auto border border-border/50"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.5 }}
+          >
+            <p className="text-xs text-muted-foreground mb-3 uppercase tracking-wider">Partnered with Top Carriers</p>
+            <div className="h-10 relative overflow-hidden">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentCarrierIndex}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.4 }}
+                  className="absolute inset-0 flex items-center justify-center"
+                >
+                  <span className="text-xl font-bold gradient-text">
+                    {carriers[currentCarrierIndex].name}
+                  </span>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+            <div className="flex justify-center gap-2 mt-3">
+              {carriers.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentCarrierIndex(index)}
+                  className={`w-2 h-2 rounded-full transition-all ${
+                    index === currentCarrierIndex 
+                      ? "bg-primary w-6" 
+                      : "bg-muted-foreground/30 hover:bg-muted-foreground/50"
+                  }`}
+                  aria-label={`Show carrier ${index + 1}`}
+                />
+              ))}
+            </div>
+          </motion.div>
         </div>
       </div>
 
+      {/* Powered by Apex Financial Footer */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2">
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.6 }}
+          transition={{ delay: 1 }}
+          className="text-xs text-muted-foreground"
+        >
+          Powered by Apex Financial
+        </motion.p>
+      </div>
     </section>
   );
 }

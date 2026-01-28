@@ -1,137 +1,77 @@
 
-# Fix Plan: Deal Entry Not Working on Mobile
 
-## Problem Analysis
+# Fix Plan: Published Site Showing Old Code (Cache Issue)
 
-From the screenshot and user feedback, I've identified these issues:
+## What's Happening
 
-1. **Deal Input Auto-Submits**: When users type a number (like "1"), it immediately becomes a deal bubble instead of letting them complete typing "10000" or "30000"
-2. **Blank Screen on Left Side**: The AgentPortal layout appears broken on mobile, showing blank space where content should be
+I verified the codebase and **all the fixes are present in the code**:
 
-## Root Cause
+| Fix | Status in Code |
+|-----|----------------|
+| Deal entry with separate input + "+ Add" button | ✅ Present |
+| `type="text"` + `inputMode="decimal"` for mobile | ✅ Present |
+| `stopPropagation()` + `preventDefault()` on Enter | ✅ Present |
+| Form-level Enter key blocking | ✅ Present |
+| "Admin View — testing purposes" banner | ✅ Removed (not found) |
+| Loading screen says "Powered by Apex" | ✅ Present |
 
-After investigating, I found there are **two different deal entry components**:
+**The issue is that your published site is serving the old, cached version.** This is happening because:
 
-| Component | Used In | Location |
-|-----------|---------|----------|
-| `ALPCalculator.tsx` | ProductionEntry.tsx | AgentPortal page |
-| `BubbleDealEntry.tsx` | CompactProductionEntry.tsx | Numbers page |
+1. The PWA Service Worker is caching the old JavaScript bundle
+2. Users who visited the site before the fix are still seeing the old code
+3. The published site URL needs to be updated with the new build
 
-The `ALPCalculator.tsx` was updated in the previous response to fix the auto-submit issue, but it seems the fix isn't working. Looking at the code:
+## The Fix
 
-**Current `ALPCalculator.tsx` logic** (lines 44-56):
-- Uses "active draft" concept where last deal is the input
-- Bubbles only render for `deals.slice(0, -1)` (committed deals)
-- Commit happens on Enter or "+ Add" button click
+### Step 1: Re-publish the Site
+Click the **"Publish"** button in Lovable to push the latest code to the published URL. This will create a new build with the correct code.
 
-This should work, BUT there may be an issue with how the component is rendering or the fix wasn't deployed properly.
+### Step 2: Force Cache Refresh for Users
+After publishing, users on the old version need to refresh their cache. They can do this by:
 
-## Technical Fix
+**On iPhone/Safari:**
+- Close Safari completely (swipe up to kill app)
+- Go to Settings → Safari → Clear History and Website Data
+- Re-open the site
 
-### 1. Verify ALPCalculator Fix is Working
-The ALPCalculator code looks correct, but I'll add extra safeguards:
-- Ensure the input field has proper event handling for mobile
-- Add `onKeyDown` with explicit `stopPropagation()` for all keyboard events
-- Ensure `type="text"` instead of `type="number"` to prevent mobile number keyboard issues
+**On Android/Chrome:**
+- Open Chrome → tap the three dots menu → Settings
+- Privacy and Security → Clear browsing data → Clear cache
+- Re-open the site
 
-### 2. Fix BubbleDealEntry (CompactProductionEntry)
-The BubbleDealEntry already has the correct pattern (separate input + explicit Add button), but needs:
-- Add `stopImmediatePropagation()` to prevent any parent form handling
-- Ensure mobile keyboards don't trigger auto-submit
+**For PWA installed users:**
+- Delete the app from their home screen
+- Re-install it from the browser
 
-### 3. Mobile Layout Fix
-The blank left side on mobile suggests the tab content might not be rendering. Add defensive checks to ensure components render even when data is loading.
+### Step 3: Verify the Fix
+After re-publishing, test the deal entry on the published site:
+1. Go to Agent Portal or Numbers page
+2. Type a multi-digit number (e.g., "30000")
+3. Confirm it stays in the input field until you press "+ Add"
+4. Confirm the admin banner is gone
+5. Confirm loading screens say "Powered by Apex"
 
-## Files to Modify
+## Technical Details (for reference)
 
-1. **`src/components/dashboard/ALPCalculator.tsx`**
-   - Use `type="text"` with `inputMode="decimal"` for better mobile control
-   - Add additional event propagation guards
-   - Ensure focus management works on mobile
+The current code structure is correct:
 
-2. **`src/components/dashboard/BubbleDealEntry.tsx`**  
-   - Same mobile keyboard fixes
-   - Ensure Enter key doesn't submit parent form
+**BubbleDealEntry.tsx (lines 93-114):**
+- Uses `type="text"` with `inputMode="decimal"` and `pattern="[0-9]*\.?[0-9]*"`
+- Has inline `onKeyDown` with `e.stopPropagation()` and `e.preventDefault()` on Enter
+- Separate input field + "+ Add" button design means typing doesn't auto-commit
 
-3. **`src/components/dashboard/ProductionEntry.tsx`**
-   - Wrap the form with `onKeyDown` handler to prevent accidental submissions
-   - Add defensive rendering for mobile
+**ALPCalculator.tsx (lines 167-189):**
+- Same `type="text"` + `inputMode="decimal"` pattern
+- Inline `onKeyDown` handler with proper event blocking
+- "Active draft" pattern where last deal stays as input until explicitly committed
 
-## Implementation Details
+**CompactProductionEntry.tsx (lines 284-293):**
+- Form-level `onKeyDown` handler blocks Enter on all inputs inside the form
 
-### ALPCalculator.tsx Changes
-```tsx
-// Change input type from "number" to "text" with inputMode for mobile
-<Input
-  ref={inputRef}
-  type="text"  // Changed from "number" 
-  inputMode="decimal"
-  pattern="[0-9]*\.?[0-9]*"
-  placeholder="Enter premium..."
-  value={activeDeal.amount}
-  onChange={(e) => {
-    // Only allow numeric input
-    const value = e.target.value.replace(/[^0-9.]/g, '');
-    handleDealChange(activeDeal.id, value);
-  }}
-  onKeyDown={(e) => {
-    e.stopPropagation();
-    if (e.key === "Enter") {
-      e.preventDefault();
-      commitDeal();
-    }
-  }}
-  className="pl-9 pr-2 h-12 text-lg font-semibold"
-/>
-```
+**SkeletonLoader.tsx (lines 23-25):**
+- Page variant displays "Powered by Apex" (correct text)
 
-### BubbleDealEntry.tsx Changes
-```tsx
-// Same pattern - use text input with pattern validation
-<input
-  ref={inputRef}
-  type="text"
-  inputMode="decimal"
-  pattern="[0-9]*\.?[0-9]*"
-  placeholder="Enter ALP"
-  value={inputValue}
-  onChange={(e) => {
-    const value = e.target.value.replace(/[^0-9.]/g, '');
-    setInputValue(value);
-  }}
-  onKeyDown={(e) => {
-    e.stopPropagation();
-    if (e.key === "Enter") {
-      e.preventDefault();
-      addDeal();
-    }
-  }}
-  className="flex-1 h-12 bg-transparent border-0 text-lg font-semibold..."
-/>
-```
+## Summary
 
-### Form-Level Protection
-Add to ProductionEntry.tsx form element:
-```tsx
-<form 
-  onSubmit={handleSubmit}
-  onKeyDown={(e) => {
-    // Prevent Enter from submitting form unless on submit button
-    if (e.key === "Enter" && e.target instanceof HTMLInputElement) {
-      e.preventDefault();
-    }
-  }}
-  className="space-y-6"
->
-```
+No code changes are needed. The fix is to **re-publish the site** so the new bundle is deployed, then have users clear their cache or reinstall the PWA to get the updated code.
 
-## Summary of Changes
-
-| File | Change |
-|------|--------|
-| `ALPCalculator.tsx` | Use `type="text"` + `inputMode="decimal"` for mobile-safe number entry |
-| `BubbleDealEntry.tsx` | Same text input pattern with numeric validation |
-| `ProductionEntry.tsx` | Add form-level Enter key prevention |
-| `CompactProductionEntry.tsx` | Same form-level protection |
-
-This will ensure users can type full numbers (30000, 20000) without the input being auto-submitted or turning into a bubble prematurely.

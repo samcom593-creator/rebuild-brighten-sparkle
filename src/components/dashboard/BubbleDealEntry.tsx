@@ -17,21 +17,18 @@ interface BubbleDealEntryProps {
 }
 
 export function BubbleDealEntry({ onALPChange, onDealsChange, initialDeals }: BubbleDealEntryProps) {
-  // Convert legacy format to new simple format
+  // Convert legacy format to new simple format (ALP stored directly)
   const convertedInitialDeals: Deal[] = initialDeals?.map(d => ({
     id: d.id,
-    premium: d.frequency === "monthly" ? parseFloat(d.amount) || 0 : (parseFloat(d.amount) || 0) / 12
+    premium: parseFloat(d.amount) || 0
   })).filter(d => d.premium > 0) || [];
 
   const [deals, setDeals] = useState<Deal[]>(convertedInitialDeals);
   const [inputValue, setInputValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Calculate ALP (premium × 12)
-  const getALP = (premium: number) => Math.round(premium * 12);
-
-  // Calculate totals
-  const totalALP = deals.reduce((sum, deal) => sum + getALP(deal.premium), 0);
+  // Calculate totals - direct sum, no conversion needed
+  const totalALP = deals.reduce((sum, deal) => sum + deal.premium, 0);
   const dealCount = deals.length;
 
   // Notify parent of changes
@@ -100,7 +97,7 @@ export function BubbleDealEntry({ onALPChange, onDealsChange, initialDeals }: Bu
               >
                 <span className="text-xs font-bold text-primary">#{index + 1}</span>
                 <span className="text-sm font-bold text-foreground">
-                  ${getALP(deal.premium).toLocaleString()}
+                  ${deal.premium.toLocaleString()}
                 </span>
                 <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
                   ALP
@@ -129,7 +126,7 @@ export function BubbleDealEntry({ onALPChange, onDealsChange, initialDeals }: Bu
             inputMode="decimal"
             step="0.01"
             min="0"
-            placeholder="Enter monthly premium"
+            placeholder="Enter ALP"
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}

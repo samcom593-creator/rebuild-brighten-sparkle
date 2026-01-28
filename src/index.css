@@ -9,34 +9,34 @@
 
 @layer base {
   :root {
-    /* Light mode - Premium soft-light theme (VERY easy on eyes, warm cream tones) */
-    --background: 38 14% 91%;
-    --foreground: 222 47% 12%;
+    /* Light mode - Premium soft-light theme (VERY easy on eyes, warm cream/beige tones) */
+    --background: 40 18% 88%;
+    --foreground: 222 47% 11%;
 
-    --card: 38 12% 94%;
-    --card-foreground: 222 47% 12%;
+    --card: 40 16% 92%;
+    --card-foreground: 222 47% 11%;
 
-    --popover: 38 12% 95%;
-    --popover-foreground: 222 47% 12%;
+    --popover: 40 14% 94%;
+    --popover-foreground: 222 47% 11%;
 
-    --primary: 168 84% 34%;
+    --primary: 168 84% 32%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 36 12% 87%;
-    --secondary-foreground: 222 47% 14%;
+    --secondary: 38 14% 85%;
+    --secondary-foreground: 222 47% 12%;
 
-    --muted: 34 10% 84%;
-    --muted-foreground: 220 12% 42%;
+    --muted: 36 12% 82%;
+    --muted-foreground: 220 14% 40%;
 
-    --accent: 168 84% 34%;
+    --accent: 168 84% 32%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 34 8% 78%;
-    --input: 34 10% 85%;
-    --ring: 168 84% 34%;
+    --border: 36 10% 76%;
+    --input: 36 12% 86%;
+    --ring: 168 84% 32%;
 
     --radius: 0.75rem;
 
@@ -45,81 +45,81 @@
     --apex-navy-light: 222 40% 12%;
     --apex-navy-lighter: 222 35% 18%;
     --apex-slate: 220 25% 25%;
-    --apex-teal: 168 84% 42%;
-    --apex-teal-light: 168 76% 52%;
-    --apex-teal-glow: 168 90% 60%;
-    --apex-emerald: 160 84% 39%;
-    --apex-gold: 45 93% 58%;
-    --apex-success: 142 76% 36%;
-    --apex-warning: 38 92% 50%;
-    --apex-error: 0 84% 60%;
+    --apex-teal: 168 84% 38%;
+    --apex-teal-light: 168 76% 48%;
+    --apex-teal-glow: 168 90% 55%;
+    --apex-emerald: 160 84% 36%;
+    --apex-gold: 45 93% 55%;
+    --apex-success: 142 76% 34%;
+    --apex-warning: 38 92% 48%;
+    --apex-error: 0 84% 58%;
 
     /* Glass morphism - warm cream tones for light mode (premium soft) */
-    --glass-bg: hsl(38 12% 96% / 0.90);
-    --glass-border: hsl(34 10% 75% / 0.35);
-    --glass-shadow: 0 4px 24px hsl(34 18% 30% / 0.05);
+    --glass-bg: hsl(40 18% 96% / 0.92);
+    --glass-border: hsl(36 12% 72% / 0.40);
+    --glass-shadow: 0 4px 24px hsl(36 20% 28% / 0.06);
 
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(168 84% 42%), hsl(160 84% 39%));
-    --gradient-hero: linear-gradient(180deg, hsl(38 14% 91%) 0%, hsl(36 12% 88%) 100%);
-    --gradient-card: linear-gradient(145deg, hsl(38 12% 94%) 0%, hsl(36 10% 92%) 100%);
-    --gradient-glow: radial-gradient(ellipse at center, hsl(168 84% 42% / 0.05) 0%, transparent 70%);
+    --gradient-primary: linear-gradient(135deg, hsl(168 84% 38%), hsl(160 84% 36%));
+    --gradient-hero: linear-gradient(180deg, hsl(40 18% 88%) 0%, hsl(38 14% 85%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(40 16% 92%) 0%, hsl(38 12% 90%) 100%);
+    --gradient-glow: radial-gradient(ellipse at center, hsl(168 84% 38% / 0.06) 0%, transparent 70%);
 
     /* Sidebar */
-    --sidebar-background: 38 12% 93%;
-    --sidebar-foreground: 222 47% 12%;
-    --sidebar-primary: 168 84% 34%;
+    --sidebar-background: 40 16% 91%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 168 84% 32%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 36 12% 87%;
-    --sidebar-accent-foreground: 222 47% 14%;
-    --sidebar-border: 34 8% 78%;
-    --sidebar-ring: 168 84% 34%;
+    --sidebar-accent: 38 14% 86%;
+    --sidebar-accent-foreground: 222 47% 12%;
+    --sidebar-border: 36 10% 76%;
+    --sidebar-ring: 168 84% 32%;
   }
 
   .light {
-    /* Premium soft-light mode (VERY eye-friendly, warm cream, no harsh whites) */
-    --background: 38 14% 91%;
-    --foreground: 222 47% 12%;
+    /* Premium soft-light mode (VERY eye-friendly, warm beige/cream, no harsh whites) */
+    --background: 40 18% 88%;
+    --foreground: 222 47% 11%;
 
-    --card: 38 12% 94%;
-    --card-foreground: 222 47% 12%;
+    --card: 40 16% 92%;
+    --card-foreground: 222 47% 11%;
 
-    --popover: 38 12% 95%;
-    --popover-foreground: 222 47% 12%;
+    --popover: 40 14% 94%;
+    --popover-foreground: 222 47% 11%;
 
-    --primary: 168 84% 34%;
+    --primary: 168 84% 32%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 36 12% 87%;
-    --secondary-foreground: 222 47% 14%;
+    --secondary: 38 14% 85%;
+    --secondary-foreground: 222 47% 12%;
 
-    --muted: 34 10% 84%;
-    --muted-foreground: 220 12% 42%;
+    --muted: 36 12% 82%;
+    --muted-foreground: 220 14% 40%;
 
-    --accent: 168 84% 34%;
+    --accent: 168 84% 32%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 36 10% 84%;
-    --input: 36 12% 89%;
+    --border: 36 10% 76%;
+    --input: 36 12% 86%;
     --ring: 168 84% 32%;
 
     /* Sidebar - warm cream with subtle borders */
-    --sidebar-background: 40 15% 98%;
+    --sidebar-background: 40 16% 91%;
     --sidebar-foreground: 222 47% 11%;
     --sidebar-primary: 168 84% 32%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 38 16% 93%;
+    --sidebar-accent: 38 14% 88%;
     --sidebar-accent-foreground: 222 47% 11%;
-    --sidebar-border: 36 10% 84%;
+    --sidebar-border: 36 10% 76%;
     --sidebar-ring: 168 84% 32%;
 
     /* Glass morphism - premium soft tones */
-    --glass-bg: hsl(40 18% 99% / 0.94);
-    --glass-border: hsl(36 14% 80% / 0.35);
-    --glass-shadow: 0 4px 24px hsl(36 20% 28% / 0.04);
+    --glass-bg: hsl(40 20% 97% / 0.94);
+    --glass-border: hsl(36 14% 76% / 0.40);
+    --glass-shadow: 0 4px 24px hsl(36 22% 26% / 0.05);
   }
 
   .dark {

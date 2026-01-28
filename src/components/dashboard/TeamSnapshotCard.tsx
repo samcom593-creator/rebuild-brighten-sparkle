@@ -1,13 +1,14 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { DollarSign, Target, Users, TrendingUp } from "lucide-react";
+import { DollarSign, Target, Users, TrendingUp, Presentation } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
+import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { DateRangePicker, useDateRange } from "@/components/ui/date-range-picker";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface SnapshotStats {
   totalALP: number;
@@ -18,7 +19,7 @@ interface SnapshotStats {
 }
 
 export function TeamSnapshotCard() {
-  const { user, isAdmin, isManager, isAgent } = useAuth();
+  const { user, isAdmin, isManager, isAgent, isLoading: authLoading } = useAuth();
   const { period, setPeriod, range, setRange, startDate, endDate } = useDateRange("week");
   const [stats, setStats] = useState<SnapshotStats>({
     totalALP: 0,
@@ -28,46 +29,19 @@ export function TeamSnapshotCard() {
     totalPresentations: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [dataFetched, setDataFetched] = useState(false);
 
-  useEffect(() => {
-    fetchStats();
-
-    // Real-time subscription for live updates
-    const channel = supabase
-      .channel("team-snapshot-live")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "daily_production" },
-        () => {
-          fetchStats();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user, isAdmin, isManager, startDate, endDate]);
-
-  const fetchStats = async () => {
-    if (!user) return;
+  const fetchStats = useCallback(async () => {
+    // Wait for auth to fully load before fetching
+    if (!user || authLoading) {
+      console.log("[TeamSnapshot] Waiting for auth...", { user: !!user, authLoading });
+      return;
+    }
 
     try {
       setLoading(true);
+      console.log("[TeamSnapshot] Fetching stats...", { isAdmin, isManager, isAgent, startDate, endDate });
       
-      // Get current user's agent ID
-      const { data: currentAgent } = await supabase
-        .from("agents")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("is_deactivated", false)
-        .maybeSingle();
-
-      if (!currentAgent) {
-        setLoading(false);
-        return;
-      }
-
       let agentIds: string[] = [];
 
       // Role-based scoping:
@@ -75,40 +49,81 @@ export function TeamSnapshotCard() {
       // - Manager: Direct reports + self (team)
       // - Agent: Only self (personal)
       if (isAdmin) {
-        const { data: allAgents } = await supabase
+        // Admin sees ENTIRE agency
+        const { data: allAgents, error } = await supabase
           .from("agents")
           .select("id")
           .eq("is_deactivated", false);
 
+        if (error) {
+          console.error("[TeamSnapshot] Error fetching all agents:", error);
+        }
         agentIds = allAgents?.map(a => a.id) || [];
+        console.log("[TeamSnapshot] Admin: fetched", agentIds.length, "agents");
       } else if (isManager) {
-        // Manager sees their team + themselves
-        const { data: downlineAgents } = await supabase
+        // First get current user's agent ID
+        const { data: currentAgent } = await supabase
           .from("agents")
           .select("id")
-          .eq("invited_by_manager_id", currentAgent.id)
-          .eq("is_deactivated", false);
+          .eq("user_id", user.id)
+          .eq("is_deactivated", false)
+          .maybeSingle();
 
-        agentIds = [currentAgent.id, ...(downlineAgents?.map(a => a.id) || [])];
+        if (currentAgent) {
+          // Manager sees their team + themselves
+          const { data: downlineAgents } = await supabase
+            .from("agents")
+            .select("id")
+            .eq("invited_by_manager_id", currentAgent.id)
+            .eq("is_deactivated", false);
+
+          agentIds = [currentAgent.id, ...(downlineAgents?.map(a => a.id) || [])];
+          console.log("[TeamSnapshot] Manager: fetched", agentIds.length, "agents");
+        }
       } else {
         // Agent sees only their own stats
-        agentIds = [currentAgent.id];
+        const { data: currentAgent } = await supabase
+          .from("agents")
+          .select("id")
+          .eq("user_id", user.id)
+          .eq("is_deactivated", false)
+          .maybeSingle();
+          
+        if (currentAgent) {
+          agentIds = [currentAgent.id];
+        }
+        console.log("[TeamSnapshot] Agent: personal view");
       }
 
       if (agentIds.length === 0) {
+        console.log("[TeamSnapshot] No agents found, showing zeros");
+        setStats({
+          totalALP: 0,
+          totalDeals: 0,
+          agentCount: 0,
+          avgCloseRate: 0,
+          totalPresentations: 0,
+        });
         setLoading(false);
+        setDataFetched(true);
         return;
       }
 
       // Query production data with date range
-      const { data: productionData } = await supabase
+      const { data: productionData, error: prodError } = await supabase
         .from("daily_production")
         .select("aop, deals_closed, presentations, agent_id")
         .in("agent_id", agentIds)
         .gte("production_date", startDate)
         .lte("production_date", endDate);
 
-      if (productionData) {
+      if (prodError) {
+        console.error("[TeamSnapshot] Error fetching production:", prodError);
+      }
+
+      console.log("[TeamSnapshot] Production data:", productionData?.length, "records");
+
+      if (productionData && productionData.length > 0) {
         const totalALP = productionData.reduce((sum, p) => sum + (Number(p.aop) || 0), 0);
         const totalDeals = productionData.reduce((sum, p) => sum + (p.deals_closed || 0), 0);
         const totalPresentations = productionData.reduce((sum, p) => sum + (p.presentations || 0), 0);
@@ -120,6 +135,8 @@ export function TeamSnapshotCard() {
           ? Math.round((totalDeals / totalPresentations) * 100) 
           : 0;
 
+        console.log("[TeamSnapshot] Calculated stats:", { totalALP, totalDeals, totalPresentations, avgCloseRate });
+
         setStats({
           totalALP,
           totalDeals,
@@ -127,13 +144,50 @@ export function TeamSnapshotCard() {
           avgCloseRate,
           totalPresentations,
         });
+      } else {
+        // No production data for this range
+        setStats({
+          totalALP: 0,
+          totalDeals: 0,
+          agentCount: agentIds.length,
+          avgCloseRate: 0,
+          totalPresentations: 0,
+        });
       }
+      
+      setDataFetched(true);
     } catch (error) {
-      console.error("Error fetching team snapshot:", error);
+      console.error("[TeamSnapshot] Error:", error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, authLoading, isAdmin, isManager, isAgent, startDate, endDate]);
+
+  useEffect(() => {
+    // Only fetch when auth is fully loaded
+    if (!authLoading && user) {
+      fetchStats();
+    }
+  }, [fetchStats, authLoading, user]);
+
+  useEffect(() => {
+    // Real-time subscription for live updates
+    const channel = supabase
+      .channel("team-snapshot-live")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "daily_production" },
+        () => {
+          console.log("[TeamSnapshot] Real-time update received");
+          fetchStats();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchStats]);
 
   // Dynamic label based on role
   const getLabel = () => {
@@ -141,6 +195,9 @@ export function TeamSnapshotCard() {
     if (isManager) return "Team Production";
     return "My Production";
   };
+
+  // Show loading skeleton while auth or data is loading
+  const showSkeleton = authLoading || (loading && !dataFetched);
 
   return (
     <motion.div
@@ -155,9 +212,11 @@ export function TeamSnapshotCard() {
             </div>
             <div>
               <h2 className="text-xl font-bold">{getLabel()}</h2>
-              <p className="text-sm text-muted-foreground">
-                {format(range.from, "MMM d")} - {format(range.to, "MMM d, yyyy")}
-              </p>
+              {range.from && range.to && (
+                <p className="text-sm text-muted-foreground">
+                  {format(range.from, "MMM d")} - {format(range.to, "MMM d, yyyy")}
+                </p>
+              )}
             </div>
           </div>
 
@@ -170,10 +229,10 @@ export function TeamSnapshotCard() {
           />
         </div>
 
-        {loading ? (
+        {showSkeleton ? (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[1, 2, 3, 4].map(i => (
-              <div key={i} className="animate-pulse bg-muted/50 rounded-lg h-20" />
+              <Skeleton key={i} className="h-24 rounded-xl" />
             ))}
           </div>
         ) : (
@@ -237,7 +296,7 @@ export function TeamSnapshotCard() {
             {isAgent && !isManager && !isAdmin && (
               <div className="bg-background/50 rounded-xl p-4 border border-border/50">
                 <div className="flex items-center gap-2 text-violet-500 mb-2">
-                  <Target className="h-5 w-5" />
+                  <Presentation className="h-5 w-5" />
                   <span className="text-xs font-medium uppercase tracking-wide">Presentations</span>
                 </div>
                 <AnimatedCounter

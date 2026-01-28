@@ -8,7 +8,7 @@ import { AgentQuickEditDialog } from "./AgentQuickEditDialog";
 
 interface BuildingLeaderboardProps {
   currentAgentId?: string;
-  period: "day" | "week" | "month" | "all";
+  period: "day" | "week" | "month" | "custom";
 }
 
 interface BuildingEntry {
@@ -84,10 +84,10 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
           previousStartDate = subMonths(today, 2).toISOString().split("T")[0];
           previousEndDate = subMonths(today, 1).toISOString().split("T")[0];
           break;
-        case "all":
-          currentStartDate = subDays(today, 365).toISOString().split("T")[0];
-          previousStartDate = subDays(today, 730).toISOString().split("T")[0];
-          previousEndDate = subDays(today, 365).toISOString().split("T")[0];
+        case "custom":
+          currentStartDate = subDays(today, 30).toISOString().split("T")[0];
+          previousStartDate = subDays(today, 60).toISOString().split("T")[0];
+          previousEndDate = subDays(today, 30).toISOString().split("T")[0];
           break;
         default: // day
           currentStartDate = today.toISOString().split("T")[0];
@@ -118,7 +118,7 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
         .from("applications")
         .select("assigned_agent_id, status, contracted_at, created_at");
       
-      if (period !== "all") {
+      if (period !== "custom") {
         currentQuery = currentQuery.gte("created_at", currentStartDate);
       }
       

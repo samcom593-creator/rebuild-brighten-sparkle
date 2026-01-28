@@ -5,7 +5,8 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { subDays } from "date-fns";
+import { subDays, format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
+import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
 
 interface CompactLeaderboardProps {
   currentAgentId?: string;
@@ -22,7 +23,7 @@ interface LeaderboardEntry {
   isCurrentUser: boolean;
 }
 
-type Period = "day" | "week" | "all";
+type Period = "day" | "week" | "month" | "custom";
 
 const getAvatarColor = (name: string) => {
   const colors = [
@@ -213,6 +214,10 @@ export function CompactLeaderboard({ currentAgentId, className }: CompactLeaderb
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(true);
+  const [customRange, setCustomRange] = useState<DateRange>({
+    from: subDays(new Date(), 30),
+    to: new Date(),
+  });
 
   useEffect(() => {
     fetchLeaderboard();
@@ -234,32 +239,37 @@ export function CompactLeaderboard({ currentAgentId, className }: CompactLeaderb
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [period, currentAgentId]);
+  }, [period, currentAgentId, customRange]);
 
   const fetchLeaderboard = async () => {
     try {
       let startDate: string;
+      let endDate: string;
       const today = new Date();
       
       switch (period) {
         case "week":
-          startDate = subDays(today, 7).toISOString().split("T")[0];
+          startDate = format(startOfWeek(today, { weekStartsOn: 0 }), "yyyy-MM-dd");
+          endDate = format(endOfWeek(today, { weekStartsOn: 0 }), "yyyy-MM-dd");
           break;
-        case "all":
-          startDate = subDays(today, 365).toISOString().split("T")[0];
+        case "month":
+          startDate = format(startOfMonth(today), "yyyy-MM-dd");
+          endDate = format(endOfMonth(today), "yyyy-MM-dd");
           break;
-        default:
-          startDate = today.toISOString().split("T")[0];
+        case "custom":
+          startDate = customRange.from ? format(customRange.from, "yyyy-MM-dd") : format(subDays(today, 30), "yyyy-MM-dd");
+          endDate = customRange.to ? format(customRange.to, "yyyy-MM-dd") : format(today, "yyyy-MM-dd");
+          break;
+        default: // day
+          startDate = format(today, "yyyy-MM-dd");
+          endDate = startDate;
       }
 
       let query = supabase
         .from("daily_production")
         .select(`agent_id, aop, deals_closed, production_date`)
-        .gte("production_date", startDate);
-
-      if (period === "day") {
-        query = query.eq("production_date", startDate);
-      }
+        .gte("production_date", startDate)
+        .lte("production_date", endDate);
 
       const { data: production } = await query;
 
@@ -327,10 +337,13 @@ export function CompactLeaderboard({ currentAgentId, className }: CompactLeaderb
     }
   };
 
-  const periodLabels = {
+  const periodLabels: Record<Period, string> = {
     day: "Today",
     week: "This Week",
-    all: "All Time",
+    month: "This Month",
+    custom: customRange.from && customRange.to 
+      ? `${format(customRange.from, "MMM d")} - ${format(customRange.to, "MMM d")}`
+      : "Custom Range",
   };
 
   const top3 = entries.slice(0, 3);
@@ -366,13 +379,24 @@ export function CompactLeaderboard({ currentAgentId, className }: CompactLeaderb
             {isConnected ? "LIVE" : "..."}
           </span>
         </h3>
-        <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)} className="w-auto">
-          <TabsList className="h-7 p-0.5 bg-muted/50">
-            <TabsTrigger value="day" className="text-[10px] px-2.5 h-6 data-[state=active]:bg-background">Day</TabsTrigger>
-            <TabsTrigger value="week" className="text-[10px] px-2.5 h-6 data-[state=active]:bg-background">Week</TabsTrigger>
-            <TabsTrigger value="all" className="text-[10px] px-2.5 h-6 data-[state=active]:bg-background">All</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex items-center gap-1">
+          <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)} className="w-auto">
+            <TabsList className="h-7 p-0.5 bg-muted/50">
+              <TabsTrigger value="day" className="text-[10px] px-2 h-6 data-[state=active]:bg-background">Day</TabsTrigger>
+              <TabsTrigger value="week" className="text-[10px] px-2 h-6 data-[state=active]:bg-background">Week</TabsTrigger>
+              <TabsTrigger value="month" className="text-[10px] px-2 h-6 data-[state=active]:bg-background">Month</TabsTrigger>
+              <TabsTrigger value="custom" className="text-[10px] px-2 h-6 data-[state=active]:bg-background">Custom</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          {period === "custom" && (
+            <DateRangePicker
+              value={customRange}
+              onChange={setCustomRange}
+              simpleMode
+              className="scale-90 origin-left"
+            />
+          )}
+        </div>
       </div>
 
       <AnimatePresence mode="wait">

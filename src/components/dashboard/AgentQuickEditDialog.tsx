@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Edit2, Merge, User, Check, Loader2, Mail, Phone, Send, Instagram, UserPlus, Trash2, AlertTriangle } from "lucide-react";
+import { Edit2, Merge, User, Check, Loader2, Mail, Phone, Send, Instagram, UserPlus, Trash2, AlertTriangle, UserMinus } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -81,6 +81,7 @@ export function AgentQuickEditDialog({
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteStep, setDeleteStep] = useState<"choice" | "confirm_delete">("choice");
   const [loading, setLoading] = useState(false);
   const [linkedProfile, setLinkedProfile] = useState<LinkedProfile | null>(null);
   const [agentData, setAgentData] = useState<AgentData | null>(null);
@@ -293,6 +294,37 @@ export function AgentQuickEditDialog({
     }
   };
 
+  const handleInactivate = async () => {
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("agents")
+        .update({ is_inactive: true, status: "inactive" })
+        .eq("id", agentId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Agent marked as inactive",
+        description: `${currentName} is now hidden from leaderboards and active views.`,
+      });
+
+      setShowDeleteConfirm(false);
+      setDeleteStep("choice");
+      onUpdate?.();
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Error inactivating agent:", error);
+      toast({
+        title: "Failed to inactivate",
+        description: "Could not mark agent as inactive. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleDelete = async () => {
     setDeleting(true);
     try {
@@ -366,6 +398,7 @@ export function AgentQuickEditDialog({
       });
 
       setShowDeleteConfirm(false);
+      setDeleteStep("choice");
       onUpdate?.();
       onOpenChange(false);
     } catch (error) {
@@ -668,44 +701,111 @@ export function AgentQuickEditDialog({
         </DialogFooter>
       </DialogContent>
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+      {/* Delete Choice / Confirmation Dialog */}
+      <AlertDialog 
+        open={showDeleteConfirm} 
+        onOpenChange={(open) => {
+          setShowDeleteConfirm(open);
+          if (!open) setDeleteStep("choice");
+        }}
+      >
         <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="h-5 w-5" />
-              Delete Agent?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete <strong>{currentName}</strong> and all their records including:
-              <ul className="list-disc list-inside mt-2 space-y-1">
-                <li>All production data ({formatCurrency(production)} ALP, {deals} deals)</li>
-                <li>Notes and goals</li>
-                <li>The agent profile</li>
-              </ul>
-              <p className="mt-3 font-medium text-destructive">This action cannot be undone.</p>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={deleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Deleting...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete Forever
-                </>
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
+          {deleteStep === "choice" ? (
+            <>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-amber-500" />
+                  Remove Agent: {currentName}
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  Choose how you want to handle this agent:
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              
+              <div className="space-y-3 py-4">
+                {/* Inactivate Option */}
+                <button
+                  onClick={handleInactivate}
+                  disabled={deleting}
+                  className="w-full flex items-start gap-3 p-4 rounded-lg border border-border bg-muted/30 hover:bg-muted/60 transition-colors text-left"
+                >
+                  <div className="h-10 w-10 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
+                    <UserMinus className="h-5 w-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-foreground">Mark as Inactive</p>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      Hide from leaderboards and active views. Agent record and all data is kept for reporting.
+                    </p>
+                  </div>
+                </button>
+
+                {/* Permanent Delete Option */}
+                <button
+                  onClick={() => setDeleteStep("confirm_delete")}
+                  disabled={deleting}
+                  className="w-full flex items-start gap-3 p-4 rounded-lg border border-destructive/30 bg-destructive/5 hover:bg-destructive/10 transition-colors text-left"
+                >
+                  <div className="h-10 w-10 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
+                    <Trash2 className="h-5 w-5 text-destructive" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-destructive">Permanently Delete</p>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      Remove agent and all records forever. This cannot be undone.
+                    </p>
+                  </div>
+                </button>
+              </div>
+
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+              </AlertDialogFooter>
+            </>
+          ) : (
+            <>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                  <AlertTriangle className="h-5 w-5" />
+                  Permanently Delete Agent?
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete <strong>{currentName}</strong> and all their records including:
+                  <ul className="list-disc list-inside mt-2 space-y-1">
+                    <li>All production data ({formatCurrency(production)} ALP, {deals} deals)</li>
+                    <li>Notes, goals, and metrics</li>
+                    <li>Attendance and onboarding records</li>
+                  </ul>
+                  <p className="mt-3 font-medium text-destructive">This action cannot be undone.</p>
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel 
+                  disabled={deleting}
+                  onClick={() => setDeleteStep("choice")}
+                >
+                  Back
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {deleting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Forever
+                    </>
+                  )}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </>
+          )}
         </AlertDialogContent>
       </AlertDialog>
     </Dialog>

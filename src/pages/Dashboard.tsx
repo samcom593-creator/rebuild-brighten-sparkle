@@ -5,22 +5,16 @@ import {
   Phone,
   CheckCircle,
   Award,
-  GraduationCap,
   Percent,
-  Clock,
   MapPin,
-  BarChart3,
   TrendingUp,
   DollarSign,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { StatCard } from "@/components/dashboard/StatCard";
-import { AIInsightsCard } from "@/components/dashboard/AIInsightsCard";
-import { AICoachingPanel } from "@/components/dashboard/AICoachingPanel";
 import { GrowthChart } from "@/components/dashboard/GrowthChart";
 import { AnalyticsPieChart } from "@/components/dashboard/AnalyticsPieChart";
-import { EarningsPotentialCard } from "@/components/dashboard/EarningsPotentialCard";
 import { ManagerTeamView } from "@/components/dashboard/ManagerTeamView";
 import { InviteManagerCard } from "@/components/dashboard/InviteManagerCard";
 import { ManagerLeaderboard } from "@/components/dashboard/ManagerLeaderboard";
@@ -44,15 +38,8 @@ interface DashboardStats {
   staleLeads: number;
 }
 
-interface LeaderboardEntry {
-  rank: number;
-  name: string;
-  value: number;
-  isCurrentUser?: boolean;
-}
-
 export default function Dashboard() {
-  const { profile, user, isManager, isAdmin } = useAuth();
+  const { profile, user, isManager, isAdmin, isAgent } = useAuth();
   const [stats, setStats] = useState<DashboardStats>({
     totalLeads: 0,
     contacted: 0,
@@ -65,10 +52,9 @@ export default function Dashboard() {
     staleLeads: 0,
   });
   const [userName, setUserName] = useState("");
-  const [leaderboardApplicants, setLeaderboardApplicants] = useState<LeaderboardEntry[]>([]);
-  const [leaderboardClosed, setLeaderboardClosed] = useState<LeaderboardEntry[]>([]);
+  const [currentAgentId, setCurrentAgentId] = useState<string | undefined>();
 
-  // Chart data - will populate from real data
+  // Chart data
   const [dailyData, setDailyData] = useState<Array<{ label: string; leads: number; closed: number }>>([]);
   const [weeklyData, setWeeklyData] = useState<Array<{ label: string; leads: number; closed: number }>>([]);
   const [monthlyData, setMonthlyData] = useState<Array<{ label: string; leads: number; closed: number }>>([]);
@@ -92,6 +78,8 @@ export default function Dashboard() {
           .single();
 
         if (agentData) {
+          setCurrentAgentId(agentData.id);
+          
           // Fetch applications assigned to this agent
           const { data: applications } = await supabase
             .from("applications")
@@ -154,7 +142,7 @@ export default function Dashboard() {
               staleLeads,
             });
 
-            // Build real chart data from applications
+            // Build chart data
             const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
             const last7Days = Array.from({ length: 7 }, (_, i) => {
               const date = new Date();
@@ -223,69 +211,18 @@ export default function Dashboard() {
               .slice(0, 5)
               .map(([name, value], i) => ({ name, value, color: colors[i % colors.length] }));
             setSourceData(sourceChartData.length > 0 ? sourceChartData : [{ name: "No data yet", value: 1, color: "hsl(222, 30%, 30%)" }]);
-
-            // Real leaderboard data - will populate as team grows
-            if (totalLeads > 0) {
-              setLeaderboardApplicants([
-                { rank: 1, name: userName || "You", value: totalLeads, isCurrentUser: true },
-              ]);
-              
-              if (closed > 0) {
-                setLeaderboardClosed([
-                  { rank: 1, name: userName || "You", value: closed, isCurrentUser: true },
-                ]);
-              } else {
-                setLeaderboardClosed([]);
-              }
-            } else {
-              setLeaderboardApplicants([]);
-              setLeaderboardClosed([]);
-            }
-          } else {
-            // No applications yet - empty state
-            setStats({
-              totalLeads: 0,
-              contacted: 0,
-              closed: 0,
-              licensed: 0,
-              unlicensed: 0,
-              closeRate: 0,
-              avgWaitTime: 0,
-              growthPercent: 0,
-              staleLeads: 0,
-            });
-            setDailyData([]);
-            setWeeklyData([]);
-            setMonthlyData([]);
-            setSourceData([{ name: "No data yet", value: 1, color: "hsl(222, 30%, 30%)" }]);
-            setLeaderboardApplicants([]);
-            setLeaderboardClosed([]);
           }
-        } else {
-          // No agent record yet - empty state
-          setStats({
-            totalLeads: 0,
-            contacted: 0,
-            closed: 0,
-            licensed: 0,
-            unlicensed: 0,
-            closeRate: 0,
-            avgWaitTime: 0,
-            growthPercent: 0,
-            staleLeads: 0,
-          });
-          setDailyData([]);
-          setWeeklyData([]);
-          setMonthlyData([]);
-          setSourceData([{ name: "No data yet", value: 1, color: "hsl(222, 30%, 30%)" }]);
-          setLeaderboardApplicants([]);
-          setLeaderboardClosed([]);
         }
       }
     };
     
     fetchData();
-  }, [user, profile, userName]);
+  }, [user, profile]);
+
+  // Determine what to show based on role
+  const showAgencyStats = isAdmin;
+  const showTeamStats = isManager && !isAdmin;
+  const showPersonalOnly = isAgent && !isManager && !isAdmin;
 
   return (
     <DashboardLayout>
@@ -298,14 +235,12 @@ export default function Dashboard() {
         <h2 className="text-lg font-bold">Welcome back, {userName}! 👋</h2>
       </motion.div>
 
-      {/* ====== TEAM SNAPSHOT (Hero Section for Managers/Admins) ====== */}
-      {(isManager || isAdmin) && (
-        <div className="mb-6">
-          <TeamSnapshotCard />
-        </div>
-      )}
+      {/* ====== PRODUCTION SNAPSHOT (Role-based) ====== */}
+      <div className="mb-6">
+        <TeamSnapshotCard />
+      </div>
 
-      {/* ====== TEAM GOALS (Promoted higher for visibility) ====== */}
+      {/* ====== TEAM GOALS (Managers & Admins only) ====== */}
       {(isManager || isAdmin) && (
         <div className="mb-6">
           <TeamGoalsTracker />
@@ -326,49 +261,88 @@ export default function Dashboard() {
           </motion.div>
 
           {/* Sales Leaderboard */}
-          <LeaderboardTabs />
+          <LeaderboardTabs currentAgentId={currentAgentId} />
 
           {/* Performance Leaderboards */}
           <ClosingRateLeaderboard />
           <ReferralLeaderboard />
         </div>
 
-        {/* RIGHT: GROWTH METRICS (Recruiting) */}
-        <div className="space-y-4">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-2"
-          >
-            <TrendingUp className="h-4 w-4 text-emerald-500" />
-            <h3 className="text-base font-bold">Growth & Recruitment</h3>
-          </motion.div>
+        {/* RIGHT: GROWTH METRICS (Recruiting) - For Managers/Admins */}
+        {(isManager || isAdmin) && (
+          <div className="space-y-4">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-2"
+            >
+              <TrendingUp className="h-4 w-4 text-emerald-500" />
+              <h3 className="text-base font-bold">Growth & Recruitment</h3>
+            </motion.div>
 
-          {/* Manager Leaderboard */}
-          <ManagerLeaderboard />
+            {/* Manager Leaderboard */}
+            <ManagerLeaderboard />
 
-          {/* Onboarding Pipeline */}
-          {(isManager || isAdmin) && <OnboardingPipelineCard />}
+            {/* Onboarding Pipeline */}
+            <OnboardingPipelineCard />
 
-          {/* License Distribution */}
-          <AnalyticsPieChart
-            title="License Status"
-            icon={<Award className="h-4 w-4 text-primary" />}
-            data={licenseData}
-          />
+            {/* License Distribution */}
+            <AnalyticsPieChart
+              title="License Status"
+              icon={<Award className="h-4 w-4 text-primary" />}
+              data={licenseData}
+            />
 
-          {/* Growth Chart */}
-          <GrowthChart
-            dailyData={dailyData}
-            weeklyData={weeklyData}
-            monthlyData={monthlyData}
-            currentPeriodTotal={stats.totalLeads}
-            previousPeriodTotal={Math.round(stats.totalLeads * 0.87)}
-          />
-        </div>
+            {/* Growth Chart */}
+            <GrowthChart
+              dailyData={dailyData}
+              weeklyData={weeklyData}
+              monthlyData={monthlyData}
+              currentPeriodTotal={stats.totalLeads}
+              previousPeriodTotal={Math.round(stats.totalLeads * 0.87)}
+            />
+          </div>
+        )}
+
+        {/* For Agents: Show personal charts instead */}
+        {showPersonalOnly && (
+          <div className="space-y-4">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-2"
+            >
+              <TrendingUp className="h-4 w-4 text-emerald-500" />
+              <h3 className="text-base font-bold">Your Performance</h3>
+            </motion.div>
+
+            {/* Lead Sources */}
+            <AnalyticsPieChart
+              title="Lead Sources"
+              icon={<MapPin className="h-4 w-4 text-primary" />}
+              data={sourceData}
+            />
+
+            {/* License Distribution */}
+            <AnalyticsPieChart
+              title="License Status"
+              icon={<Award className="h-4 w-4 text-primary" />}
+              data={licenseData}
+            />
+
+            {/* Growth Chart */}
+            <GrowthChart
+              dailyData={dailyData}
+              weeklyData={weeklyData}
+              monthlyData={monthlyData}
+              currentPeriodTotal={stats.totalLeads}
+              previousPeriodTotal={Math.round(stats.totalLeads * 0.87)}
+            />
+          </div>
+        )}
       </div>
 
-      {/* ====== PERSONAL STATS (For agents or as secondary info) ====== */}
+      {/* ====== PERSONAL STATS (Show for all - but label appropriately) ====== */}
       <div className="mb-6">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -376,10 +350,12 @@ export default function Dashboard() {
           className="flex items-center gap-2 mb-3"
         >
           <Users className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-sm font-semibold text-muted-foreground">Your Personal Stats</h3>
+          <h3 className="text-sm font-semibold text-muted-foreground">
+            {showPersonalOnly ? "Your Stats" : "Your Personal Recruiting Stats"}
+          </h3>
         </motion.div>
 
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
           <StatCard
             title="Total Leads"
             value={stats.totalLeads}
@@ -404,45 +380,7 @@ export default function Dashboard() {
             icon={Percent}
             variant="success"
           />
-          <EarningsPotentialCard leadCount={stats.totalLeads} />
         </div>
-      </div>
-
-      {/* Lead Sources */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <AnalyticsPieChart
-          title="Lead Sources"
-          icon={<MapPin className="h-4 w-4 text-primary" />}
-          data={sourceData}
-        />
-        <AIInsightsCard 
-          stats={{
-            totalLeads: stats.totalLeads,
-            contacted: stats.contacted,
-            qualified: 0,
-            closed: stats.closed,
-            closeRate: stats.closeRate,
-            avgWaitTime: stats.avgWaitTime,
-            staleLeads: stats.staleLeads,
-            teamAvgCloseRate: 25,
-          }}
-        />
-      </div>
-
-      {/* AI Coaching */}
-      <div className="mb-6">
-        <AICoachingPanel
-          stats={{
-            totalLeads: stats.totalLeads,
-            contacted: stats.contacted,
-            qualified: 0,
-            closed: stats.closed,
-            closeRate: stats.closeRate,
-            avgWaitTime: stats.avgWaitTime,
-            staleLeads: stats.staleLeads,
-            teamAvgCloseRate: 25,
-          }}
-        />
       </div>
 
       {/* Admin Quick Actions */}

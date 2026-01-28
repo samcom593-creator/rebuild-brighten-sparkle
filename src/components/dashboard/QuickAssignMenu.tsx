@@ -26,7 +26,7 @@ interface QuickAssignMenuProps {
 }
 
 export const QuickAssignMenu = forwardRef<HTMLDivElement, QuickAssignMenuProps>(
-  function QuickAssignMenu({ applicationId, currentAgentId, onAssigned, className }, ref) {
+  ({ applicationId, currentAgentId, onAssigned, className }, ref) => {
   const [managers, setManagers] = useState<Manager[]>([]);
   const [loading, setLoading] = useState(false);
   const [assigning, setAssigning] = useState<string | null>(null);

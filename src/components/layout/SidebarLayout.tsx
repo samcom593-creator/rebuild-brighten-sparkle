@@ -1,14 +1,14 @@
-import { ReactNode, useState, useEffect, useRef, Suspense } from "react";
+import { ReactNode, useState, useEffect, useRef, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu } from "lucide-react";
+import { Menu, Crown } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
-import { Crown } from "lucide-react";
 import { GlobalSidebar } from "./GlobalSidebar";
 import { PhonePromptBanner } from "@/components/dashboard/PhonePromptBanner";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { useSidebarState } from "@/hooks/useSidebarState";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface SidebarLayoutProps {
   children: ReactNode;
@@ -17,16 +17,24 @@ interface SidebarLayoutProps {
 
 // Page transition animation variants for smooth navigation
 const pageVariants = {
-  initial: { opacity: 0 },
-  animate: { opacity: 1 },
-  exit: { opacity: 0 },
+  initial: { opacity: 0, y: 4 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -4 },
 };
 
 const pageTransition = {
   type: "tween" as const,
-  ease: "easeOut" as const,
+  ease: [0.4, 0, 0.2, 1] as const,
   duration: 0.15,
 };
+
+// Memoized page content wrapper to prevent unnecessary re-renders
+const PageContent = memo(({ children, showPhoneBanner }: { children: ReactNode; showPhoneBanner: boolean }) => (
+  <>
+    {showPhoneBanner && <PhonePromptBanner />}
+    {children}
+  </>
+));
 
 export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayoutProps) {
   const { isOpen, isFullscreen, toggleSidebar, toggleFullscreen, sidebarWidth } = useSidebarState();
@@ -112,7 +120,7 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
         )}
         style={{ marginLeft: `${marginLeft}px` }}
       >
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={location.pathname}
             initial="initial"
@@ -122,8 +130,9 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
             transition={pageTransition}
             className="p-4 sm:p-6 lg:p-8"
           >
-            {showPhoneBanner && <PhonePromptBanner />}
-            {children}
+            <PageContent showPhoneBanner={showPhoneBanner}>
+              {children}
+            </PageContent>
           </motion.div>
         </AnimatePresence>
       </main>

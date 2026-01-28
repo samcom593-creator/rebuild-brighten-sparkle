@@ -92,7 +92,7 @@ export function LiveLeaderboard({ currentAgentId, showAISummary = true }: LiveLe
         return;
       }
 
-      // Get agent names with profile_id fallback for imported agents
+      // Get agent names with profile_id fallback for imported agents (exclude inactive/deactivated)
       const agentIds = productionData.map(p => p.agent_id);
       const { data: agents } = await supabase
         .from("agents")
@@ -103,7 +103,9 @@ export function LiveLeaderboard({ currentAgentId, showAISummary = true }: LiveLe
           display_name,
           profile:profiles!agents_profile_id_fkey(full_name, avatar_url)
         `)
-        .in("id", agentIds);
+        .in("id", agentIds)
+        .eq("is_deactivated", false)
+        .eq("is_inactive", false);
 
       const userIds = agents?.map(a => a.user_id).filter(Boolean) || [];
       const { data: profilesByUserId } = await supabase

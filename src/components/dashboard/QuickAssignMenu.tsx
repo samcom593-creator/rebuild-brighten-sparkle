@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, forwardRef } from "react";
 import { UserPlus, Loader2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,12 +25,8 @@ interface QuickAssignMenuProps {
   className?: string;
 }
 
-export function QuickAssignMenu({
-  applicationId,
-  currentAgentId,
-  onAssigned,
-  className,
-}: QuickAssignMenuProps) {
+export const QuickAssignMenu = forwardRef<HTMLDivElement, QuickAssignMenuProps>(
+  function QuickAssignMenu({ applicationId, currentAgentId, onAssigned, className }, ref) {
   const [managers, setManagers] = useState<Manager[]>([]);
   const [loading, setLoading] = useState(false);
   const [assigning, setAssigning] = useState<string | null>(null);
@@ -120,55 +116,60 @@ export function QuickAssignMenu({
     }
   };
 
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className={className}
-          disabled={loading}
-        >
-          {loading ? (
-            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-          ) : (
-            <UserPlus className="h-4 w-4 mr-1" />
-          )}
-          Assign
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64">
-        <DropdownMenuLabel className="text-xs text-muted-foreground">
-          Assign to Manager
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        
-        {managers.length === 0 ? (
-          <DropdownMenuItem disabled>
-            No managers available
-          </DropdownMenuItem>
-        ) : (
-          managers.map((manager) => (
-            <DropdownMenuItem
-              key={manager.id}
-              onClick={() => handleAssign(manager.id)}
-              disabled={assigning !== null}
-              className="flex items-center justify-between"
+    return (
+      <div ref={ref}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={className}
+              disabled={loading}
             >
-              <div className="flex flex-col">
-                <span className="font-medium">{manager.name}</span>
-                <span className="text-xs text-muted-foreground">{manager.email}</span>
-              </div>
-              {currentAgentId === manager.id && (
-                <Check className="h-4 w-4 text-primary" />
+              {loading ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <UserPlus className="h-4 w-4 mr-1" />
               )}
-              {assigning === manager.id && (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              )}
-            </DropdownMenuItem>
-          ))
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
+              Assign
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-64 bg-popover border-border z-50">
+            <DropdownMenuLabel className="text-xs text-muted-foreground">
+              Assign to Manager
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            
+            {managers.length === 0 ? (
+              <DropdownMenuItem disabled>
+                No managers available
+              </DropdownMenuItem>
+            ) : (
+              managers.map((manager) => (
+                <DropdownMenuItem
+                  key={manager.id}
+                  onClick={() => handleAssign(manager.id)}
+                  disabled={assigning !== null}
+                  className="flex items-center justify-between"
+                >
+                  <div className="flex flex-col">
+                    <span className="font-medium">{manager.name}</span>
+                    <span className="text-xs text-muted-foreground">{manager.email}</span>
+                  </div>
+                  {currentAgentId === manager.id && (
+                    <Check className="h-4 w-4 text-primary" />
+                  )}
+                  {assigning === manager.id && (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  )}
+                </DropdownMenuItem>
+              ))
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    );
+  }
+);
+
+QuickAssignMenu.displayName = "QuickAssignMenu";

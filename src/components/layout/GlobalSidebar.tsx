@@ -51,7 +51,7 @@ export function GlobalSidebar({
   const { user, isAdmin, isManager, isAgent } = useAuth();
   const [showInviteModal, setShowInviteModal] = useState(false);
 
-  // Role-based navigation items
+  // Role-based navigation items with Pipeline instead of Payments
   const navItems = useMemo(() => {
     const items = [];
 
@@ -73,10 +73,10 @@ export function GlobalSidebar({
       });
     }
 
-    // All users see applicants
+    // All users see applicants (Pipeline)
     items.push({ 
       icon: Users, 
-      label: "Applicants", 
+      label: "Pipeline", 
       href: "/dashboard/applicants",
       roles: ["admin", "manager", "agent"]
     });

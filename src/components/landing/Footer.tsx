@@ -72,9 +72,14 @@ export function Footer() {
         </div>
 
         <div className="border-t border-border mt-8 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} APEX Financial Empire. All rights reserved.
-          </p>
+          <div className="flex flex-col items-center md:items-start gap-1">
+            <p className="text-sm text-muted-foreground">
+              © {new Date().getFullYear()} APEX Financial Empire. All rights reserved.
+            </p>
+            <p className="text-xs text-primary font-medium">
+              Powered by Apex Financial
+            </p>
+          </div>
           <p className="text-xs text-muted-foreground max-w-xl text-center md:text-right">
             Income examples are illustrative and not guaranteed. Individual results vary based on effort, skill, and market conditions. 
             Insurance licenses required in most states.

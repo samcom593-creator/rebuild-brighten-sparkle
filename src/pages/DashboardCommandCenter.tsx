@@ -10,7 +10,8 @@ import {
   Shield,
   Search,
   Filter,
-  MoreVertical
+  MoreVertical,
+  Calendar
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,10 +25,11 @@ import { AgentProfileEditor } from "@/components/admin/AgentProfileEditor";
 import { QuickFilters } from "@/components/admin/QuickFilters";
 import { RecognitionQueue } from "@/components/admin/RecognitionQueue";
 import { DuplicateMergeTool } from "@/components/admin/DuplicateMergeTool";
+import { DateRangePicker, type DateRange } from "@/components/ui/date-range-picker";
 import { cn } from "@/lib/utils";
 import { format, startOfWeek, startOfMonth, startOfYear } from "date-fns";
 
-type TimePeriod = "day" | "week" | "month" | "all";
+type TimePeriod = "day" | "week" | "month" | "custom";
 type FilterType = "all" | "producers" | "weak" | "zero" | "inactive";
 
 interface AgentWithStats {
@@ -49,6 +51,7 @@ interface AgentWithStats {
 export default function DashboardCommandCenter() {
   const { isAdmin } = useAuth();
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("week");
+  const [customDateRange, setCustomDateRange] = useState<DateRange>({ from: undefined, to: undefined });
   const [activeFilter, setActiveFilter] = useState<FilterType>("producers");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedAgent, setSelectedAgent] = useState<AgentWithStats | null>(null);
@@ -64,11 +67,15 @@ export default function DashboardCommandCenter() {
         return { start: format(startOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd"), end: format(now, "yyyy-MM-dd") };
       case "month":
         return { start: format(startOfMonth(now), "yyyy-MM-dd"), end: format(now, "yyyy-MM-dd") };
-      case "all":
+      case "custom":
+        if (customDateRange.from && customDateRange.to) {
+          return { start: format(customDateRange.from, "yyyy-MM-dd"), end: format(customDateRange.to, "yyyy-MM-dd") };
+        }
+        return { start: format(startOfMonth(now), "yyyy-MM-dd"), end: format(now, "yyyy-MM-dd") };
       default:
-        return { start: "2020-01-01", end: format(now, "yyyy-MM-dd") };
+        return { start: format(startOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd"), end: format(now, "yyyy-MM-dd") };
     }
-  }, [timePeriod]);
+  }, [timePeriod, customDateRange]);
 
   // Fetch all agents with production stats - CLEAN query excluding unknowns/duplicates
   const { data: agentsData, isLoading, refetch } = useQuery({
@@ -337,16 +344,29 @@ export default function DashboardCommandCenter() {
           </motion.div>
         </div>
 
-        {/* Time Period Toggle */}
+        {/* Time Period Toggle + Custom Date Range */}
         <div className="flex flex-col lg:flex-row lg:items-center gap-4">
           <Tabs value={timePeriod} onValueChange={(v) => setTimePeriod(v as TimePeriod)} className="w-full lg:w-auto">
             <TabsList className="grid grid-cols-4 w-full lg:w-auto">
-              <TabsTrigger value="day" className="px-4">Today</TabsTrigger>
-              <TabsTrigger value="week" className="px-4">Week</TabsTrigger>
-              <TabsTrigger value="month" className="px-4">Month</TabsTrigger>
-              <TabsTrigger value="all" className="px-4">All Time</TabsTrigger>
+              <TabsTrigger value="day" className="px-3 text-sm">Today</TabsTrigger>
+              <TabsTrigger value="week" className="px-3 text-sm">Week</TabsTrigger>
+              <TabsTrigger value="month" className="px-3 text-sm">Month</TabsTrigger>
+              <TabsTrigger value="custom" className="px-3 text-sm gap-1">
+                <Calendar className="h-3 w-3" />
+                Custom
+              </TabsTrigger>
             </TabsList>
           </Tabs>
+
+          {/* Custom Date Range Picker - shown when Custom is selected */}
+          {timePeriod === "custom" && (
+            <DateRangePicker
+              value={customDateRange}
+              onChange={setCustomDateRange}
+              simpleMode
+              className="w-full lg:w-auto"
+            />
+          )}
 
           <div className="flex-1 max-w-md">
             <div className="relative">

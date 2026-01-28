@@ -12,7 +12,7 @@ import { ApplicationToast } from "@/components/landing/ApplicationToast";
 
 const Index = () => {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden w-full max-w-full">
       <DealsTicker />
       <Navbar />
       <main>

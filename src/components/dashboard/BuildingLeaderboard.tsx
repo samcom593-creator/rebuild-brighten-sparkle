@@ -95,7 +95,7 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
           previousEndDate = today.toISOString().split("T")[0];
       }
 
-      // Get all active agents with profile_id join for imported agents
+      // Get all active agents with profile_id join for imported agents (exclude inactive/deactivated)
       const { data: allAgents } = await supabase
         .from("agents")
         .select(`
@@ -105,7 +105,8 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
           display_name,
           profile:profiles!agents_profile_id_fkey(full_name, avatar_url)
         `)
-        .eq("is_deactivated", false);
+        .eq("is_deactivated", false)
+        .eq("is_inactive", false);
 
       if (!allAgents) {
         setEntries([]);

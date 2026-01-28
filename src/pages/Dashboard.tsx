@@ -342,46 +342,48 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* ====== PERSONAL STATS (Show for all - but label appropriately) ====== */}
-      <div className="mb-6">
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-2 mb-3"
-        >
-          <Users className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-sm font-semibold text-muted-foreground">
-            {showPersonalOnly ? "Your Stats" : "Your Personal Recruiting Stats"}
-          </h3>
-        </motion.div>
+      {/* ====== PERSONAL STATS (Show for agents & managers, NOT admin) ====== */}
+      {!isAdmin && (
+        <div className="mb-6">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-2 mb-3"
+          >
+            <Users className="h-4 w-4 text-muted-foreground" />
+            <h3 className="text-sm font-semibold text-muted-foreground">
+              {showPersonalOnly ? "Your Stats" : "Your Personal Recruiting Stats"}
+            </h3>
+          </motion.div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          <StatCard
-            title="Total Leads"
-            value={stats.totalLeads}
-            icon={Users}
-            variant="primary"
-          />
-          <StatCard
-            title="Contacted"
-            value={stats.contacted}
-            icon={Phone}
-            variant="default"
-          />
-          <StatCard
-            title="Closed"
-            value={stats.closed}
-            icon={CheckCircle}
-            variant="success"
-          />
-          <StatCard
-            title="Close Rate"
-            value={`${stats.closeRate.toFixed(1)}%`}
-            icon={Percent}
-            variant="success"
-          />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <StatCard
+              title="Total Leads"
+              value={stats.totalLeads}
+              icon={Users}
+              variant="primary"
+            />
+            <StatCard
+              title="Contacted"
+              value={stats.contacted}
+              icon={Phone}
+              variant="default"
+            />
+            <StatCard
+              title="Closed"
+              value={stats.closed}
+              icon={CheckCircle}
+              variant="success"
+            />
+            <StatCard
+              title="Close Rate"
+              value={`${stats.closeRate.toFixed(1)}%`}
+              icon={Percent}
+              variant="success"
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Admin Quick Actions */}
       {isAdmin && (

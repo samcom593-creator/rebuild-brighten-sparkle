@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Send, Eye, Edit, Loader2 } from "lucide-react";
+import { Send, Eye, Edit, Loader2, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface EmailPreviewModalProps {
   open: boolean;
@@ -35,6 +36,16 @@ export function EmailPreviewModal({
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState<"preview" | "edit">("preview");
 
+  // Reset edits when modal opens with new content
+  useEffect(() => {
+    if (open) {
+      setEditedSubject(subject);
+      setEditedBody(htmlContent);
+      setIsEditing(false);
+      setActiveTab("preview");
+    }
+  }, [open, subject, htmlContent]);
+
   const handleSend = async () => {
     const customSubject = editedSubject !== subject ? editedSubject : undefined;
     const customBody = editedBody !== htmlContent ? editedBody : undefined;
@@ -46,6 +57,8 @@ export function EmailPreviewModal({
     setEditedBody(htmlContent);
     setIsEditing(false);
   };
+
+  const hasEdits = editedSubject !== subject || editedBody !== htmlContent;
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
@@ -97,13 +110,14 @@ export function EmailPreviewModal({
 
             <TabsContent value="preview" className="mt-4">
               <div 
-                className="rounded-lg border bg-white overflow-hidden"
+                className="rounded-lg border bg-white dark:bg-card overflow-hidden"
                 style={{ minHeight: "400px" }}
               >
                 <iframe
                   srcDoc={editedBody}
                   className="w-full h-[400px] border-0"
                   title="Email Preview"
+                  sandbox="allow-same-origin"
                 />
               </div>
             </TabsContent>
@@ -121,11 +135,13 @@ export function EmailPreviewModal({
             </TabsContent>
           </Tabs>
 
-          {isEditing && (
-            <p className="text-sm text-amber-500 flex items-center gap-2">
-              <Edit className="h-4 w-4" />
-              You've made edits to this email
-            </p>
+          {hasEdits && (
+            <Alert className="border-amber-500/30 bg-amber-500/10">
+              <AlertCircle className="h-4 w-4 text-amber-500" />
+              <AlertDescription className="text-amber-600 dark:text-amber-400">
+                You've made edits to this email. These changes will be sent instead of the template.
+              </AlertDescription>
+            </Alert>
           )}
         </div>
 
@@ -137,7 +153,7 @@ export function EmailPreviewModal({
           >
             Cancel
           </Button>
-          {isEditing && (
+          {hasEdits && (
             <Button
               variant="outline"
               onClick={resetEdits}

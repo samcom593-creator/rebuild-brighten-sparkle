@@ -204,3 +204,9 @@ verify_jwt = false
 
 [functions.check-comeback-milestones]
 verify_jwt = false
+
+[functions.increment-lead-counter]
+verify_jwt = false
+
+[functions.notify-course-complete]
+verify_jwt = false

@@ -216,7 +216,7 @@ export function AgentQuickEditDialog({
     }
   };
 
-  const handleSaveName = async () => {
+  const handleSaveChanges = async () => {
     if (!displayName.trim()) {
       toast({
         title: "Name required",
@@ -228,6 +228,7 @@ export function AgentQuickEditDialog({
 
     setSaving(true);
     try {
+      // Update agent display name
       const { error } = await supabase
         .from("agents")
         .update({ display_name: displayName.trim() })
@@ -235,18 +236,30 @@ export function AgentQuickEditDialog({
 
       if (error) throw error;
 
+      // If agent has a profile, update phone there
+      if (agentData?.profile_id) {
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update({ phone: phone.trim() || null })
+          .eq("id", agentData.profile_id);
+
+        if (profileError) {
+          console.error("Error updating profile phone:", profileError);
+        }
+      }
+
       toast({
-        title: "Name updated",
-        description: `Agent name set to "${displayName.trim()}"`,
+        title: "Changes saved",
+        description: `Agent "${displayName.trim()}" updated successfully.`,
       });
       
       onUpdate?.();
       onOpenChange(false);
     } catch (error) {
-      console.error("Error saving name:", error);
+      console.error("Error saving changes:", error);
       toast({
         title: "Error",
-        description: "Failed to update agent name. Please try again.",
+        description: "Failed to save changes. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -531,6 +544,26 @@ export function AgentQuickEditDialog({
             />
           </div>
 
+          {/* Phone Number - Always visible */}
+          <div className="space-y-2">
+            <Label htmlFor="agentPhone" className="flex items-center gap-2">
+              <Phone className="h-3.5 w-3.5" />
+              Phone Number
+            </Label>
+            <Input
+              id="agentPhone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="Enter phone number"
+              type="tel"
+            />
+            {!agentData?.profile_id && (
+              <p className="text-[10px] text-muted-foreground">
+                Phone will be saved when profile is created below.
+              </p>
+            )}
+          </div>
+
           {/* Admin: Create & Send Login Section */}
           {isAdmin && !hasExistingLogin && (
             <div className="space-y-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
@@ -684,7 +717,7 @@ export function AgentQuickEditDialog({
               )}
             </Button>
           ) : (
-            <Button onClick={handleSaveName} disabled={saving}>
+            <Button onClick={handleSaveChanges} disabled={saving}>
               {saving ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -693,7 +726,7 @@ export function AgentQuickEditDialog({
               ) : (
                 <>
                   <Check className="h-4 w-4 mr-2" />
-                  Save Name
+                  Save Changes
                 </>
               )}
             </Button>

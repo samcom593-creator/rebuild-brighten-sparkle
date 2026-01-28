@@ -13,29 +13,36 @@ import {
 export type DateRangePeriod = "today" | "week" | "month" | "custom";
 
 export interface DateRange {
-  from: Date;
-  to: Date;
+  from?: Date;
+  to?: Date;
 }
 
 interface DateRangePickerProps {
-  value: DateRange;
-  onChange: (range: DateRange) => void;
-  period: DateRangePeriod;
-  onPeriodChange: (period: DateRangePeriod) => void;
+  value?: DateRange;
+  onChange?: (range: DateRange) => void;
+  period?: DateRangePeriod;
+  onPeriodChange?: (period: DateRangePeriod) => void;
   className?: string;
   showPresets?: boolean;
+  // Simplified mode - just the calendar picker without presets
+  simpleMode?: boolean;
 }
 
 export function DateRangePicker({
-  value,
+  value = { from: new Date(), to: new Date() },
   onChange,
-  period,
+  period = "week",
   onPeriodChange,
   className,
   showPresets = true,
+  simpleMode = false,
 }: DateRangePickerProps) {
   const [open, setOpen] = useState(false);
   const [selectingStart, setSelectingStart] = useState(true);
+  const [internalPeriod, setInternalPeriod] = useState<DateRangePeriod>(period);
+
+  const currentPeriod = onPeriodChange ? period : internalPeriod;
+  const setPeriod = onPeriodChange || setInternalPeriod;
 
   const handlePresetClick = (preset: DateRangePeriod) => {
     const today = new Date();
@@ -61,22 +68,23 @@ export function DateRangePicker({
         return;
     }
 
-    onChange(newRange);
-    onPeriodChange(preset);
+    onChange?.(newRange);
+    setPeriod(preset);
   };
 
   const handleDateSelect = (date: Date | undefined) => {
     if (!date) return;
 
     if (selectingStart) {
-      onChange({ from: date, to: date });
+      onChange?.({ from: date, to: date });
       setSelectingStart(false);
     } else {
-      const newRange = date < value.from
-        ? { from: date, to: value.from }
-        : { from: value.from, to: date };
-      onChange(newRange);
-      onPeriodChange("custom");
+      const fromDate = value?.from || date;
+      const newRange = date < fromDate
+        ? { from: date, to: fromDate }
+        : { from: fromDate, to: date };
+      onChange?.(newRange);
+      setPeriod("custom");
       setSelectingStart(true);
       setOpen(false);
     }
@@ -89,6 +97,56 @@ export function DateRangePicker({
     custom: "Custom",
   };
 
+  // Simple mode - just a date range picker button
+  if (simpleMode) {
+    return (
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className={cn(
+              "text-xs h-9 gap-1.5 justify-start font-normal",
+              !value?.from && "text-muted-foreground",
+              className
+            )}
+          >
+            <CalendarDays className="h-3.5 w-3.5" />
+            {value?.from && value?.to ? (
+              <span>
+                {format(value.from, "MMM d")} - {format(value.to, "MMM d")}
+              </span>
+            ) : (
+              "Pick dates"
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <div className="p-3 border-b border-border">
+            <p className="text-xs text-muted-foreground">
+              {selectingStart ? "Select start date" : "Select end date"}
+            </p>
+            {value?.from && value?.to && (
+              <p className="text-sm font-medium">
+                {format(value.from, "MMM d, yyyy")}
+                {" → "}
+                {format(value.to, "MMM d, yyyy")}
+              </p>
+            )}
+          </div>
+          <Calendar
+            mode="single"
+            selected={selectingStart ? value?.from : value?.to}
+            onSelect={handleDateSelect}
+            disabled={(date) => date > new Date()}
+            initialFocus
+            className="pointer-events-auto"
+          />
+        </PopoverContent>
+      </Popover>
+    );
+  }
+
   return (
     <div className={cn("flex items-center gap-1", className)}>
       {showPresets && (
@@ -96,12 +154,12 @@ export function DateRangePicker({
           {(["today", "week", "month"] as DateRangePeriod[]).map((p) => (
             <Button
               key={p}
-              variant={period === p ? "default" : "ghost"}
+              variant={currentPeriod === p ? "default" : "ghost"}
               size="sm"
               onClick={() => handlePresetClick(p)}
               className={cn(
                 "text-xs h-8 px-3",
-                period === p && "bg-primary text-primary-foreground"
+                currentPeriod === p && "bg-primary text-primary-foreground"
               )}
             >
               {p === "today" ? "Day" : p === "week" ? "Week" : "Month"}
@@ -112,15 +170,15 @@ export function DateRangePicker({
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
               <Button
-                variant={period === "custom" ? "default" : "ghost"}
+                variant={currentPeriod === "custom" ? "default" : "ghost"}
                 size="sm"
                 className={cn(
                   "text-xs h-8 gap-1.5",
-                  period === "custom" && "bg-primary text-primary-foreground"
+                  currentPeriod === "custom" && "bg-primary text-primary-foreground"
                 )}
               >
                 <CalendarDays className="h-3 w-3" />
-                {period === "custom" ? (
+                {currentPeriod === "custom" && value?.from && value?.to ? (
                   <span className="hidden sm:inline">
                     {format(value.from, "MMM d")} - {format(value.to, "MMM d")}
                   </span>
@@ -134,15 +192,17 @@ export function DateRangePicker({
                 <p className="text-xs text-muted-foreground">
                   {selectingStart ? "Select start date" : "Select end date"}
                 </p>
-                <p className="text-sm font-medium">
-                  {format(value.from, "MMM d, yyyy")}
-                  {" → "}
-                  {format(value.to, "MMM d, yyyy")}
-                </p>
+                {value?.from && value?.to && (
+                  <p className="text-sm font-medium">
+                    {format(value.from, "MMM d, yyyy")}
+                    {" → "}
+                    {format(value.to, "MMM d, yyyy")}
+                  </p>
+                )}
               </div>
               <Calendar
                 mode="single"
-                selected={selectingStart ? value.from : value.to}
+                selected={selectingStart ? value?.from : value?.to}
                 onSelect={handleDateSelect}
                 disabled={(date) => date > new Date()}
                 initialFocus
@@ -187,7 +247,7 @@ export function useDateRange(initialPeriod: DateRangePeriod = "week") {
     setPeriod,
     range,
     setRange,
-    startDate: format(range.from, "yyyy-MM-dd"),
-    endDate: format(range.to, "yyyy-MM-dd"),
+    startDate: range.from ? format(range.from, "yyyy-MM-dd") : "",
+    endDate: range.to ? format(range.to, "yyyy-MM-dd") : "",
   };
 }

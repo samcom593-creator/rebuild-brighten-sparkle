@@ -1,10 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
-import { TrendingUp, TrendingDown, Target, Trophy, Zap, Award } from "lucide-react";
+import { TrendingUp, TrendingDown, Target, Trophy, Zap, Award, Calendar } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { supabase } from "@/integrations/supabase/client";
 import { AnimatedNumber } from "./AnimatedNumber";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DateRangePicker, type DateRange } from "@/components/ui/date-range-picker";
 import { cn } from "@/lib/utils";
+import { format, startOfWeek, startOfMonth } from "date-fns";
+
+type TimePeriod = "day" | "week" | "month" | "custom";
 
 interface PersonalStatsCardProps {
   agentId: string;
@@ -18,35 +23,103 @@ interface AgencyStats {
   totalAgents: number;
 }
 
+interface PeriodStats {
+  closingRate: number;
+  presentations: number;
+  alp: number;
+  deals: number;
+}
+
 export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCardProps) {
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>("week");
+  const [customDateRange, setCustomDateRange] = useState<DateRange>({ from: undefined, to: undefined });
   const [agencyStats, setAgencyStats] = useState<AgencyStats | null>(null);
+  const [personalStats, setPersonalStats] = useState<PeriodStats | null>(null);
   const [personalBest, setPersonalBest] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
+  // Calculate date range based on selected period
+  const dateRange = useMemo(() => {
+    const now = new Date();
+    switch (timePeriod) {
+      case "day":
+        return { start: format(now, "yyyy-MM-dd"), end: format(now, "yyyy-MM-dd") };
+      case "week":
+        return { start: format(startOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd"), end: format(now, "yyyy-MM-dd") };
+      case "month":
+        return { start: format(startOfMonth(now), "yyyy-MM-dd"), end: format(now, "yyyy-MM-dd") };
+      case "custom":
+        if (customDateRange.from && customDateRange.to) {
+          return { start: format(customDateRange.from, "yyyy-MM-dd"), end: format(customDateRange.to, "yyyy-MM-dd") };
+        }
+        return { start: format(startOfMonth(now), "yyyy-MM-dd"), end: format(now, "yyyy-MM-dd") };
+      default:
+        return { start: format(startOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd"), end: format(now, "yyyy-MM-dd") };
+    }
+  }, [timePeriod, customDateRange]);
+
   useEffect(() => {
     fetchStats();
-  }, [agentId]);
+  }, [agentId, dateRange]);
 
   const fetchStats = async () => {
     try {
-      const today = new Date().toISOString().split("T")[0];
+      setLoading(true);
       
-      // Get all production for today (agency-wide)
+      // Get all production for the period (agency-wide)
       const { data: allProduction } = await supabase
         .from("daily_production")
-        .select("closing_rate, presentations, aop")
-        .eq("production_date", today);
+        .select("agent_id, closing_rate, presentations, aop, deals_closed")
+        .gte("production_date", dateRange.start)
+        .lte("production_date", dateRange.end);
 
       if (allProduction && allProduction.length > 0) {
-        const totalAgents = allProduction.length;
-        const avgClosingRate = allProduction.reduce((sum, p) => sum + Number(p.closing_rate || 0), 0) / totalAgents;
-        const avgPresentations = allProduction.reduce((sum, p) => sum + Number(p.presentations || 0), 0) / totalAgents;
-        const avgAlp = allProduction.reduce((sum, p) => sum + Number(p.aop || 0), 0) / totalAgents;
+        // Aggregate by agent for accurate averages
+        const agentTotals = new Map<string, { closingRate: number; presentations: number; alp: number; deals: number; count: number }>();
+        allProduction.forEach((p) => {
+          const existing = agentTotals.get(p.agent_id) || { closingRate: 0, presentations: 0, alp: 0, deals: 0, count: 0 };
+          agentTotals.set(p.agent_id, {
+            closingRate: existing.closingRate + Number(p.closing_rate || 0),
+            presentations: existing.presentations + Number(p.presentations || 0),
+            alp: existing.alp + Number(p.aop || 0),
+            deals: existing.deals + Number(p.deals_closed || 0),
+            count: existing.count + 1,
+          });
+        });
 
-        setAgencyStats({ avgClosingRate, avgPresentations, avgAlp, totalAgents });
+        const totalAgents = agentTotals.size;
+        let totalClosingRate = 0, totalPresentations = 0, totalAlp = 0;
+        agentTotals.forEach((t) => {
+          totalClosingRate += t.presentations > 0 ? (t.deals / t.presentations) * 100 : 0;
+          totalPresentations += t.presentations;
+          totalAlp += t.alp;
+        });
+
+        setAgencyStats({
+          avgClosingRate: totalAgents > 0 ? totalClosingRate / totalAgents : 0,
+          avgPresentations: totalAgents > 0 ? totalPresentations / totalAgents : 0,
+          avgAlp: totalAgents > 0 ? totalAlp / totalAgents : 0,
+          totalAgents,
+        });
+
+        // Get personal stats for the period
+        const myData = agentTotals.get(agentId);
+        if (myData) {
+          setPersonalStats({
+            closingRate: myData.presentations > 0 ? Math.round((myData.deals / myData.presentations) * 100) : 0,
+            presentations: myData.presentations,
+            alp: myData.alp,
+            deals: myData.deals,
+          });
+        } else {
+          setPersonalStats({ closingRate: 0, presentations: 0, alp: 0, deals: 0 });
+        }
+      } else {
+        setAgencyStats(null);
+        setPersonalStats({ closingRate: 0, presentations: 0, alp: 0, deals: 0 });
       }
 
-      // Get personal best ALP
+      // Get personal best ALP (all-time)
       const { data: bestData } = await supabase
         .from("daily_production")
         .select("aop")
@@ -65,15 +138,21 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
     }
   };
 
-  const myClosingRate = Number(todayProduction?.closing_rate || 0);
-  const myPresentations = Number(todayProduction?.presentations || 0);
-  const myAlp = Number(todayProduction?.aop || 0);
-  const myDeals = Number(todayProduction?.deals_closed || 0);
+  const myClosingRate = personalStats?.closingRate || 0;
+  const myPresentations = personalStats?.presentations || 0;
+  const myAlp = personalStats?.alp || 0;
+  const myDeals = personalStats?.deals || 0;
 
   const isAboveAvgClosing = agencyStats && myClosingRate > agencyStats.avgClosingRate;
   const isAboveAvgPresentations = agencyStats && myPresentations > agencyStats.avgPresentations;
   const isPersonalBest = myAlp > 0 && myAlp >= personalBest;
-  const closingDiff = agencyStats ? (myClosingRate - agencyStats.avgClosingRate).toFixed(0) : 0;
+
+  const periodLabels: Record<TimePeriod, string> = {
+    day: "Today",
+    week: "This Week",
+    month: "This Month",
+    custom: "Custom Range",
+  };
 
   const stats = [
     {
@@ -100,28 +179,13 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
       highlight: myDeals >= 3,
     },
     {
-      label: "Today's ALP",
+      label: `${periodLabels[timePeriod]} ALP`,
       value: myAlp,
       formatAsCurrency: true,
       icon: Award,
       isPersonalBest,
     },
   ];
-
-  if (loading) {
-    return (
-      <GlassCard className="p-6">
-        <div className="animate-pulse space-y-4">
-          <div className="h-6 bg-muted rounded w-1/3" />
-          <div className="grid grid-cols-2 gap-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-24 bg-muted/50 rounded" />
-            ))}
-          </div>
-        </div>
-      </GlassCard>
-    );
-  }
 
   return (
     <motion.div
@@ -130,34 +194,70 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
       transition={{ delay: 0.2 }}
     >
       <GlassCard className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold gradient-text">Your Performance</h3>
-          {isPersonalBest && myAlp > 0 && (
-            <motion.span
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              className="px-3 py-1 bg-amber-500/20 text-amber-500 rounded-full text-xs font-bold flex items-center gap-1"
-            >
-              <Trophy className="h-3 w-3" />
-              Personal Best!
-            </motion.span>
-          )}
+        {/* Header with Time Period Selector */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-semibold gradient-text">Your Performance</h3>
+            {isPersonalBest && myAlp > 0 && (
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="px-2 py-0.5 bg-amber-500/20 text-amber-500 rounded-full text-xs font-bold flex items-center gap-1"
+              >
+                <Trophy className="h-3 w-3" />
+                Best!
+              </motion.span>
+            )}
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <Tabs value={timePeriod} onValueChange={(v) => setTimePeriod(v as TimePeriod)} className="w-auto">
+              <TabsList className="h-8">
+                <TabsTrigger value="day" className="text-xs px-2 h-6">Day</TabsTrigger>
+                <TabsTrigger value="week" className="text-xs px-2 h-6">Week</TabsTrigger>
+                <TabsTrigger value="month" className="text-xs px-2 h-6">Month</TabsTrigger>
+                <TabsTrigger value="custom" className="text-xs px-2 h-6 gap-1">
+                  <Calendar className="h-3 w-3" />
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          {stats.map((stat, index) => {
-            const Icon = stat.icon;
-            return (
-              <motion.div
-                key={stat.label}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: index * 0.1 }}
-                className={cn(
-                  "relative p-4 rounded-xl border transition-all duration-300",
-                  stat.isAbove || stat.highlight || stat.isPersonalBest
-                    ? "bg-primary/5 border-primary/30"
-                    : "bg-muted/30 border-border/50"
+        {/* Custom Date Range Picker */}
+        {timePeriod === "custom" && (
+          <div className="mb-4">
+            <DateRangePicker
+              value={customDateRange}
+              onChange={setCustomDateRange}
+              simpleMode
+              className="w-full"
+            />
+          </div>
+        )}
+
+        {/* Loading State */}
+        {loading ? (
+          <div className="grid grid-cols-2 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-24 bg-muted/50 rounded-xl animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-4">
+            {stats.map((stat, index) => {
+              const Icon = stat.icon;
+              return (
+                <motion.div
+                  key={stat.label}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: index * 0.1 }}
+                  className={cn(
+                    "relative p-4 rounded-xl border transition-all duration-300",
+                    stat.isAbove || stat.highlight || stat.isPersonalBest
+                      ? "bg-primary/5 border-primary/30"
+                      : "bg-muted/30 border-border/50"
                 )}
               >
                 <div className="flex items-center gap-2 text-muted-foreground mb-2">
@@ -204,25 +304,26 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
                     </div>
                   )}
                 </div>
-              </motion.div>
-            );
-          })}
-        </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
 
-        {/* Agency Wide Summary */}
-        {agencyStats && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            className="mt-4 pt-4 border-t border-border/50"
-          >
-            <p className="text-xs text-muted-foreground text-center">
-              Agency Today: <span className="font-medium text-foreground">{agencyStats.totalAgents}</span> agents active • 
-              Avg Close Rate: <span className={cn("font-medium", isAboveAvgClosing ? "text-emerald-500" : "text-foreground")}>{agencyStats.avgClosingRate.toFixed(0)}%</span> • 
-              Avg ALP: <span className="font-medium text-foreground">${agencyStats.avgAlp.toLocaleString()}</span>
-            </p>
-          </motion.div>
+          {/* Agency Wide Summary */}
+          {agencyStats && !loading && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="mt-4 pt-4 border-t border-border/50"
+            >
+              <p className="text-xs text-muted-foreground text-center">
+                Agency {periodLabels[timePeriod]}: <span className="font-medium text-foreground">{agencyStats.totalAgents}</span> agents • 
+                Avg Close: <span className={cn("font-medium", isAboveAvgClosing ? "text-emerald-500" : "text-foreground")}>{agencyStats.avgClosingRate.toFixed(0)}%</span> • 
+                Avg ALP: <span className="font-medium text-foreground">${Math.round(agencyStats.avgAlp).toLocaleString()}</span>
+              </p>
+            </motion.div>
         )}
       </GlassCard>
     </motion.div>

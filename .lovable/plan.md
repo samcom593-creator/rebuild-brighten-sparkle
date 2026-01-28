@@ -1,107 +1,90 @@
 
 
-# Ultra-Simple Deal Entry - Final Redesign
+## Agent Delete Options Plan
 
-## Understanding the Problem
+### Overview
+Replace the current single-action delete confirmation with a choice dialog that offers two options when the admin clicks "Delete":
+1. **Mark as Inactive** - Keeps the agent record but marks them as inactive (soft delete)
+2. **Permanently Delete** - Removes the agent and all associated records from the system
 
-The current interface has too much going on:
-- Deal bubbles with numbering, ALP labels, delete buttons
-- Separate input field + button layout  
-- Summary section with counts and totals
-- Too many visual elements that make it feel "clunky"
+### Implementation Details
 
-## Solution: Minimal, Fast, Type-First
+#### 1. Update the Delete Confirmation Dialog
+Replace the current `AlertDialog` in `AgentQuickEditDialog.tsx` with a two-option choice screen:
 
-**Design Philosophy**: Just a text field. Type the ALP. Press Enter or tap Add. Done.
+**Before:** Single confirmation → Permanent delete  
+**After:** Choice screen → Inactivate OR Permanent delete with secondary confirmation
 
----
-
-## New Design
+#### 2. New Dialog Flow
 
 ```text
-┌─────────────────────────────────────────────────────┐
-│  💰 Deals                                           │
-│                                                     │
-│  [$3,600]  [$2,400]  [$1,800]                      │  ← Clean bubbles (just the number + X)
-│                                                     │
-│  ┌──────────────────────────────────────────────┐  │
-│  │ $  Enter ALP                        + Add    │  │  ← Input + button INLINE
-│  └──────────────────────────────────────────────┘  │
-│                                                     │
-│  Total: $7,800                                     │  ← Simple total, no fluff
-└─────────────────────────────────────────────────────┘
+[Delete Button Clicked]
+        │
+        ▼
+┌───────────────────────────┐
+│   Choose Action Dialog    │
+│                           │
+│  ┌─────────────────────┐  │
+│  │ Mark as Inactive    │  │ ← Sets is_inactive = true
+│  │ (Hide from views)   │  │   Agent kept for records
+│  └─────────────────────┘  │
+│                           │
+│  ┌─────────────────────┐  │
+│  │ Permanently Delete  │  │ ← Removes all records
+│  │ (Cannot undo)       │  │   Full data cleanup
+│  └─────────────────────┘  │
+│                           │
+│        [Cancel]           │
+└───────────────────────────┘
 ```
 
----
+#### 3. Files to Modify
 
-## Key Changes
+**`src/components/dashboard/AgentQuickEditDialog.tsx`**
+- Add new state: `deleteStep` to track which screen is shown (`"choice"` | `"confirm_delete"`)
+- Add `handleInactivate` function to set `is_inactive = true` on the agent record
+- Modify the `AlertDialog` content to show:
+  - **Step 1 (Choice):** Two buttons - "Mark as Inactive" and "Permanently Delete"
+  - **Step 2 (Confirm Delete):** Final confirmation before permanent deletion
+- Keep existing `handleDelete` function for permanent deletion (already implemented with full cleanup)
 
-| Current | New |
-|---------|-----|
-| Bubbles show "#1", "ALP" label, number | Just show the number + tiny X |
-| Separate input and button rows | Input + button inline (one row) |
-| Summary with checkmark, deal count, ALP label | Just the total number |
-| Complex animations | Simple fade in/out |
+#### 4. Technical Changes
 
----
-
-## Technical Implementation
-
-### File: `src/components/dashboard/BubbleDealEntry.tsx`
-
-**Changes:**
-
-1. **Cleaner bubbles** - Remove `#{index + 1}` numbering and "ALP" text label. Just show `$3,600` with a small X to delete.
-
-2. **Inline add button** - Put the "+ Add" button INSIDE or right next to the input field as a seamless unit.
-
-3. **Simpler summary** - Just show `Total: $X,XXX` without the checkmark circle, deal count breakdown, or "Total ALP" label.
-
-4. **Less animation** - Keep smooth but reduce spring effects that may feel janky.
-
-5. **Better focus behavior** - Input auto-focuses, Enter key adds deal, immediate feedback.
-
----
-
-## Code Structure
-
+**New State:**
 ```typescript
-// Bubble chip - MINIMAL
-<motion.div className="px-3 py-1.5 rounded-full bg-primary/10 border border-primary/30">
-  <span className="font-bold">${deal.premium.toLocaleString()}</span>
-  <button onClick={() => removeDeal(deal.id)}>×</button>
-</motion.div>
-
-// Input row - INLINE
-<div className="flex border rounded-xl overflow-hidden">
-  <div className="flex-1 flex items-center px-4">
-    <DollarSign />
-    <input placeholder="Enter ALP" />
-  </div>
-  <button className="px-5 bg-primary">+ Add</button>
-</div>
-
-// Summary - SIMPLE
-<div className="text-right font-bold text-2xl">
-  Total: ${totalALP.toLocaleString()}
-</div>
+const [deleteStep, setDeleteStep] = useState<"choice" | "confirm_delete">("choice");
 ```
 
----
+**New Inactivate Handler:**
+```typescript
+const handleInactivate = async () => {
+  setDeleting(true);
+  try {
+    await supabase
+      .from("agents")
+      .update({ is_inactive: true })
+      .eq("id", agentId);
+    
+    toast({ title: "Agent marked as inactive" });
+    onUpdate?.();
+    onOpenChange(false);
+  } catch (error) {
+    toast({ title: "Failed to inactivate agent", variant: "destructive" });
+  } finally {
+    setDeleting(false);
+  }
+};
+```
 
-## Files to Modify
+**Updated Dialog Content:**
+- When `deleteStep === "choice"`: Show two action buttons
+- When `deleteStep === "confirm_delete"`: Show final warning before permanent delete
+- Reset `deleteStep` to `"choice"` when dialog closes
 
-| File | Changes |
-|------|---------|
-| `src/components/dashboard/BubbleDealEntry.tsx` | Simplify bubbles, inline button, minimal summary |
-
----
-
-## Result
-- User types ALP (e.g., 3600)
-- Taps inline "+ Add" or presses Enter
-- Clean bubble appears with just the number
-- Total updates instantly
-- Repeat for multiple deals
-- No clutter. No labels. Just numbers.
+#### 5. UI Design
+- **Inactivate option:** Neutral/secondary styling with `UserMinus` icon
+- **Permanent Delete option:** Destructive/red styling with `Trash2` icon  
+- Clear labels explaining what each action does:
+  - Inactivate: "Hide from leaderboards and active views"
+  - Delete: "Remove agent and all records permanently"
 

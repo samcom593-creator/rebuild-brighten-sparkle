@@ -554,6 +554,7 @@ export function AgentQuickEditDialog({
               id="agentPhone"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
+              onKeyDown={(e) => e.stopPropagation()}
               placeholder="Enter phone number"
               type="tel"
             />
@@ -591,8 +592,10 @@ export function AgentQuickEditDialog({
                   <Input
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
+                    onKeyDown={(e) => e.stopPropagation()}
                     placeholder="Phone (optional)"
                     className="pl-10"
+                    type="tel"
                   />
                 </div>
                 <div className="relative">

@@ -11,7 +11,8 @@ import {
   Search,
   Filter,
   MoreVertical,
-  Calendar
+  Calendar,
+  UserPlus
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -25,6 +26,8 @@ import { AgentProfileEditor } from "@/components/admin/AgentProfileEditor";
 import { QuickFilters } from "@/components/admin/QuickFilters";
 import { RecognitionQueue } from "@/components/admin/RecognitionQueue";
 import { DuplicateMergeTool } from "@/components/admin/DuplicateMergeTool";
+import { CourseProgressPanel } from "@/components/admin/CourseProgressPanel";
+import { InviteTeamModal } from "@/components/dashboard/InviteTeamModal";
 import { DateRangePicker, type DateRange } from "@/components/ui/date-range-picker";
 import { cn } from "@/lib/utils";
 import { format, startOfWeek, startOfMonth, startOfYear } from "date-fns";
@@ -56,6 +59,7 @@ export default function DashboardCommandCenter() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedAgent, setSelectedAgent] = useState<AgentWithStats | null>(null);
   const [showDuplicateTool, setShowDuplicateTool] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
 
   // Get date range based on time period
   const dateRange = useMemo(() => {
@@ -250,6 +254,14 @@ export default function DashboardCommandCenter() {
             <p className="text-muted-foreground">Full agency control. Zero spreadsheets.</p>
           </div>
           <div className="flex items-center gap-2">
+            <Button 
+              variant="default" 
+              onClick={() => setShowInviteModal(true)}
+              className="gap-2"
+            >
+              <UserPlus className="h-4 w-4" />
+              Invite Team
+            </Button>
             <Button 
               variant="outline" 
               onClick={() => setShowDuplicateTool(true)}
@@ -487,9 +499,10 @@ export default function DashboardCommandCenter() {
             </Card>
           </div>
 
-          {/* Recognition Queue - 1 column */}
-          <div>
+          {/* Recognition Queue & Course Progress - 1 column */}
+          <div className="space-y-6">
             <RecognitionQueue />
+            <CourseProgressPanel />
           </div>
         </div>
       </div>
@@ -513,6 +526,12 @@ export default function DashboardCommandCenter() {
           refetch();
           setShowDuplicateTool(false);
         }}
+      />
+
+      {/* Invite Team Modal */}
+      <InviteTeamModal
+        open={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
       />
     </DashboardLayout>
   );

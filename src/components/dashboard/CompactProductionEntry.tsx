@@ -288,10 +288,7 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
                 <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-emerald-500/20 to-primary/20 flex items-center justify-center">
                   <TrendingUp className="h-4 w-4 text-primary" />
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold">💰 Log Your Deals</h3>
-                  <p className="text-[10px] text-muted-foreground">Enter monthly premiums → ALP auto-calculated</p>
-                </div>
+                <h3 className="text-sm font-bold">💰 Deals</h3>
               </div>
               
               <BubbleDealEntry

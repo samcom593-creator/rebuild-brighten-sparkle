@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Save, Loader2, TrendingUp, DollarSign, Users, Clock, Target, Home, Handshake, Sparkles } from "lucide-react";
+import { Save, Loader2, TrendingUp, DollarSign, Users, Clock, Target, Home, Handshake, Sparkles, Calendar as CalendarIcon } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ConfettiCelebration } from "./ConfettiCelebration";
+import { format, subDays } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -52,6 +55,8 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
   const [allAgentsGrouped, setAllAgentsGrouped] = useState<ManagerGroup[]>([]);
   const [selectedAgentId, setSelectedAgentId] = useState(agentId);
   const [currentUserFullName, setCurrentUserFullName] = useState<string>("Myself");
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
   
   const [formData, setFormData] = useState({
     presentations: existingData?.presentations || 0,
@@ -191,14 +196,14 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
         return;
       }
 
-      if (selectedAgentId !== agentId) {
-        const today = new Date().toISOString().split("T")[0];
-        const { data } = await supabase
-          .from("daily_production")
-          .select("*")
-          .eq("agent_id", selectedAgentId)
-          .eq("production_date", today)
-          .maybeSingle();
+      // Fetch for the selected agent and selected date
+      const productionDateStr = format(selectedDate, "yyyy-MM-dd");
+      const { data } = await supabase
+        .from("daily_production")
+        .select("*")
+        .eq("agent_id", selectedAgentId)
+        .eq("production_date", productionDateStr)
+        .maybeSingle();
 
         if (data) {
           setFormData({
@@ -223,25 +228,24 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
             deals_closed: 0,
             aop: 0,
           });
-        }
       }
     };
 
     fetchExistingData();
-  }, [selectedAgentId, agentId, existingData]);
+  }, [selectedAgentId, agentId, existingData, selectedDate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
 
     try {
-      const today = new Date().toISOString().split("T")[0];
+      const productionDate = format(selectedDate, "yyyy-MM-dd");
       
       const { error } = await supabase
         .from("daily_production")
         .upsert({
           agent_id: selectedAgentId,
-          production_date: today,
+          production_date: productionDate,
           ...formData,
           hours_called: Number(formData.hours_called),
           aop: Number(formData.aop),
@@ -297,7 +301,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
             await supabase.functions.invoke("notify-rank-passed", {
               body: {
                 submittingAgentId: selectedAgentId,
-                productionDate: today,
+                productionDate: productionDate,
               },
             });
           } catch (rankError) {
@@ -330,14 +334,14 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
           const milestoneType = alpAmount >= 5000 ? "single_day" : "single_day_bronze";
           console.log(`🏆 Triggering ${milestoneType} plaque for ${selectedAgentName}: $${alpAmount.toLocaleString()}`);
           
-          await supabase.functions.invoke("send-plaque-recognition", {
-            body: {
-              agentId: selectedAgentId,
-              milestoneType,
-              amount: alpAmount,
-              date: today,
-            },
-          });
+            await supabase.functions.invoke("send-plaque-recognition", {
+              body: {
+                agentId: selectedAgentId,
+                milestoneType,
+                amount: alpAmount,
+                date: productionDate,
+              },
+            });
         } catch (plaqueError) {
           console.error("Failed to send plaque recognition:", plaqueError);
           // Don't fail the whole submission for plaque errors
@@ -407,13 +411,50 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
                 </div>
                 <div>
                   <h2 className="text-xl font-bold bg-gradient-to-r from-primary via-violet-500 to-primary bg-clip-text text-transparent">
-                    Log Today's Numbers
+                    Log Production
                   </h2>
-                  <p className="text-xs text-muted-foreground">Enter your daily production stats</p>
+                  <p className="text-xs text-muted-foreground">Enter numbers for the selected date</p>
                 </div>
               </div>
               
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Date Picker for Backdating */}
+                <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        "text-sm h-10 gap-2 border-2 border-primary/20 font-medium",
+                        format(selectedDate, "yyyy-MM-dd") !== format(new Date(), "yyyy-MM-dd") && "bg-amber-500/10 border-amber-500/40"
+                      )}
+                    >
+                      <CalendarIcon className="h-4 w-4" />
+                      {format(selectedDate, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd") 
+                        ? "Today" 
+                        : format(selectedDate, "MMM d, yyyy")}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="end">
+                    <div className="p-3 border-b border-border">
+                      <p className="text-sm font-medium">Select Production Date</p>
+                      <p className="text-xs text-muted-foreground">You can log numbers for the past 30 days</p>
+                    </div>
+                    <Calendar
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={(date) => {
+                        if (date) {
+                          setSelectedDate(date);
+                          setDatePickerOpen(false);
+                        }
+                      }}
+                      disabled={(date) => date > new Date() || date < subDays(new Date(), 30)}
+                      initialFocus
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
                 {/* Admin: All agents grouped by manager with FULL NAMES */}
                 {isAdmin && allAgentsGrouped.length > 0 && (
                   <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>

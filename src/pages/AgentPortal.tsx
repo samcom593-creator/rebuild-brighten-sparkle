@@ -117,7 +117,7 @@ export default function AgentPortal() {
   const [activeTab, setActiveTab] = useState<"numbers" | "leaderboard" | "stats">("leaderboard");
   
   // Team stats for managers/admins - now with time range support
-  const [statsTimeRange, setStatsTimeRange] = useState<"week" | "month" | "all">("week");
+  const [statsTimeRange, setStatsTimeRange] = useState<"week" | "month" | "custom">("week");
   const [teamTodayStats, setTeamTodayStats] = useState({
     totalALP: 0,
     totalDeals: 0,
@@ -141,7 +141,7 @@ export default function AgentPortal() {
   }, [user, authLoading, isAdmin, isManager]);
 
   // Helper to get date range based on selection
-  const getDateRange = (range: "week" | "month" | "all") => {
+  const getDateRange = (range: "week" | "month" | "custom") => {
     const now = new Date();
     switch (range) {
       case "week":
@@ -154,13 +154,16 @@ export default function AgentPortal() {
           start: format(startOfMonth(now), "yyyy-MM-dd"),
           end: format(endOfMonth(now), "yyyy-MM-dd"),
         };
-      case "all":
-        return { start: "2020-01-01", end: "2099-12-31" };
+      case "custom":
+        // Custom = last 30 days
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        return { start: format(thirtyDaysAgo, "yyyy-MM-dd"), end: format(now, "yyyy-MM-dd") };
     }
   };
 
   // Fetch team stats for managers/admins with dynamic time range
-  const fetchTeamStats = async (currentAgentId: string | null, timeRange: "week" | "month" | "all" = "week") => {
+  const fetchTeamStats = async (currentAgentId: string | null, timeRange: "week" | "month" | "custom" = "week") => {
     try {
       let agentIds: string[] = [];
       
@@ -502,7 +505,7 @@ export default function AgentPortal() {
               animate={{ opacity: 1, y: 0 }}
               className="flex gap-2 flex-wrap"
             >
-              {(["week", "month", "all"] as const).map((range) => (
+              {(["week", "month", "custom"] as const).map((range) => (
                 <Button
                   key={range}
                   variant={statsTimeRange === range ? "default" : "outline"}
@@ -510,7 +513,7 @@ export default function AgentPortal() {
                   onClick={() => setStatsTimeRange(range)}
                   className="text-xs"
                 >
-                  {range === "week" ? "This Week" : range === "month" ? "This Month" : "All Time"}
+                  {range === "week" ? "This Week" : range === "month" ? "This Month" : "Custom"}
                 </Button>
               ))}
             </motion.div>
@@ -660,8 +663,8 @@ export default function AgentPortal() {
           )}
         </AnimatePresence>
 
-        {/* Year Performance Card - NEW, replaces Weekly Badges position */}
-        {agentId && (
+        {/* Year Performance Card - ADMIN ONLY */}
+        {agentId && isAdmin && (
           <motion.section
             id="year-performance"
             initial={{ opacity: 0, y: 20 }}

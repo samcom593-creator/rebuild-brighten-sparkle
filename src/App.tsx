@@ -144,14 +144,7 @@ const App = () => (
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/agent-portal"
-            element={
-              <ProtectedRoute>
-                <AgentPortal />
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/agent-portal" element={<AgentPortal />} />
           <Route
             path="/onboarding-course"
             element={

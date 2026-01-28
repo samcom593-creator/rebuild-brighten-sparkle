@@ -18,12 +18,14 @@ import {
   BarChart3,
   Maximize2,
   Minimize2,
+  Plus,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { MiniLeaderboard } from "@/components/dashboard/MiniLeaderboard";
+import { InviteTeamModal } from "@/components/dashboard/InviteTeamModal";
 import { cn } from "@/lib/utils";
 import {
   Tooltip,
@@ -47,6 +49,7 @@ export function GlobalSidebar({
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isAdmin, isManager, isAgent } = useAuth();
+  const [showInviteModal, setShowInviteModal] = useState(false);
 
   // Role-based navigation items
   const navItems = useMemo(() => {
@@ -164,7 +167,39 @@ export function GlobalSidebar({
                 <Crown className="h-7 w-7 text-primary" />
               </Link>
             )}
+            {/* Quick Add Button */}
+            {!isCollapsed && (isAdmin || isManager) && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowInviteModal(true)}
+                className="h-8 w-8 text-primary hover:bg-primary/10"
+              >
+                <Plus className="h-5 w-5" />
+              </Button>
+            )}
           </div>
+
+          {/* Quick Add Button - Collapsed State */}
+          {isCollapsed && (isAdmin || isManager) && (
+            <div className="px-2 py-2 border-b border-border">
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowInviteModal(true)}
+                    className="w-full justify-center text-primary hover:bg-primary/10"
+                  >
+                    <Plus className="h-5 w-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={8}>
+                  Add Team Member
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          )}
 
           {/* Collapse Toggle Button */}
           <div className="px-2 py-2 border-b border-border">
@@ -346,6 +381,12 @@ export function GlobalSidebar({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Invite Team Modal */}
+      <InviteTeamModal
+        open={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+      />
     </>
   );
 }

@@ -281,7 +281,17 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
             </PopoverContent>
           </Popover>
           
-          <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
+          <form 
+            ref={formRef} 
+            onSubmit={handleSubmit} 
+            onKeyDown={(e) => {
+              // Prevent Enter from submitting form unless on submit button
+              if (e.key === "Enter" && e.target instanceof HTMLInputElement) {
+                e.preventDefault();
+              }
+            }}
+            className="space-y-6"
+          >
             {/* Deal Entry Section - Premium Bubble System */}
             <div className="space-y-3">
               <div className="flex items-center gap-2">

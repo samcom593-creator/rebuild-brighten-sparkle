@@ -296,37 +296,63 @@ export function AgentQuickEditDialog({
   const handleDelete = async () => {
     setDeleting(true);
     try {
-      // Delete all production records for this agent
-      const { error: prodError } = await supabase
-        .from("daily_production")
+      // Delete all dependent records first (order matters due to FK constraints)
+      // Clear references from other agents pointing to this one
+      await supabase
+        .from("agents")
+        .update({ manager_id: null })
+        .eq("manager_id", agentId);
+      
+      await supabase
+        .from("agents")
+        .update({ invited_by_manager_id: null })
+        .eq("invited_by_manager_id", agentId);
+      
+      await supabase
+        .from("agents")
+        .update({ switched_to_manager_id: null })
+        .eq("switched_to_manager_id", agentId);
+
+      // Clear application assignments
+      await supabase
+        .from("applications")
+        .update({ assigned_agent_id: null })
+        .eq("assigned_agent_id", agentId);
+
+      // Clear aged leads assignments
+      await supabase
+        .from("aged_leads")
+        .update({ assigned_manager_id: null })
+        .eq("assigned_manager_id", agentId);
+
+      // Delete all records from tables with agent_id FK
+      await supabase.from("daily_production").delete().eq("agent_id", agentId);
+      await supabase.from("agent_notes").delete().eq("agent_id", agentId);
+      await supabase.from("agent_goals").delete().eq("agent_id", agentId);
+      await supabase.from("agent_metrics").delete().eq("agent_id", agentId);
+      await supabase.from("agent_achievements").delete().eq("agent_id", agentId);
+      await supabase.from("agent_lead_stats").delete().eq("agent_id", agentId);
+      await supabase.from("agent_onboarding").delete().eq("agent_id", agentId);
+      await supabase.from("agent_attendance").delete().eq("agent_id", agentId);
+      await supabase.from("agent_ratings").delete().eq("agent_id", agentId);
+      await supabase.from("agent_removal_requests").delete().eq("agent_id", agentId);
+      await supabase.from("email_tracking").delete().eq("agent_id", agentId);
+      await supabase.from("magic_login_tokens").delete().eq("agent_id", agentId);
+      await supabase.from("plaque_awards").delete().eq("agent_id", agentId);
+      await supabase.from("onboarding_progress").delete().eq("agent_id", agentId);
+
+      // Delete manager invite links
+      await supabase
+        .from("manager_invite_links")
         .delete()
-        .eq("agent_id", agentId);
+        .eq("manager_agent_id", agentId);
 
-      if (prodError) {
-        console.error("Error deleting production:", prodError);
-      }
+      // Delete contact history and interview recordings via applications
+      // (these reference agent_id directly too)
+      await supabase.from("contact_history").delete().eq("agent_id", agentId);
+      await supabase.from("interview_recordings").delete().eq("agent_id", agentId);
 
-      // Delete agent notes
-      const { error: notesError } = await supabase
-        .from("agent_notes")
-        .delete()
-        .eq("agent_id", agentId);
-
-      if (notesError) {
-        console.error("Error deleting notes:", notesError);
-      }
-
-      // Delete agent goals
-      const { error: goalsError } = await supabase
-        .from("agent_goals")
-        .delete()
-        .eq("agent_id", agentId);
-
-      if (goalsError) {
-        console.error("Error deleting goals:", goalsError);
-      }
-
-      // Delete the agent record
+      // Finally delete the agent record
       const { error: agentError } = await supabase
         .from("agents")
         .delete()

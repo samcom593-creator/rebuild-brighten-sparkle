@@ -182,7 +182,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
       });
 
       const agentIds = Object.keys(agentTotals);
-      // Query agents with profile_id join for imported agents
+      // Query agents with profile_id join for imported agents (exclude inactive/deactivated)
       const { data: agents } = await supabase
         .from("agents")
         .select(`
@@ -190,9 +190,13 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
           user_id, 
           profile_id,
           display_name,
+          is_deactivated,
+          is_inactive,
           profile:profiles!agents_profile_id_fkey(full_name, avatar_url)
         `)
-        .in("id", agentIds);
+        .in("id", agentIds)
+        .eq("is_deactivated", false)
+        .eq("is_inactive", false);
 
       if (!agents) {
         setEntries([]);

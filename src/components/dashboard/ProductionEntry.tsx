@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ConfettiCelebration } from "./ConfettiCelebration";
+import { ALPCalculator } from "./ALPCalculator";
 import { format, subDays } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -371,15 +372,14 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
     }
   };
 
-  const fields = [
+  // Activity fields (not ALP-related)
+  const activityFields = [
     { key: "presentations", label: "Presentations", icon: Target, emoji: "🎯" },
     { key: "passed_price", label: "Pitched Price", icon: DollarSign, emoji: "💰" },
     { key: "hours_called", label: "Hours Called", icon: Clock, step: "0.5", emoji: "⏱️" },
     { key: "referrals_caught", label: "Referrals Caught", icon: Users, emoji: "👥" },
     { key: "booked_inhome_referrals", label: "Booked In-Home", icon: Home, emoji: "🏠" },
     { key: "referral_presentations", label: "Referral Pres.", icon: Handshake, emoji: "🤝" },
-    { key: "deals_closed", label: "Deals Closed", icon: TrendingUp, emoji: "📈" },
-    { key: "aop", label: "ALP ($)", icon: DollarSign, step: "0.01", highlight: true, emoji: "💵" },
   ];
 
   const totalValue = Number(formData.aop) || 0;
@@ -527,86 +527,105 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
             </div>
             
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Premium Card-Style Input Grid */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {fields.map((field, index) => {
-                  const Icon = field.icon;
-                  const value = formData[field.key as keyof typeof formData];
-                  const hasValue = Number(value) > 0;
-                  
-                  return (
-                    <motion.div
-                      key={field.key}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.04 }}
-                      className={cn(
-                        field.highlight && "lg:col-span-2"
-                      )}
-                    >
-                      <div 
-                        className={cn(
-                          "relative p-4 rounded-xl border-2 transition-all duration-300",
-                          "bg-gradient-to-br from-background to-muted/30",
-                          "hover:border-primary/30 hover:shadow-md",
-                          hasValue && "border-primary/50 bg-primary/5 shadow-lg shadow-primary/10",
-                          !hasValue && "border-border/50"
-                        )}
+              {/* Deal Entry Section - Premium Bubble System */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-emerald-500/20 to-primary/20 flex items-center justify-center">
+                    <DollarSign className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold">Deals & ALP</h3>
+                    <p className="text-[10px] text-muted-foreground">Enter monthly premiums for automatic ALP calculation</p>
+                  </div>
+                </div>
+                
+                <ALPCalculator
+                  onALPChange={(alp) => setFormData(prev => ({ ...prev, aop: alp }))}
+                  onDealsChange={(deals) => setFormData(prev => ({ ...prev, deals_closed: deals }))}
+                  initialALP={formData.aop}
+                  initialDeals={formData.deals_closed}
+                />
+              </div>
+
+              {/* Activity Metrics Section */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center">
+                    <Target className="h-4 w-4 text-blue-500" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold">Activity Metrics</h3>
+                    <p className="text-[10px] text-muted-foreground">Track presentations, calls, and referrals</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                  {activityFields.map((field, index) => {
+                    const Icon = field.icon;
+                    const value = formData[field.key as keyof typeof formData];
+                    const hasValue = Number(value) > 0;
+                    
+                    return (
+                      <motion.div
+                        key={field.key}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.04 }}
                       >
-                        <Label 
-                          htmlFor={field.key} 
-                          className="text-[10px] uppercase tracking-wider text-muted-foreground mb-3 block font-semibold"
+                        <div 
+                          className={cn(
+                            "relative p-4 rounded-xl border-2 transition-all duration-300",
+                            "bg-gradient-to-br from-background to-muted/30",
+                            "hover:border-primary/30 hover:shadow-md",
+                            hasValue && "border-primary/50 bg-primary/5 shadow-lg shadow-primary/10",
+                            !hasValue && "border-border/50"
+                          )}
                         >
-                          {field.label}
-                        </Label>
-                        
-                        <div className="relative">
-                          <div className={cn(
-                            "absolute left-0 top-1/2 -translate-y-1/2 h-10 w-10 rounded-lg flex items-center justify-center text-xl",
-                            hasValue ? "bg-primary/10" : "bg-muted/50"
-                          )}>
-                            {field.emoji}
+                          <Label 
+                            htmlFor={field.key} 
+                            className="text-[10px] uppercase tracking-wider text-muted-foreground mb-3 block font-semibold"
+                          >
+                            {field.label}
+                          </Label>
+                          
+                          <div className="relative">
+                            <div className={cn(
+                              "absolute left-0 top-1/2 -translate-y-1/2 h-10 w-10 rounded-lg flex items-center justify-center text-xl",
+                              hasValue ? "bg-primary/10" : "bg-muted/50"
+                            )}>
+                              {field.emoji}
+                            </div>
+                            <Input
+                              id={field.key}
+                              type="number"
+                              step={field.step}
+                              min="0"
+                              inputMode="numeric"
+                              value={value}
+                              onChange={(e) => setFormData(prev => ({
+                                ...prev,
+                                [field.key]: field.step ? parseFloat(e.target.value) || 0 : parseInt(e.target.value) || 0
+                              }))}
+                              onFocus={(e) => e.target.select()}
+                              className={cn(
+                                "h-14 text-2xl font-bold text-center pl-12 border-0 bg-transparent focus:ring-0",
+                                hasValue && "text-foreground"
+                              )}
+                            />
                           </div>
-                          <Input
-                            id={field.key}
-                            type="number"
-                            step={field.step}
-                            min="0"
-                            inputMode="numeric"
-                            value={value}
-                            onChange={(e) => setFormData(prev => ({
-                              ...prev,
-                              [field.key]: field.step ? parseFloat(e.target.value) || 0 : parseInt(e.target.value) || 0
-                            }))}
-                            onFocus={(e) => {
-                              // Select all on focus for easy editing on mobile - fixes cursor position bug
-                              e.target.select();
-                            }}
-                            className={cn(
-                              "h-14 text-2xl font-bold text-center pl-12 border-0 bg-transparent focus:ring-0",
-                              hasValue && "text-foreground",
-                              field.highlight && hasValue && "text-3xl text-primary"
-                            )}
-                          />
+                          
+                          {hasValue && (
+                            <motion.div
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-primary shadow-lg shadow-primary/50"
+                            />
+                          )}
                         </div>
-                        
-                        {/* Active indicator dot */}
-                        {hasValue && (
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-primary shadow-lg shadow-primary/50"
-                          />
-                        )}
-                        
-                        {/* Decorative glow */}
-                        {hasValue && (
-                          <div className="absolute -right-2 -bottom-2 h-16 w-16 rounded-full bg-primary/20 blur-xl pointer-events-none" />
-                        )}
-                      </div>
-                    </motion.div>
-                  );
-                })}
+                      </motion.div>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Premium Submit Button */}

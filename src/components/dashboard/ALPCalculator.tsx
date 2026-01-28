@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, DollarSign, Check } from "lucide-react";
+import { X, DollarSign, Check, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -18,112 +18,104 @@ interface ALPCalculatorProps {
 }
 
 export function ALPCalculator({ onALPChange, onDealsChange, initialALP = 0, initialDeals = 0 }: ALPCalculatorProps) {
+  // Always keep at least one deal row (the "active draft")
   const [deals, setDeals] = useState<Deal[]>([
     { id: crypto.randomUUID(), amount: "", frequency: "monthly" }
   ]);
-  const lastInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  // Calculate total ALP from deals
-  const calculateTotalALP = useCallback((dealList: Deal[]) => {
-    return dealList.reduce((total, deal) => {
-      const amount = parseFloat(deal.amount) || 0;
-      if (amount <= 0) return total;
-      
-      // Monthly premium × 12 = Annual, or just use annual as-is
-      const annualAmount = deal.frequency === "monthly" ? amount * 12 : amount;
-      return total + annualAmount;
-    }, 0);
+  // Calculate ALP for a single deal
+  const getDealALP = useCallback((deal: Deal) => {
+    const amount = parseFloat(deal.amount) || 0;
+    if (amount <= 0) return 0;
+    return deal.frequency === "monthly" ? amount * 12 : amount;
   }, []);
 
-  // Count deals with valid amounts
+  // Calculate total ALP from ALL deals (including current draft if valid)
+  const calculateTotalALP = useCallback((dealList: Deal[]) => {
+    return dealList.reduce((total, deal) => total + getDealALP(deal), 0);
+  }, [getDealALP]);
+
+  // Count deals with valid amounts (including current draft)
   const countDeals = useCallback((dealList: Deal[]) => {
     return dealList.filter(d => parseFloat(d.amount) > 0).length;
   }, []);
 
-  // Get completed deals for bubble display
-  const completedDeals = deals.filter(d => parseFloat(d.amount) > 0);
+  // The active (current typing) deal is always the LAST one
+  const activeDeal = deals[deals.length - 1];
+
+  // Committed deals = all except the last one, filtered to only those with valid amounts
+  const committedDeals = deals.slice(0, -1).filter(d => parseFloat(d.amount) > 0);
+
+  // Notify parent of totals (includes active draft if valid)
+  useEffect(() => {
+    const totalALP = calculateTotalALP(deals);
+    const dealCount = countDeals(deals);
+    onALPChange(totalALP);
+    onDealsChange(dealCount);
+  }, [deals, calculateTotalALP, countDeals, onALPChange, onDealsChange]);
 
   // Handle deal amount change
   const handleDealChange = (id: string, amount: string) => {
-    const newDeals = deals.map(d => d.id === id ? { ...d, amount } : d);
-    setDeals(newDeals);
-    
-    const totalALP = calculateTotalALP(newDeals);
-    const dealCount = countDeals(newDeals);
-    
-    onALPChange(totalALP);
-    onDealsChange(dealCount);
+    setDeals(prev => prev.map(d => d.id === id ? { ...d, amount } : d));
   };
 
   // Handle frequency toggle
   const handleFrequencyChange = (id: string, frequency: "monthly" | "annual") => {
-    const newDeals = deals.map(d => d.id === id ? { ...d, frequency } : d);
-    setDeals(newDeals);
-    
-    const totalALP = calculateTotalALP(newDeals);
-    onALPChange(totalALP);
+    setDeals(prev => prev.map(d => d.id === id ? { ...d, frequency } : d));
   };
 
-  // Add new deal row
-  const addDeal = () => {
-    const newDeal = { id: crypto.randomUUID(), amount: "", frequency: "monthly" as const };
-    setDeals([...deals, newDeal]);
-  };
+  // Commit the current deal (move it to "committed" by appending a new empty row)
+  const commitDeal = useCallback(() => {
+    if (!activeDeal) return;
+    const amount = parseFloat(activeDeal.amount) || 0;
+    if (amount <= 0) return;
 
-  // Remove deal row
+    // Append a new empty deal row, making the current one "committed"
+    setDeals(prev => [
+      ...prev,
+      { id: crypto.randomUUID(), amount: "", frequency: "monthly" }
+    ]);
+
+    // Focus the new input after a brief delay
+    setTimeout(() => inputRef.current?.focus(), 50);
+  }, [activeDeal]);
+
+  // Remove a committed deal
   const removeDeal = (id: string) => {
-    const newDeals = deals.filter(d => d.id !== id);
-    // Always keep at least one empty row
-    if (newDeals.length === 0 || newDeals.every(d => parseFloat(d.amount) > 0)) {
-      newDeals.push({ id: crypto.randomUUID(), amount: "", frequency: "monthly" });
-    }
-    setDeals(newDeals);
-    
-    const totalALP = calculateTotalALP(newDeals);
-    const dealCount = countDeals(newDeals);
-    
-    onALPChange(totalALP);
-    onDealsChange(dealCount);
+    setDeals(prev => {
+      const newDeals = prev.filter(d => d.id !== id);
+      // Always keep at least one row (the active draft)
+      if (newDeals.length === 0) {
+        return [{ id: crypto.randomUUID(), amount: "", frequency: "monthly" }];
+      }
+      return newDeals;
+    });
   };
 
-  // Handle Enter key to add new deal
-  const handleKeyDown = (e: React.KeyboardEvent, dealId: string) => {
+  // Handle Enter key to commit deal
+  const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      const currentDeal = deals.find(d => d.id === dealId);
-      if (currentDeal && parseFloat(currentDeal.amount) > 0) {
-        addDeal();
-      }
+      e.stopPropagation(); // Prevent form submission
+      commitDeal();
     }
   };
-
-  // Focus the last empty input when a new deal is added
-  useEffect(() => {
-    const lastEmptyDeal = deals.find(d => !d.amount);
-    if (lastEmptyDeal) {
-      const input = document.querySelector(`[data-deal-id="${lastEmptyDeal.id}"]`) as HTMLInputElement;
-      input?.focus();
-    }
-  }, [deals.length]);
 
   const totalALP = calculateTotalALP(deals);
   const dealCount = countDeals(deals);
-
-  // Get ALP for a single deal
-  const getDealALP = (deal: Deal) => {
-    const amount = parseFloat(deal.amount) || 0;
-    return deal.frequency === "monthly" ? amount * 12 : amount;
-  };
+  const hasValidInput = parseFloat(activeDeal?.amount || "0") > 0;
 
   return (
     <div className="space-y-3">
-      {/* Deal Bubbles - Animated chips for completed deals */}
-      {completedDeals.length > 0 && (
+      {/* Deal Bubbles - Animated chips for COMMITTED deals only */}
+      {committedDeals.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          <AnimatePresence>
-            {completedDeals.map((deal, index) => (
+          <AnimatePresence mode="popLayout">
+            {committedDeals.map((deal, index) => (
               <motion.div
                 key={deal.id}
+                layout
                 initial={{ opacity: 0, scale: 0.5, y: 10 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.5, y: -10 }}
@@ -156,35 +148,35 @@ export function ALPCalculator({ onALPChange, onDealsChange, initialALP = 0, init
         </div>
       )}
 
-      {/* Current Deal Input Row */}
-      {deals.filter(d => !parseFloat(d.amount)).slice(0, 1).map((deal) => (
+      {/* Current Deal Input Row - Always visible */}
+      {activeDeal && (
         <motion.div
-          key={deal.id}
+          key={activeDeal.id}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           className="flex items-center gap-2"
         >
           {/* Deal Number Badge */}
           <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground shrink-0">
-            {completedDeals.length + 1}
+            {committedDeals.length + 1}
           </div>
 
           {/* Premium Input */}
           <div className="relative flex-1">
             <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              data-deal-id={deal.id}
-              ref={lastInputRef}
+              ref={inputRef}
+              data-deal-id={activeDeal.id}
               type="number"
               inputMode="decimal"
               step="0.01"
               min="0"
               placeholder="Enter premium..."
-              value={deal.amount}
-              onChange={(e) => handleDealChange(deal.id, e.target.value)}
-              onKeyDown={(e) => handleKeyDown(e, deal.id)}
+              value={activeDeal.amount}
+              onChange={(e) => handleDealChange(activeDeal.id, e.target.value)}
+              onKeyDown={handleKeyDown}
               onFocus={(e) => e.target.select()}
-              className="pl-9 h-12 text-lg font-semibold"
+              className="pl-9 pr-2 h-12 text-lg font-semibold"
             />
           </div>
 
@@ -192,10 +184,10 @@ export function ALPCalculator({ onALPChange, onDealsChange, initialALP = 0, init
           <div className="flex rounded-lg overflow-hidden border border-border shrink-0">
             <button
               type="button"
-              onClick={() => handleFrequencyChange(deal.id, "monthly")}
+              onClick={() => handleFrequencyChange(activeDeal.id, "monthly")}
               className={cn(
                 "px-3 py-2.5 text-xs font-medium transition-all",
-                deal.frequency === "monthly"
+                activeDeal.frequency === "monthly"
                   ? "bg-primary text-primary-foreground"
                   : "bg-background text-muted-foreground hover:bg-muted"
               )}
@@ -204,10 +196,10 @@ export function ALPCalculator({ onALPChange, onDealsChange, initialALP = 0, init
             </button>
             <button
               type="button"
-              onClick={() => handleFrequencyChange(deal.id, "annual")}
+              onClick={() => handleFrequencyChange(activeDeal.id, "annual")}
               className={cn(
                 "px-3 py-2.5 text-xs font-medium transition-all",
-                deal.frequency === "annual"
+                activeDeal.frequency === "annual"
                   ? "bg-primary text-primary-foreground"
                   : "bg-background text-muted-foreground hover:bg-muted"
               )}
@@ -215,8 +207,24 @@ export function ALPCalculator({ onALPChange, onDealsChange, initialALP = 0, init
               AOP
             </button>
           </div>
+
+          {/* Add Button */}
+          <button
+            type="button"
+            onClick={commitDeal}
+            disabled={!hasValidInput}
+            className={cn(
+              "h-12 px-4 rounded-lg font-bold text-sm transition-all flex items-center gap-1",
+              hasValidInput
+                ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                : "bg-muted text-muted-foreground cursor-not-allowed"
+            )}
+          >
+            <Plus className="h-4 w-4" />
+            Add
+          </button>
         </motion.div>
-      ))}
+      )}
 
       {/* ALP Summary */}
       {totalALP > 0 && (
@@ -249,7 +257,7 @@ export function ALPCalculator({ onALPChange, onDealsChange, initialALP = 0, init
 
       {/* Tip */}
       <p className="text-[10px] text-muted-foreground text-center">
-        💡 Press Enter after entering premium to add another deal
+        💡 Press Enter or click "+ Add" after entering premium to add another deal
       </p>
     </div>
   );

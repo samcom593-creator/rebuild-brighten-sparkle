@@ -21,7 +21,7 @@ export function SkeletonLoader({ className, variant = "card" }: SkeletonLoaderPr
             <div className="absolute inset-0 h-12 w-12 mx-auto rounded-full bg-primary/20 blur-xl animate-pulse" />
           </div>
           <p className="text-muted-foreground font-medium text-sm">
-            Powered by Apex Financial
+            Powered by Apex
           </p>
         </motion.div>
       </div>

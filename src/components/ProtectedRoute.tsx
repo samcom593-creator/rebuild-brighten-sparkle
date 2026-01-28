@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2 } from "lucide-react";
+import { SkeletonLoader } from "@/components/ui/skeleton-loader";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -64,11 +64,7 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
   }, []);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <SkeletonLoader variant="page" />;
   }
 
   if (!authenticated) {

@@ -107,6 +107,10 @@ export function LiveLeaderboard({ currentAgentId, showAISummary = true }: LiveLe
         .eq("is_deactivated", false)
         .eq("is_inactive", false);
 
+       // IMPORTANT: managers/agents may not have SELECT access to all agents returned by production.
+       // Filter out any production rows whose agent record isn't visible (or was deleted).
+       const allowedAgentIds = new Set((agents || []).map(a => a.id));
+
       const userIds = agents?.map(a => a.user_id).filter(Boolean) || [];
       const { data: profilesByUserId } = await supabase
         .from("profiles")
@@ -116,7 +120,8 @@ export function LiveLeaderboard({ currentAgentId, showAISummary = true }: LiveLe
       const profileByUserIdMap = new Map(profilesByUserId?.map(p => [p.user_id, p]) || []);
 
       // Build leaderboard
-      const leaderboard: LeaderboardEntry[] = productionData
+       const leaderboard: LeaderboardEntry[] = productionData
+         .filter((p) => allowedAgentIds.has(p.agent_id))
         .map(prod => {
           const agent = agents?.find(a => a.id === prod.agent_id);
           // First check profile via profile_id (for imported agents), then via user_id

@@ -211,7 +211,12 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
         .select("user_id, full_name, avatar_url")
         .in("user_id", userIds);
 
-      const leaderboardEntries: LeaderboardEntry[] = agentIds.map((agentId) => {
+      // IMPORTANT: not every viewer can see every agent (RLS) and deleted agents will not resolve.
+      // Only include entries for agents we can actually load from the agents table.
+      const allowedAgentIds = new Set(agents.map((a) => a.id));
+      const visibleAgentIds = agentIds.filter((id) => allowedAgentIds.has(id));
+
+      const leaderboardEntries: LeaderboardEntry[] = visibleAgentIds.map((agentId) => {
         const agent = agents.find((a) => a.id === agentId);
         // First check profile via profile_id (for imported agents), then via user_id
         const profileViaId = agent?.profile as { full_name?: string; avatar_url?: string } | null;

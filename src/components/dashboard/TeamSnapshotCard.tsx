@@ -1,14 +1,13 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { DollarSign, Target, Users, TrendingUp, Calendar } from "lucide-react";
+import { DollarSign, Target, Users, TrendingUp } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
-import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 import { cn } from "@/lib/utils";
-
-type TimePeriod = "week" | "month" | "all";
+import { DateRangePicker, useDateRange } from "@/components/ui/date-range-picker";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
 
 interface SnapshotStats {
   totalALP: number;
@@ -19,8 +18,8 @@ interface SnapshotStats {
 }
 
 export function TeamSnapshotCard() {
-  const { user, isAdmin } = useAuth();
-  const [period, setPeriod] = useState<TimePeriod>("week");
+  const { user, isAdmin, isManager, isAgent } = useAuth();
+  const { period, setPeriod, range, setRange, startDate, endDate } = useDateRange("week");
   const [stats, setStats] = useState<SnapshotStats>({
     totalALP: 0,
     totalDeals: 0,
@@ -48,7 +47,7 @@ export function TeamSnapshotCard() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, isAdmin, period]);
+  }, [user, isAdmin, isManager, startDate, endDate]);
 
   const fetchStats = async () => {
     if (!user) return;
@@ -71,7 +70,10 @@ export function TeamSnapshotCard() {
 
       let agentIds: string[] = [];
 
-      // For admins, fetch ALL active agents
+      // Role-based scoping:
+      // - Admin: ALL active agents (agency-wide)
+      // - Manager: Direct reports + self (team)
+      // - Agent: Only self (personal)
       if (isAdmin) {
         const { data: allAgents } = await supabase
           .from("agents")
@@ -79,8 +81,8 @@ export function TeamSnapshotCard() {
           .eq("is_deactivated", false);
 
         agentIds = allAgents?.map(a => a.id) || [];
-      } else {
-        // For managers, fetch only direct reports + self
+      } else if (isManager) {
+        // Manager sees their team + themselves
         const { data: downlineAgents } = await supabase
           .from("agents")
           .select("id")
@@ -88,6 +90,9 @@ export function TeamSnapshotCard() {
           .eq("is_deactivated", false);
 
         agentIds = [currentAgent.id, ...(downlineAgents?.map(a => a.id) || [])];
+      } else {
+        // Agent sees only their own stats
+        agentIds = [currentAgent.id];
       }
 
       if (agentIds.length === 0) {
@@ -95,31 +100,13 @@ export function TeamSnapshotCard() {
         return;
       }
 
-      // Build date range based on period
-      const today = new Date();
-      let startDate: string | undefined;
-      let endDate: string | undefined;
-
-      if (period === "week") {
-        startDate = format(startOfWeek(today, { weekStartsOn: 0 }), "yyyy-MM-dd");
-        endDate = format(endOfWeek(today, { weekStartsOn: 0 }), "yyyy-MM-dd");
-      } else if (period === "month") {
-        startDate = format(startOfMonth(today), "yyyy-MM-dd");
-        endDate = format(endOfMonth(today), "yyyy-MM-dd");
-      }
-      // "all" has no date filter
-
-      // Query production data
-      let query = supabase
+      // Query production data with date range
+      const { data: productionData } = await supabase
         .from("daily_production")
         .select("aop, deals_closed, presentations, agent_id")
-        .in("agent_id", agentIds);
-
-      if (startDate && endDate) {
-        query = query.gte("production_date", startDate).lte("production_date", endDate);
-      }
-
-      const { data: productionData } = await query;
+        .in("agent_id", agentIds)
+        .gte("production_date", startDate)
+        .lte("production_date", endDate);
 
       if (productionData) {
         const totalALP = productionData.reduce((sum, p) => sum + (Number(p.aop) || 0), 0);
@@ -148,13 +135,12 @@ export function TeamSnapshotCard() {
     }
   };
 
-  const periodLabels = {
-    week: "This Week",
-    month: "This Month",
-    all: "All Time",
+  // Dynamic label based on role
+  const getLabel = () => {
+    if (isAdmin) return "Agency Production";
+    if (isManager) return "Team Production";
+    return "My Production";
   };
-
-  const label = isAdmin ? "Agency Production" : "Team Production";
 
   return (
     <motion.div
@@ -168,29 +154,20 @@ export function TeamSnapshotCard() {
               <TrendingUp className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-bold">{label}</h2>
-              <p className="text-sm text-muted-foreground">{periodLabels[period]}</p>
+              <h2 className="text-xl font-bold">{getLabel()}</h2>
+              <p className="text-sm text-muted-foreground">
+                {format(range.from, "MMM d")} - {format(range.to, "MMM d, yyyy")}
+              </p>
             </div>
           </div>
 
-          {/* Time Toggle */}
-          <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-1">
-            {(["week", "month", "all"] as TimePeriod[]).map((p) => (
-              <Button
-                key={p}
-                variant={period === p ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setPeriod(p)}
-                className={cn(
-                  "text-xs h-8",
-                  period === p && "bg-primary text-primary-foreground"
-                )}
-              >
-                <Calendar className="h-3 w-3 mr-1" />
-                {p === "week" ? "Week" : p === "month" ? "Month" : "All"}
-              </Button>
-            ))}
-          </div>
+          {/* Date Range Picker */}
+          <DateRangePicker
+            value={range}
+            onChange={setRange}
+            period={period}
+            onPeriodChange={setPeriod}
+          />
         </div>
 
         {loading ? (
@@ -207,7 +184,12 @@ export function TeamSnapshotCard() {
                 <DollarSign className="h-5 w-5" />
                 <span className="text-xs font-medium uppercase tracking-wide">Total ALP</span>
               </div>
-              <p className="text-3xl font-bold">${stats.totalALP.toLocaleString()}</p>
+              <AnimatedCounter
+                value={stats.totalALP}
+                prefix="$"
+                className="text-3xl font-bold"
+                formatOptions={{ maximumFractionDigits: 0 }}
+              />
             </div>
 
             {/* Deals Closed */}
@@ -216,17 +198,27 @@ export function TeamSnapshotCard() {
                 <Target className="h-5 w-5" />
                 <span className="text-xs font-medium uppercase tracking-wide">Deals</span>
               </div>
-              <p className="text-3xl font-bold">{stats.totalDeals}</p>
+              <AnimatedCounter
+                value={stats.totalDeals}
+                className="text-3xl font-bold"
+              />
             </div>
 
-            {/* Active Agents */}
-            <div className="bg-background/50 rounded-xl p-4 border border-border/50">
-              <div className="flex items-center gap-2 text-violet-500 mb-2">
-                <Users className="h-5 w-5" />
-                <span className="text-xs font-medium uppercase tracking-wide">Agents</span>
+            {/* Active Agents - hide for regular agents */}
+            {(isAdmin || isManager) && (
+              <div className="bg-background/50 rounded-xl p-4 border border-border/50">
+                <div className="flex items-center gap-2 text-violet-500 mb-2">
+                  <Users className="h-5 w-5" />
+                  <span className="text-xs font-medium uppercase tracking-wide">
+                    {isAdmin ? "Active Agents" : "Team Size"}
+                  </span>
+                </div>
+                <AnimatedCounter
+                  value={stats.agentCount}
+                  className="text-3xl font-bold"
+                />
               </div>
-              <p className="text-3xl font-bold">{stats.agentCount}</p>
-            </div>
+            )}
 
             {/* Close Rate */}
             <div className="bg-background/50 rounded-xl p-4 border border-border/50">
@@ -234,8 +226,26 @@ export function TeamSnapshotCard() {
                 <TrendingUp className="h-5 w-5" />
                 <span className="text-xs font-medium uppercase tracking-wide">Close Rate</span>
               </div>
-              <p className="text-3xl font-bold">{stats.avgCloseRate}%</p>
+              <AnimatedCounter
+                value={stats.avgCloseRate}
+                suffix="%"
+                className="text-3xl font-bold"
+              />
             </div>
+
+            {/* Presentations - show for agents instead of team count */}
+            {isAgent && !isManager && !isAdmin && (
+              <div className="bg-background/50 rounded-xl p-4 border border-border/50">
+                <div className="flex items-center gap-2 text-violet-500 mb-2">
+                  <Target className="h-5 w-5" />
+                  <span className="text-xs font-medium uppercase tracking-wide">Presentations</span>
+                </div>
+                <AnimatedCounter
+                  value={stats.totalPresentations}
+                  className="text-3xl font-bold"
+                />
+              </div>
+            )}
           </div>
         )}
       </GlassCard>

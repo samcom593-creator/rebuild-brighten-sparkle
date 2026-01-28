@@ -183,7 +183,7 @@ export function DateRangePicker({
                     {format(value.from, "MMM d")} - {format(value.to, "MMM d")}
                   </span>
                 ) : (
-                  "Custom"
+                  "Custom Dates"
                 )}
               </Button>
             </PopoverTrigger>

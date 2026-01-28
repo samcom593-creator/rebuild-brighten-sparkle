@@ -310,17 +310,23 @@ export default function AgentPortal() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center">
-        <motion.div 
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           className="text-center"
         >
           <div className="relative">
-            <RefreshCw className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+            <img 
+              src={apexIcon} 
+              alt="Apex" 
+              className="h-12 w-12 mx-auto mb-4 animate-pulse"
+            />
             <div className="absolute inset-0 h-12 w-12 mx-auto rounded-full bg-primary/20 blur-xl animate-pulse" />
           </div>
-          <p className="text-muted-foreground font-medium">Loading your portal...</p>
+          <p className="text-muted-foreground font-medium text-sm">
+            Powered by Apex
+          </p>
         </motion.div>
       </div>
     );
@@ -467,22 +473,7 @@ export default function AgentPortal() {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6 space-y-6">
-        {/* Admin Notice */}
-        <AnimatePresence>
-          {isAdminViewing && (
-            <motion.div
-              initial={{ opacity: 0, y: -10, height: 0 }}
-              animate={{ opacity: 1, y: 0, height: "auto" }}
-              exit={{ opacity: 0, y: -10, height: 0 }}
-              className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 backdrop-blur-sm"
-            >
-              <p className="text-sm text-amber-500 font-medium flex items-center gap-2">
-                <Zap className="h-4 w-4" />
-                Admin View — You are viewing the Agent Portal for testing purposes
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Admin access enabled - no banner displayed */}
 
         {/* Hero Section with Quick Stats */}
         <section className="space-y-4">

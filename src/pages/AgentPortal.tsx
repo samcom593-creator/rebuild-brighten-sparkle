@@ -369,54 +369,57 @@ export default function AgentPortal() {
 
       {/* Modern Header */}
       <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        <div className="container mx-auto px-3 sm:px-4 py-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
               {/* Avatar with gradient ring */}
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", stiffness: 200, delay: 0.1 }}
-                className="relative"
+                className="relative shrink-0"
               >
                 <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary via-violet-500 to-amber-500 p-[2px] animate-[spin_4s_linear_infinite]" style={{ animationDirection: "reverse" }}>
                   <div className="h-full w-full rounded-full bg-background" />
                 </div>
-                <div className="relative h-12 w-12 rounded-full bg-gradient-to-br from-primary to-violet-500 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-primary/20">
+                <div className="relative h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-gradient-to-br from-primary to-violet-500 flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-lg shadow-primary/20">
                   {profile?.full_name?.charAt(0).toUpperCase() || "A"}
                 </div>
               </motion.div>
               
-              <div>
+              <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <motion.h1 
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="font-bold text-lg"
+                    className="font-bold text-base sm:text-lg truncate"
                   >
                     {profile?.full_name || "Agent"}
                   </motion.h1>
                   {agentId && (
-                    <AgentRankBadge agentId={agentId} size="sm" />
+                    <div className="shrink-0">
+                      <AgentRankBadge agentId={agentId} size="sm" />
+                    </div>
                   )}
                 </div>
                 <motion.p 
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.1 }}
-                  className="text-xs text-muted-foreground flex items-center gap-1.5"
+                  className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1.5"
                 >
-                  <Calendar className="h-3 w-3" />
-                  {format(new Date(), "EEEE, MMMM d, yyyy")}
+                  <Calendar className="h-3 w-3 shrink-0" />
+                  <span className="hidden xs:inline">{format(new Date(), "EEEE, MMMM d, yyyy")}</span>
+                  <span className="xs:hidden">{format(new Date(), "MMM d, yyyy")}</span>
                 </motion.p>
               </div>
             </div>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
               {/* Dashboard Navigation Menu */}
               <Sheet>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" className="hover:bg-muted">
+                  <Button variant="ghost" size="icon" className="hover:bg-muted h-9 w-9 sm:h-10 sm:w-10">
                     <Menu className="h-4 w-4" />
                   </Button>
                 </SheetTrigger>
@@ -454,7 +457,7 @@ export default function AgentPortal() {
               </Sheet>
               
               <ThemeToggle />
-              <Button variant="ghost" size="icon" onClick={handleLogout} className="hover:bg-destructive/10 hover:text-destructive transition-colors">
+              <Button variant="ghost" size="icon" onClick={handleLogout} className="hover:bg-destructive/10 hover:text-destructive transition-colors h-9 w-9 sm:h-10 sm:w-10">
                 <LogOut className="h-4 w-4" />
               </Button>
             </div>
@@ -739,24 +742,25 @@ export default function AgentPortal() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.48 }}
-          className="grid sm:grid-cols-2 gap-4"
+          className="grid gap-4"
         >
           {/* Agent Referral Link */}
           <GlassCard className="p-4">
             <div className="flex items-center gap-2 mb-3">
-              <UserPlus className="h-5 w-5 text-primary" />
+              <UserPlus className="h-5 w-5 text-primary shrink-0" />
               <h3 className="font-semibold">Refer a Friend</h3>
             </div>
             <p className="text-xs text-muted-foreground mb-3">
               Know someone who'd be great at this? Share your referral link!
             </p>
             <div className="flex items-center gap-2">
-              <code className="flex-1 text-xs bg-muted p-2 rounded truncate">
+              <code className="flex-1 text-xs bg-muted p-2 rounded truncate min-w-0">
                 {typeof window !== 'undefined' ? `${window.location.origin}/apply?ref=${profile?.full_name?.replace(/\s+/g, '-').toLowerCase() || 'agent'}` : ''}
               </code>
               <Button 
                 variant="outline" 
                 size="sm"
+                className="shrink-0"
                 onClick={() => {
                   const refLink = `${window.location.origin}/apply?ref=${profile?.full_name?.replace(/\s+/g, '-').toLowerCase() || 'agent'}`;
                   navigator.clipboard.writeText(refLink);
@@ -771,10 +775,10 @@ export default function AgentPortal() {
           {/* Direct Portal Link */}
           <GlassCard className="p-4 overflow-hidden">
             <div className="flex items-center gap-3 mb-4">
-              <img src={apexIcon} alt="Apex" className="h-10 w-10 rounded-xl shadow-lg" />
-              <div>
+              <img src={apexIcon} alt="Apex" className="h-10 w-10 rounded-xl shadow-lg shrink-0" />
+              <div className="min-w-0">
                 <h3 className="font-semibold">Agent Portal</h3>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground truncate">
                   Share with your team for daily entry
                 </p>
               </div>
@@ -783,7 +787,7 @@ export default function AgentPortal() {
             {/* Branded Preview Card */}
             <div className="bg-gradient-to-br from-primary/10 via-violet-500/10 to-amber-500/10 border border-border/50 rounded-xl p-4 mb-4">
               <div className="flex items-center gap-3">
-                <img src={apexIcon} alt="Apex" className="h-12 w-12 rounded-lg" />
+                <img src={apexIcon} alt="Apex" className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-sm">Agent Portal</p>
                   <p className="text-xs text-muted-foreground truncate">apex-financial.org/agent-portal</p>

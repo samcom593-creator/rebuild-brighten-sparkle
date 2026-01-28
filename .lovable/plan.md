@@ -1,86 +1,54 @@
 
-# Add Direct Password Change to Dashboard Settings
 
-## What You Want
-Users should be able to change their password directly from the dashboard settings page by typing in a new password and clicking save - no email links required.
+# Fix React Ref Warning in Badge Component
+
+## Issue Identified
+Console warning: "Function components cannot be given refs" in `ManagerTeamView.tsx` when `Badge` components are rendered.
+
+## Root Cause
+The `Badge` component in `src/components/ui/badge.tsx` is a function component that doesn't use `React.forwardRef()`. When parent components (like tooltip triggers or motion wrappers) try to pass refs to Badge, React warns about this.
 
 ## Solution
-Add a password change section with input fields right on the settings page. When they enter a new password and click "Update Password", it will change immediately using Supabase's built-in `updateUser` method.
+Update the `Badge` component to use `React.forwardRef()` so it can properly receive refs from parent components.
 
 ## Changes to Make
 
-### Update `ProfileSettings.tsx`
+### Update `src/components/ui/badge.tsx`
 
-1. **Add new state variables for password fields:**
-   - `newPassword` - for the new password input
-   - `confirmPassword` - to confirm they typed it correctly
-   - `passwordLoading` - loading state for the save button
-   - `passwordSaved` - success state
+Transform from:
+```typescript
+function Badge({ className, variant, ...props }: BadgeProps) {
+  return <div className={cn(badgeVariants({ variant }), className)} {...props} />;
+}
+```
 
-2. **Add password validation:**
-   - Minimum 6 characters
-   - Passwords must match
-
-3. **Create `handlePasswordChange` function:**
-   ```typescript
-   const handlePasswordChange = async () => {
-     // Validate passwords match and meet requirements
-     if (newPassword.length < 6) {
-       toast({ title: "Password too short", variant: "destructive" });
-       return;
-     }
-     if (newPassword !== confirmPassword) {
-       toast({ title: "Passwords don't match", variant: "destructive" });
-       return;
-     }
-     
-     // Update password directly - no email needed!
-     const { error } = await supabase.auth.updateUser({
-       password: newPassword
-     });
-     
-     if (error) throw error;
-     
-     toast({ title: "Password Updated!" });
-     // Clear the fields
-   };
-   ```
-
-4. **Replace the current "Reset Password" section with direct input fields:**
-   - New Password input (with eye icon to show/hide)
-   - Confirm Password input
-   - "Update Password" button
-   - Keep the old email reset as a secondary option ("Or send reset link")
-
-## UI Preview
-
-```text
-┌─────────────────────────────────────────────┐
-│  Change Password                            │
-├─────────────────────────────────────────────┤
-│  New Password                               │
-│  ┌─────────────────────────────────┐        │
-│  │ ••••••••                    👁  │        │
-│  └─────────────────────────────────┘        │
-│                                             │
-│  Confirm Password                           │
-│  ┌─────────────────────────────────┐        │
-│  │ ••••••••                    👁  │        │
-│  └─────────────────────────────────┘        │
-│                                             │
-│  [ Update Password ]                        │
-│                                             │
-│  Or send a reset link to your email         │
-└─────────────────────────────────────────────┘
+To:
+```typescript
+const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(
+  ({ className, variant, ...props }, ref) => {
+    return (
+      <div
+        ref={ref}
+        className={cn(badgeVariants({ variant }), className)}
+        {...props}
+      />
+    );
+  }
+);
+Badge.displayName = "Badge";
 ```
 
 ## Technical Details
-
-- Uses `supabase.auth.updateUser({ password: newPassword })` - this works instantly for logged-in users
-- No email verification needed - they're already authenticated
-- Password fields are cleared after successful update for security
-- Show/hide password toggle for better UX
+- Uses `React.forwardRef<HTMLDivElement, BadgeProps>` to properly type the ref
+- Passes the `ref` to the underlying `<div>` element
+- Adds `displayName` for better debugging in React DevTools
+- No changes needed to any consuming components
 
 ## Files to Modify
+1. `src/components/ui/badge.tsx` - Add forwardRef wrapper
 
-1. `src/components/dashboard/ProfileSettings.tsx` - Add password input fields and update handler
+## Result
+- ✅ Eliminates React ref warning in console
+- ✅ Enables Badge to work with Tooltips, motion wrappers, and other ref-forwarding patterns
+- ✅ Follows React best practices for component composition
+

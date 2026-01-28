@@ -634,6 +634,8 @@ export default function DashboardApplicants() {
                       applicationId={app.id}
                       agentId={agentId}
                       licenseStatus={app.license_status}
+                      recipientEmail={app.email}
+                      recipientName={`${app.first_name} ${app.last_name}`}
                       onEmailSent={fetchApplications}
                       className="text-muted-foreground hover:text-primary"
                     />

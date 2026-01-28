@@ -253,10 +253,10 @@ export function AgentQuickEditDialog({
 
     setMerging(true);
     try {
-      const { error } = await supabase.functions.invoke("merge-agent-records", {
+      const { data, error } = await supabase.functions.invoke("merge-agent-records", {
         body: {
-          sourceAgentId: agentId,
-          targetAgentId: selectedMergeId,
+          primaryAgentId: selectedMergeId,
+          duplicateAgentIds: [agentId],
         },
       });
 

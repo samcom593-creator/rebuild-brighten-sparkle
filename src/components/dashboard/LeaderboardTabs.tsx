@@ -448,8 +448,8 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                 <TabsList className="h-8 p-0.5 w-full sm:w-auto grid grid-cols-4 sm:flex">
                   <TabsTrigger value="day" className="text-[10px] sm:text-xs px-2 h-7">Day</TabsTrigger>
                   <TabsTrigger value="week" className="text-[10px] sm:text-xs px-2 h-7">Week</TabsTrigger>
-                  <TabsTrigger value="month" className="text-[10px] sm:text-xs px-2 h-7">Mo</TabsTrigger>
-                  <TabsTrigger value="all" className="text-[10px] sm:text-xs px-2 h-7">All</TabsTrigger>
+                  <TabsTrigger value="month" className="text-[10px] sm:text-xs px-2 h-7">Month</TabsTrigger>
+                  <TabsTrigger value="all" className="text-[10px] sm:text-xs px-2 h-7">Custom</TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>

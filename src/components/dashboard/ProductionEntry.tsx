@@ -404,20 +404,32 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
           
           <div className="relative">
             {/* Header with elite styling */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
+            <div className="flex flex-col gap-4 mb-6">
+              {/* Title Row */}
               <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center h-12 w-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 shadow-lg shadow-primary/10">
-                  <Sparkles className="h-6 w-6 text-primary" />
+                <div className="flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 shadow-lg shadow-primary/10 shrink-0">
+                  <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                 </div>
-                <div>
-                  <h2 className="text-xl font-bold bg-gradient-to-r from-primary via-violet-500 to-primary bg-clip-text text-transparent">
+                <div className="min-w-0">
+                  <h2 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-primary via-violet-500 to-primary bg-clip-text text-transparent">
                     Log Production
                   </h2>
-                  <p className="text-xs text-muted-foreground">Enter numbers for the selected date</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Enter numbers for the selected date</p>
                 </div>
+                
+                {hasProduction && (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="ml-auto px-3 py-1.5 bg-gradient-to-r from-primary/20 to-emerald-500/20 border border-primary/30 rounded-xl font-bold text-primary text-sm shadow-lg shadow-primary/10 shrink-0"
+                  >
+                    ${totalValue.toLocaleString()}
+                  </motion.div>
+                )}
               </div>
               
-              <div className="flex items-center gap-2 flex-wrap">
+              {/* Controls Row - Full width on mobile */}
+              <div className="flex flex-col sm:flex-row gap-2">
                 {/* Date Picker for Backdating */}
                 <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
                   <PopoverTrigger asChild>
@@ -425,17 +437,19 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
                       variant="outline"
                       size="sm"
                       className={cn(
-                        "text-sm h-10 gap-2 border-2 border-primary/20 font-medium",
+                        "text-sm h-10 gap-2 border-2 border-primary/20 font-medium justify-start w-full sm:w-auto",
                         format(selectedDate, "yyyy-MM-dd") !== format(new Date(), "yyyy-MM-dd") && "bg-amber-500/10 border-amber-500/40"
                       )}
                     >
-                      <CalendarIcon className="h-4 w-4" />
-                      {format(selectedDate, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd") 
-                        ? "Today" 
-                        : format(selectedDate, "MMM d, yyyy")}
+                      <CalendarIcon className="h-4 w-4 shrink-0" />
+                      <span className="truncate">
+                        {format(selectedDate, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd") 
+                          ? "Today" 
+                          : format(selectedDate, "MMM d, yyyy")}
+                      </span>
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="end">
+                  <PopoverContent className="w-auto p-0" align="start">
                     <div className="p-3 border-b border-border">
                       <p className="text-sm font-medium">Select Production Date</p>
                       <p className="text-xs text-muted-foreground">You can log numbers for the past 30 days</p>
@@ -455,10 +469,11 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
                     />
                   </PopoverContent>
                 </Popover>
+                
                 {/* Admin: All agents grouped by manager with FULL NAMES */}
                 {isAdmin && allAgentsGrouped.length > 0 && (
                   <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
-                    <SelectTrigger className="w-[220px] h-10 text-sm border-2 border-primary/20 bg-background/80 backdrop-blur-sm">
+                    <SelectTrigger className="w-full sm:w-[220px] h-10 text-sm border-2 border-primary/20 bg-background/80 backdrop-blur-sm">
                       <SelectValue placeholder="Select agent" />
                     </SelectTrigger>
                     <SelectContent className="max-h-[400px] min-w-[280px]">
@@ -491,7 +506,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
                 {/* Manager: Just their team with FULL NAMES */}
                 {!isAdmin && isManager && teamMembers.length > 0 && (
                   <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
-                    <SelectTrigger className="w-[200px] h-10 text-sm border-2 border-primary/20">
+                    <SelectTrigger className="w-full sm:w-[200px] h-10 text-sm border-2 border-primary/20">
                       <SelectValue placeholder="Select agent" />
                     </SelectTrigger>
                     <SelectContent className="min-w-[240px]">
@@ -512,16 +527,6 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
                       ))}
                     </SelectContent>
                   </Select>
-                )}
-                
-                {hasProduction && (
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="px-4 py-2 bg-gradient-to-r from-primary/20 to-emerald-500/20 border border-primary/30 rounded-xl font-bold text-primary shadow-lg shadow-primary/10"
-                  >
-                    ${totalValue.toLocaleString()} ALP
-                  </motion.div>
                 )}
               </div>
             </div>

@@ -370,76 +370,79 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <GlassCard className="p-4 sm:p-5">
+        <GlassCard className="p-3 sm:p-5 overflow-hidden">
           {/* Header - Mobile Optimized */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Trophy className="h-5 w-5 text-amber-400 shrink-0" />
-              <h3 className="text-base font-bold">Leaderboard</h3>
-              
-              {/* Production/Building Toggle Button */}
-              <motion.button
-                onClick={() => setLeaderboardMode(mode => mode === "production" ? "building" : "production")}
-                className={cn(
-                  "relative px-3 py-1 rounded-full text-[10px] font-bold transition-all",
-                  "bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600",
-                  "text-black shadow-md shadow-amber-500/20",
-                  "hover:shadow-amber-500/40 active:scale-95",
-                  "border border-amber-300/50"
-                )}
-                whileTap={{ scale: 0.95 }}
-              >
-                <AnimatePresence mode="wait">
-                  <motion.span
-                    key={leaderboardMode}
-                    initial={{ rotateY: 90, opacity: 0 }}
-                    animate={{ rotateY: 0, opacity: 1 }}
-                    exit={{ rotateY: -90, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="flex items-center gap-1"
-                  >
-                    {leaderboardMode === "production" ? (
-                      <>
-                        <Trophy className="h-3 w-3" />
-                        <span className="hidden xs:inline">Production</span>
-                        <span className="xs:hidden">Prod</span>
-                      </>
-                    ) : (
-                      <>
-                        <Building2 className="h-3 w-3" />
-                        <span className="hidden xs:inline">Building</span>
-                        <span className="xs:hidden">Build</span>
-                      </>
-                    )}
-                  </motion.span>
-                </AnimatePresence>
-              </motion.button>
-              
-              <div className="flex items-center gap-1">
-                <Circle className="h-2 w-2 fill-emerald-500 text-emerald-500 animate-live-pulse" />
-                <span className="text-xs text-muted-foreground">Live</span>
+          <div className="flex flex-col gap-3 mb-4">
+            {/* Title Row */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <Trophy className="h-5 w-5 text-amber-400 shrink-0" />
+                <h3 className="text-sm sm:text-base font-bold truncate">Leaderboard</h3>
+                
+                {/* Production/Building Toggle Button */}
+                <motion.button
+                  onClick={() => setLeaderboardMode(mode => mode === "production" ? "building" : "production")}
+                  className={cn(
+                    "relative px-2 sm:px-3 py-1 rounded-full text-[10px] font-bold transition-all shrink-0",
+                    "bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600",
+                    "text-black shadow-md shadow-amber-500/20",
+                    "hover:shadow-amber-500/40 active:scale-95",
+                    "border border-amber-300/50"
+                  )}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <AnimatePresence mode="wait">
+                    <motion.span
+                      key={leaderboardMode}
+                      initial={{ rotateY: 90, opacity: 0 }}
+                      animate={{ rotateY: 0, opacity: 1 }}
+                      exit={{ rotateY: -90, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="flex items-center gap-1"
+                    >
+                      {leaderboardMode === "production" ? (
+                        <>
+                          <Trophy className="h-3 w-3" />
+                          <span className="hidden xs:inline">Prod</span>
+                        </>
+                      ) : (
+                        <>
+                          <Building2 className="h-3 w-3" />
+                          <span className="hidden xs:inline">Build</span>
+                        </>
+                      )}
+                    </motion.span>
+                  </AnimatePresence>
+                </motion.button>
               </div>
               
-              {/* My Rank Button - hidden on very small screens */}
-              <div className="hidden sm:block">
-                <MyRankingChart 
-                  currentAgentId={currentAgentId} 
-                  entries={entries.map(e => ({
-                    rank: e.rank,
-                    agentId: e.agentId,
-                    name: e.name,
-                    alp: e.alp,
-                    isCurrentUser: e.isCurrentUser,
-                  }))} 
-                />
+              <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-1">
+                  <Circle className="h-2 w-2 fill-emerald-500 text-emerald-500 animate-live-pulse" />
+                  <span className="text-[10px] text-muted-foreground hidden sm:inline">Live</span>
+                </div>
+                
+                {/* My Rank Button - hidden on very small screens */}
+                <div className="hidden sm:block">
+                  <MyRankingChart 
+                    currentAgentId={currentAgentId} 
+                    entries={entries.map(e => ({
+                      rank: e.rank,
+                      agentId: e.agentId,
+                      name: e.name,
+                      alp: e.alp,
+                      isCurrentUser: e.isCurrentUser,
+                    }))} 
+                  />
+                </div>
               </div>
             </div>
             
             {/* Controls Row - Stack on mobile */}
-            <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="flex flex-col xs:flex-row gap-2 w-full">
               {leaderboardMode === "production" && (
                 <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortCategory)}>
-                  <SelectTrigger className="flex-1 sm:flex-none sm:w-[100px] h-8 text-xs bg-background">
+                  <SelectTrigger className="w-full xs:w-auto xs:min-w-[90px] h-8 text-xs bg-background">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-popover">
@@ -450,24 +453,24 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                   </SelectContent>
                 </Select>
               )}
-              <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)} className="flex-1 sm:flex-none">
-                <TabsList className="h-8 p-0.5 w-full sm:w-auto grid grid-cols-4 sm:flex">
-                  <TabsTrigger value="day" className="text-[10px] sm:text-xs px-2 h-7">Day</TabsTrigger>
-                  <TabsTrigger value="week" className="text-[10px] sm:text-xs px-2 h-7">Week</TabsTrigger>
-                  <TabsTrigger value="month" className="text-[10px] sm:text-xs px-2 h-7">Month</TabsTrigger>
-                  <TabsTrigger value="custom" className="text-[10px] sm:text-xs px-2 h-7">Custom</TabsTrigger>
+              <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)} className="flex-1">
+                <TabsList className="h-8 p-0.5 w-full grid grid-cols-4">
+                  <TabsTrigger value="day" className="text-[10px] px-1 sm:px-2 h-7">Day</TabsTrigger>
+                  <TabsTrigger value="week" className="text-[10px] px-1 sm:px-2 h-7">Week</TabsTrigger>
+                  <TabsTrigger value="month" className="text-[10px] px-1 sm:px-2 h-7">Month</TabsTrigger>
+                  <TabsTrigger value="custom" className="text-[10px] px-1 sm:px-2 h-7">Custom</TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>
           
           {/* Custom Date Range Picker */}
           {period === "custom" && (
-            <div className="mt-3">
+            <div className="mt-2">
               <DateRangePicker
                 value={customDateRange}
                 onChange={setCustomDateRange}
                 simpleMode
-                className="w-full sm:w-auto"
+                className="w-full"
               />
             </div>
           )}

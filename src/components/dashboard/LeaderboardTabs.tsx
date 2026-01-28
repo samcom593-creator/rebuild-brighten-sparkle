@@ -16,8 +16,8 @@ import { MobileLeaderboardCard } from "./MobileLeaderboardCard";
 import { useTop3Celebration } from "@/hooks/useTop3Celebration";
 import { useRankChange } from "@/hooks/useRankChange";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { cn } from "@/lib/utils";
-import { subDays } from "date-fns";
+import { subDays, format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
+import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
 
 interface LeaderboardTabsProps {
   currentAgentId?: string;
@@ -38,7 +38,8 @@ interface LeaderboardEntry {
   isCurrentUser: boolean;
 }
 
-type Period = "day" | "week" | "month" | "all";
+type Period = "day" | "week" | "month" | "custom";
+import { cn } from "@/lib/utils";
 type SortCategory = "alp" | "presentations" | "closingRate" | "deals";
 
 interface CategoryLeaders {
@@ -103,13 +104,13 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
       
       switch (period) {
         case "week":
-          startDate = subDays(today, 7).toISOString().split("T")[0];
+          startDate = format(startOfWeek(today, { weekStartsOn: 0 }), "yyyy-MM-dd");
           break;
         case "month":
-          startDate = subDays(today, 30).toISOString().split("T")[0];
+          startDate = format(startOfMonth(today), "yyyy-MM-dd");
           break;
-        case "all":
-          startDate = subDays(today, 365).toISOString().split("T")[0];
+        case "custom":
+          startDate = subDays(today, 30).toISOString().split("T")[0];
           break;
         default:
           startDate = today.toISOString().split("T")[0];
@@ -300,7 +301,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
     day: "Today",
     week: "This Week",
     month: "This Month",
-    all: "All Time",
+    custom: "Custom Range",
   };
 
   const renderRankBadge = (rank: number, isCurrentUser: boolean) => {

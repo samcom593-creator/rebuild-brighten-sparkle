@@ -5,10 +5,11 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays } from "date-fns";
 import { cn } from "@/lib/utils";
+import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
 
-type TimePeriod = "week" | "month" | "all";
+type TimePeriod = "week" | "month" | "custom";
 
 interface DownlineStats {
   totalALP: number;
@@ -20,6 +21,10 @@ interface DownlineStats {
 export function DownlineStatsCard() {
   const { user, isAdmin } = useAuth();
   const [period, setPeriod] = useState<TimePeriod>("week");
+  const [customRange, setCustomRange] = useState<DateRange>({
+    from: subDays(new Date(), 30),
+    to: new Date(),
+  });
   const [stats, setStats] = useState<DownlineStats>({
     totalALP: 0,
     totalDeals: 0,
@@ -77,8 +82,8 @@ export function DownlineStatsCard() {
 
         // Build date range based on period
         const today = new Date();
-        let startDate: string | undefined;
-        let endDate: string | undefined;
+        let startDate: string;
+        let endDate: string;
 
         if (period === "week") {
           startDate = format(startOfWeek(today, { weekStartsOn: 0 }), "yyyy-MM-dd");
@@ -86,17 +91,20 @@ export function DownlineStatsCard() {
         } else if (period === "month") {
           startDate = format(startOfMonth(today), "yyyy-MM-dd");
           endDate = format(endOfMonth(today), "yyyy-MM-dd");
+        } else {
+          // Custom range
+          startDate = customRange.from ? format(customRange.from, "yyyy-MM-dd") : format(subDays(today, 30), "yyyy-MM-dd");
+          endDate = customRange.to ? format(customRange.to, "yyyy-MM-dd") : format(today, "yyyy-MM-dd");
         }
 
         // Query production data
-        let query = supabase
+        const query = supabase
           .from("daily_production")
           .select("aop, deals_closed, presentations")
-          .in("agent_id", agentIds);
+          .in("agent_id", agentIds)
+          .gte("production_date", startDate)
+          .lte("production_date", endDate);
 
-        if (startDate && endDate) {
-          query = query.gte("production_date", startDate).lte("production_date", endDate);
-        }
 
         const { data: productionData } = await query;
 
@@ -123,7 +131,7 @@ export function DownlineStatsCard() {
     };
 
     fetchDownlineStats();
-  }, [user, isAdmin, period]);
+  }, [user, isAdmin, period, customRange]);
 
   if (loading && stats.agentCount === 0) {
     return null;
@@ -133,10 +141,12 @@ export function DownlineStatsCard() {
     return null;
   }
 
-  const periodLabels = {
+  const periodLabels: Record<TimePeriod, string> = {
     week: "This Week",
     month: "This Month",
-    all: "All Time",
+    custom: customRange.from && customRange.to 
+      ? `${format(customRange.from, "MMM d")} - ${format(customRange.to, "MMM d")}`
+      : "Custom Range",
   };
 
   const label = isAdmin ? "Agency Production" : "Team Production";
@@ -158,21 +168,31 @@ export function DownlineStatsCard() {
           </div>
           
           {/* Time Toggle */}
-          <div className="flex items-center gap-1 bg-muted/50 rounded-md p-0.5">
-            {(["week", "month", "all"] as TimePeriod[]).map((p) => (
-              <Button
-                key={p}
-                variant={period === p ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setPeriod(p)}
-                className={cn(
-                  "text-[10px] h-6 px-2",
-                  period === p && "bg-primary text-primary-foreground"
-                )}
-              >
-                {p === "week" ? "W" : p === "month" ? "M" : "All"}
-              </Button>
-            ))}
+          <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 bg-muted/50 rounded-md p-0.5">
+              {(["week", "month", "custom"] as TimePeriod[]).map((p) => (
+                <Button
+                  key={p}
+                  variant={period === p ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setPeriod(p)}
+                  className={cn(
+                    "text-[10px] h-6 px-2",
+                    period === p && "bg-primary text-primary-foreground"
+                  )}
+                >
+                  {p === "week" ? "W" : p === "month" ? "M" : "Custom"}
+                </Button>
+              ))}
+            </div>
+            {period === "custom" && (
+              <DateRangePicker
+                value={customRange}
+                onChange={setCustomRange}
+                simpleMode
+                className="scale-90 origin-left"
+              />
+            )}
           </div>
         </div>
 

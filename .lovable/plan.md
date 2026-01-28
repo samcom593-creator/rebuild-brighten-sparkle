@@ -1,120 +1,137 @@
 
-## What’s actually happening (root cause)
+# Fix Plan: Deal Entry Not Working on Mobile
 
-### 1) “Premium input turns into a Deal bubble after 1 digit”
-This is coming from **`src/components/dashboard/ALPCalculator.tsx`** (used inside **`src/components/dashboard/ProductionEntry.tsx`**, which is rendered on **`src/pages/AgentPortal.tsx`**).
+## Problem Analysis
 
-Right now the calculator decides what is “completed” like this:
+From the screenshot and user feedback, I've identified these issues:
 
-- “Completed” deals = `deals.filter(d => parseFloat(d.amount) > 0)`
-- The “current input row” = `deals.filter(d => !parseFloat(d.amount)).slice(0,1)`
+1. **Deal Input Auto-Submits**: When users type a number (like "1"), it immediately becomes a deal bubble instead of letting them complete typing "10000" or "30000"
+2. **Blank Screen on Left Side**: The AgentPortal layout appears broken on mobile, showing blank space where content should be
 
-So the moment the user types the first digit (e.g. “3”), `parseFloat("3") > 0` becomes true and that row immediately gets treated as “completed”, disappears from the input area, and shows up as a bubble (e.g. “#1 …”). That makes it impossible to type “30000”.
+## Root Cause
 
-### 2) Admin portal banner “Admin View — You are viewing the Agent Portal for testing purposes”
-This is hardcoded UI in **`src/pages/AgentPortal.tsx`** and is displayed when `isAdminViewing` is true.
+After investigating, I found there are **two different deal entry components**:
 
-### 3) “Powered by Apex” loading screens across the site
-You have multiple “full page” loading states that still use spinners and/or non-standard copy:
-- `src/components/ProtectedRoute.tsx` (full page spinner)
-- `src/pages/Numbers.tsx` (full page spinner)
-- `src/pages/AgentPortal.tsx` (full page loader currently shows spinning icon and other text)
-- `src/components/ui/skeleton-loader.tsx` already has a branded “page” loader, but the copy is “Powered by Apex Financial” (needs to be “Powered by Apex”), and not all pages use it.
+| Component | Used In | Location |
+|-----------|---------|----------|
+| `ALPCalculator.tsx` | ProductionEntry.tsx | AgentPortal page |
+| `BubbleDealEntry.tsx` | CompactProductionEntry.tsx | Numbers page |
 
-## Fix design (what we’ll change)
+The `ALPCalculator.tsx` was updated in the previous response to fix the auto-submit issue, but it seems the fix isn't working. Looking at the code:
 
-### A) Fix deal entry so users can type full numbers (30,000 / 20,000 etc.)
-We’ll update **`ALPCalculator.tsx`** so that:
-1. The **active input row stays visible while typing**, even if the amount is > 0.
-2. A deal becomes a bubble **only after the user “commits” it** by:
-   - pressing Enter, or
-   - clicking an explicit “+ Add” button (important for mobile keyboards that don’t expose Enter clearly).
-3. Submitting the overall “Submit Numbers” form will still include the currently typed value even if they forgot to press “+ Add”.
-   - This is critical so people don’t lose their last typed deal.
+**Current `ALPCalculator.tsx` logic** (lines 44-56):
+- Uses "active draft" concept where last deal is the input
+- Bubbles only render for `deals.slice(0, -1)` (committed deals)
+- Commit happens on Enter or "+ Add" button click
 
-**Implementation approach (simple, robust):**
-- Keep the current `deals` array, but treat the **last deal** as the “active draft”.
-- Render bubbles only for “committed” deals = `deals.slice(0, -1)` (filtering out invalid/zero).
-- Keep calculations (`totalALP` + `dealCount`) including **all** deals with amount > 0 (including the active draft) so the parent form always has the correct totals.
-- When the user commits (Enter or “+ Add”):
-  - If the active deal has a valid amount, append a new empty deal row, making the previous active one now “committed” and eligible to display as a bubble.
+This should work, BUT there may be an issue with how the component is rendering or the fix wasn't deployed properly.
 
-**Also**: add `e.stopPropagation()` in the keydown handler so Enter doesn’t bubble to the parent `<form>` and submit the entire production form unexpectedly.
+## Technical Fix
 
-Files involved:
-- `src/components/dashboard/ALPCalculator.tsx`
-- (indirectly used by) `src/components/dashboard/ProductionEntry.tsx`
+### 1. Verify ALPCalculator Fix is Working
+The ALPCalculator code looks correct, but I'll add extra safeguards:
+- Ensure the input field has proper event handling for mobile
+- Add `onKeyDown` with explicit `stopPropagation()` for all keyboard events
+- Ensure `type="text"` instead of `type="number"` to prevent mobile number keyboard issues
 
-### B) Remove the “Admin View — … testing purposes” banner from the Agent Portal
-We’ll remove that notice block from **`src/pages/AgentPortal.tsx`**.
+### 2. Fix BubbleDealEntry (CompactProductionEntry)
+The BubbleDealEntry already has the correct pattern (separate input + explicit Add button), but needs:
+- Add `stopImmediatePropagation()` to prevent any parent form handling
+- Ensure mobile keyboards don't trigger auto-submit
 
-We will keep the underlying ability for admins/managers to access the portal if you still need it operationally, but the UI copy will no longer claim it’s “for testing purposes”.
+### 3. Mobile Layout Fix
+The blank left side on mobile suggests the tab content might not be rendering. Add defensive checks to ensure components render even when data is loading.
 
-Files involved:
-- `src/pages/AgentPortal.tsx`
+## Files to Modify
 
-### C) Make all full-screen loading states show “Powered by Apex” + pulsing Apex logo
-We’ll standardize full-page loaders to use one branded component.
+1. **`src/components/dashboard/ALPCalculator.tsx`**
+   - Use `type="text"` with `inputMode="decimal"` for better mobile control
+   - Add additional event propagation guards
+   - Ensure focus management works on mobile
 
-Plan:
-1. Update `SkeletonLoader`’s `variant="page"` copy to exactly:
-   - **“Powered by Apex”**
-2. Make the “page” loader show a pulsing Apex mark (either:
-   - the current Crown icon (already present), updated to match branding text, or
-   - the existing `apex-icon.png` for a true logo pulse if you prefer).
-3. Replace full-page `Loader2`/spinner loaders with `SkeletonLoader variant="page"` in:
-   - `src/components/ProtectedRoute.tsx`
-   - `src/pages/Numbers.tsx`
-   - `src/pages/AgentPortal.tsx`
-   - (optional sweep) any other route-level loaders found by searching for `min-h-screen` + `animate-spin`
+2. **`src/components/dashboard/BubbleDealEntry.tsx`**  
+   - Same mobile keyboard fixes
+   - Ensure Enter key doesn't submit parent form
 
-Files involved:
-- `src/components/ui/skeleton-loader.tsx`
-- `src/components/ProtectedRoute.tsx`
-- `src/pages/Numbers.tsx`
-- `src/pages/AgentPortal.tsx`
+3. **`src/components/dashboard/ProductionEntry.tsx`**
+   - Wrap the form with `onKeyDown` handler to prevent accidental submissions
+   - Add defensive rendering for mobile
 
-## Step-by-step implementation checklist
+## Implementation Details
 
-### 1) Fix ALPCalculator deal input
-- Rewrite `completedDeals` logic so it does NOT immediately include the currently edited row.
-- Introduce an “active deal” concept (last item).
-- Add a visible “+ Add” button that commits the current deal.
-- Update Enter handling to:
-  - `preventDefault()`
-  - `stopPropagation()`
-  - commit current deal (append empty row) if valid.
-- Ensure totals (`onALPChange`, `onDealsChange`) always reflect:
-  - committed deals + current active typed deal (if > 0).
+### ALPCalculator.tsx Changes
+```tsx
+// Change input type from "number" to "text" with inputMode for mobile
+<Input
+  ref={inputRef}
+  type="text"  // Changed from "number" 
+  inputMode="decimal"
+  pattern="[0-9]*\.?[0-9]*"
+  placeholder="Enter premium..."
+  value={activeDeal.amount}
+  onChange={(e) => {
+    // Only allow numeric input
+    const value = e.target.value.replace(/[^0-9.]/g, '');
+    handleDealChange(activeDeal.id, value);
+  }}
+  onKeyDown={(e) => {
+    e.stopPropagation();
+    if (e.key === "Enter") {
+      e.preventDefault();
+      commitDeal();
+    }
+  }}
+  className="pl-9 pr-2 h-12 text-lg font-semibold"
+/>
+```
 
-### 2) Remove the admin testing banner
-- Delete the “Admin Notice” section that renders:
-  - “Admin View — You are viewing the Agent Portal for testing purposes”
-- Ensure no other parts of the portal rely on that message for layout spacing.
+### BubbleDealEntry.tsx Changes
+```tsx
+// Same pattern - use text input with pattern validation
+<input
+  ref={inputRef}
+  type="text"
+  inputMode="decimal"
+  pattern="[0-9]*\.?[0-9]*"
+  placeholder="Enter ALP"
+  value={inputValue}
+  onChange={(e) => {
+    const value = e.target.value.replace(/[^0-9.]/g, '');
+    setInputValue(value);
+  }}
+  onKeyDown={(e) => {
+    e.stopPropagation();
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addDeal();
+    }
+  }}
+  className="flex-1 h-12 bg-transparent border-0 text-lg font-semibold..."
+/>
+```
 
-### 3) Loading screen branding pass
-- Update `SkeletonLoader` page variant text to “Powered by Apex”.
-- Replace full-screen spinners in:
-  - ProtectedRoute
-  - Numbers
-  - AgentPortal
-- Keep button-level spinners (like “Saving…”) as-is, since those are not “loading screens” and shouldn’t be replaced with full-screen UI.
+### Form-Level Protection
+Add to ProductionEntry.tsx form element:
+```tsx
+<form 
+  onSubmit={handleSubmit}
+  onKeyDown={(e) => {
+    // Prevent Enter from submitting form unless on submit button
+    if (e.key === "Enter" && e.target instanceof HTMLInputElement) {
+      e.preventDefault();
+    }
+  }}
+  className="space-y-6"
+>
+```
 
-## How we’ll verify it’s fixed (manual QA)
-1. Go to Agent Portal → Log Numbers → Deals:
-   - Type “30000” in premium without pressing Enter.
-   - Confirm the input does NOT turn into a bubble mid-entry.
-   - Press “+ Add” (or Enter) and confirm it becomes a bubble afterward.
-   - Add a second deal (e.g. “20000”) and confirm both appear correctly.
-2. Submit Numbers:
-   - Enter one deal but do NOT press “+ Add”.
-   - Press “Submit Numbers”.
-   - Confirm the saved ALP and deal count include that typed deal.
-3. Confirm the admin testing banner no longer appears.
-4. Trigger full-page loading states (hard refresh, logout/login, protected route redirect) and confirm:
-   - Branded loader shows pulsing logo
-   - Text reads exactly “Powered by Apex”
+## Summary of Changes
 
-## Risks / notes
-- This change intentionally shifts “bubble creation” from “any non-zero input” to “commit action”. That’s what prevents the 1-digit auto-bubble bug and matches your expected behavior.
-- We will ensure submission still captures the last typed value even if not committed, so agents don’t lose data.
+| File | Change |
+|------|--------|
+| `ALPCalculator.tsx` | Use `type="text"` + `inputMode="decimal"` for mobile-safe number entry |
+| `BubbleDealEntry.tsx` | Same text input pattern with numeric validation |
+| `ProductionEntry.tsx` | Add form-level Enter key prevention |
+| `CompactProductionEntry.tsx` | Same form-level protection |
+
+This will ensure users can type full numbers (30000, 20000) without the input being auto-submitted or turning into a bubble prematurely.

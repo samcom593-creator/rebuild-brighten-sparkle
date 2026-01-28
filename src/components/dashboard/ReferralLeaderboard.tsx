@@ -124,7 +124,9 @@ export function ReferralLeaderboard({ currentAgentId, period = "week" }: Referra
       const { data: agents } = await supabase
         .from("agents")
         .select("id, user_id")
-        .in("id", agentIds);
+        .in("id", agentIds)
+        .eq("is_deactivated", false)
+        .eq("is_inactive", false);
 
       const userIds = agents?.map((a) => a.user_id).filter(Boolean) || [];
       const { data: profiles } = await supabase
@@ -132,8 +134,18 @@ export function ReferralLeaderboard({ currentAgentId, period = "week" }: Referra
         .select("user_id, full_name")
         .in("user_id", userIds);
 
+      // Only include agents we can actually load (handles inactive/deactivated + deleted + RLS visibility)
+      const allowedAgentIds = new Set((agents || []).map((a) => a.id));
+      const visibleActiveAgents = activeAgents.filter(([id]) => allowedAgentIds.has(id));
+
+      if (visibleActiveAgents.length === 0) {
+        setEntries([]);
+        setLoading(false);
+        return;
+      }
+
       // Build entries
-      const referralEntries: ReferralEntry[] = activeAgents.map(([agentId, totals]) => {
+      const referralEntries: ReferralEntry[] = visibleActiveAgents.map(([agentId, totals]) => {
         const agent = agents?.find((a) => a.id === agentId);
         const profile = profiles?.find((p) => p.user_id === agent?.user_id);
         

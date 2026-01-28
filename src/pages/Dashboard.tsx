@@ -9,6 +9,7 @@ import {
   MapPin,
   TrendingUp,
   DollarSign,
+  UserPlus,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
@@ -23,8 +24,12 @@ import { ClosingRateLeaderboard } from "@/components/dashboard/ClosingRateLeader
 import { ReferralLeaderboard } from "@/components/dashboard/ReferralLeaderboard";
 import { TeamSnapshotCard } from "@/components/dashboard/TeamSnapshotCard";
 import { OnboardingPipelineCard } from "@/components/dashboard/OnboardingPipelineCard";
-import { TeamGoalsTracker } from "@/components/dashboard/TeamGoalsTracker";
 import { useAuth } from "@/hooks/useAuth";
+import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration";
+import { GlassCard } from "@/components/ui/glass-card";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useNavigate } from "react-router-dom";
 
 interface DashboardStats {
   totalLeads: number;
@@ -39,7 +44,8 @@ interface DashboardStats {
 }
 
 export default function Dashboard() {
-  const { profile, user, isManager, isAdmin, isAgent } = useAuth();
+  const { profile, user, isManager, isAdmin, isAgent, isLoading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats>({
     totalLeads: 0,
     contacted: 0,
@@ -53,6 +59,7 @@ export default function Dashboard() {
   });
   const [userName, setUserName] = useState("");
   const [currentAgentId, setCurrentAgentId] = useState<string | undefined>();
+  const [showConfetti, setShowConfetti] = useState(false);
 
   // Chart data
   const [dailyData, setDailyData] = useState<Array<{ label: string; leads: number; closed: number }>>([]);
@@ -66,6 +73,17 @@ export default function Dashboard() {
   ];
 
   useEffect(() => {
+    // Show confetti on initial load
+    const hasSeenConfetti = sessionStorage.getItem('dashboard-confetti');
+    if (!hasSeenConfetti) {
+      setShowConfetti(true);
+      sessionStorage.setItem('dashboard-confetti', 'true');
+      // Hide after animation
+      setTimeout(() => setShowConfetti(false), 4000);
+    }
+  }, []);
+
+  useEffect(() => {
     const fetchData = async () => {
       if (user) {
         setUserName(profile?.full_name || user.email?.split("@")[0] || "Agent");
@@ -75,7 +93,7 @@ export default function Dashboard() {
           .from("agents")
           .select("id")
           .eq("user_id", user.id)
-          .single();
+          .maybeSingle();
 
         if (agentData) {
           setCurrentAgentId(agentData.id);
@@ -224,126 +242,159 @@ export default function Dashboard() {
   const showTeamStats = isManager && !isAdmin;
   const showPersonalOnly = isAgent && !isManager && !isAdmin;
 
+  // Show skeleton while auth is loading
+  if (authLoading) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-40 w-full rounded-xl" />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Skeleton className="h-96 rounded-xl" />
+            <Skeleton className="h-96 rounded-xl" />
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
-      {/* Compact Welcome */}
+      {/* Confetti on first load */}
+      {showConfetti && <ConfettiCelebration trigger={showConfetti} />}
+      
+      {/* Animated Welcome */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-4"
+        className="mb-6"
       >
-        <h2 className="text-lg font-bold">Welcome back, {userName}! 👋</h2>
+        <motion.h2 
+          className="text-xl font-bold"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+        >
+          Welcome back, <span className="text-primary">{userName}</span>! 👋
+        </motion.h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          {isAdmin ? "Here's your agency overview" : isManager ? "Here's your team performance" : "Track your progress"}
+        </p>
       </motion.div>
 
-      {/* ====== PRODUCTION SNAPSHOT (Role-based) ====== */}
+      {/* ====== 1. PRODUCTION SNAPSHOT (Top Priority - Role-based) ====== */}
       <div className="mb-6">
         <TeamSnapshotCard />
       </div>
 
-      {/* ====== TEAM GOALS (Managers & Admins only) ====== */}
-      {(isManager || isAdmin) && (
-        <div className="mb-6">
-          <TeamGoalsTracker />
-        </div>
-      )}
-
-      {/* ====== TWO-COLUMN LAYOUT: PRODUCTION | GROWTH ====== */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* LEFT: PRODUCTION METRICS (Sales) */}
-        <div className="space-y-4">
+      {/* ====== 2. MAIN CONTENT LAYOUT ====== */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        {/* LEFT COLUMN: Mini Leaderboard (Production) - 2/3 width */}
+        <div className="lg:col-span-2 space-y-6">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
             className="flex items-center gap-2"
           >
             <DollarSign className="h-4 w-4 text-primary" />
-            <h3 className="text-base font-bold">Production</h3>
+            <h3 className="text-base font-bold">Top Producers</h3>
           </motion.div>
 
-          {/* Sales Leaderboard */}
+          {/* Sales Leaderboard - Primary focus */}
           <LeaderboardTabs currentAgentId={currentAgentId} />
 
-          {/* Performance Leaderboards */}
-          <ClosingRateLeaderboard />
-          <ReferralLeaderboard />
+          {/* Secondary Leaderboards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <ClosingRateLeaderboard />
+            <ReferralLeaderboard />
+          </div>
         </div>
 
-        {/* RIGHT: GROWTH METRICS (Recruiting) - For Managers/Admins */}
-        {(isManager || isAdmin) && (
-          <div className="space-y-4">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex items-center gap-2"
-            >
-              <TrendingUp className="h-4 w-4 text-emerald-500" />
-              <h3 className="text-base font-bold">Growth & Recruitment</h3>
-            </motion.div>
+        {/* RIGHT COLUMN: Recruiting Stats + Quick Actions - 1/3 width */}
+        <div className="space-y-6">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="flex items-center gap-2"
+          >
+            <TrendingUp className="h-4 w-4 text-emerald-500" />
+            <h3 className="text-base font-bold">
+              {isAdmin ? "Recruiting & Growth" : isManager ? "Team Growth" : "Your Stats"}
+            </h3>
+          </motion.div>
 
-            {/* Manager Leaderboard */}
-            <ManagerLeaderboard />
+          {/* Manager Leaderboard for Admin/Manager */}
+          {(isManager || isAdmin) && <ManagerLeaderboard />}
 
-            {/* Onboarding Pipeline */}
-            <OnboardingPipelineCard />
+          {/* Onboarding Pipeline for Admin/Manager */}
+          {(isManager || isAdmin) && <OnboardingPipelineCard />}
 
-            {/* License Distribution */}
-            <AnalyticsPieChart
-              title="License Status"
-              icon={<Award className="h-4 w-4 text-primary" />}
-              data={licenseData}
-            />
+          {/* Lead Sources */}
+          <AnalyticsPieChart
+            title="Lead Sources"
+            icon={<MapPin className="h-4 w-4 text-primary" />}
+            data={sourceData}
+          />
 
-            {/* Growth Chart */}
-            <GrowthChart
-              dailyData={dailyData}
-              weeklyData={weeklyData}
-              monthlyData={monthlyData}
-              currentPeriodTotal={stats.totalLeads}
-              previousPeriodTotal={Math.round(stats.totalLeads * 0.87)}
-            />
-          </div>
-        )}
-
-        {/* For Agents: Show personal charts instead */}
-        {showPersonalOnly && (
-          <div className="space-y-4">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex items-center gap-2"
-            >
-              <TrendingUp className="h-4 w-4 text-emerald-500" />
-              <h3 className="text-base font-bold">Your Performance</h3>
-            </motion.div>
-
-            {/* Lead Sources */}
-            <AnalyticsPieChart
-              title="Lead Sources"
-              icon={<MapPin className="h-4 w-4 text-primary" />}
-              data={sourceData}
-            />
-
-            {/* License Distribution */}
-            <AnalyticsPieChart
-              title="License Status"
-              icon={<Award className="h-4 w-4 text-primary" />}
-              data={licenseData}
-            />
-
-            {/* Growth Chart */}
-            <GrowthChart
-              dailyData={dailyData}
-              weeklyData={weeklyData}
-              monthlyData={monthlyData}
-              currentPeriodTotal={stats.totalLeads}
-              previousPeriodTotal={Math.round(stats.totalLeads * 0.87)}
-            />
-          </div>
-        )}
+          {/* License Distribution (at bottom per plan) */}
+          <AnalyticsPieChart
+            title="License Status"
+            icon={<Award className="h-4 w-4 text-primary" />}
+            data={licenseData}
+          />
+        </div>
       </div>
 
-      {/* ====== PERSONAL STATS (Show for agents & managers, NOT admin) ====== */}
-      {!isAdmin && (
+      {/* ====== 3. INVITE LINKS (Admin & Manager) ====== */}
+      {(isAdmin || isManager) && (
+        <div className="mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Invite Manager */}
+            {isAdmin && <InviteManagerCard />}
+            
+            {/* Invite Team - New component */}
+            <GlassCard className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
+                  <UserPlus className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Invite Team Member</h3>
+                  <p className="text-xs text-muted-foreground">Add new agents to your team</p>
+                </div>
+              </div>
+              <Button 
+                className="w-full"
+                onClick={() => navigate("/dashboard/crm")}
+              >
+                <UserPlus className="h-4 w-4 mr-2" />
+                Add New Agent
+              </Button>
+            </GlassCard>
+          </div>
+        </div>
+      )}
+
+      {/* ====== 4. TEAM VIEW (Managers & Admins) ====== */}
+      {(isManager || isAdmin) && (
+        <div className="mb-6">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="flex items-center gap-2 mb-4"
+          >
+            <Users className="h-4 w-4 text-primary" />
+            <h3 className="text-base font-bold">Your Team</h3>
+          </motion.div>
+          <ManagerTeamView />
+        </div>
+      )}
+
+      {/* ====== 5. PERSONAL STATS (Agents only - NOT Admin) ====== */}
+      {showPersonalOnly && (
         <div className="mb-6">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -351,12 +402,10 @@ export default function Dashboard() {
             className="flex items-center gap-2 mb-3"
           >
             <Users className="h-4 w-4 text-muted-foreground" />
-            <h3 className="text-sm font-semibold text-muted-foreground">
-              {showPersonalOnly ? "Your Stats" : "Your Personal Recruiting Stats"}
-            </h3>
+            <h3 className="text-sm font-semibold text-muted-foreground">Your Recruiting Stats</h3>
           </motion.div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <StatCard
               title="Total Leads"
               value={stats.totalLeads}
@@ -382,28 +431,17 @@ export default function Dashboard() {
               variant="success"
             />
           </div>
-        </div>
-      )}
 
-      {/* Admin Quick Actions */}
-      {isAdmin && (
-        <div className="mb-6">
-          <InviteManagerCard />
-        </div>
-      )}
-
-      {/* Manager Team View */}
-      {(isManager || isAdmin) && (
-        <div className="mb-6">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-2 mb-3"
-          >
-            <Users className="h-4 w-4 text-primary" />
-            <h3 className="text-base font-bold">Your Team</h3>
-          </motion.div>
-          <ManagerTeamView />
+          {/* Growth Chart for agents */}
+          <div className="mt-6">
+            <GrowthChart
+              dailyData={dailyData}
+              weeklyData={weeklyData}
+              monthlyData={monthlyData}
+              currentPeriodTotal={stats.totalLeads}
+              previousPeriodTotal={Math.round(stats.totalLeads * 0.87)}
+            />
+          </div>
         </div>
       )}
     </DashboardLayout>

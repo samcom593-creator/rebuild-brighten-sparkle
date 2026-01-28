@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Edit2, Merge, User, Check, Loader2, Mail, Phone, Send, Instagram, UserPlus } from "lucide-react";
+import { Edit2, Merge, User, Check, Loader2, Mail, Phone, Send, Instagram, UserPlus, Trash2, AlertTriangle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -9,6 +9,16 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -69,6 +79,8 @@ export function AgentQuickEditDialog({
   const [saving, setSaving] = useState(false);
   const [merging, setMerging] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [linkedProfile, setLinkedProfile] = useState<LinkedProfile | null>(null);
   const [agentData, setAgentData] = useState<AgentData | null>(null);
@@ -278,6 +290,67 @@ export function AgentQuickEditDialog({
       });
     } finally {
       setMerging(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      // Delete all production records for this agent
+      const { error: prodError } = await supabase
+        .from("daily_production")
+        .delete()
+        .eq("agent_id", agentId);
+
+      if (prodError) {
+        console.error("Error deleting production:", prodError);
+      }
+
+      // Delete agent notes
+      const { error: notesError } = await supabase
+        .from("agent_notes")
+        .delete()
+        .eq("agent_id", agentId);
+
+      if (notesError) {
+        console.error("Error deleting notes:", notesError);
+      }
+
+      // Delete agent goals
+      const { error: goalsError } = await supabase
+        .from("agent_goals")
+        .delete()
+        .eq("agent_id", agentId);
+
+      if (goalsError) {
+        console.error("Error deleting goals:", goalsError);
+      }
+
+      // Delete the agent record
+      const { error: agentError } = await supabase
+        .from("agents")
+        .delete()
+        .eq("id", agentId);
+
+      if (agentError) throw agentError;
+
+      toast({
+        title: "Agent deleted",
+        description: `${currentName} and all associated records have been removed.`,
+      });
+
+      setShowDeleteConfirm(false);
+      onUpdate?.();
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Error deleting agent:", error);
+      toast({
+        title: "Delete failed",
+        description: "Failed to delete agent. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -513,10 +586,23 @@ export function AgentQuickEditDialog({
         </div>
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
+          {/* Delete Button - Admin only */}
+          {isAdmin && (
+            <Button
+              variant="destructive"
+              onClick={() => setShowDeleteConfirm(true)}
+              disabled={saving || merging || creating || deleting}
+              className="sm:mr-auto"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </Button>
+          )}
+          
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            disabled={saving || merging || creating}
+            disabled={saving || merging || creating || deleting}
           >
             Cancel
           </Button>
@@ -555,6 +641,47 @@ export function AgentQuickEditDialog({
           )}
         </DialogFooter>
       </DialogContent>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Delete Agent?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete <strong>{currentName}</strong> and all their records including:
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>All production data ({formatCurrency(production)} ALP, {deals} deals)</li>
+                <li>Notes and goals</li>
+                <li>The agent profile</li>
+              </ul>
+              <p className="mt-3 font-medium text-destructive">This action cannot be undone.</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Forever
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

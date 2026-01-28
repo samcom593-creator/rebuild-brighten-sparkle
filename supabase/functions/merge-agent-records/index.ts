@@ -91,22 +91,32 @@ serve(async (req: Request) => {
         console.error(`Failed to move goals for ${duplicateId}:`, goalsError);
       }
 
-      // Archive the duplicate agent
-      const { error: archiveError } = await supabase
+      // DELETE the duplicate agent completely (not just archive)
+      const { error: deleteError } = await supabase
         .from("agents")
-        .update({
-          is_inactive: true,
-          is_deactivated: true,
-          status: "terminated",
-          deactivation_reason: "bad_business", // Using existing enum value
-        })
+        .delete()
         .eq("id", duplicateId);
 
-      if (archiveError) {
-        console.error(`Failed to archive duplicate ${duplicateId}:`, archiveError);
+      if (deleteError) {
+        console.error(`Failed to delete duplicate ${duplicateId}:`, deleteError);
+        // Fallback: archive if delete fails (e.g., foreign key constraints)
+        const { error: archiveError } = await supabase
+          .from("agents")
+          .update({
+            is_inactive: true,
+            is_deactivated: true,
+            status: "terminated",
+            deactivation_reason: "bad_business",
+          })
+          .eq("id", duplicateId);
+        
+        if (!archiveError) {
+          archivedAgents++;
+          console.log(`✅ Archived duplicate agent ${duplicateId} (delete failed)`);
+        }
       } else {
         archivedAgents++;
-        console.log(`✅ Archived duplicate agent ${duplicateId}`);
+        console.log(`✅ Deleted duplicate agent ${duplicateId}`);
       }
     }
 

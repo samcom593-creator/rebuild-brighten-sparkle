@@ -1,90 +1,65 @@
 
 
-## Agent Delete Options Plan
+## Add Phone Number Editing to Leaderboard
 
 ### Overview
-Replace the current single-action delete confirmation with a choice dialog that offers two options when the admin clicks "Delete":
-1. **Mark as Inactive** - Keeps the agent record but marks them as inactive (soft delete)
-2. **Permanently Delete** - Removes the agent and all associated records from the system
+Currently, the phone field in the Agent Edit Dialog is only visible when creating a new profile for agents without logins. You need to be able to view and edit phone numbers for **all** agents directly from the leaderboard edit dialog.
+
+### What Will Change
+
+#### AgentQuickEditDialog Updates
+1. **Add a dedicated Phone field** visible for ALL agents (not just those without logins)
+2. **Pre-fill the phone field** from the linked profile data when the dialog opens
+3. **Save phone number changes** - when saving, update both:
+   - The agent's linked profile (if they have one)
+   - Handle agents without profiles gracefully
 
 ### Implementation Details
 
-#### 1. Update the Delete Confirmation Dialog
-Replace the current `AlertDialog` in `AgentQuickEditDialog.tsx` with a two-option choice screen:
+**File: `src/components/dashboard/AgentQuickEditDialog.tsx`**
 
-**Before:** Single confirmation → Permanent delete  
-**After:** Choice screen → Inactivate OR Permanent delete with secondary confirmation
+1. Add a new Phone Number input field below the Display Name field that shows for all agents:
+   - Shows current phone if one exists
+   - Allows editing regardless of login status
+   - Includes proper phone icon styling
 
-#### 2. New Dialog Flow
+2. Update `handleSaveName` function to also save the phone number:
+   - If agent has a `profile_id`, update the `profiles` table with the new phone
+   - Show appropriate toast messages
 
-```text
-[Delete Button Clicked]
-        │
-        ▼
-┌───────────────────────────┐
-│   Choose Action Dialog    │
-│                           │
-│  ┌─────────────────────┐  │
-│  │ Mark as Inactive    │  │ ← Sets is_inactive = true
-│  │ (Hide from views)   │  │   Agent kept for records
-│  └─────────────────────┘  │
-│                           │
-│  ┌─────────────────────┐  │
-│  │ Permanently Delete  │  │ ← Removes all records
-│  │ (Cannot undo)       │  │   Full data cleanup
-│  └─────────────────────┘  │
-│                           │
-│        [Cancel]           │
-└───────────────────────────┘
+3. Keep the existing phone field in the "Create Profile" section (for new profiles), but also add a standalone editable phone field for existing profiles
+
+### UI Layout (After Changes)
+
+```
+┌─────────────────────────────────┐
+│ Current Agent Info Card         │
+├─────────────────────────────────┤
+│ Display Name: [_____________]   │
+│ Phone:        [📞____________]  │  ← NEW: Always visible
+├─────────────────────────────────┤
+│ Create Profile section          │  ← Only for agents without login
+│ (keeps existing phone field)    │
+├─────────────────────────────────┤
+│ Merge section                   │
+├─────────────────────────────────┤
+│ [Delete]  [Cancel] [Save]       │
+└─────────────────────────────────┘
 ```
 
-#### 3. Files to Modify
+### Technical Changes
 
-**`src/components/dashboard/AgentQuickEditDialog.tsx`**
-- Add new state: `deleteStep` to track which screen is shown (`"choice"` | `"confirm_delete"`)
-- Add `handleInactivate` function to set `is_inactive = true` on the agent record
-- Modify the `AlertDialog` content to show:
-  - **Step 1 (Choice):** Two buttons - "Mark as Inactive" and "Permanently Delete"
-  - **Step 2 (Confirm Delete):** Final confirmation before permanent deletion
-- Keep existing `handleDelete` function for permanent deletion (already implemented with full cleanup)
+1. **New phone input** - Add between Display Name and Create Profile sections
+2. **Update save function** - Modify `handleSaveName` to include phone update:
+   ```typescript
+   // If agent has a profile, update phone there
+   if (agentData?.profile_id) {
+     await supabase
+       .from("profiles")
+       .update({ phone: phone.trim() || null })
+       .eq("id", agentData.profile_id);
+   }
+   ```
 
-#### 4. Technical Changes
-
-**New State:**
-```typescript
-const [deleteStep, setDeleteStep] = useState<"choice" | "confirm_delete">("choice");
-```
-
-**New Inactivate Handler:**
-```typescript
-const handleInactivate = async () => {
-  setDeleting(true);
-  try {
-    await supabase
-      .from("agents")
-      .update({ is_inactive: true })
-      .eq("id", agentId);
-    
-    toast({ title: "Agent marked as inactive" });
-    onUpdate?.();
-    onOpenChange(false);
-  } catch (error) {
-    toast({ title: "Failed to inactivate agent", variant: "destructive" });
-  } finally {
-    setDeleting(false);
-  }
-};
-```
-
-**Updated Dialog Content:**
-- When `deleteStep === "choice"`: Show two action buttons
-- When `deleteStep === "confirm_delete"`: Show final warning before permanent delete
-- Reset `deleteStep` to `"choice"` when dialog closes
-
-#### 5. UI Design
-- **Inactivate option:** Neutral/secondary styling with `UserMinus` icon
-- **Permanent Delete option:** Destructive/red styling with `Trash2` icon  
-- Clear labels explaining what each action does:
-  - Inactivate: "Hide from leaderboards and active views"
-  - Delete: "Remove agent and all records permanently"
+3. **Button label change** - Rename "Save Name" to "Save Changes" since we're saving more than just the name
 

@@ -50,14 +50,7 @@ export function BubbleDealEntry({ onALPChange, onDealsChange, initialDeals }: Bu
     setDeals(prev => prev.filter(d => d.id !== id));
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    // Stop propagation to prevent form submission while typing
-    e.stopPropagation();
-    if (e.key === "Enter") {
-      e.preventDefault();
-      addDeal();
-    }
-  };
+  // Removed - inline handler used instead for mobile safety
 
   const hasValidInput = parseFloat(inputValue) > 0;
 
@@ -99,14 +92,23 @@ export function BubbleDealEntry({ onALPChange, onDealsChange, initialDeals }: Bu
           <DollarSign className="h-5 w-5 text-muted-foreground shrink-0" />
           <input
             ref={inputRef}
-            type="number"
+            type="text"
             inputMode="decimal"
-            step="0.01"
-            min="0"
+            pattern="[0-9]*\.?[0-9]*"
             placeholder="Enter ALP"
             value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={handleKeyDown}
+            onChange={(e) => {
+              // Only allow numeric input
+              const value = e.target.value.replace(/[^0-9.]/g, '');
+              setInputValue(value);
+            }}
+            onKeyDown={(e) => {
+              e.stopPropagation();
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addDeal();
+              }
+            }}
             onFocus={(e) => e.target.select()}
             className="flex-1 h-12 bg-transparent border-0 text-lg font-semibold placeholder:text-muted-foreground focus:outline-none px-2"
           />

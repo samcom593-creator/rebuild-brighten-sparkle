@@ -167,14 +167,23 @@ export function ALPCalculator({ onALPChange, onDealsChange, initialALP = 0, init
             <Input
               ref={inputRef}
               data-deal-id={activeDeal.id}
-              type="number"
+              type="text"
               inputMode="decimal"
-              step="0.01"
-              min="0"
+              pattern="[0-9]*\.?[0-9]*"
               placeholder="Enter premium..."
               value={activeDeal.amount}
-              onChange={(e) => handleDealChange(activeDeal.id, e.target.value)}
-              onKeyDown={handleKeyDown}
+              onChange={(e) => {
+                // Only allow numeric input
+                const value = e.target.value.replace(/[^0-9.]/g, '');
+                handleDealChange(activeDeal.id, value);
+              }}
+              onKeyDown={(e) => {
+                e.stopPropagation();
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  commitDeal();
+                }
+              }}
               onFocus={(e) => e.target.select()}
               className="pl-9 pr-2 h-12 text-lg font-semibold"
             />

@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { CompactProductionEntry } from "@/components/dashboard/CompactProductionEntry";
 import { CompactLeaderboard } from "@/components/dashboard/CompactLeaderboard";
 import { AgentRankBadge } from "@/components/dashboard/AgentRankBadge";
+import { SkeletonLoader } from "@/components/ui/skeleton-loader";
 import { cn } from "@/lib/utils";
 
 export default function Numbers() {
@@ -179,11 +180,7 @@ export default function Numbers() {
 
   // Loading state
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <SkeletonLoader variant="page" />;
   }
 
   // Authenticated view - show entry + leaderboard

@@ -340,11 +340,11 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
             })}
           </div>
 
-          {/* ALP Calculator Section */}
-          <div className="mb-5 p-4 rounded-xl bg-muted/30 border border-border/50">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+          {/* ALP Calculator Section - Deal Entry */}
+          <div className="mb-5 p-4 rounded-xl bg-gradient-to-br from-primary/5 to-emerald-500/5 border border-primary/20">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-primary mb-3 flex items-center gap-2">
               <TrendingUp className="h-3.5 w-3.5" />
-              Deals & ALP
+              💰 Log Your Deals
             </h3>
             <ALPCalculator
               onALPChange={handleALPChange}

@@ -157,14 +157,21 @@ export function GlobalSidebar({
             isCollapsed ? "justify-center p-4" : "justify-between p-4"
           )}>
             {!isCollapsed && (
-              <Link to="/dashboard" className="flex items-center gap-2">
-                <Crown className="h-7 w-7 text-primary" />
-                <span className="text-lg font-bold gradient-text">APEX</span>
+              <Link to="/dashboard" className="flex items-center gap-2 group">
+                <div className="relative">
+                  <Crown className="h-7 w-7 text-primary transition-transform group-hover:scale-110" />
+                  <div className="absolute inset-0 bg-primary/20 blur-lg rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-lg font-bold gradient-text leading-tight">APEX</span>
+                  <span className="text-[8px] text-muted-foreground uppercase tracking-widest">Financial</span>
+                </div>
               </Link>
             )}
             {isCollapsed && (
-              <Link to="/dashboard">
-                <Crown className="h-7 w-7 text-primary" />
+              <Link to="/dashboard" className="group relative">
+                <Crown className="h-7 w-7 text-primary transition-transform group-hover:scale-110" />
+                <div className="absolute inset-0 bg-primary/20 blur-lg rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
               </Link>
             )}
             {/* Quick Add Button */}
@@ -356,6 +363,15 @@ export function GlobalSidebar({
                 <LogOut className="h-4 w-4 mr-2" />
                 <span className="text-sm">Sign Out</span>
               </Button>
+            )}
+
+            {/* Powered by Apex */}
+            {!isCollapsed && (
+              <div className="mt-3 pt-3 border-t border-border/50 text-center">
+                <p className="text-[9px] text-muted-foreground/70 uppercase tracking-widest">
+                  Powered by <span className="font-semibold text-primary/80">Apex Financial</span>
+                </p>
+              </div>
             )}
           </div>
         </div>

@@ -67,6 +67,7 @@ const getInitials = (name: string) => {
 
 export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
   const [period, setPeriod] = useState<Period>("day");
+  const [customDateRange, setCustomDateRange] = useState<DateRange>({ from: undefined, to: undefined });
   const [sortBy, setSortBy] = useState<SortCategory>("alp");
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -95,7 +96,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [period, currentAgentId, resetTracking]);
+  }, [period, customDateRange, currentAgentId, resetTracking]);
 
   const fetchLeaderboard = async () => {
     try {
@@ -110,7 +111,11 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
           startDate = format(startOfMonth(today), "yyyy-MM-dd");
           break;
         case "custom":
-          startDate = subDays(today, 30).toISOString().split("T")[0];
+          if (customDateRange.from) {
+            startDate = format(customDateRange.from, "yyyy-MM-dd");
+          } else {
+            startDate = subDays(today, 30).toISOString().split("T")[0];
+          }
           break;
         default:
           startDate = today.toISOString().split("T")[0];
@@ -450,10 +455,22 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                   <TabsTrigger value="day" className="text-[10px] sm:text-xs px-2 h-7">Day</TabsTrigger>
                   <TabsTrigger value="week" className="text-[10px] sm:text-xs px-2 h-7">Week</TabsTrigger>
                   <TabsTrigger value="month" className="text-[10px] sm:text-xs px-2 h-7">Month</TabsTrigger>
-                  <TabsTrigger value="all" className="text-[10px] sm:text-xs px-2 h-7">Custom</TabsTrigger>
+                  <TabsTrigger value="custom" className="text-[10px] sm:text-xs px-2 h-7">Custom</TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>
+          
+          {/* Custom Date Range Picker */}
+          {period === "custom" && (
+            <div className="mt-3">
+              <DateRangePicker
+                value={customDateRange}
+                onChange={setCustomDateRange}
+                simpleMode
+                className="w-full sm:w-auto"
+              />
+            </div>
+          )}
           </div>
 
           {/* Leaderboard Content with Flip Animation */}

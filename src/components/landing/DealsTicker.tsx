@@ -1,4 +1,5 @@
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect } from "react";
 
 const deals = [
   { name: "John M.", carrier: "American National", amount: "$45,000" },
@@ -15,7 +16,37 @@ const deals = [
   { name: "Emily S.", carrier: "Nationwide", amount: "$39,900" },
 ];
 
+// Carrier names for the rotating banner
+const carriers = [
+  "American National",
+  "Mutual of Omaha", 
+  "Transamerica",
+  "Foresters",
+  "Athene",
+  "National Life",
+  "Americo",
+  "F&G",
+  "Prosperity",
+  "American Equity",
+  "North American",
+  "Nationwide",
+  "Ethos",
+  "American Amicable",
+  "Aflac",
+  "American Home Life",
+];
+
 export function DealsTicker() {
+  const [currentCarrierIndex, setCurrentCarrierIndex] = useState(0);
+
+  // Rotate carrier name with dissolve effect
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentCarrierIndex((prev) => (prev + 1) % carriers.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Duplicate deals for seamless loop
   const allDeals = [...deals, ...deals];
 
@@ -27,10 +58,21 @@ export function DealsTicker() {
             key={index}
             className="inline-flex items-center gap-2 px-6 text-sm"
           >
-            <span className="text-apex-gold">🔥</span>
+            <span className="text-amber-400">🔥</span>
             <span className="text-white font-medium">{deal.name}</span>
             <span className="text-white/50">•</span>
-            <span className="text-white/80">{deal.carrier}</span>
+            <AnimatePresence mode="wait">
+              <motion.span
+                key={deal.carrier}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
+                className="text-white/80"
+              >
+                {deal.carrier}
+              </motion.span>
+            </AnimatePresence>
             <span className="text-white/50">•</span>
             <span className="text-primary font-bold">{deal.amount}</span>
           </div>

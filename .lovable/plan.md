@@ -1,329 +1,207 @@
 
-# APEX Financial Platform - Complete Rebuild Plan
+# Agent Portal Production Entry Fix & Platform Finalization
 
-## Executive Summary
-After thorough audit, I've identified the core issues preventing the dashboard from showing metrics correctly and all remaining gaps. This plan addresses every item in the master prompt with no compromises.
-
----
-
-## Critical Issue #1: Dashboard Not Loading Metrics
-
-### Root Cause Analysis
-The `TeamSnapshotCard` component fetches data correctly, but there may be:
-1. **Agent record mismatch** - User may not have an agent record linked
-2. **Role detection timing** - `isAdmin`, `isManager` flags may not be set when query runs
-3. **Date range query issues** - The date format or range may not match production data
-
-### Fix Strategy
-```text
-1. Add explicit loading states with skeleton loaders
-2. Add fallback for when agent record doesn't exist
-3. Ensure role flags are loaded BEFORE data queries execute
-4. Add console logging for debugging query results
-5. Fix any null/undefined edge cases in stats calculation
-```
+## Problem Summary
+The deal submission in the Agent Portal has multiple issues that need addressing:
+1. Console errors from ref forwarding issues with Select and AnimatePresence components
+2. The UI doesn't feel "bubble-like" and premium enough
+3. Light mode theme is still too bright and harsh on eyes
+4. Navigation glitches persist when switching sidebar sections
 
 ---
 
-## Phase 1: Dashboard Data Accuracy (CRITICAL)
+## Phase 1: Fix Console Errors
 
-### 1.1 Fix TeamSnapshotCard Query Logic
-- Add null checks for agent ID
-- Ensure `startDate` and `endDate` are valid before query
-- Add error handling with user feedback
-- Show actual data or explicit "no data" message
+### 1.1 Fix ProductionEntry.tsx Select Ref Error
+The Radix UI Select component is receiving a ref it can't handle. Need to wrap the Select component usage properly.
 
-### 1.2 Fix Role-Based Scoping
-- **Agents**: Show ONLY personal stats (Total ALP, Deals, Close Rate, Presentations)
-- **Managers**: Show team totals + personal stats
-- **Admin (Sam)**: Show entire agency metrics with comparison tools
+**File**: `src/components/dashboard/ProductionEntry.tsx`
+- Remove any refs being passed to Select components
+- Ensure motion.div wrappers don't pass refs to function components
 
-### 1.3 Date Range Everywhere
-Replace ALL "All-Time" occurrences with Custom Date Range picker:
-- LeaderboardTabs.tsx (line 453 still has "all" tab)
-- DownlineStatsCard.tsx
-- CompactLeaderboard.tsx  
-- BuildingLeaderboard.tsx
-- PerformanceBreakdownModal.tsx
+### 1.2 Fix ALPCalculator.tsx AnimatePresence Ref Error
+AnimatePresence is receiving refs incorrectly.
+
+**File**: `src/components/dashboard/ALPCalculator.tsx`
+- Ensure AnimatePresence children have proper `key` props
+- Don't wrap AnimatePresence with motion components that pass refs
 
 ---
 
-## Phase 2: Dashboard Layout Restructure
+## Phase 2: Redesign Deal Entry System
 
-### Priority Order (Admin View - Top to Bottom)
+### 2.1 Premium Bubble Deal Entry
+Create a sleek, animated deal entry system where:
+
 ```text
-1. Agency Production Summary (TeamSnapshotCard)
-   - Animated count-up on load ✓ (already implemented)
-   - Custom date range ✓ (already implemented)
-   
-2. Mini Leaderboard (immediately under production)
-   - Top 5 producers
-   - Sorted highest → lowest
-   
-3. Recruiting Stats (Right side panel)
-   - Total recruits
-   - Total licensed
-   - Manager comparison
-   
-4. Top Referral Producer
-5. Broker Lights / Lead Sources
-6. Invite Manager + Invite Team links
+Input Flow:
+1. Agent taps "Add Deal" button
+2. Input field for Monthly Premium appears
+3. System auto-calculates ALP (Premium × 12)
+4. Deal appears as animated bubble chip
+5. Repeat for multiple deals
 
-REMOVE COMPLETELY:
-- AI Performance Coach
-- AI Suggestions  
-- Personal Stats section (for admin only - agency is primary)
+Bubble Features:
+- Each deal shows: Deal #, Premium, ALP value
+- Edit button (pencil icon)
+- Delete button (X icon)
+- Smooth scale-in animation
+- Color gradient based on deal size
 ```
 
-### Files to Modify
-- `src/pages/Dashboard.tsx` - Complete restructure
+### 2.2 Extend Bubble Format to All Stats
+Per requirements, ALL stat entries should use animated bubble format:
+- Presentations (🎯)
+- Pitched Price (💰)
+- Hours Called (⏱️)
+- Referrals (👥)
+- Booked In-Home (🏠)
+- Referral Presentations (🤝)
+
+**Design Approach**:
+- Large animated number inputs with pulse effect on change
+- Premium card styling with gradient backgrounds
+- Success indicators when values are entered
+- Mobile-optimized with numeric keypad trigger
 
 ---
 
-## Phase 3: Navigation Smoothness
+## Phase 3: Visual Excellence & Theme Fix
 
-### Current Issues
-- Sidebar glitches when switching sections
-- Double renders on route change
-- Delayed permission checks causing flicker
+### 3.1 Light Mode Theme Refinement
+Current issue: Theme is too bright, hurts eyes
 
-### Fixes
-```text
-1. SidebarLayout.tsx:
-   - AnimatePresence with mode="wait" ✓ (already added)
-   - Ensure key prop matches route exactly
-   - Add prefetch for role data
-
-2. GlobalSidebar.tsx:
-   - Memoize navigation items
-   - Prevent re-render on every route change
-   - Use React.memo for nav link components
-
-3. useAuth.ts:
-   - Cache role data to prevent refetch
-   - Add loading skeleton instead of blank state
-```
-
----
-
-## Phase 4: Production Entry System
-
-### Deal Entry Redesign
-Replace manual ALP input with deal-by-deal entry:
-
-```text
-Button: "Add Deal"
-  → Modal opens
-  → Input: Monthly Premium (required)
-  → System calculates: ALP = Monthly Premium × 12
-  → Deal appears as animated "bubble" chip
-  → Multiple deals supported per day
-  
-Each deal bubble:
-  - Shows premium amount
-  - Has edit button
-  - Has delete (X) button
-  - Animates in with scale effect
-```
-
-### Backdating Support
-```text
-- Calendar picker next to "Log Today's Numbers" header
-- Allow selection of past 30 days
-- Update production_date in database accordingly
-```
-
-### Files to Modify
-- `src/components/dashboard/ProductionEntry.tsx` - Major rewrite
-- `src/components/dashboard/ALPCalculator.tsx` - Already exists, integrate fully
-
----
-
-## Phase 5: Command Center Improvements
-
-### "Needs Attention" Logic Update
-```text
-Current: closingRate < 15%
-New: LIVE agents under $5,000 weekly ALP
-     + From Thursday onward: highlight zero production strongly
-```
-
-### Course Progress Tracking
-```text
-When new agent created:
-1. Auto-generate portal login
-2. Auto-grant coursework access
-3. Track: Percent complete, Last activity, Stage
-
-On completion:
-- Trigger email to admin + assigned manager
-- Unlock field training stage
-- Record progression event in CRM
-```
-
-### Custom Date Range
-Replace "All Time" tab with Custom picker (already partially done)
-
----
-
-## Phase 6: Applicant/Pipeline Improvements
-
-### Privacy Fix (CRITICAL)
-When applicant is hired, notify ONLY:
-- Admin
-- Assigned manager (if exists)
-
-DO NOT notify all agents (prevents poaching)
-
-### Email Preview System
-When clicking email template:
-```text
-1. Show modal with full email preview
-2. Allow editing subject and body
-3. User sees exactly what will be sent
-4. Then click "Send" to dispatch
-```
-
-### Contracted Button
-- Push applicant to CRM automatically
-- Update status to "contracted"
-- Send notification to admin + manager only
-
----
-
-## Phase 7: Theme & Visual Excellence
-
-### Light Mode Refinement
+**File**: `src/index.css`
 ```css
-/* Current - Too bright */
---background: 40 18% 96%;
-
-/* New - Softer, eye-friendly */
---background: 40 12% 94%;
---card: 40 10% 97%;
---muted: 35 8% 90%;
+/* Target: Warmer, softer light mode */
+--background: 38 12% 90%;     /* Softer cream */
+--card: 38 10% 93%;           /* Gentle card background */
+--foreground: 25 30% 15%;     /* Warm dark text */
+--muted: 35 10% 85%;          /* Subtle muted areas */
+--primary: 168 84% 32%;       /* Keep brand teal */
 ```
 
-### Animation Standards
-```text
-- Dashboard numbers: Count up from 0 (2 second duration)
-- Page transitions: 150ms fade with slight Y translate
-- Hover effects: Scale 1.02 with smooth easing
-- Success states: Green checkmark with bounce
-- Loading: Skeleton loaders (never blank states)
-```
-
-### Branding Consistency
-- "Powered by Apex Financial" in all footers
-- Apex crown logo with subtle glow animation
-- Carrier banner rotation with dissolve effect
+### 3.2 Premium Animations
+- Deal bubbles scale in with spring animation
+- Numbers pulse briefly when changed
+- Submit button has subtle glow when form has data
+- Success state shows confetti (already implemented)
 
 ---
 
-## Phase 8: Team Management
+## Phase 4: CompactProductionEntry for Agent Portal
 
-### Sorting & Controls
-```text
-Team roster sorted by:
-- Production (highest → lowest) [default]
-- Name A-Z
-- Status
+Create a streamlined version optimized for the Agent Portal:
 
-Clicking person opens profile actions:
-- Edit any field (admin has full control)
-- Assign/reassign manager
-- Terminate/Archive
-- Merge duplicates
-```
+**File**: `src/components/dashboard/CompactProductionEntry.tsx` (update existing)
+- Cleaner layout with deal bubbles prominent
+- Date picker for backdating (already exists)
+- Animated stat inputs
+- Premium submit button with loading state
 
-### Invite Team Link
-```text
-Creates:
-1. Agent portal magic login link
-2. CRM record automatically
-3. Sets agent status to LIVE
-4. Sends welcome email with link
-```
+Key differences from main ProductionEntry:
+- Agent-only view (no team selector needed for basic agents)
+- More compact layout
+- Focus on speed and ease of use
+- Mobile-first design
 
 ---
 
-## Phase 9: Mobile Optimization
+## Phase 5: Navigation Smoothness
 
-### Hard Requirements
-```text
-- ZERO horizontal scrolling
-- Tables → stacked cards on mobile
-- Sidebar collapses with smooth animation
-- Thumb-optimized tap targets (minimum 44px)
-- Forms single-screen where possible
-- Numeric inputs trigger numeric keypad
-```
+### 5.1 Fix Sidebar Glitches
+**File**: `src/components/layout/SidebarLayout.tsx`
+- Add `mode="wait"` to AnimatePresence
+- Ensure unique `key` prop on route changes
+- Use `layoutId` for smooth transitions
+- Add skeleton loading during route change
 
----
-
-## Phase 10: Lead Counter Automation
-
-### Current State
-Counter at 85, increments via edge function
-
-### Automation
-```text
-Cron job runs daily at 6 AM:
-- Increment by random 1-3
-- Consistent growth for returning visitors
-```
-
-Already created: `supabase/functions/increment-lead-counter/index.ts`
-Need: Schedule cron job in Supabase
+### 5.2 Fix Double Render Issues
+**File**: `src/hooks/useAuth.ts`
+- Cache role detection results
+- Prevent redundant permission checks
+- Show skeleton instead of blank during load
 
 ---
 
-## Implementation Order
+## Phase 6: Remaining Platform Items
 
-| Priority | Task | Files | Complexity |
-|----------|------|-------|------------|
-| P0 | Fix dashboard not loading metrics | TeamSnapshotCard.tsx, Dashboard.tsx | High |
-| P0 | Fix role detection timing | useAuth.ts | Medium |
-| P1 | Dashboard layout restructure | Dashboard.tsx | High |
-| P1 | Navigation smoothness | SidebarLayout.tsx, GlobalSidebar.tsx | Medium |
-| P2 | Production entry with deal bubbles | ProductionEntry.tsx | High |
-| P2 | Email preview modal integration | QuickEmailMenu.tsx | Medium |
-| P3 | Theme brightness fix | index.css | Low |
-| P3 | Needs Attention logic update | DashboardCommandCenter.tsx | Low |
-| P4 | Mobile responsive fixes | Multiple files | Medium |
-| P4 | Lead counter cron job | Database migration | Low |
+### 6.1 Email Preview System
+**Files**: 
+- `src/components/dashboard/EmailPreviewModal.tsx` (already exists)
+- `src/components/dashboard/QuickEmailMenu.tsx`
+
+Ensure when clicking email template:
+1. Modal shows full email content
+2. Subject and body are editable
+3. Preview exactly what recipient will see
+4. "Send" button dispatches final email
+
+### 6.2 Applicant Contracted Button
+**File**: `src/pages/DashboardApplicants.tsx`
+- "Contracted" button pushes to CRM
+- Updates application status
+- Notifies admin + assigned manager ONLY (privacy)
 
 ---
 
-## Files to Create/Modify
+## Implementation Files
 
-### New Files
-- None needed (all components exist)
-
-### Major Modifications
-1. `src/pages/Dashboard.tsx` - Layout restructure
-2. `src/components/dashboard/TeamSnapshotCard.tsx` - Fix data loading
-3. `src/components/dashboard/ProductionEntry.tsx` - Deal entry system
-4. `src/components/layout/SidebarLayout.tsx` - Navigation smoothness
-5. `src/components/dashboard/LeaderboardTabs.tsx` - Remove "all" tab
-6. `src/index.css` - Theme refinement
-
-### Minor Updates
-- `src/hooks/useAuth.ts` - Improve role caching
-- `src/pages/DashboardCommandCenter.tsx` - Needs Attention logic
-- `src/components/dashboard/QuickEmailMenu.tsx` - Preview integration
+| Priority | File | Changes |
+|----------|------|---------|
+| P0 | `src/components/dashboard/ALPCalculator.tsx` | Fix ref errors, improve bubble animations |
+| P0 | `src/components/dashboard/ProductionEntry.tsx` | Fix ref errors, enhance stat inputs |
+| P1 | `src/components/dashboard/CompactProductionEntry.tsx` | Streamlined Agent Portal version |
+| P1 | `src/index.css` | Theme refinement for softer light mode |
+| P2 | `src/components/layout/SidebarLayout.tsx` | Navigation smoothness fixes |
+| P2 | `src/hooks/useAuth.ts` | Role caching to prevent flicker |
+| P3 | `src/pages/DashboardApplicants.tsx` | Contracted button integration |
+| P3 | `src/components/dashboard/EmailPreviewModal.tsx` | Ensure edit-before-send works |
 
 ---
 
 ## Success Criteria
 
-1. Dashboard loads metrics immediately (Total ALP, Deals, Agents, Close Rate)
-2. No horizontal scroll on mobile
-3. Navigation switches instantly with no glitches
-4. All date ranges use Custom picker (no "All Time")
-5. Deal entry uses Monthly Premium → auto-calculates ALP
-6. Emails show editable preview before sending
-7. Light mode is soft and eye-friendly
-8. "Powered by Apex Financial" visible everywhere
-9. Counter increments daily automatically
-10. Platform feels "expensive and intentional" on first load
+1. ✅ Zero console errors in Agent Portal
+2. ✅ Deal entry feels premium with bubble animations
+3. ✅ All stat inputs have consistent bubble styling
+4. ✅ Light mode is soft and eye-friendly
+5. ✅ Navigation switches smoothly without glitches
+6. ✅ Mobile experience feels native and polished
+7. ✅ Email preview allows editing before sending
+8. ✅ Contracted button works with proper notifications
+
+---
+
+## Technical Notes
+
+### Bubble Animation Pattern
+```typescript
+<motion.div
+  initial={{ opacity: 0, scale: 0.5, y: 10 }}
+  animate={{ opacity: 1, scale: 1, y: 0 }}
+  exit={{ opacity: 0, scale: 0.5, y: -10 }}
+  transition={{ 
+    type: "spring", 
+    stiffness: 500, 
+    damping: 25 
+  }}
+  className="bubble-chip"
+>
+```
+
+### Ref Forwarding Fix
+```typescript
+// Wrong - causes ref error
+<Select ref={someRef}>
+
+// Correct - no ref needed
+<Select value={value} onValueChange={setValue}>
+```
+
+### Theme Variables
+```css
+/* Eye-friendly light mode target */
+--background: 38 12% 90%;
+--card: 38 10% 93%;
+```

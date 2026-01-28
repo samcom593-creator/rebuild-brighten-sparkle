@@ -56,7 +56,9 @@ export function MiniLeaderboard() {
         .from("agents")
         .select("id, user_id")
         .in("user_id", managerUserIds)
-        .eq("status", "active");
+        .eq("status", "active")
+        .eq("is_deactivated", false)
+        .eq("is_inactive", false);
 
       if (!agents?.length) {
         setLoading(false);

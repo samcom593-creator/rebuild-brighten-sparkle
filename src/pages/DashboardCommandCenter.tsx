@@ -190,15 +190,20 @@ export default function DashboardCommandCenter() {
         filtered = filtered.filter((a) => a.totalAlp > 0 && !a.isDeactivated && !a.isInactive);
         break;
       case "weak":
+        // "Needs Attention" = LIVE agents under $5,000 for the week
+        // From Thursday onward, highlight zero production strongly
+        const dayOfWeek = new Date().getDay(); // 0=Sun, 4=Thu
+        const isThursdayOrLater = dayOfWeek >= 4 || dayOfWeek === 0; // Thu, Fri, Sat, Sun
         filtered = filtered.filter(
           (a) => 
             !a.isDeactivated && 
             !a.isInactive && 
-            (a.totalAlp === 0 || a.closingRate < 15)
+            a.totalAlp < 5000 &&
+            (isThursdayOrLater ? true : a.totalAlp === 0 || a.closingRate < 15)
         );
         break;
       case "zero":
-        filtered = filtered.filter((a) => a.totalAlp === 0 && !a.isDeactivated);
+        filtered = filtered.filter((a) => a.totalAlp === 0 && !a.isDeactivated && !a.isInactive);
         break;
       case "inactive":
         filtered = filtered.filter((a) => a.isDeactivated || a.isInactive);
@@ -214,13 +219,21 @@ export default function DashboardCommandCenter() {
     return filtered.sort((a, b) => b.totalAlp - a.totalAlp);
   }, [agentsData, searchQuery, activeFilter]);
 
-  // Summary stats
+  // Summary stats - updated "Needs Attention" logic
   const summaryStats = useMemo(() => {
-    if (!agentsData) return { totalAlp: 0, activeAgents: 0, licensedAgents: 0, weakPerformers: 0 };
+    if (!agentsData) return { totalAlp: 0, activeAgents: 0, producers: 0, weakPerformers: 0 };
     
     const activeAgents = agentsData.filter((a) => !a.isDeactivated && !a.isInactive);
     const producers = agentsData.filter((a) => a.totalAlp > 0);
-    const weak = agentsData.filter((a) => !a.isDeactivated && !a.isInactive && a.closingRate < 15 && a.closingRate > 0);
+    // "Needs Attention" = LIVE agents under $5,000 for the week
+    const dayOfWeek = new Date().getDay();
+    const isThursdayOrLater = dayOfWeek >= 4 || dayOfWeek === 0;
+    const weak = agentsData.filter((a) => 
+      !a.isDeactivated && 
+      !a.isInactive && 
+      a.totalAlp < 5000 &&
+      (isThursdayOrLater ? true : a.totalAlp === 0)
+    );
     
     return {
       totalAlp: agentsData.reduce((sum, a) => sum + a.totalAlp, 0),

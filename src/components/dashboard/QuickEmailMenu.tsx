@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Mail, Loader2, ChevronDown } from "lucide-react";
+import { Mail, Loader2, ChevronDown, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -11,11 +11,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { EmailPreviewModal } from "./EmailPreviewModal";
 
 interface QuickEmailMenuProps {
   applicationId: string;
   agentId: string | null;
   licenseStatus: "licensed" | "unlicensed" | "pending";
+  recipientEmail: string;
+  recipientName: string;
   onEmailSent?: () => void;
   className?: string;
 }
@@ -45,26 +48,97 @@ const emailTemplateLabels: Record<EmailTemplate, string> = {
   schedule_consultation: "Schedule Consultation",
 };
 
+// Sample email content for preview (would ideally come from backend)
+const getEmailContent = (template: EmailTemplate, name: string): { subject: string; html: string } => {
+  const firstName = name.split(" ")[0];
+  
+  const templates: Record<EmailTemplate, { subject: string; html: string }> = {
+    cold_licensed: {
+      subject: `${firstName}, Let's Talk About Your Insurance Career`,
+      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>I noticed you're already licensed – that's a huge advantage! At Apex Financial, we help licensed agents maximize their earning potential with our proven systems.</p><p>Would you be open to a quick 15-minute call to explore if we might be a good fit?</p><p>Best,<br/>Apex Financial Team</p></body></html>`,
+    },
+    cold_unlicensed: {
+      subject: `${firstName}, Start Your Insurance Career with Us`,
+      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>Thank you for your interest in joining Apex Financial! We help people just like you break into the insurance industry and build successful careers.</p><p>The first step is getting licensed. Would you like to learn more about our training program?</p><p>Best,<br/>Apex Financial Team</p></body></html>`,
+    },
+    followup1_licensed: {
+      subject: `Following Up - Ready to Grow Your Book?`,
+      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>Just following up on our conversation. I wanted to share some success stories from agents who've joined our team recently.</p><p>When would be a good time to continue our discussion?</p><p>Best,<br/>Apex Financial Team</p></body></html>`,
+    },
+    followup2_licensed: {
+      subject: `${firstName}, Don't Miss This Opportunity`,
+      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>I wanted to reach out one more time. Our team is growing and we'd love to have you join us.</p><p>Let me know if you have any questions!</p><p>Best,<br/>Apex Financial Team</p></body></html>`,
+    },
+    followup1_unlicensed: {
+      subject: `How's Your Licensing Progress Going?`,
+      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>Just checking in on your licensing progress. Have you had a chance to start the pre-licensing course?</p><p>Let me know if you need any guidance – we're here to help!</p><p>Best,<br/>Apex Financial Team</p></body></html>`,
+    },
+    followup2_unlicensed: {
+      subject: `${firstName}, This Could Change Your Career`,
+      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>I wanted to remind you about the opportunity waiting for you at Apex Financial.</p><p>Getting licensed is the first step to a rewarding career in insurance. Ready to take that step?</p><p>Best,<br/>Apex Financial Team</p></body></html>`,
+    },
+    licensing_reminder: {
+      subject: `Reminder: Complete Your Licensing`,
+      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>This is a friendly reminder to continue working on your insurance license.</p><p>Once you're licensed, you can start earning right away!</p><p>Best,<br/>Apex Financial Team</p></body></html>`,
+    },
+    licensing_checkin: {
+      subject: `Need Help With Licensing?`,
+      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>Just checking in to see if you need any help with the licensing process.</p><p>Our team is here to support you every step of the way!</p><p>Best,<br/>Apex Financial Team</p></body></html>`,
+    },
+    course_help: {
+      subject: `Need Help With Your Training?`,
+      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>I noticed you might need some help with the training course.</p><p>Let me know what questions you have – I'm here to help!</p><p>Best,<br/>Apex Financial Team</p></body></html>`,
+    },
+    schedule_consultation: {
+      subject: `Let's Schedule a Call`,
+      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>I'd love to schedule a quick consultation call to discuss your career goals.</p><p>What time works best for you this week?</p><p>Best,<br/>Apex Financial Team</p></body></html>`,
+    },
+  };
+  
+  return templates[template];
+};
+
 export function QuickEmailMenu({
   applicationId,
   agentId,
   licenseStatus,
+  recipientEmail,
+  recipientName,
   onEmailSent,
   className,
 }: QuickEmailMenuProps) {
   const [sendingTemplate, setSendingTemplate] = useState<EmailTemplate | null>(null);
   const [showAllTemplates, setShowAllTemplates] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | null>(null);
+  const [previewContent, setPreviewContent] = useState<{ subject: string; html: string }>({ subject: "", html: "" });
 
-  const handleSendEmail = async (templateType: EmailTemplate) => {
-    setSendingTemplate(templateType);
+  const handlePreviewEmail = (templateType: EmailTemplate) => {
+    const content = getEmailContent(templateType, recipientName);
+    setSelectedTemplate(templateType);
+    setPreviewContent(content);
+    setPreviewOpen(true);
+  };
+
+  const handleSendEmail = async (customSubject?: string, customBody?: string) => {
+    if (!selectedTemplate) return;
+    
+    setSendingTemplate(selectedTemplate);
     try {
       const { error } = await supabase.functions.invoke("send-outreach-email", {
-        body: { applicationId, agentId, templateType },
+        body: { 
+          applicationId, 
+          agentId, 
+          templateType: selectedTemplate,
+          customSubject,
+          customBody,
+        },
       });
 
       if (error) throw error;
 
-      toast.success(`${emailTemplateLabels[templateType]} email sent!`);
+      toast.success(`${emailTemplateLabels[selectedTemplate]} email sent!`);
+      setPreviewOpen(false);
       onEmailSent?.();
     } catch (err) {
       console.error("Failed to send email:", err);
@@ -99,67 +173,80 @@ export function QuickEmailMenu({
   const templatesToShow = showAllTemplates ? allTemplates : contextualTemplates;
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className={className}
-          disabled={sendingTemplate !== null}
-        >
-          {sendingTemplate ? (
-            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-          ) : (
-            <Mail className="h-4 w-4 mr-1" />
-          )}
-          Email
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64">
-        <DropdownMenuLabel className="text-xs text-muted-foreground">
-          Quick Email Templates
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        
-        {templatesToShow.map((template) => (
-          <DropdownMenuItem
-            key={template}
-            onClick={() => handleSendEmail(template)}
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={className}
             disabled={sendingTemplate !== null}
-            className="flex items-center gap-2"
           >
-            {sendingTemplate === template && (
-              <Loader2 className="h-4 w-4 animate-spin" />
+            {sendingTemplate ? (
+              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+            ) : (
+              <Mail className="h-4 w-4 mr-1" />
             )}
-            <span className="flex-1">{emailTemplateLabels[template]}</span>
-            {/* Show indicator if template doesn't match current license status */}
-            {!showAllTemplates ? null : (
-              template.includes("licensed") && !template.includes("unlicensed") && !isLicensed ? (
-                <span className="text-xs text-muted-foreground">(Licensed)</span>
-              ) : template.includes("unlicensed") && isLicensed ? (
-                <span className="text-xs text-muted-foreground">(Unlicensed)</span>
-              ) : null
-            )}
-          </DropdownMenuItem>
-        ))}
-
-        {/* Toggle to show all templates */}
-        {!showAllTemplates && (
-          <>
-            <DropdownMenuSeparator />
+            Email
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-64">
+          <DropdownMenuLabel className="text-xs text-muted-foreground">
+            Quick Email Templates (Preview & Edit)
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          
+          {templatesToShow.map((template) => (
             <DropdownMenuItem
-              onClick={(e) => {
-                e.preventDefault();
-                setShowAllTemplates(true);
-              }}
-              className="text-xs text-muted-foreground hover:text-foreground"
+              key={template}
+              onClick={() => handlePreviewEmail(template)}
+              disabled={sendingTemplate !== null}
+              className="flex items-center gap-2"
             >
-              <ChevronDown className="h-3 w-3 mr-1" />
-              Show all templates
+              <Eye className="h-4 w-4 text-muted-foreground" />
+              <span className="flex-1">{emailTemplateLabels[template]}</span>
+              {/* Show indicator if template doesn't match current license status */}
+              {showAllTemplates && (
+                template.includes("licensed") && !template.includes("unlicensed") && !isLicensed ? (
+                  <span className="text-xs text-muted-foreground">(Licensed)</span>
+                ) : template.includes("unlicensed") && isLicensed ? (
+                  <span className="text-xs text-muted-foreground">(Unlicensed)</span>
+                ) : null
+              )}
             </DropdownMenuItem>
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+          ))}
+
+          {/* Toggle to show all templates */}
+          {!showAllTemplates && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowAllTemplates(true);
+                }}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                <ChevronDown className="h-3 w-3 mr-1" />
+                Show all templates
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Email Preview Modal */}
+      <EmailPreviewModal
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        templateName={selectedTemplate ? emailTemplateLabels[selectedTemplate] : ""}
+        subject={previewContent.subject}
+        htmlContent={previewContent.html}
+        recipientEmail={recipientEmail}
+        recipientName={recipientName}
+        onSend={handleSendEmail}
+        isSending={sendingTemplate !== null}
+      />
+    </>
   );
 }

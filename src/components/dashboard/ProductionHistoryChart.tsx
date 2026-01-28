@@ -37,6 +37,7 @@ CustomTooltip.displayName = "CustomTooltip";
 
 interface ProductionHistoryChartProps {
   agentId: string;
+  weeks?: 4 | 8 | 12; // Configurable weeks (default 4)
 }
 
 interface DayData {
@@ -47,9 +48,10 @@ interface DayData {
   closingRate: number;
 }
 
-export function ProductionHistoryChart({ agentId }: ProductionHistoryChartProps) {
+export function ProductionHistoryChart({ agentId, weeks = 4 }: ProductionHistoryChartProps) {
   const [data, setData] = useState<DayData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedWeeks, setSelectedWeeks] = useState<4 | 8 | 12>(weeks);
   const [summary, setSummary] = useState({
     totalAlp: 0,
     totalDeals: 0,
@@ -78,24 +80,25 @@ export function ProductionHistoryChart({ agentId }: ProductionHistoryChartProps)
         supabase.removeChannel(channel);
       };
     }
-  }, [agentId]);
+  }, [agentId, selectedWeeks]);
 
   const fetchHistory = async () => {
     try {
       const today = new Date();
-      const fourWeeksAgo = subDays(today, 28);
+      const daysBack = selectedWeeks * 7;
+      const startDate = subDays(today, daysBack);
       
       const { data: production } = await supabase
         .from("daily_production")
         .select("production_date, aop, deals_closed, closing_rate")
         .eq("agent_id", agentId)
-        .gte("production_date", fourWeeksAgo.toISOString().split("T")[0])
+        .gte("production_date", startDate.toISOString().split("T")[0])
         .order("production_date", { ascending: true });
 
       if (production) {
         // Fill in missing days with zeros
         const filledData: DayData[] = [];
-        for (let i = 27; i >= 0; i--) {
+        for (let i = daysBack - 1; i >= 0; i--) {
           const date = subDays(today, i);
           const dateStr = date.toISOString().split("T")[0];
           const existing = production.find((p) => p.production_date === dateStr);
@@ -120,10 +123,11 @@ export function ProductionHistoryChart({ agentId }: ProductionHistoryChartProps)
         // Find best day
         const best = filledData.reduce((max, d) => (d.alp > max.alp ? d : max), filledData[0]);
         
-        // Calculate trend (last 2 weeks vs previous 2 weeks)
-        const lastTwoWeeks = filledData.slice(14).reduce((sum, d) => sum + d.alp, 0);
-        const prevTwoWeeks = filledData.slice(0, 14).reduce((sum, d) => sum + d.alp, 0);
-        const trend = prevTwoWeeks > 0 ? ((lastTwoWeeks - prevTwoWeeks) / prevTwoWeeks) * 100 : 0;
+        // Calculate trend (second half vs first half)
+        const halfPoint = Math.floor(filledData.length / 2);
+        const recentHalf = filledData.slice(halfPoint).reduce((sum, d) => sum + d.alp, 0);
+        const olderHalf = filledData.slice(0, halfPoint).reduce((sum, d) => sum + d.alp, 0);
+        const trend = olderHalf > 0 ? ((recentHalf - olderHalf) / olderHalf) * 100 : 0;
 
         setSummary({
           totalAlp,
@@ -162,19 +166,37 @@ export function ProductionHistoryChart({ agentId }: ProductionHistoryChartProps)
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold gradient-text flex items-center gap-2">
             <Calendar className="h-5 w-5" />
-            4-Week Production History
+            {selectedWeeks}-Week Production History
           </h3>
-          <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-            summary.trend >= 0 
-              ? "bg-emerald-500/20 text-emerald-500" 
-              : "bg-red-500/20 text-red-500"
-          }`}>
-            {summary.trend >= 0 ? (
-              <TrendingUp className="h-3 w-3" />
-            ) : (
-              <TrendingDown className="h-3 w-3" />
-            )}
-            {Math.abs(summary.trend).toFixed(0)}% trend
+          <div className="flex items-center gap-2">
+            {/* Time Range Selector */}
+            <div className="flex rounded-lg overflow-hidden border border-border">
+              {([4, 8, 12] as const).map((w) => (
+                <button
+                  key={w}
+                  onClick={() => setSelectedWeeks(w)}
+                  className={`px-2 py-1 text-xs font-medium transition-colors ${
+                    selectedWeeks === w
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted hover:bg-muted/80 text-muted-foreground"
+                  }`}
+                >
+                  {w}w
+                </button>
+              ))}
+            </div>
+            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+              summary.trend >= 0 
+                ? "bg-emerald-500/20 text-emerald-500" 
+                : "bg-red-500/20 text-red-500"
+            }`}>
+              {summary.trend >= 0 ? (
+                <TrendingUp className="h-3 w-3" />
+              ) : (
+                <TrendingDown className="h-3 w-3" />
+              )}
+              {Math.abs(summary.trend).toFixed(0)}%
+            </div>
           </div>
         </div>
 
@@ -233,7 +255,7 @@ export function ProductionHistoryChart({ agentId }: ProductionHistoryChartProps)
               formatAsCurrency
               className="text-lg font-bold block"
             />
-            <span className="text-[10px] text-muted-foreground">4-Week Total</span>
+            <span className="text-[10px] text-muted-foreground">{selectedWeeks}-Week Total</span>
           </div>
           <div className="text-center p-3 rounded-lg bg-muted/30">
             <AnimatedNumber

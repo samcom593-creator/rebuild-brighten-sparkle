@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   Users,
@@ -8,14 +8,25 @@ import {
   ChevronDown,
   ChevronUp,
   DollarSign,
+  ArrowUpDown,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { OnboardingTracker } from "./OnboardingTracker";
 import { cn } from "@/lib/utils";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
+
+type SortOption = "production-desc" | "production-asc" | "name" | "status";
 
 interface TeamMember {
   id: string;
@@ -52,6 +63,7 @@ export function ManagerTeamView() {
   });
   const [loading, setLoading] = useState(true);
   const [expandedMember, setExpandedMember] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<SortOption>("production-desc");
 
   useEffect(() => {
     fetchTeamData();
@@ -165,9 +177,6 @@ export function ManagerTeamView() {
         };
       });
 
-      // Sort by month ALP descending
-      members.sort((a, b) => b.monthALP - a.monthALP);
-
       setTeamMembers(members);
 
       // Calculate team stats
@@ -185,6 +194,23 @@ export function ManagerTeamView() {
       setLoading(false);
     }
   };
+
+  // Sorted team members
+  const sortedMembers = useMemo(() => {
+    const sorted = [...teamMembers];
+    switch (sortBy) {
+      case "production-desc":
+        return sorted.sort((a, b) => b.monthALP - a.monthALP);
+      case "production-asc":
+        return sorted.sort((a, b) => a.monthALP - b.monthALP);
+      case "name":
+        return sorted.sort((a, b) => a.name.localeCompare(b.name));
+      case "status":
+        return sorted.sort((a, b) => a.status.localeCompare(b.status));
+      default:
+        return sorted;
+    }
+  }, [teamMembers, sortBy]);
 
   const toggleExpand = (memberId: string) => {
     setExpandedMember(expandedMember === memberId ? null : memberId);
@@ -279,13 +305,29 @@ export function ManagerTeamView() {
 
       {/* Team Members List */}
       <GlassCard className="p-6">
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <Users className="h-5 w-5 text-primary" />
-          Your Team ({teamMembers.length})
-        </h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <Users className="h-5 w-5 text-primary" />
+            Your Team ({teamMembers.length})
+          </h3>
+          
+          {/* Sort Dropdown */}
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+            <SelectTrigger className="w-[180px]">
+              <ArrowUpDown className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="Sort by..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="production-desc">Highest Production</SelectItem>
+              <SelectItem value="production-asc">Lowest Production</SelectItem>
+              <SelectItem value="name">Name A-Z</SelectItem>
+              <SelectItem value="status">Status</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
 
         <div className="space-y-3">
-          {teamMembers.map((member, index) => (
+          {sortedMembers.map((member, index) => (
             <motion.div
               key={member.id}
               initial={{ opacity: 0, y: 10 }}

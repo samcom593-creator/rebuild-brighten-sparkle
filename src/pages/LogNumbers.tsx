@@ -200,7 +200,7 @@ export default function LogNumbers() {
           onboarding_stage: "evaluated",
           license_status: newAgentForm.licenseStatus,
           status: "active",
-          start_date: new Date().toISOString().split("T")[0]
+          start_date: getTodayPST()
         });
 
       if (agentError) throw agentError;

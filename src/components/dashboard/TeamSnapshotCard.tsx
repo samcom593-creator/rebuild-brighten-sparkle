@@ -33,14 +33,10 @@ export function TeamSnapshotCard() {
 
   const fetchStats = useCallback(async () => {
     // Wait for auth to fully load before fetching
-    if (!user || authLoading) {
-      console.log("[TeamSnapshot] Waiting for auth...", { user: !!user, authLoading });
-      return;
-    }
+    if (!user || authLoading) return;
 
     try {
       setLoading(true);
-      console.log("[TeamSnapshot] Fetching stats...", { isAdmin, isManager, isAgent, startDate, endDate });
       
       let agentIds: string[] = [];
 
@@ -59,7 +55,7 @@ export function TeamSnapshotCard() {
           console.error("[TeamSnapshot] Error fetching all agents:", error);
         }
         agentIds = allAgents?.map(a => a.id) || [];
-        console.log("[TeamSnapshot] Admin: fetched", agentIds.length, "agents");
+        
       } else if (isManager) {
         // First get current user's agent ID
         const { data: currentAgent } = await supabase
@@ -78,7 +74,7 @@ export function TeamSnapshotCard() {
             .eq("is_deactivated", false);
 
           agentIds = [currentAgent.id, ...(downlineAgents?.map(a => a.id) || [])];
-          console.log("[TeamSnapshot] Manager: fetched", agentIds.length, "agents");
+          
         }
       } else {
         // Agent sees only their own stats
@@ -92,11 +88,11 @@ export function TeamSnapshotCard() {
         if (currentAgent) {
           agentIds = [currentAgent.id];
         }
-        console.log("[TeamSnapshot] Agent: personal view");
+        
       }
 
       if (agentIds.length === 0) {
-        console.log("[TeamSnapshot] No agents found, showing zeros");
+        
         setStats({
           totalALP: 0,
           totalDeals: 0,
@@ -121,7 +117,7 @@ export function TeamSnapshotCard() {
         console.error("[TeamSnapshot] Error fetching production:", prodError);
       }
 
-      console.log("[TeamSnapshot] Production data:", productionData?.length, "records");
+      
 
       if (productionData && productionData.length > 0) {
         const totalALP = productionData.reduce((sum, p) => sum + (Number(p.aop) || 0), 0);
@@ -135,7 +131,7 @@ export function TeamSnapshotCard() {
           ? Math.round((totalDeals / totalPresentations) * 100) 
           : 0;
 
-        console.log("[TeamSnapshot] Calculated stats:", { totalALP, totalDeals, totalPresentations, avgCloseRate });
+        
 
         setStats({
           totalALP,
@@ -178,7 +174,7 @@ export function TeamSnapshotCard() {
         "postgres_changes",
         { event: "*", schema: "public", table: "daily_production" },
         () => {
-          console.log("[TeamSnapshot] Real-time update received");
+          
           fetchStats();
         }
       )

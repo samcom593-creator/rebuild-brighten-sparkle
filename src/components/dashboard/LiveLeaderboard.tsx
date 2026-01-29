@@ -5,7 +5,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { getTodayPST } from "@/lib/dateUtils";
 import { AgentQuickEditDialog } from "./AgentQuickEditDialog";
 
 interface LeaderboardEntry {
@@ -76,7 +76,7 @@ export function LiveLeaderboard({ currentAgentId, showAISummary = true }: LiveLe
 
   const fetchLeaderboard = async () => {
     try {
-      const today = new Date().toISOString().split("T")[0];
+      const today = getTodayPST();
       
       // Get today's production data
       const { data: productionData, error: prodError } = await supabase

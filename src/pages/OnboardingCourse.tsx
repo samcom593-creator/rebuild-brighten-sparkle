@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, BookOpen, PlayCircle, HelpCircle, Award } from "lucide-react";
+import { BookOpen, PlayCircle, HelpCircle, Award } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { useOnboardingCourse } from "@/hooks/useOnboardingCourse";
 import { CourseModuleSidebar } from "@/components/course/CourseModuleSidebar";
 import { CourseVideoPlayer } from "@/components/course/CourseVideoPlayer";
 import { CourseQuiz } from "@/components/course/CourseQuiz";
+import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function OnboardingCourse() {
@@ -83,50 +84,29 @@ export default function OnboardingCourse() {
 
   if (modules.length === 0) {
     return (
-      <div className="min-h-screen bg-background p-4 md:p-8">
+      <DashboardLayout>
         <div className="max-w-4xl mx-auto text-center py-20">
           <BookOpen className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
           <h1 className="text-2xl font-bold mb-2">Course Coming Soon</h1>
           <p className="text-muted-foreground mb-6">
             The onboarding course is being prepared. Check back soon!
           </p>
-          <Button onClick={() => navigate(-1)} variant="outline">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Go Back
-          </Button>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h1 className="text-xl font-bold">Onboarding Course</h1>
-              <p className="text-sm text-muted-foreground">
-                Complete all modules to begin field training
-              </p>
-            </div>
+    <DashboardLayout>
+      <div className="max-w-7xl mx-auto">
+        {/* Course Complete Badge */}
+        {isCourseComplete() && (
+          <div className="flex items-center justify-center gap-2 mb-6 px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 w-fit mx-auto">
+            <Award className="h-5 w-5" />
+            <span className="font-medium">Course Complete!</span>
           </div>
-          
-          {isCourseComplete() && (
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-              <Award className="h-5 w-5" />
-              <span className="font-medium">Course Complete!</span>
-            </div>
-          )}
-        </div>
-      </header>
+        )}
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto p-4 md:p-8">
         <div className="flex flex-col lg:flex-row gap-6">
           {/* Sidebar */}
           <CourseModuleSidebar
@@ -242,7 +222,7 @@ export default function OnboardingCourse() {
             )}
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }

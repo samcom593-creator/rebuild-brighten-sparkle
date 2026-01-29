@@ -10,6 +10,7 @@ import { CompactProductionEntry } from "@/components/dashboard/CompactProduction
 import { CompactLeaderboard } from "@/components/dashboard/CompactLeaderboard";
 import { AgentRankBadge } from "@/components/dashboard/AgentRankBadge";
 import { SkeletonLoader } from "@/components/ui/skeleton-loader";
+import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { cn } from "@/lib/utils";
 
 export default function Numbers() {
@@ -223,8 +224,8 @@ export default function Numbers() {
   // Authenticated view - show entry + leaderboard
   if (isAuthenticated && agentId) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="max-w-lg mx-auto p-4 space-y-4">
+      <DashboardLayout>
+        <div className="max-w-lg mx-auto space-y-4">
           {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -265,7 +266,7 @@ export default function Numbers() {
             </button>
           </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 

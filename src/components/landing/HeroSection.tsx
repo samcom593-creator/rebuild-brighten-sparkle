@@ -5,7 +5,7 @@ import { ArrowRight, Shield, TrendingUp, Users } from "lucide-react";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { useLeadCounter } from "@/hooks/useLeadCounter";
 
-// Carrier logos for rotating banner
+// Carrier logos for rotating banner - expanded list showcasing full partner network
 const carriers = [
   { name: "National Life Group", shortName: "NLG" },
   { name: "American Amicable", shortName: "AA" },
@@ -13,6 +13,22 @@ const carriers = [
   { name: "Ethos Life", shortName: "ETHOS" },
   { name: "Mutual of Omaha", shortName: "MoO" },
   { name: "American Home Life", shortName: "AHL" },
+  { name: "Transamerica", shortName: "TRANS" },
+  { name: "Athene", shortName: "ATH" },
+  { name: "Foresters", shortName: "FOR" },
+  { name: "Americo", shortName: "AMR" },
+  { name: "F&G", shortName: "F&G" },
+  { name: "Prosperity", shortName: "PROS" },
+  { name: "American Equity", shortName: "AE" },
+  { name: "North American", shortName: "NA" },
+  { name: "Nationwide", shortName: "NW" },
+  { name: "American National", shortName: "AN" },
+  { name: "AIG", shortName: "AIG" },
+  { name: "Principal", shortName: "PRIN" },
+  { name: "Lincoln Financial", shortName: "LFG" },
+  { name: "Prudential", shortName: "PRU" },
+  { name: "John Hancock", shortName: "JH" },
+  { name: "Protective", shortName: "PROT" },
 ];
 
 export function HeroSection() {
@@ -177,8 +193,9 @@ export function HeroSection() {
                 </motion.div>
               </AnimatePresence>
             </div>
-            <div className="flex justify-center gap-2 mt-3">
-              {carriers.map((_, index) => (
+            {/* Dot indicators - show first 6 plus overflow indicator */}
+            <div className="flex justify-center items-center gap-2 mt-3">
+              {carriers.slice(0, 6).map((_, index) => (
                 <button
                   key={index}
                   onClick={() => setCurrentCarrierIndex(index)}
@@ -190,7 +207,11 @@ export function HeroSection() {
                   aria-label={`Show carrier ${index + 1}`}
                 />
               ))}
+              <span className="text-xs text-muted-foreground/60 ml-1">+{carriers.length - 6}</span>
             </div>
+            <p className="text-xs text-muted-foreground mt-3 font-medium">
+              & 30+ More Top-Rated Carriers
+            </p>
           </motion.div>
         </div>
       </div>

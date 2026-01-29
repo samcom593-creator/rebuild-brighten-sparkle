@@ -1,128 +1,141 @@
 
-# Replace Deal Alerts with Daily Sales Leaderboard
+# Front Page Carriers & Site-Wide Navigation Improvements
 
 ## Overview
-Replace the real-time "DEAL DROPPED!" email alerts with a consolidated **Daily Sales Leaderboard** email sent once at end of day to all active agents. This reduces email noise while keeping agents motivated with competitive rankings.
+This plan addresses two main issues:
+1. The "Partnered with Top Carriers" section on the landing page only shows 6 carriers, which may deter potential applicants
+2. The sidebar navigation is inconsistent across the site - AgentPortal uses a different navigation system than the rest of the dashboard
 
-## Current State
-- **`notify-deal-alert`**: Triggers immediately when any agent logs a deal, sending emails to ALL agents
-- **`send-daily-leaderboard-summary`**: Exists but only sends to managers with recruiting stats (not sales)
+---
 
-## Changes Required
+## Part 1: Expand Carrier Display
 
-### 1. Create New Edge Function: `send-daily-sales-leaderboard`
+### Current State
+The HeroSection shows only 6 carriers in a rotating banner:
+- National Life Group
+- American Amicable
+- Aflac
+- Ethos Life
+- Mutual of Omaha
+- American Home Life
 
-A new edge function that:
-- Runs once daily at **9 PM CST** (after most agents finish for the day)
-- Fetches today's production data from `daily_production` table
-- Ranks agents by ALP (total dollar amount closed)
-- Sends personalized email to each active agent showing:
-  - Full leaderboard with rankings
-  - Their position highlighted
-  - Top 3 agents with trophy/medal icons
-  - Total team ALP for the day
-  - Motivational "gap to next rank" message
-  - CTA to log tomorrow's numbers
+### Solution
+Expand to 20+ carriers and add "& 30+ More" indicator to show the full scope of partnerships.
 
-Email design:
-- Clean, professional gold/black APEX branding
-- Table format showing: Rank | Agent | Deals | ALP
-- Whole dollars only (no cents per project guidelines)
-- "Powered by APEX Financial" footer
-- Screenshot-ready for social media posting
+### New Carrier List
+```text
+National Life Group, American Amicable, Aflac, Ethos Life, Mutual of Omaha,
+American Home Life, Transamerica, Athene, Foresters, Americo, F&G, Prosperity,
+American Equity, North American, Nationwide, American National, AIG,
+Principal, Lincoln Financial, Prudential, John Hancock, Protective
+```
 
-### 2. Remove Real-Time Deal Alert Triggers
+### UI Changes
+- Display rotating carrier names (as currently implemented)
+- Add "& 30+ More Carriers" text below the rotating banner
+- Keep the dot indicators but cap at 6 visible dots with a "+16" indicator
 
-Update these files to stop calling `notify-deal-alert`:
-- `src/components/dashboard/CompactProductionEntry.tsx`
-- `src/components/dashboard/ProductionEntry.tsx`
+---
 
-Remove the `notify-deal-alert` invocation from the notification batch that runs after saving production data.
+## Part 2: Consistent Sidebar Navigation
 
-### 3. Set Up Daily Cron Job
+### Current Problem
+The `AgentPortal` page uses a completely different navigation system:
+- Custom header with Sheet-based mobile drawer
+- No access to the collapsible sidebar that exists on Dashboard, Team, CRM, etc.
+- Inconsistent experience when navigating between pages
 
-Add a cron job to trigger `send-daily-sales-leaderboard` at 9 PM CST daily:
-```sql
-select cron.schedule(
-  'send-daily-sales-leaderboard',
-  '0 3 * * *',  -- 3 AM UTC = 9 PM CST
-  $$ SELECT net.http_post(...) $$
+### Solution
+Wrap `AgentPortal` with `DashboardLayout` (which uses `SidebarLayout`) to ensure:
+- Consistent left sidebar navigation across all pages
+- Collapse/expand functionality everywhere
+- Mobile hamburger menu that works the same on all pages
+
+### Files to Modify
+
+| File | Change |
+|------|--------|
+| `src/components/landing/HeroSection.tsx` | Expand carriers array to 20+ and add "& 30+ More" text |
+| `src/pages/AgentPortal.tsx` | Wrap with DashboardLayout, remove custom header/navigation |
+
+---
+
+## Technical Implementation
+
+### HeroSection.tsx Changes
+```typescript
+// Expand the carriers list
+const carriers = [
+  { name: "National Life Group", shortName: "NLG" },
+  { name: "American Amicable", shortName: "AA" },
+  { name: "Aflac", shortName: "AFLAC" },
+  { name: "Ethos Life", shortName: "ETHOS" },
+  { name: "Mutual of Omaha", shortName: "MoO" },
+  { name: "American Home Life", shortName: "AHL" },
+  { name: "Transamerica", shortName: "TRANS" },
+  { name: "Athene", shortName: "ATH" },
+  { name: "Foresters", shortName: "FOR" },
+  { name: "Americo", shortName: "AMR" },
+  { name: "F&G", shortName: "F&G" },
+  { name: "Prosperity", shortName: "PROS" },
+  { name: "American Equity", shortName: "AE" },
+  { name: "North American", shortName: "NA" },
+  { name: "Nationwide", shortName: "NW" },
+  { name: "American National", shortName: "AN" },
+  { name: "AIG", shortName: "AIG" },
+  { name: "Principal", shortName: "PRIN" },
+  { name: "Lincoln Financial", shortName: "LFG" },
+  { name: "Prudential", shortName: "PRU" },
+  { name: "John Hancock", shortName: "JH" },
+  { name: "Protective", shortName: "PROT" },
+];
+
+// Add "& 30+ More" below the rotating banner
+<p className="text-xs text-muted-foreground mt-2">
+  & 30+ More Top-Rated Carriers
+</p>
+```
+
+### AgentPortal.tsx Changes
+- Import and wrap content with `DashboardLayout`
+- Remove the custom header section (lines ~410-600)
+- Remove the Sheet-based mobile navigation
+- Keep all the content cards, leaderboards, and production entry functionality
+
+```typescript
+import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+
+// Wrap the return content
+return (
+  <DashboardLayout>
+    {/* Keep all existing content cards/sections */}
+    <div className="space-y-6">
+      {/* Hero section with quick stats */}
+      {/* Production Entry */}
+      {/* Leaderboard tabs */}
+      {/* etc. */}
+    </div>
+  </DashboardLayout>
 );
 ```
 
-### 4. Keep `notify-deal-alert` Function
+---
 
-Keep the function code in case you want to revert later, but it won't be triggered from the frontend anymore.
+## Performance Notes
 
-## Email Template Design
+The existing sidebar implementation already handles:
+- Smooth CSS transitions (200ms ease-out)
+- LocalStorage persistence for sidebar state
+- Mobile-specific handling to prevent layout glitches
+- Desktop-only margin animations
 
-```
-╔════════════════════════════════════════════════╗
-║      🏆 APEX DAILY SALES LEADERBOARD           ║
-║          Wednesday, January 29, 2026            ║
-╠════════════════════════════════════════════════╣
-║                                                 ║
-║   Hey [First Name],                             ║
-║                                                 ║
-║   Here's how the team performed today:          ║
-║                                                 ║
-║   ┌────────────────────────────────────────┐   ║
-║   │ Rank │ Agent         │ Deals │   ALP   │   ║
-║   ├──────┼───────────────┼───────┼─────────┤   ║
-║   │ 🥇 1 │ John Smith    │   3   │ $12,450 │   ║
-║   │ 🥈 2 │ Jane Doe      │   2   │  $8,200 │   ║
-║   │ 🥉 3 │ ⭐ YOU        │   2   │  $7,800 │   ║
-║   │   4  │ Mike Johnson  │   1   │  $4,500 │   ║
-║   │   5  │ Sarah Wilson  │   1   │  $3,200 │   ║
-║   └──────┴───────────────┴───────┴─────────┘   ║
-║                                                 ║
-║   📊 TEAM TOTAL: $36,150                        ║
-║                                                 ║
-║   💡 You're just $400 away from #2!             ║
-║                                                 ║
-║           [🎯 LOG TOMORROW'S NUMBERS]           ║
-║                                                 ║
-╠════════════════════════════════════════════════╣
-║          Powered by APEX Financial              ║
-╚════════════════════════════════════════════════╝
-```
+No additional performance optimizations needed for the sidebar - the infrastructure is already in place and working well.
 
-## Files to Create/Modify
+---
 
-| File | Action |
-|------|--------|
-| `supabase/functions/send-daily-sales-leaderboard/index.ts` | **CREATE** - New edge function |
-| `src/components/dashboard/CompactProductionEntry.tsx` | **MODIFY** - Remove deal alert call |
-| `src/components/dashboard/ProductionEntry.tsx` | **MODIFY** - Remove deal alert call |
+## Expected Outcome
 
-## Bonus: Fix Link Account Error
-
-The screenshot shows an error for phone `9788047212`. This phone number doesn't exist in the database. The user needs to:
-1. Use the "Create Account" flow on `/numbers` instead of "Link Account"
-2. Or have their manager add them to the CRM first
-
-This is expected behavior - the Link Account feature is for existing CRM records only.
-
-## Technical Details
-
-### Edge Function Logic
-```typescript
-// 1. Get today's date in PST
-const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
-
-// 2. Fetch all production for today
-const { data: production } = await supabase
-  .from('daily_production')
-  .select('agent_id, deals_closed, aop')
-  .eq('production_date', today)
-  .gt('deals_closed', 0);  // Only agents with deals
-
-// 3. Get agent names and emails
-// 4. Sort by ALP descending
-// 5. Send personalized email to each agent
-```
-
-### Timing Rationale
-- 9 PM CST catches most evening closers
-- Avoids peak cron hours (6-7 PM CST per project guidelines)
-- Gives agents overnight to see results
+1. **Landing Page**: Visitors see 22 carrier names rotating, plus "& 30+ More" indicating the full breadth of partnerships
+2. **AgentPortal**: Uses the same collapsible sidebar as Dashboard, CRM, Team Directory, etc.
+3. **Consistent Navigation**: Users can collapse/expand the sidebar from any authenticated page
+4. **Mobile**: Same hamburger menu behavior across all dashboard pages

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Users, Trophy, Medal, Award, Handshake, Home, Radio } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -8,7 +8,7 @@ import { RankChangeIndicator } from "./RankChangeIndicator";
 import { useTop3Celebration } from "@/hooks/useTop3Celebration";
 import { useRankChange } from "@/hooks/useRankChange";
 import { cn } from "@/lib/utils";
-import { subDays, formatDistanceToNow } from "date-fns";
+import { getTodayPST, getWeekStartPST, getMonthStartPST } from "@/lib/dateUtils";
 
 interface ReferralLeaderboardProps {
   currentAgentId?: string;
@@ -41,9 +41,15 @@ export function ReferralLeaderboard({ currentAgentId, period = "week" }: Referra
   const { checkForCelebration, resetTracking } = useTop3Celebration({ currentAgentId });
   const { getRankChange } = useRankChange("referrals");
 
+  const isInitialMount = useRef(true);
+
   useEffect(() => {
-    resetTracking();
-    fetchLeaderboard();
+    // Only reset tracking on initial mount
+    if (isInitialMount.current) {
+      resetTracking();
+      isInitialMount.current = false;
+    }
+    fetchLeaderboard(true);
 
     // Subscribe to realtime updates
     const channel = supabase
@@ -53,7 +59,7 @@ export function ReferralLeaderboard({ currentAgentId, period = "week" }: Referra
         { event: "*", schema: "public", table: "daily_production" },
         () => {
           setLastUpdated(new Date());
-          fetchLeaderboard();
+          fetchLeaderboard(false);
         }
       )
       .subscribe();
@@ -61,22 +67,24 @@ export function ReferralLeaderboard({ currentAgentId, period = "week" }: Referra
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [period, currentAgentId, resetTracking]);
+  }, [period, currentAgentId]);
 
-  const fetchLeaderboard = async () => {
+  const fetchLeaderboard = async (isInitialLoad = true) => {
     try {
-      const today = new Date();
+      if (isInitialLoad) setLoading(true);
+      
       let startDate: string;
       
+      // Use PST timezone for all date calculations
       switch (period) {
         case "month":
-          startDate = subDays(today, 30).toISOString().split("T")[0];
+          startDate = getMonthStartPST();
           break;
         case "day":
-          startDate = today.toISOString().split("T")[0];
+          startDate = getTodayPST();
           break;
         default:
-          startDate = subDays(today, 7).toISOString().split("T")[0];
+          startDate = getWeekStartPST();
       }
 
       const { data: production } = await supabase

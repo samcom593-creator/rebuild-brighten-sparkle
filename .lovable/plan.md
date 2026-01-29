@@ -1,122 +1,140 @@
 
-# Fix Login and Account Creation Issues
+# Fix Login Loop on iPhone Safari/PWA
 
 ## Problem Summary
-Users are unable to log in or create accounts because:
-1. The `/numbers` page shows "Account creation coming soon" instead of letting new users sign up
-2. Phone number lookups fail when the phone format doesn't match exactly
-3. The `link-account` function fails with a non-2xx error for users not in the CRM
-4. Several edge functions have outdated CORS headers causing issues on mobile browsers
+Users on iPhone Safari/PWA are stuck in a login loop on `/numbers`. The specific user (phone `9788047212`) is not in the CRM, so the system correctly shows the "Create Account" form. However, after account creation, the login either fails or the agent data doesn't load properly, causing a loop back to the login screen.
+
+## Root Causes Identified
+
+### 1. Agent Query Fails After Account Creation
+In `loadAgentData()`, the query uses a strict foreign key join:
+```typescript
+.select("id, profile:profiles!agents_profile_id_fkey(full_name)")
+.eq("user_id", userId)
+```
+If the `profile_id` on the agent record doesn't match correctly, this join returns `null`, causing `isAuthenticated` to stay `false` and showing the login form again.
+
+### 2. iOS Safari Magic Link OTP Issues  
+The `verifyOtp()` method used for passwordless login can fail silently on iOS Safari due to cookie/storage restrictions in WebKit. When OTP verification fails, the session isn't set, causing a loop.
+
+### 3. Missing Auth State Persistence Check
+After `signInWithPassword` succeeds in the signup form, the `onAuthStateChange` listener triggers `loadAgentData`, but if the agent query fails (see point 1), the user gets stuck.
 
 ## Solution
 
-### 1. Enable Self-Signup on /numbers Page
-Replace the placeholder "coming soon" message with actual account creation functionality.
+### Fix 1: Make Agent Query More Resilient
+**File: `src/pages/Numbers.tsx`**
 
-**File: `src/pages/Numbers.tsx` (lines 289-330)**
-- Replace the current `needsAccount` form that shows a toast with a working signup form
-- Add password field for new account creation  
-- Call `create-new-agent-account` edge function to create the account
+Update `loadAgentData` to query the agent without the strict join, then separately fetch the profile name:
 
-### 2. Improve Phone Number Matching in Edge Functions
-Normalize phone numbers to last 10 digits for consistent matching.
+```typescript
+const loadAgentData = async (userId: string) => {
+  try {
+    // Query agent first without the join
+    const { data: agent, error: agentError } = await supabase
+      .from("agents")
+      .select("id, profile_id")
+      .eq("user_id", userId)
+      .maybeSingle();
 
-**File: `supabase/functions/simple-login/index.ts`**
-- Improve phone matching to handle various formats (+1, parentheses, dashes, spaces)
-- Search both profiles and applications tables for phone matches
-- If found in applications but not profiles, create the profile automatically
+    if (agentError) throw agentError;
 
-**File: `supabase/functions/check-email-status/index.ts`**
-- Enhance phone search to also check applications table
-- Normalize phone to last 10 digits before searching
-
-### 3. Fix link-account to Handle Non-CRM Users Gracefully
-**File: `supabase/functions/link-account/index.ts`**
-- Return a more user-friendly error message when no agent is found
-- Suggest using the signup flow instead of showing a generic error
-
-### 4. Standardize CORS Headers Across All Login-Related Edge Functions
-Update CORS headers to include platform-specific identifiers for mobile compatibility.
-
-**Files to update:**
-- `supabase/functions/check-email-status/index.ts`
-- `supabase/functions/setup-agent-password/index.ts`  
-- `supabase/functions/create-new-agent-account/index.ts`
-- `supabase/functions/agent-signup/index.ts`
-
-**Standard CORS headers:**
-```javascript
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    if (agent) {
+      setAgentId(agent.id);
+      
+      // Separately fetch profile name if profile_id exists
+      if (agent.profile_id) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("id", agent.profile_id)
+          .maybeSingle();
+        setAgentName(profile?.full_name || "Agent");
+      } else {
+        // Fallback: get name from user's profile by user_id
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("user_id", userId)
+          .maybeSingle();
+        setAgentName(profile?.full_name || "Agent");
+      }
+      
+      setIsAuthenticated(true);
+    } else {
+      // No agent record - show signup
+      setAgentId(null);
+      setIsAuthenticated(false);
+    }
+  } catch (error) {
+    console.error("Error loading agent data:", error);
+    // On error, still allow them to try the signup flow
+    setAgentId(null);
+    setIsAuthenticated(false);
+  } finally {
+    setLoading(false);
+  }
 };
 ```
 
+### Fix 2: Add Password-Based Login Fallback for iOS
+**File: `src/pages/Numbers.tsx`**
+
+After successful account creation, skip the OTP-based simple login and use password login directly since we already have the password:
+
+The current flow already does this correctly:
+```typescript
+const { error: signInError } = await supabase.auth.signInWithPassword({
+  email: newEmail.trim().toLowerCase(),
+  password: newPassword,
+});
+```
+
+This bypasses the OTP flow that causes issues on iOS.
+
+### Fix 3: Add Error Recovery for Failed Agent Load
+**File: `src/pages/Numbers.tsx`**
+
+If a user is authenticated but has no agent record, show a clear message and offer to create one:
+
+After the `loadAgentData` function, add logic to detect "authenticated but no agent" state and guide them to create an agent record.
+
+### Fix 4: Ensure create-new-agent-account Sets Correct Foreign Keys
+**File: `supabase/functions/create-new-agent-account/index.ts`**
+
+Verify the agent record is created with the correct `profile_id` reference:
+- Current code creates profile first, then agent with `profile_id: newProfile.id` ✓
+- This looks correct, but add logging to confirm the IDs match
+
+## Files to Modify
+
+1. **`src/pages/Numbers.tsx`**
+   - Fix `loadAgentData` query to not rely on strict FK join
+   - Add fallback profile name resolution
+   - Add better error handling with console logs for debugging
+
+2. **`supabase/functions/create-new-agent-account/index.ts`**
+   - Add more detailed logging to trace the profile_id and agent creation
+   - Verify the IDs are being linked correctly
+
 ## Technical Details
 
-### Numbers.tsx Self-Signup Flow
-```text
-User enters phone/email
-    |
-    v
-simple-login checks CRM
-    |
-    +--> Found in CRM with auth --> Password login
-    |
-    +--> Found in CRM without auth --> Set password flow
-    |
-    +--> Not in CRM --> Show signup form with:
-         - Name field
-         - Email field (auto-populated)
-         - Phone field
-         - Password field
-         - Create Account button
-              |
-              v
-         create-new-agent-account creates:
-         - Auth user (email confirmed)
-         - Profile record
-         - Agent record (status: active, stage: evaluated)
-         - Agent role
-              |
-              v
-         Auto-login and show production entry
+### Current Query (Problematic)
+```typescript
+// This fails if agents_profile_id_fkey join doesn't resolve
+.select("id, profile:profiles!agents_profile_id_fkey(full_name)")
 ```
 
-### Phone Normalization Logic
-```text
-Input: "+1 (978) 804-7212" or "9788047212" or "(978) 804-7212"
-    |
-    v
-Remove all non-digits: "19788047212" or "9788047212"
-    |
-    v
-Take last 10 digits: "9788047212"
-    |
-    v
-Search profiles WHERE phone ILIKE '%9788047212%'
-    |
-    +--> If found: continue login flow
-    |
-    +--> If not found: search applications table
-         |
-         +--> If found contracted: auto-create profile + agent
-         |
-         +--> If not found: needsAccount = true
+### Fixed Query (Resilient)
+```typescript
+// Query agent independently, then fetch profile separately
+.select("id, profile_id")
+// Then:
+.from("profiles").select("full_name").eq("id", agent.profile_id)
 ```
-
-## Files Modified
-1. `src/pages/Numbers.tsx` - Enable self-signup form
-2. `supabase/functions/simple-login/index.ts` - Improve phone matching + auto-create from applications
-3. `supabase/functions/check-email-status/index.ts` - Standardize CORS, improve phone search
-4. `supabase/functions/setup-agent-password/index.ts` - Standardize CORS
-5. `supabase/functions/create-new-agent-account/index.ts` - Standardize CORS
-6. `supabase/functions/agent-signup/index.ts` - Standardize CORS
-7. `supabase/functions/link-account/index.ts` - Better error messages
 
 ## Expected Outcome
-- Users not in CRM can create accounts directly on /numbers page
-- Phone number lookups work regardless of formatting
-- Mobile users no longer see CORS errors
-- Clear error messages guide users to the correct flow
+- New users on iPhone can create accounts and immediately start entering numbers
+- The login loop is eliminated by using password-based auth after signup
+- Even if the profile join fails, the user can still access the production entry form
+- Better logging helps diagnose any remaining issues

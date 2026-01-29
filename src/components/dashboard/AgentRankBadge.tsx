@@ -9,7 +9,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { subDays, format } from "date-fns";
+import { getTodayPST, getDateDaysAgoPST } from "@/lib/dateUtils";
 
 interface AgentRankBadgeProps {
   agentId: string;
@@ -30,8 +30,8 @@ export function AgentRankBadge({
 
   const fetchRanks = useCallback(async () => {
     try {
-      const today = new Date().toISOString().split("T")[0];
-      const yesterday = format(subDays(new Date(), 1), "yyyy-MM-dd");
+      const today = getTodayPST();
+      const yesterday = getDateDaysAgoPST(1);
 
       // Fetch today's rankings by ALP
       const { data: todayData } = await supabase

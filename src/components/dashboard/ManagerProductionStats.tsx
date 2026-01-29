@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Users, DollarSign, TrendingUp, Percent } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { supabase } from "@/integrations/supabase/client";
-import { subDays } from "date-fns";
+import { getTodayPST, getDateDaysAgoPST } from "@/lib/dateUtils";
 
 interface ManagerProductionStatsProps {
   managerId: string;
@@ -59,9 +59,9 @@ export function ManagerProductionStats({ managerId }: ManagerProductionStatsProp
       }
 
       const agentIds = teamAgents.map(a => a.id);
-      const today = new Date().toISOString().split("T")[0];
-      const weekStart = subDays(new Date(), 7).toISOString().split("T")[0];
-      const monthStart = subDays(new Date(), 30).toISOString().split("T")[0];
+      const today = getTodayPST();
+      const weekStart = getDateDaysAgoPST(7);
+      const monthStart = getDateDaysAgoPST(30);
 
       // Fetch production data
       const { data: production } = await supabase

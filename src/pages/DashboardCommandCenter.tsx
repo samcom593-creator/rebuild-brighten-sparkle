@@ -12,7 +12,9 @@ import {
   Filter,
   MoreVertical,
   Calendar,
-  UserPlus
+  UserPlus,
+  Pencil,
+  UserX
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -22,12 +24,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { AgentProfileEditor } from "@/components/admin/AgentProfileEditor";
 import { QuickFilters } from "@/components/admin/QuickFilters";
 import { RecognitionQueue } from "@/components/admin/RecognitionQueue";
 import { DuplicateMergeTool } from "@/components/admin/DuplicateMergeTool";
 import { CourseProgressPanel } from "@/components/admin/CourseProgressPanel";
 import { InviteTeamModal } from "@/components/dashboard/InviteTeamModal";
+import { DeactivateAgentDialog } from "@/components/dashboard/DeactivateAgentDialog";
 import { DateRangePicker, type DateRange } from "@/components/ui/date-range-picker";
 import { cn } from "@/lib/utils";
 import { format, startOfWeek, startOfMonth, startOfYear } from "date-fns";
@@ -60,6 +70,7 @@ export default function DashboardCommandCenter() {
   const [selectedAgent, setSelectedAgent] = useState<AgentWithStats | null>(null);
   const [showDuplicateTool, setShowDuplicateTool] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [deactivateAgent, setDeactivateAgent] = useState<AgentWithStats | null>(null);
 
   // Get date range based on time period
   const dateRange = useMemo(() => {
@@ -500,9 +511,38 @@ export default function DashboardCommandCenter() {
                           )}>
                             {agent.closingRate}%
                           </div>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="bg-popover">
+                              <DropdownMenuItem onClick={(e) => { 
+                                e.stopPropagation(); 
+                                setSelectedAgent(agent); 
+                              }}>
+                                <Pencil className="h-4 w-4 mr-2" />
+                                Edit Profile
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                className="text-destructive focus:text-destructive"
+                                onClick={(e) => { 
+                                  e.stopPropagation(); 
+                                  setDeactivateAgent(agent); 
+                                }}
+                              >
+                                <UserX className="h-4 w-4 mr-2" />
+                                Remove from Pipeline
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </motion.div>
                     ))}
@@ -545,6 +585,18 @@ export default function DashboardCommandCenter() {
       <InviteTeamModal
         open={showInviteModal}
         onClose={() => setShowInviteModal(false)}
+      />
+
+      {/* Deactivate Agent Dialog */}
+      <DeactivateAgentDialog
+        open={!!deactivateAgent}
+        onOpenChange={(open) => !open && setDeactivateAgent(null)}
+        agentId={deactivateAgent?.id || ""}
+        agentName={deactivateAgent?.fullName || ""}
+        onComplete={() => {
+          refetch();
+          setDeactivateAgent(null);
+        }}
       />
     </DashboardLayout>
   );

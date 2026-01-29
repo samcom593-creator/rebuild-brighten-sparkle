@@ -131,12 +131,11 @@ export default function AgentPortal() {
   );
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      navigate("/login");
-      return;
-    }
+    // Don't redirect if not logged in - we'll show a login prompt instead
     if (user && !authLoading) {
       fetchAgentData();
+    } else if (!authLoading && !user) {
+      setLoading(false);
     }
   }, [user, authLoading, isAdmin, isManager]);
 
@@ -250,25 +249,40 @@ export default function AgentPortal() {
         return;
       }
 
-      // Regular agent logic - must have agent record and be Live
+      // Regular agent logic - fetch agent record with status fields
       const { data: agent, error: agentError } = await supabase
         .from("agents")
-        .select("id, onboarding_stage")
+        .select("id, status, onboarding_stage, is_deactivated, is_inactive")
         .eq("user_id", user!.id)
-        .single();
+        .maybeSingle();
 
-      if (agentError || !agent) {
-        toast.error("You don't have access to the Agent Portal");
-        navigate("/dashboard");
+      if (agentError) {
+        console.error("Error fetching agent:", agentError);
+        toast.error("Error loading your agent profile");
+        setLoading(false);
         return;
       }
 
-      if (agent.onboarding_stage !== "evaluated") {
-        toast.error("Agent Portal is only available for Live agents");
-        navigate("/dashboard");
+      if (!agent) {
+        // No agent record - show message (handled in render)
+        setLoading(false);
         return;
       }
 
+      // Check if agent is deactivated or inactive
+      if (agent.is_deactivated || agent.is_inactive || agent.status === "terminated") {
+        // Show inactive message (handled in render)
+        setLoading(false);
+        return;
+      }
+
+      // Check if agent is pending approval
+      if (agent.status === "pending") {
+        navigate("/pending-approval");
+        return;
+      }
+
+      // Allow access for active agents regardless of onboarding stage
       setAgentId(agent.id);
 
       // Get today's production if exists
@@ -327,6 +341,86 @@ export default function AgentPortal() {
           <p className="text-muted-foreground font-medium text-sm">
             Powered by Apex
           </p>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Show login screen for unauthenticated users
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center max-w-md w-full"
+        >
+          <GlassCard className="p-8">
+            <div className="relative mb-6">
+              <img 
+                src={apexIcon} 
+                alt="Apex" 
+                className="h-16 w-16 mx-auto"
+              />
+              <div className="absolute inset-0 h-16 w-16 mx-auto rounded-full bg-primary/20 blur-xl" />
+            </div>
+            <h1 className="text-2xl font-bold mb-2">Agent Portal</h1>
+            <p className="text-muted-foreground mb-6">
+              Please log in to access your portal and log your numbers.
+            </p>
+            <div className="space-y-3">
+              <Link to="/install">
+                <Button className="w-full" size="lg">
+                  <Zap className="h-4 w-4 mr-2" />
+                  Instant Login
+                </Button>
+              </Link>
+              <Link to="/login">
+                <Button variant="outline" className="w-full" size="lg">
+                  <User className="h-4 w-4 mr-2" />
+                  Admin Login
+                </Button>
+              </Link>
+            </div>
+          </GlassCard>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Show message if user has no agent record
+  if (!agentId && !isAdminViewing) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center max-w-md w-full"
+        >
+          <GlassCard className="p-8">
+            <div className="relative mb-6">
+              <img 
+                src={apexIcon} 
+                alt="Apex" 
+                className="h-16 w-16 mx-auto opacity-50"
+              />
+            </div>
+            <h1 className="text-2xl font-bold mb-2">Account Not Linked</h1>
+            <p className="text-muted-foreground mb-6">
+              Your account isn't linked to an agent profile yet. Please contact your manager for assistance.
+            </p>
+            <div className="space-y-3">
+              <Link to="/dashboard">
+                <Button variant="outline" className="w-full" size="lg">
+                  Go to Dashboard
+                </Button>
+              </Link>
+              <Button variant="ghost" onClick={handleLogout} className="w-full">
+                <LogOut className="h-4 w-4 mr-2" />
+                Sign Out
+              </Button>
+            </div>
+          </GlassCard>
         </motion.div>
       </div>
     );

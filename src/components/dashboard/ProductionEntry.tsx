@@ -276,65 +276,61 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
         }
       }
       
-      // 🚨 DEAL ALERT: If deals were closed, notify the whole team!
+      // 🚨 DEAL ALERT: If deals were closed, notify the whole team AFTER confetti completes
       if (formData.deals_closed > 0) {
-        try {
-          console.log("🚨 Triggering deal alert for", selectedAgentName);
-          await supabase.functions.invoke("notify-deal-alert", {
-            body: {
-              agentId: selectedAgentId,
-              agentName: selectedAgentName,
-              deals: formData.deals_closed,
-              aop: formData.aop,
-            },
-          });
-          
-          // 🔥 Also check for streaks
-          await supabase.functions.invoke("notify-streak-alert", {
-            body: {
-              agentId: selectedAgentId,
-              agentName: selectedAgentName,
-            },
-          });
-          
-          // 📊 Check if we passed anyone on the leaderboard
+        // Delay notifications until after confetti animation (2s) to prevent UI glitching
+        setTimeout(async () => {
           try {
-            await supabase.functions.invoke("notify-rank-passed", {
-              body: {
-                submittingAgentId: selectedAgentId,
-                productionDate: productionDate,
-              },
-            });
-          } catch (rankError) {
-            console.error("Failed to check rank changes:", rankError);
+            console.log("🚨 Triggering batched deal notifications for", selectedAgentName);
+            
+            // Batch all notifications together using Promise.allSettled
+            // so one failure doesn't block others
+            await Promise.allSettled([
+              supabase.functions.invoke("notify-deal-alert", {
+                body: {
+                  agentId: selectedAgentId,
+                  agentName: selectedAgentName,
+                  deals: formData.deals_closed,
+                  aop: formData.aop,
+                },
+              }),
+              supabase.functions.invoke("notify-streak-alert", {
+                body: {
+                  agentId: selectedAgentId,
+                  agentName: selectedAgentName,
+                },
+              }),
+              supabase.functions.invoke("notify-rank-passed", {
+                body: {
+                  submittingAgentId: selectedAgentId,
+                  productionDate: productionDate,
+                },
+              }),
+              supabase.functions.invoke("notify-comeback-alert", {
+                body: {
+                  agentId: selectedAgentId,
+                  agentName: selectedAgentName,
+                  previousRank: 0,
+                  newRank: 0,
+                },
+              }),
+            ]);
+            
+            console.log("✅ All deal notifications sent");
+          } catch (notifyError) {
+            console.error("Failed to send deal notifications:", notifyError);
           }
-          
-          // ⚡ Trigger comeback alert for big moves
-          try {
-            await supabase.functions.invoke("notify-comeback-alert", {
-              body: {
-                agentId: selectedAgentId,
-                agentName: selectedAgentName,
-                previousRank: 0,
-                newRank: 0,
-              },
-            });
-          } catch (comebackError) {
-            console.error("Failed to check comeback:", comebackError);
-          }
-        } catch (notifyError) {
-          console.error("Failed to send deal/streak notifications:", notifyError);
-          // Don't fail the whole submission for notification errors
-        }
+        }, 2000);
       }
       
-      // 🏆 MILESTONE PLAQUES: Check for single-day milestones
+      // 🏆 MILESTONE PLAQUES: Check for single-day milestones (also delayed)
       const alpAmount = Number(formData.aop) || 0;
       if (alpAmount >= 3000) {
-        try {
-          const milestoneType = alpAmount >= 5000 ? "single_day" : "single_day_bronze";
-          console.log(`🏆 Triggering ${milestoneType} plaque for ${selectedAgentName}: $${alpAmount.toLocaleString()}`);
-          
+        setTimeout(async () => {
+          try {
+            const milestoneType = alpAmount >= 5000 ? "single_day" : "single_day_bronze";
+            console.log(`🏆 Triggering ${milestoneType} plaque for ${selectedAgentName}: $${alpAmount.toLocaleString()}`);
+            
             await supabase.functions.invoke("send-plaque-recognition", {
               body: {
                 agentId: selectedAgentId,
@@ -343,10 +339,10 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
                 date: productionDate,
               },
             });
-        } catch (plaqueError) {
-          console.error("Failed to send plaque recognition:", plaqueError);
-          // Don't fail the whole submission for plaque errors
-        }
+          } catch (plaqueError) {
+            console.error("Failed to send plaque recognition:", plaqueError);
+          }
+        }, 2200); // Slightly after deal notifications
       }
       
       const displayName = selectedAgentId === agentId ? "Your" : selectedAgentName + "'s";

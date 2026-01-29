@@ -1,121 +1,154 @@
 
-# Add Agent Removal to Command Center
 
-## Problem
-The Command Center page has a three-dot menu button on each agent row, but clicking it does **nothing**. There's no dropdown menu connecting to the agent removal/termination workflow that already exists (`DeactivateAgentDialog` component).
+# Admin Panel Overhaul - Structure, Layout, and Full Control
 
-## Solution
-Add a `DropdownMenu` to the three-dot button in Command Center that provides:
-1. **View/Edit Profile** - Opens the existing AgentProfileEditor sheet
-2. **Terminate Agent** - Opens the existing DeactivateAgentDialog with full options:
-   - Bad Business (immediate deactivation)
-   - Add to Inactive Agents
-   - Remove from System (email approval workflow)
-   - Switch Teams (transfer to another manager)
+## Summary
+The user wants a complete reorganization of the Admin Panel to prioritize day-to-day workflow efficiency. The key changes are:
+
+1. **Fix zoom/density issue** - Everything looks too zoomed in
+2. **Move rarely-used sections to the bottom** (collapsible)
+3. **Remove unnecessary sections** 
+4. **Make Team Hierarchy the primary focus with full edit control**
+5. **Enhance Team Hierarchy with comprehensive agent management capabilities**
 
 ---
 
-## Technical Implementation
+## Section Reorganization
 
-### File: `src/pages/DashboardCommandCenter.tsx`
+### Current Order (problematic):
+1. Header
+2. Pending Agent Approvals
+3. Inactive Agents
+4. Terminated Agent Leads
+5. Abandoned Applications
+6. All Leads
+7. Team Overview Stats
+8. Search
+9. Agent Management Table (redundant)
+10. Team Hierarchy
+11. Manager Account Invites
+12. Bulk Lead Assignment
+13. Quiz Questions
+14. Manager Invite Links / Lead Reassignment
+15. Needs Attention / Fastest Growers
 
-**Changes required:**
+### New Order (optimized for admin workflow):
 
-1. **Add imports:**
-   - `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger` from `@/components/ui/dropdown-menu`
-   - `DeactivateAgentDialog` from `@/components/dashboard/DeactivateAgentDialog`
-   - `UserX`, `Pencil` icons from `lucide-react`
+**Top Priority (Daily Actions):**
+1. Header (condensed)
+2. Team Overview Stats (compact)
+3. Pending Agent Approvals (if any)
+4. **Team Hierarchy Manager** (EXPANDED - now primary section)
+5. Manager Account Invites
+6. Bulk Lead Assignment
+7. Manager Invite Links / Lead Reassignment
 
-2. **Add state for deactivation dialog:**
-   ```typescript
-   const [deactivateAgent, setDeactivateAgent] = useState<AgentWithStats | null>(null);
-   ```
+**Bottom (Collapsible - Rare Access):**
+8. Inactive Agents (collapsible)
+9. Terminated Agent Leads (collapsible)
+10. Abandoned Applications (collapsible)
+11. All Leads (collapsible)
 
-3. **Replace the standalone button (lines 503-505):**
-   ```typescript
-   <Button variant="ghost" size="icon" className="h-8 w-8">
-     <MoreVertical className="h-4 w-4" />
-   </Button>
-   ```
-   
-   With a full `DropdownMenu`:
-   ```typescript
-   <DropdownMenu>
-     <DropdownMenuTrigger asChild>
-       <Button 
-         variant="ghost" 
-         size="icon" 
-         className="h-8 w-8"
-         onClick={(e) => e.stopPropagation()}
-       >
-         <MoreVertical className="h-4 w-4" />
-       </Button>
-     </DropdownMenuTrigger>
-     <DropdownMenuContent align="end">
-       <DropdownMenuItem onClick={(e) => { 
-         e.stopPropagation(); 
-         setSelectedAgent(agent); 
-       }}>
-         <Pencil className="h-4 w-4 mr-2" />
-         Edit Profile
-       </DropdownMenuItem>
-       <DropdownMenuSeparator />
-       <DropdownMenuItem 
-         className="text-destructive focus:text-destructive"
-         onClick={(e) => { 
-           e.stopPropagation(); 
-           setDeactivateAgent(agent); 
-         }}
-       >
-         <UserX className="h-4 w-4 mr-2" />
-         Remove from Pipeline
-       </DropdownMenuItem>
-     </DropdownMenuContent>
-   </DropdownMenu>
-   ```
-
-4. **Add the DeactivateAgentDialog component (before closing `</DashboardLayout>`):**
-   ```typescript
-   <DeactivateAgentDialog
-     open={!!deactivateAgent}
-     onOpenChange={(open) => !open && setDeactivateAgent(null)}
-     agentId={deactivateAgent?.id || ""}
-     agentName={deactivateAgent?.fullName || ""}
-     onComplete={() => {
-       refetch();
-       setDeactivateAgent(null);
-     }}
-   />
-   ```
+### Sections to REMOVE:
+- Agent Management Table (redundant - Team Hierarchy handles this)
+- Needs Attention widget
+- Fastest Growers widget
+- Quiz Questions Admin (will be moved to course settings later)
 
 ---
 
-## User Flow After Fix
+## UI Density Fix
 
-1. Admin opens Command Center
-2. Clicks three-dot menu on any agent row
-3. Sees dropdown with:
-   - **Edit Profile** → Opens side sheet for profile editing
-   - **Remove from Pipeline** → Opens termination dialog with options:
-     - Bad Business
-     - Add to Inactive Agents
-     - Remove from System (email approval)
-     - Switch Teams
+The "zoomed in" feeling comes from:
+- Large padding values (`p-6` everywhere)
+- Large gaps (`gap-6`, `gap-8`)
+- Large text sizes (`text-3xl` for header)
+
+**Fixes:**
+- Reduce header title to `text-2xl`
+- Reduce section padding from `p-6` to `p-4`
+- Reduce gap values from `gap-6/8` to `gap-4`
+- Make stats cards more compact
 
 ---
 
-## Files Modified
+## Enhanced Team Hierarchy Manager
 
-| File | Change |
-|------|--------|
-| `src/pages/DashboardCommandCenter.tsx` | Add DropdownMenu with Edit/Remove options, integrate DeactivateAgentDialog |
+The Team Hierarchy needs to become the **central control hub** for agent management. Currently it only shows:
+- Agent name
+- Email
+- Onboarding stage (read-only)
+- Course progress
+- Reports To (editable)
+
+### New capabilities needed:
+
+| Field | Current | Enhancement |
+|-------|---------|-------------|
+| Name | Display only | Link to full profile editor |
+| Email | Display only | Editable inline |
+| Phone | Not shown | Add and show |
+| Instagram | Not shown | Add and show |
+| Onboarding Stage | Badge (read-only) | **Dropdown to change step** |
+| Manager | Dropdown (works) | Keep as is |
+| Actions | None | Add 3-dot menu with Edit/Fire options |
+
+### Implementation:
+1. Add a 3-dot dropdown menu on each agent row with:
+   - **Edit Profile** → Opens enhanced `AgentProfileEditor` 
+   - **Remove from Pipeline** → Opens `DeactivateAgentDialog`
+
+2. Make the "Stage" column an inline dropdown to quickly change onboarding stage
+
+3. **Enhance AgentProfileEditor** to include:
+   - Instagram handle field
+   - Onboarding stage selector
+   - Manager reassignment dropdown
+   - Password reset button
+   - All fields the admin needs
+
+---
+
+## Collapsible Sections
+
+For bottom sections (Inactive, Terminated, Abandoned, All Leads):
+- Wrap each in a Collapsible component
+- Show count badge in header
+- Default to collapsed
+- One click to expand/collapse
+
+```tsx
+<Collapsible open={showInactive} onOpenChange={setShowInactive}>
+  <CollapsibleTrigger className="w-full">
+    <div className="flex items-center justify-between p-4">
+      <span>Inactive Agents</span>
+      <Badge>{inactiveCount}</Badge>
+      <ChevronDown className={cn("h-4 w-4 transition", showInactive && "rotate-180")} />
+    </div>
+  </CollapsibleTrigger>
+  <CollapsibleContent>
+    {/* Existing inactive agents content */}
+  </CollapsibleContent>
+</Collapsible>
+```
+
+---
+
+## Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/pages/DashboardAdmin.tsx` | Complete restructure: reorder sections, remove Agent Management table, remove Needs Attention, remove Fastest Growers, remove Quiz Questions, add collapsible wrappers for bottom sections, reduce padding/gaps |
+| `src/components/dashboard/TeamHierarchyManager.tsx` | Add 3-dot menu with Edit Profile and Remove from Pipeline actions, make onboarding stage editable via dropdown, add integration with AgentProfileEditor and DeactivateAgentDialog |
+| `src/components/admin/AgentProfileEditor.tsx` | Add Instagram handle field, add onboarding stage selector, add manager reassignment dropdown, add password reset capability |
 
 ---
 
 ## Expected Result
 
-The three-dot menu in Command Center will now be fully functional, allowing admins to:
-- Edit any agent's profile directly
-- Remove agents from the pipeline via multiple methods
-- Transfer agents to different teams
-- All without leaving the Command Center view
+1. **Less "zoomed in"** - Tighter spacing, more content visible at once
+2. **Team Hierarchy is #1** - First major section after pending approvals
+3. **Full control from one place** - Edit any agent field, change stage, fire, reassign manager all from Team Hierarchy
+4. **Rarely-used sections collapsed** - Inactive, Terminated, Abandoned, All Leads are at the bottom and collapsed by default
+5. **No clutter** - Removed Agent Management table (redundant), Needs Attention, Fastest Growers, Quiz Questions
+

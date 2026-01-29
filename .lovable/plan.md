@@ -1,74 +1,121 @@
 
-# Fix Counter & Unified Sidebar Navigation
+# Add Agent Removal to Command Center
 
-## Summary
-Two issues to fix:
-1. The "first-day deals closed" counter shows **23** but should be **87**
-2. Three dashboard pages lack sidebar navigation: LogNumbers, Numbers, and OnboardingCourse
+## Problem
+The Command Center page has a three-dot menu button on each agent row, but clicking it does **nothing**. There's no dropdown menu connecting to the agent removal/termination workflow that already exists (`DeactivateAgentDialog` component).
 
----
-
-## Issue 1: Update Lead Counter to 87
-
-### Current State
-The `lead_counter` table has `count: 23`
-
-### Fix
-Run a database update to set the count to 87:
-
-```sql
-UPDATE lead_counter SET count = 87, updated_at = now();
-```
-
-This value is displayed on the landing page via `useLeadCounter` hook and shows in the "X first-day deals closed" badge.
+## Solution
+Add a `DropdownMenu` to the three-dot button in Command Center that provides:
+1. **View/Edit Profile** - Opens the existing AgentProfileEditor sheet
+2. **Terminate Agent** - Opens the existing DeactivateAgentDialog with full options:
+   - Bad Business (immediate deactivation)
+   - Add to Inactive Agents
+   - Remove from System (email approval workflow)
+   - Switch Teams (transfer to another manager)
 
 ---
 
-## Issue 2: Add Sidebar to All Dashboard Pages
+## Technical Implementation
 
-### Pages Missing Sidebar
+### File: `src/pages/DashboardCommandCenter.tsx`
 
-| Page | Route | Current Layout | Fix |
-|------|-------|----------------|-----|
-| LogNumbers | `/apex-daily-numbers` | Standalone (no sidebar) | Wrap with `DashboardLayout` |
-| Numbers | `/numbers` | Standalone (no sidebar) | Wrap authenticated view with `DashboardLayout` |
-| OnboardingCourse | `/onboarding-course` | Custom header | Wrap with `DashboardLayout` |
+**Changes required:**
 
-### Implementation Details
+1. **Add imports:**
+   - `DropdownMenu`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuSeparator`, `DropdownMenuTrigger` from `@/components/ui/dropdown-menu`
+   - `DeactivateAgentDialog` from `@/components/dashboard/DeactivateAgentDialog`
+   - `UserX`, `Pencil` icons from `lucide-react`
 
-#### 1. LogNumbers.tsx
-- Import `DashboardLayout`
-- Wrap the entire return content with `<DashboardLayout>`
-- Remove the outer min-h-screen/flex centering (DashboardLayout handles this)
-- Keep the production entry form and leaderboard display inside
+2. **Add state for deactivation dialog:**
+   ```typescript
+   const [deactivateAgent, setDeactivateAgent] = useState<AgentWithStats | null>(null);
+   ```
 
-#### 2. Numbers.tsx
-- Import `DashboardLayout`
-- Wrap the **authenticated view** (lines 224-269) with `<DashboardLayout>`
-- Keep the login view (lines 273-505) standalone since unauthenticated users shouldn't see the sidebar
+3. **Replace the standalone button (lines 503-505):**
+   ```typescript
+   <Button variant="ghost" size="icon" className="h-8 w-8">
+     <MoreVertical className="h-4 w-4" />
+   </Button>
+   ```
+   
+   With a full `DropdownMenu`:
+   ```typescript
+   <DropdownMenu>
+     <DropdownMenuTrigger asChild>
+       <Button 
+         variant="ghost" 
+         size="icon" 
+         className="h-8 w-8"
+         onClick={(e) => e.stopPropagation()}
+       >
+         <MoreVertical className="h-4 w-4" />
+       </Button>
+     </DropdownMenuTrigger>
+     <DropdownMenuContent align="end">
+       <DropdownMenuItem onClick={(e) => { 
+         e.stopPropagation(); 
+         setSelectedAgent(agent); 
+       }}>
+         <Pencil className="h-4 w-4 mr-2" />
+         Edit Profile
+       </DropdownMenuItem>
+       <DropdownMenuSeparator />
+       <DropdownMenuItem 
+         className="text-destructive focus:text-destructive"
+         onClick={(e) => { 
+           e.stopPropagation(); 
+           setDeactivateAgent(agent); 
+         }}
+       >
+         <UserX className="h-4 w-4 mr-2" />
+         Remove from Pipeline
+       </DropdownMenuItem>
+     </DropdownMenuContent>
+   </DropdownMenu>
+   ```
 
-#### 3. OnboardingCourse.tsx
-- Import `DashboardLayout`
-- Wrap the entire content with `<DashboardLayout>`
-- Remove the custom `<header>` section (lines 105-126) as sidebar provides navigation
-- Keep the course content and sidebar intact
+4. **Add the DeactivateAgentDialog component (before closing `</DashboardLayout>`):**
+   ```typescript
+   <DeactivateAgentDialog
+     open={!!deactivateAgent}
+     onOpenChange={(open) => !open && setDeactivateAgent(null)}
+     agentId={deactivateAgent?.id || ""}
+     agentName={deactivateAgent?.fullName || ""}
+     onComplete={() => {
+       refetch();
+       setDeactivateAgent(null);
+     }}
+   />
+   ```
 
 ---
 
-## Files to Modify
+## User Flow After Fix
+
+1. Admin opens Command Center
+2. Clicks three-dot menu on any agent row
+3. Sees dropdown with:
+   - **Edit Profile** → Opens side sheet for profile editing
+   - **Remove from Pipeline** → Opens termination dialog with options:
+     - Bad Business
+     - Add to Inactive Agents
+     - Remove from System (email approval)
+     - Switch Teams
+
+---
+
+## Files Modified
 
 | File | Change |
 |------|--------|
-| **Database** | Update `lead_counter.count` from 23 to 87 |
-| `src/pages/LogNumbers.tsx` | Add `DashboardLayout` wrapper |
-| `src/pages/Numbers.tsx` | Add `DashboardLayout` to authenticated view only |
-| `src/pages/OnboardingCourse.tsx` | Add `DashboardLayout`, remove custom header |
+| `src/pages/DashboardCommandCenter.tsx` | Add DropdownMenu with Edit/Remove options, integrate DeactivateAgentDialog |
 
 ---
 
-## Expected Results
+## Expected Result
 
-1. Landing page shows "**87** first-day deals closed"
-2. All three pages have the collapsible sidebar navigation
-3. Users can navigate to/from any dashboard section consistently
-4. Mobile users get the standard hamburger menu on all pages
+The three-dot menu in Command Center will now be fully functional, allowing admins to:
+- Edit any agent's profile directly
+- Remove agents from the pipeline via multiple methods
+- Transfer agents to different teams
+- All without leaving the Command Center view

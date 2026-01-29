@@ -10,6 +10,7 @@ const corsHeaders = {
 interface LinkAccountRequest {
   email?: string;
   agentCode?: string;
+  phone?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -54,16 +55,16 @@ const handler = async (req: Request): Promise<Response> => {
     const userId = claimsData.claims.sub as string;
     const userEmail = claimsData.claims.email as string | undefined;
 
-    const { email, agentCode }: LinkAccountRequest = await req.json();
+    const { email, agentCode, phone }: LinkAccountRequest = await req.json();
 
-    if (!email && !agentCode) {
+    if (!email && !agentCode && !phone) {
       return new Response(
-        JSON.stringify({ error: "Email or agent code required" }),
+        JSON.stringify({ error: "Email, phone, or agent code required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log(`Link request from user ${userId}: email=${email}, code=${agentCode}`);
+    console.log(`Link request from user ${userId}: email=${email}, code=${agentCode}, phone=${phone}`);
 
     // Check if user already has an agent record
     const { data: existingAgent } = await supabaseAdmin
@@ -111,6 +112,46 @@ const handler = async (req: Request): Promise<Response> => {
         } else {
           return new Response(
             JSON.stringify({ error: "No agent profile found with this email" }),
+            { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+    } else if (phone) {
+      // Phone number linking - normalize to last 10 digits
+      const digitsOnly = phone.replace(/\D/g, "").slice(-10);
+      
+      if (digitsOnly.length < 10) {
+        return new Response(
+          JSON.stringify({ error: "Please enter a valid 10-digit phone number" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Search profiles by phone (multiple format variations)
+      const { data: profilesByPhone } = await supabaseAdmin
+        .from("profiles")
+        .select("id")
+        .or(`phone.ilike.%${digitsOnly}%,phone.ilike.%${digitsOnly.slice(0,3)}-${digitsOnly.slice(3,6)}-${digitsOnly.slice(6)}%,phone.ilike.%(${digitsOnly.slice(0,3)})%${digitsOnly.slice(3)}%`)
+        .limit(5);
+
+      if (profilesByPhone && profilesByPhone.length > 0) {
+        const profileIds = profilesByPhone.map(p => p.id);
+        agentQuery = agentQuery.in("profile_id", profileIds);
+      } else {
+        // Fallback: search applications by phone
+        const { data: application } = await supabaseAdmin
+          .from("applications")
+          .select("id, first_name, last_name, phone, contracted_at")
+          .or(`phone.ilike.%${digitsOnly}%`)
+          .not("contracted_at", "is", null)
+          .maybeSingle();
+
+        if (application) {
+          const fullName = `${application.first_name} ${application.last_name}`.trim();
+          agentQuery = agentQuery.ilike("display_name", fullName);
+        } else {
+          return new Response(
+            JSON.stringify({ error: "No agent profile found with this phone number" }),
             { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }

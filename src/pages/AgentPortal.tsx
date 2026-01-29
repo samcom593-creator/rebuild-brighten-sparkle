@@ -46,6 +46,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getTodayPST } from "@/lib/dateUtils";
 import apexIcon from "@/assets/apex-icon.png";
 
 const motivationalQuotes = [
@@ -241,8 +242,8 @@ export default function AgentPortal() {
         
         if (agent) {
           setAgentId(agent.id);
-          // Fetch today's production for their agent record
-          const today = new Date().toISOString().split("T")[0];
+          // Fetch today's production for their agent record (PST timezone)
+          const today = getTodayPST();
           const { data: production } = await supabase
             .from("daily_production")
             .select("*")
@@ -298,8 +299,8 @@ export default function AgentPortal() {
       // Allow access for active agents regardless of onboarding stage
       setAgentId(agent.id);
 
-      // Get today's production if exists
-      const today = new Date().toISOString().split("T")[0];
+      // Get today's production if exists (PST timezone)
+      const today = getTodayPST();
       const { data: production } = await supabase
         .from("daily_production")
         .select("*")

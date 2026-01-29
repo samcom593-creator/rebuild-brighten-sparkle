@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Users, Trophy, Medal, Award, Handshake, Home, Radio } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -36,40 +36,14 @@ export function ReferralLeaderboard({ currentAgentId, period = "week" }: Referra
   const [entries, setEntries] = useState<ReferralEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [showConfetti, setShowConfetti] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   
   const { checkForCelebration, resetTracking } = useTop3Celebration({ currentAgentId });
   const { getRankChange } = useRankChange("referrals");
 
   const isInitialMount = useRef(true);
 
-  useEffect(() => {
-    // Only reset tracking on initial mount
-    if (isInitialMount.current) {
-      resetTracking();
-      isInitialMount.current = false;
-    }
-    fetchLeaderboard(true);
-
-    // Subscribe to realtime updates
-    const channel = supabase
-      .channel("referral-leaderboard")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "daily_production" },
-        () => {
-          setLastUpdated(new Date());
-          fetchLeaderboard(false);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [period, currentAgentId]);
-
-  const fetchLeaderboard = async (isInitialLoad = true) => {
+  // Memoize fetchLeaderboard to prevent recreation on each render
+  const fetchLeaderboard = useCallback(async (isInitialLoad = true) => {
     try {
       if (isInitialLoad) setLoading(true);
       
@@ -197,7 +171,32 @@ export function ReferralLeaderboard({ currentAgentId, period = "week" }: Referra
     } finally {
       setLoading(false);
     }
-  };
+  }, [period, currentAgentId, checkForCelebration]);
+
+  useEffect(() => {
+    // Only reset tracking on initial mount
+    if (isInitialMount.current) {
+      resetTracking();
+      isInitialMount.current = false;
+    }
+    fetchLeaderboard(true);
+
+    // Subscribe to realtime updates
+    const channel = supabase
+      .channel("referral-leaderboard")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "daily_production" },
+        () => {
+          fetchLeaderboard(false);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchLeaderboard]);
 
   return (
     <>

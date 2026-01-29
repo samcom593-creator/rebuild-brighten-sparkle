@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, Trophy, Medal, Award, Handshake, Home } from "lucide-react";
+import { Users, Trophy, Medal, Award, Handshake, Home, Radio } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { supabase } from "@/integrations/supabase/client";
 import { ConfettiCelebration } from "./ConfettiCelebration";
@@ -8,7 +8,7 @@ import { RankChangeIndicator } from "./RankChangeIndicator";
 import { useTop3Celebration } from "@/hooks/useTop3Celebration";
 import { useRankChange } from "@/hooks/useRankChange";
 import { cn } from "@/lib/utils";
-import { subDays } from "date-fns";
+import { subDays, formatDistanceToNow } from "date-fns";
 
 interface ReferralLeaderboardProps {
   currentAgentId?: string;
@@ -36,6 +36,7 @@ export function ReferralLeaderboard({ currentAgentId, period = "week" }: Referra
   const [entries, setEntries] = useState<ReferralEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   
   const { checkForCelebration, resetTracking } = useTop3Celebration({ currentAgentId });
   const { getRankChange } = useRankChange("referrals");
@@ -50,7 +51,10 @@ export function ReferralLeaderboard({ currentAgentId, period = "week" }: Referra
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "daily_production" },
-        () => fetchLeaderboard()
+        () => {
+          setLastUpdated(new Date());
+          fetchLeaderboard();
+        }
       )
       .subscribe();
 
@@ -194,9 +198,15 @@ export function ReferralLeaderboard({ currentAgentId, period = "week" }: Referra
         onComplete={() => setShowConfetti(false)} 
       />
       <GlassCard className="p-4">
-        <div className="flex items-center gap-2 mb-3">
-          <Handshake className="h-4 w-4 text-primary" />
-          <h4 className="font-semibold text-sm">Top Referral Producers</h4>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Handshake className="h-4 w-4 text-primary" />
+            <h4 className="font-semibold text-sm">Top Referral Producers</h4>
+          </div>
+          <div className="flex items-center gap-1 text-[10px] text-emerald-500">
+            <Radio className="h-2.5 w-2.5 animate-pulse" />
+            <span>LIVE</span>
+          </div>
         </div>
 
       <div className="space-y-2">

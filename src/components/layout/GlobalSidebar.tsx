@@ -19,6 +19,7 @@ import {
   Maximize2,
   Minimize2,
   Plus,
+  Edit3,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -60,6 +61,14 @@ export function GlobalSidebar({
       icon: LayoutDashboard, 
       label: "Dashboard", 
       href: "/dashboard",
+      roles: ["admin", "manager", "agent"]
+    });
+
+    // Log Numbers - prominently placed for all agents
+    items.push({
+      icon: Edit3,
+      label: "Log Numbers",
+      href: "/numbers",
       roles: ["admin", "manager", "agent"]
     });
 

@@ -10,6 +10,9 @@ import {
   TrendingUp,
   DollarSign,
   UserPlus,
+  Edit3,
+  BarChart3,
+  Sparkles,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
@@ -29,7 +32,7 @@ import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration"
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 interface DashboardStats {
   totalLeads: number;
@@ -280,6 +283,43 @@ export default function Dashboard() {
         <p className="text-sm text-muted-foreground mt-1">
           {isAdmin ? "Here's your agency overview" : isManager ? "Here's your team performance" : "Track your progress"}
         </p>
+      </motion.div>
+
+      {/* ====== QUICK ACTIONS ROW ====== */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+        className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6"
+      >
+        <Link to="/numbers">
+          <GlassCard className="p-4 hover:border-primary/50 hover:bg-primary/5 cursor-pointer transition-all group">
+            <Edit3 className="h-5 w-5 text-primary mb-2 group-hover:scale-110 transition-transform" />
+            <p className="font-semibold text-sm">Log Numbers</p>
+            <p className="text-xs text-muted-foreground">Enter today's stats</p>
+          </GlassCard>
+        </Link>
+        <Link to="/agent-portal">
+          <GlassCard className="p-4 hover:border-violet-500/50 hover:bg-violet-500/5 cursor-pointer transition-all group">
+            <BarChart3 className="h-5 w-5 text-violet-500 mb-2 group-hover:scale-110 transition-transform" />
+            <p className="font-semibold text-sm">Agent Portal</p>
+            <p className="text-xs text-muted-foreground">View performance</p>
+          </GlassCard>
+        </Link>
+        <Link to="/dashboard/team">
+          <GlassCard className="p-4 hover:border-emerald-500/50 hover:bg-emerald-500/5 cursor-pointer transition-all group">
+            <Users className="h-5 w-5 text-emerald-500 mb-2 group-hover:scale-110 transition-transform" />
+            <p className="font-semibold text-sm">My Team</p>
+            <p className="text-xs text-muted-foreground">Team directory</p>
+          </GlassCard>
+        </Link>
+        <Link to="/dashboard/applicants">
+          <GlassCard className="p-4 hover:border-amber-500/50 hover:bg-amber-500/5 cursor-pointer transition-all group">
+            <Sparkles className="h-5 w-5 text-amber-500 mb-2 group-hover:scale-110 transition-transform" />
+            <p className="font-semibold text-sm">Pipeline</p>
+            <p className="text-xs text-muted-foreground">View applicants</p>
+          </GlassCard>
+        </Link>
       </motion.div>
 
       {/* ====== 1. PRODUCTION SNAPSHOT (Top Priority - Role-based) ====== */}

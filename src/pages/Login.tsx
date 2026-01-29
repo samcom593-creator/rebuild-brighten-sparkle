@@ -81,6 +81,7 @@ export default function Login() {
                 <Input
                   id="email"
                   type="email"
+                  autoComplete="email"
                   {...register("email")}
                   placeholder="you@example.com"
                   className="pl-10 bg-input"
@@ -98,6 +99,7 @@ export default function Login() {
                 <Input
                   id="password"
                   type="password"
+                  autoComplete="current-password"
                   {...register("password")}
                   placeholder="••••••••"
                   className="pl-10 bg-input"

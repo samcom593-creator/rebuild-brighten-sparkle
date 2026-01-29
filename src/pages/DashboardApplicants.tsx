@@ -430,14 +430,17 @@ export default function DashboardApplicants() {
   const activeApplications = applications.filter(app => !app.terminated_at);
   const terminatedApplications = applications.filter(app => app.terminated_at);
 
-  const filteredApplications = activeApplications
+  // When status filter is "terminated", filter from terminated list instead
+  const baseApplications = statusFilter === "terminated" ? terminatedApplications : activeApplications;
+
+  const filteredApplications = baseApplications
     .filter((app) => {
       const name = `${app.first_name} ${app.last_name}`.toLowerCase();
       const matchesSearch = name.includes(searchQuery.toLowerCase()) ||
         app.email.toLowerCase().includes(searchQuery.toLowerCase());
       
       const appStatus = getApplicationStatus(app);
-      const matchesStatus = statusFilter === "all" || appStatus === statusFilter;
+      const matchesStatus = statusFilter === "all" || statusFilter === "terminated" || appStatus === statusFilter;
       const matchesLicense = licenseFilter === "all" || app.license_status === licenseFilter;
       
       return matchesSearch && matchesStatus && matchesLicense;
@@ -834,6 +837,7 @@ export default function DashboardApplicants() {
             <SelectItem value="contacted">Contacted</SelectItem>
             <SelectItem value="qualified">Qualified</SelectItem>
             <SelectItem value="closed">Closed</SelectItem>
+            <SelectItem value="terminated">Terminated</SelectItem>
           </SelectContent>
         </Select>
         <Select value={licenseFilter} onValueChange={setLicenseFilter}>
@@ -860,14 +864,14 @@ export default function DashboardApplicants() {
         </Select>
       </motion.div>
 
-      {/* Active Applicants List */}
+      {/* Applicants List - Shows terminated when that filter is active */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
         className="space-y-4"
       >
-        {filteredApplications.map((app, index) => renderApplicationCard(app, index, false))}
+        {filteredApplications.map((app, index) => renderApplicationCard(app, index, statusFilter === "terminated"))}
 
         {filteredApplications.length === 0 && (
           <GlassCard className="p-12 text-center">
@@ -880,8 +884,8 @@ export default function DashboardApplicants() {
         )}
       </motion.div>
 
-      {/* Terminated Leads Section */}
-      {terminatedApplications.length > 0 && (
+      {/* Terminated Leads Section - Only show when not filtering by terminated */}
+      {statusFilter !== "terminated" && terminatedApplications.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

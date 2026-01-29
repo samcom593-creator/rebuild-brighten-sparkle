@@ -31,6 +31,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration";
+import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import apexIcon from "@/assets/apex-icon.png";
 
 interface MatchedAgent {
@@ -355,7 +356,8 @@ export default function LogNumbers() {
   ];
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <DashboardLayout>
+      <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
       <ConfettiCelebration 
         trigger={showConfetti} 
         onComplete={() => setShowConfetti(false)} 
@@ -776,6 +778,7 @@ export default function LogNumbers() {
           )}
         </AnimatePresence>
       </motion.div>
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }

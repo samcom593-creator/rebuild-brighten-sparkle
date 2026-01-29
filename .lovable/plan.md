@@ -1,141 +1,178 @@
 
-# Front Page Carriers & Site-Wide Navigation Improvements
+# Comprehensive Application Flow & Logic Review
 
-## Overview
-This plan addresses two main issues:
-1. The "Partnered with Top Carriers" section on the landing page only shows 6 carriers, which may deter potential applicants
-2. The sidebar navigation is inconsistent across the site - AgentPortal uses a different navigation system than the rest of the dashboard
+## Executive Summary
+I've conducted a thorough audit of the entire application, focusing on the apply flow (especially unlicensed), dashboards, and overall site logic. I found **6 critical gaps**, **4 optimization opportunities**, and verified that most core logic is sound.
 
 ---
 
-## Part 1: Expand Carrier Display
+## Critical Issues Found
 
-### Current State
-The HeroSection shows only 6 carriers in a rotating banner:
-- National Life Group
-- American Amicable
-- Aflac
-- Ethos Life
-- Mutual of Omaha
-- American Home Life
+### Issue 1: Missing "Contracted" Button for Unlicensed Applicants
+**Location:** `src/pages/DashboardApplicants.tsx` (lines 695-743)
 
-### Solution
-Expand to 20+ carriers and add "& 30+ More" indicator to show the full scope of partnerships.
+**Problem:** The "Contracted" button only appears for `license_status === "licensed"` applicants. Unlicensed applicants who complete their licensing journey and get contracted have no way to be moved to contracted status through the UI.
 
-### New Carrier List
+**Impact:** Unlicensed applicants (25 of 29 total) cannot be formally contracted even after getting licensed.
+
+**Fix:** Add conditional logic to show "Contracted" for unlicensed leads when their `license_progress === "licensed"` OR add a workflow to update `license_status` first.
+
+---
+
+### Issue 2: Agent Records Missing Profile Links  
+**Location:** Database - 6 of 33 active agents have NULL profile references
+
+**Problem:** Several agent records were created without proper profile associations (`email: <nil>, full_name: <nil>`). This causes:
+- Login failures on `/numbers` page
+- Broken leaderboard displays
+- Missing names in CRM view
+
+**Impact:** These orphaned agents cannot log in or be properly managed.
+
+**Fix:** 
+1. Add a data integrity check in `ContractedModal.tsx` to ensure profile creation succeeds
+2. Create a migration to backfill missing profile associations
+3. Add validation in `create-new-agent-account` to verify profile+agent linking
+
+---
+
+### Issue 3: CRM Only Shows Licensed Agents  
+**Location:** `src/pages/DashboardCRM.tsx` (line 254-255)
+
+```typescript
+.eq("status", "active")
+.eq("license_status", "licensed")
+```
+
+**Problem:** The CRM pipeline filters to only show `license_status === "licensed"` agents. This means:
+- Unlicensed agents in onboarding are invisible
+- Agents progressing through licensing aren't tracked in CRM
+
+**Impact:** Complete blind spot for unlicensed agent pipeline management.
+
+**Fix:** Remove or make the `license_status` filter configurable so managers can see all agents regardless of license status.
+
+---
+
+### Issue 4: License Progress Not Synced to Agents Table
+**Location:** `src/components/dashboard/LicenseProgressSelector.tsx`
+
+**Problem:** The `license_progress` tracking happens on the `applications` table, but when an applicant becomes an agent (via ContractedModal), the license progress status isn't transferred. The agent record starts fresh.
+
+**Impact:** Historical license progress is lost when transitioning from applicant to agent.
+
+**Fix:** Carry over `license_progress` from application to agent record during contracting.
+
+---
+
+### Issue 5: Duplicate Applications Allowed
+**Location:** `supabase/functions/submit-application/index.ts`
+
+**Problem:** No duplicate detection based on email or phone. Same person can submit multiple applications.
+
+**Data Evidence:** 2 "Kenny Ramirez" applications in the database.
+
+**Fix:** Add email/phone uniqueness check before creating new application, or merge duplicates.
+
+---
+
+### Issue 6: Unlicensed Applicant Flow Gap - No Return Path
+**Location:** `src/pages/ApplySuccessUnlicensed.tsx` and `src/pages/GetLicensed.tsx`
+
+**Problem:** After an unlicensed applicant:
+1. Submits application -> redirected to `/apply/success/unlicensed`
+2. Clicks "Start Steps to Get My License" -> goes to `/get-licensed`
+3. Completes external course -> **No way to notify the system**
+
+The applicant has no portal access to update their license progress. Only admins can manually update this.
+
+**Fix:** Create a "Check My Application Status" page where applicants can:
+- Enter their email to check status
+- Self-report license progress milestones
+- Upload license documentation
+
+---
+
+## Logic Verification (Working Correctly)
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Apply form validation | OK | Zod schema properly enforces required fields |
+| Multi-step form progress | OK | Steps track correctly, partial apps saved |
+| Licensed vs Unlicensed routing | OK | Correct redirect based on `license_status` |
+| Manager referral dropdown | OK | Edge function fetches active managers |
+| Simple login (Numbers page) | OK | Phone/email lookup with fallback to account creation |
+| Dashboard role-based views | OK | Admin/Manager/Agent see appropriate content |
+| Leaderboard real-time sync | OK | Uses Supabase subscriptions |
+| Production entry | OK | Recent fix made agent loading resilient |
+| Sidebar navigation | OK | Now unified with DashboardLayout |
+
+---
+
+## Optimization Opportunities
+
+### 1. Add "Pending License" Column to CRM Pipeline
+**Current:** 3 columns (In Course, In-Field Training, Live)
+**Proposed:** Add "Getting Licensed" column for unlicensed agents tracking their license progress
+
+### 2. Automated License Status Updates
+When `license_progress` reaches "licensed" on applications table, auto-update `license_status` column too.
+
+### 3. Application Status Email Updates
+Send applicants automatic emails when their status changes (contacted, qualified, etc.) so they know their application is progressing.
+
+### 4. Link Account Flow Enhancement
+Current AccountLinkForm shows after auth but before agent load. Add clearer messaging about why linking is needed and what to do if they're a new hire (use signup instead).
+
+---
+
+## Implementation Priority
+
+| Priority | Issue | Effort |
+|----------|-------|--------|
+| P0 - Critical | Issue 3 (CRM hiding unlicensed) | 10 min |
+| P0 - Critical | Issue 1 (Contracted button missing) | 15 min |
+| P1 - High | Issue 2 (Orphaned agent profiles) | 30 min |
+| P1 - High | Issue 6 (Applicant self-service) | 2 hrs |
+| P2 - Medium | Issue 4 (License progress carryover) | 20 min |
+| P2 - Medium | Issue 5 (Duplicate detection) | 30 min |
+| P3 - Low | Optimization 1-4 | 1-2 hrs each |
+
+---
+
+## Database Health Summary
+
 ```text
-National Life Group, American Amicable, Aflac, Ethos Life, Mutual of Omaha,
-American Home Life, Transamerica, Athene, Foresters, Americo, F&G, Prosperity,
-American Equity, North American, Nationwide, American National, AIG,
-Principal, Lincoln Financial, Prudential, John Hancock, Protective
-```
+Applications: 29 total
+  - Unlicensed: 25 (86%)
+  - Licensed: 3 (10%)  
+  - Terminated: 6
+  - Contracted: 0 (gap!)
 
-### UI Changes
-- Display rotating carrier names (as currently implemented)
-- Add "& 30+ More Carriers" text below the rotating banner
-- Keep the dot indicators but cap at 6 visible dots with a "+16" indicator
+Agents: 33 active
+  - Missing profiles: 6 (data quality issue)
+  - Licensed: 19
+  - Live (evaluated): 21
 
----
-
-## Part 2: Consistent Sidebar Navigation
-
-### Current Problem
-The `AgentPortal` page uses a completely different navigation system:
-- Custom header with Sheet-based mobile drawer
-- No access to the collapsible sidebar that exists on Dashboard, Team, CRM, etc.
-- Inconsistent experience when navigating between pages
-
-### Solution
-Wrap `AgentPortal` with `DashboardLayout` (which uses `SidebarLayout`) to ensure:
-- Consistent left sidebar navigation across all pages
-- Collapse/expand functionality everywhere
-- Mobile hamburger menu that works the same on all pages
-
-### Files to Modify
-
-| File | Change |
-|------|--------|
-| `src/components/landing/HeroSection.tsx` | Expand carriers array to 20+ and add "& 30+ More" text |
-| `src/pages/AgentPortal.tsx` | Wrap with DashboardLayout, remove custom header/navigation |
-
----
-
-## Technical Implementation
-
-### HeroSection.tsx Changes
-```typescript
-// Expand the carriers list
-const carriers = [
-  { name: "National Life Group", shortName: "NLG" },
-  { name: "American Amicable", shortName: "AA" },
-  { name: "Aflac", shortName: "AFLAC" },
-  { name: "Ethos Life", shortName: "ETHOS" },
-  { name: "Mutual of Omaha", shortName: "MoO" },
-  { name: "American Home Life", shortName: "AHL" },
-  { name: "Transamerica", shortName: "TRANS" },
-  { name: "Athene", shortName: "ATH" },
-  { name: "Foresters", shortName: "FOR" },
-  { name: "Americo", shortName: "AMR" },
-  { name: "F&G", shortName: "F&G" },
-  { name: "Prosperity", shortName: "PROS" },
-  { name: "American Equity", shortName: "AE" },
-  { name: "North American", shortName: "NA" },
-  { name: "Nationwide", shortName: "NW" },
-  { name: "American National", shortName: "AN" },
-  { name: "AIG", shortName: "AIG" },
-  { name: "Principal", shortName: "PRIN" },
-  { name: "Lincoln Financial", shortName: "LFG" },
-  { name: "Prudential", shortName: "PRU" },
-  { name: "John Hancock", shortName: "JH" },
-  { name: "Protective", shortName: "PROT" },
-];
-
-// Add "& 30+ More" below the rotating banner
-<p className="text-xs text-muted-foreground mt-2">
-  & 30+ More Top-Rated Carriers
-</p>
-```
-
-### AgentPortal.tsx Changes
-- Import and wrap content with `DashboardLayout`
-- Remove the custom header section (lines ~410-600)
-- Remove the Sheet-based mobile navigation
-- Keep all the content cards, leaderboards, and production entry functionality
-
-```typescript
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
-
-// Wrap the return content
-return (
-  <DashboardLayout>
-    {/* Keep all existing content cards/sections */}
-    <div className="space-y-6">
-      {/* Hero section with quick stats */}
-      {/* Production Entry */}
-      {/* Leaderboard tabs */}
-      {/* etc. */}
-    </div>
-  </DashboardLayout>
-);
+Onboarding Modules: 4 configured
+  - Pass threshold: 90% for all
 ```
 
 ---
 
-## Performance Notes
+## Files Requiring Changes
 
-The existing sidebar implementation already handles:
-- Smooth CSS transitions (200ms ease-out)
-- LocalStorage persistence for sidebar state
-- Mobile-specific handling to prevent layout glitches
-- Desktop-only margin animations
-
-No additional performance optimizations needed for the sidebar - the infrastructure is already in place and working well.
+1. **`src/pages/DashboardApplicants.tsx`** - Add contracted button for unlicensed leads
+2. **`src/pages/DashboardCRM.tsx`** - Remove license_status filter or make optional
+3. **`src/components/dashboard/ContractedModal.tsx`** - Add profile creation validation
+4. **`supabase/functions/submit-application/index.ts`** - Add duplicate detection
+5. **NEW: `src/pages/ApplicationStatus.tsx`** - Applicant self-service page
+6. **Database migration** - Backfill missing agent profiles
 
 ---
 
-## Expected Outcome
+## Summary
 
-1. **Landing Page**: Visitors see 22 carrier names rotating, plus "& 30+ More" indicating the full breadth of partnerships
-2. **AgentPortal**: Uses the same collapsible sidebar as Dashboard, CRM, Team Directory, etc.
-3. **Consistent Navigation**: Users can collapse/expand the sidebar from any authenticated page
-4. **Mobile**: Same hamburger menu behavior across all dashboard pages
+The core application flow is sound, but there's a significant gap in handling **unlicensed applicants** through their licensing journey. The most critical fix is making the CRM visible for all agents (not just licensed) and adding the contracted workflow for unlicensed-now-licensed applicants.
+
+Would you like me to implement these fixes starting with the highest priority items?

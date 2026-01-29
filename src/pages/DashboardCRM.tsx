@@ -247,11 +247,11 @@ export default function DashboardCRM() {
         return;
       }
 
+      // Show all active agents (both licensed and unlicensed) for full pipeline visibility
       let query = supabase
         .from("agents")
         .select("*")
         .eq("status", "active")
-        .eq("license_status", "licensed")
         .order("sort_order", { ascending: true, nullsFirst: false });
 
       if (isManager && !isAdmin) {

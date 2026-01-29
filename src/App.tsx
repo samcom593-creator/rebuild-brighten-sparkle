@@ -37,6 +37,7 @@ import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import Disclosures from "./pages/Disclosures";
 import Install from "./pages/Install";
+import CourseProgress from "./pages/CourseProgress";
 
 const queryClient = new QueryClient();
 
@@ -150,6 +151,15 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <OnboardingCourse />
+              </ProtectedRoute>
+            }
+          />
+          {/* Course Progress - Admin only */}
+          <Route
+            path="/course-progress"
+            element={
+              <ProtectedRoute>
+                <CourseProgress />
               </ProtectedRoute>
             }
           />

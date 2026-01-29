@@ -1,160 +1,237 @@
 
+# Comprehensive Platform Performance & Accuracy Fix Plan
 
-# Comprehensive Platform Audit - Final Verification Report
+## Issues Identified
 
-## Executive Summary
+Based on my thorough code audit and console log analysis, I've identified the following critical issues:
 
-After a thorough end-to-end audit of the entire platform, the system is in excellent shape with all major components properly synced and functioning. I identified **ONE remaining issue** that needs to be fixed before publishing.
+### 1. **Maximum Update Depth Warning (Infinite Loop)**
+**File:** `src/components/dashboard/AnimatedNumber.tsx`
+**Issue:** The `AnimatedNumber` component is causing React's maximum update depth warning because of how the framer-motion `display.on("change")` subscription is setting state on every animation frame.
+**Impact:** UI jank, potential freezing, performance degradation
 
----
+### 2. **Timezone Issue - "Today" Uses UTC Not PST**
+**Files:** Multiple leaderboard components
+**Issue:** Using `new Date().toISOString().split("T")[0]` converts to UTC which is 7-8 hours ahead of PST. At 8 PM PST, the system thinks it's already the next day in UTC.
+**Impact:** "Today" numbers show wrong data after ~5 PM PST, data rolls over at wrong time
 
-## Audit Results
+### 3. **Leaderboard Tab Switching Delay**
+**File:** `src/components/dashboard/LeaderboardTabs.tsx`
+**Issue:** Each period change triggers a full database fetch before rendering. Missing loading state optimization.
+**Impact:** Visible delay when switching between Day/Week/Month tabs
 
-### PASSED - Account Linking System
-| Component | Status | Notes |
-|-----------|--------|-------|
-| `link-account` edge function | OK | Supports email, phone, and agent code linking |
-| `AccountLinkForm.tsx` | OK | 3-tab UI (Email, Phone, Code) properly implemented |
-| Phone normalization | OK | Extracts last 10 digits, searches profiles and applications |
-| CORS headers | OK | Full platform headers included |
+### 4. **Closing Rate & Referral Leaderboards Fetching on Every Render**
+**Files:** `ClosingRateLeaderboard.tsx`, `ReferralLeaderboard.tsx`
+**Issue:** `resetTracking` function in useEffect dependency array is recreated on each render, causing infinite re-fetches
+**Impact:** Excessive database calls, slow performance
 
-### PASSED - Authentication & Login
-| Component | Status | Notes |
-|-----------|--------|-------|
-| `simple-login` edge function | OK | Updated CORS headers, phone/email support |
-| `send-agent-portal-login` | OK | Updated CORS headers, magic links |
-| `send-bulk-portal-logins` | OK | Updated CORS headers, bulk magic links |
-| Magic link token generation | OK | 64-char secure tokens with 24-hour expiry |
-| `MagicLogin.tsx` page | OK | Proper error handling and redirect flow |
-| `useAuth.ts` hook | OK | Clean auth state management |
+### 5. **ProductionEntry Select Component Ref Warning**
+**File:** `src/components/dashboard/ProductionEntry.tsx`
+**Issue:** Console warning about function components not accepting refs in the Select component
+**Impact:** Non-functional but creates console noise
 
-### NEEDS FIX - Magic Link Verification
-| Component | Status | Issue |
-|-----------|--------|-------|
-| `verify-magic-link` edge function | OUTDATED CORS | Missing platform headers - could cause CORS errors on some clients |
-
-### PASSED - Dashboard & Leaderboards
-| Component | Status | Notes |
-|-----------|--------|-------|
-| `LeaderboardTabs.tsx` | OK | Real-time subscription, filters inactive agents |
-| `TeamSnapshotCard.tsx` | OK | Real-time updates, role-based scoping |
-| `Dashboard.tsx` | OK | Confetti, animated counters, quick actions |
-| `AgentPortal.tsx` | OK | Shows `AccountLinkForm` for unlinked users |
-| Production/Building modes | OK | Toggle working correctly |
-
-### PASSED - CRM & Pipeline
-| Component | Status | Notes |
-|-----------|--------|-------|
-| `DashboardCRM.tsx` | OK | Bulk email button, 3-column layout |
-| `DashboardApplicants.tsx` | OK | Terminated filter now included |
-| Agent stage progression | OK | In Course -> In-Field Training -> Live |
-| Production stats | OK | Weekly/monthly aggregation working |
-
-### PASSED - Database State
-| Metric | Value | Status |
-|--------|-------|--------|
-| Agents with codes | 100% | All agents have unique agent_code |
-| Linked agents | 19 | With user_id (can log in) |
-| Unlinked agents | 6 | Without user_id (need to use AccountLinkForm) |
-| Active magic tokens | 1 | Valid, unexpired token available |
-| Profiles with email | 27 | Ready for email communication |
-
-### PASSED - Routing Configuration
-| Route | Component | Protected |
-|-------|-----------|-----------|
-| `/agent-portal` | AgentPortal | No (handles auth internally) |
-| `/magic-login` | MagicLogin | No |
-| `/numbers` | Numbers | No (handles auth internally) |
-| `/dashboard/*` | Various | Yes (ProtectedRoute) |
-| `/apex-daily-numbers` | LogNumbers | Yes (ProtectedRoute) |
+### 6. **BuildingLeaderboard Not Using PST Timezone**
+**File:** `src/components/dashboard/BuildingLeaderboard.tsx`
+**Issue:** Same UTC vs PST issue as main leaderboard
+**Impact:** Recruiting stats show wrong "today" data
 
 ---
 
-## Fix Required
+## Detailed Fix Plan
 
-### Update `verify-magic-link` CORS Headers
+### Fix 1: Replace AnimatedNumber with Stable AnimatedCounter
 
-**File:** `supabase/functions/verify-magic-link/index.ts`
+**Problem:** `AnimatedNumber.tsx` uses framer-motion subscriptions that trigger setState on every frame, causing the infinite loop warning.
 
-**Current (line 4-6):**
+**Solution:** The codebase already has a better implementation in `AnimatedCounter.tsx` using `useAnimatedCounter` hook. Replace all uses of `AnimatedNumber` with `AnimatedCounter`.
+
+**Files to modify:**
+- Find and replace all imports of `AnimatedNumber` with `AnimatedCounter`
+- Or fix `AnimatedNumber.tsx` by removing the problematic `display.on("change")` subscription
+
+**Code change for AnimatedNumber.tsx:**
 ```typescript
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// Remove lines 51-56 (the problematic subscription)
+// Change line 67 to use the display value directly from useTransform
 ```
 
-**Required update:**
+---
+
+### Fix 2: Create PST Date Utility for Consistent Timezone Handling
+
+**Problem:** JavaScript `new Date()` uses local time, but `.toISOString()` converts to UTC. This causes "today" to be wrong after ~5 PM PST.
+
+**Solution:** Create a utility function that always returns dates in PST/PDT timezone.
+
+**New file:** `src/lib/dateUtils.ts`
+
 ```typescript
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { format } from "date-fns";
+import { toZonedTime, format as tzFormat } from "date-fns-tz";
+
+const PST_TIMEZONE = "America/Los_Angeles";
+
+/**
+ * Get today's date in PST timezone as YYYY-MM-DD string
+ */
+export function getTodayPST(): string {
+  const now = new Date();
+  const pstDate = toZonedTime(now, PST_TIMEZONE);
+  return format(pstDate, "yyyy-MM-dd");
+}
+
+/**
+ * Get a date N days ago in PST timezone
+ */
+export function getDatePST(daysAgo: number = 0): string {
+  const now = new Date();
+  now.setDate(now.getDate() - daysAgo);
+  const pstDate = toZonedTime(now, PST_TIMEZONE);
+  return format(pstDate, "yyyy-MM-dd");
+}
 ```
 
-This ensures the magic link verification works properly on all client platforms including mobile web and PWA.
+**Note:** We'll need to add `date-fns-tz` package for timezone support.
+
+**Files to update:**
+- `src/components/dashboard/LeaderboardTabs.tsx`
+- `src/components/dashboard/ClosingRateLeaderboard.tsx`
+- `src/components/dashboard/ReferralLeaderboard.tsx`
+- `src/components/dashboard/BuildingLeaderboard.tsx`
+- `src/hooks/useRankChange.ts`
+- All edge functions that use `new Date().toISOString().split("T")[0]`
 
 ---
 
-## Technical Verification Summary
+### Fix 3: Optimize Leaderboard Tab Switching with Caching
 
-### Real-Time Subscriptions
-- `daily_production` table changes -> LeaderboardTabs, TeamSnapshotCard auto-refresh
-- Production entry saves -> Leaderboard updates instantly
-- "LIVE" indicator properly shows in leaderboard header
+**Problem:** Every period change triggers full refetch, causing visible delay.
 
-### Role-Based Access Control
-- **Admin**: Sees all agency stats, all agents in CRM, can bulk send emails
-- **Manager**: Sees their team only, team stats scoped correctly
-- **Agent**: Sees personal stats only, no admin controls
+**Solution:** 
+1. Keep previous data visible while loading new data
+2. Use `useMemo` to prevent unnecessary re-renders
+3. Remove `resetTracking` from useEffect dependency array (it's stable via useCallback but triggers re-renders)
 
-### Account Linking Flow
-1. User logs in via `/agent-login` or `/magic-login`
-2. If no agent record linked to their `user_id`:
-   - Shows `AccountLinkForm` with Email/Phone/Code tabs
-   - User enters their registered email, phone (any format), or agent code
-   - `link-account` function finds matching unlinked agent
-   - Links `user_id`, creates/updates profile, assigns agent role
-   - Page reloads to show full portal access
+**File:** `src/components/dashboard/LeaderboardTabs.tsx`
 
-### Production Entry Flow
-1. Admin/Manager can select any team member to enter numbers for
-2. Date picker allows backdating up to 30 days
-3. Save triggers closing rate calculation trigger
-4. Real-time subscription updates leaderboards immediately
+```typescript
+// Line 83-99: Remove resetTracking from dependencies
+useEffect(() => {
+  fetchLeaderboard();
+  
+  const channel = supabase
+    .channel("leaderboard-changes")
+    .on(...)
+    .subscribe();
 
----
-
-## Files Modified in This Session
-
-| File | Change |
-|------|--------|
-| `supabase/functions/link-account/index.ts` | Added phone number support |
-| `src/components/dashboard/AccountLinkForm.tsx` | Added Phone tab UI |
-| `supabase/functions/simple-login/index.ts` | Updated CORS headers |
-| `supabase/functions/send-bulk-portal-logins/index.ts` | Updated CORS headers |
-| `supabase/functions/send-agent-portal-login/index.ts` | Updated CORS headers |
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, [period, customDateRange, currentAgentId]); // Remove resetTracking
+```
 
 ---
 
-## Final Fix Implementation
+### Fix 4: Fix Infinite Re-fetch in Celebration Hooks
 
-The only remaining fix is updating the CORS headers in `verify-magic-link/index.ts`. This is a single-line change that will ensure magic links work on all platforms.
+**Problem:** `resetTracking` is in the dependency array of useEffect, causing re-fetches.
 
-After this fix:
-- All backend functions will have consistent CORS configuration
-- Magic link flow will work on mobile PWA, desktop, and all browsers
-- Platform is ready for publishing
+**Files:** `ClosingRateLeaderboard.tsx`, `ReferralLeaderboard.tsx`
+
+```typescript
+// Remove resetTracking from useEffect dependency
+useEffect(() => {
+  // Call resetTracking once at mount
+  resetTracking();
+  fetchLeaderboard();
+  // ... subscription code
+}, [period, currentAgentId]); // Remove resetTracking from here
+```
 
 ---
 
-## Post-Publish Verification Checklist
+### Fix 5: Fix Select Ref Warning in ProductionEntry
 
-After publishing, verify these flows:
-1. New user receives magic link email -> clicks link -> lands on portal
-2. Existing user with unlinked account -> can link via email, phone, or code
-3. Leaderboard shows real-time updates when production is logged
-4. Bulk "Email All Logins" button sends to all active agents
-5. Dashboard metrics show correct role-scoped data
+**Problem:** Radix Select component doesn't support refs on the root component.
 
+**File:** `src/components/dashboard/ProductionEntry.tsx`
+
+The warning is coming from somewhere passing a ref to the Select. This is likely from the parent component or a tooltip wrapper. Need to wrap Select with forwardRef if needed or remove the ref.
+
+---
+
+### Fix 6: Ensure Real-time Updates Are Instant
+
+**Problem:** Real-time subscriptions are set up but there may be rendering delays.
+
+**Solution:** Ensure loading states don't flash and data updates smoothly:
+
+```typescript
+// In fetchLeaderboard, only setLoading(true) on initial load
+const fetchLeaderboard = async (isInitialLoad = false) => {
+  if (isInitialLoad) setLoading(true);
+  // ... fetch logic
+  setLoading(false);
+};
+
+// In subscription callback:
+.on("postgres_changes", ..., () => fetchLeaderboard(false))
+```
+
+---
+
+## Implementation Order
+
+1. **Create date utility** (`src/lib/dateUtils.ts`) - Foundation for all date fixes
+2. **Install date-fns-tz** - Required dependency
+3. **Fix AnimatedNumber** - Stop infinite loop warning
+4. **Update LeaderboardTabs** - PST dates + remove resetTracking dependency
+5. **Update ClosingRateLeaderboard** - PST dates + fix dependencies
+6. **Update ReferralLeaderboard** - PST dates + fix dependencies
+7. **Update BuildingLeaderboard** - PST dates
+8. **Update useRankChange** - PST dates for yesterday calculation
+9. **Update edge functions** - Consistent PST handling server-side
+
+---
+
+## Files to Modify
+
+| File | Changes |
+|------|---------|
+| `package.json` | Add `date-fns-tz` dependency |
+| `src/lib/dateUtils.ts` | NEW - PST date utilities |
+| `src/components/dashboard/AnimatedNumber.tsx` | Fix infinite loop |
+| `src/components/dashboard/LeaderboardTabs.tsx` | PST dates, optimize deps |
+| `src/components/dashboard/ClosingRateLeaderboard.tsx` | PST dates, fix deps |
+| `src/components/dashboard/ReferralLeaderboard.tsx` | PST dates, fix deps |
+| `src/components/dashboard/BuildingLeaderboard.tsx` | PST dates |
+| `src/hooks/useRankChange.ts` | PST dates |
+| Edge functions (multiple) | Consistent timezone handling |
+
+---
+
+## Expected Outcomes
+
+After implementing these fixes:
+
+1. **No more console warnings** - AnimatedNumber loop fixed
+2. **"Today" is accurate until 12 AM PST** - All components use PST
+3. **Zero delay on tab switches** - Optimized loading states
+4. **Real-time updates are instant** - No unnecessary refetches
+5. **All leaderboards stay live** - Proper subscription handling
+6. **Password login works** - (Already fixed in previous session)
+7. **Recruit comparison accurate** - BuildingLeaderboard uses PST
+
+---
+
+## Testing Checklist
+
+After implementation:
+- [ ] Login with email/password works
+- [ ] "Today" leaderboard shows today's numbers at 8 PM PST
+- [ ] Switching Day/Week/Month has no visible delay
+- [ ] No console warnings about maximum update depth
+- [ ] Closing Rate leaderboard updates live
+- [ ] Referral leaderboard updates live
+- [ ] Building/Recruit comparison shows accurate data
+- [ ] Production entry saves and leaderboard updates immediately

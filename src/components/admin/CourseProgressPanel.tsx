@@ -1,11 +1,16 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { BookOpen, CheckCircle, Clock, GraduationCap } from "lucide-react";
+import { BookOpen, CheckCircle, Clock, GraduationCap, Send, AlertTriangle, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { format } from "date-fns";
+import { Button } from "@/components/ui/button";
+import { format, differenceInDays } from "date-fns";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { Link } from "react-router-dom";
 
 interface AgentCourseProgress {
   agentId: string;
@@ -17,16 +22,23 @@ interface AgentCourseProgress {
   lastActivity: string | null;
   allModulesPassed: boolean;
   onboardingStage: string | null;
+  isStalled: boolean;
+  isAtRisk: boolean;
 }
 
+type FilterType = "all" | "not_started" | "in_progress" | "stalled" | "complete";
+
 export function CourseProgressPanel() {
+  const [filter, setFilter] = useState<FilterType>("all");
+  const [sendingReminder, setSendingReminder] = useState<string | null>(null);
+
   const { data: courseProgress, isLoading } = useQuery({
     queryKey: ["course-progress-admin"],
     queryFn: async () => {
       // Get all modules
       const { data: modules } = await supabase
         .from("onboarding_modules")
-        .select("id")
+        .select("id, title")
         .eq("is_active", true);
 
       const totalModules = modules?.length || 0;
@@ -55,11 +67,14 @@ export function CourseProgressPanel() {
         .in("agent_id", agentIds);
 
       // Aggregate progress by agent
-      const progressMap = new Map<string, { completed: number; lastActivity: string | null }>();
+      const progressMap = new Map<string, { completed: number; lastActivity: string | null; hasStarted: boolean }>();
       progress?.forEach((p) => {
-        const existing = progressMap.get(p.agent_id) || { completed: 0, lastActivity: null };
+        const existing = progressMap.get(p.agent_id) || { completed: 0, lastActivity: null, hasStarted: false };
         if (p.passed) {
           existing.completed += 1;
+        }
+        if (p.completed_at || (p.video_watched_percent && p.video_watched_percent > 0)) {
+          existing.hasStarted = true;
         }
         if (p.completed_at && (!existing.lastActivity || p.completed_at > existing.lastActivity)) {
           existing.lastActivity = p.completed_at;
@@ -70,9 +85,16 @@ export function CourseProgressPanel() {
       // Map to course progress
       const result: AgentCourseProgress[] = agents.map((agent) => {
         const profile = agent.profiles;
-        const agentProgress = progressMap.get(agent.id) || { completed: 0, lastActivity: null };
+        const agentProgress = progressMap.get(agent.id) || { completed: 0, lastActivity: null, hasStarted: false };
         const completedModules = agentProgress.completed;
         const percentComplete = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;
+        
+        const daysSinceActivity = agentProgress.lastActivity 
+          ? differenceInDays(new Date(), new Date(agentProgress.lastActivity))
+          : agentProgress.hasStarted ? 999 : 0;
+        
+        const isStalled = agentProgress.hasStarted && daysSinceActivity >= 3 && percentComplete < 100;
+        const isAtRisk = daysSinceActivity >= 7 && percentComplete < 100;
 
         return {
           agentId: agent.id,
@@ -84,6 +106,8 @@ export function CourseProgressPanel() {
           lastActivity: agentProgress.lastActivity,
           allModulesPassed: completedModules >= totalModules && totalModules > 0,
           onboardingStage: agent.onboarding_stage,
+          isStalled,
+          isAtRisk,
         };
       });
 
@@ -91,6 +115,47 @@ export function CourseProgressPanel() {
       return result.sort((a, b) => a.moduleProgress - b.moduleProgress);
     },
   });
+
+  const handleSendReminder = async (agentId: string, agentName: string) => {
+    setSendingReminder(agentId);
+    try {
+      const { error } = await supabase.functions.invoke("send-course-reminder", {
+        body: { agentId },
+      });
+      if (error) throw error;
+      toast.success(`Reminder sent to ${agentName}`);
+    } catch (error) {
+      console.error("Error sending reminder:", error);
+      toast.error("Failed to send reminder");
+    } finally {
+      setSendingReminder(null);
+    }
+  };
+
+  const filteredProgress = courseProgress?.filter(agent => {
+    const hasStarted = agent.completedModules > 0 || agent.lastActivity;
+    switch (filter) {
+      case "not_started":
+        return !hasStarted;
+      case "in_progress":
+        return hasStarted && agent.moduleProgress < 100 && !agent.isStalled;
+      case "stalled":
+        return agent.isStalled || agent.isAtRisk;
+      case "complete":
+        return agent.allModulesPassed;
+      default:
+        return true;
+    }
+  }) || [];
+
+  // Stats
+  const stats = {
+    total: courseProgress?.length || 0,
+    notStarted: courseProgress?.filter(a => a.completedModules === 0 && !a.lastActivity).length || 0,
+    inProgress: courseProgress?.filter(a => (a.completedModules > 0 || a.lastActivity) && a.moduleProgress < 100 && !a.isStalled).length || 0,
+    stalled: courseProgress?.filter(a => a.isStalled || a.isAtRisk).length || 0,
+    complete: courseProgress?.filter(a => a.allModulesPassed).length || 0,
+  };
 
   if (isLoading) {
     return (
@@ -139,14 +204,58 @@ export function CourseProgressPanel() {
             <GraduationCap className="h-5 w-5 text-primary" />
             Course Progress
           </CardTitle>
-          <Badge variant="outline" className="text-xs">
-            {courseProgress.length} in training
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Link to="/course-progress">
+              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1">
+                View Full <ArrowRight className="h-3 w-3" />
+              </Button>
+            </Link>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
+        {/* Stats Bar */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          <Badge
+            variant={filter === "all" ? "default" : "outline"}
+            className="cursor-pointer"
+            onClick={() => setFilter("all")}
+          >
+            All ({stats.total})
+          </Badge>
+          <Badge
+            variant={filter === "not_started" ? "default" : "outline"}
+            className="cursor-pointer"
+            onClick={() => setFilter("not_started")}
+          >
+            Not Started ({stats.notStarted})
+          </Badge>
+          <Badge
+            variant={filter === "in_progress" ? "default" : "outline"}
+            className={cn("cursor-pointer", filter === "in_progress" && "bg-primary")}
+            onClick={() => setFilter("in_progress")}
+          >
+            In Progress ({stats.inProgress})
+          </Badge>
+          <Badge
+            variant={filter === "stalled" ? "default" : "outline"}
+            className={cn("cursor-pointer", filter === "stalled" && "bg-destructive")}
+            onClick={() => setFilter("stalled")}
+          >
+            <AlertTriangle className="h-3 w-3 mr-1" />
+            Stalled ({stats.stalled})
+          </Badge>
+          <Badge
+            variant={filter === "complete" ? "default" : "outline"}
+            className={cn("cursor-pointer", filter === "complete" && "bg-primary")}
+            onClick={() => setFilter("complete")}
+          >
+            Complete ({stats.complete})
+          </Badge>
+        </div>
+
         <div className="space-y-3 max-h-[400px] overflow-y-auto scrollbar-custom">
-          {courseProgress.map((agent, index) => (
+          {filteredProgress.map((agent, index) => (
             <motion.div
               key={agent.agentId}
               initial={{ opacity: 0, y: 10 }}
@@ -159,15 +268,38 @@ export function CourseProgressPanel() {
                   <div className="flex items-center gap-2">
                     <span className="font-medium truncate">{agent.agentName}</span>
                     {agent.allModulesPassed && (
-                      <Badge className="bg-green-500/10 text-green-600 border-green-500/30 text-xs">
+                      <Badge className="bg-primary/10 text-primary border-primary/30 text-xs">
                         <CheckCircle className="h-3 w-3 mr-1" />
                         Ready for Field
+                      </Badge>
+                    )}
+                    {agent.isAtRisk && (
+                      <Badge variant="destructive" className="text-[10px]">
+                        At Risk
+                      </Badge>
+                    )}
+                    {agent.isStalled && !agent.isAtRisk && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        Stalled
                       </Badge>
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground truncate">{agent.email || "No email"}</p>
                 </div>
-                <span className="text-lg font-bold text-primary">{agent.moduleProgress}%</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg font-bold text-primary">{agent.moduleProgress}%</span>
+                  {!agent.allModulesPassed && agent.completedModules > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={() => handleSendReminder(agent.agentId, agent.agentName)}
+                      disabled={sendingReminder === agent.agentId}
+                    >
+                      <Send className={cn("h-3.5 w-3.5", sendingReminder === agent.agentId && "animate-pulse")} />
+                    </Button>
+                  )}
+                </div>
               </div>
 
               <Progress value={agent.moduleProgress} className="h-2 mb-2" />
@@ -177,12 +309,16 @@ export function CourseProgressPanel() {
                   {agent.completedModules}/{agent.totalModules} modules
                 </span>
                 {agent.lastActivity ? (
-                  <span className="flex items-center gap-1">
+                  <span className={cn(
+                    "flex items-center gap-1",
+                    agent.isAtRisk && "text-destructive",
+                    agent.isStalled && !agent.isAtRisk && "text-muted-foreground"
+                  )}>
                     <Clock className="h-3 w-3" />
                     {format(new Date(agent.lastActivity), "MMM d")}
                   </span>
                 ) : (
-                  <span className="text-amber-500">Not started</span>
+                  <span className="text-muted-foreground">Not started</span>
                 )}
               </div>
             </motion.div>

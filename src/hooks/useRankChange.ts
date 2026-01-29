@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { subDays, format } from "date-fns";
+import { getDateDaysAgoPST } from "@/lib/dateUtils";
 
 interface RankChangeResult {
   agentId: string;
@@ -20,8 +20,8 @@ export function useRankChange(leaderboardType: LeaderboardType) {
 
   const fetchYesterdayRanks = async () => {
     try {
-      const yesterday = subDays(new Date(), 1);
-      const yesterdayStr = format(yesterday, "yyyy-MM-dd");
+      // Use PST timezone for yesterday calculation
+      const yesterdayStr = getDateDaysAgoPST(1);
 
       // Fetch yesterday's production data
       const { data: production, error } = await supabase

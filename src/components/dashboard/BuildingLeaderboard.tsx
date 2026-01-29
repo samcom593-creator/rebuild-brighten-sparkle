@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Users, UserPlus, Briefcase, DollarSign, TrendingUp, TrendingDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { subDays, subMonths } from "date-fns";
 import { AgentQuickEditDialog } from "./AgentQuickEditDialog";
+import { getTodayPST, getDateDaysAgoPST, getWeekStartPST, getMonthStartPST } from "@/lib/dateUtils";
 
 interface BuildingLeaderboardProps {
   currentAgentId?: string;
@@ -48,14 +48,16 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<{ id: string; name: string; production: number; deals: number } | null>(null);
 
+  const isInitialMount = useRef(true);
+
   useEffect(() => {
-    fetchBuildingLeaderboard();
+    fetchBuildingLeaderboard(true);
     
     // Realtime subscription
     const channel = supabase
       .channel("building-leaderboard")
-      .on("postgres_changes", { event: "*", schema: "public", table: "applications" }, () => fetchBuildingLeaderboard())
-      .on("postgres_changes", { event: "*", schema: "public", table: "agents" }, () => fetchBuildingLeaderboard())
+      .on("postgres_changes", { event: "*", schema: "public", table: "applications" }, () => fetchBuildingLeaderboard(false))
+      .on("postgres_changes", { event: "*", schema: "public", table: "agents" }, () => fetchBuildingLeaderboard(false))
       .subscribe();
 
     return () => {
@@ -63,36 +65,35 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
     };
   }, [period, currentAgentId]);
 
-  const fetchBuildingLeaderboard = async () => {
+  const fetchBuildingLeaderboard = async (isInitialLoad = true) => {
     try {
-      setLoading(true);
+      if (isInitialLoad) setLoading(true);
       
-      const today = new Date();
       let currentStartDate: string;
       let previousStartDate: string;
       let previousEndDate: string;
       
-      // Current period dates
+      // Use PST timezone for all date calculations
       switch (period) {
         case "week":
-          currentStartDate = subDays(today, 7).toISOString().split("T")[0];
-          previousStartDate = subDays(today, 14).toISOString().split("T")[0];
-          previousEndDate = subDays(today, 7).toISOString().split("T")[0];
+          currentStartDate = getWeekStartPST();
+          previousStartDate = getDateDaysAgoPST(14);
+          previousEndDate = getDateDaysAgoPST(7);
           break;
         case "month":
-          currentStartDate = subMonths(today, 1).toISOString().split("T")[0];
-          previousStartDate = subMonths(today, 2).toISOString().split("T")[0];
-          previousEndDate = subMonths(today, 1).toISOString().split("T")[0];
+          currentStartDate = getMonthStartPST();
+          previousStartDate = getDateDaysAgoPST(60);
+          previousEndDate = getDateDaysAgoPST(30);
           break;
         case "custom":
-          currentStartDate = subDays(today, 30).toISOString().split("T")[0];
-          previousStartDate = subDays(today, 60).toISOString().split("T")[0];
-          previousEndDate = subDays(today, 30).toISOString().split("T")[0];
+          currentStartDate = getDateDaysAgoPST(30);
+          previousStartDate = getDateDaysAgoPST(60);
+          previousEndDate = getDateDaysAgoPST(30);
           break;
         default: // day
-          currentStartDate = today.toISOString().split("T")[0];
-          previousStartDate = subDays(today, 1).toISOString().split("T")[0];
-          previousEndDate = today.toISOString().split("T")[0];
+          currentStartDate = getTodayPST();
+          previousStartDate = getDateDaysAgoPST(1);
+          previousEndDate = getTodayPST();
       }
 
       // Get all active agents with profile_id join for imported agents (exclude inactive/deactivated)

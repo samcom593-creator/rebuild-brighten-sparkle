@@ -124,14 +124,12 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
         )}
         style={{ marginLeft: isDesktop ? `${marginLeft}px` : 0 }}
       >
-        <AnimatePresence mode="wait" initial={false}>
+        <AnimatePresence initial={false}>
           <motion.div
             key={location.pathname}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            variants={pageVariants}
-            transition={pageTransition}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.1 }}
             className="p-4 sm:p-6 lg:p-8"
           >
             <PageContent showPhoneBanner={showPhoneBanner}>

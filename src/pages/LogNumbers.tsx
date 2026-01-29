@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { getTodayPST, getWeekStartPST } from "@/lib/dateUtils";
 import { 
   Search, 
   User, 
@@ -227,7 +228,7 @@ export default function LogNumbers() {
 
     setSaving(true);
     try {
-      const today = new Date().toISOString().split("T")[0];
+      const today = getTodayPST();
 
       // Upsert production data
       const { error } = await supabase
@@ -271,12 +272,8 @@ export default function LogNumbers() {
     if (!selectedAgent) return;
 
     try {
-      // Get this week's start date (Sunday)
-      const today = new Date();
-      const dayOfWeek = today.getDay();
-      const weekStart = new Date(today);
-      weekStart.setDate(today.getDate() - dayOfWeek);
-      const weekStartStr = weekStart.toISOString().split("T")[0];
+      // Get this week's start date (Sunday) in PST
+      const weekStartStr = getWeekStartPST();
 
       // Fetch all Live agents with their weekly production
       const { data: agents, error: agentsError } = await supabase

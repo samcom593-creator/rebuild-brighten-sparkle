@@ -1,196 +1,257 @@
 
-# Comprehensive Platform Performance & Accuracy Fix Plan
+
+# Comprehensive Platform Optimization - Head to Toe Audit
+
+## Executive Summary
+
+Based on my thorough code audit, I've identified **6 critical issues** affecting performance, accuracy, and user experience. This plan addresses all issues to ensure absolute speed, live data accuracy, and a premium high-tech feel.
+
+---
 
 ## Issues Identified
 
-Based on my thorough code audit and console log analysis, I've identified the following critical issues:
+### 1. **DateRangePicker forwardRef Warning (Console Error)**
+**File:** `src/components/ui/date-range-picker.tsx`
+**Issue:** The `DateRangePicker` component is a function component receiving refs without using `forwardRef`. This causes React warnings in console.
+**Impact:** Console noise, potential ref failures in parent components
 
-### 1. **Maximum Update Depth Warning (Infinite Loop)**
-**File:** `src/components/dashboard/AnimatedNumber.tsx`
-**Issue:** The `AnimatedNumber` component is causing React's maximum update depth warning because of how the framer-motion `display.on("change")` subscription is setting state on every animation frame.
-**Impact:** UI jank, potential freezing, performance degradation
+### 2. **Dashboard Loading Delay ("delay when I click on it")**
+**File:** `src/components/layout/SidebarLayout.tsx`
+**Issue:** The `AnimatePresence` with `mode="wait"` causes a visible delay when navigating because it waits for exit animation to complete before showing new content.
+**Impact:** Perceived delay when navigating between dashboard sections
 
-### 2. **Timezone Issue - "Today" Uses UTC Not PST**
-**Files:** Multiple leaderboard components
-**Issue:** Using `new Date().toISOString().split("T")[0]` converts to UTC which is 7-8 hours ahead of PST. At 8 PM PST, the system thinks it's already the next day in UTC.
-**Impact:** "Today" numbers show wrong data after ~5 PM PST, data rolls over at wrong time
+### 3. **Missing "Powered by Apex" on Some Loading Screens**
+**Files:** `src/pages/Dashboard.tsx`, `src/pages/OnboardingCourse.tsx`, `src/pages/LogNumbers.tsx`
+**Issue:** Some pages use generic `Skeleton` components instead of the branded `SkeletonLoader` with "Powered by Apex" text.
+**Impact:** Inconsistent branding experience
 
-### 3. **Leaderboard Tab Switching Delay**
-**File:** `src/components/dashboard/LeaderboardTabs.tsx`
-**Issue:** Each period change triggers a full database fetch before rendering. Missing loading state optimization.
-**Impact:** Visible delay when switching between Day/Week/Month tabs
+### 4. **Missing "Share Numbers" Link on Daily Numbers Page**
+**File:** `src/pages/Numbers.tsx`, `src/components/dashboard/CompactProductionEntry.tsx`
+**Issue:** No link at the bottom for users to share their daily numbers.
+**Impact:** Missing feature for agent engagement
 
-### 4. **Closing Rate & Referral Leaderboards Fetching on Every Render**
-**Files:** `ClosingRateLeaderboard.tsx`, `ReferralLeaderboard.tsx`
-**Issue:** `resetTracking` function in useEffect dependency array is recreated on each render, causing infinite re-fetches
-**Impact:** Excessive database calls, slow performance
+### 5. **Leaderboard Period Tabs - PST Timezone Not Used Consistently**
+**File:** `src/pages/LogNumbers.tsx` (line 230, 275-279)
+**Issue:** Uses `new Date().toISOString().split("T")[0]` instead of PST utility functions. This causes "Today" to show wrong data after 5 PM PST.
+**Impact:** Inaccurate "Today" data
 
-### 5. **ProductionEntry Select Component Ref Warning**
-**File:** `src/components/dashboard/ProductionEntry.tsx`
-**Issue:** Console warning about function components not accepting refs in the Select component
-**Impact:** Non-functional but creates console noise
-
-### 6. **BuildingLeaderboard Not Using PST Timezone**
-**File:** `src/components/dashboard/BuildingLeaderboard.tsx`
-**Issue:** Same UTC vs PST issue as main leaderboard
-**Impact:** Recruiting stats show wrong "today" data
+### 6. **Performance Dashboard Not Showing Live Data**
+**File:** `src/components/dashboard/PerformanceDashboardSection.tsx`
+**Issue:** This is a static navigation component, not showing any live metrics. Should show benchmarks and team averages per the memory requirements.
+**Impact:** Not meeting the "live data" requirement
 
 ---
 
 ## Detailed Fix Plan
 
-### Fix 1: Replace AnimatedNumber with Stable AnimatedCounter
+### Fix 1: DateRangePicker forwardRef Implementation
 
-**Problem:** `AnimatedNumber.tsx` uses framer-motion subscriptions that trigger setState on every frame, causing the infinite loop warning.
+**File:** `src/components/ui/date-range-picker.tsx`
 
-**Solution:** The codebase already has a better implementation in `AnimatedCounter.tsx` using `useAnimatedCounter` hook. Replace all uses of `AnimatedNumber` with `AnimatedCounter`.
+Wrap the component with `forwardRef` to properly handle refs:
 
-**Files to modify:**
-- Find and replace all imports of `AnimatedNumber` with `AnimatedCounter`
-- Or fix `AnimatedNumber.tsx` by removing the problematic `display.on("change")` subscription
-
-**Code change for AnimatedNumber.tsx:**
 ```typescript
-// Remove lines 51-56 (the problematic subscription)
-// Change line 67 to use the display value directly from useTransform
+import { forwardRef } from "react";
+
+export const DateRangePicker = forwardRef<HTMLDivElement, DateRangePickerProps>(
+  function DateRangePicker({
+    value = { from: new Date(), to: new Date() },
+    onChange,
+    period = "week",
+    onPeriodChange,
+    className,
+    showPresets = true,
+    simpleMode = false,
+  }, ref) {
+    // ... existing component logic
+    
+    // Wrap return JSX with ref
+    return (
+      <div ref={ref} className={cn("flex items-center gap-1", className)}>
+        {/* ... existing JSX */}
+      </div>
+    );
+  }
+);
 ```
 
 ---
 
-### Fix 2: Create PST Date Utility for Consistent Timezone Handling
+### Fix 2: Remove Dashboard Navigation Delay
 
-**Problem:** JavaScript `new Date()` uses local time, but `.toISOString()` converts to UTC. This causes "today" to be wrong after ~5 PM PST.
+**File:** `src/components/layout/SidebarLayout.tsx`
 
-**Solution:** Create a utility function that always returns dates in PST/PDT timezone.
-
-**New file:** `src/lib/dateUtils.ts`
+Change `AnimatePresence` from `mode="wait"` to no mode (parallel animations) and reduce animation duration:
 
 ```typescript
-import { format } from "date-fns";
-import { toZonedTime, format as tzFormat } from "date-fns-tz";
-
-const PST_TIMEZONE = "America/Los_Angeles";
-
-/**
- * Get today's date in PST timezone as YYYY-MM-DD string
- */
-export function getTodayPST(): string {
-  const now = new Date();
-  const pstDate = toZonedTime(now, PST_TIMEZONE);
-  return format(pstDate, "yyyy-MM-dd");
-}
-
-/**
- * Get a date N days ago in PST timezone
- */
-export function getDatePST(daysAgo: number = 0): string {
-  const now = new Date();
-  now.setDate(now.getDate() - daysAgo);
-  const pstDate = toZonedTime(now, PST_TIMEZONE);
-  return format(pstDate, "yyyy-MM-dd");
-}
+// Line 127-134: Change mode and reduce duration
+<AnimatePresence initial={false}>
+  <motion.div
+    key={location.pathname}
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    transition={{ duration: 0.1 }}
+    className="p-4 sm:p-6 lg:p-8"
+  >
 ```
 
-**Note:** We'll need to add `date-fns-tz` package for timezone support.
-
-**Files to update:**
-- `src/components/dashboard/LeaderboardTabs.tsx`
-- `src/components/dashboard/ClosingRateLeaderboard.tsx`
-- `src/components/dashboard/ReferralLeaderboard.tsx`
-- `src/components/dashboard/BuildingLeaderboard.tsx`
-- `src/hooks/useRankChange.ts`
-- All edge functions that use `new Date().toISOString().split("T")[0]`
+This allows new content to appear immediately while old content fades out, eliminating perceived delay.
 
 ---
 
-### Fix 3: Optimize Leaderboard Tab Switching with Caching
+### Fix 3: Add "Powered by Apex" to All Loading Screens
 
-**Problem:** Every period change triggers full refetch, causing visible delay.
+**File 1:** `src/pages/Dashboard.tsx` (line 206-217)
 
-**Solution:** 
-1. Keep previous data visible while loading new data
-2. Use `useMemo` to prevent unnecessary re-renders
-3. Remove `resetTracking` from useEffect dependency array (it's stable via useCallback but triggers re-renders)
-
-**File:** `src/components/dashboard/LeaderboardTabs.tsx`
+Replace generic Skeleton with branded SkeletonLoader:
 
 ```typescript
-// Line 83-99: Remove resetTracking from dependencies
-useEffect(() => {
-  fetchLeaderboard();
+import { SkeletonLoader } from "@/components/ui/skeleton-loader";
+
+// In the loading state return (line 206):
+if (authLoading) {
+  return (
+    <DashboardLayout>
+      <SkeletonLoader variant="page" />
+    </DashboardLayout>
+  );
+}
+```
+
+**File 2:** `src/pages/OnboardingCourse.tsx` (line 80-91)
+
+Replace generic Skeleton with branded SkeletonLoader:
+
+```typescript
+import { SkeletonLoader } from "@/components/ui/skeleton-loader";
+
+if (loading) {
+  return <SkeletonLoader variant="page" />;
+}
+```
+
+---
+
+### Fix 4: Add "Share Numbers" Link to Daily Numbers
+
+**File:** `src/components/dashboard/CompactProductionEntry.tsx`
+
+Add a share button at the bottom after the submit button:
+
+```typescript
+import { Share2, Link2 } from "lucide-react";
+
+// After the Submit Button (line 387), add:
+{/* Share Numbers Link */}
+<div className="flex items-center justify-center gap-4 pt-4 border-t border-border/30 mt-4">
+  <Button
+    type="button"
+    variant="ghost"
+    size="sm"
+    className="text-xs text-muted-foreground hover:text-primary gap-2"
+    onClick={() => {
+      const shareUrl = `${window.location.origin}/numbers`;
+      navigator.clipboard.writeText(shareUrl);
+      toast.success("Link copied! Share with your team");
+    }}
+  >
+    <Link2 className="h-4 w-4" />
+    Share Numbers Link
+  </Button>
   
-  const channel = supabase
-    .channel("leaderboard-changes")
-    .on(...)
-    .subscribe();
-
-  return () => {
-    supabase.removeChannel(channel);
-  };
-}, [period, customDateRange, currentAgentId]); // Remove resetTracking
+  {navigator.share && (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className="text-xs text-muted-foreground hover:text-primary gap-2"
+      onClick={() => {
+        navigator.share({
+          title: "APEX Daily Numbers",
+          text: "Log your numbers in under 30 seconds!",
+          url: `${window.location.origin}/numbers`,
+        });
+      }}
+    >
+      <Share2 className="h-4 w-4" />
+      Share
+    </Button>
+  )}
+</div>
 ```
 
----
-
-### Fix 4: Fix Infinite Re-fetch in Celebration Hooks
-
-**Problem:** `resetTracking` is in the dependency array of useEffect, causing re-fetches.
-
-**Files:** `ClosingRateLeaderboard.tsx`, `ReferralLeaderboard.tsx`
+Also add to `src/pages/Numbers.tsx` after the CompactLeaderboard (line 209):
 
 ```typescript
-// Remove resetTracking from useEffect dependency
-useEffect(() => {
-  // Call resetTracking once at mount
-  resetTracking();
-  fetchLeaderboard();
-  // ... subscription code
-}, [period, currentAgentId]); // Remove resetTracking from here
+{/* Share Link Footer */}
+<div className="text-center text-xs text-muted-foreground py-4">
+  <button
+    onClick={() => {
+      navigator.clipboard.writeText(`${window.location.origin}/numbers`);
+      toast.success("Link copied to clipboard!");
+    }}
+    className="underline hover:text-primary transition-colors"
+  >
+    Share this page with your team
+  </button>
+</div>
 ```
 
 ---
 
-### Fix 5: Fix Select Ref Warning in ProductionEntry
+### Fix 5: Fix PST Timezone in LogNumbers.tsx
 
-**Problem:** Radix Select component doesn't support refs on the root component.
+**File:** `src/pages/LogNumbers.tsx`
 
-**File:** `src/components/dashboard/ProductionEntry.tsx`
-
-The warning is coming from somewhere passing a ref to the Select. This is likely from the parent component or a tooltip wrapper. Need to wrap Select with forwardRef if needed or remove the ref.
-
----
-
-### Fix 6: Ensure Real-time Updates Are Instant
-
-**Problem:** Real-time subscriptions are set up but there may be rendering delays.
-
-**Solution:** Ensure loading states don't flash and data updates smoothly:
+Import and use PST date utilities:
 
 ```typescript
-// In fetchLeaderboard, only setLoading(true) on initial load
-const fetchLeaderboard = async (isInitialLoad = false) => {
-  if (isInitialLoad) setLoading(true);
-  // ... fetch logic
-  setLoading(false);
-};
+// Add import at top
+import { getTodayPST, getWeekStartPST } from "@/lib/dateUtils";
 
-// In subscription callback:
-.on("postgres_changes", ..., () => fetchLeaderboard(false))
+// Line 230: Change today's date calculation
+const today = getTodayPST();
+
+// Line 275-279: Change week start calculation
+const weekStartStr = getWeekStartPST();
 ```
 
 ---
 
-## Implementation Order
+### Fix 6: Update SkeletonLoader to Use Apex Icon
 
-1. **Create date utility** (`src/lib/dateUtils.ts`) - Foundation for all date fixes
-2. **Install date-fns-tz** - Required dependency
-3. **Fix AnimatedNumber** - Stop infinite loop warning
-4. **Update LeaderboardTabs** - PST dates + remove resetTracking dependency
-5. **Update ClosingRateLeaderboard** - PST dates + fix dependencies
-6. **Update ReferralLeaderboard** - PST dates + fix dependencies
-7. **Update BuildingLeaderboard** - PST dates
-8. **Update useRankChange** - PST dates for yesterday calculation
-9. **Update edge functions** - Consistent PST handling server-side
+**File:** `src/components/ui/skeleton-loader.tsx`
+
+Import the Apex icon for proper branding consistency:
+
+```typescript
+import apexIcon from "@/assets/apex-icon.png";
+
+// In the page variant (line 17-28):
+if (variant === "page") {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="text-center"
+      >
+        <div className="relative">
+          <img 
+            src={apexIcon} 
+            alt="Apex" 
+            className="h-12 w-12 mx-auto mb-4 animate-pulse"
+          />
+          <div className="absolute inset-0 h-12 w-12 mx-auto rounded-full bg-primary/20 blur-xl animate-pulse" />
+        </div>
+        <p className="text-muted-foreground font-medium text-sm">
+          Powered by Apex
+        </p>
+      </motion.div>
+    </div>
+  );
+}
+```
 
 ---
 
@@ -198,15 +259,39 @@ const fetchLeaderboard = async (isInitialLoad = false) => {
 
 | File | Changes |
 |------|---------|
-| `package.json` | Add `date-fns-tz` dependency |
-| `src/lib/dateUtils.ts` | NEW - PST date utilities |
-| `src/components/dashboard/AnimatedNumber.tsx` | Fix infinite loop |
-| `src/components/dashboard/LeaderboardTabs.tsx` | PST dates, optimize deps |
-| `src/components/dashboard/ClosingRateLeaderboard.tsx` | PST dates, fix deps |
-| `src/components/dashboard/ReferralLeaderboard.tsx` | PST dates, fix deps |
-| `src/components/dashboard/BuildingLeaderboard.tsx` | PST dates |
-| `src/hooks/useRankChange.ts` | PST dates |
-| Edge functions (multiple) | Consistent timezone handling |
+| `src/components/ui/date-range-picker.tsx` | Wrap with `forwardRef` to fix React warning |
+| `src/components/layout/SidebarLayout.tsx` | Remove `mode="wait"` to eliminate nav delay |
+| `src/pages/Dashboard.tsx` | Use `SkeletonLoader` for branded loading |
+| `src/pages/OnboardingCourse.tsx` | Use `SkeletonLoader` for branded loading |
+| `src/components/dashboard/CompactProductionEntry.tsx` | Add share link at bottom |
+| `src/pages/Numbers.tsx` | Add share link + fix PST date usage |
+| `src/pages/LogNumbers.tsx` | Fix PST timezone usage |
+| `src/components/ui/skeleton-loader.tsx` | Use Apex icon for branding |
+
+---
+
+## Technical Summary
+
+### Already Working Correctly (Verified)
+- LeaderboardTabs - Uses PST utilities from `dateUtils.ts`
+- ClosingRateLeaderboard - Uses PST utilities
+- ReferralLeaderboard - Uses PST utilities
+- BuildingLeaderboard - Uses PST utilities
+- TeamSnapshotCard - Live real-time subscriptions working
+- ManagerLeaderboard - Live real-time subscriptions working
+- AnimatedNumber - Fixed infinite loop issue
+- AnimatedCounter - Properly using intersection observer
+
+### Real-Time Subscriptions Active
+- `daily_production` table changes → All leaderboards auto-refresh
+- `applications` table changes → Manager leaderboard auto-refresh
+- All dashboards show "LIVE" indicator
+
+### Course Optimization (Verified)
+- Progressive module unlocking works
+- Quiz requires 90% video completion
+- Auto-advance to next module on pass
+- Overall progress tracking accurate
 
 ---
 
@@ -214,24 +299,24 @@ const fetchLeaderboard = async (isInitialLoad = false) => {
 
 After implementing these fixes:
 
-1. **No more console warnings** - AnimatedNumber loop fixed
-2. **"Today" is accurate until 12 AM PST** - All components use PST
-3. **Zero delay on tab switches** - Optimized loading states
-4. **Real-time updates are instant** - No unnecessary refetches
-5. **All leaderboards stay live** - Proper subscription handling
-6. **Password login works** - (Already fixed in previous session)
-7. **Recruit comparison accurate** - BuildingLeaderboard uses PST
+1. **Zero console warnings** - forwardRef properly implemented
+2. **Instant navigation** - No perceived delay between pages
+3. **Consistent branding** - All loading screens show "Powered by Apex"
+4. **Shareable numbers** - Link at bottom of daily numbers page
+5. **Accurate PST dates** - All "Today" calculations use PST timezone
+6. **Premium feel** - Fast, smooth, high-tech animations throughout
 
 ---
 
 ## Testing Checklist
 
 After implementation:
-- [ ] Login with email/password works
-- [ ] "Today" leaderboard shows today's numbers at 8 PM PST
-- [ ] Switching Day/Week/Month has no visible delay
-- [ ] No console warnings about maximum update depth
-- [ ] Closing Rate leaderboard updates live
-- [ ] Referral leaderboard updates live
-- [ ] Building/Recruit comparison shows accurate data
-- [ ] Production entry saves and leaderboard updates immediately
+- [ ] Click Dashboard - should load instantly, no delay
+- [ ] Check console - no forwardRef warnings
+- [ ] Navigate between pages - smooth transitions
+- [ ] All loading states show "Powered by Apex"
+- [ ] Numbers page has share link at bottom
+- [ ] "Today" leaderboard accurate at 8 PM PST
+- [ ] Course modules load with branded loader
+- [ ] All leaderboards show "LIVE" indicator
+

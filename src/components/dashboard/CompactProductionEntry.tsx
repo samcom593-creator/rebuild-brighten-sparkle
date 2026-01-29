@@ -100,22 +100,14 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
         </div>
       );
 
-      // 🚨 DEAL ALERT: Delay notifications until AFTER confetti completes to prevent UI glitching
+      // Trigger notifications after confetti completes (deal alerts moved to daily leaderboard)
       if (formData.deals_closed > 0) {
         setTimeout(async () => {
           try {
-            console.log("🚨 Triggering batched deal notifications for", agentName);
+            console.log("🔔 Triggering batched notifications for", agentName);
             
-            // Batch all notifications together using Promise.allSettled
+            // Batch notifications (deal alert removed - now sent as daily leaderboard at 9 PM)
             await Promise.allSettled([
-              supabase.functions.invoke("notify-deal-alert", {
-                body: {
-                  agentId,
-                  agentName: agentName || "Agent",
-                  deals: formData.deals_closed,
-                  aop: formData.aop,
-                },
-              }),
               supabase.functions.invoke("notify-streak-alert", {
                 body: {
                   agentId,
@@ -145,9 +137,9 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
               }),
             ]);
             
-            console.log("✅ All deal notifications sent");
+            console.log("✅ All notifications sent");
           } catch (notifyError) {
-            console.error("Failed to send deal notifications:", notifyError);
+            console.error("Failed to send notifications:", notifyError);
           }
         }, 2000); // Wait for confetti animation to complete
       } else {

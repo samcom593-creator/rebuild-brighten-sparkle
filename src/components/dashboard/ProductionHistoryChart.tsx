@@ -232,7 +232,7 @@ export function ProductionHistoryChart({ agentId, weeks = 4 }: ProductionHistory
                 stroke="hsl(var(--primary))"
                 strokeWidth={2}
                 fill="url(#alpGradient)"
-                animationDuration={1500}
+                isAnimationActive={false}
               />
               <Area
                 type="monotone"
@@ -241,7 +241,7 @@ export function ProductionHistoryChart({ agentId, weeks = 4 }: ProductionHistory
                 strokeWidth={1}
                 fill="none"
                 strokeDasharray="4 4"
-                animationDuration={1500}
+                isAnimationActive={false}
               />
             </AreaChart>
           </ResponsiveContainer>

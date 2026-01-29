@@ -172,7 +172,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (!agents || agents.length === 0) {
       return new Response(
-        JSON.stringify({ error: "No matching unlinked agent profile found" }),
+        JSON.stringify({ 
+          error: "No matching agent profile found. If you're new, please create an account on the /numbers page instead.",
+          notFound: true
+        }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

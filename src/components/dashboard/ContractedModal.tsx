@@ -24,6 +24,8 @@ interface ContractedModalProps {
     last_name: string;
     email: string;
     phone: string;
+    license_status: "licensed" | "unlicensed" | "pending";
+    license_progress?: "unlicensed" | "course_purchased" | "passed_test" | "waiting_on_license" | "licensed" | null;
   };
   agentId: string;
   onSuccess?: () => void;
@@ -104,34 +106,45 @@ export function ContractedModal({
       // 3. Create a new agent record in the CRM
       // First create a profile for the new agent
       const newUserId = crypto.randomUUID();
-      const { error: profileError } = await supabase
+      const { data: newProfile, error: profileError } = await supabase
         .from("profiles")
         .insert({
           user_id: newUserId,
           email: application.email,
           full_name: `${application.first_name} ${application.last_name}`,
           phone: application.phone,
-        });
+        })
+        .select("id")
+        .single();
 
-      if (profileError) {
+      if (profileError || !newProfile) {
         console.error("Profile creation error:", profileError);
-        // Continue anyway - we'll create the agent record
+        toast.error("Failed to create agent profile. Please try again.");
+        return;
       }
 
-      // Create the agent record linked to the manager
+      // Determine license status - use license_progress if it's "licensed", otherwise use application's license_status
+      const finalLicenseStatus = 
+        application.license_progress === "licensed" 
+          ? "licensed" 
+          : application.license_status;
+
+      // Create the agent record linked to the manager with proper profile_id
       const { error: agentError } = await supabase
         .from("agents")
         .insert({
           user_id: newUserId,
+          profile_id: newProfile.id,
           invited_by_manager_id: agentId,
           onboarding_stage: "onboarding",
-          license_status: "licensed",
+          license_status: finalLicenseStatus,
           status: "active",
         });
 
       if (agentError) {
         console.error("Agent creation error:", agentError);
-        toast.warning("Contracted but could not auto-add to CRM");
+        toast.error("Failed to create agent record");
+        return;
       }
 
       // 4. Send contracted email with CRM link

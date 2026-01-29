@@ -691,8 +691,8 @@ export default function DashboardApplicants() {
                         <UserCheck className="h-4 w-4 mr-1" />
                         Qualified
                       </Button>
-                      {/* Show Contracted button for licensed leads in contacted status */}
-                      {app.license_status === "licensed" && !app.contracted_at && (
+                      {/* Show Contracted button for licensed leads OR unlicensed who completed licensing */}
+                      {(app.license_status === "licensed" || app.license_progress === "licensed") && !app.contracted_at && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -716,7 +716,7 @@ export default function DashboardApplicants() {
                         <CheckCircle className="h-4 w-4 mr-1" />
                         Close
                       </Button>
-                      {app.license_status === "licensed" && !app.contracted_at && (
+                      {(app.license_status === "licensed" || app.license_progress === "licensed") && !app.contracted_at && (
                         <Button
                           variant="outline"
                           size="sm"
@@ -730,7 +730,7 @@ export default function DashboardApplicants() {
                     </>
                   )}
 
-                  {status === "closed" && app.license_status === "licensed" && !app.contracted_at && (
+                  {status === "closed" && (app.license_status === "licensed" || app.license_progress === "licensed") && !app.contracted_at && (
                     <Button
                       variant="outline"
                       size="sm"

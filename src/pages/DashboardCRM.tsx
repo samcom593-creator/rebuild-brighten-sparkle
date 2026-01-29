@@ -185,6 +185,7 @@ export default function DashboardCRM() {
   const [stageFilter, setStageFilter] = useState<"all" | "in_course" | "in_training" | "live" | "meeting_eligible" | "critical">("all");
   const [instagramPromptAgent, setInstagramPromptAgent] = useState<AgentCRM | null>(null);
   const [expandedColumn, setExpandedColumn] = useState<string | null>(null);
+  const [sendingBulkLogins, setSendingBulkLogins] = useState(false);
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -459,6 +460,28 @@ export default function DashboardCRM() {
     } catch (error) {
       console.error("Error sending portal login:", error);
       toast.error("Failed to send portal login");
+    }
+  };
+
+  const handleBulkSendPortalLogins = async () => {
+    if (!confirm(`Send portal login emails to all ${agents.filter(a => !a.isDeactivated).length} active agents? They will receive magic login links.`)) {
+      return;
+    }
+    
+    setSendingBulkLogins(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-bulk-portal-logins");
+      
+      if (error) throw error;
+      
+      toast.success(`Sent ${data?.results?.sent || 0} portal login emails!`, {
+        description: `${data?.results?.failed || 0} failed, ${data?.results?.skipped || 0} skipped`,
+      });
+    } catch (error) {
+      console.error("Error sending bulk portal logins:", error);
+      toast.error("Failed to send bulk portal logins");
+    } finally {
+      setSendingBulkLogins(false);
     }
   };
 
@@ -823,7 +846,19 @@ export default function DashboardCRM() {
               Manage licensed agents and track progress
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {isAdmin && (
+              <Button 
+                onClick={handleBulkSendPortalLogins} 
+                variant="outline" 
+                size="sm" 
+                className="gap-1.5"
+                disabled={sendingBulkLogins}
+              >
+                <Mail className="h-3.5 w-3.5" />
+                {sendingBulkLogins ? "Sending..." : "Email All Logins"}
+              </Button>
+            )}
             <AddAgentModal onAgentAdded={fetchAgents} />
             <Button onClick={fetchAgents} variant="outline" size="sm" className="gap-1.5">
               <RefreshCw className="h-3.5 w-3.5" />

@@ -205,8 +205,9 @@ export function AgentQuickEditDialog({
             deals: stats.deals,
           };
         })
-        .filter(m => m.name !== "Unknown" && m.production > 0)
-        .slice(0, 10); // Limit to 10 matches
+        .filter(m => m.name !== "Unknown")
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .slice(0, 50); // Allow more matches for easier finding
 
       setPossibleMatches(matches);
     } catch (error) {

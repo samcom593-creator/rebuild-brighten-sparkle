@@ -9,7 +9,6 @@ const corsHeaders = {
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const CALENDLY_LINK = "https://calendly.com/sam-com593/licensed-prospect-call-clone-1";
-const DASHBOARD_URL = "https://apex-financial.org";
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -39,33 +38,51 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const today = new Date().toISOString().split("T")[0];
+
+    // BATCH: Get all dialer attendance for today in one query
+    const { data: dialerAttendance } = await supabaseClient
+      .from("agent_attendance")
+      .select("agent_id")
+      .eq("attendance_date", today)
+      .eq("attendance_type", "dialer_activity")
+      .eq("status", "present");
+
+    const activeDialerAgentIds = new Set(dialerAttendance?.map(a => a.agent_id) || []);
+    
+    // Filter agents who haven't logged dialer activity
+    const agentsNeedingReminder = liveAgents.filter(a => !activeDialerAgentIds.has(a.id));
+
+    if (!agentsNeedingReminder.length) {
+      return new Response(
+        JSON.stringify({ success: true, message: "All agents have dialer activity" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // BATCH: Fetch all profiles in one query
+    const userIds = agentsNeedingReminder.map(a => a.user_id).filter(Boolean);
+    const { data: profiles } = await supabaseClient
+      .from("profiles")
+      .select("user_id, full_name, email")
+      .in("user_id", userIds);
+
+    // Build profile map for quick lookup
+    const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
+
     const emailsSent: string[] = [];
 
-    for (const agent of liveAgents) {
-      // Check if agent has dialer activity for today
-      const { data: attendance } = await supabaseClient
-        .from("agent_attendance")
-        .select("status")
-        .eq("agent_id", agent.id)
-        .eq("attendance_date", today)
-        .eq("attendance_type", "dialer_activity")
-        .eq("status", "present")
-        .single();
+    // BATCH: Send emails in parallel batches of 10
+    const BATCH_SIZE = 10;
+    for (let i = 0; i < agentsNeedingReminder.length; i += BATCH_SIZE) {
+      const batch = agentsNeedingReminder.slice(i, i + BATCH_SIZE);
+      
+      const results = await Promise.allSettled(
+        batch.map(async (agent) => {
+          const profile = profileMap.get(agent.user_id);
+          if (!profile?.email) return null;
 
-      // If no dialer activity, send email
-      if (!attendance) {
-        // Get agent profile
-        const { data: profile } = await supabaseClient
-          .from("profiles")
-          .select("full_name, email")
-          .eq("user_id", agent.user_id)
-          .single();
+          const firstName = profile.full_name?.split(" ")[0] || "Agent";
 
-        if (!profile?.email) continue;
-
-        const firstName = profile.full_name?.split(" ")[0] || "Agent";
-
-        try {
           await resend.emails.send({
             from: "APEX Financial Empire <notifications@tx.apex-financial.org>",
             to: [profile.email],
@@ -126,16 +143,21 @@ const handler = async (req: Request): Promise<Response> => {
             `,
           });
 
-          emailsSent.push(profile.email);
-          console.log(`Sent missed dialer email to ${profile.email}`);
-          
-          // Small delay to prevent rate limiting
-          await new Promise(resolve => setTimeout(resolve, 300));
-        } catch (emailError) {
-          console.error(`Failed to send email to ${profile.email}:`, emailError);
+          return profile.email;
+        })
+      );
+
+      // Collect successful sends
+      results.forEach((result) => {
+        if (result.status === "fulfilled" && result.value) {
+          emailsSent.push(result.value);
+        } else if (result.status === "rejected") {
+          console.error("Email send failed:", result.reason);
         }
-      }
+      });
     }
+
+    console.log(`Sent ${emailsSent.length} missed dialer notifications`);
 
     return new Response(
       JSON.stringify({ 

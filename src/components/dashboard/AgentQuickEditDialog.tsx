@@ -280,6 +280,11 @@ export function AgentQuickEditDialog({
 
     setMerging(true);
     try {
+      console.log("🔀 Starting merge:", {
+        primaryAgentId: selectedMergeId,
+        duplicateAgentIds: [agentId],
+      });
+
       const { data, error } = await supabase.functions.invoke("merge-agent-records", {
         body: {
           primaryAgentId: selectedMergeId,
@@ -287,20 +292,29 @@ export function AgentQuickEditDialog({
         },
       });
 
-      if (error) throw error;
+      console.log("🔀 Merge response:", { data, error });
+
+      if (error) {
+        throw new Error(error.message || "Edge function error");
+      }
+
+      // Check if data contains an error field (edge function returned error response)
+      if (data?.error) {
+        throw new Error(data.error);
+      }
 
       toast({
-        title: "Agents merged",
-        description: "Records have been combined successfully.",
+        title: "Agents merged ✅",
+        description: data?.message || "Records have been combined successfully.",
       });
       
       onUpdate?.();
       onOpenChange(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error merging agents:", error);
       toast({
         title: "Merge failed",
-        description: "Failed to merge agent records. Please try again.",
+        description: error?.message || "Failed to merge agent records. Please try again.",
         variant: "destructive",
       });
     } finally {

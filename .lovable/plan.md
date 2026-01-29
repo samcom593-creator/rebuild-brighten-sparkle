@@ -1,135 +1,140 @@
 
-## Mobile Dashboard + Agent Portal + Numbers Page Fix Plan
 
-### What's Still Happening
+## Fix: Evening Cron Job "Clog" at 6-7 PM
 
-Based on my investigation:
+### The Problem
 
-1. **The code fixes have already been implemented** from the previous approved plan
-2. **But they're not visible on the published site** because the PWA Service Worker is serving cached JavaScript bundles to users
+Three heavy notification jobs run back-to-back around 6-7 PM CST, each using inefficient sequential processing:
 
-Additionally, I found:
+| Time (CST) | Job | Issue |
+|------------|-----|-------|
+| 6:00 PM | notify-top-performer | Loops all agents, 1 email at a time with 300ms delays |
+| 7:00 PM | notify-fill-numbers | Same pattern |
+| 7:30 PM | notify-missed-dialer | Same pattern + extra DB query per agent |
 
-3. **4 active agents with non-"evaluated" stages** (2 in "onboarding", 2 in "in_field_training") - The code fix allows them access, but again, only if users get the new code
+With 50 agents, each function takes 15-30+ seconds just in artificial delays, plus sequential DB queries that could be batched.
 
-4. **Numbers.tsx has a subtle bug** - If a user is authenticated but has no agent record, the code sets `isAuthenticated = true` but leaves `agentId = null`, so the production entry shows but can't submit numbers
+### Solution
+
+1. **Stagger the job times** - spread them out by 30+ minutes
+2. **Batch database queries** - fetch all profiles in one query instead of per-agent
+3. **Use batch email sending** - Resend supports up to 100 recipients in one API call
+4. **Remove unnecessary delays** - Resend's rate limit is 100/second, not 3/second
+
+---
+
+### Implementation Details
+
+#### A) Reschedule cron jobs to avoid pileup
+
+Current:
+- notify-top-performer: 0 0 * * * (6 PM CST)
+- notify-fill-numbers-7pm: 0 1 * * * (7 PM CST)
+- notify-missed-dialer: 30 1 * * * (7:30 PM CST)
+
+New (spread across 2 hours):
+- notify-top-performer: 0 0 * * * (6 PM CST) - keep as is
+- notify-fill-numbers-7pm: 0 2 * * * (8 PM CST) - move 1 hour later
+- notify-missed-dialer: 0 4 * * * (10 PM CST) - move to end of day
+
+This requires a SQL migration to update the cron.job table.
+
+#### B) Optimize notify-fill-numbers (and similar functions)
+
+**Before (slow):**
+```typescript
+for (const agent of agentsNeedingReminder) {
+  // 1 query per agent
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name, email")
+    .eq("user_id", agent.user_id)
+    .single();
+  
+  // 1 email per agent
+  await resend.emails.send({ ... });
+  
+  // Artificial delay
+  await new Promise(resolve => setTimeout(resolve, 300));
+}
+```
+
+**After (fast):**
+```typescript
+// 1 query for ALL profiles
+const userIds = agentsNeedingReminder.map(a => a.user_id);
+const { data: profiles } = await supabase
+  .from("profiles")
+  .select("user_id, full_name, email")
+  .in("user_id", userIds);
+
+// Build profile map
+const profileMap = new Map(profiles.map(p => [p.user_id, p]));
+
+// Send emails in parallel batches of 10
+const BATCH_SIZE = 10;
+for (let i = 0; i < agentsNeedingReminder.length; i += BATCH_SIZE) {
+  const batch = agentsNeedingReminder.slice(i, i + BATCH_SIZE);
+  await Promise.all(batch.map(agent => {
+    const profile = profileMap.get(agent.user_id);
+    if (!profile?.email) return;
+    return resend.emails.send({ ... });
+  }));
+}
+```
+
+This reduces:
+- 50 DB queries to 1
+- 50 sequential emails to 5 parallel batches
+- 15 seconds of delays to 0
+
+#### C) Apply same optimization to all 3 functions
+
+Files to update:
+- `supabase/functions/notify-fill-numbers/index.ts`
+- `supabase/functions/notify-top-performer/index.ts`
+- `supabase/functions/notify-missed-dialer/index.ts`
 
 ---
 
-### Implementation
+### Database Migration
 
-#### 1. Force PWA Update (Critical)
+SQL to reschedule jobs (run via migration tool):
 
-The primary fix is ensuring users get the new code. I'll add a service worker update prompt that forces a reload when new code is available.
+```sql
+-- Move notify-fill-numbers-7pm from 7 PM CST (0 1 UTC) to 8 PM CST (0 2 UTC)
+UPDATE cron.job 
+SET schedule = '0 2 * * *' 
+WHERE jobname = 'notify-fill-numbers-7pm';
 
-**File:** `src/main.tsx`
-
-Add a listener for service worker updates that shows a toast and reloads:
-
-```typescript
-// Register service worker with update handling
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then(registration => {
-      registration.addEventListener('updatefound', () => {
-        const newWorker = registration.installing;
-        newWorker?.addEventListener('statechange', () => {
-          if (newWorker.state === 'activated') {
-            // New version available - reload
-            window.location.reload();
-          }
-        });
-      });
-    });
-  });
-}
-```
-
-**File:** `vite.config.ts`
-
-Update PWA plugin to use `autoUpdate` behavior:
-
-```typescript
-VitePWA({
-  registerType: 'autoUpdate',
-  workbox: {
-    skipWaiting: true,
-    clientsClaim: true,
-  },
-  // ...
-})
-```
-
-#### 2. Fix Numbers.tsx Auth State (Quick Win)
-
-**File:** `src/pages/Numbers.tsx`
-
-If user is authenticated but has no agent record, show a helpful message instead of a broken state:
-
-```typescript
-// Lines 64-79: Update loadAgentData
-if (agent) {
-  setAgentId(agent.id);
-  setAgentName(agent.profile?.full_name || "Agent");
-  setIsAuthenticated(true);
-} else {
-  // User exists but no agent record - don't set isAuthenticated
-  // This will show the "Account Not Linked" UI instead of broken entry form
-  setAgentId(null);
-  setIsAuthenticated(false);
-}
-```
-
-Wait - actually looking at lines 77-78, it DOES set `isAuthenticated = true` even without an agent. This means authenticated users without agent records see a broken form. Fix this by only setting authenticated when there's an agent:
-
-```typescript
-if (!agent) {
-  setLoading(false);
-  // Don't set isAuthenticated - let them see login/error UI
-  return;
-}
-```
-
-#### 3. Add Cache-Busting Meta Tags
-
-**File:** `index.html`
-
-Add cache control headers to help prevent stale JS:
-
-```html
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
+-- Move notify-missed-dialer from 7:30 PM CST (30 1 UTC) to 10 PM CST (0 4 UTC)
+UPDATE cron.job 
+SET schedule = '0 4 * * *' 
+WHERE jobname = 'notify-missed-dialer-daily';
 ```
 
 ---
+
+### Expected Results
+
+- **Before**: 3 jobs running 90+ seconds total between 6-7:30 PM, causing DB and email API contention
+- **After**: Jobs spread across 4 hours (6 PM, 8 PM, 10 PM), each completing in under 5 seconds
+
+---
+
+### Technical Details
+
+| Function | Before (50 agents) | After (50 agents) |
+|----------|-------------------|-------------------|
+| DB Queries | 50 sequential | 1 batched |
+| Emails | 50 sequential | 5 parallel batches |
+| Delays | 15 seconds | 0 seconds |
+| Total Time | ~30 seconds | ~3 seconds |
 
 ### Files to Modify
 
-| File | Change |
-|------|--------|
-| `vite.config.ts` | Enable PWA autoUpdate with skipWaiting |
-| `src/main.tsx` | Add service worker update reload listener |
-| `src/pages/Numbers.tsx` | Fix auth state when no agent record exists |
-| `index.html` | Add cache-busting meta tags |
-
----
-
-### Expected Results After Publishing
-
-1. **Dashboard** - No more layout shift on mobile (margin-left fix already in code)
-2. **Agent Portal** - Active agents can access regardless of onboarding stage (already in code)
-3. **Numbers page** - Users without agent records see proper message instead of broken form
-4. **PWA Updates** - Users automatically get new code instead of cached bundles
-
----
-
-### Verification Steps
-
-After publishing:
-1. Open the published site on mobile
-2. Clear browser cache OR wait for auto-update prompt
-3. Verify dashboard loads without shifting
-4. Test login on `/agent-portal` with an active agent email
-5. Test `/numbers` page entry and submission
+1. `supabase/functions/notify-fill-numbers/index.ts` - batch optimization
+2. `supabase/functions/notify-top-performer/index.ts` - batch optimization  
+3. `supabase/functions/notify-missed-dialer/index.ts` - batch optimization
+4. SQL Migration - reschedule cron jobs
 

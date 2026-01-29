@@ -1,140 +1,167 @@
 
 
-## Fix: Evening Cron Job "Clog" at 6-7 PM
+## Admin Course Management + My Team Dashboard Enhancements
 
-### The Problem
-
-Three heavy notification jobs run back-to-back around 6-7 PM CST, each using inefficient sequential processing:
-
-| Time (CST) | Job | Issue |
-|------------|-----|-------|
-| 6:00 PM | notify-top-performer | Loops all agents, 1 email at a time with 300ms delays |
-| 7:00 PM | notify-fill-numbers | Same pattern |
-| 7:30 PM | notify-missed-dialer | Same pattern + extra DB query per agent |
-
-With 50 agents, each function takes 15-30+ seconds just in artificial delays, plus sequential DB queries that could be batched.
-
-### Solution
-
-1. **Stagger the job times** - spread them out by 30+ minutes
-2. **Batch database queries** - fetch all profiles in one query instead of per-agent
-3. **Use batch email sending** - Resend supports up to 100 recipients in one API call
-4. **Remove unnecessary delays** - Resend's rate limit is 100/second, not 3/second
+Based on exploring your codebase, I understand exactly what you need. Here's the implementation plan:
 
 ---
 
-### Implementation Details
+### What You're Getting
 
-#### A) Reschedule cron jobs to avoid pileup
+**1. Course Questions Viewer (Admin-Only)**
+- A dedicated section in the Admin Panel where you can see ALL course questions at a glance
+- View organized by module with question text, correct answers, and explanations visible
+- Quick reference to confirm quiz content before enrolling agents
 
-Current:
-- notify-top-performer: 0 0 * * * (6 PM CST)
-- notify-fill-numbers-7pm: 0 1 * * * (7 PM CST)
-- notify-missed-dialer: 30 1 * * * (7:30 PM CST)
+**2. "Add to Course" Button**
+- One-click action to create an agent's login and enroll them in the onboarding course
+- Button visible in multiple places:
+  - Team Hierarchy Manager (next to each agent)
+  - Managers Panel (in the team member list)
+  - Agent Management table
+- Sends the agent their login credentials automatically
 
-New (spread across 2 hours):
-- notify-top-performer: 0 0 * * * (6 PM CST) - keep as is
-- notify-fill-numbers-7pm: 0 2 * * * (8 PM CST) - move 1 hour later
-- notify-missed-dialer: 0 4 * * * (10 PM CST) - move to end of day
-
-This requires a SQL migration to update the cron.job table.
-
-#### B) Optimize notify-fill-numbers (and similar functions)
-
-**Before (slow):**
-```typescript
-for (const agent of agentsNeedingReminder) {
-  // 1 query per agent
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name, email")
-    .eq("user_id", agent.user_id)
-    .single();
-  
-  // 1 email per agent
-  await resend.emails.send({ ... });
-  
-  // Artificial delay
-  await new Promise(resolve => setTimeout(resolve, 300));
-}
-```
-
-**After (fast):**
-```typescript
-// 1 query for ALL profiles
-const userIds = agentsNeedingReminder.map(a => a.user_id);
-const { data: profiles } = await supabase
-  .from("profiles")
-  .select("user_id, full_name, email")
-  .in("user_id", userIds);
-
-// Build profile map
-const profileMap = new Map(profiles.map(p => [p.user_id, p]));
-
-// Send emails in parallel batches of 10
-const BATCH_SIZE = 10;
-for (let i = 0; i < agentsNeedingReminder.length; i += BATCH_SIZE) {
-  const batch = agentsNeedingReminder.slice(i, i + BATCH_SIZE);
-  await Promise.all(batch.map(agent => {
-    const profile = profileMap.get(agent.user_id);
-    if (!profile?.email) return;
-    return resend.emails.send({ ... });
-  }));
-}
-```
-
-This reduces:
-- 50 DB queries to 1
-- 50 sequential emails to 5 parallel batches
-- 15 seconds of delays to 0
-
-#### C) Apply same optimization to all 3 functions
-
-Files to update:
-- `supabase/functions/notify-fill-numbers/index.ts`
-- `supabase/functions/notify-top-performer/index.ts`
-- `supabase/functions/notify-missed-dialer/index.ts`
+**3. Enhanced My Team Dashboard**
+- Clear visualization of who reports to whom
+- Manager → Agent relationship shown at a glance
+- Sortable by manager, stage, or name
+- Quick actions for reassigning agents between managers
+- Active agent count per manager
+- Visual indicators for:
+  - Onboarding stage (Coursework, Field Training, Live)
+  - Course progress percentage
+  - Last activity
 
 ---
-
-### Database Migration
-
-SQL to reschedule jobs (run via migration tool):
-
-```sql
--- Move notify-fill-numbers-7pm from 7 PM CST (0 1 UTC) to 8 PM CST (0 2 UTC)
-UPDATE cron.job 
-SET schedule = '0 2 * * *' 
-WHERE jobname = 'notify-fill-numbers-7pm';
-
--- Move notify-missed-dialer from 7:30 PM CST (30 1 UTC) to 10 PM CST (0 4 UTC)
-UPDATE cron.job 
-SET schedule = '0 4 * * *' 
-WHERE jobname = 'notify-missed-dialer-daily';
-```
-
----
-
-### Expected Results
-
-- **Before**: 3 jobs running 90+ seconds total between 6-7:30 PM, causing DB and email API contention
-- **After**: Jobs spread across 4 hours (6 PM, 8 PM, 10 PM), each completing in under 5 seconds
-
----
-
-### Technical Details
-
-| Function | Before (50 agents) | After (50 agents) |
-|----------|-------------------|-------------------|
-| DB Queries | 50 sequential | 1 batched |
-| Emails | 50 sequential | 5 parallel batches |
-| Delays | 15 seconds | 0 seconds |
-| Total Time | ~30 seconds | ~3 seconds |
 
 ### Files to Modify
 
-1. `supabase/functions/notify-fill-numbers/index.ts` - batch optimization
-2. `supabase/functions/notify-top-performer/index.ts` - batch optimization  
-3. `supabase/functions/notify-missed-dialer/index.ts` - batch optimization
-4. SQL Migration - reschedule cron jobs
+| File | Change |
+|------|--------|
+| `src/components/dashboard/QuizQuestionsAdmin.tsx` | Add full question preview mode (show questions with answers) |
+| `src/components/dashboard/TeamHierarchyManager.tsx` | Add "Add to Course" button + course progress column |
+| `src/components/dashboard/ManagersPanel.tsx` | Add "Enroll" action for team members |
+| `src/pages/TeamDirectory.tsx` | Redesign for clear manager→agent hierarchy visualization |
+| `src/components/dashboard/AddToCourseButton.tsx` | NEW - Reusable button component for course enrollment |
+| `supabase/functions/enroll-agent-course/index.ts` | NEW - Backend function to create login + enroll in course |
+
+---
+
+### Technical Implementation
+
+#### A) Course Questions Full View (QuizQuestionsAdmin)
+
+Current behavior: Accordion view with truncated questions and just option counts.
+
+New behavior:
+- Add "Show All Questions" toggle button
+- When enabled, display full question text, all options, correct answer highlighted, and explanations
+- Export option to copy all questions as text (for review)
+
+```text
+┌─────────────────────────────────────────────────────┐
+│ Quiz Questions Manager         [👁️ Show Answers]    │
+├─────────────────────────────────────────────────────┤
+│ ▼ Getting Started: Your First Week (5 questions)    │
+│                                                     │
+│   Q1: What is the most important mindset...         │
+│   ├─ A) Close deals fast                            │
+│   ├─ ✓ B) Learn and stay coachable ← CORRECT       │
+│   ├─ C) Avoid mistakes                              │
+│   └─ D) Work independently                          │
+│   📝 Explanation: The first week is about...        │
+│                                                     │
+│   Q2: How should you approach daily training...     │
+│   ...                                               │
+└─────────────────────────────────────────────────────┘
+```
+
+#### B) "Add to Course" Component
+
+Creates a reusable button that:
+1. Checks if agent already has course access
+2. If not, generates login credentials via existing `send-agent-portal-login` function
+3. Creates `onboarding_progress` record for Module 1
+4. Updates agent's `onboarding_stage` to `"training_online"`
+5. Shows success toast with confirmation
+
+#### C) Team Hierarchy Enhanced View
+
+Redesign TeamDirectory for admin/manager view:
+
+```text
+┌─────────────────────────────────────────────────────────┐
+│ My Team                        [Filter ▼] [Refresh]     │
+├─────────────────────────────────────────────────────────┤
+│ ┌─ Samuel James (You) ─────────────────────────────────┐│
+│ │  ├─ Obiajulu Ifediora    Onboarding    [Enroll]      ││
+│ │  ├─ KJ Vaughns           Onboarding    [Enroll]      ││
+│ │  ├─ Donavon Brikho       Field Train   60% ▓▓▓▓░░    ││
+│ │  ├─ Joe Intwan           Field Train   80% ▓▓▓▓▓▓░░  ││
+│ │  └─ Aisha Kebbeh         Live          ✓ Complete    ││
+│ └──────────────────────────────────────────────────────┘│
+│                                                         │
+│ ┌─ Obiajulu Ifediora ──────────────────────────────────┐│
+│ │  └─ Chukwudi Ifediora    Live          ✓ Complete    ││
+│ └──────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────┘
+```
+
+Features:
+- Tree view showing hierarchy
+- Course progress bars for agents in coursework
+- Quick "Enroll" button for agents without course access
+- Reassign dropdown to move agents between managers
+- Stage badges with color coding
+
+---
+
+### Database Query for Course Progress
+
+I'll add a query to fetch onboarding progress alongside agent data:
+
+```sql
+SELECT 
+  a.id,
+  a.onboarding_stage,
+  p.full_name,
+  (SELECT COUNT(*) FROM onboarding_progress op 
+   WHERE op.agent_id = a.id AND op.passed = true) as modules_completed,
+  (SELECT COUNT(*) FROM onboarding_modules 
+   WHERE is_active = true) as total_modules
+FROM agents a
+JOIN profiles p ON p.user_id = a.user_id
+WHERE a.status = 'active'
+```
+
+---
+
+### Enrollment Flow
+
+When admin clicks "Add to Course":
+
+1. **Check existing access**
+   - If agent already has `onboarding_progress` records → show "Already enrolled"
+   
+2. **Generate credentials**
+   - Call `send-agent-portal-login` edge function
+   - This sends magic link email to agent
+   
+3. **Initialize course**
+   - Set agent's `onboarding_stage` to `"training_online"`
+   - Create first `onboarding_progress` record (started_at = now)
+   
+4. **Show confirmation**
+   - Toast: "✓ [Agent Name] enrolled in course. Login sent to [email]"
+
+---
+
+### Summary
+
+After implementation:
+- You can view ALL quiz questions with answers from Admin Panel
+- One-click "Enroll in Course" button creates login + starts course
+- My Team shows clear manager→agent relationships
+- Course progress visible for each agent
+- Easy reassignment between managers
 

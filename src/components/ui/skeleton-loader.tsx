@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { motion } from "framer-motion";
-import { Crown } from "lucide-react";
+import apexIcon from "@/assets/apex-icon.png";
 
 interface SkeletonLoaderProps {
   className?: string;
@@ -17,7 +17,11 @@ export function SkeletonLoader({ className, variant = "card" }: SkeletonLoaderPr
           className="text-center"
         >
           <div className="relative">
-            <Crown className="h-12 w-12 text-primary mx-auto mb-4 animate-pulse" />
+            <img 
+              src={apexIcon} 
+              alt="Apex" 
+              className="h-12 w-12 mx-auto mb-4 animate-pulse rounded-xl"
+            />
             <div className="absolute inset-0 h-12 w-12 mx-auto rounded-full bg-primary/20 blur-xl animate-pulse" />
           </div>
           <p className="text-muted-foreground font-medium text-sm">

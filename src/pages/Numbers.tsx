@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Loader2, Mail, Phone, User, LogIn } from "lucide-react";
+import { Loader2, Mail, Phone, User, LogIn, Link2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -207,6 +207,20 @@ export default function Numbers() {
 
           {/* Leaderboard */}
           <CompactLeaderboard currentAgentId={agentId} />
+
+          {/* Share Link Footer */}
+          <div className="text-center text-xs text-muted-foreground py-4 flex items-center justify-center gap-2">
+            <Link2 className="h-3 w-3" />
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(`${window.location.origin}/numbers`);
+                toast.success("Link copied to clipboard!");
+              }}
+              className="underline hover:text-primary transition-colors"
+            >
+              Share this page with your team
+            </button>
+          </div>
         </div>
       </div>
     );

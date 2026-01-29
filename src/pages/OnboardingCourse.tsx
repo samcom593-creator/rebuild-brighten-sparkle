@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Skeleton } from "@/components/ui/skeleton";
+import { SkeletonLoader } from "@/components/ui/skeleton-loader";
 import { useAuth } from "@/hooks/useAuth";
 import { useOnboardingCourse } from "@/hooks/useOnboardingCourse";
 import { CourseModuleSidebar } from "@/components/course/CourseModuleSidebar";
@@ -78,17 +78,7 @@ export default function OnboardingCourse() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background p-4 md:p-8">
-        <div className="max-w-7xl mx-auto">
-          <Skeleton className="h-8 w-48 mb-6" />
-          <div className="flex flex-col lg:flex-row gap-6">
-            <Skeleton className="w-full lg:w-80 h-[400px]" />
-            <Skeleton className="flex-1 h-[600px]" />
-          </div>
-        </div>
-      </div>
-    );
+    return <SkeletonLoader variant="page" />;
   }
 
   if (modules.length === 0) {

@@ -70,11 +70,11 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Get all emails
+    // BATCH: Get all emails in one query
     const userIds = liveAgents.map(a => a.user_id).filter(Boolean);
     const { data: profiles } = await supabaseClient
       .from("profiles")
-      .select("email")
+      .select("user_id, email")
       .in("user_id", userIds);
 
     const emails = profiles?.map(p => p.email).filter(Boolean) || [];
@@ -86,88 +86,106 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Send team-wide email
+    // Prepare stats
     const aop = Number(topProduction.aop).toLocaleString();
     const deals = topProduction.deals_closed;
     const closeRate = Number(topProduction.closing_rate).toFixed(0);
 
-    for (const email of emails) {
-      try {
-        await resend.emails.send({
-          from: "APEX Financial Empire <notifications@tx.apex-financial.org>",
-          to: [email],
-          subject: `🏆 Today's Top Performer: ${topPerformerName}!`,
-          html: `
-            <!DOCTYPE html>
-            <html>
-            <head>
-              <meta charset="utf-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            </head>
-            <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #0a0f1a;">
-              <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-                <div style="background: linear-gradient(135deg, #0d1526 0%, #1a2a4a 100%); border-radius: 16px; padding: 40px; border: 1px solid rgba(245, 158, 11, 0.3);">
-                  
-                  <div style="text-align: center; margin-bottom: 24px;">
-                    <span style="font-size: 64px;">🏆</span>
-                  </div>
-                  
-                  <h1 style="color: #f59e0b; font-size: 28px; margin: 0 0 8px 0; text-align: center;">
-                    Today's Champion!
-                  </h1>
-                  
-                  <h2 style="color: #ffffff; font-size: 32px; margin: 0 0 24px 0; text-align: center;">
-                    ${topPerformerName}
-                  </h2>
-                  
-                  <div style="background: rgba(245, 158, 11, 0.1); border-radius: 12px; padding: 24px; margin: 24px 0;">
-                    <div style="display: flex; justify-content: space-around; text-align: center;">
-                      <div>
-                        <p style="color: #f59e0b; font-size: 28px; font-weight: bold; margin: 0;">$${aop}</p>
-                        <p style="color: #94a3b8; font-size: 14px; margin: 4px 0 0 0;">Production</p>
-                      </div>
-                      <div>
-                        <p style="color: #14b8a6; font-size: 28px; font-weight: bold; margin: 0;">${deals}</p>
-                        <p style="color: #94a3b8; font-size: 14px; margin: 4px 0 0 0;">Deals Closed</p>
-                      </div>
-                      <div>
-                        <p style="color: #8b5cf6; font-size: 28px; font-weight: bold; margin: 0;">${closeRate}%</p>
-                        <p style="color: #94a3b8; font-size: 14px; margin: 4px 0 0 0;">Close Rate</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <p style="color: #e2e8f0; font-size: 16px; line-height: 1.8; text-align: center; margin: 0;">
-                    Congratulations on an amazing day! 🎉<br>
-                    Let's all aim to be on top tomorrow!
-                  </p>
-                  
-                  <div style="border-top: 1px solid rgba(148, 163, 184, 0.2); padding-top: 24px; margin-top: 24px;">
-                    <p style="color: #64748b; font-size: 12px; margin: 0; text-align: center;">
-                      APEX Financial Empire<br>
-                      Building Empires, Protecting Families
-                    </p>
-                  </div>
-                  
-                </div>
-              </div>
-            </body>
-            </html>
-          `,
-        });
+    const emailHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #0a0f1a;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+          <div style="background: linear-gradient(135deg, #0d1526 0%, #1a2a4a 100%); border-radius: 16px; padding: 40px; border: 1px solid rgba(245, 158, 11, 0.3);">
+            
+            <div style="text-align: center; margin-bottom: 24px;">
+              <span style="font-size: 64px;">🏆</span>
+            </div>
+            
+            <h1 style="color: #f59e0b; font-size: 28px; margin: 0 0 8px 0; text-align: center;">
+              Today's Champion!
+            </h1>
+            
+            <h2 style="color: #ffffff; font-size: 32px; margin: 0 0 24px 0; text-align: center;">
+              ${topPerformerName}
+            </h2>
+            
+            <div style="background: rgba(245, 158, 11, 0.1); border-radius: 12px; padding: 24px; margin: 24px 0;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="text-align: center;">
+                <tr>
+                  <td style="width: 33%;">
+                    <p style="color: #f59e0b; font-size: 28px; font-weight: bold; margin: 0;">$${aop}</p>
+                    <p style="color: #94a3b8; font-size: 14px; margin: 4px 0 0 0;">Production</p>
+                  </td>
+                  <td style="width: 33%;">
+                    <p style="color: #14b8a6; font-size: 28px; font-weight: bold; margin: 0;">${deals}</p>
+                    <p style="color: #94a3b8; font-size: 14px; margin: 4px 0 0 0;">Deals Closed</p>
+                  </td>
+                  <td style="width: 33%;">
+                    <p style="color: #8b5cf6; font-size: 28px; font-weight: bold; margin: 0;">${closeRate}%</p>
+                    <p style="color: #94a3b8; font-size: 14px; margin: 4px 0 0 0;">Close Rate</p>
+                  </td>
+                </tr>
+              </table>
+            </div>
+            
+            <p style="color: #e2e8f0; font-size: 16px; line-height: 1.8; text-align: center; margin: 0;">
+              Congratulations on an amazing day! 🎉<br>
+              Let's all aim to be on top tomorrow!
+            </p>
+            
+            <div style="border-top: 1px solid rgba(148, 163, 184, 0.2); padding-top: 24px; margin-top: 24px;">
+              <p style="color: #64748b; font-size: 12px; margin: 0; text-align: center;">
+                APEX Financial Empire<br>
+                Building Empires, Protecting Families
+              </p>
+            </div>
+            
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
 
-        await new Promise(resolve => setTimeout(resolve, 300));
-      } catch (emailError) {
-        console.error(`Failed to send to ${email}:`, emailError);
-      }
+    // BATCH: Send emails in parallel batches of 10
+    const BATCH_SIZE = 10;
+    let successCount = 0;
+
+    for (let i = 0; i < emails.length; i += BATCH_SIZE) {
+      const batch = emails.slice(i, i + BATCH_SIZE);
+      
+      const results = await Promise.allSettled(
+        batch.map(email => 
+          resend.emails.send({
+            from: "APEX Financial Empire <notifications@tx.apex-financial.org>",
+            to: [email],
+            subject: `🏆 Today's Top Performer: ${topPerformerName}!`,
+            html: emailHtml,
+          })
+        )
+      );
+
+      results.forEach((result) => {
+        if (result.status === "fulfilled") {
+          successCount++;
+        } else {
+          console.error("Email send failed:", result.reason);
+        }
+      });
     }
+
+    console.log(`Sent ${successCount} top performer notifications`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         topPerformer: topPerformerName,
         production: aop,
-        emailsSent: emails.length
+        emailsSent: successCount
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

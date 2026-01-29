@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Users, RefreshCw, AlertTriangle, Check, Loader2, Network } from "lucide-react";
+import { Users, RefreshCw, AlertTriangle, Check, Loader2, Network, GraduationCap } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -23,6 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { AddToCourseButton } from "./AddToCourseButton";
 
 interface AgentHierarchyEntry {
   id: string;
@@ -32,6 +34,8 @@ interface AgentHierarchyEntry {
   managerName: string | null;
   isManager: boolean;
   onboardingStage: string | null;
+  hasProgress: boolean;
+  courseProgress: number; // percentage 0-100
 }
 
 interface Manager {
@@ -89,23 +93,34 @@ export function TeamHierarchyManager() {
       // Get all user_ids for profile lookup
       const userIds = agentsData.map(a => a.user_id).filter(Boolean);
       
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, full_name, email")
-        .in("user_id", userIds);
+      // Fetch profiles, manager roles, and course progress in parallel
+      const [profilesResult, managerRolesResult, progressResult, modulesResult] = await Promise.all([
+        supabase.from("profiles").select("user_id, full_name, email").in("user_id", userIds),
+        supabase.from("user_roles").select("user_id").in("role", ["manager", "admin"]),
+        supabase.from("onboarding_progress").select("agent_id, passed"),
+        supabase.from("onboarding_modules").select("id").eq("is_active", true),
+      ]);
 
-      // Get all managers (users with manager role)
-      const { data: managerRoles } = await supabase
-        .from("user_roles")
-        .select("user_id")
-        .in("role", ["manager", "admin"]);
+      const profiles = profilesResult.data || [];
+      const managerUserIds = new Set(managerRolesResult.data?.map(r => r.user_id) || []);
+      const progressData = progressResult.data || [];
+      const totalModules = modulesResult.data?.length || 1;
 
-      const managerUserIds = new Set(managerRoles?.map(r => r.user_id) || []);
+      // Calculate progress per agent
+      const agentProgressMap = new Map<string, { hasProgress: boolean; passedCount: number }>();
+      progressData.forEach(p => {
+        const existing = agentProgressMap.get(p.agent_id) || { hasProgress: false, passedCount: 0 };
+        agentProgressMap.set(p.agent_id, {
+          hasProgress: true,
+          passedCount: existing.passedCount + (p.passed ? 1 : 0),
+        });
+      });
 
       // Build agent hierarchy entries
       const agentEntries: AgentHierarchyEntry[] = agentsData.map(agent => {
         const profile = profiles?.find(p => p.user_id === agent.user_id);
         const isManager = managerUserIds.has(agent.user_id || "");
+        const progressInfo = agentProgressMap.get(agent.id);
         
         // Find manager's name
         let managerName: string | null = null;
@@ -125,6 +140,10 @@ export function TeamHierarchyManager() {
           managerName,
           isManager,
           onboardingStage: agent.onboarding_stage,
+          hasProgress: progressInfo?.hasProgress || false,
+          courseProgress: progressInfo 
+            ? Math.round((progressInfo.passedCount / totalModules) * 100) 
+            : 0,
         };
       });
 
@@ -307,19 +326,20 @@ export function TeamHierarchyManager() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/30">
-                <TableHead>Agent</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Stage</TableHead>
-                <TableHead className="w-48">Reports To</TableHead>
+              <TableHead>Agent</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Stage</TableHead>
+              <TableHead className="w-32">Course</TableHead>
+              <TableHead className="w-48">Reports To</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredAgents.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  No agents found
+                </TableCell>
               </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredAgents.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                    No agents found
-                  </TableCell>
-                </TableRow>
               ) : (
                 filteredAgents.map((agent) => (
                   <TableRow 
@@ -350,6 +370,28 @@ export function TeamHierarchyManager() {
                       <Badge variant="outline" className="text-xs capitalize">
                         {agent.onboardingStage?.replace(/_/g, " ") || "N/A"}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {agent.id === adminAgentId ? (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      ) : agent.courseProgress === 100 ? (
+                        <Badge className="bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
+                          ✓ Complete
+                        </Badge>
+                      ) : agent.hasProgress ? (
+                        <div className="flex items-center gap-2">
+                          <Progress value={agent.courseProgress} className="h-2 w-16" />
+                          <span className="text-xs text-muted-foreground">{agent.courseProgress}%</span>
+                        </div>
+                      ) : (
+                        <AddToCourseButton
+                          agentId={agent.id}
+                          agentName={agent.name}
+                          hasProgress={false}
+                          onSuccess={fetchHierarchy}
+                          size="sm"
+                        />
+                      )}
                     </TableCell>
                     <TableCell>
                       {agent.id === adminAgentId ? (

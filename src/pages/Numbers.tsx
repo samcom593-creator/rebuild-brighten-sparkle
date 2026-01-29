@@ -66,16 +66,10 @@ export default function Numbers() {
         setAgentName(agent.profile?.full_name || "Agent");
         setIsAuthenticated(true);
       } else {
-        // User exists but no agent record - could be new signup
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("full_name")
-          .eq("user_id", userId)
-          .maybeSingle();
-        
-        setAgentName(profile?.full_name || "Agent");
-        // Still show as authenticated even without agent record
-        setIsAuthenticated(true);
+        // User exists but no agent record - don't set authenticated
+        // This shows login UI instead of broken form
+        setAgentId(null);
+        setIsAuthenticated(false);
       }
     } catch (error) {
       console.error("Error loading agent data:", error);

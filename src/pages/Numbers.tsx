@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Loader2, Mail, Phone, User, LogIn, Link2 } from "lucide-react";
+import { Loader2, Mail, Phone, User, LogIn, Link2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,7 +25,12 @@ export default function Numbers() {
   const [requiresPassword, setRequiresPassword] = useState(false);
   const [needsAccount, setNeedsAccount] = useState(false);
   const [crmData, setCrmData] = useState<{ name?: string; email?: string }>({});
+  
+  // Signup form state
   const [newName, setNewName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [newPassword, setNewPassword] = useState("");
 
   // Check session on mount
   useEffect(() => {
@@ -288,20 +293,109 @@ export default function Numbers() {
             </form>
           ) : needsAccount ? (
             /* Create account form */
-            <form onSubmit={(e) => {
+            <form onSubmit={async (e) => {
               e.preventDefault();
-              toast.info("Account creation coming soon - please contact your manager");
-            }} className="space-y-4">
+              if (!newName.trim() || !newEmail.trim() || !newPassword.trim()) {
+                toast.error("Please fill in all fields");
+                return;
+              }
+              if (newPassword.length < 6) {
+                toast.error("Password must be at least 6 characters");
+                return;
+              }
+              
+              setAuthenticating(true);
+              try {
+                const { data, error } = await supabase.functions.invoke("create-new-agent-account", {
+                  body: {
+                    email: newEmail.trim(),
+                    password: newPassword,
+                    fullName: newName.trim(),
+                    phone: newPhone.trim() || undefined,
+                  },
+                });
+
+                if (error) throw error;
+                if (data.error) throw new Error(data.error);
+
+                toast.success("Account created! Logging you in...");
+                
+                // Auto-login after account creation
+                const { error: signInError } = await supabase.auth.signInWithPassword({
+                  email: newEmail.trim().toLowerCase(),
+                  password: newPassword,
+                });
+
+                if (signInError) {
+                  toast.error("Account created but login failed. Please try logging in.");
+                  setNeedsAccount(false);
+                  setIdentifier(newEmail);
+                }
+              } catch (error: any) {
+                console.error("Signup error:", error);
+                toast.error(error.message || "Failed to create account");
+              } finally {
+                setAuthenticating(false);
+              }
+            }} className="space-y-3">
+              <div className="text-center mb-2">
+                <p className="text-sm text-muted-foreground">Create your agent account</p>
+              </div>
               <div>
-                <Label htmlFor="newName" className="text-xs">Your Name</Label>
+                <Label htmlFor="newName" className="text-xs flex items-center gap-1">
+                  <User className="h-3 w-3" />
+                  Full Name
+                </Label>
                 <Input
                   id="newName"
                   type="text"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  placeholder="Full name"
-                  className="h-12"
+                  placeholder="John Smith"
+                  className="h-11"
                   autoFocus
+                />
+              </div>
+              <div>
+                <Label htmlFor="newEmail" className="text-xs flex items-center gap-1">
+                  <Mail className="h-3 w-3" />
+                  Email
+                </Label>
+                <Input
+                  id="newEmail"
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="h-11"
+                />
+              </div>
+              <div>
+                <Label htmlFor="newPhone" className="text-xs flex items-center gap-1">
+                  <Phone className="h-3 w-3" />
+                  Phone (optional)
+                </Label>
+                <Input
+                  id="newPhone"
+                  type="tel"
+                  value={newPhone}
+                  onChange={(e) => setNewPhone(e.target.value)}
+                  placeholder="(555) 123-4567"
+                  className="h-11"
+                />
+              </div>
+              <div>
+                <Label htmlFor="newPassword" className="text-xs flex items-center gap-1">
+                  <Lock className="h-3 w-3" />
+                  Password
+                </Label>
+                <Input
+                  id="newPassword"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="h-11"
                 />
               </div>
               <Button 
@@ -321,6 +415,10 @@ export default function Numbers() {
                 onClick={() => {
                   setNeedsAccount(false);
                   setCrmData({});
+                  setNewName("");
+                  setNewEmail("");
+                  setNewPhone("");
+                  setNewPassword("");
                 }}
                 className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors"
               >

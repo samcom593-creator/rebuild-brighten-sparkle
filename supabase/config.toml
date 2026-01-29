@@ -225,3 +225,6 @@ verify_jwt = false
 
 [functions.link-account]
 verify_jwt = false
+
+[functions.send-daily-sales-leaderboard]
+verify_jwt = false

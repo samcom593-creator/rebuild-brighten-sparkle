@@ -210,3 +210,18 @@ verify_jwt = false
 
 [functions.notify-course-complete]
 verify_jwt = false
+
+[functions.check-team-milestones]
+verify_jwt = false
+
+[functions.notify-manager-downline-production]
+verify_jwt = false
+
+[functions.send-course-reminder]
+verify_jwt = false
+
+[functions.create-agent-from-leaderboard]
+verify_jwt = false
+
+[functions.link-account]
+verify_jwt = false

@@ -38,6 +38,7 @@ import { IncomeGoalTracker } from "@/components/dashboard/IncomeGoalTracker";
 import { PerformanceDashboardSection } from "@/components/dashboard/PerformanceDashboardSection";
 import { WeeklyBadgesCard } from "@/components/dashboard/WeeklyBadges";
 import { YearPerformanceCard } from "@/components/dashboard/YearPerformanceCard";
+import { AccountLinkForm } from "@/components/dashboard/AccountLinkForm";
 import { AgentRankBadge } from "@/components/dashboard/AgentRankBadge";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
@@ -400,42 +401,9 @@ export default function AgentPortal() {
     );
   }
 
-  // Show message if user has no agent record
+  // Show self-link form if user has no agent record
   if (!agentId && !isAdminViewing) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center max-w-md w-full"
-        >
-          <GlassCard className="p-8">
-            <div className="relative mb-6">
-              <img 
-                src={apexIcon} 
-                alt="Apex" 
-                className="h-16 w-16 mx-auto opacity-50"
-              />
-            </div>
-            <h1 className="text-2xl font-bold mb-2">Account Not Linked</h1>
-            <p className="text-muted-foreground mb-6">
-              Your account isn't linked to an agent profile yet. Please contact your manager for assistance.
-            </p>
-            <div className="space-y-3">
-              <Link to="/dashboard">
-                <Button variant="outline" className="w-full" size="lg">
-                  Go to Dashboard
-                </Button>
-              </Link>
-              <Button variant="ghost" onClick={handleLogout} className="w-full">
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
-              </Button>
-            </div>
-          </GlassCard>
-        </motion.div>
-      </div>
-    );
+    return <AccountLinkForm user={user} profile={profile} onSuccess={() => window.location.reload()} onLogout={handleLogout} />;
   }
 
   return (

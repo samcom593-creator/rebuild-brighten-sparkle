@@ -1,141 +1,135 @@
 
-## What’s actually broken (based on the code)
+## Mobile Dashboard + Agent Portal + Numbers Page Fix Plan
 
-### 1) “Dashboard puts everything to the side” on mobile
-This is caused by **SidebarLayout.tsx** always applying a `margin-left` that’s meant for the desktop sidebar:
+### What's Still Happening
 
-- Desktop sidebar is hidden on mobile (`hidden lg:block`)
-- But `<main style={{ marginLeft: `${sidebarWidth}px` }}>` still runs on mobile/tablet
-- Result: the whole page gets shoved right by ~256px (or 64px), which looks like “everything moved to the side”
+Based on my investigation:
 
-This will also feel “glitchy” when the sidebar state changes (open/collapsed/fullscreen), because the layout reflows horizontally.
+1. **The code fixes have already been implemented** from the previous approved plan
+2. **But they're not visible on the published site** because the PWA Service Worker is serving cached JavaScript bundles to users
 
-### 2) “People don’t have access to the Agent Portal”
-**AgentPortal.tsx** currently blocks normal agents unless:
-- they are logged in AND
-- they have an `agents` record AND
-- `agent.onboarding_stage === "evaluated"`
+Additionally, I found:
 
-But your **agent-signup** backend function creates agents with:
-- `status: "active"`
-- `onboarding_stage: "onboarding"` (not evaluated)
+3. **4 active agents with non-"evaluated" stages** (2 in "onboarding", 2 in "in_field_training") - The code fix allows them access, but again, only if users get the new code
 
-So those new agents will be told they “don’t have access” even though they’re active and should be allowed in.
-
-### 3) Post-submit layout shifts (Agent Portal + Dashboard)
-Even after reducing confetti, **canvas-confetti** can still cause layout thrash on mobile browsers because it injects a canvas into the DOM and resizes it. We mitigated iOS Safari, but:
-- iOS “Chrome/Firefox” are still WebKit and can behave similarly
-- The safest fix is to ensure confetti uses a **fixed-position canvas we own**, so it never affects layout and never injects into the document in an uncontrolled way.
-
-### 4) Merge “fails”
-Two likely causes:
-- **Self-merge (same agent ID)** isn’t blocked (user selects “Obi” that’s actually the same record), which should return a clean “you selected the same agent” message.
-- The merge backend is currently **public** (`verify_jwt = false`) and uses a privileged key, but it does **no permission validation** and has incomplete merge logic for potential unique collisions (e.g., daily_production date conflicts). Even if it “should work”, it’s brittle and also a security risk.
+4. **Numbers.tsx has a subtle bug** - If a user is authenticated but has no agent record, the code sets `isAuthenticated = true` but leaves `agentId = null`, so the production entry shows but can't submit numbers
 
 ---
 
-## Implementation plan (what I will change)
+### Implementation
 
-### A) Fix mobile dashboard “shifted right” immediately
-**File:** `src/components/layout/SidebarLayout.tsx`
+#### 1. Force PWA Update (Critical)
 
-1. Add a desktop breakpoint detector (>= 1024px, matching Tailwind `lg`)
-2. Apply `marginLeft` **only on desktop**
-   - On mobile/tablet: `marginLeft = 0`
-3. Only animate the margin on desktop:
-   - Use `lg:transition-[margin-left]` instead of always transitioning
+The primary fix is ensuring users get the new code. I'll add a service worker update prompt that forces a reload when new code is available.
 
-**Expected result:** Mobile dashboard no longer gets pushed right; no more “everything to the side”.
+**File:** `src/main.tsx`
 
----
+Add a listener for service worker updates that shows a toast and reloads:
 
-### B) Make confetti 100% non-disruptive to layout on mobile
-**File:** `src/components/dashboard/ConfettiCelebration.tsx`
+```typescript
+// Register service worker with update handling
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then(registration => {
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing;
+        newWorker?.addEventListener('statechange', () => {
+          if (newWorker.state === 'activated') {
+            // New version available - reload
+            window.location.reload();
+          }
+        });
+      });
+    });
+  });
+}
+```
 
-1. Replace the default `confetti()` call with `confetti.create(canvas, { resize: true })`
-2. Render a dedicated `<canvas>` that is:
-   - `position: fixed; inset: 0; pointer-events: none;`
-   - high z-index
-3. Disable confetti on **all iOS browsers** (not just Safari) if we still see instability:
-   - iPhone/iPad UA OR iPadOS detection (`MacIntel` + touch points)
+**File:** `vite.config.ts`
 
-**Expected result:** Confetti can never “push” layout; it’s an overlay only.
+Update PWA plugin to use `autoUpdate` behavior:
 
----
+```typescript
+VitePWA({
+  registerType: 'autoUpdate',
+  workbox: {
+    skipWaiting: true,
+    clientsClaim: true,
+  },
+  // ...
+})
+```
 
-### C) Fix Agent Portal access logic (stop blocking active agents)
-**File:** `src/pages/AgentPortal.tsx`
+#### 2. Fix Numbers.tsx Auth State (Quick Win)
 
-1. Stop hard-redirecting unauthenticated users to `/login`
-   - Instead show a clean “Please log in” screen with buttons:
-     - “Instant Login” → `/install`
-     - “Admin Login” → `/login`
-2. Fetch agent record with fields needed for access:
-   - `id, status, onboarding_stage, is_deactivated, is_inactive`
-   - Use `.maybeSingle()` (not `.single()`) to avoid throwing when missing
-3. Replace the current “must be evaluated” gate with status-based rules:
-   - Allow portal if `status === "active"` AND not deactivated/inactive
-   - If `status === "pending"`: route to `/pending-approval` (or show inline state)
-   - If terminated/inactive/deactivated: show a clear “Account inactive” message (no loops)
+**File:** `src/pages/Numbers.tsx`
 
-**Expected result:** New agents created via signup won’t get blocked anymore.
+If user is authenticated but has no agent record, show a helpful message instead of a broken state:
 
----
+```typescript
+// Lines 64-79: Update loadAgentData
+if (agent) {
+  setAgentId(agent.id);
+  setAgentName(agent.profile?.full_name || "Agent");
+  setIsAuthenticated(true);
+} else {
+  // User exists but no agent record - don't set isAuthenticated
+  // This will show the "Account Not Linked" UI instead of broken entry form
+  setAgentId(null);
+  setIsAuthenticated(false);
+}
+```
 
-### D) Make merging “anyone with anyone” reliable and safe
-**Files:**
-- `src/components/dashboard/AgentQuickEditDialog.tsx`
-- `supabase/functions/merge-agent-records/index.ts`
+Wait - actually looking at lines 77-78, it DOES set `isAuthenticated = true` even without an agent. This means authenticated users without agent records see a broken form. Fix this by only setting authenticated when there's an agent:
 
-**UI fixes (AgentQuickEditDialog.tsx):**
-1. Prevent selecting the current agent as the merge target:
-   - Disable that option in the list
-   - If somehow selected, show: “You can’t merge an agent into itself.”
-2. Add a confirmation step (merge is destructive)
+```typescript
+if (!agent) {
+  setLoading(false);
+  // Don't set isAuthenticated - let them see login/error UI
+  return;
+}
+```
 
-**Backend fixes (merge-agent-records function):**
-1. Require authentication even though `verify_jwt = false`
-   - If no `Authorization` header: return 401
-2. Enforce admin role in code by checking `user_roles`
-   - If not admin: return 403
-3. Handle merge collisions safely (especially `daily_production` unique date conflicts):
-   - For each duplicate daily_production row:
-     - If primary already has same date: merge/sum fields into primary, then delete duplicate row
-     - Else: reassign agent_id
-4. Move all agent-linked data we currently clean up in “hard delete” flows:
-   - applications assignments, notes, goals, metrics, awards, onboarding progress, etc.
-5. Return clear response messages so the UI can show exactly what happened
+#### 3. Add Cache-Busting Meta Tags
 
-**Expected result:** Merge stops “failing” silently and becomes consistent, and it’s no longer a public privileged endpoint.
+**File:** `index.html`
 
----
+Add cache control headers to help prevent stale JS:
 
-## How we’ll verify (Published + Mobile)
-
-1. **Mobile Dashboard:** open `/dashboard` and confirm:
-   - no left blank margin
-   - no horizontal shove when opening/closing menus
-2. **Agent Portal access:** open `/agent-portal`:
-   - logged out: see login screen (no redirect loop)
-   - logged in active agent: portal loads
-   - pending agent: goes to pending approval state
-3. **Submit numbers:** submit a deal on mobile:
-   - no layout shift during/after confetti
-4. **Merge:** attempt merge from leaderboard:
-   - cannot merge a record into itself
-   - merging two different “Obi” records succeeds and reports what moved
+```html
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+```
 
 ---
 
-## Notes / rollout
-Because your app uses a PWA service worker, after we ship these fixes we should still do a quick end-to-end verification on the **published** link (and if anything looks “stuck on old code”, we’ll also harden the update behavior so users reliably get the newest build).
+### Files to Modify
 
-If you want, I can include a small “Update available → Refresh” banner for the PWA so users stop getting trapped on stale bundles.
+| File | Change |
+|------|--------|
+| `vite.config.ts` | Enable PWA autoUpdate with skipWaiting |
+| `src/main.tsx` | Add service worker update reload listener |
+| `src/pages/Numbers.tsx` | Fix auth state when no agent record exists |
+| `index.html` | Add cache-busting meta tags |
 
 ---
 
-## What you can expect after this is implemented
-- Mobile dashboard will stop shifting right entirely (root-cause fixed)
-- Agent Portal will stop denying active agents created through signup
-- Confetti will never cause layout reflow on mobile
-- Merge will be reliable and protected (admin-only, no public privilege hole)
+### Expected Results After Publishing
+
+1. **Dashboard** - No more layout shift on mobile (margin-left fix already in code)
+2. **Agent Portal** - Active agents can access regardless of onboarding stage (already in code)
+3. **Numbers page** - Users without agent records see proper message instead of broken form
+4. **PWA Updates** - Users automatically get new code instead of cached bundles
+
+---
+
+### Verification Steps
+
+After publishing:
+1. Open the published site on mobile
+2. Clear browser cache OR wait for auto-update prompt
+3. Verify dashboard loads without shifting
+4. Test login on `/agent-portal` with an active agent email
+5. Test `/numbers` page entry and submission
+

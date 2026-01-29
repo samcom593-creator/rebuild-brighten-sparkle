@@ -43,6 +43,9 @@ const handler = async (req: Request): Promise<Response> => {
     
     if (isPhone) {
       const last10 = digitsOnly.slice(-10);
+      console.log(`Searching profiles by phone, last 10 digits: ${last10}`);
+      
+      // Search profiles with flexible phone matching
       const { data, error } = await supabaseAdmin
         .from("profiles")
         .select("id, user_id, full_name, email, phone")
@@ -52,6 +55,32 @@ const handler = async (req: Request): Promise<Response> => {
       
       if (!error && data?.[0]) {
         profile = data[0];
+      }
+      
+      // If not found in profiles, check applications table
+      if (!profile) {
+        console.log(`No profile found, checking applications table...`);
+        const { data: appData, error: appError } = await supabaseAdmin
+          .from("applications")
+          .select("id, first_name, last_name, email, phone, contracted_at")
+          .or(`phone.ilike.%${last10}%`)
+          .not("contracted_at", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(1);
+        
+        if (!appError && appData?.[0]) {
+          console.log(`Found contracted application: ${appData[0].email}`);
+          // Search for profile by the application's email instead
+          const { data: profileByEmail } = await supabaseAdmin
+            .from("profiles")
+            .select("id, user_id, full_name, email, phone")
+            .ilike("email", appData[0].email)
+            .limit(1);
+          
+          if (profileByEmail?.[0]) {
+            profile = profileByEmail[0];
+          }
+        }
       }
     } else {
       const normalizedEmail = trimmedInput.toLowerCase();

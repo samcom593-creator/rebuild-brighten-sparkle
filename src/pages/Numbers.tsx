@@ -60,24 +60,62 @@ export default function Numbers() {
 
   const loadAgentData = async (userId: string) => {
     try {
-      const { data: agent } = await supabase
+      console.log("Loading agent data for userId:", userId);
+      
+      // Query agent first without strict FK join (more resilient)
+      const { data: agent, error: agentError } = await supabase
         .from("agents")
-        .select("id, profile:profiles!agents_profile_id_fkey(full_name)")
+        .select("id, profile_id")
         .eq("user_id", userId)
         .maybeSingle();
 
+      if (agentError) {
+        console.error("Agent query error:", agentError);
+        throw agentError;
+      }
+
+      console.log("Agent query result:", agent);
+
       if (agent) {
         setAgentId(agent.id);
-        setAgentName(agent.profile?.full_name || "Agent");
+        
+        // Separately fetch profile name - try profile_id first, then user_id fallback
+        let agentName = "Agent";
+        
+        if (agent.profile_id) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("full_name")
+            .eq("id", agent.profile_id)
+            .maybeSingle();
+          agentName = profile?.full_name || "Agent";
+          console.log("Found profile by profile_id:", profile);
+        } else {
+          // Fallback: get name from user's profile by user_id
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("full_name")
+            .eq("user_id", userId)
+            .maybeSingle();
+          agentName = profile?.full_name || "Agent";
+          console.log("Found profile by user_id fallback:", profile);
+        }
+        
+        setAgentName(agentName);
         setIsAuthenticated(true);
+        console.log("Authentication successful, agent:", agent.id);
       } else {
         // User exists but no agent record - don't set authenticated
         // This shows login UI instead of broken form
+        console.log("No agent record found for userId:", userId);
         setAgentId(null);
         setIsAuthenticated(false);
       }
     } catch (error) {
       console.error("Error loading agent data:", error);
+      // On error, allow retry via login
+      setAgentId(null);
+      setIsAuthenticated(false);
     } finally {
       setLoading(false);
     }

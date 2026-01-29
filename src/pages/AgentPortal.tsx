@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays } from "date-fns";
 import { Link } from "react-router-dom";
 import { 
   RefreshCw, 
@@ -20,7 +20,8 @@ import {
   Menu,
   LayoutDashboard,
   Settings,
-  Users
+  Users,
+  Edit3
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -39,6 +40,7 @@ import { WeeklyBadgesCard } from "@/components/dashboard/WeeklyBadges";
 import { YearPerformanceCard } from "@/components/dashboard/YearPerformanceCard";
 import { AgentRankBadge } from "@/components/dashboard/AgentRankBadge";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -118,6 +120,10 @@ export default function AgentPortal() {
   
   // Team stats for managers/admins - now with time range support
   const [statsTimeRange, setStatsTimeRange] = useState<"week" | "month" | "custom">("week");
+  const [customRange, setCustomRange] = useState<DateRange>({ 
+    from: subDays(new Date(), 30), 
+    to: new Date() 
+  });
   const [teamTodayStats, setTeamTodayStats] = useState({
     totalALP: 0,
     totalDeals: 0,
@@ -154,9 +160,15 @@ export default function AgentPortal() {
           end: format(endOfMonth(now), "yyyy-MM-dd"),
         };
       case "custom":
-        // Custom = last 30 days
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        // Use actual custom range if set
+        if (customRange.from && customRange.to) {
+          return {
+            start: format(customRange.from, "yyyy-MM-dd"),
+            end: format(customRange.to, "yyyy-MM-dd"),
+          };
+        }
+        // Fallback to last 30 days
+        const thirtyDaysAgo = subDays(now, 30);
         return { start: format(thirtyDaysAgo, "yyyy-MM-dd"), end: format(now, "yyyy-MM-dd") };
     }
   };
@@ -206,12 +218,12 @@ export default function AgentPortal() {
     }
   };
 
-  // Re-fetch team stats when time range changes
+  // Re-fetch team stats when time range or custom dates change
   useEffect(() => {
     if (isAdmin && agentId) {
       fetchTeamStats(agentId, statsTimeRange);
     }
-  }, [statsTimeRange]);
+  }, [statsTimeRange, customRange]);
 
   const fetchAgentData = async () => {
     try {
@@ -532,6 +544,13 @@ export default function AgentPortal() {
                   </SheetHeader>
                   <nav className="space-y-2 mt-6">
                     <Link 
+                      to="/numbers" 
+                      className="flex items-center gap-3 px-4 py-3 rounded-lg bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-colors"
+                    >
+                      <Edit3 className="h-5 w-5 text-primary" />
+                      <span className="font-medium text-primary">Log Numbers</span>
+                    </Link>
+                    <Link 
                       to="/dashboard" 
                       className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-muted transition-colors"
                     >
@@ -601,9 +620,16 @@ export default function AgentPortal() {
                   onClick={() => setStatsTimeRange(range)}
                   className="text-xs"
                 >
-                  {range === "week" ? "This Week" : range === "month" ? "This Month" : "Custom"}
+                  {range === "week" ? "This Week" : range === "month" ? "This Month" : "Custom Dates"}
                 </Button>
               ))}
+              {statsTimeRange === "custom" && (
+                <DateRangePicker
+                  value={customRange}
+                  onChange={setCustomRange}
+                  simpleMode
+                />
+              )}
             </motion.div>
           )}
 

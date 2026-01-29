@@ -278,6 +278,16 @@ export function AgentQuickEditDialog({
       return;
     }
 
+    // Prevent self-merge
+    if (selectedMergeId === agentId) {
+      toast({
+        title: "Invalid selection",
+        description: "You can't merge an agent into itself. Please select a different agent.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setMerging(true);
     try {
       console.log("🔀 Starting merge:", {

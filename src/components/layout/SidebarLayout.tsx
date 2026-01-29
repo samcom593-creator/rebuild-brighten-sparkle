@@ -7,6 +7,7 @@ import { PhonePromptBanner } from "@/components/dashboard/PhonePromptBanner";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { useSidebarState } from "@/hooks/useSidebarState";
+import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -40,6 +41,7 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
   const { isOpen, isFullscreen, toggleSidebar, toggleFullscreen, sidebarWidth } = useSidebarState();
   const location = useLocation();
   const prevPathRef = useRef(location.pathname);
+  const isDesktop = useIsDesktop();
 
   // Mobile sidebar state (separate from desktop collapse)
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -52,8 +54,8 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
     }
   }, [location.pathname]);
 
-  // Calculate margin for main content
-  const marginLeft = isFullscreen ? 0 : sidebarWidth;
+  // Calculate margin for main content - ONLY on desktop
+  const marginLeft = isDesktop ? (isFullscreen ? 0 : sidebarWidth) : 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -115,10 +117,12 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
       {/* Main Content with smooth page transitions */}
       <main
         className={cn(
-          "min-h-screen transition-[margin-left] duration-200 ease-out",
+          "min-h-screen",
+          // Only animate margin on desktop to prevent mobile glitches
+          isDesktop && "transition-[margin-left] duration-200 ease-out",
           "pt-16 lg:pt-0"
         )}
-        style={{ marginLeft: `${marginLeft}px` }}
+        style={{ marginLeft: isDesktop ? `${marginLeft}px` : 0 }}
       >
         <AnimatePresence mode="wait" initial={false}>
           <motion.div

@@ -13,7 +13,7 @@ export function ConfettiCelebration({ trigger, onComplete }: ConfettiCelebration
     
     const defaults = {
       spread: 360,
-      ticks: 100,
+      ticks: 60,
       gravity: 0.8,
       decay: 0.94,
       startVelocity: 30,
@@ -24,7 +24,7 @@ export function ConfettiCelebration({ trigger, onComplete }: ConfettiCelebration
     const shoot = () => {
       confetti({
         ...defaults,
-        particleCount: 40,
+        particleCount: 20,
         scalar: 1.2,
         shapes: ["star"],
         origin: { x: 0.5, y: 0.3 },
@@ -32,7 +32,7 @@ export function ConfettiCelebration({ trigger, onComplete }: ConfettiCelebration
 
       confetti({
         ...defaults,
-        particleCount: 25,
+        particleCount: 15,
         scalar: 0.75,
         shapes: ["circle"],
         origin: { x: 0.3, y: 0.5 },
@@ -40,7 +40,7 @@ export function ConfettiCelebration({ trigger, onComplete }: ConfettiCelebration
 
       confetti({
         ...defaults,
-        particleCount: 25,
+        particleCount: 15,
         scalar: 0.75,
         shapes: ["circle"],
         origin: { x: 0.7, y: 0.5 },

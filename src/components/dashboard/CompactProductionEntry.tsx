@@ -100,68 +100,65 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
         </div>
       );
 
-      // 🚨 DEAL ALERT: If deals were closed, notify the whole team!
+      // 🚨 DEAL ALERT: Delay notifications until AFTER confetti completes to prevent UI glitching
       if (formData.deals_closed > 0) {
-        try {
-          console.log("🚨 Triggering deal alert for", agentName);
-          await supabase.functions.invoke("notify-deal-alert", {
-            body: {
-              agentId,
-              agentName: agentName || "Agent",
-              deals: formData.deals_closed,
-              aop: formData.aop,
-            },
-          });
-          
-          // 🔥 Also check for streaks
-          await supabase.functions.invoke("notify-streak-alert", {
-            body: {
-              agentId,
-              agentName: agentName || "Agent",
-            },
-          });
-          
-          // 📊 Check if we passed anyone on the leaderboard
+        setTimeout(async () => {
           try {
-            await supabase.functions.invoke("notify-rank-passed", {
-              body: {
-                submittingAgentId: agentId,
-                productionDate,
-              },
-            });
-          } catch (rankError) {
-            console.error("Failed to check rank changes:", rankError);
+            console.log("🚨 Triggering batched deal notifications for", agentName);
+            
+            // Batch all notifications together using Promise.allSettled
+            await Promise.allSettled([
+              supabase.functions.invoke("notify-deal-alert", {
+                body: {
+                  agentId,
+                  agentName: agentName || "Agent",
+                  deals: formData.deals_closed,
+                  aop: formData.aop,
+                },
+              }),
+              supabase.functions.invoke("notify-streak-alert", {
+                body: {
+                  agentId,
+                  agentName: agentName || "Agent",
+                },
+              }),
+              supabase.functions.invoke("notify-rank-passed", {
+                body: {
+                  submittingAgentId: agentId,
+                  productionDate,
+                },
+              }),
+              supabase.functions.invoke("notify-comeback-alert", {
+                body: {
+                  agentId,
+                  agentName: agentName || "Agent",
+                  previousRank: 0,
+                  newRank: 0,
+                },
+              }),
+              supabase.functions.invoke("notify-production-submitted", {
+                body: {
+                  agentId,
+                  agentName: agentName || "Agent",
+                  productionData: formData,
+                },
+              }),
+            ]);
+            
+            console.log("✅ All deal notifications sent");
+          } catch (notifyError) {
+            console.error("Failed to send deal notifications:", notifyError);
           }
-          
-          // ⚡ Trigger comeback alert for big moves
-          try {
-            await supabase.functions.invoke("notify-comeback-alert", {
-              body: {
-                agentId,
-                agentName: agentName || "Agent",
-                previousRank: 0,
-                newRank: 0,
-              },
-            });
-          } catch (comebackError) {
-            console.error("Failed to check comeback:", comebackError);
-          }
-        } catch (notifyError) {
-          console.error("Failed to send deal/streak notifications:", notifyError);
-        }
-      }
-
-      // Notify admin/manager
-      try {
-        await supabase.functions.invoke("notify-production-submitted", {
+        }, 2000); // Wait for confetti animation to complete
+      } else {
+        // No deals - just notify production submitted (can run immediately)
+        supabase.functions.invoke("notify-production-submitted", {
           body: {
             agentId,
             agentName: agentName || "Agent",
             productionData: formData,
           },
-        });
-      } catch (notifyError) {
-        console.error("Failed to send notification:", notifyError);
+        }).catch(err => console.error("Failed to send notification:", err));
       }
       
       onSaved?.();

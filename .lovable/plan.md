@@ -1,140 +1,128 @@
 
-# Fix Login Loop on iPhone Safari/PWA
+# Replace Deal Alerts with Daily Sales Leaderboard
 
-## Problem Summary
-Users on iPhone Safari/PWA are stuck in a login loop on `/numbers`. The specific user (phone `9788047212`) is not in the CRM, so the system correctly shows the "Create Account" form. However, after account creation, the login either fails or the agent data doesn't load properly, causing a loop back to the login screen.
+## Overview
+Replace the real-time "DEAL DROPPED!" email alerts with a consolidated **Daily Sales Leaderboard** email sent once at end of day to all active agents. This reduces email noise while keeping agents motivated with competitive rankings.
 
-## Root Causes Identified
+## Current State
+- **`notify-deal-alert`**: Triggers immediately when any agent logs a deal, sending emails to ALL agents
+- **`send-daily-leaderboard-summary`**: Exists but only sends to managers with recruiting stats (not sales)
 
-### 1. Agent Query Fails After Account Creation
-In `loadAgentData()`, the query uses a strict foreign key join:
-```typescript
-.select("id, profile:profiles!agents_profile_id_fkey(full_name)")
-.eq("user_id", userId)
-```
-If the `profile_id` on the agent record doesn't match correctly, this join returns `null`, causing `isAuthenticated` to stay `false` and showing the login form again.
+## Changes Required
 
-### 2. iOS Safari Magic Link OTP Issues  
-The `verifyOtp()` method used for passwordless login can fail silently on iOS Safari due to cookie/storage restrictions in WebKit. When OTP verification fails, the session isn't set, causing a loop.
+### 1. Create New Edge Function: `send-daily-sales-leaderboard`
 
-### 3. Missing Auth State Persistence Check
-After `signInWithPassword` succeeds in the signup form, the `onAuthStateChange` listener triggers `loadAgentData`, but if the agent query fails (see point 1), the user gets stuck.
+A new edge function that:
+- Runs once daily at **9 PM CST** (after most agents finish for the day)
+- Fetches today's production data from `daily_production` table
+- Ranks agents by ALP (total dollar amount closed)
+- Sends personalized email to each active agent showing:
+  - Full leaderboard with rankings
+  - Their position highlighted
+  - Top 3 agents with trophy/medal icons
+  - Total team ALP for the day
+  - Motivational "gap to next rank" message
+  - CTA to log tomorrow's numbers
 
-## Solution
+Email design:
+- Clean, professional gold/black APEX branding
+- Table format showing: Rank | Agent | Deals | ALP
+- Whole dollars only (no cents per project guidelines)
+- "Powered by APEX Financial" footer
+- Screenshot-ready for social media posting
 
-### Fix 1: Make Agent Query More Resilient
-**File: `src/pages/Numbers.tsx`**
+### 2. Remove Real-Time Deal Alert Triggers
 
-Update `loadAgentData` to query the agent without the strict join, then separately fetch the profile name:
+Update these files to stop calling `notify-deal-alert`:
+- `src/components/dashboard/CompactProductionEntry.tsx`
+- `src/components/dashboard/ProductionEntry.tsx`
 
-```typescript
-const loadAgentData = async (userId: string) => {
-  try {
-    // Query agent first without the join
-    const { data: agent, error: agentError } = await supabase
-      .from("agents")
-      .select("id, profile_id")
-      .eq("user_id", userId)
-      .maybeSingle();
+Remove the `notify-deal-alert` invocation from the notification batch that runs after saving production data.
 
-    if (agentError) throw agentError;
+### 3. Set Up Daily Cron Job
 
-    if (agent) {
-      setAgentId(agent.id);
-      
-      // Separately fetch profile name if profile_id exists
-      if (agent.profile_id) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("full_name")
-          .eq("id", agent.profile_id)
-          .maybeSingle();
-        setAgentName(profile?.full_name || "Agent");
-      } else {
-        // Fallback: get name from user's profile by user_id
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("full_name")
-          .eq("user_id", userId)
-          .maybeSingle();
-        setAgentName(profile?.full_name || "Agent");
-      }
-      
-      setIsAuthenticated(true);
-    } else {
-      // No agent record - show signup
-      setAgentId(null);
-      setIsAuthenticated(false);
-    }
-  } catch (error) {
-    console.error("Error loading agent data:", error);
-    // On error, still allow them to try the signup flow
-    setAgentId(null);
-    setIsAuthenticated(false);
-  } finally {
-    setLoading(false);
-  }
-};
+Add a cron job to trigger `send-daily-sales-leaderboard` at 9 PM CST daily:
+```sql
+select cron.schedule(
+  'send-daily-sales-leaderboard',
+  '0 3 * * *',  -- 3 AM UTC = 9 PM CST
+  $$ SELECT net.http_post(...) $$
+);
 ```
 
-### Fix 2: Add Password-Based Login Fallback for iOS
-**File: `src/pages/Numbers.tsx`**
+### 4. Keep `notify-deal-alert` Function
 
-After successful account creation, skip the OTP-based simple login and use password login directly since we already have the password:
+Keep the function code in case you want to revert later, but it won't be triggered from the frontend anymore.
 
-The current flow already does this correctly:
-```typescript
-const { error: signInError } = await supabase.auth.signInWithPassword({
-  email: newEmail.trim().toLowerCase(),
-  password: newPassword,
-});
+## Email Template Design
+
+```
+╔════════════════════════════════════════════════╗
+║      🏆 APEX DAILY SALES LEADERBOARD           ║
+║          Wednesday, January 29, 2026            ║
+╠════════════════════════════════════════════════╣
+║                                                 ║
+║   Hey [First Name],                             ║
+║                                                 ║
+║   Here's how the team performed today:          ║
+║                                                 ║
+║   ┌────────────────────────────────────────┐   ║
+║   │ Rank │ Agent         │ Deals │   ALP   │   ║
+║   ├──────┼───────────────┼───────┼─────────┤   ║
+║   │ 🥇 1 │ John Smith    │   3   │ $12,450 │   ║
+║   │ 🥈 2 │ Jane Doe      │   2   │  $8,200 │   ║
+║   │ 🥉 3 │ ⭐ YOU        │   2   │  $7,800 │   ║
+║   │   4  │ Mike Johnson  │   1   │  $4,500 │   ║
+║   │   5  │ Sarah Wilson  │   1   │  $3,200 │   ║
+║   └──────┴───────────────┴───────┴─────────┘   ║
+║                                                 ║
+║   📊 TEAM TOTAL: $36,150                        ║
+║                                                 ║
+║   💡 You're just $400 away from #2!             ║
+║                                                 ║
+║           [🎯 LOG TOMORROW'S NUMBERS]           ║
+║                                                 ║
+╠════════════════════════════════════════════════╣
+║          Powered by APEX Financial              ║
+╚════════════════════════════════════════════════╝
 ```
 
-This bypasses the OTP flow that causes issues on iOS.
+## Files to Create/Modify
 
-### Fix 3: Add Error Recovery for Failed Agent Load
-**File: `src/pages/Numbers.tsx`**
+| File | Action |
+|------|--------|
+| `supabase/functions/send-daily-sales-leaderboard/index.ts` | **CREATE** - New edge function |
+| `src/components/dashboard/CompactProductionEntry.tsx` | **MODIFY** - Remove deal alert call |
+| `src/components/dashboard/ProductionEntry.tsx` | **MODIFY** - Remove deal alert call |
 
-If a user is authenticated but has no agent record, show a clear message and offer to create one:
+## Bonus: Fix Link Account Error
 
-After the `loadAgentData` function, add logic to detect "authenticated but no agent" state and guide them to create an agent record.
+The screenshot shows an error for phone `9788047212`. This phone number doesn't exist in the database. The user needs to:
+1. Use the "Create Account" flow on `/numbers` instead of "Link Account"
+2. Or have their manager add them to the CRM first
 
-### Fix 4: Ensure create-new-agent-account Sets Correct Foreign Keys
-**File: `supabase/functions/create-new-agent-account/index.ts`**
-
-Verify the agent record is created with the correct `profile_id` reference:
-- Current code creates profile first, then agent with `profile_id: newProfile.id` ✓
-- This looks correct, but add logging to confirm the IDs match
-
-## Files to Modify
-
-1. **`src/pages/Numbers.tsx`**
-   - Fix `loadAgentData` query to not rely on strict FK join
-   - Add fallback profile name resolution
-   - Add better error handling with console logs for debugging
-
-2. **`supabase/functions/create-new-agent-account/index.ts`**
-   - Add more detailed logging to trace the profile_id and agent creation
-   - Verify the IDs are being linked correctly
+This is expected behavior - the Link Account feature is for existing CRM records only.
 
 ## Technical Details
 
-### Current Query (Problematic)
+### Edge Function Logic
 ```typescript
-// This fails if agents_profile_id_fkey join doesn't resolve
-.select("id, profile:profiles!agents_profile_id_fkey(full_name)")
+// 1. Get today's date in PST
+const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+
+// 2. Fetch all production for today
+const { data: production } = await supabase
+  .from('daily_production')
+  .select('agent_id, deals_closed, aop')
+  .eq('production_date', today)
+  .gt('deals_closed', 0);  // Only agents with deals
+
+// 3. Get agent names and emails
+// 4. Sort by ALP descending
+// 5. Send personalized email to each agent
 ```
 
-### Fixed Query (Resilient)
-```typescript
-// Query agent independently, then fetch profile separately
-.select("id, profile_id")
-// Then:
-.from("profiles").select("full_name").eq("id", agent.profile_id)
-```
-
-## Expected Outcome
-- New users on iPhone can create accounts and immediately start entering numbers
-- The login loop is eliminated by using password-based auth after signup
-- Even if the profile join fails, the user can still access the production entry form
-- Better logging helps diagnose any remaining issues
+### Timing Rationale
+- 9 PM CST catches most evening closers
+- Avoids peak cron hours (6-7 PM CST per project guidelines)
+- Gives agents overnight to see results

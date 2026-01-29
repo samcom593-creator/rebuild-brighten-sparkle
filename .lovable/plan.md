@@ -1,77 +1,116 @@
 
+## Fix Plan: Post-Deal Glitching + Merge Functionality
 
-# Fix Plan: Published Site Showing Old Code (Cache Issue)
+### Problem 1: Site Glitches After Deal Submission
 
-## What's Happening
+**Root Cause**: After submitting a deal, the system:
+1. Fires 3 confetti bursts (with 90+ particles total) over 200ms
+2. Immediately triggers 4-5 edge function calls in parallel:
+   - `notify-deal-alert`
+   - `notify-streak-alert`  
+   - `notify-rank-passed`
+   - `notify-comeback-alert`
+   - `send-plaque-recognition` (if ALP >= $3,000)
 
-I verified the codebase and **all the fixes are present in the code**:
+This combination of heavy animation + network calls causes UI responsiveness issues, especially on mobile.
 
-| Fix | Status in Code |
-|-----|----------------|
-| Deal entry with separate input + "+ Add" button | ✅ Present |
-| `type="text"` + `inputMode="decimal"` for mobile | ✅ Present |
-| `stopPropagation()` + `preventDefault()` on Enter | ✅ Present |
-| Form-level Enter key blocking | ✅ Present |
-| "Admin View — testing purposes" banner | ✅ Removed (not found) |
-| Loading screen says "Powered by Apex" | ✅ Present |
+**Fix**:
+1. **Reduce confetti intensity**: Lower particle counts from 40/25/25 to 20/15/15 (50 total vs 90)
+2. **Delay edge function calls**: Run notifications AFTER confetti completes (2 seconds) instead of simultaneously
+3. **Batch notification calls**: Use `Promise.allSettled()` instead of sequential awaits so one failure doesn't block others
+4. **Add debouncing**: Prevent double-submission during confetti animation
 
-**The issue is that your published site is serving the old, cached version.** This is happening because:
+### Problem 2: Cannot Merge Any Agent (Obi with Obi)
 
-1. The PWA Service Worker is caching the old JavaScript bundle
-2. Users who visited the site before the fix are still seeing the old code
-3. The published site URL needs to be updated with the new build
+**Root Cause**: The merge list in `AgentQuickEditDialog.tsx` is too restrictive:
+- Line 208: `.filter(m => m.name !== "Unknown" && m.production > 0)` excludes agents with zero production
+- Line 209: `.slice(0, 10)` limits to only 10 options
 
-## The Fix
+If "Obi" (the duplicate) has no production recorded, they won't appear in the merge list.
 
-### Step 1: Re-publish the Site
-Click the **"Publish"** button in Lovable to push the latest code to the published URL. This will create a new build with the correct code.
+**Fix**:
+1. Remove the `m.production > 0` filter - allow merging with ANY agent regardless of production
+2. Increase the limit from 10 to 50 matches so more agents are visible
+3. Sort matches alphabetically so users can easily find agents by name
+4. Add a search/filter option for large teams
 
-### Step 2: Force Cache Refresh for Users
-After publishing, users on the old version need to refresh their cache. They can do this by:
+---
 
-**On iPhone/Safari:**
-- Close Safari completely (swipe up to kill app)
-- Go to Settings → Safari → Clear History and Website Data
-- Re-open the site
+## Implementation Details
 
-**On Android/Chrome:**
-- Open Chrome → tap the three dots menu → Settings
-- Privacy and Security → Clear browsing data → Clear cache
-- Re-open the site
+### File 1: `src/components/dashboard/ConfettiCelebration.tsx`
 
-**For PWA installed users:**
-- Delete the app from their home screen
-- Re-install it from the browser
+**Changes**:
+- Reduce particle counts: `40 → 20`, `25 → 15`, `25 → 15`
+- Reduce ticks from 100 to 60 for faster cleanup
 
-### Step 3: Verify the Fix
-After re-publishing, test the deal entry on the published site:
-1. Go to Agent Portal or Numbers page
-2. Type a multi-digit number (e.g., "30000")
-3. Confirm it stays in the input field until you press "+ Add"
-4. Confirm the admin banner is gone
-5. Confirm loading screens say "Powered by Apex"
+### File 2: `src/components/dashboard/ProductionEntry.tsx`
 
-## Technical Details (for reference)
+**Changes**:
+- Move edge function calls to AFTER confetti completes (wrap in a 2s timeout)
+- Use `Promise.allSettled()` to batch all notifications together
+- Add a `submitting` ref to prevent double-submissions
 
-The current code structure is correct:
+### File 3: `src/components/dashboard/AgentQuickEditDialog.tsx`
 
-**BubbleDealEntry.tsx (lines 93-114):**
-- Uses `type="text"` with `inputMode="decimal"` and `pattern="[0-9]*\.?[0-9]*"`
-- Has inline `onKeyDown` with `e.stopPropagation()` and `e.preventDefault()` on Enter
-- Separate input field + "+ Add" button design means typing doesn't auto-commit
+**Changes at lines 192-209**:
+```tsx
+// Before:
+.filter(m => m.name !== "Unknown" && m.production > 0)
+.slice(0, 10);
 
-**ALPCalculator.tsx (lines 167-189):**
-- Same `type="text"` + `inputMode="decimal"` pattern
-- Inline `onKeyDown` handler with proper event blocking
-- "Active draft" pattern where last deal stays as input until explicitly committed
+// After:
+.filter(m => m.name !== "Unknown") // Remove production > 0 requirement
+.sort((a, b) => a.name.localeCompare(b.name)) // Sort alphabetically
+.slice(0, 50); // Allow more matches
+```
 
-**CompactProductionEntry.tsx (lines 284-293):**
-- Form-level `onKeyDown` handler blocks Enter on all inputs inside the form
+### File 4: `src/components/dashboard/CompactProductionEntry.tsx`
 
-**SkeletonLoader.tsx (lines 23-25):**
-- Page variant displays "Powered by Apex" (correct text)
+**Same changes as ProductionEntry.tsx**:
+- Delay notifications until after confetti
+- Use `Promise.allSettled()` for batching
 
-## Summary
+---
 
-No code changes are needed. The fix is to **re-publish the site** so the new bundle is deployed, then have users clear their cache or reinstall the PWA to get the updated code.
+## Summary of Changes
 
+| File | Change |
+|------|--------|
+| `ConfettiCelebration.tsx` | Reduce particle counts (90 → 50) and ticks (100 → 60) |
+| `ProductionEntry.tsx` | Delay notifications 2s until after confetti; batch with `Promise.allSettled()` |
+| `CompactProductionEntry.tsx` | Same notification delay and batching |
+| `AgentQuickEditDialog.tsx` | Remove `production > 0` filter; increase limit to 50; sort alphabetically |
+
+---
+
+## Technical Details
+
+### Confetti Optimization
+The current implementation fires 90 particles across 3 bursts. Each particle requires:
+- Individual DOM element creation
+- Physics calculations for gravity/decay
+- Animation frame updates
+
+Reducing to 50 particles cuts rendering work by ~45%, significantly improving responsiveness on low-end devices.
+
+### Notification Delay Pattern
+```tsx
+// After form submission:
+setShowConfetti(true);
+
+// Schedule notifications after confetti animation completes
+setTimeout(async () => {
+  if (formData.deals_closed > 0) {
+    await Promise.allSettled([
+      supabase.functions.invoke("notify-deal-alert", { body: {...} }),
+      supabase.functions.invoke("notify-streak-alert", { body: {...} }),
+      supabase.functions.invoke("notify-rank-passed", { body: {...} }),
+      supabase.functions.invoke("notify-comeback-alert", { body: {...} }),
+    ]);
+  }
+}, 2000); // Matches ConfettiCelebration's onComplete timing
+```
+
+### Merge List Improvement
+The current filter excludes agents with no production history. Since the goal is to consolidate records (often from duplicates created before they had production), we must allow merging with ANY agent. The alphabetical sort + increased limit ensures users can find who they're looking for.

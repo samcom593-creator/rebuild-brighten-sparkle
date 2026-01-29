@@ -35,6 +35,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   Plus,
   Pencil,
@@ -43,8 +44,13 @@ import {
   BookOpen,
   CheckCircle,
   Loader2,
+  Eye,
+  EyeOff,
+  Copy,
+  Check,
 } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface Module {
   id: string;
@@ -86,6 +92,8 @@ export function QuizQuestionsAdmin() {
   const [formData, setFormData] = useState<QuestionFormData>(emptyFormData);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [showAnswers, setShowAnswers] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     fetchModulesAndQuestions();
@@ -249,6 +257,43 @@ export function QuizQuestionsAdmin() {
     setFormData({ ...formData, options: newOptions });
   };
 
+  // Copy all questions to clipboard
+  const handleCopyAllQuestions = () => {
+    let text = "COURSE QUIZ QUESTIONS\n";
+    text += "=".repeat(50) + "\n\n";
+
+    modules.forEach((module) => {
+      const moduleQuestions = questions[module.id] || [];
+      if (moduleQuestions.length === 0) return;
+
+      text += `\n📚 ${module.title}\n`;
+      text += "-".repeat(40) + "\n\n";
+
+      moduleQuestions.forEach((q, idx) => {
+        text += `Q${idx + 1}: ${q.question}\n`;
+        q.options.forEach((opt, optIdx) => {
+          const marker = optIdx === q.correct_answer ? "✓" : " ";
+          text += `  ${marker} ${String.fromCharCode(65 + optIdx)}) ${opt}\n`;
+        });
+        if (q.explanation) {
+          text += `  📝 ${q.explanation}\n`;
+        }
+        text += "\n";
+      });
+    });
+
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    toast.success("All questions copied to clipboard");
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  // Count total questions
+  const totalQuestions = Object.values(questions).reduce(
+    (sum, qs) => sum + qs.length,
+    0
+  );
+
   if (loading) {
     return (
       <GlassCard className="p-6">
@@ -261,9 +306,47 @@ export function QuizQuestionsAdmin() {
 
   return (
     <GlassCard className="p-6">
-      <div className="flex items-center gap-3 mb-6">
-        <HelpCircle className="h-6 w-6 text-primary" />
-        <h2 className="text-xl font-semibold">Quiz Questions Manager</h2>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <HelpCircle className="h-6 w-6 text-primary" />
+          <h2 className="text-xl font-semibold">Quiz Questions Manager</h2>
+          <Badge variant="secondary">{totalQuestions} questions</Badge>
+        </div>
+
+        {/* Toggle and Copy buttons */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Switch
+              id="show-answers"
+              checked={showAnswers}
+              onCheckedChange={setShowAnswers}
+            />
+            <Label htmlFor="show-answers" className="text-sm cursor-pointer">
+              {showAnswers ? (
+                <span className="flex items-center gap-1">
+                  <Eye className="h-4 w-4" /> Show Answers
+                </span>
+              ) : (
+                <span className="flex items-center gap-1">
+                  <EyeOff className="h-4 w-4" /> Hide Answers
+                </span>
+              )}
+            </Label>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCopyAllQuestions}
+            className="gap-1"
+          >
+            {copied ? (
+              <Check className="h-4 w-4 text-emerald-500" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            )}
+            {copied ? "Copied!" : "Copy All"}
+          </Button>
+        </div>
       </div>
 
       <Accordion type="single" collapsible className="space-y-4">
@@ -299,7 +382,93 @@ export function QuizQuestionsAdmin() {
                     <p className="text-muted-foreground text-sm py-4">
                       No questions yet. Add your first question above.
                     </p>
+                  ) : showAnswers ? (
+                    /* Full Question Preview Mode */
+                    <div className="space-y-6">
+                      {moduleQuestions.map((q, idx) => (
+                        <div
+                          key={q.id}
+                          className="p-4 rounded-lg border border-border bg-card/50"
+                        >
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1">
+                              <span className="text-xs font-medium text-muted-foreground">
+                                Q{idx + 1}
+                              </span>
+                              <p className="font-medium mt-1">{q.question}</p>
+                            </div>
+                            <div className="flex gap-1 ml-4">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => handleEditQuestion(q)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => handleDeleteQuestion(q.id)}
+                                disabled={deleting === q.id}
+                              >
+                                {deleting === q.id ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Options with correct answer highlighted */}
+                          <div className="space-y-2 ml-4">
+                            {q.options.map((opt, optIdx) => (
+                              <div
+                                key={optIdx}
+                                className={cn(
+                                  "flex items-center gap-2 p-2 rounded text-sm",
+                                  optIdx === q.correct_answer
+                                    ? "bg-emerald-500/10 border border-emerald-500/30"
+                                    : "bg-muted/30"
+                                )}
+                              >
+                                <span
+                                  className={cn(
+                                    "font-medium",
+                                    optIdx === q.correct_answer
+                                      ? "text-emerald-500"
+                                      : "text-muted-foreground"
+                                  )}
+                                >
+                                  {String.fromCharCode(65 + optIdx)})
+                                </span>
+                                <span className={optIdx === q.correct_answer ? "text-emerald-600 dark:text-emerald-400" : ""}>
+                                  {opt}
+                                </span>
+                                {optIdx === q.correct_answer && (
+                                  <Badge className="ml-auto bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
+                                    ✓ Correct
+                                  </Badge>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Explanation */}
+                          {q.explanation && (
+                            <div className="mt-3 ml-4 p-3 rounded bg-blue-500/10 border border-blue-500/20">
+                              <p className="text-sm text-blue-600 dark:text-blue-400">
+                                <span className="font-medium">📝 Explanation:</span>{" "}
+                                {q.explanation}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   ) : (
+                    /* Compact Table Mode */
                     <Table>
                       <TableHeader>
                         <TableRow>

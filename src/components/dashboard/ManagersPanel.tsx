@@ -16,6 +16,7 @@ import {
   ChevronDown,
   ChevronUp,
   User,
+  GraduationCap,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -23,6 +24,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,6 +42,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { toast } from "sonner";
+import { AddToCourseButton } from "./AddToCourseButton";
 
 interface TeamAgent {
   id: string;
@@ -47,6 +50,8 @@ interface TeamAgent {
   email: string;
   onboardingStage: string;
   isDeactivated: boolean;
+  hasProgress: boolean;
+  courseProgress: number;
 }
 
 interface ManagerData {
@@ -102,11 +107,13 @@ export function ManagersPanel() {
     setLoading(true);
     try {
       // Fetch all data in parallel for better performance
-      const [rolesResult, profilesResult, applicationsResult, agentsResult] = await Promise.all([
+      const [rolesResult, profilesResult, applicationsResult, agentsResult, progressResult, modulesResult] = await Promise.all([
         supabase.from("user_roles").select("user_id").eq("role", "manager"),
         supabase.from("profiles").select("*"),
         supabase.from("applications").select("assigned_agent_id, closed_at"),
         supabase.from("agents").select("id, user_id, invited_by_manager_id, onboarding_stage, is_deactivated, status"),
+        supabase.from("onboarding_progress").select("agent_id, passed"),
+        supabase.from("onboarding_modules").select("id").eq("is_active", true),
       ]);
 
       if (rolesResult.error) throw rolesResult.error;
@@ -127,6 +134,18 @@ export function ManagersPanel() {
       const profiles = profilesResult.data || [];
       const applications = applicationsResult.data || [];
       const allAgents = agentsResult.data || [];
+      const progressData = progressResult.data || [];
+      const totalModules = modulesResult.data?.length || 1;
+
+      // Calculate progress per agent
+      const agentProgressMap = new Map<string, { hasProgress: boolean; passedCount: number }>();
+      progressData.forEach(p => {
+        const existing = agentProgressMap.get(p.agent_id) || { hasProgress: false, passedCount: 0 };
+        agentProgressMap.set(p.agent_id, {
+          hasProgress: true,
+          passedCount: existing.passedCount + (p.passed ? 1 : 0),
+        });
+      });
 
       const managersData: ManagerData[] = managerAgents.map((agent) => {
         const profile = profiles.find((p) => p.user_id === agent.user_id);
@@ -137,12 +156,17 @@ export function ManagersPanel() {
           .filter((a) => a.invited_by_manager_id === agent.id && !a.is_deactivated)
           .map((a) => {
             const agentProfile = profiles.find((p) => p.user_id === a.user_id);
+            const progressInfo = agentProgressMap.get(a.id);
             return {
               id: a.id,
               name: agentProfile?.full_name || "Unknown Agent",
               email: agentProfile?.email || "",
               onboardingStage: a.onboarding_stage || "onboarding",
               isDeactivated: a.is_deactivated || false,
+              hasProgress: progressInfo?.hasProgress || false,
+              courseProgress: progressInfo 
+                ? Math.round((progressInfo.passedCount / totalModules) * 100) 
+                : 0,
             };
           });
 
@@ -414,9 +438,31 @@ export function ManagersPanel() {
                                     <p className="text-xs text-muted-foreground">{agent.email}</p>
                                   </div>
                                 </div>
-                                <Badge className={getStageColor(agent.onboardingStage)} variant="secondary">
-                                  {getStageName(agent.onboardingStage)}
-                                </Badge>
+                                <div className="flex items-center gap-2">
+                                  {/* Course progress indicator */}
+                                  {agent.courseProgress === 100 ? (
+                                    <Badge className="bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-xs">
+                                      ✓ Course Done
+                                    </Badge>
+                                  ) : agent.hasProgress ? (
+                                    <div className="flex items-center gap-1">
+                                      <Progress value={agent.courseProgress} className="h-1.5 w-12" />
+                                      <span className="text-xs text-muted-foreground">{agent.courseProgress}%</span>
+                                    </div>
+                                  ) : (
+                                    <AddToCourseButton
+                                      agentId={agent.id}
+                                      agentName={agent.name}
+                                      hasProgress={false}
+                                      onSuccess={fetchManagers}
+                                      size="sm"
+                                      variant="ghost"
+                                    />
+                                  )}
+                                  <Badge className={getStageColor(agent.onboardingStage)} variant="secondary">
+                                    {getStageName(agent.onboardingStage)}
+                                  </Badge>
+                                </div>
                               </div>
                             ))}
                           </div>

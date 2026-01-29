@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Save, Loader2, Target, DollarSign, Users, Clock, Home, Handshake, TrendingUp, Sparkles, Check, CalendarIcon, Plus } from "lucide-react";
+import { Save, Loader2, Target, DollarSign, Users, Clock, Home, Handshake, TrendingUp, Sparkles, Check, CalendarIcon, Plus, Link2, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -385,6 +385,43 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
                 </AnimatePresence>
               </Button>
             </motion.div>
+
+            {/* Share Numbers Link */}
+            <div className="flex items-center justify-center gap-4 pt-4 border-t border-border/30 mt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground hover:text-primary gap-2"
+                onClick={() => {
+                  const shareUrl = `${window.location.origin}/numbers`;
+                  navigator.clipboard.writeText(shareUrl);
+                  toast.success("Link copied! Share with your team");
+                }}
+              >
+                <Link2 className="h-4 w-4" />
+                Copy Link
+              </Button>
+              
+              {typeof navigator !== 'undefined' && 'share' in navigator && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-muted-foreground hover:text-primary gap-2"
+                  onClick={() => {
+                    navigator.share({
+                      title: "APEX Daily Numbers",
+                      text: "Log your numbers in under 30 seconds!",
+                      url: `${window.location.origin}/numbers`,
+                    });
+                  }}
+                >
+                  <Share2 className="h-4 w-4" />
+                  Share
+                </Button>
+              )}
+            </div>
           </form>
         </div>
       </motion.div>

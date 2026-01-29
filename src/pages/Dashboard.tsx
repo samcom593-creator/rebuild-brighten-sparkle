@@ -31,7 +31,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { SkeletonLoader } from "@/components/ui/skeleton-loader";
 import { useNavigate, Link } from "react-router-dom";
 
 interface DashboardStats {
@@ -249,14 +249,7 @@ export default function Dashboard() {
   if (authLoading) {
     return (
       <DashboardLayout>
-        <div className="space-y-6">
-          <Skeleton className="h-8 w-64" />
-          <Skeleton className="h-40 w-full rounded-xl" />
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Skeleton className="h-96 rounded-xl" />
-            <Skeleton className="h-96 rounded-xl" />
-          </div>
-        </div>
+        <SkeletonLoader variant="page" />
       </DashboardLayout>
     );
   }

@@ -1,167 +1,185 @@
 
 
-## Admin Course Management + My Team Dashboard Enhancements
+## Course Progress Monitoring + CRM Integration
 
-Based on exploring your codebase, I understand exactly what you need. Here's the implementation plan:
+### Overview
+
+Create a dedicated, comprehensive course progress monitoring dashboard that integrates seamlessly with the CRM, providing real-time visibility into agent coursework completion, module-by-module tracking, and quick actions for admin intervention.
 
 ---
 
 ### What You're Getting
 
-**1. Course Questions Viewer (Admin-Only)**
-- A dedicated section in the Admin Panel where you can see ALL course questions at a glance
-- View organized by module with question text, correct answers, and explanations visible
-- Quick reference to confirm quiz content before enrolling agents
+**1. Enhanced Course Progress Dashboard (New Page)**
+A dedicated admin-only page at `/course-progress` with:
+- Full-width table view of ALL agents in coursework
+- Module-by-module breakdown (which specific modules passed/failed)
+- Last activity timestamp with "stale" indicators (inactive > 3 days)
+- Direct "Send Reminder" action per agent
+- Quick "Push to CRM" action for agents ready for field training
+- Filter by: All / Not Started / In Progress / Stalled / Complete
 
-**2. "Add to Course" Button**
-- One-click action to create an agent's login and enroll them in the onboarding course
-- Button visible in multiple places:
-  - Team Hierarchy Manager (next to each agent)
-  - Managers Panel (in the team member list)
-  - Agent Management table
-- Sends the agent their login credentials automatically
+**2. CRM Integration - Course Status Column**
+Add course progress indicators directly in the existing CRM view:
+- Progress bar visible on each agent card in "In Course" column
+- Module count badge (e.g., "2/5 modules")
+- "Stalled" warning badge if no activity in 3+ days
+- One-click action to send coursework reminder email
 
-**3. Enhanced My Team Dashboard**
-- Clear visualization of who reports to whom
-- Manager → Agent relationship shown at a glance
-- Sortable by manager, stage, or name
-- Quick actions for reassigning agents between managers
-- Active agent count per manager
-- Visual indicators for:
-  - Onboarding stage (Coursework, Field Training, Live)
-  - Course progress percentage
-  - Last activity
-
----
-
-### Files to Modify
-
-| File | Change |
-|------|--------|
-| `src/components/dashboard/QuizQuestionsAdmin.tsx` | Add full question preview mode (show questions with answers) |
-| `src/components/dashboard/TeamHierarchyManager.tsx` | Add "Add to Course" button + course progress column |
-| `src/components/dashboard/ManagersPanel.tsx` | Add "Enroll" action for team members |
-| `src/pages/TeamDirectory.tsx` | Redesign for clear manager→agent hierarchy visualization |
-| `src/components/dashboard/AddToCourseButton.tsx` | NEW - Reusable button component for course enrollment |
-| `supabase/functions/enroll-agent-course/index.ts` | NEW - Backend function to create login + enroll in course |
+**3. Command Center Enhancement**
+Expand the existing CourseProgressPanel with:
+- Summary stats row: Not Started / In Progress / Stalled / Complete
+- Click any stat to filter the list
+- "Send Bulk Reminder" button for all stalled agents
+- Export course progress to clipboard
 
 ---
 
 ### Technical Implementation
 
-#### A) Course Questions Full View (QuizQuestionsAdmin)
+#### A) New CourseProgressPage Component
 
-Current behavior: Accordion view with truncated questions and just option counts.
+**File:** `src/pages/CourseProgress.tsx`
 
-New behavior:
-- Add "Show All Questions" toggle button
-- When enabled, display full question text, all options, correct answer highlighted, and explanations
-- Export option to copy all questions as text (for review)
+Full-featured table with:
+- Agent name, email, manager
+- Each module as a column with pass/fail status
+- Overall % complete with progress bar
+- Last activity date with color coding
+- Quick actions: Send Reminder, View Profile, Push to Field Training
 
-```text
-┌─────────────────────────────────────────────────────┐
-│ Quiz Questions Manager         [👁️ Show Answers]    │
-├─────────────────────────────────────────────────────┤
-│ ▼ Getting Started: Your First Week (5 questions)    │
-│                                                     │
-│   Q1: What is the most important mindset...         │
-│   ├─ A) Close deals fast                            │
-│   ├─ ✓ B) Learn and stay coachable ← CORRECT       │
-│   ├─ C) Avoid mistakes                              │
-│   └─ D) Work independently                          │
-│   📝 Explanation: The first week is about...        │
-│                                                     │
-│   Q2: How should you approach daily training...     │
-│   ...                                               │
-└─────────────────────────────────────────────────────┘
+#### B) CRM Course Status Integration
+
+**File:** `src/pages/DashboardCRM.tsx`
+
+For agents in "onboarding" or "training_online" stage:
+- Fetch their `onboarding_progress` records
+- Display progress bar + module count
+- Add "stalled" indicator if `lastActivity > 3 days ago`
+- Add "Send Reminder" button
+
+Data query addition:
+```typescript
+// Fetch course progress for In Course agents
+const inCourseAgentIds = agents
+  .filter(a => ["onboarding", "training_online"].includes(a.onboardingStage))
+  .map(a => a.id);
+
+const { data: courseProgress } = await supabase
+  .from("onboarding_progress")
+  .select("agent_id, module_id, passed, completed_at")
+  .in("agent_id", inCourseAgentIds);
 ```
 
-#### B) "Add to Course" Component
+#### C) Enhanced CourseProgressPanel
 
-Creates a reusable button that:
-1. Checks if agent already has course access
-2. If not, generates login credentials via existing `send-agent-portal-login` function
-3. Creates `onboarding_progress` record for Module 1
-4. Updates agent's `onboarding_stage` to `"training_online"`
-5. Shows success toast with confirmation
+**File:** `src/components/admin/CourseProgressPanel.tsx`
 
-#### C) Team Hierarchy Enhanced View
+Add:
+- Summary stats bar with click-to-filter
+- Module name display (join with `onboarding_modules.title`)
+- "Send Reminder" action per agent
+- "Send All Reminders" bulk action
+- Stale indicator (amber for 3+ days, red for 7+ days)
 
-Redesign TeamDirectory for admin/manager view:
+#### D) Course Reminder Edge Function
 
-```text
-┌─────────────────────────────────────────────────────────┐
-│ My Team                        [Filter ▼] [Refresh]     │
-├─────────────────────────────────────────────────────────┤
-│ ┌─ Samuel James (You) ─────────────────────────────────┐│
-│ │  ├─ Obiajulu Ifediora    Onboarding    [Enroll]      ││
-│ │  ├─ KJ Vaughns           Onboarding    [Enroll]      ││
-│ │  ├─ Donavon Brikho       Field Train   60% ▓▓▓▓░░    ││
-│ │  ├─ Joe Intwan           Field Train   80% ▓▓▓▓▓▓░░  ││
-│ │  └─ Aisha Kebbeh         Live          ✓ Complete    ││
-│ └──────────────────────────────────────────────────────┘│
-│                                                         │
-│ ┌─ Obiajulu Ifediora ──────────────────────────────────┐│
-│ │  └─ Chukwudi Ifediora    Live          ✓ Complete    ││
-│ └──────────────────────────────────────────────────────┘│
-└─────────────────────────────────────────────────────────┘
-```
+**File:** `supabase/functions/send-course-reminder/index.ts`
 
-Features:
-- Tree view showing hierarchy
-- Course progress bars for agents in coursework
-- Quick "Enroll" button for agents without course access
-- Reassign dropdown to move agents between managers
-- Stage badges with color coding
+Email template with:
+- Personalized greeting
+- Current progress stats
+- Direct link to course
+- Encouragement message
+
+#### E) Navigation Update
+
+**File:** `src/components/layout/GlobalSidebar.tsx`
+
+Add "Course Progress" link under Admin section (admin-only visibility)
 
 ---
 
-### Database Query for Course Progress
+### UI/UX Details
 
-I'll add a query to fetch onboarding progress alongside agent data:
+**Course Progress Table Layout:**
 
+```text
++-------------+----------------+--------+----------+----------+----------+-----------+-----------+
+| Agent       | Manager        | Stage  | Module 1 | Module 2 | Module 3 | Progress  | Actions   |
++-------------+----------------+--------+----------+----------+----------+-----------+-----------+
+| Obi Ifedora | Samuel James   | Course | ✓ Pass   | ✓ Pass   | ◯ Not    | 66% ▓▓▓░░ | [Remind]  |
+| KJ Vaughns  | Samuel James   | Course | ✓ Pass   | ◯ Not    | —        | 33% ▓░░░░ | [Remind]  |
+| New Agent   | Obi Ifedora    | Onbrd  | —        | —        | —        | 0% ░░░░░  | [Enroll]  |
++-------------+----------------+--------+----------+----------+----------+-----------+-----------+
+```
+
+**Stalled Indicators:**
+- 3+ days inactive: Amber "Stalled" badge
+- 7+ days inactive: Red "At Risk" badge with automatic manager notification option
+
+**CRM Card Enhancement:**
+
+```text
+┌──────────────────────────────────────┐
+│ Obi Ifedora                          │
+│ obi@email.com                        │
+├──────────────────────────────────────┤
+│ Course: 66% ▓▓▓▓░░ (2/3 modules)     │  ← NEW
+│ Last active: 2 days ago              │  ← NEW
+├──────────────────────────────────────┤
+│ [Onboarding → Course → Field → Live] │
+└──────────────────────────────────────┘
+```
+
+---
+
+### Files to Create/Modify
+
+| File | Action | Description |
+|------|--------|-------------|
+| `src/pages/CourseProgress.tsx` | Create | Full course monitoring dashboard |
+| `src/pages/DashboardCRM.tsx` | Modify | Add progress bar to In Course agents |
+| `src/components/admin/CourseProgressPanel.tsx` | Modify | Add stats bar, bulk actions, module names |
+| `src/components/layout/GlobalSidebar.tsx` | Modify | Add nav link to course progress |
+| `supabase/functions/send-course-reminder/index.ts` | Create | Reminder email function |
+| `src/App.tsx` | Modify | Add route for /course-progress |
+
+---
+
+### Database Queries
+
+**Course Progress with Module Names:**
 ```sql
 SELECT 
-  a.id,
-  a.onboarding_stage,
+  a.id as agent_id,
   p.full_name,
-  (SELECT COUNT(*) FROM onboarding_progress op 
-   WHERE op.agent_id = a.id AND op.passed = true) as modules_completed,
-  (SELECT COUNT(*) FROM onboarding_modules 
-   WHERE is_active = true) as total_modules
+  p.email,
+  a.onboarding_stage,
+  a.invited_by_manager_id,
+  om.title as module_title,
+  om.order_index,
+  op.passed,
+  op.completed_at,
+  op.video_watched_percent
 FROM agents a
 JOIN profiles p ON p.user_id = a.user_id
-WHERE a.status = 'active'
+LEFT JOIN onboarding_progress op ON op.agent_id = a.id
+LEFT JOIN onboarding_modules om ON om.id = op.module_id
+WHERE a.onboarding_stage IN ('onboarding', 'training_online')
+  AND a.is_deactivated = false
+ORDER BY p.full_name, om.order_index
 ```
 
 ---
 
-### Enrollment Flow
-
-When admin clicks "Add to Course":
-
-1. **Check existing access**
-   - If agent already has `onboarding_progress` records → show "Already enrolled"
-   
-2. **Generate credentials**
-   - Call `send-agent-portal-login` edge function
-   - This sends magic link email to agent
-   
-3. **Initialize course**
-   - Set agent's `onboarding_stage` to `"training_online"`
-   - Create first `onboarding_progress` record (started_at = now)
-   
-4. **Show confirmation**
-   - Toast: "✓ [Agent Name] enrolled in course. Login sent to [email]"
-
----
-
-### Summary
+### Expected Outcome
 
 After implementation:
-- You can view ALL quiz questions with answers from Admin Panel
-- One-click "Enroll in Course" button creates login + starts course
-- My Team shows clear manager→agent relationships
-- Course progress visible for each agent
-- Easy reassignment between managers
+- Single dashboard to see ALL agents' course progress at a glance
+- Know exactly which modules each agent has/hasn't completed
+- Instant visibility into who is stalled and needs attention
+- One-click reminder emails to push agents forward
+- CRM cards show progress directly without navigating away
+- Bulk actions for efficiency when managing multiple agents
 

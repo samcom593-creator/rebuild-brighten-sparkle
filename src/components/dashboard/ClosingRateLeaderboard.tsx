@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Percent, Trophy, Medal, Award, Target, TrendingUp } from "lucide-react";
+import { Percent, Trophy, Medal, Award, Target, TrendingUp, Radio } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { supabase } from "@/integrations/supabase/client";
 import { ConfettiCelebration } from "./ConfettiCelebration";
@@ -8,7 +8,7 @@ import { RankChangeIndicator } from "./RankChangeIndicator";
 import { useTop3Celebration } from "@/hooks/useTop3Celebration";
 import { useRankChange } from "@/hooks/useRankChange";
 import { cn } from "@/lib/utils";
-import { subDays } from "date-fns";
+import { subDays, formatDistanceToNow } from "date-fns";
 
 interface ClosingRateLeaderboardProps {
   currentAgentId?: string;
@@ -35,6 +35,7 @@ export function ClosingRateLeaderboard({ currentAgentId, period = "week" }: Clos
   const [entries, setEntries] = useState<RateEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   
   const { checkForCelebration, resetTracking } = useTop3Celebration({ currentAgentId });
   const { getRankChange } = useRankChange("closing-rate");
@@ -49,7 +50,10 @@ export function ClosingRateLeaderboard({ currentAgentId, period = "week" }: Clos
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "daily_production" },
-        () => fetchLeaderboard()
+        () => {
+          setLastUpdated(new Date());
+          fetchLeaderboard();
+        }
       )
       .subscribe();
 
@@ -165,9 +169,15 @@ export function ClosingRateLeaderboard({ currentAgentId, period = "week" }: Clos
         onComplete={() => setShowConfetti(false)} 
       />
       <GlassCard className="p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <Percent className="h-4 w-4 text-emerald-500" />
-        <h4 className="font-semibold text-sm">Highest Closing Rates</h4>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <Percent className="h-4 w-4 text-emerald-500" />
+          <h4 className="font-semibold text-sm">Highest Closing Rates</h4>
+        </div>
+        <div className="flex items-center gap-1 text-[10px] text-emerald-500">
+          <Radio className="h-2.5 w-2.5 animate-pulse" />
+          <span>LIVE</span>
+        </div>
       </div>
 
       <div className="space-y-2">

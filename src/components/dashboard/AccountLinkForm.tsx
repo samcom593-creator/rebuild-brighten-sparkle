@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Mail, Hash, LogOut, Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { Mail, Hash, Phone, LogOut, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -26,11 +26,12 @@ interface AccountLinkFormProps {
 export function AccountLinkForm({ user, profile, onSuccess, onLogout }: AccountLinkFormProps) {
   const [email, setEmail] = useState(profile?.email || user?.email || "");
   const [agentCode, setAgentCode] = useState("");
+  const [phone, setPhone] = useState("");
   const [isLinking, setIsLinking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const handleLink = async (method: "email" | "code") => {
+  const handleLink = async (method: "email" | "code" | "phone") => {
     setIsLinking(true);
     setError(null);
 
@@ -44,6 +45,8 @@ export function AccountLinkForm({ user, profile, onSuccess, onLogout }: AccountL
 
       const payload = method === "email" 
         ? { email: email.trim() } 
+        : method === "phone"
+        ? { phone: phone.trim() }
         : { agentCode: agentCode.trim() };
 
       const { data, error: fnError } = await supabase.functions.invoke("link-account", {
@@ -125,14 +128,18 @@ export function AccountLinkForm({ user, profile, onSuccess, onLogout }: AccountL
           )}
 
           <Tabs defaultValue="email" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsList className="grid w-full grid-cols-3 mb-4">
               <TabsTrigger value="email" className="flex items-center gap-2">
                 <Mail className="h-4 w-4" />
                 Email
               </TabsTrigger>
+              <TabsTrigger value="phone" className="flex items-center gap-2">
+                <Phone className="h-4 w-4" />
+                Phone
+              </TabsTrigger>
               <TabsTrigger value="code" className="flex items-center gap-2">
                 <Hash className="h-4 w-4" />
-                Agent Code
+                Code
               </TabsTrigger>
             </TabsList>
 
@@ -162,6 +169,39 @@ export function AccountLinkForm({ user, profile, onSuccess, onLogout }: AccountL
                   </>
                 ) : (
                   "Link with Email"
+                )}
+              </Button>
+            </TabsContent>
+
+            <TabsContent value="phone" className="space-y-4">
+              <div className="text-left">
+                <label className="text-sm font-medium text-muted-foreground mb-1 block">
+                  Your registered phone number
+                </label>
+                <Input
+                  type="tel"
+                  placeholder="(555) 123-4567"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Enter the phone number on file with your manager
+                </p>
+              </div>
+              <Button
+                onClick={() => handleLink("phone")}
+                disabled={isLinking || phone.replace(/\D/g, "").length < 10}
+                className="w-full"
+                size="lg"
+              >
+                {isLinking ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Linking...
+                  </>
+                ) : (
+                  "Link with Phone"
                 )}
               </Button>
             </TabsContent>

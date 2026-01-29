@@ -6,7 +6,6 @@ import {
   RefreshCw, 
   User,
   Calendar, 
-  LogOut, 
   Trophy, 
   Sparkles, 
   Quote,
@@ -16,17 +15,11 @@ import {
   Award,
   Zap,
   Copy,
-  UserPlus,
-  Menu,
-  LayoutDashboard,
-  Settings,
-  Users,
-  Edit3
+  UserPlus
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { ProductionEntry } from "@/components/dashboard/ProductionEntry";
 import { LeaderboardTabs } from "@/components/dashboard/LeaderboardTabs";
 import { PersonalStatsCard } from "@/components/dashboard/PersonalStatsCard";
@@ -40,7 +33,7 @@ import { WeeklyBadgesCard } from "@/components/dashboard/WeeklyBadges";
 import { YearPerformanceCard } from "@/components/dashboard/YearPerformanceCard";
 import { AccountLinkForm } from "@/components/dashboard/AccountLinkForm";
 import { AgentRankBadge } from "@/components/dashboard/AgentRankBadge";
-import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -408,157 +401,33 @@ export default function AgentPortal() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      {/* Apex Financial Branding */}
-      <div className="bg-gradient-to-r from-primary/10 via-transparent to-primary/10 border-b border-primary/20">
-        <div className="container mx-auto px-4 py-2">
-          <a 
-            href="https://apex-financial.org/c" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 group hover-scale"
-          >
-            <motion.img 
-              src={apexIcon} 
-              alt="Apex" 
-              className="h-5 w-5 drop-shadow-[0_0_8px_hsl(var(--primary)/0.6)]"
-              animate={{ 
-                filter: [
-                  "drop-shadow(0 0 4px hsl(var(--primary)/0.4))",
-                  "drop-shadow(0 0 12px hsl(var(--primary)/0.8))",
-                  "drop-shadow(0 0 4px hsl(var(--primary)/0.4))"
-                ]
-              }}
-              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            />
-            <motion.span 
-              className="font-bold text-sm tracking-wide bg-gradient-to-r from-primary to-emerald-400 bg-clip-text text-transparent"
-              animate={{ 
-                textShadow: [
-                  "0 0 8px hsl(var(--primary)/0.3)",
-                  "0 0 16px hsl(var(--primary)/0.6)",
-                  "0 0 8px hsl(var(--primary)/0.3)"
-                ]
-              }}
-              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            >
-              APEX FINANCIAL
-            </motion.span>
-          </a>
-        </div>
-      </div>
-
-      {/* Modern Header */}
-      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-        <div className="container mx-auto px-3 sm:px-4 py-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
-              {/* Avatar with gradient ring */}
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: "spring", stiffness: 200, delay: 0.1 }}
-                className="relative shrink-0"
-              >
-                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary via-violet-500 to-amber-500 p-[2px] animate-[spin_4s_linear_infinite]" style={{ animationDirection: "reverse" }}>
-                  <div className="h-full w-full rounded-full bg-background" />
-                </div>
-                <div className="relative h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-gradient-to-br from-primary to-violet-500 flex items-center justify-center text-white font-bold text-base sm:text-lg shadow-lg shadow-primary/20">
-                  {profile?.full_name?.charAt(0).toUpperCase() || "A"}
-                </div>
-              </motion.div>
-              
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <motion.h1 
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="font-bold text-base sm:text-lg truncate"
-                  >
-                    {profile?.full_name || "Agent"}
-                  </motion.h1>
-                  {agentId && (
-                    <div className="shrink-0">
-                      <AgentRankBadge agentId={agentId} size="sm" />
-                    </div>
-                  )}
-                </div>
-                <motion.p 
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.1 }}
-                  className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1.5"
-                >
-                  <Calendar className="h-3 w-3 shrink-0" />
-                  <span className="hidden xs:inline">{format(new Date(), "EEEE, MMMM d, yyyy")}</span>
-                  <span className="xs:hidden">{format(new Date(), "MMM d, yyyy")}</span>
-                </motion.p>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-              {/* Dashboard Navigation Menu */}
-              <Sheet>
-                <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" className="hover:bg-muted h-9 w-9 sm:h-10 sm:w-10">
-                    <Menu className="h-4 w-4" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="w-64">
-                  <SheetHeader>
-                    <SheetTitle className="flex items-center gap-2">
-                      <img src={apexIcon} alt="Apex" className="h-6 w-6" />
-                      Navigation
-                    </SheetTitle>
-                  </SheetHeader>
-                  <nav className="space-y-2 mt-6">
-                    <Link 
-                      to="/numbers" 
-                      className="flex items-center gap-3 px-4 py-3 rounded-lg bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-colors"
-                    >
-                      <Edit3 className="h-5 w-5 text-primary" />
-                      <span className="font-medium text-primary">Log Numbers</span>
-                    </Link>
-                    <Link 
-                      to="/dashboard" 
-                      className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-muted transition-colors"
-                    >
-                      <LayoutDashboard className="h-5 w-5 text-primary" />
-                      <span>Dashboard</span>
-                    </Link>
-                    <Link 
-                      to="/dashboard/team" 
-                      className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-muted transition-colors"
-                    >
-                      <Users className="h-5 w-5 text-violet-500" />
-                      <span>My Team</span>
-                    </Link>
-                    <Link 
-                      to="/dashboard/settings" 
-                      className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-muted transition-colors"
-                    >
-                      <Settings className="h-5 w-5 text-muted-foreground" />
-                      <span>Settings</span>
-                    </Link>
-                  </nav>
-                </SheetContent>
-              </Sheet>
-              
-              <ThemeToggle />
-              <Button variant="ghost" size="icon" onClick={handleLogout} className="hover:bg-destructive/10 hover:text-destructive transition-colors h-9 w-9 sm:h-10 sm:w-10">
-                <LogOut className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-6 space-y-6">
-        {/* Admin access enabled - no banner displayed */}
-
+    <DashboardLayout>
+      <div className="space-y-6">
         {/* Hero Section with Quick Stats */}
         <section className="space-y-4">
+          {/* Agent Info Bar */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-wrap items-center gap-3"
+          >
+            <div className="flex items-center gap-3">
+              <div className="relative h-12 w-12 rounded-full bg-gradient-to-br from-primary to-violet-500 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-primary/20">
+                {profile?.full_name?.charAt(0).toUpperCase() || "A"}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="font-bold text-lg">{profile?.full_name || "Agent"}</h1>
+                  {agentId && <AgentRankBadge agentId={agentId} size="sm" />}
+                </div>
+                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                  <Calendar className="h-3 w-3" />
+                  {format(new Date(), "EEEE, MMMM d, yyyy")}
+                </p>
+              </div>
+            </div>
+          </motion.div>
+
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -926,7 +795,7 @@ export default function AgentPortal() {
             </div>
           </GlassCard>
         </motion.section>
-      </main>
-    </div>
+      </div>
+    </DashboardLayout>
   );
 }

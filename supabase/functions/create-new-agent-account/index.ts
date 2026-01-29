@@ -114,8 +114,10 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Failed to create profile. Please try again.");
     }
 
+    console.log(`Created profile: ${newProfile.id} for user: ${userId}`);
+
     // 7. Create agent record
-    const { error: agentError } = await supabaseAdmin
+    const { data: newAgent, error: agentError } = await supabaseAdmin
       .from("agents")
       .insert({
         user_id: userId,
@@ -124,11 +126,15 @@ const handler = async (req: Request): Promise<Response> => {
         onboarding_stage: "evaluated",
         license_status: "unlicensed",
         portal_password_set: true,
-      });
+      })
+      .select("id")
+      .single();
 
     if (agentError) {
       console.error("Error creating agent:", agentError);
       // Don't fail - user can still log in
+    } else {
+      console.log(`Created agent: ${newAgent?.id} with profile_id: ${newProfile.id} for user: ${userId}`);
     }
 
     // 8. Add agent role (we deleted the trigger-created one)

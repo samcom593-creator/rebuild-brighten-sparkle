@@ -1,185 +1,221 @@
 
 
-## Course Progress Monitoring + CRM Integration
+## Fix Dashboard & Agent Portal Issues - Comprehensive Plan
 
-### Overview
-
-Create a dedicated, comprehensive course progress monitoring dashboard that integrates seamlessly with the CRM, providing real-time visibility into agent coursework completion, module-by-module tracking, and quick actions for admin intervention.
+Based on my exploration of the codebase, I've identified multiple interconnected issues affecting the dashboard and agent portal. Here's the complete fix plan:
 
 ---
 
-### What You're Getting
+### Issues Identified
 
-**1. Enhanced Course Progress Dashboard (New Page)**
-A dedicated admin-only page at `/course-progress` with:
-- Full-width table view of ALL agents in coursework
-- Module-by-module breakdown (which specific modules passed/failed)
-- Last activity timestamp with "stale" indicators (inactive > 3 days)
-- Direct "Send Reminder" action per agent
-- Quick "Push to CRM" action for agents ready for field training
-- Filter by: All / Not Started / In Progress / Stalled / Complete
-
-**2. CRM Integration - Course Status Column**
-Add course progress indicators directly in the existing CRM view:
-- Progress bar visible on each agent card in "In Course" column
-- Module count badge (e.g., "2/5 modules")
-- "Stalled" warning badge if no activity in 3+ days
-- One-click action to send coursework reminder email
-
-**3. Command Center Enhancement**
-Expand the existing CourseProgressPanel with:
-- Summary stats row: Not Started / In Progress / Stalled / Complete
-- Click any stat to filter the list
-- "Send Bulk Reminder" button for all stalled agents
-- Export course progress to clipboard
+| Issue | Root Cause | Location |
+|-------|-----------|----------|
+| Today's numbers missing in Agent Portal | The "custom" time range toggle shows "All Time" instead of loading actual custom date picker | `AgentPortal.tsx` lines 596-607 |
+| Custom date filter not working | `getDateRange("custom")` returns hardcoded 30 days, no actual custom date picker shown | `AgentPortal.tsx` lines 156-161 |
+| Day numbers not working in Dashboard | The `TeamSnapshotCard` has real-time subscription but date filter issues persist | `TeamSnapshotCard.tsx` |
+| Highest Closing Rates not live | Missing real-time subscription to `daily_production` table updates | `ClosingRateLeaderboard.tsx` - has subscription but no visible updates |
+| Top Referral not live | Similar issue - subscription exists but not triggering visual refresh | `ReferralLeaderboard.tsx` |
+| Recruit Comp not live | `ManagerLeaderboard.tsx` queries `applications` table - subscription may not be catching updates | `ManagerLeaderboard.tsx` |
+| Missing link for daily numbers | No direct "/numbers" link in navigation or Agent Portal | `AgentPortal.tsx` navigation menu |
+| Want more options in dashboard | Need additional quick actions and stats visibility | `Dashboard.tsx` |
 
 ---
 
-### Technical Implementation
+### Implementation Plan
 
-#### A) New CourseProgressPage Component
+#### 1. Add Quick Link to Daily Numbers Page
 
-**File:** `src/pages/CourseProgress.tsx`
+**File:** `src/pages/AgentPortal.tsx`
 
-Full-featured table with:
-- Agent name, email, manager
-- Each module as a column with pass/fail status
-- Overall % complete with progress bar
-- Last activity date with color coding
-- Quick actions: Send Reminder, View Profile, Push to Field Training
+Add a prominent "Log Numbers" link in the navigation menu and header:
+- Add to Sheet navigation menu (line 533)
+- Add floating action button for mobile users
+- Direct link to `/numbers` page
 
-#### B) CRM Course Status Integration
+#### 2. Fix Custom Date Range in Agent Portal
 
-**File:** `src/pages/DashboardCRM.tsx`
+**File:** `src/pages/AgentPortal.tsx`
 
-For agents in "onboarding" or "training_online" stage:
-- Fetch their `onboarding_progress` records
-- Display progress bar + module count
-- Add "stalled" indicator if `lastActivity > 3 days ago`
-- Add "Send Reminder" button
+Current issue: "Custom" button doesn't show a date picker - it just uses last 30 days.
 
-Data query addition:
+Fix:
+- Add state for custom date range selection
+- Import and use `DateRangePicker` component when "custom" is selected
+- Update `getDateRange` to use actual user-selected dates
+- Show date picker UI inline when custom is selected
+
 ```typescript
-// Fetch course progress for In Course agents
-const inCourseAgentIds = agents
-  .filter(a => ["onboarding", "training_online"].includes(a.onboardingStage))
-  .map(a => a.id);
+// Add state
+const [customRange, setCustomRange] = useState<DateRange>({ from: undefined, to: undefined });
 
-const { data: courseProgress } = await supabase
-  .from("onboarding_progress")
-  .select("agent_id, module_id, passed, completed_at")
-  .in("agent_id", inCourseAgentIds);
+// Update getDateRange
+case "custom":
+  if (customRange.from && customRange.to) {
+    return {
+      start: format(customRange.from, "yyyy-MM-dd"),
+      end: format(customRange.to, "yyyy-MM-dd"),
+    };
+  }
+  // Fallback to last 30 days
+  ...
 ```
 
-#### C) Enhanced CourseProgressPanel
+#### 3. Ensure "Today" Filter Works Correctly
 
-**File:** `src/components/admin/CourseProgressPanel.tsx`
+**Files:** `TeamSnapshotCard.tsx`, `LeaderboardTabs.tsx`
 
-Add:
-- Summary stats bar with click-to-filter
-- Module name display (join with `onboarding_modules.title`)
-- "Send Reminder" action per agent
-- "Send All Reminders" bulk action
-- Stale indicator (amber for 3+ days, red for 7+ days)
+The `useDateRange` hook correctly handles "today" but verify:
+- The query uses exact date matching for today
+- Production records use correct timezone (UTC vs local)
 
-#### D) Course Reminder Edge Function
+Add explicit today handling:
+```typescript
+if (period === "today") {
+  const today = format(new Date(), "yyyy-MM-dd");
+  query = query.eq("production_date", today);
+}
+```
 
-**File:** `supabase/functions/send-course-reminder/index.ts`
+#### 4. Make Leaderboards Truly Live
 
-Email template with:
-- Personalized greeting
-- Current progress stats
-- Direct link to course
-- Encouragement message
+**Files:** `ClosingRateLeaderboard.tsx`, `ReferralLeaderboard.tsx`, `ManagerLeaderboard.tsx`
 
-#### E) Navigation Update
+Issue: Real-time subscriptions exist but may not be triggering visual updates.
+
+Fix:
+- Add `key={Date.now()}` refresh trigger on subscription callback
+- Force re-render by incrementing a refresh counter
+- Add "LIVE" indicator that pulses when data updates
+
+```typescript
+const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+// In subscription callback
+.on("postgres_changes", { event: "*", ... }, () => {
+  setRefreshTrigger(prev => prev + 1);
+  fetchLeaderboard();
+})
+```
+
+#### 5. Add More Dashboard Options
+
+**File:** `src/pages/Dashboard.tsx`
+
+Add new sections/quick actions:
+- Direct "Log Numbers" button that links to `/numbers`
+- Personal daily stats card (deals today, presentations today)
+- Quick links row:
+  - Agent Portal
+  - Log Numbers
+  - My Performance
+  - Team Directory (for managers)
+- Today's activity feed (recent production entries)
+
+#### 6. Enhance Dashboard with Personal Daily Stats
+
+**File:** `src/pages/Dashboard.tsx` or new component
+
+Add a "Your Today's Numbers" section that shows:
+- Personal ALP today
+- Personal deals today
+- Personal presentations today
+- Direct edit button to log/update numbers
+
+#### 7. Add Numbers Link to Sidebar Navigation
 
 **File:** `src/components/layout/GlobalSidebar.tsx`
 
-Add "Course Progress" link under Admin section (admin-only visibility)
-
----
-
-### UI/UX Details
-
-**Course Progress Table Layout:**
-
-```text
-+-------------+----------------+--------+----------+----------+----------+-----------+-----------+
-| Agent       | Manager        | Stage  | Module 1 | Module 2 | Module 3 | Progress  | Actions   |
-+-------------+----------------+--------+----------+----------+----------+-----------+-----------+
-| Obi Ifedora | Samuel James   | Course | ✓ Pass   | ✓ Pass   | ◯ Not    | 66% ▓▓▓░░ | [Remind]  |
-| KJ Vaughns  | Samuel James   | Course | ✓ Pass   | ◯ Not    | —        | 33% ▓░░░░ | [Remind]  |
-| New Agent   | Obi Ifedora    | Onbrd  | —        | —        | —        | 0% ░░░░░  | [Enroll]  |
-+-------------+----------------+--------+----------+----------+----------+-----------+-----------+
-```
-
-**Stalled Indicators:**
-- 3+ days inactive: Amber "Stalled" badge
-- 7+ days inactive: Red "At Risk" badge with automatic manager notification option
-
-**CRM Card Enhancement:**
-
-```text
-┌──────────────────────────────────────┐
-│ Obi Ifedora                          │
-│ obi@email.com                        │
-├──────────────────────────────────────┤
-│ Course: 66% ▓▓▓▓░░ (2/3 modules)     │  ← NEW
-│ Last active: 2 days ago              │  ← NEW
-├──────────────────────────────────────┤
-│ [Onboarding → Course → Field → Live] │
-└──────────────────────────────────────┘
+Add entry for the Numbers page in the main navigation:
+```typescript
+{
+  label: "Log Numbers",
+  icon: <Sparkles className="h-4 w-4" />,
+  href: "/numbers",
+}
 ```
 
 ---
 
-### Files to Create/Modify
+### Files to Modify
 
-| File | Action | Description |
-|------|--------|-------------|
-| `src/pages/CourseProgress.tsx` | Create | Full course monitoring dashboard |
-| `src/pages/DashboardCRM.tsx` | Modify | Add progress bar to In Course agents |
-| `src/components/admin/CourseProgressPanel.tsx` | Modify | Add stats bar, bulk actions, module names |
-| `src/components/layout/GlobalSidebar.tsx` | Modify | Add nav link to course progress |
-| `supabase/functions/send-course-reminder/index.ts` | Create | Reminder email function |
-| `src/App.tsx` | Modify | Add route for /course-progress |
+| File | Changes |
+|------|---------|
+| `src/pages/AgentPortal.tsx` | Add Numbers link, fix custom date picker, add floating action button |
+| `src/components/dashboard/ClosingRateLeaderboard.tsx` | Add refresh trigger, enhance live indicator |
+| `src/components/dashboard/ReferralLeaderboard.tsx` | Add refresh trigger, enhance live indicator |
+| `src/components/dashboard/ManagerLeaderboard.tsx` | Add subscription to agents table, enhance live indicator |
+| `src/pages/Dashboard.tsx` | Add quick actions row, personal today stats, Numbers link |
+| `src/components/layout/GlobalSidebar.tsx` | Add Numbers link |
+| `src/components/dashboard/TeamSnapshotCard.tsx` | Verify today filter correctness |
 
 ---
 
-### Database Queries
+### Technical Details
 
-**Course Progress with Module Names:**
-```sql
-SELECT 
-  a.id as agent_id,
-  p.full_name,
-  p.email,
-  a.onboarding_stage,
-  a.invited_by_manager_id,
-  om.title as module_title,
-  om.order_index,
-  op.passed,
-  op.completed_at,
-  op.video_watched_percent
-FROM agents a
-JOIN profiles p ON p.user_id = a.user_id
-LEFT JOIN onboarding_progress op ON op.agent_id = a.id
-LEFT JOIN onboarding_modules om ON om.id = op.module_id
-WHERE a.onboarding_stage IN ('onboarding', 'training_online')
-  AND a.is_deactivated = false
-ORDER BY p.full_name, om.order_index
+**Custom Date Picker Fix (Agent Portal):**
+
+```typescript
+// State additions
+const [customRange, setCustomRange] = useState<DateRange>({ from: undefined, to: undefined });
+
+// In JSX, after time range buttons
+{statsTimeRange === "custom" && (
+  <DateRangePicker
+    value={customRange}
+    onChange={setCustomRange}
+    simpleMode
+  />
+)}
+```
+
+**Live Leaderboard Enhancement:**
+
+```typescript
+// Add visible update indicator
+const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+
+// In subscription
+.on("postgres_changes", ..., () => {
+  setLastUpdated(new Date());
+  fetchLeaderboard();
+})
+
+// In JSX
+<span className="text-[10px] text-emerald-500 animate-pulse">
+  Updated {formatDistanceToNow(lastUpdated, { addSuffix: true })}
+</span>
+```
+
+**Quick Actions Row (Dashboard):**
+
+```typescript
+<div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+  <Link to="/numbers">
+    <GlassCard className="p-4 hover:border-primary/50 cursor-pointer">
+      <Sparkles className="h-5 w-5 text-primary mb-2" />
+      <p className="font-semibold text-sm">Log Numbers</p>
+    </GlassCard>
+  </Link>
+  <Link to="/agent-portal">
+    <GlassCard className="p-4 hover:border-primary/50 cursor-pointer">
+      <BarChart3 className="h-5 w-5 text-violet-500 mb-2" />
+      <p className="font-semibold text-sm">Agent Portal</p>
+    </GlassCard>
+  </Link>
+  // ...more quick actions
+</div>
 ```
 
 ---
 
-### Expected Outcome
+### Expected Results
 
 After implementation:
-- Single dashboard to see ALL agents' course progress at a glance
-- Know exactly which modules each agent has/hasn't completed
-- Instant visibility into who is stalled and needs attention
-- One-click reminder emails to push agents forward
-- CRM cards show progress directly without navigating away
-- Bulk actions for efficiency when managing multiple agents
+- "Today" filter correctly shows only today's production data
+- Custom date range picker appears when selecting "Custom Dates"
+- Direct link to `/numbers` page from dashboard and sidebar
+- Leaderboards visually update in real-time with pulse indicators
+- ManagerLeaderboard (recruit comp) updates live when applications change
+- Dashboard has quick action buttons for common tasks
+- Personal daily stats visible at a glance
 

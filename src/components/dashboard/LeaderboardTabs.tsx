@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Trophy, Medal, Award, Target, Percent, Crown, Users, Flame, Circle, Building2 } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -16,8 +16,9 @@ import { MobileLeaderboardCard } from "./MobileLeaderboardCard";
 import { useTop3Celebration } from "@/hooks/useTop3Celebration";
 import { useRankChange } from "@/hooks/useRankChange";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { subDays, format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
+import { format } from "date-fns";
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
+import { getTodayPST, getWeekStartPST, getMonthStartPST, getDateDaysAgoPST } from "@/lib/dateUtils";
 
 interface LeaderboardTabsProps {
   currentAgentId?: string;
@@ -80,45 +81,53 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
   const { checkForCelebration, resetTracking } = useTop3Celebration({ currentAgentId });
   const { getRankChange } = useRankChange("alp");
 
+  const isInitialMount = useRef(true);
+
   useEffect(() => {
-    resetTracking();
-    fetchLeaderboard();
+    // Only reset tracking on initial mount
+    if (isInitialMount.current) {
+      resetTracking();
+      isInitialMount.current = false;
+    }
+    fetchLeaderboard(true);
     
     const channel = supabase
       .channel("leaderboard-changes")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "daily_production" },
-        () => fetchLeaderboard()
+        () => fetchLeaderboard(false)
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [period, customDateRange, currentAgentId, resetTracking]);
+  }, [period, customDateRange, currentAgentId]);
 
-  const fetchLeaderboard = async () => {
+  const fetchLeaderboard = async (isInitialLoad = true) => {
     try {
-      let startDate: string;
-      const today = new Date();
+      if (isInitialLoad) setLoading(true);
       
+      let startDate: string;
+      
+      // Use PST timezone for all date calculations
       switch (period) {
         case "week":
-          startDate = format(startOfWeek(today, { weekStartsOn: 0 }), "yyyy-MM-dd");
+          startDate = getWeekStartPST();
           break;
         case "month":
-          startDate = format(startOfMonth(today), "yyyy-MM-dd");
+          startDate = getMonthStartPST();
           break;
         case "custom":
           if (customDateRange.from) {
             startDate = format(customDateRange.from, "yyyy-MM-dd");
           } else {
-            startDate = subDays(today, 30).toISOString().split("T")[0];
+            startDate = getDateDaysAgoPST(30);
           }
           break;
         default:
-          startDate = today.toISOString().split("T")[0];
+          startDate = getTodayPST();
       }
 
       let query = supabase

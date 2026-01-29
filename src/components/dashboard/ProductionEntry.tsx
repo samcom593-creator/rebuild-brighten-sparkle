@@ -276,24 +276,14 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
         }
       }
       
-      // 🚨 DEAL ALERT: If deals were closed, notify the whole team AFTER confetti completes
+      // Trigger notifications after confetti completes (deal alerts moved to daily leaderboard)
       if (formData.deals_closed > 0) {
-        // Delay notifications until after confetti animation (2s) to prevent UI glitching
         setTimeout(async () => {
           try {
-            console.log("🚨 Triggering batched deal notifications for", selectedAgentName);
+            console.log("🔔 Triggering batched notifications for", selectedAgentName);
             
-            // Batch all notifications together using Promise.allSettled
-            // so one failure doesn't block others
+            // Batch notifications (deal alert removed - now sent as daily leaderboard at 9 PM)
             await Promise.allSettled([
-              supabase.functions.invoke("notify-deal-alert", {
-                body: {
-                  agentId: selectedAgentId,
-                  agentName: selectedAgentName,
-                  deals: formData.deals_closed,
-                  aop: formData.aop,
-                },
-              }),
               supabase.functions.invoke("notify-streak-alert", {
                 body: {
                   agentId: selectedAgentId,
@@ -316,9 +306,9 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
               }),
             ]);
             
-            console.log("✅ All deal notifications sent");
+            console.log("✅ All notifications sent");
           } catch (notifyError) {
-            console.error("Failed to send deal notifications:", notifyError);
+            console.error("Failed to send notifications:", notifyError);
           }
         }, 2000);
       }

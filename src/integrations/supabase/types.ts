@@ -1080,6 +1080,35 @@ export type Database = {
           },
         ]
       }
+      invitation_seen: {
+        Row: {
+          agent_id: string
+          id: string
+          seen_at: string
+          viewer_user_id: string
+        }
+        Insert: {
+          agent_id: string
+          id?: string
+          seen_at?: string
+          viewer_user_id: string
+        }
+        Update: {
+          agent_id?: string
+          id?: string
+          seen_at?: string
+          viewer_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invitation_seen_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_counter: {
         Row: {
           count: number

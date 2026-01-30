@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Users, RefreshCw, AlertTriangle, Loader2, Network, MoreVertical, Pencil, UserX } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Users, RefreshCw, AlertTriangle, Loader2, Network, MoreVertical, Pencil, UserX, Trash2 } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -27,6 +28,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -78,6 +89,12 @@ export function TeamHierarchyManager() {
   const [updatingStage, setUpdatingStage] = useState<string | null>(null);
   const [bulkUpdating, setBulkUpdating] = useState(false);
   const [filterManager, setFilterManager] = useState<string>("all");
+  
+  // Selection state for bulk actions
+  const [selectedAgents, setSelectedAgents] = useState<Set<string>>(new Set());
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+  const [bulkDeleteType, setBulkDeleteType] = useState<"soft" | "hard">("soft");
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   
   // Editor states
   const [selectedAgent, setSelectedAgent] = useState<AgentHierarchyEntry | null>(null);
@@ -332,6 +349,77 @@ export function TeamHierarchyManager() {
     }
   };
 
+  // Bulk selection handlers
+  const toggleSelectAgent = (agentId: string) => {
+    setSelectedAgents(prev => {
+      const next = new Set(prev);
+      if (next.has(agentId)) {
+        next.delete(agentId);
+      } else {
+        next.add(agentId);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    const selectableAgents = filteredAgents.filter(a => a.id !== adminAgentId);
+    if (selectedAgents.size === selectableAgents.length) {
+      setSelectedAgents(new Set());
+    } else {
+      setSelectedAgents(new Set(selectableAgents.map(a => a.id)));
+    }
+  };
+
+  // Bulk delete handler
+  const handleBulkDelete = async () => {
+    if (selectedAgents.size === 0) return;
+    setIsBulkDeleting(true);
+
+    try {
+      const agentIds = Array.from(selectedAgents);
+      
+      if (bulkDeleteType === "soft") {
+        // Soft delete: mark as deactivated
+        const { error } = await supabase
+          .from("agents")
+          .update({ is_deactivated: true, deactivation_reason: "inactive" })
+          .in("id", agentIds);
+        
+        if (error) throw error;
+        toast.success(`${agentIds.length} agents marked as inactive`);
+      } else {
+        // Hard delete: permanently remove agents
+        // This needs to delete from multiple tables
+        for (const agentId of agentIds) {
+          // Delete from related tables first
+          await supabase.from("onboarding_progress").delete().eq("agent_id", agentId);
+          await supabase.from("daily_production").delete().eq("agent_id", agentId);
+          await supabase.from("agent_notes").delete().eq("agent_id", agentId);
+          await supabase.from("agent_goals").delete().eq("agent_id", agentId);
+          await supabase.from("agent_attendance").delete().eq("agent_id", agentId);
+          await supabase.from("agent_ratings").delete().eq("agent_id", agentId);
+          await supabase.from("agent_onboarding").delete().eq("agent_id", agentId);
+          await supabase.from("plaque_awards").delete().eq("agent_id", agentId);
+          await supabase.from("magic_login_tokens").delete().eq("agent_id", agentId);
+          
+          // Finally delete the agent record
+          await supabase.from("agents").delete().eq("id", agentId);
+        }
+        toast.success(`${agentIds.length} agents permanently deleted`);
+      }
+
+      setSelectedAgents(new Set());
+      setShowBulkDeleteDialog(false);
+      fetchHierarchy();
+    } catch (error) {
+      console.error("Error bulk deleting:", error);
+      toast.error("Failed to delete agents");
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
   // Always show admin at top, then apply filter to remaining agents
   const filteredAgents = (() => {
     const adminAgent = agents.find(a => a.id === adminAgentId);
@@ -357,12 +445,29 @@ export function TeamHierarchyManager() {
     return a.managerId !== adminAgentId;
   }).length;
 
+  const selectableAgents = filteredAgents.filter(a => a.id !== adminAgentId);
+  const isAllSelected = selectableAgents.length > 0 && selectedAgents.size === selectableAgents.length;
+  const isPartiallySelected = selectedAgents.size > 0 && selectedAgents.size < selectableAgents.length;
+
   if (loading) {
     return (
       <GlassCard className="p-4">
-        <div className="flex items-center justify-center gap-2 py-6">
-          <Loader2 className="h-4 w-4 animate-spin text-primary" />
-          <span className="text-sm text-muted-foreground">Loading hierarchy...</span>
+        <div className="space-y-3">
+          {/* Skeleton header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="h-4 w-4 rounded bg-muted animate-pulse" />
+              <div className="h-4 w-32 rounded bg-muted animate-pulse" />
+            </div>
+            <div className="flex gap-2">
+              <div className="h-7 w-20 rounded bg-muted animate-pulse" />
+              <div className="h-7 w-28 rounded bg-muted animate-pulse" />
+            </div>
+          </div>
+          {/* Skeleton rows */}
+          {[1, 2, 3, 4, 5].map(i => (
+            <div key={i} className="h-12 rounded bg-muted/50 animate-pulse" />
+          ))}
         </div>
       </GlassCard>
     );
@@ -370,34 +475,45 @@ export function TeamHierarchyManager() {
 
   return (
     <>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-      >
-        <GlassCard className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Network className="h-4 w-4 text-primary" />
-              <h3 className="font-semibold text-sm">Team Hierarchy Manager</h3>
-              <Badge variant="secondary" className="text-xs">{agents.length} agents</Badge>
-            </div>
-            <div className="flex items-center gap-2">
+      <GlassCard className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Network className="h-4 w-4 text-primary" />
+            <h3 className="font-semibold text-sm">Team Hierarchy Manager</h3>
+            <Badge variant="secondary" className="text-xs">{agents.length} agents</Badge>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchHierarchy}
+              disabled={loading}
+              className="h-7 text-xs"
+            >
+              <RefreshCw className={cn("h-3 w-3 mr-1", loading && "animate-spin")} />
+              Refresh
+            </Button>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handleAssignAllToMe}
+              disabled={bulkUpdating || !adminAgentId}
+              className="h-7 text-xs"
+            >
+              {bulkUpdating ? (
+                <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+              ) : (
+                <Users className="h-3 w-3 mr-1" />
+              )}
+              Assign All to Me
+            </Button>
+            {/* Bulk assign orphans to selected manager */}
+            {filterManager !== "all" && filterManager !== "orphaned" && (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={fetchHierarchy}
-                disabled={loading}
-                className="h-7 text-xs"
-              >
-                <RefreshCw className={cn("h-3 w-3 mr-1", loading && "animate-spin")} />
-                Refresh
-              </Button>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={handleAssignAllToMe}
-                disabled={bulkUpdating || !adminAgentId}
+                onClick={() => handleAssignOrphansToManager(filterManager)}
+                disabled={bulkUpdating || orphanedCount === 0}
                 className="h-7 text-xs"
               >
                 {bulkUpdating ? (
@@ -405,230 +521,321 @@ export function TeamHierarchyManager() {
                 ) : (
                   <Users className="h-3 w-3 mr-1" />
                 )}
-                Assign All to Me
+                Assign Orphans to {managers.find(m => m.id === filterManager)?.name}
               </Button>
-              {/* Bulk assign orphans to selected manager */}
-              {filterManager !== "all" && filterManager !== "orphaned" && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleAssignOrphansToManager(filterManager)}
-                  disabled={bulkUpdating || orphanedCount === 0}
-                  className="h-7 text-xs"
-                >
-                  {bulkUpdating ? (
-                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                  ) : (
-                    <Users className="h-3 w-3 mr-1" />
-                  )}
-                  Assign Orphans to {managers.find(m => m.id === filterManager)?.name}
-                </Button>
-              )}
-            </div>
+            )}
           </div>
+        </div>
 
-          {/* Alerts */}
-          {(orphanedCount > 0 || indirectReports > 0) && (
-            <div className="mb-3 flex flex-wrap gap-2">
-              {orphanedCount > 0 && (
-                <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs">
-                  <AlertTriangle className="h-3 w-3" />
-                  <span>{orphanedCount} with no manager</span>
-                </div>
-              )}
-              {indirectReports > 0 && (
-                <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-xs">
-                  <Users className="h-3 w-3" />
-                  <span>{indirectReports} under sub-managers</span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Filter */}
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-xs text-muted-foreground">Filter:</span>
-            <Select value={filterManager} onValueChange={setFilterManager}>
-              <SelectTrigger className="w-40 h-7 text-xs">
-                <SelectValue placeholder="All agents" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All ({agents.length})</SelectItem>
-                <SelectItem value="orphaned">⚠️ No Manager ({orphanedCount})</SelectItem>
-                {managers.map((manager) => (
-                  <SelectItem key={manager.id} value={manager.id}>
-                    {manager.name}'s Team
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        {/* Alerts */}
+        {(orphanedCount > 0 || indirectReports > 0) && (
+          <div className="mb-3 flex flex-wrap gap-2">
+            {orphanedCount > 0 && (
+              <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs">
+                <AlertTriangle className="h-3 w-3" />
+                <span>{orphanedCount} with no manager</span>
+              </div>
+            )}
+            {indirectReports > 0 && (
+              <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-xs">
+                <Users className="h-3 w-3" />
+                <span>{indirectReports} under sub-managers</span>
+              </div>
+            )}
           </div>
+        )}
 
-          {/* Agents Table - Premium Production Display */}
-          <div className="rounded-lg border bg-card/50 overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/30">
-                  <TableHead className="text-xs">Agent</TableHead>
-                  <TableHead className="text-xs text-right">Week ALP</TableHead>
-                  <TableHead className="text-xs text-right">Deals</TableHead>
-                  <TableHead className="text-xs text-right">Month ALP</TableHead>
-                  <TableHead className="text-xs w-36">Stage</TableHead>
-                  <TableHead className="text-xs w-28">Course</TableHead>
-                  <TableHead className="text-xs w-10"></TableHead>
+        {/* Filter */}
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-xs text-muted-foreground">Filter:</span>
+          <Select value={filterManager} onValueChange={setFilterManager}>
+            <SelectTrigger className="w-40 h-7 text-xs">
+              <SelectValue placeholder="All agents" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All ({agents.length})</SelectItem>
+              <SelectItem value="orphaned">⚠️ No Manager ({orphanedCount})</SelectItem>
+              {managers.map((manager) => (
+                <SelectItem key={manager.id} value={manager.id}>
+                  {manager.name}'s Team
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Agents Table - Premium Production Display */}
+        <div className="rounded-lg border bg-card/50 overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/30">
+                <TableHead className="text-xs w-10">
+                  <Checkbox
+                    checked={isAllSelected}
+                    onCheckedChange={toggleSelectAll}
+                    className="border-muted-foreground/50"
+                    aria-label="Select all"
+                  />
+                </TableHead>
+                <TableHead className="text-xs">Agent</TableHead>
+                <TableHead className="text-xs text-right">Week ALP</TableHead>
+                <TableHead className="text-xs text-right">Deals</TableHead>
+                <TableHead className="text-xs text-right">Month ALP</TableHead>
+                <TableHead className="text-xs w-36">Stage</TableHead>
+                <TableHead className="text-xs w-28">Course</TableHead>
+                <TableHead className="text-xs w-10"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredAgents.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-6 text-muted-foreground text-sm">
+                    No agents found
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredAgents.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-6 text-muted-foreground text-sm">
-                      No agents found
+              ) : (
+                filteredAgents.map((agent) => (
+                  <TableRow 
+                    key={agent.id}
+                    className={cn(
+                      "hover:bg-muted/20",
+                      agent.id === adminAgentId && "bg-primary/5",
+                      selectedAgents.has(agent.id) && "bg-primary/10"
+                    )}
+                  >
+                    {/* Checkbox */}
+                    <TableCell className="py-2">
+                      {agent.id !== adminAgentId ? (
+                        <Checkbox
+                          checked={selectedAgents.has(agent.id)}
+                          onCheckedChange={() => toggleSelectAgent(agent.id)}
+                          aria-label={`Select ${agent.name}`}
+                        />
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    
+                    {/* Agent Name with Badges */}
+                    <TableCell className="py-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-medium text-sm">{agent.name}</span>
+                        {agent.isManager && (
+                          <Badge variant="secondary" className="text-[10px] px-1 py-0">MGR</Badge>
+                        )}
+                        {agent.id === adminAgentId && (
+                          <Badge className="text-[10px] px-1 py-0 bg-primary/20 text-primary border-primary/30">You</Badge>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-muted-foreground">{agent.email}</span>
+                    </TableCell>
+                    
+                    {/* Weekly ALP - Highlighted */}
+                    <TableCell className="text-right py-2">
+                      <span className={cn(
+                        "font-bold text-sm tabular-nums",
+                        agent.weeklyAlp > 0 ? "text-primary" : "text-muted-foreground"
+                      )}>
+                        ${agent.weeklyAlp.toLocaleString()}
+                      </span>
+                    </TableCell>
+                    
+                    {/* Weekly Deals */}
+                    <TableCell className="text-right py-2">
+                      <span className={cn(
+                        "font-semibold text-sm tabular-nums",
+                        agent.weeklyDeals > 0 ? "text-foreground" : "text-muted-foreground"
+                      )}>
+                        {agent.weeklyDeals}
+                      </span>
+                    </TableCell>
+                    
+                    {/* Monthly ALP */}
+                    <TableCell className="text-right py-2">
+                      <span className={cn(
+                        "text-sm tabular-nums",
+                        agent.monthlyAlp > 0 ? "text-muted-foreground font-medium" : "text-muted-foreground/50"
+                      )}>
+                        ${agent.monthlyAlp.toLocaleString()}
+                      </span>
+                    </TableCell>
+                    
+                    {/* Stage Dropdown */}
+                    <TableCell className="py-2">
+                      {agent.id === adminAgentId ? (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      ) : (
+                        <Select
+                          value={agent.onboardingStage || "onboarding"}
+                          onValueChange={(value) => handleStageChange(agent.id, value)}
+                          disabled={updatingStage === agent.id}
+                        >
+                          <SelectTrigger className="h-6 text-[10px] w-full">
+                            {updatingStage === agent.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <SelectValue />
+                            )}
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ONBOARDING_STAGES.map((stage) => (
+                              <SelectItem key={stage.value} value={stage.value} className="text-xs">
+                                {stage.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </TableCell>
+                    
+                    {/* Course Progress */}
+                    <TableCell className="py-2">
+                      {agent.id === adminAgentId ? (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      ) : agent.courseProgress === 100 ? (
+                        <Badge className="text-[10px] px-1 py-0 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
+                          ✓ Done
+                        </Badge>
+                      ) : agent.hasProgress ? (
+                        <div className="flex items-center gap-1.5">
+                          <Progress value={agent.courseProgress} className="h-1.5 w-12" />
+                          <span className="text-[10px] text-muted-foreground">{agent.courseProgress}%</span>
+                        </div>
+                      ) : (
+                        <AddToCourseButton
+                          agentId={agent.id}
+                          agentName={agent.name}
+                          hasProgress={false}
+                          onSuccess={fetchHierarchy}
+                          size="sm"
+                        />
+                      )}
+                    </TableCell>
+                    
+                    {/* Actions Menu */}
+                    <TableCell className="py-2">
+                      {agent.id !== adminAgentId && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-6 w-6">
+                              <MoreVertical className="h-3 w-3" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setSelectedAgent(agent)}>
+                              <Pencil className="h-3 w-3 mr-2" />
+                              Edit Profile
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => setDeactivateAgent(agent)}
+                            >
+                              <UserX className="h-3 w-3 mr-2" />
+                              Remove from Pipeline
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </TableCell>
                   </TableRow>
-                ) : (
-                  filteredAgents.map((agent) => (
-                    <TableRow 
-                      key={agent.id}
-                      className={cn(
-                        "hover:bg-muted/20",
-                        agent.id === adminAgentId && "bg-primary/5"
-                      )}
-                    >
-                      {/* Agent Name with Badges */}
-                      <TableCell className="py-2">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-medium text-sm">{agent.name}</span>
-                          {agent.isManager && (
-                            <Badge variant="secondary" className="text-[10px] px-1 py-0">MGR</Badge>
-                          )}
-                          {agent.id === adminAgentId && (
-                            <Badge className="text-[10px] px-1 py-0 bg-primary/20 text-primary border-primary/30">You</Badge>
-                          )}
-                        </div>
-                        <span className="text-[10px] text-muted-foreground">{agent.email}</span>
-                      </TableCell>
-                      
-                      {/* Weekly ALP - Highlighted */}
-                      <TableCell className="text-right py-2">
-                        <span className={cn(
-                          "font-bold text-sm tabular-nums",
-                          agent.weeklyAlp > 0 ? "text-primary" : "text-muted-foreground"
-                        )}>
-                          ${agent.weeklyAlp.toLocaleString()}
-                        </span>
-                      </TableCell>
-                      
-                      {/* Weekly Deals */}
-                      <TableCell className="text-right py-2">
-                        <span className={cn(
-                          "font-semibold text-sm tabular-nums",
-                          agent.weeklyDeals > 0 ? "text-foreground" : "text-muted-foreground"
-                        )}>
-                          {agent.weeklyDeals}
-                        </span>
-                      </TableCell>
-                      
-                      {/* Monthly ALP */}
-                      <TableCell className="text-right py-2">
-                        <span className={cn(
-                          "text-sm tabular-nums",
-                          agent.monthlyAlp > 0 ? "text-muted-foreground font-medium" : "text-muted-foreground/50"
-                        )}>
-                          ${agent.monthlyAlp.toLocaleString()}
-                        </span>
-                      </TableCell>
-                      
-                      {/* Stage Dropdown */}
-                      <TableCell className="py-2">
-                        {agent.id === adminAgentId ? (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        ) : (
-                          <Select
-                            value={agent.onboardingStage || "onboarding"}
-                            onValueChange={(value) => handleStageChange(agent.id, value)}
-                            disabled={updatingStage === agent.id}
-                          >
-                            <SelectTrigger className="h-6 text-[10px] w-full">
-                              {updatingStage === agent.id ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : (
-                                <SelectValue />
-                              )}
-                            </SelectTrigger>
-                            <SelectContent>
-                              {ONBOARDING_STAGES.map((stage) => (
-                                <SelectItem key={stage.value} value={stage.value} className="text-xs">
-                                  {stage.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                      </TableCell>
-                      
-                      {/* Course Progress */}
-                      <TableCell className="py-2">
-                        {agent.id === adminAgentId ? (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        ) : agent.courseProgress === 100 ? (
-                          <Badge className="text-[10px] px-1 py-0 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
-                            ✓ Done
-                          </Badge>
-                        ) : agent.hasProgress ? (
-                          <div className="flex items-center gap-1.5">
-                            <Progress value={agent.courseProgress} className="h-1.5 w-12" />
-                            <span className="text-[10px] text-muted-foreground">{agent.courseProgress}%</span>
-                          </div>
-                        ) : (
-                          <AddToCourseButton
-                            agentId={agent.id}
-                            agentName={agent.name}
-                            hasProgress={false}
-                            onSuccess={fetchHierarchy}
-                            size="sm"
-                          />
-                        )}
-                      </TableCell>
-                      
-                      {/* Actions Menu */}
-                      <TableCell className="py-2">
-                        {agent.id !== adminAgentId && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-6 w-6">
-                                <MoreVertical className="h-3 w-3" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => setSelectedAgent(agent)}>
-                                <Pencil className="h-3 w-3 mr-2" />
-                                Edit Profile
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem 
-                                className="text-destructive focus:text-destructive"
-                                onClick={() => setDeactivateAgent(agent)}
-                              >
-                                <UserX className="h-3 w-3 mr-2" />
-                                Remove from Pipeline
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
 
-          {/* Summary */}
-          <div className="mt-3 flex items-center justify-between text-[10px] text-muted-foreground">
-            <span>{agents.length} total • {managers.length} managers</span>
-          </div>
-        </GlassCard>
-      </motion.div>
+        {/* Summary */}
+        <div className="mt-3 flex items-center justify-between text-[10px] text-muted-foreground">
+          <span>{agents.length} total • {managers.length} managers</span>
+        </div>
+      </GlassCard>
+
+      {/* Floating Action Bar for Bulk Actions */}
+      <AnimatePresence>
+        {selectedAgents.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50"
+          >
+            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-card border shadow-lg">
+              <span className="text-sm font-medium">
+                {selectedAgents.size} selected
+              </span>
+              <div className="h-4 w-px bg-border" />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedAgents(new Set())}
+              >
+                Clear
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setBulkDeleteType("soft");
+                  setShowBulkDeleteDialog(true);
+                }}
+              >
+                <UserX className="h-3.5 w-3.5 mr-1.5" />
+                Soft Remove
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  setBulkDeleteType("hard");
+                  setShowBulkDeleteDialog(true);
+                }}
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                Permanently Delete
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {bulkDeleteType === "soft" ? "Soft Remove Agents" : "Permanently Delete Agents"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {bulkDeleteType === "soft" ? (
+                <>
+                  This will mark <strong>{selectedAgents.size}</strong> agent(s) as inactive. 
+                  They will be hidden from the pipeline but their data will be preserved.
+                </>
+              ) : (
+                <>
+                  This will <strong className="text-destructive">permanently delete</strong> {selectedAgents.size} agent(s) 
+                  and all their associated data (production, notes, progress, etc.). 
+                  This action cannot be undone.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBulkDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              disabled={isBulkDeleting}
+              className={bulkDeleteType === "hard" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
+            >
+              {isBulkDeleting ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              {bulkDeleteType === "soft" ? "Soft Remove" : "Permanently Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Agent Profile Editor Sheet */}
       <AgentProfileEditor

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import { TrendingUp, TrendingDown, Target, Trophy, Zap, Award, Calendar } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -7,7 +7,9 @@ import { AnimatedNumber } from "./AnimatedNumber";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DateRangePicker, type DateRange } from "@/components/ui/date-range-picker";
 import { cn } from "@/lib/utils";
-import { format, startOfWeek, startOfMonth } from "date-fns";
+import { format } from "date-fns";
+import { getTodayPST, getWeekStartPST, getMonthStartPST } from "@/lib/dateUtils";
+import { toZonedTime } from "date-fns-tz";
 
 type TimePeriod = "day" | "week" | "month" | "custom";
 
@@ -38,31 +40,27 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
   const [personalBest, setPersonalBest] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
-  // Calculate date range based on selected period
+  // Calculate date range based on selected period - using PST utilities
   const dateRange = useMemo(() => {
-    const now = new Date();
+    const today = getTodayPST();
     switch (timePeriod) {
       case "day":
-        return { start: format(now, "yyyy-MM-dd"), end: format(now, "yyyy-MM-dd") };
+        return { start: today, end: today };
       case "week":
-        return { start: format(startOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd"), end: format(now, "yyyy-MM-dd") };
+        return { start: getWeekStartPST(), end: today };
       case "month":
-        return { start: format(startOfMonth(now), "yyyy-MM-dd"), end: format(now, "yyyy-MM-dd") };
+        return { start: getMonthStartPST(), end: today };
       case "custom":
         if (customDateRange.from && customDateRange.to) {
           return { start: format(customDateRange.from, "yyyy-MM-dd"), end: format(customDateRange.to, "yyyy-MM-dd") };
         }
-        return { start: format(startOfMonth(now), "yyyy-MM-dd"), end: format(now, "yyyy-MM-dd") };
+        return { start: getMonthStartPST(), end: today };
       default:
-        return { start: format(startOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd"), end: format(now, "yyyy-MM-dd") };
+        return { start: getWeekStartPST(), end: today };
     }
   }, [timePeriod, customDateRange]);
 
-  useEffect(() => {
-    fetchStats();
-  }, [agentId, dateRange]);
-
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -136,7 +134,28 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
     } finally {
       setLoading(false);
     }
-  };
+  }, [agentId, dateRange]);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
+  // Real-time subscription for live updates
+  useEffect(() => {
+    const channel = supabase
+      .channel("personal-stats-live")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "daily_production" },
+        () => fetchStats()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchStats]);
 
   const myClosingRate = personalStats?.closingRate || 0;
   const myPresentations = personalStats?.presentations || 0;

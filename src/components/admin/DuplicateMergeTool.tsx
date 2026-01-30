@@ -280,7 +280,14 @@ export function DuplicateMergeTool({ open, onClose, onMergeComplete }: Duplicate
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        // Radix calls onOpenChange(true) when opening; our onClose handler
+        // would immediately close the dialog if we pass it directly.
+        if (!nextOpen) onClose();
+      }}
+    >
       <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">

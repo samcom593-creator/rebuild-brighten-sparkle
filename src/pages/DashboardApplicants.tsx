@@ -462,12 +462,10 @@ export default function DashboardApplicants() {
     const status = getApplicationStatus(app);
     const isHighlighted = highlightedLeadId === app.id;
     return (
-      <motion.div
+      <div
         key={app.id}
         id={`lead-${app.id}`}
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.05 * index }}
+        className="opacity-100"
       >
         <GlassCard className={cn(
           "p-4 hover:bg-muted/50 transition-all duration-300",
@@ -758,7 +756,7 @@ export default function DashboardApplicants() {
             </div>
           </div>
         </GlassCard>
-      </motion.div>
+      </div>
     );
   };
 

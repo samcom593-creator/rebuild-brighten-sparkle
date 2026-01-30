@@ -3,22 +3,22 @@ import { motion } from "framer-motion";
 import {
   Users,
   TrendingUp,
-  AlertTriangle,
   Search,
-  Eye,
   BarChart3,
   Shield,
   Trophy,
-  ChevronRight,
   UserCheck,
   Clock,
   CheckCircle,
   XCircle,
   Wifi,
   WifiOff,
-  FileText,
   UserMinus,
   RotateCcw,
+  ChevronDown,
+  FileText,
+  AlertCircle,
+  Package,
 } from "lucide-react";
 import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
@@ -29,7 +29,6 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LeaderboardCard } from "@/components/dashboard/LeaderboardCard";
 import { ManagerInviteLinks } from "@/components/dashboard/ManagerInviteLinks";
 import { AdminManagerInvites } from "@/components/dashboard/AdminManagerInvites";
 import { LeadReassignment } from "@/components/dashboard/LeadReassignment";
@@ -38,32 +37,12 @@ import { LeadImporter } from "@/components/dashboard/LeadImporter";
 import { BulkLeadAssignment } from "@/components/dashboard/BulkLeadAssignment";
 import { AbandonedLeadsPanel } from "@/components/dashboard/AbandonedLeadsPanel";
 import { AllLeadsPanel } from "@/components/dashboard/AllLeadsPanel";
-import { QuizQuestionsAdmin } from "@/components/dashboard/QuizQuestionsAdmin";
 import { TerminatedAgentLeadsPanel } from "@/components/dashboard/TerminatedAgentLeadsPanel";
 import { TeamHierarchyManager } from "@/components/dashboard/TeamHierarchyManager";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { Navigate } from "react-router-dom";
 import { toast } from "sonner";
-
-interface AgentStats {
-  id: string;
-  name: string;
-  email: string;
-  totalLeads: number;
-  contacted: number;
-  closed: number;
-  closeRate: number;
-  staleLeads: number;
-  lastActive: string;
-}
 
 interface PendingAgent {
   id: string;
@@ -92,7 +71,6 @@ interface TeamOverview {
 export default function DashboardAdmin() {
   const { isAdmin, isManager, isLoading: authLoading, user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
-  const [agents, setAgents] = useState<AgentStats[]>([]);
   const [pendingAgents, setPendingAgents] = useState<PendingAgent[]>([]);
   const [teamOverview, setTeamOverview] = useState<TeamOverview>({
     totalAgents: 0,
@@ -102,14 +80,18 @@ export default function DashboardAdmin() {
     pendingAgents: 0,
     inactiveAgents: 0,
   });
-  const [needsAttention, setNeedsAttention] = useState<AgentStats[]>([]);
-  const [fastestGrowers, setFastestGrowers] = useState<{ rank: number; name: string; value: number }[]>([]);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
   const [inactiveAgents, setInactiveAgents] = useState<InactiveAgent[]>([]);
   const [reactivatingId, setReactivatingId] = useState<string | null>(null);
   const [showReactivateConfetti, setShowReactivateConfetti] = useState(false);
   const { playSound } = useSoundEffects();
+  
+  // Collapsible states - default collapsed
+  const [showInactive, setShowInactive] = useState(false);
+  const [showTerminated, setShowTerminated] = useState(false);
+  const [showAbandoned, setShowAbandoned] = useState(false);
+  const [showAllLeads, setShowAllLeads] = useState(false);
 
   useEffect(() => {
     fetchAdminData();
@@ -183,33 +165,12 @@ export default function DashboardAdmin() {
   }, []);
 
   const fetchPendingAgents = async () => {
-    const { data: pendingData, error } = await supabase
-      .from("agents")
-      .select(`
-        id,
-        user_id,
-        created_at,
-        profiles!agents_profile_id_fkey (
-          full_name,
-          email
-        )
-      `)
-      .eq("status", "pending")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("Error fetching pending agents:", error);
-      return;
-    }
-
-    // Also fetch by user_id for agents without profile_id
     const { data: pendingByUserId } = await supabase
       .from("agents")
       .select("id, user_id, created_at")
       .eq("status", "pending");
 
     if (pendingByUserId && pendingByUserId.length > 0) {
-      // Get profile info for these users
       const userIds = pendingByUserId.map(a => a.user_id).filter(Boolean);
       const { data: profiles } = await supabase
         .from("profiles")
@@ -229,6 +190,9 @@ export default function DashboardAdmin() {
 
       setPendingAgents(pending);
       setTeamOverview(prev => ({ ...prev, pendingAgents: pending.length }));
+    } else {
+      setPendingAgents([]);
+      setTeamOverview(prev => ({ ...prev, pendingAgents: 0 }));
     }
   };
 
@@ -250,7 +214,6 @@ export default function DashboardAdmin() {
       return;
     }
 
-    // Get profile info for these users
     const userIds = inactiveData.map(a => a.user_id).filter(Boolean);
     const { data: profiles } = await supabase
       .from("profiles")
@@ -283,7 +246,6 @@ export default function DashboardAdmin() {
 
       if (error) throw error;
 
-      // Trigger celebration effects
       setShowReactivateConfetti(true);
       playSound("celebrate");
 
@@ -350,15 +312,12 @@ export default function DashboardAdmin() {
   };
 
   const fetchAdminData = async () => {
-    // Fetch all active agents with their user IDs
     const { data: activeAgents } = await supabase
       .from("agents")
       .select("id, user_id")
       .eq("status", "active");
 
     if (!activeAgents || activeAgents.length === 0) {
-      // No active agents yet - show empty state
-      setAgents([]);
       setTeamOverview(prev => ({
         ...prev,
         totalAgents: 0,
@@ -367,115 +326,25 @@ export default function DashboardAdmin() {
         teamCloseRate: 0,
         inactiveAgents: prev.inactiveAgents,
       }));
-      setNeedsAttention([]);
-      setFastestGrowers([]);
       return;
     }
 
-    // Get profile info for all agents
-    const userIds = activeAgents.map(a => a.user_id).filter(Boolean);
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("user_id, full_name, email")
-      .in("user_id", userIds);
-
-    // Get all applications to calculate stats
     const { data: allApplications } = await supabase
       .from("applications")
-      .select("id, assigned_agent_id, contacted_at, closed_at, created_at");
+      .select("id, assigned_agent_id, closed_at");
 
-    const now = new Date();
-    
-    // Calculate real stats for each agent
-    const agentStats: AgentStats[] = activeAgents.map(agent => {
-      const profile = profiles?.find(p => p.user_id === agent.user_id);
-      const agentApps = (allApplications || []).filter(a => a.assigned_agent_id === agent.id);
-      
-      const totalLeads = agentApps.length;
-      const contacted = agentApps.filter(a => a.contacted_at).length;
-      const closed = agentApps.filter(a => a.closed_at).length;
-      
-      // Calculate stale leads (not contacted in 48+ hours)
-      const staleLeads = agentApps.filter(a => {
-        if (a.contacted_at) return false;
-        const createdAt = new Date(a.created_at);
-        const hoursDiff = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
-        return hoursDiff > 48;
-      }).length;
+    const totalLeads = allApplications?.length || 0;
+    const totalClosed = allApplications?.filter(a => a.closed_at).length || 0;
 
-      // Calculate last active (most recent activity)
-      const lastApp = agentApps
-        .filter(a => a.contacted_at || a.closed_at)
-        .sort((a, b) => {
-          const dateA = new Date(a.closed_at || a.contacted_at || a.created_at);
-          const dateB = new Date(b.closed_at || b.contacted_at || b.created_at);
-          return dateB.getTime() - dateA.getTime();
-        })[0];
-      
-      let lastActive = "No activity";
-      if (lastApp) {
-        const lastDate = new Date(lastApp.closed_at || lastApp.contacted_at || lastApp.created_at);
-        const diffMs = now.getTime() - lastDate.getTime();
-        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-        const diffDays = Math.floor(diffHours / 24);
-        
-        if (diffHours < 1) lastActive = "Just now";
-        else if (diffHours < 24) lastActive = `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
-        else lastActive = `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
-      }
-
-      return {
-        id: agent.id,
-        name: profile?.full_name || "Unknown",
-        email: profile?.email || "",
-        totalLeads,
-        contacted,
-        closed,
-        closeRate: totalLeads > 0 ? (closed / totalLeads) * 100 : 0,
-        staleLeads,
-        lastActive,
-      };
-    });
-
-    setAgents(agentStats);
-
-    // Calculate team overview from real data
-    const totalLeads = agentStats.reduce((sum, a) => sum + a.totalLeads, 0);
-    const totalClosed = agentStats.reduce((sum, a) => sum + a.closed, 0);
     setTeamOverview(prev => ({
       ...prev,
-      totalAgents: agentStats.length,
+      totalAgents: activeAgents.length,
       totalLeads,
       totalClosed,
       teamCloseRate: totalLeads > 0 ? (totalClosed / totalLeads) * 100 : 0,
     }));
-
-    // Agents needing attention (low close rate or many stale leads)
-    const attention = agentStats
-      .filter(a => (a.totalLeads > 0 && a.closeRate < 25) || a.staleLeads > 3)
-      .sort((a, b) => a.closeRate - b.closeRate);
-    setNeedsAttention(attention);
-
-    // Fastest growers (by close rate)
-    const growers = agentStats
-      .filter(a => a.totalLeads > 0)
-      .sort((a, b) => b.closeRate - a.closeRate)
-      .map((a, i) => ({
-        rank: i + 1,
-        name: a.name,
-        value: Math.round(a.closeRate * 10) / 10,
-      }))
-      .slice(0, 5);
-    setFastestGrowers(growers);
   };
 
-  const filteredAgents = agents.filter(
-    (agent) =>
-      agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      agent.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  // Access control check
   if (authLoading) {
     return (
       <DashboardLayout>
@@ -496,42 +365,36 @@ export default function DashboardAdmin() {
         trigger={showReactivateConfetti} 
         onComplete={() => setShowReactivateConfetti(false)} 
       />
-      {/* Header */}
+      
+      {/* Header - Compact */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="mb-8"
+        className="mb-4"
       >
         <div className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Shield className="h-6 w-6 text-primary" />
-              <h1 className="text-3xl font-bold">Admin Panel</h1>
-            </div>
-            <p className="text-muted-foreground">
-              Manage team members and oversee all recruiting activity
-            </p>
-          </div>
           <div className="flex items-center gap-3">
-            {/* Lead Import/Export */}
+            <Shield className="h-5 w-5 text-primary" />
+            <h1 className="text-2xl font-bold">Admin Panel</h1>
+          </div>
+          <div className="flex items-center gap-2">
             <LeadImporter />
             <LeadExporter />
-            {/* Real-time connection indicator */}
             <div className={cn(
-              "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium",
+              "flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium",
               isRealtimeConnected 
-                ? "bg-emerald-500/20 text-emerald-400" 
-                : "bg-amber-500/20 text-amber-400"
+                ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" 
+                : "bg-amber-500/20 text-amber-600 dark:text-amber-400"
             )}>
               {isRealtimeConnected ? (
                 <>
-                  <Wifi className="h-3.5 w-3.5" />
-                  Live Updates
+                  <Wifi className="h-3 w-3" />
+                  Live
                 </>
               ) : (
                 <>
-                  <WifiOff className="h-3.5 w-3.5" />
-                  Connecting...
+                  <WifiOff className="h-3 w-3" />
+                  ...
                 </>
               )}
             </div>
@@ -539,48 +402,74 @@ export default function DashboardAdmin() {
         </div>
       </motion.div>
 
+      {/* Team Overview Stats - Compact */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+        className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4"
+      >
+        {[
+          { label: "Active Agents", value: teamOverview.totalAgents, icon: Users, color: "text-primary" },
+          { label: "Pending", value: teamOverview.pendingAgents, icon: Clock, color: "text-amber-500" },
+          { label: "Total Leads", value: teamOverview.totalLeads, icon: BarChart3, color: "text-blue-500" },
+          { label: "Closed", value: teamOverview.totalClosed, icon: Trophy, color: "text-emerald-500" },
+          { label: "Close Rate", value: `${teamOverview.teamCloseRate.toFixed(1)}%`, icon: TrendingUp, color: "text-primary" },
+        ].map((stat) => (
+          <GlassCard key={stat.label} className="p-3">
+            <div className="flex items-center gap-2">
+              <stat.icon className={cn("h-4 w-4", stat.color)} />
+              <div>
+                <p className={cn("text-lg font-bold", stat.color)}>{stat.value}</p>
+                <p className="text-[10px] text-muted-foreground">{stat.label}</p>
+              </div>
+            </div>
+          </GlassCard>
+        ))}
+      </motion.div>
+
       {/* Pending Agents Approval Section */}
       {pendingAgents.length > 0 && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
-          className="mb-8"
+          transition={{ delay: 0.1 }}
+          className="mb-4"
         >
-          <GlassCard className="p-6 border-2 border-amber-500/30 bg-amber-500/5">
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <Clock className="h-5 w-5 text-amber-400" />
+          <GlassCard className="p-4 border-2 border-amber-500/30 bg-amber-500/5">
+            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <Clock className="h-4 w-4 text-amber-500" />
               Pending Agent Approvals
-              <Badge variant="outline" className="bg-amber-500/20 text-amber-400 border-amber-500/30 ml-2">
+              <Badge variant="outline" className="bg-amber-500/20 text-amber-600 border-amber-500/30 text-xs">
                 {pendingAgents.length}
               </Badge>
             </h3>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {pendingAgents.map((agent) => (
                 <div
                   key={agent.id}
-                  className="flex items-center justify-between p-4 rounded-lg bg-background/50 border border-border"
+                  className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                      <UserCheck className="h-5 w-5 text-primary" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                      <UserCheck className="h-4 w-4 text-primary" />
                     </div>
                     <div>
-                      <p className="font-medium">{agent.name}</p>
-                      <p className="text-sm text-muted-foreground">{agent.email}</p>
+                      <p className="font-medium text-sm">{agent.name}</p>
+                      <p className="text-xs text-muted-foreground">{agent.email}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground mr-4">
-                      Applied {new Date(agent.createdAt).toLocaleDateString()}
+                    <span className="text-[10px] text-muted-foreground mr-2">
+                      {new Date(agent.createdAt).toLocaleDateString()}
                     </span>
                     <Button
                       size="sm"
                       onClick={() => handleApproveAgent(agent.id)}
                       disabled={approvingId === agent.id}
-                      className="bg-emerald-600 hover:bg-emerald-700"
+                      className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700"
                     >
-                      <CheckCircle className="h-4 w-4 mr-1" />
+                      <CheckCircle className="h-3 w-3 mr-1" />
                       Approve
                     </Button>
                     <Button
@@ -588,9 +477,9 @@ export default function DashboardAdmin() {
                       variant="outline"
                       onClick={() => handleRejectAgent(agent.id)}
                       disabled={approvingId === agent.id}
-                      className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                      className="h-7 text-xs border-red-500/30 text-red-500 hover:bg-red-500/10"
                     >
-                      <XCircle className="h-4 w-4 mr-1" />
+                      <XCircle className="h-3 w-3 mr-1" />
                       Reject
                     </Button>
                   </div>
@@ -601,226 +490,22 @@ export default function DashboardAdmin() {
         </motion.div>
       )}
 
-      {/* Inactive Agents Section */}
-      {inactiveAgents.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.07 }}
-          className="mb-8"
-        >
-          <GlassCard className="p-6 border border-muted">
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <UserMinus className="h-5 w-5 text-muted-foreground" />
-              Inactive Agents
-              <Badge variant="outline" className="bg-muted text-muted-foreground border-border ml-2">
-                {inactiveAgents.length}
-              </Badge>
-            </h3>
-            <div className="space-y-3">
-              {inactiveAgents.map((agent) => (
-                <div
-                  key={agent.id}
-                  className="flex items-center justify-between p-4 rounded-lg bg-background/50 border border-border"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                      <UserMinus className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <p className="font-medium">{agent.name}</p>
-                      <p className="text-sm text-muted-foreground">{agent.email}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground mr-4">
-                      Deactivated {new Date(agent.deactivatedAt).toLocaleDateString()}
-                    </span>
-                    <Button
-                      size="sm"
-                      onClick={() => handleReactivateAgent(agent.id, agent.name)}
-                      disabled={reactivatingId === agent.id}
-                      className="bg-primary hover:bg-primary/90"
-                    >
-                      <RotateCcw className="h-4 w-4 mr-1" />
-                      {reactivatingId === agent.id ? "Reactivating..." : "Reactivate"}
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-        </GlassCard>
-        </motion.div>
-      )}
-
-      {/* Terminated Agent Leads */}
+      {/* Team Hierarchy Manager - Primary Section */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.075 }}
-        className="mb-8"
-      >
-        <TerminatedAgentLeadsPanel />
-      </motion.div>
-
-      {/* Abandoned Applications */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.08 }}
-        className="mb-8"
-      >
-        <AbandonedLeadsPanel />
-      </motion.div>
-
-      {/* All Leads Master Table */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.09 }}
-        className="mb-8"
-      >
-        <AllLeadsPanel />
-      </motion.div>
-
-      {/* Team Overview */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8"
-      >
-        {[
-          { label: "Active Agents", value: teamOverview.totalAgents, icon: Users, color: "text-primary" },
-          { label: "Pending Approval", value: teamOverview.pendingAgents, icon: Clock, color: "text-amber-400" },
-          { label: "Total Leads", value: teamOverview.totalLeads, icon: BarChart3, color: "text-blue-400" },
-          { label: "Total Closed", value: teamOverview.totalClosed, icon: Trophy, color: "text-emerald-400" },
-          { label: "Team Close Rate", value: `${teamOverview.teamCloseRate.toFixed(1)}%`, icon: TrendingUp, color: "text-primary" },
-        ].map((stat) => (
-          <GlassCard key={stat.label} className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-muted">
-                <stat.icon className={cn("h-5 w-5", stat.color)} />
-              </div>
-              <div>
-                <p className={cn("text-2xl font-bold", stat.color)}>{stat.value}</p>
-                <p className="text-xs text-muted-foreground">{stat.label}</p>
-              </div>
-            </div>
-          </GlassCard>
-        ))}
-      </motion.div>
-
-      {/* Search */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="mb-6"
-      >
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search agents..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 bg-input"
-          />
-        </div>
-      </motion.div>
-
-      {/* Agent Management Table - Removed Qualified column */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="mb-8"
-      >
-        <GlassCard className="p-6">
-          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Users className="h-5 w-5 text-primary" />
-            Agent Management
-          </h3>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Agent</TableHead>
-                  <TableHead className="text-center">Leads</TableHead>
-                  <TableHead className="text-center">Contacted</TableHead>
-                  <TableHead className="text-center">Closed</TableHead>
-                  <TableHead className="text-center">Close Rate</TableHead>
-                  <TableHead className="text-center">Stale</TableHead>
-                  <TableHead>Last Active</TableHead>
-                  <TableHead></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredAgents.map((agent) => (
-                  <TableRow key={agent.id}>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{agent.name}</p>
-                        <p className="text-xs text-muted-foreground">{agent.email}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center font-medium">{agent.totalLeads}</TableCell>
-                    <TableCell className="text-center">{agent.contacted}</TableCell>
-                    <TableCell className="text-center font-medium text-emerald-400">{agent.closed}</TableCell>
-                    <TableCell className="text-center">
-                      <Badge 
-                        variant="outline" 
-                        className={cn(
-                          agent.closeRate >= 30 
-                            ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-                            : agent.closeRate >= 20
-                            ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
-                            : "bg-red-500/20 text-red-400 border-red-500/30"
-                        )}
-                      >
-                        {agent.closeRate.toFixed(1)}%
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {agent.staleLeads > 0 ? (
-                        <Badge variant="outline" className="bg-amber-500/20 text-amber-400 border-amber-500/30">
-                          {agent.staleLeads}
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground">0</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">{agent.lastActive}</TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="sm">
-                        <Eye className="h-4 w-4 mr-1" />
-                        View
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </GlassCard>
-      </motion.div>
-
-      {/* Team Hierarchy Manager */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.32 }}
-        className="mb-8"
+        transition={{ delay: 0.15 }}
+        className="mb-4"
       >
         <TeamHierarchyManager />
       </motion.div>
 
-      {/* Manager Account Invites (Admin-only) */}
+      {/* Manager Account Invites */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.35 }}
-        className="mb-8"
+        transition={{ delay: 0.2 }}
+        className="mb-4"
       >
         <AdminManagerInvites />
       </motion.div>
@@ -829,28 +514,18 @@ export default function DashboardAdmin() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-        className="mb-8"
+        transition={{ delay: 0.25 }}
+        className="mb-4"
       >
         <BulkLeadAssignment />
       </motion.div>
 
-      {/* Quiz Questions Manager */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.42 }}
-        className="mb-8"
-      >
-        <QuizQuestionsAdmin />
-      </motion.div>
-
       {/* Manager Invite Links & Lead Reassignment */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.45 }}
+          transition={{ delay: 0.3 }}
         >
           <ManagerInviteLinks />
         </motion.div>
@@ -858,68 +533,148 @@ export default function DashboardAdmin() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
+          transition={{ delay: 0.35 }}
         >
           <LeadReassignment />
         </motion.div>
       </div>
 
-      {/* Bottom Row: Needs Attention + Fastest Growers */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Needs Attention */}
+      {/* Collapsible Bottom Sections */}
+      <div className="space-y-3">
+        {/* Inactive Agents - Collapsible */}
+        {inactiveAgents.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            <Collapsible open={showInactive} onOpenChange={setShowInactive}>
+              <GlassCard className="overflow-hidden">
+                <CollapsibleTrigger className="w-full">
+                  <div className="flex items-center justify-between p-3 hover:bg-muted/30 transition-colors cursor-pointer">
+                    <div className="flex items-center gap-2">
+                      <UserMinus className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium text-sm">Inactive Agents</span>
+                      <Badge variant="outline" className="text-xs">{inactiveAgents.length}</Badge>
+                    </div>
+                    <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", showInactive && "rotate-180")} />
+                  </div>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="p-3 pt-0 space-y-2">
+                    {inactiveAgents.map((agent) => (
+                      <div
+                        key={agent.id}
+                        className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                            <UserMinus className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">{agent.name}</p>
+                            <p className="text-xs text-muted-foreground">{agent.email}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-muted-foreground">
+                            {new Date(agent.deactivatedAt).toLocaleDateString()}
+                          </span>
+                          <Button
+                            size="sm"
+                            onClick={() => handleReactivateAgent(agent.id, agent.name)}
+                            disabled={reactivatingId === agent.id}
+                            className="h-7 text-xs"
+                          >
+                            <RotateCcw className="h-3 w-3 mr-1" />
+                            {reactivatingId === agent.id ? "..." : "Reactivate"}
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CollapsibleContent>
+              </GlassCard>
+            </Collapsible>
+          </motion.div>
+        )}
+
+        {/* Terminated Agent Leads - Collapsible */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.45 }}
         >
-          <GlassCard className="p-6">
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-400" />
-              Needs Attention
-            </h3>
-            <div className="space-y-3">
-              {needsAttention.length === 0 ? (
-                <p className="text-muted-foreground text-sm">All agents are performing well!</p>
-              ) : (
-                needsAttention.map((agent) => (
-                  <div
-                    key={agent.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-amber-500/10 border border-amber-500/20"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-full bg-amber-500/20">
-                        <AlertTriangle className="h-4 w-4 text-amber-400" />
-                      </div>
-                      <div>
-                        <p className="font-medium">{agent.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {agent.staleLeads > 3 
-                            ? `${agent.staleLeads} stale leads` 
-                            : `Close rate: ${agent.closeRate.toFixed(1)}%`}
-                        </p>
-                      </div>
-                    </div>
-                    <Button variant="ghost" size="sm">
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
+          <Collapsible open={showTerminated} onOpenChange={setShowTerminated}>
+            <GlassCard className="overflow-hidden">
+              <CollapsibleTrigger className="w-full">
+                <div className="flex items-center justify-between p-3 hover:bg-muted/30 transition-colors cursor-pointer">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium text-sm">Terminated Agent Leads</span>
                   </div>
-                ))
-              )}
-            </div>
-          </GlassCard>
+                  <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", showTerminated && "rotate-180")} />
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="p-3 pt-0">
+                  <TerminatedAgentLeadsPanel />
+                </div>
+              </CollapsibleContent>
+            </GlassCard>
+          </Collapsible>
         </motion.div>
 
-        {/* Fastest Growers */}
+        {/* Abandoned Applications - Collapsible */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
         >
-          <LeaderboardCard
-            title="Fastest Growers"
-            entries={fastestGrowers}
-            valueLabel="% close rate"
-          />
+          <Collapsible open={showAbandoned} onOpenChange={setShowAbandoned}>
+            <GlassCard className="overflow-hidden">
+              <CollapsibleTrigger className="w-full">
+                <div className="flex items-center justify-between p-3 hover:bg-muted/30 transition-colors cursor-pointer">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium text-sm">Abandoned Applications</span>
+                  </div>
+                  <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", showAbandoned && "rotate-180")} />
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="p-3 pt-0">
+                  <AbandonedLeadsPanel />
+                </div>
+              </CollapsibleContent>
+            </GlassCard>
+          </Collapsible>
+        </motion.div>
+
+        {/* All Leads - Collapsible */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.55 }}
+        >
+          <Collapsible open={showAllLeads} onOpenChange={setShowAllLeads}>
+            <GlassCard className="overflow-hidden">
+              <CollapsibleTrigger className="w-full">
+                <div className="flex items-center justify-between p-3 hover:bg-muted/30 transition-colors cursor-pointer">
+                  <div className="flex items-center gap-2">
+                    <Package className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium text-sm">All Leads</span>
+                  </div>
+                  <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", showAllLeads && "rotate-180")} />
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="p-3 pt-0">
+                  <AllLeadsPanel />
+                </div>
+              </CollapsibleContent>
+            </GlassCard>
+          </Collapsible>
         </motion.div>
       </div>
     </DashboardLayout>

@@ -6,11 +6,12 @@ import {
   Phone, 
   Shield, 
   Save, 
-  ExternalLink,
   AlertTriangle,
-  Archive,
   Send,
-  Loader2
+  Loader2,
+  Instagram,
+  Key,
+  Users
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -39,6 +40,11 @@ interface AgentWithStats {
   lastActivity: string | null;
 }
 
+interface Manager {
+  id: string;
+  name: string;
+}
+
 interface AgentProfileEditorProps {
   agent: AgentWithStats | null;
   open: boolean;
@@ -46,11 +52,58 @@ interface AgentProfileEditorProps {
   onUpdate: () => void;
 }
 
+const ONBOARDING_STAGES = [
+  { value: "onboarding", label: "Onboarding" },
+  { value: "training_online", label: "Training Online" },
+  { value: "in_field_training", label: "In Field Training" },
+  { value: "evaluated", label: "Evaluated" },
+];
+
 export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProfileEditorProps) {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [instagram, setInstagram] = useState("");
   const [status, setStatus] = useState<"active" | "inactive" | "terminated">("active");
+  const [onboardingStage, setOnboardingStage] = useState("onboarding");
+  const [managerId, setManagerId] = useState<string | null>(null);
+  const [managers, setManagers] = useState<Manager[]>([]);
+
+  // Fetch managers list
+  useEffect(() => {
+    const fetchManagers = async () => {
+      const { data: managerRoles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .in("role", ["manager", "admin"]);
+
+      if (!managerRoles) return;
+
+      const managerUserIds = managerRoles.map(r => r.user_id);
+      
+      const { data: agentsData } = await supabase
+        .from("agents")
+        .select("id, user_id")
+        .eq("is_deactivated", false)
+        .in("user_id", managerUserIds);
+
+      if (!agentsData) return;
+
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, full_name")
+        .in("user_id", managerUserIds);
+
+      const managerList: Manager[] = agentsData.map(a => {
+        const profile = profiles?.find(p => p.user_id === a.user_id);
+        return { id: a.id, name: profile?.full_name || "Unknown" };
+      });
+
+      setManagers(managerList);
+    };
+
+    if (open) fetchManagers();
+  }, [open]);
 
   // Reset form when agent changes
   useEffect(() => {
@@ -69,7 +122,7 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
   // Fetch full agent details
   const { data: agentDetails } = useQuery({
     queryKey: ["agent-details", agent?.id],
-    enabled: !!agent?.id,
+    enabled: !!agent?.id && open,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("agents")
@@ -80,12 +133,8 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
             full_name,
             email,
             phone,
-            avatar_url
-          ),
-          invited_by:agents!agents_invited_by_manager_id_fkey (
-            profiles!agents_profile_id_fkey (
-              full_name
-            )
+            avatar_url,
+            instagram_handle
           )
         `)
         .eq("id", agent!.id)
@@ -96,6 +145,16 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
     },
   });
 
+  // Set additional fields from agentDetails
+  useEffect(() => {
+    if (agentDetails) {
+      const profile = agentDetails.profiles as { instagram_handle?: string } | null;
+      setInstagram(profile?.instagram_handle || "");
+      setOnboardingStage(agentDetails.onboarding_stage || "onboarding");
+      setManagerId(agentDetails.invited_by_manager_id || null);
+    }
+  }, [agentDetails]);
+
   // Update profile mutation
   const updateProfile = useMutation({
     mutationFn: async () => {
@@ -103,7 +162,6 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
         throw new Error("No profile linked to this agent");
       }
 
-      // Validate name
       if (!fullName.trim()) {
         throw new Error("Name is required");
       }
@@ -115,18 +173,21 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
           full_name: fullName.trim(),
           email: email.trim() || null,
           phone: phone.trim() || null,
+          instagram_handle: instagram.trim() || null,
         })
         .eq("id", agent.profileId);
 
       if (profileError) throw profileError;
 
-      // Update agent status
+      // Update agent
       const { error: agentError } = await supabase
         .from("agents")
         .update({
           is_deactivated: status === "terminated",
           is_inactive: status === "inactive",
           status: status === "terminated" ? "terminated" : status === "inactive" ? "inactive" : "active",
+          onboarding_stage: onboardingStage as "onboarding" | "training_online" | "in_field_training" | "evaluated",
+          invited_by_manager_id: managerId,
         })
         .eq("id", agent.id);
 
@@ -179,86 +240,95 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
     },
   });
 
-  if (!agent) return null;
+  // Send password reset
+  const sendPasswordReset = useMutation({
+    mutationFn: async () => {
+      if (!email) {
+        throw new Error("Agent must have an email for password reset");
+      }
 
-  // Extract manager name - handle various possible response shapes
-  let managerName = "Unassigned";
-  if (agentDetails?.invited_by) {
-    const invitedBy = agentDetails.invited_by as unknown;
-    if (Array.isArray(invitedBy) && invitedBy.length > 0) {
-      const first = invitedBy[0] as { profiles?: { full_name?: string } };
-      managerName = first?.profiles?.full_name || "Unassigned";
-    } else if (typeof invitedBy === "object" && invitedBy !== null) {
-      const single = invitedBy as { profiles?: { full_name?: string } };
-      managerName = single?.profiles?.full_name || "Unassigned";
-    }
-  }
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/settings`,
+      });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Password reset sent",
+        description: `Reset link sent to ${email}`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to send reset",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  if (!agent) return null;
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
       <SheetContent className="w-full sm:max-w-md overflow-y-auto">
-        <SheetHeader className="pb-4">
-          <SheetTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            Agent Profile
+        <SheetHeader className="pb-3">
+          <SheetTitle className="flex items-center gap-2 text-base">
+            <User className="h-4 w-4" />
+            Edit Agent Profile
           </SheetTitle>
-          <SheetDescription>
-            Edit agent information and manage their status.
+          <SheetDescription className="text-xs">
+            Update agent info, status, and manager assignment.
           </SheetDescription>
         </SheetHeader>
 
-        <div className="space-y-6">
-          {/* Stats Summary */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="text-center p-3 bg-muted rounded-lg">
-              <p className="text-lg font-bold">${Math.round(agent.totalAlp).toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground">Total ALP</p>
+        <div className="space-y-4">
+          {/* Stats Summary - Compact */}
+          <div className="grid grid-cols-3 gap-2">
+            <div className="text-center p-2 bg-muted rounded-lg">
+              <p className="text-sm font-bold">${Math.round(agent.totalAlp).toLocaleString()}</p>
+              <p className="text-[10px] text-muted-foreground">ALP</p>
             </div>
-            <div className="text-center p-3 bg-muted rounded-lg">
-              <p className="text-lg font-bold">{agent.totalDeals}</p>
-              <p className="text-xs text-muted-foreground">Deals</p>
+            <div className="text-center p-2 bg-muted rounded-lg">
+              <p className="text-sm font-bold">{agent.totalDeals}</p>
+              <p className="text-[10px] text-muted-foreground">Deals</p>
             </div>
             <div className={cn(
-              "text-center p-3 rounded-lg",
-              agent.closingRate >= 20 ? "bg-green-500/10" : 
+              "text-center p-2 rounded-lg",
+              agent.closingRate >= 20 ? "bg-emerald-500/10" : 
               agent.closingRate >= 10 ? "bg-muted" : 
               "bg-amber-500/10"
             )}>
-              <p className="text-lg font-bold">{agent.closingRate}%</p>
-              <p className="text-xs text-muted-foreground">Close Rate</p>
+              <p className="text-sm font-bold">{agent.closingRate}%</p>
+              <p className="text-[10px] text-muted-foreground">Close</p>
             </div>
           </div>
 
           {/* CRM Status */}
-          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+          <div className="flex items-center justify-between p-2 bg-muted/50 rounded-lg">
             <div className="flex items-center gap-2">
-              <Shield className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm">CRM Status</span>
+              <Shield className="h-3 w-3 text-muted-foreground" />
+              <span className="text-xs">CRM Status</span>
             </div>
             {agent.hasCrmLink ? (
-              <Badge className="bg-green-500/10 text-green-600 border-green-500/30">
+              <Badge className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
                 Linked
               </Badge>
             ) : (
-              <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30">
+              <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/30">
                 Not Linked
               </Badge>
             )}
           </div>
 
-          {/* Manager Info */}
-          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-            <span className="text-sm text-muted-foreground">Manager</span>
-            <span className="text-sm font-medium">{managerName}</span>
-          </div>
-
           <Separator />
 
           {/* Editable Fields */}
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="fullName" className="flex items-center gap-2">
-                <User className="h-4 w-4" />
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="fullName" className="flex items-center gap-1 text-xs">
+                <User className="h-3 w-3" />
                 Full Name
               </Label>
               <Input
@@ -266,18 +336,19 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Enter full name"
+                className="h-8 text-sm"
               />
               {!fullName.trim() && (
-                <p className="text-xs text-destructive flex items-center gap-1">
-                  <AlertTriangle className="h-3 w-3" />
-                  Name is required
+                <p className="text-[10px] text-destructive flex items-center gap-1">
+                  <AlertTriangle className="h-2.5 w-2.5" />
+                  Required
                 </p>
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="email" className="flex items-center gap-2">
-                <Mail className="h-4 w-4" />
+            <div className="space-y-1">
+              <Label htmlFor="email" className="flex items-center gap-1 text-xs">
+                <Mail className="h-3 w-3" />
                 Email
               </Label>
               <Input
@@ -286,12 +357,13 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="agent@example.com"
+                className="h-8 text-sm"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="phone" className="flex items-center gap-2">
-                <Phone className="h-4 w-4" />
+            <div className="space-y-1">
+              <Label htmlFor="phone" className="flex items-center gap-1 text-xs">
+                <Phone className="h-3 w-3" />
                 Phone
               </Label>
               <Input
@@ -299,34 +371,89 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+1 (555) 000-0000"
+                className="h-8 text-sm"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
+            <div className="space-y-1">
+              <Label htmlFor="instagram" className="flex items-center gap-1 text-xs">
+                <Instagram className="h-3 w-3" />
+                Instagram
+              </Label>
+              <Input
+                id="instagram"
+                value={instagram}
+                onChange={(e) => setInstagram(e.target.value)}
+                placeholder="@username"
+                className="h-8 text-sm"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs">Status</Label>
               <Select value={status} onValueChange={(v) => setStatus(v as typeof status)}>
-                <SelectTrigger>
+                <SelectTrigger className="h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="active">
+                  <SelectItem value="active" className="text-xs">
                     <span className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-green-500" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                       Active
                     </span>
                   </SelectItem>
-                  <SelectItem value="inactive">
+                  <SelectItem value="inactive" className="text-xs">
                     <span className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-amber-500" />
-                      Inactive (Hidden from leaderboard)
+                      <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                      Inactive
                     </span>
                   </SelectItem>
-                  <SelectItem value="terminated">
+                  <SelectItem value="terminated" className="text-xs">
                     <span className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-red-500" />
-                      Terminated / Former
+                      <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                      Terminated
                     </span>
                   </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs">Onboarding Stage</Label>
+              <Select value={onboardingStage} onValueChange={setOnboardingStage}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ONBOARDING_STAGES.map((stage) => (
+                    <SelectItem key={stage.value} value={stage.value} className="text-xs">
+                      {stage.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="flex items-center gap-1 text-xs">
+                <Users className="h-3 w-3" />
+                Reports To
+              </Label>
+              <Select value={managerId || "none"} onValueChange={(v) => setManagerId(v === "none" ? null : v)}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Select manager" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none" className="text-xs">
+                    <span className="text-muted-foreground">No Manager</span>
+                  </SelectItem>
+                  {managers
+                    .filter(m => m.id !== agent.id)
+                    .map((manager) => (
+                      <SelectItem key={manager.id} value={manager.id} className="text-xs">
+                        {manager.name}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
@@ -335,36 +462,52 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
           <Separator />
 
           {/* Actions */}
-          <div className="space-y-3">
+          <div className="space-y-2">
             <Button
-              className="w-full gap-2"
+              className="w-full gap-2 h-8 text-xs"
               onClick={() => updateProfile.mutate()}
               disabled={updateProfile.isPending || !fullName.trim()}
             >
               {updateProfile.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-3 w-3 animate-spin" />
               ) : (
-                <Save className="h-4 w-4" />
+                <Save className="h-3 w-3" />
               )}
               Save Changes
             </Button>
 
-            <Button
-              variant="outline"
-              className="w-full gap-2"
-              onClick={() => sendPortalLink.mutate()}
-              disabled={sendPortalLink.isPending || !email}
-            >
-              {sendPortalLink.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-              Send Portal Login Link
-            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="outline"
+                className="gap-1 h-7 text-[10px]"
+                onClick={() => sendPortalLink.mutate()}
+                disabled={sendPortalLink.isPending || !email}
+              >
+                {sendPortalLink.isPending ? (
+                  <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                ) : (
+                  <Send className="h-2.5 w-2.5" />
+                )}
+                Send Login
+              </Button>
+
+              <Button
+                variant="outline"
+                className="gap-1 h-7 text-[10px]"
+                onClick={() => sendPasswordReset.mutate()}
+                disabled={sendPasswordReset.isPending || !email}
+              >
+                {sendPasswordReset.isPending ? (
+                  <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                ) : (
+                  <Key className="h-2.5 w-2.5" />
+                )}
+                Reset Password
+              </Button>
+            </div>
 
             {agent.lastActivity && (
-              <p className="text-xs text-center text-muted-foreground">
+              <p className="text-[10px] text-center text-muted-foreground">
                 Last activity: {agent.lastActivity}
               </p>
             )}

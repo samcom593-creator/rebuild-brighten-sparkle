@@ -75,7 +75,15 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
   const [showConfetti, setShowConfetti] = useState(false);
   const [leaderboardMode, setLeaderboardMode] = useState<"production" | "building">("production");
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [selectedAgent, setSelectedAgent] = useState<{ id: string; name: string; alp: number; deals: number } | null>(null);
+  const [selectedAgent, setSelectedAgent] = useState<{ 
+    id: string; 
+    name: string; 
+    alp: number; 
+    deals: number;
+    period: Period;
+    startDate?: string;
+    endDate?: string;
+  } | null>(null);
   
   const isMobile = useIsMobile();
   const { checkForCelebration, resetTracking } = useTop3Celebration({ currentAgentId });
@@ -382,6 +390,8 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
           production={selectedAgent.alp}
           deals={selectedAgent.deals}
           onUpdate={fetchLeaderboard}
+          period={selectedAgent.period}
+          dateRange={{ from: selectedAgent.startDate, to: selectedAgent.endDate }}
         />
       )}
       <motion.div
@@ -544,7 +554,34 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                           }}
                           index={index}
                           onClick={() => {
-                            setSelectedAgent({ id: entry.agentId, name: entry.name, alp: entry.alp, deals: entry.deals });
+                            // Calculate date range for the current period
+                            let startDate: string;
+                            let endDate: string = getTodayPST();
+                            
+                            switch (period) {
+                              case "week":
+                                startDate = getWeekStartPST();
+                                break;
+                              case "month":
+                                startDate = getMonthStartPST();
+                                break;
+                              case "custom":
+                                startDate = customDateRange.from ? format(customDateRange.from, "yyyy-MM-dd") : getDateDaysAgoPST(30);
+                                endDate = customDateRange.to ? format(customDateRange.to, "yyyy-MM-dd") : getTodayPST();
+                                break;
+                              default:
+                                startDate = getTodayPST();
+                            }
+                            
+                            setSelectedAgent({ 
+                              id: entry.agentId, 
+                              name: entry.name, 
+                              alp: entry.alp, 
+                              deals: entry.deals,
+                              period,
+                              startDate,
+                              endDate,
+                            });
                             setEditDialogOpen(true);
                           }}
                           leaders={leaders}
@@ -599,7 +636,34 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                               )}
                               style={{ minHeight: "40px" }}
                               onClick={() => {
-                                setSelectedAgent({ id: entry.agentId, name: entry.name, alp: entry.alp, deals: entry.deals });
+                                // Calculate date range for the current period
+                                let startDate: string;
+                                let endDate: string = getTodayPST();
+                                
+                                switch (period) {
+                                  case "week":
+                                    startDate = getWeekStartPST();
+                                    break;
+                                  case "month":
+                                    startDate = getMonthStartPST();
+                                    break;
+                                  case "custom":
+                                    startDate = customDateRange.from ? format(customDateRange.from, "yyyy-MM-dd") : getDateDaysAgoPST(30);
+                                    endDate = customDateRange.to ? format(customDateRange.to, "yyyy-MM-dd") : getTodayPST();
+                                    break;
+                                  default:
+                                    startDate = getTodayPST();
+                                }
+                                
+                                setSelectedAgent({ 
+                                  id: entry.agentId, 
+                                  name: entry.name, 
+                                  alp: entry.alp, 
+                                  deals: entry.deals,
+                                  period,
+                                  startDate,
+                                  endDate,
+                                });
                                 setEditDialogOpen(true);
                               }}
                             >

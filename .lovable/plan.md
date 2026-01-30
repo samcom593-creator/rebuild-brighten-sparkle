@@ -190,33 +190,44 @@ AGENT ONBOARDING STAGES
 
 ---
 
-### Recommended Next Steps
+### Completed Implementation (Jan 30, 2026)
 
-1. **Immediate (This Session)**
-   - Implement auto-stale detection for agents in coursework
-   - Add bulk stage change capability to CRM
-   - Create manager daily digest edge function
+#### ✅ P0 Features Implemented
 
-2. **Short-Term (Next 3 Days)**
-   - Build in-app notification center
-   - Add field training scheduling integration
-   - Implement push notifications for PWA
+1. **Auto-Stale Detection** (`check-stale-onboarding` Edge Function)
+   - Detects agents stuck >3 days in coursework
+   - Escalating email reminders: Day 3 (warning), Day 7 (critical)
+   - Manager notification when agents become critical
+   - Email tracking to prevent duplicate sends
 
-3. **Medium-Term (Next 2 Weeks)**
-   - Voice entry for production
-   - Agency health score dashboard
-   - AI coaching suggestions
+2. **Bulk Stage Changes** (`BulkStageActions` Component)
+   - Multi-select agents in CRM via checkbox
+   - Batch advance/revert stages
+   - Bulk send portal logins to selected agents
+   - Integrated into DashboardCRM
+
+3. **Manager Daily Digest** (`manager-daily-digest` Edge Function)
+   - 8 AM team summary email
+   - Yesterday's production + weekly totals
+   - Top producer highlight
+   - Stalled agents + critical attendance alerts
+   - Direct CRM link
+
+4. **Additional Automations**
+   - `notify-agent-live-field`: Release video when agent goes live
+   - `send-monthly-motivation`: End-of-month motivational email
+   - Enhanced `notify-course-complete` with Discord/meeting info
+   - Restructured `welcome-new-agent` with licensing/E&O steps
 
 ---
 
+### Next Steps (Short-Term)
+
+1. **In-app Notification Center** - Replace email-only with in-app + email
+2. **Field Training Scheduling** - Calendar integration on course complete
+3. **Push Notifications (PWA)** - Real-time alerts without email
+
 ### Summary
 
-Apex Financial is a robust platform with strong foundations. The recent performance optimizations (consolidated realtime channels, query caching, animation fixes) have significantly improved UX. The key opportunities lie in:
-
-- **Automation**: Reducing manual touchpoints in onboarding
-- **Visibility**: Better real-time awareness for managers
-- **Engagement**: Gamification and mobile-first enhancements
-- **Intelligence**: AI-powered coaching and predictions
-
-These enhancements will transform the platform from a tracking system into a true **growth accelerator** for insurance agencies.
+Apex Financial now has automated onboarding monitoring, bulk CRM operations, and comprehensive manager awareness through daily digests. The platform progression from tracking system to growth accelerator is well underway.
 

@@ -291,11 +291,23 @@ export function TeamHierarchyManager() {
     }
   };
 
-  const filteredAgents = filterManager === "all" 
-    ? agents 
-    : filterManager === "orphaned"
-    ? agents.filter(a => !a.managerId && a.id !== adminAgentId)
-    : agents.filter(a => a.managerId === filterManager);
+  // Always show admin at top, then apply filter to remaining agents
+  const filteredAgents = (() => {
+    const adminAgent = agents.find(a => a.id === adminAgentId);
+    const otherAgents = agents.filter(a => a.id !== adminAgentId);
+    
+    let filtered: AgentHierarchyEntry[];
+    if (filterManager === "all") {
+      filtered = otherAgents;
+    } else if (filterManager === "orphaned") {
+      filtered = otherAgents.filter(a => !a.managerId);
+    } else {
+      filtered = otherAgents.filter(a => a.managerId === filterManager);
+    }
+    
+    // Admin always at top
+    return adminAgent ? [adminAgent, ...filtered] : filtered;
+  })();
 
   const orphanedCount = agents.filter(a => !a.managerId && a.id !== adminAgentId).length;
   const indirectReports = agents.filter(a => {

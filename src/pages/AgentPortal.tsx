@@ -543,7 +543,7 @@ export default function AgentPortal() {
         </motion.div>
 
         {/* Main Leaderboard - FIRST so agents see their rank immediately */}
-        <AnimatePresence mode="wait">
+        <AnimatePresence initial={false}>
           {(activeTab === "leaderboard" || window.innerWidth >= 640) && (
             <motion.section
               key="leaderboard"
@@ -561,7 +561,7 @@ export default function AgentPortal() {
         </AnimatePresence>
 
         {/* Production Entry - Below leaderboard for motivation flow */}
-        <AnimatePresence mode="wait">
+        <AnimatePresence initial={false}>
           {(activeTab === "numbers" || window.innerWidth >= 640) && (
             <motion.section
               key="production"
@@ -593,7 +593,7 @@ export default function AgentPortal() {
         <PerformanceDashboardSection />
 
         {/* Personal Stats */}
-        <AnimatePresence mode="wait">
+        <AnimatePresence initial={false}>
           {agentId && (activeTab === "stats" || window.innerWidth >= 640) && (
             <motion.section
               id="personal-stats"

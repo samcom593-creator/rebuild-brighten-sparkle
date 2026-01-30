@@ -17,6 +17,8 @@ import { format, subWeeks, startOfWeek, endOfWeek, isWithinInterval, parseISO } 
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useDebouncedRefetch } from "@/hooks/useDebouncedRefetch";
+import { getClosingRateColor } from "@/lib/closingRateColors";
 
 interface WeeklyStats {
   weekLabel: string;
@@ -265,20 +267,23 @@ export function TeamPerformanceBreakdown() {
     }
   }, [fetchWeeklyData, authLoading, user]);
 
+  // Debounced refetch to prevent storms
+  const debouncedRefetch = useDebouncedRefetch(fetchWeeklyData, 1200);
+
   useEffect(() => {
     const channel = supabase
       .channel("team-performance-breakdown-live")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "daily_production" },
-        () => fetchWeeklyData()
+        () => debouncedRefetch()
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchWeeklyData]);
+  }, [debouncedRefetch]);
 
   const handleWeekClick = (week: WeeklyStats) => {
     if (expandedWeek === week.weekStart) {
@@ -315,11 +320,15 @@ export function TeamPerformanceBreakdown() {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-    >
-      <GlassCard className="p-6">
+    <div className="transition-opacity duration-100">
+      <GlassCard className="p-6 relative">
+        {/* Powered by Apex watermark */}
+        <div className="absolute top-3 right-4">
+          <p className="text-[9px] text-muted-foreground/50 uppercase tracking-widest">
+            Powered by <span className="font-semibold text-primary/60">Apex</span>
+          </p>
+        </div>
+
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
           <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
@@ -454,7 +463,7 @@ export function TeamPerformanceBreakdown() {
                                   <span className="text-violet-500">
                                     {agent.presentations} sits
                                   </span>
-                                  <span className="text-amber-500 font-semibold">
+                                  <span className={cn("font-semibold", getClosingRateColor(agent.closeRate).textClass)}>
                                     {agent.closeRate}%
                                   </span>
                                 </div>
@@ -471,6 +480,6 @@ export function TeamPerformanceBreakdown() {
           ))}
         </div>
       </GlassCard>
-    </motion.div>
+    </div>
   );
 }

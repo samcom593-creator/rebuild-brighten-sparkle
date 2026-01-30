@@ -97,11 +97,12 @@ export function DuplicateMergeTool({ open, onClose, onMergeComplete }: Duplicate
     },
   });
 
-  // Detect duplicates
+  // Detect duplicates - NOW INCLUDES ALL AGENTS (inactive/terminated too)
   const duplicates = useMemo(() => {
     if (!allAgents) return [];
 
-    const agentList = allAgents.filter(a => !a.isInactive);
+    // Include ALL agents for duplicate detection (don't filter out inactive)
+    const agentList = allAgents;
 
     // Detect duplicates by email
     const emailGroups = new Map<string, typeof agentList>();
@@ -175,17 +176,16 @@ export function DuplicateMergeTool({ open, onClose, onMergeComplete }: Duplicate
     return duplicateGroups;
   }, [allAgents]);
 
-  // Filter agents for manual selection
+  // Filter agents for manual selection - INCLUDE ALL agents by default
   const filteredAgents = useMemo(() => {
     if (!allAgents) return [];
     const query = searchQuery.toLowerCase().trim();
-    if (!query) return allAgents.filter(a => !a.isInactive);
+    // Show ALL agents (including inactive/terminated) for merge capability
+    if (!query) return allAgents;
     return allAgents.filter(a => 
-      !a.isInactive && (
-        a.fullName.toLowerCase().includes(query) ||
-        a.email?.toLowerCase().includes(query) ||
-        a.phone?.includes(query)
-      )
+      a.fullName.toLowerCase().includes(query) ||
+      a.email?.toLowerCase().includes(query) ||
+      a.phone?.includes(query)
     );
   }, [allAgents, searchQuery]);
 

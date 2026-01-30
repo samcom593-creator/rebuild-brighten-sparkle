@@ -25,7 +25,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { MiniLeaderboard } from "@/components/dashboard/MiniLeaderboard";
+
 import { InviteTeamModal } from "@/components/dashboard/InviteTeamModal";
 import { cn } from "@/lib/utils";
 import {
@@ -125,10 +125,9 @@ export function GlobalSidebar({
       roles: ["admin", "manager", "agent"]
     });
 
-    // Admin/Manager: Admin Panel, Accounts
+    // Admin/Manager: Accounts
     if (isAdmin || isManager) {
       items.push(
-        { icon: Shield, label: "Admin Panel", href: "/dashboard/admin", roles: ["admin", "manager"] },
         { icon: UserCog, label: "Accounts", href: "/dashboard/accounts", roles: ["admin", "manager"] }
       );
     }
@@ -291,8 +290,6 @@ export function GlobalSidebar({
             })}
           </nav>
 
-          {/* Mini Leaderboard - only when expanded */}
-          {!isCollapsed && <MiniLeaderboard />}
 
           {/* User & Actions */}
           <div className="border-t border-border p-2">

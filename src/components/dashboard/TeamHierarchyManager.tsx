@@ -258,6 +258,39 @@ export function TeamHierarchyManager() {
     }
   };
 
+  // Function to assign all orphaned agents to a specific manager
+  const handleAssignOrphansToManager = async (managerId: string) => {
+    setBulkUpdating(true);
+
+    try {
+      const orphanIds = agents
+        .filter(a => !a.managerId && a.id !== adminAgentId && a.id !== managerId)
+        .map(a => a.id);
+
+      if (orphanIds.length === 0) {
+        toast.info("No orphaned agents to assign");
+        setBulkUpdating(false);
+        return;
+      }
+
+      const { error } = await supabase
+        .from("agents")
+        .update({ invited_by_manager_id: managerId })
+        .in("id", orphanIds);
+
+      if (error) throw error;
+
+      const managerName = managers.find(m => m.id === managerId)?.name || "manager";
+      toast.success(`${orphanIds.length} agents assigned to ${managerName}`);
+      fetchHierarchy();
+    } catch (error) {
+      console.error("Error bulk reassigning:", error);
+      toast.error("Failed to assign agents");
+    } finally {
+      setBulkUpdating(false);
+    }
+  };
+
   const filteredAgents = filterManager === "all" 
     ? agents 
     : filterManager === "orphaned"
@@ -321,6 +354,23 @@ export function TeamHierarchyManager() {
                 )}
                 Assign All to Me
               </Button>
+              {/* Bulk assign orphans to selected manager */}
+              {filterManager !== "all" && filterManager !== "orphaned" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleAssignOrphansToManager(filterManager)}
+                  disabled={bulkUpdating || orphanedCount === 0}
+                  className="h-7 text-xs"
+                >
+                  {bulkUpdating ? (
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                  ) : (
+                    <Users className="h-3 w-3 mr-1" />
+                  )}
+                  Assign Orphans to {managers.find(m => m.id === filterManager)?.name}
+                </Button>
+              )}
             </div>
           </div>
 

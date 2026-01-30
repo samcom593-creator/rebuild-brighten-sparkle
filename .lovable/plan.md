@@ -1,129 +1,153 @@
 
-# Fix Plan: Admin "Your Performance" Should Show Whole Team Stats
 
-## Problem
-
-The `PersonalStatsCard` component always shows the logged-in user's **personal stats only**, regardless of their role. As an admin, you want "Your Performance" to reflect your **entire team's aggregated metrics**.
-
-Currently:
-- Admin sees: Their own closing rate, presentations, deals, ALP
-- Admin expects: Agency-wide closing rate, total presentations, total deals, total ALP
-
-## Solution
-
-Update `PersonalStatsCard` to be **role-aware**:
-- **Agents**: Show personal stats only (current behavior)
-- **Managers**: Show aggregated team stats (manager + their downline)
-- **Admins**: Show aggregated agency-wide stats (all active agents)
-
-### File to Modify
-
-**`src/components/dashboard/PersonalStatsCard.tsx`**
-
-### Changes Required
-
-1. **Import `useAuth` hook** to detect user role:
-```tsx
-import { useAuth } from "@/hooks/useAuth";
-```
-
-2. **Update the component** to use role-based data fetching:
-```tsx
-export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCardProps) {
-  const { user, isAdmin, isManager } = useAuth();
-  // ...
-```
-
-3. **Modify `fetchStats` function** to fetch team/agency data when admin/manager:
-
-```tsx
-const fetchStats = useCallback(async () => {
-  try {
-    setLoading(true);
-    
-    // Determine which agents to include based on role
-    let targetAgentIds: string[] = [agentId];
-    
-    if (isAdmin) {
-      // Admin sees all active agents
-      const { data: allAgents } = await supabase
-        .from("agents")
-        .select("id")
-        .eq("is_deactivated", false);
-      targetAgentIds = allAgents?.map(a => a.id) || [];
-    } else if (isManager) {
-      // Manager sees self + downline
-      const { data: currentAgent } = await supabase
-        .from("agents")
-        .select("id")
-        .eq("user_id", user?.id)
-        .maybeSingle();
-
-      if (currentAgent) {
-        const { data: downlineAgents } = await supabase
-          .from("agents")
-          .select("id")
-          .eq("invited_by_manager_id", currentAgent.id)
-          .eq("is_deactivated", false);
-
-        targetAgentIds = [currentAgent.id, ...(downlineAgents?.map(a => a.id) || [])];
-      }
-    }
-    
-    // Fetch production for ALL target agents
-    const { data: allProduction } = await supabase
-      .from("daily_production")
-      .select("agent_id, closing_rate, presentations, aop, deals_closed")
-      .in("agent_id", targetAgentIds)  // Changed from .eq to .in
-      .gte("production_date", dateRange.start)
-      .lte("production_date", dateRange.end);
-    
-    // ... rest of aggregation logic stays the same
-  }
-}, [..., isAdmin, isManager, user]);
-```
-
-4. **Update the title dynamically** based on role:
-```tsx
-// Line 219 - Update header title
-<h3 className="text-lg font-semibold gradient-text">
-  {isAdmin ? "Agency Performance" : isManager ? "Team Performance" : "Your Performance"}
-</h3>
-```
-
-5. **Update stat labels** to reflect scope:
-```tsx
-const stats = [
-  {
-    label: isAdmin || isManager ? "Close Rate" : "Your Closing Rate",
-    // ...
-  },
-  {
-    label: isAdmin || isManager ? "Total Presentations" : "Presentations",
-    // ...
-  },
-  // ...
-];
-```
-
-6. **Update comparison labels** - For admin/manager, compare to individual agent average:
-```tsx
-comparisonLabel: isAdmin || isManager ? "Per Agent Avg" : "Agency Avg",
-```
+# Plan: Import Missing Production Data
 
 ## Summary
 
-| Change | Description |
-|--------|-------------|
-| Import `useAuth` | Get role context (isAdmin, isManager) |
-| Role-based agent selection | Admin gets all agents, Manager gets downline, Agent gets self |
-| Update query from `.eq()` to `.in()` | Fetch production for multiple agents |
-| Dynamic header title | "Agency Performance" / "Team Performance" / "Your Performance" |
-| Updated stat labels | Reflect team vs personal scope |
+I will import all the deals you provided for agents with >$5,000 monthly production. This requires:
+1. Creating missing agent profiles (Kaeden Vaughns, Josiah Darden, Alex Wordu)
+2. Re-activating Aisha Kebbeh
+3. Importing production data for all qualifying agents
 
-## Result
+---
 
-- **Admins** see aggregated agency-wide stats (total ALP, total deals, agency close rate)
-- **Managers** see aggregated team stats (self + downline)
-- **Agents** continue to see only personal stats
-- All stats remain live with real-time subscriptions
+## Parsed Deals to Import (125+ deals from your data)
+
+I've extracted the following from your book of business data:
+
+### Obiajulu Ifediora - 28 Deals (~$32,500 ALP)
+| Date | ALP | Client |
+|------|-----|--------|
+| 2026-01-29 | $541.80 | Tina Hall |
+| 2026-01-28 | $1,176.00 | lisa bednarz |
+| 2026-01-27 | $1,430.52 | James Uranga |
+| 2026-01-26 | $1,000.32 | Mary Hammond |
+| 2026-01-23 | $949.44 | Janet Williams |
+| 2026-01-22 | $1,163.40 | Laura Baskins |
+| 2026-01-21 | $617.76 | Carol Johnston |
+| 2026-01-20 | $1,489.20 | John Acosta |
+| 2026-01-19 | $2,306.28 | Jeffery Troutt |
+| 2026-01-16 | $1,325.76 | Geralyn Smith |
+| 2026-01-15 | $2,315.88 | Yolanda Acros |
+| 2026-01-14 | $900.00 | Sandra Wuorenma |
+| 2026-01-13 | $2,900.40 | Timothy Uranga |
+| 2026-01-12 | $563.76 | Brenda Bell |
+| 2026-01-09 | $1,381.08 | Tammy Glasby |
+| 2026-01-08 | $1,364.04 | Teresa White |
+| 2026-01-07 | $976.08 | Lessie Morland |
+| 2026-01-06 | $1,799.52 | Tammy Mcgee |
+| 2026-01-05 | $3,076.08 | Sharlene Crisp |
+| 2026-01-05 | $1,309.32 | Julie Scott |
+| 2026-01-01 | $946.68 | Crystal Johnson |
+| 2026-01-01 | $915.72 | Robin Wilson |
+
+### Aisha Kebbeh - 15 Deals (~$17,200 ALP)
+| Date | ALP |
+|------|-----|
+| 2026-01-29 | $2,160.00 |
+| 2026-01-28 | $1,173.96 |
+| 2026-01-27 | $1,685.28 |
+| 2026-01-26 | $742.44 |
+| 2026-01-23 | $720.00 |
+| 2026-01-20 | $575.52, $1,143.24, $721.92, $903.96 |
+| 2026-01-19 | $1,143.24 |
+| 2026-01-08 | $2,498.88, $1,037.88 |
+| 2026-01-07 | $1,263.72, $455.88 |
+| 2026-01-03 | $567.00, $660.00, $1,538.52 |
+
+### Kaeden Vaughns - 15 Deals (~$17,000 ALP) **NEW AGENT**
+| Date | ALP |
+|------|-----|
+| 2026-01-28 | $566.76 |
+| 2026-01-26 | $1,155.72 |
+| 2026-01-24 | $502.68 |
+| 2026-01-22 | $781.56 |
+| 2026-01-19 | $1,138.44 |
+| 2026-01-17 | $1,713.96, $1,660.56 |
+| 2026-01-09 | $1,488.00, $1,260.00 |
+| 2026-01-08 | $1,859.28 |
+| 2026-01-07 | $961.92 |
+| 2026-01-03 | $2,968.44 |
+| 2026-01-02 | $697.92 |
+| 2026-01-01 | $1,312.08, $1,744.56 |
+
+### Josiah Darden - 7 Deals (~$8,700 ALP) **NEW AGENT**
+| Date | ALP |
+|------|-----|
+| 2026-01-12 | $1,772.16 |
+| 2026-01-07 | $576.12 |
+| 2026-01-06 | $2,696.64, $767.76 |
+
+### Alex Wordu - 4 Deals (~$5,200 ALP) **NEW AGENT**
+| Date | ALP |
+|------|-----|
+| 2026-01-13 | $1,500.00 |
+| 2026-01-08 | $240.00 |
+| 2026-01-06 | $1,293.96 |
+| 2026-01-05 | $484.32 |
+
+---
+
+## Implementation Steps
+
+### Step 1: Create Missing Agent Profiles
+
+Create new agents in the system:
+- **Kaeden Vaughns** 
+- **Josiah Darden**
+- **Alex Wordu**
+- **Richard Hall** (1 deal - $1,178.76)
+
+### Step 2: Re-activate Aisha Kebbeh
+
+Update her `is_deactivated` flag to `false` so she appears on leaderboards.
+
+### Step 3: Import All Deals
+
+Call the `import-production-data` edge function with the parsed deals:
+
+```json
+{
+  "deals": [
+    { "agent_name": "Obiajulu Ifediora", "annual_alp": 541.80, "posted_date": "2026-01-29" },
+    { "agent_name": "Aisha Kebbeh", "annual_alp": 2160.00, "posted_date": "2026-01-29" },
+    // ... all 125+ deals
+  ]
+}
+```
+
+### Step 4: Exclude from CRM (as requested)
+- Codey Salazar - keep on dashboard, exclude from CRM
+- Joseph Intwan - keep on dashboard, exclude from CRM
+
+---
+
+## Files to Modify
+
+| File | Change |
+|------|--------|
+| Database | Create 4 new agent profiles |
+| Database | Re-activate Aisha Kebbeh |
+| Edge Function Call | Import 125+ deals via `import-production-data` |
+
+---
+
+## Expected Results
+
+After import:
+
+| Agent | January ALP | Deals |
+|-------|-------------|-------|
+| Codey Salazar | $39,602 | 35 |
+| Obiajulu Ifediora | ~$32,500 | 28 |
+| Moody Imran | $30,015 | 24 |
+| Aisha Kebbeh | ~$17,200 | 15 |
+| Kaeden Vaughns | ~$17,000 | 15 |
+| Samuel James | $14,700 | 8 |
+| Chukwudi Ifediora | $11,330 | 10 |
+| Bryan Ross | $10,207 | 10 |
+| Josiah Darden | ~$8,700 | 7 |
+| Alex Wordu | ~$5,200 | 4 |
+
+All dashboards will update live with real-time subscriptions.
+

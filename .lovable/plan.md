@@ -1,171 +1,125 @@
 
 
-# Fix Plan: Performance Dashboard Branding + Leaderboard ALP Editing
+# Fix Dashboard Numbers to Match Leaderboard
 
-## Issue 1: "Powered by Apex" Missing from Performance Dashboard
+## Problem
 
-### Problem
-The `PerformanceDashboardSection.tsx` component header area lacks the "Powered by Apex" branding in the top-right corner.
+Dashboard numbers (Total ALP, Week ALP, Deals, etc.) are not matching the Leaderboard because the components use **different date calculation methods**:
 
-### Solution
-Add a subtle, faint "Powered by Apex" text to the top-right of the Performance Dashboard section.
+| Component | Date Calculation | Issue |
+|-----------|------------------|-------|
+| **LeaderboardTabs** | Uses PST utilities (`getWeekStartPST()`, `getTodayPST()`) | Correct - PST timezone |
+| **TeamSnapshotCard** | Uses `useDateRange` hook with `startOfWeek(new Date())` | Uses **local system time**, not PST |
+| **ManagerProductionStats** | Uses `getDateDaysAgoPST(7)` for "week" | Uses "7 days ago" instead of **week start (Sunday)** |
 
-**File:** `src/components/dashboard/PerformanceDashboardSection.tsx`
+This causes data mismatch when:
+1. User is in a different timezone than PST
+2. "Week" is interpreted as "last 7 days" vs "Sunday to Saturday"
 
-**Changes:**
-- Add a positioned element in the top-right of the GlassCard
-- Style it to be faint/muted so it's not obnoxious
-- Use `text-[10px]` with low opacity for subtlety
-
-```tsx
-{/* Powered by Apex - subtle branding */}
-<span className="absolute top-3 right-4 text-[10px] text-muted-foreground/50 font-medium tracking-wide">
-  Powered by Apex
-</span>
-```
+Additionally, `ManagerProductionStats` has **no real-time subscription** so it doesn't update live.
 
 ---
 
-## Issue 2: Cannot Edit ALP in Leaderboard Custom View
+## Solution
 
-### Problem
-When the leaderboard is set to "Custom" date range, clicking an agent opens the edit dialog, but the ALP/Deals editing only updates "today's" production record. The user wants to **override the range total** directly.
+Align all dashboard components to use the same PST-based date utilities that the leaderboard uses.
 
-### Root Cause
-The `AgentQuickEditDialog` component:
-1. Has ALP/Deals editing (added earlier), but it only writes to **today's date**
-2. When viewing a Custom date range that spans multiple days, editing "today" doesn't affect the historical totals
+### Files to Modify
 
-### Solution: Date-Aware Production Editing
+#### 1. `src/components/ui/date-range-picker.tsx` (useDateRange hook)
 
-Since the user chose "Override the range total" approach, I'll implement:
+**Problem:** Uses `new Date()` and `startOfWeek()` from date-fns with local time.
 
-1. **Pass the current date range to the edit dialog** so it knows which period is being viewed
-2. **Calculate the delta** between the current displayed total and the new desired total
-3. **Apply the delta** as an adjustment to the most recent date in the range (or create a new record if needed)
-
-**Files to Modify:**
-- `src/components/dashboard/LeaderboardTabs.tsx` - Pass date range context to AgentQuickEditDialog
-- `src/components/dashboard/AgentQuickEditDialog.tsx` - Accept date range, show "override total" mode, apply adjustment correctly
-
-### Implementation Details
-
-#### Step 1: Update LeaderboardTabs.tsx
-
-When opening the edit dialog, pass the current period and date range:
+**Fix:** Import and use PST utilities for date calculations:
 
 ```tsx
-// Current (line 547-549):
-setSelectedAgent({ id: entry.agentId, name: entry.name, alp: entry.alp, deals: entry.deals });
+import { getNowPST, getTodayPST, getWeekStartPST, getMonthStartPST, getDateDaysAgoPST } from "@/lib/dateUtils";
+import { format, endOfWeek, endOfMonth } from "date-fns";
+import { toZonedTime } from "date-fns-tz";
 
-// Updated:
-setSelectedAgent({ 
-  id: entry.agentId, 
-  name: entry.name, 
-  alp: entry.alp, 
-  deals: entry.deals,
-  period,
-  customDateRange,
-  startDate: /* calculated startDate based on period */,
-  endDate: /* calculated endDate based on period */,
-});
-```
-
-Update the `AgentQuickEditDialog` props:
-
-```tsx
-<AgentQuickEditDialog
-  open={editDialogOpen}
-  onOpenChange={setEditDialogOpen}
-  agentId={selectedAgent.id}
-  currentName={selectedAgent.name}
-  production={selectedAgent.alp}
-  deals={selectedAgent.deals}
-  onUpdate={fetchLeaderboard}
-  // NEW PROPS:
-  period={selectedAgent.period}
-  dateRange={{ from: selectedAgent.startDate, to: selectedAgent.endDate }}
-/>
-```
-
-#### Step 2: Update AgentQuickEditDialog.tsx
-
-Add new props to accept date range context:
-
-```tsx
-interface AgentQuickEditDialogProps {
-  // ... existing props
-  period?: "day" | "week" | "month" | "custom";
-  dateRange?: { from?: string; to?: string };
+// In useDateRange hook:
+export function useDateRange(initialPeriod: DateRangePeriod = "week") {
+  const today = getNowPST(); // PST time instead of local
+  
+  const getInitialRange = (): DateRange => {
+    switch (initialPeriod) {
+      case "today":
+        return { from: today, to: today };
+      case "week":
+        return {
+          from: toZonedTime(new Date(getWeekStartPST()), "America/Los_Angeles"),
+          to: endOfWeek(today, { weekStartsOn: 0 }),
+        };
+      case "month":
+        return {
+          from: toZonedTime(new Date(getMonthStartPST()), "America/Los_Angeles"),
+          to: endOfMonth(today),
+        };
+      default:
+        return { from: subDays(today, 30), to: today };
+    }
+  };
+  // ...
 }
 ```
 
-Update the "Edit Production" section:
+Also update `handlePresetClick` to use PST times for consistency.
 
-- When `period === "custom"`, show a message indicating this will adjust the total for the selected range
-- Calculate the adjustment needed: `desiredTotal - currentTotal`
-- Apply the adjustment to the most recent date in the range (or today if within range)
+#### 2. `src/components/dashboard/ManagerProductionStats.tsx`
 
+**Problem:** 
+- Uses `getDateDaysAgoPST(7)` for week which is "7 days ago", not "start of week"
+- No real-time subscription for live updates
+
+**Fix:**
 ```tsx
-// In handleSaveChanges:
-if (isAdmin && (editAlp !== production || editDeals !== deals)) {
-  // Calculate what date to apply the adjustment to
-  let targetDate = new Date().toISOString().split('T')[0]; // Default: today
-  
-  if (period === "custom" && dateRange?.to) {
-    // Use the end date of the custom range
-    targetDate = dateRange.to;
-  }
-  
-  // Calculate the delta (adjustment needed)
-  const alpDelta = editAlp - production;
-  const dealsDelta = editDeals - deals;
-  
-  // Fetch existing record for target date
-  const { data: existingRecord } = await supabase
-    .from("daily_production")
-    .select("id, aop, deals_closed")
-    .eq("agent_id", agentId)
-    .eq("production_date", targetDate)
-    .maybeSingle();
+import { getTodayPST, getWeekStartPST, getMonthStartPST } from "@/lib/dateUtils";
 
-  if (existingRecord) {
-    // Add delta to existing values
-    await supabase
-      .from("daily_production")
-      .update({ 
-        aop: Number(existingRecord.aop) + alpDelta,
-        deals_closed: Number(existingRecord.deals_closed) + dealsDelta,
-      })
-      .eq("id", existingRecord.id);
-  } else {
-    // Create new record with just the delta as values
-    await supabase
-      .from("daily_production")
-      .insert({
-        agent_id: agentId,
-        production_date: targetDate,
-        aop: Math.max(0, alpDelta), // Don't go negative for new records
-        deals_closed: Math.max(0, dealsDelta),
-        presentations: dealsDelta > 0 ? dealsDelta : 0,
-      });
-  }
-}
+// Change from:
+const weekStart = getDateDaysAgoPST(7);
+const monthStart = getDateDaysAgoPST(30);
+
+// To:
+const weekStart = getWeekStartPST();
+const monthStart = getMonthStartPST();
+
+// Add real-time subscription:
+useEffect(() => {
+  const channel = supabase
+    .channel("manager-production-live")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "daily_production" },
+      () => fetchTeamStats()
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, [managerId]);
 ```
 
-Update the UI text when in custom mode:
+#### 3. `src/lib/dateUtils.ts` - Add missing utility
+
+Add `getWeekEndPST()` helper for consistency:
 
 ```tsx
-{period === "custom" ? (
-  <p className="text-[10px] text-muted-foreground">
-    Changes will adjust the total for the selected date range 
-    ({dateRange?.from} to {dateRange?.to}).
-  </p>
-) : (
-  <p className="text-[10px] text-muted-foreground">
-    Changes will update today's production record for this agent.
-  </p>
-)}
+/**
+ * Get the end of current week in PST (Saturday end) as YYYY-MM-DD string
+ */
+export function getWeekEndPST(): string {
+  const pstNow = getNowPST();
+  return format(endOfWeek(pstNow, { weekStartsOn: 0 }), "yyyy-MM-dd");
+}
+
+/**
+ * Get the end of current month in PST as YYYY-MM-DD string
+ */
+export function getMonthEndPST(): string {
+  const pstNow = getNowPST();
+  return format(endOfMonth(pstNow), "yyyy-MM-dd");
+}
 ```
 
 ---
@@ -174,11 +128,15 @@ Update the UI text when in custom mode:
 
 | File | Change |
 |------|--------|
-| `src/components/dashboard/PerformanceDashboardSection.tsx` | Add subtle "Powered by Apex" branding in top-right |
-| `src/components/dashboard/LeaderboardTabs.tsx` | Pass period and date range to AgentQuickEditDialog |
-| `src/components/dashboard/AgentQuickEditDialog.tsx` | Accept date range props, apply delta-based adjustment for custom ranges |
+| `src/lib/dateUtils.ts` | Add `getWeekEndPST()` and `getMonthEndPST()` utilities |
+| `src/components/ui/date-range-picker.tsx` | Update `useDateRange` hook to use PST utilities |
+| `src/components/dashboard/ManagerProductionStats.tsx` | Use `getWeekStartPST()` instead of `getDateDaysAgoPST(7)`, add real-time subscription |
+
+---
 
 ## Result
-1. "Powered by Apex" appears subtly in the Performance Dashboard (faint, not obnoxious)
-2. Admins can click any ALP value in the leaderboard (including Custom view) and edit the total directly - the system calculates the adjustment needed and applies it appropriately
+
+- Dashboard "Total ALP", "Deals", "Week ALP" will match Leaderboard exactly
+- All components use consistent PST timezone and "Sunday-Saturday" week definition
+- ManagerProductionStats updates in real-time when production is logged
 

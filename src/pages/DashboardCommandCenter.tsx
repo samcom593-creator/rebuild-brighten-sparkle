@@ -117,6 +117,7 @@ export default function DashboardCommandCenter() {
   // Fetch all agents with production stats - CLEAN query excluding unknowns/duplicates
   const { data: agentsData, isLoading, refetch } = useQuery({
     queryKey: ["command-center-agents", dateRange],
+    staleTime: 30000, // 30 seconds - prevent unnecessary refetches
     queryFn: async () => {
       // First get all agents with profiles
       const { data: agents, error: agentsError } = await supabase
@@ -323,85 +324,61 @@ export default function DashboardCommandCenter() {
 
         {/* Summary Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <Card className="stat-card">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <DollarSign className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Total ALP</p>
-                    <p className="text-2xl font-bold">${Math.round(summaryStats.totalAlp).toLocaleString()}</p>
-                  </div>
+          <Card className="stat-card">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <DollarSign className="h-5 w-5 text-primary" />
                 </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Total ALP</p>
+                  <p className="text-2xl font-bold">${Math.round(summaryStats.totalAlp).toLocaleString()}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <Card className="stat-card">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <Users className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Active Agents</p>
-                    <p className="text-2xl font-bold">{summaryStats.activeAgents}</p>
-                  </div>
+          <Card className="stat-card">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Users className="h-5 w-5 text-primary" />
                 </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Active Agents</p>
+                  <p className="text-2xl font-bold">{summaryStats.activeAgents}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <Card className="stat-card">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <TrendingUp className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Producers</p>
-                    <p className="text-2xl font-bold">{summaryStats.producers}</p>
-                  </div>
+          <Card className="stat-card">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <TrendingUp className="h-5 w-5 text-primary" />
                 </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Producers</p>
+                  <p className="text-2xl font-bold">{summaryStats.producers}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-          >
-            <Card className="stat-card border-destructive/20">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-destructive/10">
-                    <AlertTriangle className="h-5 w-5 text-destructive" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Needs Attention</p>
-                    <p className="text-2xl font-bold text-destructive">{summaryStats.weakPerformers}</p>
-                  </div>
+          <Card className="stat-card border-destructive/20">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-destructive/10">
+                  <AlertTriangle className="h-5 w-5 text-destructive" />
                 </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Needs Attention</p>
+                  <p className="text-2xl font-bold text-destructive">{summaryStats.weakPerformers}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Time Period Toggle + Custom Date Range */}
@@ -472,11 +449,8 @@ export default function DashboardCommandCenter() {
                 ) : (
                   <div className="space-y-2 max-h-[500px] overflow-y-auto scrollbar-custom">
                     {filteredAgents.map((agent, index) => (
-                      <motion.div
+                      <div
                         key={agent.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.02 }}
                         onClick={() => setSelectedAgent(agent)}
                         className={cn(
                           "flex items-center gap-4 p-3 rounded-lg cursor-pointer transition-all",
@@ -568,7 +542,7 @@ export default function DashboardCommandCenter() {
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
-                      </motion.div>
+                      </div>
                     ))}
                   </div>
                 )}

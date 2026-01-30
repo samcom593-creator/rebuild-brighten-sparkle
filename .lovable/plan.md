@@ -1,217 +1,102 @@
 
-
-## Apex Financial Platform: Final End-to-End Audit & Optimization Report
-
-### Executive Summary
-
-After a comprehensive code review of the entire Apex Financial platform, I've identified the system as a **highly polished, production-ready** insurance agency management solution. The architecture is solid, with proper role-based access control, optimized realtime performance, and extensive automation already in place.
-
-Below are my findings organized by category, covering what's working well, minor improvements, and the few remaining optimizations to make this platform truly "final complete stop" ready.
-
----
-
-### Part 1: Security Audit ✓
-
-**Current Status: STRONG**
-
-| Security Area | Status | Notes |
-|---------------|--------|-------|
-| Role-based access control | ✅ Excellent | Proper `user_roles` table with `has_role()` SECURITY DEFINER function |
-| RLS policies | ✅ Solid | 95% of tables properly secured |
-| Auth hook pattern | ✅ Correct | Roles loaded server-side, cached to prevent flicker |
-| Admin route protection | ✅ Good | `ProtectedRoute` component with role checks |
-
-**Minor Issues Found:**
-
-1. **Partial Applications Table (Low Risk)**: The `partial_applications` table has overly permissive RLS (`USING (true)` on INSERT/UPDATE). This is intentional for unauthenticated applicants but should be documented.
-
-2. **Leaked Password Protection**: Supabase linter warns this is disabled. Consider enabling in auth settings for additional security layer.
-
-**Recommendation**: No code changes needed - these are acceptable trade-offs for the applicant journey.
-
----
-
-### Part 2: Onboarding Flow Audit ✓
-
-**Current Status: EXCELLENT**
-
-The onboarding pipeline is now fully automated:
-
-```text
-INVITE → ONBOARDING → TRAINING_ONLINE → IN_FIELD_TRAINING → EVALUATED (LIVE)
-         ↓               ↓                  ↓                  ↓
-    Welcome Email    Coursework        Manager notified    Release Video
-    + License steps  + Quiz modules    Course complete     Portal login
-                     Stale detection   Auto-stage update   Daily numbers
-```
-
-**Automation Already Implemented:**
-- ✅ `check-stale-onboarding`: 3-day/7-day escalating reminders
-- ✅ `notify-course-complete`: Auto-moves to field training + Discord/meeting info
-- ✅ `notify-agent-live-field`: Sends release video when marked live
-- ✅ `welcome-new-agent`: Structured 3-step onboarding (E&O, Course, Discord)
-- ✅ `manager-daily-digest`: 8 AM team summary
-- ✅ DELETE policies on `onboarding_progress`: Unenroll now works correctly
-
-**No gaps identified in onboarding flow.**
-
----
-
-### Part 3: Performance Audit ✓
-
-**Current Status: OPTIMIZED**
-
-| Component | Optimization | Status |
-|-----------|-------------|--------|
-| Realtime channels | Consolidated to 1 shared channel | ✅ Done |
-| Debounce delay | Reduced to 300ms for instant feedback | ✅ Done |
-| Query caching | 120s staleTime, 300s gcTime | ✅ Done |
-| Code splitting | React.lazy() on all heavy routes | ✅ Done |
-| Sidebar animation | CSS transitions (no Framer Motion blocking) | ✅ Done |
-
-**Key Files Verified:**
-- `src/hooks/useProductionRealtime.ts`: Singleton pattern with 300ms debounce
-- `src/hooks/useDebouncedRefetch.ts`: Proper throttling logic
-- `src/App.tsx`: All dashboard routes lazy-loaded
-- `src/components/layout/GlobalSidebar.tsx`: CSS `transition-all duration-200`
-
-**No performance bottlenecks identified.**
-
----
-
-### Part 4: UI/UX Audit ✓
-
-**Current Status: POLISHED**
-
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Mobile-first design | ✅ | 44px tap targets, fullscreen mode |
-| APEX branding watermark | ✅ | Added to LogNumbers production entry |
-| Closing rate colors | ✅ | Red (<40%), Yellow (40-55%), Green (>55%) |
-| Loading states | ✅ | SkeletonLoader on all pages |
-| Role-scoped navigation | ✅ | Agents see only their items |
-
-**Verified Implementation:**
-- `src/lib/closingRateColors.ts`: Thresholds correctly implemented
-- `src/pages/LogNumbers.tsx`: "APEX FINANCIAL" watermark at line 573-577
-
-**Missing (Minor):**
-1. **Error Boundary**: No global error boundary component found. If a component crashes, the whole app could break.
-
-**Recommendation**: Add a simple error boundary for production resilience (optional but good practice).
-
----
-
-### Part 5: CRM & Bulk Actions Audit ✓
-
-**Current Status: COMPLETE**
-
-| Feature | Status | Location |
-|---------|--------|----------|
-| 3-column pipeline | ✅ | DashboardCRM.tsx (In Course, In Training, Live) |
-| Bulk stage changes | ✅ | BulkStageActions.tsx |
-| Multi-select agents | ✅ | AgentSelectCheckbox component |
-| Bulk portal logins | ✅ | handleBulkSendPortalLogins function |
-| Unenroll from course | ✅ | CourseProgress.tsx with DELETE RLS |
-
-**Verified in `src/components/crm/BulkStageActions.tsx`:**
-- Forward/backward stage navigation
-- Automatic timestamps for field training and evaluation
-- Notification triggers when marking agents as live
-
----
-
-### Part 6: Edge Functions Audit ✓
-
-**Current Status: COMPREHENSIVE**
-
-Total edge functions: **75+** covering:
-- Onboarding emails (welcome, course complete, reminders)
-- Production alerts (deal notifications, leaderboard)
-- Milestone recognition (streaks, plaques, weekly champions)
-- CRM automation (stage changes, follow-ups)
-
-**Key Functions Verified:**
-- `check-stale-onboarding`: Proper email tracking to prevent duplicates
-- `notify-course-complete`: Discord link, 10 AM meeting, $20k standard
-- `welcome-new-agent`: 3-step flow with E&O emphasis
-- `manager-daily-digest`: Yesterday's stats, top producer, stalled agents
-
-**All functions have proper CORS headers and error handling.**
-
----
-
-### Part 7: Date/Timezone Consistency ✓
-
-**Current Status: CONSISTENT**
-
-All date operations use PST timezone utilities from `src/lib/dateUtils.ts`:
-- `getTodayPST()`: For production date entries
-- `getWeekStartPST()`: For leaderboard calculations
-- `getMonthStartPST()`: For monthly stats
-
-**Verified in:**
-- `DashboardCommandCenter.tsx`: Uses `getTodayPST()`, `getWeekStartPST()`
-- `LogNumbers.tsx`: Uses `getTodayPST()` for production submission
-
----
-
-### Part 8: Missing Features Checklist
-
-| Feature | Status | Priority |
-|---------|--------|----------|
-| Error Boundary | ❌ Not found | Low |
-| Offline PWA caching | ❌ Not implemented | Medium |
-| Push notifications | ❌ Not implemented | Medium |
-| Voice entry for production | ❌ Not implemented | Low |
-| AI coaching suggestions | ❌ Not implemented | Low |
-
-These are "nice-to-have" enhancements from the original optimization plan, not critical bugs.
-
----
-
-### Part 9: Final Recommendations
-
-**Immediate (Optional Polish):**
-1. Add a global ErrorBoundary component for crash resilience
-2. Enable leaked password protection in Supabase auth settings
-
-**Already Complete:**
-- ✅ Instant production updates (300ms debounce)
-- ✅ Closing rate color thresholds
-- ✅ Auto-stale detection with escalating emails
-- ✅ Bulk CRM operations
-- ✅ Course completion automation
-- ✅ Manager daily digest
-- ✅ Welcome email restructure with E&O steps
-- ✅ Unenroll functionality (RLS DELETE policies)
-- ✅ APEX Financial watermark on production entry
-
----
-
-### Conclusion
-
-The Apex Financial platform is **production-ready** and represents a **best-in-class** insurance agency management solution. The core flows—applicant journey, agent onboarding, production tracking, and CRM management—are fully automated with proper error handling, role-based access control, and optimized performance.
-
-**The platform successfully delivers:**
-- Zero-friction onboarding with automated stage progression
-- Real-time production updates with instant leaderboard refresh
-- Comprehensive manager visibility through daily digests and CRM
-- Mobile-first PWA experience with premium aesthetics
-- Extensive email automation covering the entire agent lifecycle
-
-No critical bugs or architectural issues were found. The system is ready for "final complete stop" deployment.
-
----
-
-### Summary Scorecard
-
-| Category | Score | Status |
-|----------|-------|--------|
-| Security | 9.5/10 | Minor RLS on partial_applications (intentional) |
-| Performance | 10/10 | Optimized realtime, caching, code splitting |
-| Automation | 10/10 | Complete onboarding, CRM, and notification flows |
-| UI/UX | 9.5/10 | Missing error boundary only |
-| Mobile | 10/10 | PWA ready, 44px tap targets, fullscreen mode |
-| **Overall** | **9.8/10** | **Production Ready** |
-
+Goal
+- Fix the “X” (Unenroll) button so when you click it, the agent is removed from the Course Progress list (the progress bar list) immediately and does not reappear.
+
+Root cause (why it “does nothing” visually)
+- The Unenroll logic in `src/pages/CourseProgress.tsx` currently:
+  1) Deletes rows from `onboarding_progress`
+  2) Sets the agent’s `onboarding_stage` back to `"onboarding"` and `has_training_course` to `false`
+- BUT the list you’re looking at is built from agents where `onboarding_stage IN ("onboarding","training_online")`.
+  - So after unenroll, the agent is still eligible for the list (because they’re still in `"onboarding"`), and you keep seeing them (often as 0% / not started), which feels like the X “didn’t work”.
+
+What “remove them” should mean
+- “Remove from the Course Progress progress-bar list” should mean: they are no longer considered “in course / being tracked for course progress”.
+- That should be represented by: `onboarding_stage = "training_online"` (in course) vs anything else (not in course).
+- Therefore, the Course Progress monitor should only display agents who are actually in the course stage (and optionally flagged with `has_training_course=true`).
+
+Implementation plan (code changes)
+
+1) Fix the data source for the Course Progress list (the actual cause)
+A) Update the FULL Course Progress page query
+- File: `src/pages/CourseProgress.tsx`
+- Change the agents query from:
+  - `.in("onboarding_stage", ["onboarding", "training_online"])`
+  to:
+  - `.eq("onboarding_stage", "training_online")`
+- Optional additional safety filter (recommended):
+  - also require `.eq("has_training_course", true)` so the definition of “in course” is consistent even if a stage is accidentally toggled.
+
+Result:
+- Once an agent is unenrolled and moved back to `"onboarding"`, they disappear from this list immediately after refetch.
+
+B) Update the Command Center “Course Progress” sidebar card query
+- File: `src/components/admin/CourseProgressPanel.tsx`
+- Change the agents query from:
+  - `.in("onboarding_stage", ["onboarding", "training_online"])`
+  to:
+  - `.eq("onboarding_stage", "training_online")`
+- Optional: same additional filter `.eq("has_training_course", true)`.
+
+Result:
+- After unenroll, they also disappear from the small progress-bar card on `/dashboard/command`, preventing the “I still see them” confusion.
+
+2) Make the X button behave like a true “remove”
+A) Only show the X button when it makes sense
+- File: `src/pages/CourseProgress.tsx`
+- Right now the X button renders for every row.
+- Update so the X button only shows for agents who are actually “in course”, e.g.:
+  - `agent.onboardingStage === "training_online"` (and/or `agent.hasStarted` / `has_training_course` if we add it to the query response).
+This prevents clicks that appear “broken” (like clicking X on someone not in course / no progress).
+
+B) Add a confirmation (prevents accidental removals)
+- Add a small confirm UI before executing the unenroll mutation:
+  - Option 1: Simple `AlertDialog` (Radix UI exists in the project)
+  - Option 2: A lightweight confirm toast action
+- Label clearly: “Remove from Course (hide from progress list)”.
+
+C) Make the UI update instantly (no waiting / no doubt)
+- After successful unenroll:
+  - Immediately remove the agent from the local `["course-progress-full"]` cache via `queryClient.setQueryData(...)` (optimistic UX).
+  - Then also `invalidateQueries` to ensure the backend is the source of truth.
+
+3) Ensure every place that shows “course progress bars” updates
+A) Invalidate both relevant React Query caches after unenroll/enroll
+- File: `src/pages/CourseProgress.tsx`
+  - On unenroll success, invalidate:
+    - `["course-progress-full"]`
+    - `["course-progress-admin"]` (so the command-center card refreshes too)
+- File: `src/components/dashboard/AddAgentToCourseDialog.tsx`
+  - On enroll success, also invalidate:
+    - `["course-progress-admin"]` (same reason)
+
+(Other screens like Team Directory / Team Hierarchy may not use React Query; they typically refresh on navigation. If any do cache, we’ll add their keys too after we verify.)
+
+4) (If needed) Verify the backend permission is not the blocker (quick sanity check)
+Even though the RLS policy exists, we’ll confirm we’re not silently failing:
+- Add explicit error logging/toast detail when `progressError` or `agentError` occurs (including the message).
+- This way, if deletion is blocked for a specific user role, you’ll see “Permission denied” instead of a silent “nothing happened”.
+
+Acceptance criteria (what you should see)
+- On `/course-progress`: click X → the agent disappears from the list immediately.
+- Navigate back to `/dashboard/command`: the Course Progress card no longer shows that agent.
+- If you re-enroll them, they appear again under “training_online”.
+
+Testing checklist (end-to-end)
+1) Pick a test agent currently in course (`training_online`) with visible progress.
+2) Go to `/course-progress`, click X, confirm:
+   - agent disappears immediately
+   - refresh page: still gone
+3) Go to `/dashboard/command` and confirm:
+   - agent is not in the Course Progress card
+4) Re-enroll the same agent via “Add to Course”:
+   - agent shows again in `/course-progress`
+   - agent shows again in the command-center card
+
+Files that will be changed
+- `src/pages/CourseProgress.tsx` (fix query stage filter, improve X button behavior, invalidate both caches, optional optimistic removal + confirm)
+- `src/components/admin/CourseProgressPanel.tsx` (fix query stage filter)
+- `src/components/dashboard/AddAgentToCourseDialog.tsx` (invalidate the admin course progress cache after enroll)
+
+Notes / why this is the correct fix
+- The backend delete/update is likely already working; the UI logic is what keeps the agent visible because “onboarding” is still included in the “in course” list.
+- Restricting the progress monitor to `training_online` makes the progress-bar list represent “currently in course,” which aligns with your intent: remove = stop tracking in this course progress monitor.

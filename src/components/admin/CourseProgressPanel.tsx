@@ -43,18 +43,20 @@ export function CourseProgressPanel() {
 
       const totalModules = modules?.length || 0;
 
-      // Get agents in onboarding/training stages
+      // Get agents actively in course (training_online stage)
       const { data: agents } = await supabase
         .from("agents")
         .select(`
           id,
           onboarding_stage,
+          has_training_course,
           profiles!agents_profile_id_fkey (
             full_name,
             email
           )
         `)
-        .in("onboarding_stage", ["onboarding", "training_online"])
+        .eq("onboarding_stage", "training_online")
+        .eq("has_training_course", true)
         .eq("is_deactivated", false);
 
       if (!agents || agents.length === 0) return [];

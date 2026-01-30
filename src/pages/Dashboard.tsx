@@ -29,6 +29,7 @@ import { TeamSnapshotCard } from "@/components/dashboard/TeamSnapshotCard";
 import { TeamPerformanceBreakdown } from "@/components/dashboard/TeamPerformanceBreakdown";
 import { OnboardingPipelineCard } from "@/components/dashboard/OnboardingPipelineCard";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,7 @@ interface DashboardStats {
 export default function Dashboard() {
   const { profile, user, isManager, isAdmin, isAgent, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const [stats, setStats] = useState<DashboardStats>({
     totalLeads: 0,
     contacted: 0,
@@ -321,8 +323,8 @@ export default function Dashboard() {
         <TeamSnapshotCard />
       </div>
 
-      {/* ====== 1.5. WEEKLY PERFORMANCE BREAKDOWN (Managers/Admins) ====== */}
-      {(isManager || isAdmin) && (
+      {/* ====== 1.5. WEEKLY PERFORMANCE BREAKDOWN (Managers/Admins - Desktop Only) ====== */}
+      {(isManager || isAdmin) && !isMobile && (
         <div className="mb-6">
           <TeamPerformanceBreakdown />
         </div>

@@ -1,383 +1,173 @@
 
 
-# Comprehensive Enhancement Plan: Navigation, UI Design & Role-Based Access
+# Comprehensive Fix Plan: UI, Performance, and Features
 
-## Overview
+## Issues Identified
 
-This plan addresses multiple interconnected enhancements across navigation, visual design, role-based permissions, and feature additions based on your detailed feedback.
-
----
-
-## 1. Apex Financial Logo → Dashboard Navigation
-
-**Current State:** The Apex Financial logo in the sidebar links to `/dashboard`
-
-**Issue:** When clicking "Apex Financial" (the logo), it should take users to the dashboard
-
-**Fix Required:** 
-- File: `src/components/layout/GlobalSidebar.tsx` (lines 172-187)
-- The logo already links to `/dashboard` via the `<Link to="/dashboard">` wrapper
-- **VERIFIED**: This is already implemented correctly. The Crown icon with "APEX Financial" text links to `/dashboard` in both expanded and collapsed states.
+Based on my analysis of the codebase and your feedback, here are the specific issues and their fixes:
 
 ---
 
-## 2. Team Hierarchy with Production Numbers & Premium UI Redesign
+## 1. Team Hierarchy: Missing Bulk Selection Checkboxes
 
-**Current State:** Team Hierarchy shows basic agent info (name, email, stage, course progress, manager) without production data. The table-based layout looks "boring."
+**Current State:** The Team Hierarchy Manager table has no checkboxes for multi-select. Users cannot select multiple agents to delete at once.
 
-**Enhancement:**
+**Files to Modify:** `src/components/dashboard/TeamHierarchyManager.tsx`
 
-### 2a. Add Production Data to Team Hierarchy
-
-**File:** `src/components/dashboard/TeamHierarchyManager.tsx`
-
-**Changes:**
-1. Extend `AgentHierarchyEntry` interface to include:
-   ```typescript
-   weeklyAlp: number;
-   weeklyDeals: number;
-   monthlyAlp: number;
-   monthlyDeals: number;
-   ```
-
-2. Fetch production data in `fetchHierarchy()` by joining `daily_production` table
-
-3. Display production in a visually appealing format with week/month numbers
-
-### 2b. Premium Card-Based UI Redesign
-
-Replace the boring table with a premium card grid layout:
-
-```text
-┌─────────────────────────────────────────────────────┐
-│  [Avatar] Samuel James (You)              MGR       │
-│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐   │
-│  │ $45,200 │ │  12     │ │$125,000 │ │  38     │   │
-│  │  Week   │ │ Deals   │ │ Month   │ │ Deals   │   │
-│  └─────────┘ └─────────┘ └─────────┘ └─────────┘   │
-│  Reports to: — | Stage: Admin                       │
-│  [Edit Profile] [Add to Course]                     │
-└─────────────────────────────────────────────────────┘
-```
-
-**Design Principles:**
-- Card-based layout with subtle gradients
-- Animated number displays that count up
-- Week/Month production prominently displayed
-- Rank badges for top producers
-- Glassmorphism effects with subtle borders
+**Fix:**
+- Add a `selectedAgents` state using `Set<string>`
+- Add a header checkbox for "Select All"
+- Add a checkbox column to each row
+- Add a floating action bar at bottom when agents are selected
+- The action bar will offer "Soft Remove" (deactivate) or "Permanent Delete" options
 
 ---
 
-## 3. Plaque Design Enhancement
+## 2. Sidebar Navigation Glitch (Expand/Contract on Click)
 
-**Current State:** Plaques are functional but could be more premium and shareable
+**Current State:** When clicking sidebar links, the sidebar visibly glitches - expanding and contracting before settling.
 
-**File:** `supabase/functions/send-plaque-recognition/index.ts`
+**Root Cause:** The `SidebarLayout.tsx` uses `AnimatePresence` and framer-motion transitions that conflict with React's re-render cycle during route changes.
 
-**Enhancements:**
+**Files to Modify:** `src/components/layout/SidebarLayout.tsx`
 
-### 3a. Cleaner Plaque Design
-
-Update `generatePlaqueHTML()` to create a cleaner, more minimalist design:
-- Remove excessive gradient effects
-- Use cleaner typography (serif for name, sans-serif for labels)
-- Add subtle gold/silver/platinum border based on achievement tier
-- Ensure "APEX FINANCIAL" branding is prominent but tasteful
-- Keep the design simple enough to be screenshot-worthy
-
-### 3b. Manager Tagging in Recognition
-
-The plaque system already sends emails to both the agent AND their manager. However, we should ensure:
-- Manager's email includes clear attribution
-- If the agent has Instagram, include it in the email for easy tagging
-- Add a "Share to Instagram" deep link in the email
-
-**Files to Update:**
-- `supabase/functions/send-plaque-recognition/index.ts` - Include Instagram handle in plaque data
-- Fetch Instagram handle from profile when sending plaque
+**Fix:**
+- Remove the page animation wrapper entirely (the sidebar is stable, only content should transition)
+- Use CSS transitions instead of framer-motion for the main content area
+- Simplify the mobile sidebar toggle logic to prevent re-renders
 
 ---
 
-## 4. Role-Based Navigation Access Control
+## 3. Command Center Loading Speed
 
-**Current State:** Sidebar shows different items based on role, but permissions need tightening
+**Current State:** Command Center shows "Loading hierarchy..." for several seconds.
 
-**File:** `src/components/layout/GlobalSidebar.tsx`
+**Files to Modify:** 
+- `src/pages/DashboardCommandCenter.tsx`
+- `src/components/dashboard/TeamHierarchyManager.tsx`
 
-### 4a. Updated Permission Matrix
-
-| Route | Admin | Manager | Agent |
-|-------|-------|---------|-------|
-| Dashboard | ✅ | ✅ | ✅ |
-| Log Numbers | ✅ | ✅ | ✅ |
-| Course Progress | ✅ | ✅ | Own only |
-| Pipeline | ✅ | ✅ | ❌ |
-| Agent Portal | ✅ | ✅ | ✅ (own) |
-| CRM | ✅ | ✅ | ❌ |
-| Aged Leads | ✅ | ❌ | ❌ |
-| Command Center | ✅ | ❌ | ❌ |
-| Accounts | ✅ | ❌ | ❌ |
-| Settings | ✅ | ✅ | ✅ |
-
-### 4b. Code Changes
-
-```typescript
-const navItems = useMemo(() => {
-  const items = [];
-
-  // All users
-  items.push({ icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" });
-  items.push({ icon: Edit3, label: "Log Numbers", href: "/numbers" });
-
-  // Admin ONLY
-  if (isAdmin) {
-    items.push({ icon: Crown, label: "Command Center", href: "/dashboard/command" });
-    items.push({ icon: Archive, label: "Aged Leads", href: "/dashboard/aged-leads" });
-    items.push({ icon: UserCog, label: "Accounts", href: "/dashboard/accounts" });
-  }
-
-  // Admin + Manager
-  if (isAdmin || isManager) {
-    items.push({ icon: BarChart3, label: "Course Progress", href: "/course-progress" });
-    items.push({ icon: Users, label: "Pipeline", href: "/dashboard/applicants" });
-    items.push({ icon: BarChart3, label: "Agent Portal", href: "/agent-portal" });
-    items.push({ icon: Briefcase, label: "CRM", href: "/dashboard/crm" });
-  }
-
-  // Agent only (personal portal)
-  if (isAgent && !isAdmin && !isManager) {
-    items.push({ icon: BarChart3, label: "My Portal", href: "/agent-portal" });
-    items.push({ icon: BarChart3, label: "My Course", href: "/onboarding-course" });
-  }
-
-  // All users
-  items.push({ icon: Settings, label: "Settings", href: "/dashboard/settings" });
-
-  return items;
-}, [isAdmin, isManager, isAgent]);
-```
+**Fix:**
+- Increase `staleTime` from 60s to 120s
+- Add `gcTime` of 600s (10 min cache)
+- Use skeleton placeholders instead of spinners for perceived speed
+- Defer non-critical components (Recognition Queue, Inactive sections) with React.lazy
 
 ---
 
-## 5. Enhanced "Add Person" Modal
+## 4. Pipeline (Applications) Page Glitch
 
-**Current State:** InviteTeamModal only collects name, email, phone
+**Current State:** When tapping "Pipeline" in the sidebar, there's a noticeable glitch/flicker.
 
-**File:** `src/components/dashboard/InviteTeamModal.tsx`
+**Root Cause:** `DashboardApplicants.tsx` has multiple `AnimatePresence mode="wait"` blocks causing sequential animation queuing.
 
-### 5a. Add Contracting Link Feature
+**Files to Modify:** `src/pages/DashboardApplicants.tsx`
 
-Add a new section for custom contracting/onboarding links:
-
-```typescript
-interface SavedLink {
-  id: string;
-  name: string; // e.g., "SilverScript Contracting"
-  url: string;
-  createdAt: string;
-}
-
-// State
-const [savedLinks, setSavedLinks] = useState<SavedLink[]>([]);
-const [newLinkName, setNewLinkName] = useState("");
-const [newLinkUrl, setNewLinkUrl] = useState("");
-```
-
-### 5b. License Status Selection
-
-Add toggle for licensed vs unlicensed:
-
-```tsx
-<div className="space-y-2">
-  <Label>License Status</Label>
-  <div className="flex gap-3">
-    <Button
-      variant={licenseStatus === "licensed" ? "default" : "outline"}
-      onClick={() => setLicenseStatus("licensed")}
-      className="flex-1"
-    >
-      Licensed
-    </Button>
-    <Button
-      variant={licenseStatus === "unlicensed" ? "default" : "outline"}
-      onClick={() => setLicenseStatus("unlicensed")}
-      className="flex-1"
-    >
-      Unlicensed
-    </Button>
-  </div>
-</div>
-```
-
-### 5c. Send Course Toggle
-
-```tsx
-<div className="flex items-center justify-between">
-  <Label>Send Onboarding Course</Label>
-  <Switch checked={sendCourse} onCheckedChange={setSendCourse} />
-</div>
-```
-
-### 5d. Database Table for Saved Links
-
-Create new table `contracting_links`:
-```sql
-CREATE TABLE contracting_links (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  manager_id UUID REFERENCES agents(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  url TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-```
+**Fix:**
+- Remove or replace `AnimatePresence mode="wait"` with `initial={false}`
+- Simplify motion transitions
 
 ---
 
-## 6. Replace Manager Leaderboard with Invitation Tracker
+## 5. Course Progress: Add Full Screen Course Viewer + Remove Agents
 
-**Current State:** Dashboard shows Manager Leaderboard which user wants replaced
+**Current State:** "View Course Content" opens a dialog/modal. User wants a full-screen experience with ability to delete/unenroll agents.
 
-**File:** `src/pages/Dashboard.tsx`
+**Files to Modify:**
+- `src/pages/CourseProgress.tsx` 
+- `src/components/admin/CourseContentViewer.tsx`
 
-### 6a. Create InvitationTracker Component
-
-**New File:** `src/components/dashboard/InvitationTracker.tsx`
-
-Features:
-- Shows pending invitations (sent but not accepted)
-- Shows accepted invitations with date
-- Real-time updates via Supabase subscription
-- When accepted, shows agent entered their email, phone, created password, and optionally Instagram
-
-```tsx
-interface InvitationStatus {
-  id: string;
-  agentName: string;
-  email: string;
-  sentAt: string;
-  acceptedAt: string | null;
-  hasCompletedProfile: boolean;
-  hasInstagram: boolean;
-}
-
-// Component shows:
-// ✓ John Smith - Accepted (2 hours ago)
-// ⏳ Jane Doe - Pending (sent 1 day ago)
-// ✓ Mike Johnson - Accepted, Profile Complete
-```
-
-### 6b. Replace in Dashboard
-
-```tsx
-// Line 362: Replace ManagerLeaderboard with:
-{(isManager || isAdmin) && <InvitationTracker />}
-```
+**Fix:**
+- Create a new full-page route `/course-progress/content` that renders the course modules/videos/questions in a browsable format
+- Add "View Full Course" button that navigates to this route
+- Add "Unenroll" action in the agent dropdown (removes progress, sets stage to "onboarding", keeps agent record)
 
 ---
 
-## 7. My Team Page Enhancement
+## 6. Team Hierarchy: "Edit Profile" Button in Actions Menu
 
-**Current State:** My Team (TeamDirectory.tsx) is slow and was removed from sidebar
+**Current State:** The Edit Profile button already exists in the three-dot dropdown menu (line 603-606). This is working.
 
-**Note:** The "My Team" link was already removed from sidebar per previous changes. The user now wants a version that shows week/monthly numbers in an appealing format similar to the main dashboard.
-
-### 7a. Option A: Keep Removed, Use Command Center Team Hierarchy
-
-Since the "My Team" link was removed and the Team Hierarchy Manager already exists in Command Center, we can enhance that component instead (covered in Section 2).
-
-### 7b. Option B: Restore Simplified My Team
-
-If user wants "My Team" restored for managers, create a lightweight version that:
-- Only fetches the manager's direct reports
-- Shows week/month numbers in the same font style as the main dashboard stats
-- Uses the AnimatedNumber component for the counting effect
+**Verification:** No change needed - already implemented.
 
 ---
 
-## 8. Log Numbers Screen Enhancement
+## 7. Dashboard "Your Team" Should Show ALL Agents (Collapsible Hierarchy)
 
-**Current State:** LogNumbers.tsx has a functional but potentially "squarish" design
+**Current State:** `ManagerTeamView` only shows direct reports. User wants to see ALL agents in a collapsible hierarchy.
 
-**File:** `src/pages/LogNumbers.tsx`
+**Files to Modify:** `src/components/dashboard/ManagerTeamView.tsx`
 
-### 8a. Premium Fintech Design Updates
-
-- Add subtle gradient backgrounds
-- Use rounded corners instead of square
-- Implement glassmorphism effects
-- Make the Apex logo more prominent
-- Add "Powered by Apex Financial" footer in premium styling
-- Ensure numbers are screenshot-worthy
-
-### 8b. Design Mockup
-
-```text
-┌────────────────────────────────────────────┐
-│            [Apex Logo]                     │
-│         Apex Daily Numbers                 │
-│       Daily production entry               │
-│                                            │
-│  ┌──────────────────────────────────────┐  │
-│  │  [Search Box with rounded corners]   │  │
-│  │  Enter your name or email            │  │
-│  └──────────────────────────────────────┘  │
-│                                            │
-│            ·  ·  ·                         │
-│     Powered by APEX FINANCIAL              │
-└────────────────────────────────────────────┘
-```
+**Fix:**
+- For admins: Fetch ALL agents and group by manager
+- Display as collapsible tree: Admin at top, then managers with their teams as collapsible sub-sections
+- Each manager section shows their direct reports (can expand/collapse)
+- Add production numbers (week/month ALP, deals) like Command Center
 
 ---
 
-## 9. Agent Acceptance Flow
+## 8. Light Mode Theme: Hybrid (Cool Gray Background + Warm Cards)
 
-**Current State:** When an invite is accepted, agents enter their info
+**Current State:** Light mode uses warm beige/cream (HSL 40) throughout. User finds it too bright.
 
-**Enhancement:** Ensure acceptance flow collects:
-1. Email (required)
-2. Phone number (required)
-3. Password (required)
-4. Instagram handle (optional)
+**Reference:** The screenshot shows a cooler gray-blue background with slightly warmer card surfaces.
 
-**File:** `src/pages/AgentSignup.tsx` or the magic link landing page
+**Files to Modify:** `src/index.css`
+
+**Fix:**
+- Change `:root` and `.light` background from `40 18% 88%` to `215 25% 90%` (cool gray-blue)
+- Keep cards at warm cream `40 16% 97%` for contrast
+- Reduce muted brightness
+- Lower overall saturation to feel more professional
 
 ---
 
-## Files to Modify
+## 9. Hurry-Up Emails: Already Implemented Correctly
 
-| File | Changes |
-|------|---------|
-| `src/components/layout/GlobalSidebar.tsx` | Tighten role-based navigation permissions |
-| `src/components/dashboard/TeamHierarchyManager.tsx` | Add production data, redesign to premium card layout |
-| `src/components/dashboard/InviteTeamModal.tsx` | Add license status, course toggle, saved links |
-| `src/pages/Dashboard.tsx` | Replace ManagerLeaderboard with InvitationTracker |
-| `src/pages/LogNumbers.tsx` | Premium fintech design updates |
-| `supabase/functions/send-plaque-recognition/index.ts` | Cleaner plaque design, Instagram integration |
+**Current State:** The `send-course-hurry-emails` edge function sends emails at 4h, 24h, and 48h intervals. This matches user preference.
+
+**Verification:** No change needed.
+
+---
+
+## 10. Admin Should Always See Their Name in Team Hierarchy
+
+**Current State:** Admin's name (Samuel James) is already prepended to the `filteredAgents` array with a "You" badge (lines 336-351).
+
+**Potential Issue:** If admin has no production, they might be sorted low. Fix: Ensure admin is ALWAYS at the top regardless of sorting.
+
+**Files to Modify:** `src/components/dashboard/TeamHierarchyManager.tsx` (line 336-351)
+
+**Fix:** Already implemented - verify it's working correctly in the filtered logic.
+
+---
+
+## Summary of Changes
+
+| File | Change |
+|------|--------|
+| `src/components/dashboard/TeamHierarchyManager.tsx` | Add bulk selection checkboxes, floating action bar with soft/hard delete, ensure admin always at top |
+| `src/components/layout/SidebarLayout.tsx` | Simplify transitions to eliminate glitch on navigation |
+| `src/pages/DashboardCommandCenter.tsx` | Increase cache times, add skeletons |
+| `src/pages/DashboardApplicants.tsx` | Remove `AnimatePresence mode="wait"` for faster transitions |
+| `src/pages/CourseProgress.tsx` | Add unenroll action, link to full course view |
+| `src/components/admin/CourseContentViewer.tsx` | Convert to full-page route instead of modal |
+| `src/components/dashboard/ManagerTeamView.tsx` | Show ALL agents in collapsible hierarchy for admin |
+| `src/index.css` | Hybrid light mode: cool gray background + warm cream cards |
 
 ## New Files to Create
 
 | File | Purpose |
 |------|---------|
-| `src/components/dashboard/InvitationTracker.tsx` | Track pending/accepted invitations |
+| None | All changes are modifications to existing files |
 
-## Database Changes
+## Expected Results
 
-| Table | Change |
-|-------|--------|
-| `contracting_links` | New table for saved contracting links per manager |
-
----
-
-## Expected Outcomes
-
-1. **Apex Financial logo navigates to dashboard** - Already working, verified
-2. **Team Hierarchy shows production** - Week/month ALP and deals displayed beautifully
-3. **Premium UI throughout** - Card-based layouts, animations, gradients, glassmorphism
-4. **Clean shareable plaques** - Professional design agents can screenshot and share
-5. **Manager recognition** - Managers tagged in all agent achievements
-6. **Strict role permissions** - Agents see only Dashboard, Log Numbers, Portal, Course
-7. **Enhanced invite modal** - License status, course toggle, saved contracting links
-8. **Live invitation tracking** - See who accepted invites and their profile status
-9. **Premium Log Numbers screen** - High-tech fintech aesthetic, screenshot-worthy
+1. **Bulk selection in Team Hierarchy** - Checkboxes appear, can select multiple agents and soft remove or permanently delete
+2. **No sidebar glitch** - Clicking navigation items transitions smoothly without expand/contract effect
+3. **Faster Command Center** - Loads instantly with skeletons, data cached longer
+4. **No Pipeline glitch** - Smooth transition when opening Pipeline page
+5. **Full-screen Course Viewer** - Navigate to dedicated page showing all modules and questions
+6. **Unenroll from Course** - Remove agents from course without deleting them
+7. **Collapsible Team Hierarchy on Dashboard** - See all agents organized by manager
+8. **Softer Light Mode** - Cool gray background with warm cards for premium, easy-on-eyes aesthetic
 

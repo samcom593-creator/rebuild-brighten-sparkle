@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { 
@@ -57,7 +57,8 @@ import { AbandonedLeadsPanel } from "@/components/dashboard/AbandonedLeadsPanel"
 import { AllLeadsPanel } from "@/components/dashboard/AllLeadsPanel";
 import { DateRangePicker, type DateRange } from "@/components/ui/date-range-picker";
 import { cn } from "@/lib/utils";
-import { format, startOfWeek, startOfMonth } from "date-fns";
+import { format } from "date-fns";
+import { getTodayPST, getWeekStartPST, getMonthStartPST } from "@/lib/dateUtils";
 
 type TimePeriod = "day" | "week" | "month" | "custom";
 type FilterType = "all" | "producers" | "weak" | "zero" | "inactive";
@@ -98,23 +99,23 @@ export default function DashboardCommandCenter() {
   // Stat card popup state
   const [statPopup, setStatPopup] = useState<{ type: StatType; open: boolean }>({ type: "totalAlp", open: false });
 
-  // Get date range based on time period
+  // Get date range based on time period - using PST utilities for consistency
   const dateRange = useMemo(() => {
-    const now = new Date();
+    const today = getTodayPST();
     switch (timePeriod) {
       case "day":
-        return { start: format(now, "yyyy-MM-dd"), end: format(now, "yyyy-MM-dd") };
+        return { start: today, end: today };
       case "week":
-        return { start: format(startOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd"), end: format(now, "yyyy-MM-dd") };
+        return { start: getWeekStartPST(), end: today };
       case "month":
-        return { start: format(startOfMonth(now), "yyyy-MM-dd"), end: format(now, "yyyy-MM-dd") };
+        return { start: getMonthStartPST(), end: today };
       case "custom":
         if (customDateRange.from && customDateRange.to) {
           return { start: format(customDateRange.from, "yyyy-MM-dd"), end: format(customDateRange.to, "yyyy-MM-dd") };
         }
-        return { start: format(startOfMonth(now), "yyyy-MM-dd"), end: format(now, "yyyy-MM-dd") };
+        return { start: getMonthStartPST(), end: today };
       default:
-        return { start: format(startOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd"), end: format(now, "yyyy-MM-dd") };
+        return { start: getWeekStartPST(), end: today };
     }
   }, [timePeriod, customDateRange]);
 
@@ -206,6 +207,22 @@ export default function DashboardCommandCenter() {
       return agentStats;
     },
   });
+
+  // Real-time subscription for live updates
+  useEffect(() => {
+    const channel = supabase
+      .channel("command-center-live")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "daily_production" },
+        () => refetch()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [refetch]);
 
   // Apply filters
   const filteredAgents = useMemo(() => {

@@ -54,9 +54,11 @@
     --apex-warning: 38 85% 50%;
     --apex-error: 0 70% 52%;
 
-    /* Glass morphism - warm soft cream */
-    --glass-bg: 45 22% 98% / 0.92;
-    --glass-border: 220 10% 75% / 0.35;
+    /* Glass morphism - warm soft cream (full hsl values for light mode) */
+    --glass-bg: 45 22% 98%;
+    --glass-bg-opacity: 0.92;
+    --glass-border: 220 10% 75%;
+    --glass-border-opacity: 0.35;
     --glass-shadow: 0 4px 24px hsl(220 15% 35% / 0.04);
 
     /* Gradients - softer, warmer */
@@ -116,9 +118,11 @@
     --sidebar-border: 220 10% 78%;
     --sidebar-ring: 168 70% 34%;
 
-    /* Glass morphism - warm soft cream */
-    --glass-bg: 45 22% 98% / 0.92;
-    --glass-border: 220 10% 75% / 0.35;
+    /* Glass morphism - warm soft cream (full hsl values for light mode) */
+    --glass-bg: 45 22% 98%;
+    --glass-bg-opacity: 0.92;
+    --glass-border: 220 10% 75%;
+    --glass-border-opacity: 0.35;
     --glass-shadow: 0 4px 24px hsl(220 15% 35% / 0.04);
   }
 
@@ -200,8 +204,8 @@
 
   /* Light mode glass override - ultra soft warm cream tones */
   .light .glass {
-    background: hsl(var(--glass-bg));
-    border: 1px solid hsl(var(--glass-border));
+    background: hsl(var(--glass-bg) / var(--glass-bg-opacity));
+    border: 1px solid hsl(var(--glass-border) / var(--glass-border-opacity));
     box-shadow: 0 2px 12px hsl(40 20% 35% / 0.03), 0 1px 2px hsl(40 20% 35% / 0.02);
   }
 

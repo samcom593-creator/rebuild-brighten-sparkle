@@ -190,8 +190,28 @@ export function useOnboardingCourse(agentId: string | null) {
     }
 
     await fetchProgress();
+
+    // Check if this completes the entire course (all modules passed)
+    if (passed) {
+      const allModulesPassed = modules.every(m => 
+        m.id === moduleId ? true : progress[m.id]?.passed === true
+      );
+      
+      if (allModulesPassed) {
+        // Trigger course completion notification and CRM stage update
+        try {
+          await supabase.functions.invoke("notify-course-complete", {
+            body: { agentId }
+          });
+          toast({ title: "🎓 Course Complete!", description: "Congratulations! Moving to field training." });
+        } catch (error) {
+          console.error("Failed to trigger course completion:", error);
+        }
+      }
+    }
+
     return true;
-  }, [agentId, progress, toast, fetchProgress]);
+  }, [agentId, progress, modules, toast, fetchProgress]);
 
   const isModuleUnlocked = useCallback((moduleIndex: number) => {
     if (moduleIndex === 0) return true;

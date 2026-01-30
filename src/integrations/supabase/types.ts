@@ -903,6 +903,38 @@ export type Database = {
           },
         ]
       }
+      contracting_links: {
+        Row: {
+          created_at: string
+          id: string
+          manager_id: string
+          name: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          manager_id: string
+          name: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          manager_id?: string
+          name?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contracting_links_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_production: {
         Row: {
           agent_id: string

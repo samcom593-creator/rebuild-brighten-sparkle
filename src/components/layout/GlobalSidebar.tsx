@@ -52,88 +52,91 @@ export function GlobalSidebar({
   const { user, isAdmin, isManager, isAgent } = useAuth();
   const [showInviteModal, setShowInviteModal] = useState(false);
 
-  // Role-based navigation items with Pipeline instead of Payments
+  // Role-based navigation items - STRICT PERMISSIONS
+  // Admin: Full access (Dashboard, Log Numbers, Command Center, Course Progress, Pipeline, Agent Portal, CRM, Aged Leads, Accounts, Settings)
+  // Manager: Dashboard, Log Numbers, Course Progress, Pipeline, Agent Portal, CRM, Settings
+  // Agent: Dashboard, Log Numbers, My Portal, My Course, Settings ONLY
   const navItems = useMemo(() => {
     const items = [];
 
-    // All authenticated users get dashboard access
+    // ALL users: Dashboard & Log Numbers
     items.push({ 
       icon: LayoutDashboard, 
       label: "Dashboard", 
       href: "/dashboard",
-      roles: ["admin", "manager", "agent"]
     });
-
-    // Log Numbers - prominently placed for all agents
     items.push({
       icon: Edit3,
       label: "Log Numbers",
       href: "/numbers",
-      roles: ["admin", "manager", "agent"]
     });
 
-    // Admin-only: Command Center
+    // ADMIN ONLY: Command Center, Aged Leads, Accounts
     if (isAdmin) {
       items.push({ 
         icon: Crown, 
         label: "Command Center", 
         href: "/dashboard/command",
-        roles: ["admin"]
       });
     }
 
-    // Admin and Managers: Course Progress
+    // ADMIN + MANAGER: Course Progress, Pipeline, Agent Portal, CRM
     if (isAdmin || isManager) {
       items.push({
         icon: BarChart3,
         label: "Course Progress",
         href: "/course-progress",
-        roles: ["admin", "manager"]
+      });
+      items.push({ 
+        icon: Users, 
+        label: "Pipeline", 
+        href: "/dashboard/applicants",
+      });
+      items.push({ 
+        icon: BarChart3, 
+        label: "Agent Portal", 
+        href: "/agent-portal",
+      });
+      items.push({ 
+        icon: Briefcase, 
+        label: "CRM", 
+        href: "/dashboard/crm",
       });
     }
 
-    // All users see applicants (Pipeline)
-    items.push({ 
-      icon: Users, 
-      label: "Pipeline", 
-      href: "/dashboard/applicants",
-      roles: ["admin", "manager", "agent"]
-    });
-
-    // Admin/Manager: CRM, Aged Leads, Agent Portal
-    if (isAdmin || isManager) {
-      items.push(
-        { icon: BarChart3, label: "Agent Portal", href: "/agent-portal", roles: ["admin", "manager"] },
-        { icon: Briefcase, label: "CRM", href: "/dashboard/crm", roles: ["admin", "manager"] },
-        { icon: Archive, label: "Aged Leads", href: "/dashboard/aged-leads", roles: ["admin", "manager"] }
-      );
+    // ADMIN ONLY: Aged Leads, Accounts
+    if (isAdmin) {
+      items.push({ 
+        icon: Archive, 
+        label: "Aged Leads", 
+        href: "/dashboard/aged-leads",
+      });
+      items.push({ 
+        icon: UserCog, 
+        label: "Accounts", 
+        href: "/dashboard/accounts",
+      });
     }
 
-    // Agent-only portal access
+    // AGENT ONLY (not admin, not manager): My Portal & My Course
     if (isAgent && !isAdmin && !isManager) {
       items.push({ 
         icon: BarChart3, 
         label: "My Portal", 
         href: "/agent-portal",
-        roles: ["agent"]
+      });
+      items.push({ 
+        icon: BarChart3, 
+        label: "My Course", 
+        href: "/onboarding-course",
       });
     }
 
-    // Removed: My Team navigation (redundant and slow)
-
-    // Admin/Manager: Accounts
-    if (isAdmin || isManager) {
-      items.push(
-        { icon: UserCog, label: "Accounts", href: "/dashboard/accounts", roles: ["admin", "manager"] }
-      );
-    }
-
-    // All users get settings
+    // ALL users: Settings
     items.push({ 
       icon: Settings, 
       label: "Settings", 
       href: "/dashboard/settings",
-      roles: ["admin", "manager", "agent"]
     });
 
     return items;

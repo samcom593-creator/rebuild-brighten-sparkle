@@ -1,4 +1,4 @@
-import { format, subDays, startOfWeek, startOfMonth } from "date-fns";
+import { format, subDays, startOfWeek, startOfMonth, endOfWeek, endOfMonth } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 
 const PST_TIMEZONE = "America/Los_Angeles";
@@ -47,4 +47,20 @@ export function getMonthStartPST(): string {
  */
 export function formatDateString(date: Date): string {
   return format(date, "yyyy-MM-dd");
+}
+
+/**
+ * Get the end of current week in PST (Saturday end) as YYYY-MM-DD string
+ */
+export function getWeekEndPST(): string {
+  const pstNow = getNowPST();
+  return format(endOfWeek(pstNow, { weekStartsOn: 0 }), "yyyy-MM-dd");
+}
+
+/**
+ * Get the end of current month in PST as YYYY-MM-DD string
+ */
+export function getMonthEndPST(): string {
+  const pstNow = getNowPST();
+  return format(endOfMonth(pstNow), "yyyy-MM-dd");
 }

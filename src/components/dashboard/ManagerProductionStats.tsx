@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Users, DollarSign, TrendingUp, Percent } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { supabase } from "@/integrations/supabase/client";
-import { getTodayPST, getDateDaysAgoPST } from "@/lib/dateUtils";
+import { getTodayPST, getWeekStartPST, getMonthStartPST } from "@/lib/dateUtils";
 
 interface ManagerProductionStatsProps {
   managerId: string;
@@ -31,11 +31,7 @@ export function ManagerProductionStats({ managerId }: ManagerProductionStatsProp
   });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchTeamStats();
-  }, [managerId]);
-
-  const fetchTeamStats = async () => {
+  const fetchTeamStats = useCallback(async () => {
     try {
       // Get team members
       const { data: teamAgents } = await supabase
@@ -60,8 +56,8 @@ export function ManagerProductionStats({ managerId }: ManagerProductionStatsProp
 
       const agentIds = teamAgents.map(a => a.id);
       const today = getTodayPST();
-      const weekStart = getDateDaysAgoPST(7);
-      const monthStart = getDateDaysAgoPST(30);
+      const weekStart = getWeekStartPST();
+      const monthStart = getMonthStartPST();
 
       // Fetch production data
       const { data: production } = await supabase
@@ -121,7 +117,26 @@ export function ManagerProductionStats({ managerId }: ManagerProductionStatsProp
     } finally {
       setLoading(false);
     }
-  };
+  }, [managerId]);
+
+  // Initial fetch and real-time subscription
+  useEffect(() => {
+    fetchTeamStats();
+
+    // Subscribe to real-time production updates
+    const channel = supabase
+      .channel("manager-production-live")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "daily_production" },
+        () => fetchTeamStats()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchTeamStats]);
 
   if (loading) {
     return (

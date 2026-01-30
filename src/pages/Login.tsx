@@ -85,8 +85,21 @@ export default function Login() {
 
     setPhoneLoading(true);
     try {
+      // Normalize phone to E.164 format
+      const digitsOnly = phoneNumber.replace(/\D/g, "");
+      let normalizedPhone = digitsOnly;
+      
+      // If 10 digits, assume US and add +1
+      if (digitsOnly.length === 10) {
+        normalizedPhone = `+1${digitsOnly}`;
+      } else if (digitsOnly.length === 11 && digitsOnly.startsWith("1")) {
+        normalizedPhone = `+${digitsOnly}`;
+      } else if (!phoneNumber.startsWith("+")) {
+        normalizedPhone = `+${digitsOnly}`;
+      }
+
       const { error } = await supabase.auth.signInWithOtp({
-        phone: phoneNumber.replace(/\D/g, ""),
+        phone: normalizedPhone,
       });
 
       if (error) throw error;
@@ -109,8 +122,20 @@ export default function Login() {
 
     setPhoneLoading(true);
     try {
+      // Normalize phone to match what was used for OTP
+      const digitsOnly = phoneNumber.replace(/\D/g, "");
+      let normalizedPhone = digitsOnly;
+      
+      if (digitsOnly.length === 10) {
+        normalizedPhone = `+1${digitsOnly}`;
+      } else if (digitsOnly.length === 11 && digitsOnly.startsWith("1")) {
+        normalizedPhone = `+${digitsOnly}`;
+      } else if (!phoneNumber.startsWith("+")) {
+        normalizedPhone = `+${digitsOnly}`;
+      }
+
       const { error } = await supabase.auth.verifyOtp({
-        phone: phoneNumber.replace(/\D/g, ""),
+        phone: normalizedPhone,
         token: otpCode,
         type: "sms",
       });

@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Percent, Trophy, Medal, Award, Radio } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,8 +6,10 @@ import { ConfettiCelebration } from "./ConfettiCelebration";
 import { RankChangeIndicator } from "./RankChangeIndicator";
 import { useTop3Celebration } from "@/hooks/useTop3Celebration";
 import { useRankChange } from "@/hooks/useRankChange";
+import { useDebouncedRefetch } from "@/hooks/useDebouncedRefetch";
+import { getClosingRateColor } from "@/lib/closingRateColors";
 import { cn } from "@/lib/utils";
-import { getTodayPST, getDateDaysAgoPST, getWeekStartPST, getMonthStartPST } from "@/lib/dateUtils";
+import { getTodayPST, getWeekStartPST, getMonthStartPST } from "@/lib/dateUtils";
 
 interface ClosingRateLeaderboardProps {
   currentAgentId?: string;
@@ -41,32 +42,6 @@ export function ClosingRateLeaderboard({ currentAgentId, period = "week" }: Clos
   const { getRankChange } = useRankChange("closing-rate");
 
   const isInitialMount = useRef(true);
-
-  useEffect(() => {
-    // Only reset tracking on initial mount
-    if (isInitialMount.current) {
-      resetTracking();
-      isInitialMount.current = false;
-    }
-    fetchLeaderboard(true);
-
-    // Subscribe to realtime updates
-    const channel = supabase
-      .channel("closing-rate-leaderboard")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "daily_production" },
-        () => {
-          setLastUpdated(new Date());
-          fetchLeaderboard(false);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [period, currentAgentId]);
 
   const fetchLeaderboard = async (isInitialLoad = true) => {
     try {
@@ -170,6 +145,35 @@ export function ClosingRateLeaderboard({ currentAgentId, period = "week" }: Clos
     }
   };
 
+  // Debounced refetch to prevent storms
+  const debouncedRefetch = useDebouncedRefetch(() => {
+    setLastUpdated(new Date());
+    fetchLeaderboard(false);
+  }, 1000);
+
+  useEffect(() => {
+    // Only reset tracking on initial mount
+    if (isInitialMount.current) {
+      resetTracking();
+      isInitialMount.current = false;
+    }
+    fetchLeaderboard(true);
+
+    // Subscribe to realtime updates with debounced refetch
+    const channel = supabase
+      .channel("closing-rate-leaderboard")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "daily_production" },
+        () => debouncedRefetch()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [period, currentAgentId]);
+
   return (
     <>
       <ConfettiCelebration 
@@ -189,24 +193,22 @@ export function ClosingRateLeaderboard({ currentAgentId, period = "week" }: Clos
       </div>
 
       <div className="space-y-2">
-        <AnimatePresence mode="popLayout">
-          {loading ? (
-            Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="animate-pulse h-10 bg-muted/30 rounded" />
-            ))
-          ) : entries.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-4">
-              Min. 3 presentations required
-            </p>
-          ) : (
-            entries.map((entry, index) => (
-              <motion.div
+        {loading ? (
+          Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="animate-pulse h-10 bg-muted/30 rounded" />
+          ))
+        ) : entries.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-4">
+            Min. 3 presentations required
+          </p>
+        ) : (
+          entries.map((entry, index) => {
+            const rateColors = getClosingRateColor(entry.closingRate);
+            return (
+              <div
                 key={entry.agentId}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 }}
                 className={cn(
-                  "flex items-center justify-between p-2 rounded-lg text-sm",
+                  "flex items-center justify-between p-2 rounded-lg text-sm transition-colors duration-100",
                   entry.isCurrentUser
                     ? "bg-primary/10 border border-primary/30"
                     : "hover:bg-muted/30"
@@ -231,18 +233,14 @@ export function ClosingRateLeaderboard({ currentAgentId, period = "week" }: Clos
                   <span className="text-xs text-muted-foreground">
                     {entry.deals}/{entry.presentations}
                   </span>
-                  <span className={cn(
-                    "font-bold",
-                    entry.closingRate >= 40 && "text-emerald-500",
-                    entry.closingRate >= 50 && "text-amber-400"
-                  )}>
+                  <span className={cn("font-bold", rateColors.textClass)}>
                     {entry.closingRate.toFixed(0)}%
                   </span>
                 </div>
-              </motion.div>
-            ))
-          )}
-        </AnimatePresence>
+              </div>
+            );
+          })
+        )}
       </div>
       </GlassCard>
     </>

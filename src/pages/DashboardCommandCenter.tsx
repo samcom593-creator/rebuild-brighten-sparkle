@@ -1,6 +1,5 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "framer-motion";
 import { 
   Users, 
   DollarSign, 
@@ -15,7 +14,10 @@ import {
   UserX,
   ChevronDown,
   Upload,
-  Download
+  Download,
+  Mail,
+  Copy,
+  Link as LinkIcon
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -56,9 +58,12 @@ import { TerminatedAgentLeadsPanel } from "@/components/dashboard/TerminatedAgen
 import { AbandonedLeadsPanel } from "@/components/dashboard/AbandonedLeadsPanel";
 import { AllLeadsPanel } from "@/components/dashboard/AllLeadsPanel";
 import { DateRangePicker, type DateRange } from "@/components/ui/date-range-picker";
+import { useDebouncedRefetch } from "@/hooks/useDebouncedRefetch";
+import { getClosingRateColor } from "@/lib/closingRateColors";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { getTodayPST, getWeekStartPST, getMonthStartPST } from "@/lib/dateUtils";
+import { toast } from "sonner";
 
 type TimePeriod = "day" | "week" | "month" | "custom";
 type FilterType = "all" | "producers" | "weak" | "zero" | "inactive";
@@ -208,6 +213,9 @@ export default function DashboardCommandCenter() {
     },
   });
 
+  // Debounced refetch to prevent realtime storms
+  const debouncedRefetch = useDebouncedRefetch(refetch, 1000);
+
   // Real-time subscription for live updates
   useEffect(() => {
     const channel = supabase
@@ -215,14 +223,56 @@ export default function DashboardCommandCenter() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "daily_production" },
-        () => refetch()
+        () => debouncedRefetch()
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [refetch]);
+  }, [debouncedRefetch]);
+
+  // Login link handlers
+  const handleEmailLoginLink = useCallback(async (agent: AgentWithStats) => {
+    if (!agent.email) {
+      toast.error("This agent has no email address");
+      return;
+    }
+    try {
+      const { error } = await supabase.functions.invoke("send-agent-portal-login", {
+        body: { agentId: agent.id },
+      });
+      if (error) throw error;
+      toast.success(`Login link sent to ${agent.email}`);
+    } catch (error: any) {
+      console.error("Error sending login link:", error);
+      toast.error("Failed to send login link");
+    }
+  }, []);
+
+  const handleCopyLoginLink = useCallback(async (agent: AgentWithStats) => {
+    if (!agent.email) {
+      toast.error("This agent has no email address");
+      return;
+    }
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-magic-link", {
+        body: { 
+          agentId: agent.id, 
+          email: agent.email,
+          destination: "portal" 
+        },
+      });
+      if (error) throw error;
+      if (!data?.magicLink) throw new Error("No link generated");
+      
+      await navigator.clipboard.writeText(data.magicLink);
+      toast.success("Login link copied to clipboard!");
+    } catch (error: any) {
+      console.error("Error generating login link:", error);
+      toast.error("Failed to generate login link");
+    }
+  }, []);
 
   // Apply filters
   const filteredAgents = useMemo(() => {
@@ -536,10 +586,7 @@ export default function DashboardCommandCenter() {
                           </div>
                           <div className={cn(
                             "text-sm font-medium",
-                            agent.closingRate >= 25 && "text-green-500",
-                            agent.closingRate >= 15 && agent.closingRate < 25 && "text-primary",
-                            agent.closingRate < 15 && agent.closingRate > 0 && "text-amber-500",
-                            agent.closingRate === 0 && "text-muted-foreground"
+                            getClosingRateColor(agent.closingRate).textClass
                           )}>
                             {agent.closingRate}%
                           </div>
@@ -561,6 +608,21 @@ export default function DashboardCommandCenter() {
                               }}>
                                 <Pencil className="h-4 w-4 mr-2" />
                                 Edit Profile
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={(e) => { 
+                                e.stopPropagation(); 
+                                handleEmailLoginLink(agent); 
+                              }}>
+                                <Mail className="h-4 w-4 mr-2" />
+                                Email Login Link
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={(e) => { 
+                                e.stopPropagation(); 
+                                handleCopyLoginLink(agent); 
+                              }}>
+                                <Copy className="h-4 w-4 mr-2" />
+                                Copy Login Link
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem 

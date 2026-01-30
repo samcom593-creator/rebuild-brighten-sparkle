@@ -80,8 +80,8 @@ export function AgentRankBadge({
     fetchRanks();
   }, [fetchRanks]);
 
-  // Use shared realtime hook instead of individual channel
-  useProductionRealtime(fetchRanks, 1500);
+  // Use shared realtime hook for instant updates
+  useProductionRealtime(fetchRanks, 300);
 
   if (loading || currentRank === null) {
     return null;

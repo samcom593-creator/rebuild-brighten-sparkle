@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Trophy, Medal, Award, TrendingUp, Users, Target, Sparkles } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -7,6 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { getTodayPST } from "@/lib/dateUtils";
 import { AgentQuickEditDialog } from "./AgentQuickEditDialog";
+import { getClosingRateColor } from "@/lib/closingRateColors";
+import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 
 interface LeaderboardEntry {
   rank: number;
@@ -56,25 +58,7 @@ export function LiveLeaderboard({ currentAgentId, showAISummary = true }: LiveLe
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<{ id: string; name: string; production: number; deals: number } | null>(null);
 
-  useEffect(() => {
-    fetchLeaderboard();
-    
-    // Subscribe to realtime updates
-    const channel = supabase
-      .channel("production-changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "daily_production" },
-        () => fetchLeaderboard()
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [currentAgentId]);
-
-  const fetchLeaderboard = async () => {
+  const fetchLeaderboard = useCallback(async () => {
     try {
       const today = getTodayPST();
       
@@ -164,7 +148,14 @@ export function LiveLeaderboard({ currentAgentId, showAISummary = true }: LiveLe
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentAgentId]);
+
+  useEffect(() => {
+    fetchLeaderboard();
+  }, [fetchLeaderboard]);
+
+  // Use shared realtime hook for instant updates
+  useProductionRealtime(fetchLeaderboard, 300);
 
   if (loading) {
     return (
@@ -304,7 +295,7 @@ export function LiveLeaderboard({ currentAgentId, showAISummary = true }: LiveLe
                     )}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {entry.dealsToday} deals • {entry.closingRate.toFixed(0)}% close rate
+                    {entry.dealsToday} deals • <span className={cn(getClosingRateColor(entry.closingRate).textClass)}>{entry.closingRate.toFixed(0)}%</span> close rate
                   </p>
                 </div>
                 <div className="text-right">

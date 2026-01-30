@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { 
   CalendarDays, 
@@ -12,6 +12,8 @@ import {
 import { GlassCard } from "@/components/ui/glass-card";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { useProductionRealtime } from "@/hooks/useProductionRealtime";
+import { getClosingRateColor } from "@/lib/closingRateColors";
 
 interface YearPerformanceCardProps {
   agentId: string;
@@ -32,7 +34,7 @@ export function YearPerformanceCard({ agentId, isAdmin = false, isManager = fals
   const [loading, setLoading] = useState(true);
   const currentYear = new Date().getFullYear();
 
-  const fetchYearStats = async () => {
+  const fetchYearStats = useCallback(async () => {
     try {
       setLoading(true);
       const yearStart = `${currentYear}-01-01`;
@@ -93,28 +95,15 @@ export function YearPerformanceCard({ agentId, isAdmin = false, isManager = fals
     } finally {
       setLoading(false);
     }
-  };
+  }, [agentId, isAdmin, isManager, currentYear]);
 
   useEffect(() => {
     if (!agentId) return;
     fetchYearStats();
+  }, [agentId, fetchYearStats]);
 
-    // Real-time subscription for live updates
-    const channel = supabase
-      .channel("year-performance-live")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "daily_production" },
-        () => {
-          fetchYearStats();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [agentId, isAdmin, isManager]);
+  // Use shared realtime hook for instant updates
+  useProductionRealtime(fetchYearStats, 300);
 
   if (loading) {
     return (
@@ -131,6 +120,8 @@ export function YearPerformanceCard({ agentId, isAdmin = false, isManager = fals
     );
   }
 
+  const closeRateColors = getClosingRateColor(stats?.avgCloseRate || 0);
+  
   const statCards = [
     {
       label: "YTD ALP",
@@ -150,8 +141,12 @@ export function YearPerformanceCard({ agentId, isAdmin = false, isManager = fals
       label: "Avg Close %",
       value: `${stats?.avgCloseRate.toFixed(1) || 0}%`,
       icon: Target,
-      color: "from-violet-500/20 to-violet-500/5 border-violet-500/20",
-      iconColor: "text-violet-400",
+      color: closeRateColors.tone === "green" 
+        ? "from-green-500/20 to-green-500/5 border-green-500/20" 
+        : closeRateColors.tone === "yellow" 
+          ? "from-yellow-500/20 to-yellow-500/5 border-yellow-500/20"
+          : "from-red-500/20 to-red-500/5 border-red-500/20",
+      iconColor: closeRateColors.textClass,
     },
   ];
 

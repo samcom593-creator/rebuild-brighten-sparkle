@@ -234,3 +234,9 @@ verify_jwt = false
 
 [functions.reset-monthly-goals]
 verify_jwt = false
+
+[functions.notify-agent-live-field]
+verify_jwt = false
+
+[functions.send-monthly-motivation]
+verify_jwt = false

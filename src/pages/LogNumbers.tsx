@@ -568,8 +568,15 @@ export default function LogNumbers() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
             >
-              <GlassCard className="p-6">
-                <div className="flex items-center gap-3 mb-4 pb-4 border-b border-border">
+              <GlassCard className="p-6 relative overflow-hidden">
+                {/* Faint Apex Financial watermark */}
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none select-none -rotate-12 opacity-[0.04]">
+                  <span className="text-5xl font-black tracking-tight whitespace-nowrap text-foreground">
+                    APEX FINANCIAL
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-3 mb-4 pb-4 border-b border-border relative z-10">
                   <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
                     <User className="h-5 w-5 text-primary" />
                   </div>

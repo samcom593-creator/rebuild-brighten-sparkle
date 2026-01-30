@@ -11,6 +11,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const discordLink = "https://discord.gg/GygkGEhb";
+const portalLink = "https://apex-financial.org/agent-portal";
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -27,7 +30,9 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Missing agentId");
     }
 
-    // Get agent's manager
+    console.log(`Processing course completion for agent: ${agentId}`);
+
+    // Get agent's manager and profile
     const { data: agent } = await supabase
       .from("agents")
       .select("invited_by_manager_id, profile_id")
@@ -75,18 +80,14 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // Build recipient list (only admin + assigned manager)
-    const recipients: string[] = [adminEmail];
+    // Build recipient list for admin/manager notification
+    const adminRecipients: string[] = [adminEmail];
     if (managerEmail && managerEmail !== adminEmail) {
-      recipients.push(managerEmail);
+      adminRecipients.push(managerEmail);
     }
 
-    // Send notification email
-    const { error: emailError } = await resend.emails.send({
-      from: "Apex Financial <team@updates.apexlifeadvisors.com>",
-      to: recipients,
-      subject: `🎓 ${finalAgentName} Completed Onboarding Course!`,
-      html: `
+    // Email 1: Notification to Admin + Manager
+    const adminEmailHtml = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -139,12 +140,112 @@ const handler = async (req: Request): Promise<Response> => {
   </div>
 </body>
 </html>
-      `,
+    `;
+
+    // Email 2: Congratulations to the Agent
+    const agentCongratulationsHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#0a0a0a;color:#ffffff;">
+  <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
+    <div style="text-align:center;margin-bottom:32px;">
+      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">APEX FINANCIAL</h1>
+    </div>
+    
+    <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:16px;padding:32px;border:1px solid rgba(20,184,166,0.2);">
+      <div style="text-align:center;margin-bottom:24px;">
+        <span style="font-size:64px;">🎉</span>
+      </div>
+      
+      <h2 style="font-size:28px;margin:0 0 16px 0;color:#14b8a6;text-align:center;">Congratulations, ${finalAgentName}!</h2>
+      
+      <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 24px 0;text-align:center;">
+        You've successfully completed all onboarding coursework! You're ready for field training.
+      </p>
+      
+      <!-- Next Steps -->
+      <div style="background:rgba(20,184,166,0.1);border-radius:8px;padding:20px;margin:24px 0;">
+        <h3 style="font-size:16px;color:#14b8a6;margin:0 0 12px 0;">🎯 Next Steps - Field Training</h3>
+        <p style="font-size:14px;color:#d1d5db;margin:0;">
+          Your manager will be reaching out to schedule your first field training session. Get ready to put everything you learned into action!
+        </p>
+      </div>
+      
+      <!-- Discord -->
+      <div style="background:rgba(20,184,166,0.1);border-radius:8px;padding:20px;margin:24px 0;">
+        <h3 style="font-size:16px;color:#14b8a6;margin:0 0 12px 0;">💬 Join Our Discord</h3>
+        <p style="font-size:14px;color:#d1d5db;margin:0 0 12px 0;">
+          This is where all team communication happens:
+        </p>
+        <a href="${discordLink}" style="display:inline-block;background:#14b8a6;color:#ffffff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">Join Discord →</a>
+      </div>
+      
+      <!-- Daily Meeting -->
+      <div style="background:rgba(20,184,166,0.1);border-radius:8px;padding:20px;margin:24px 0;">
+        <h3 style="font-size:16px;color:#14b8a6;margin:0 0 12px 0;">📅 Daily Team Meeting</h3>
+        <p style="font-size:14px;color:#d1d5db;margin:0;">
+          <strong style="color:#ffffff;">Time:</strong> 10:00 AM CST on Discord<br><br>
+          <strong style="color:#ffffff;">Expectations:</strong><br>
+          • Camera ON (required)<br>
+          • Remember: <strong style="color:#f59e0b;">On time is LATE</strong>
+        </p>
+      </div>
+      
+      <!-- The Standard -->
+      <div style="background:linear-gradient(135deg,rgba(20,184,166,0.2),rgba(14,165,233,0.2));border-radius:8px;padding:20px;margin:24px 0;border:1px solid rgba(20,184,166,0.3);">
+        <h3 style="font-size:16px;color:#14b8a6;margin:0 0 12px 0;">🏆 The Standard Here</h3>
+        <p style="font-size:14px;color:#d1d5db;margin:0;">
+          Excellence is the expectation. Our minimum standard is <strong style="color:#ffffff;font-size:18px;">$20,000/month</strong>.<br><br>
+          You've got what it takes - now let's prove it in the field.
+        </p>
+      </div>
+      
+      <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;text-align:center;">
+        Let's build something great together!<br>
+        <strong style="color:#ffffff;">— The Apex Team</strong>
+      </p>
+    </div>
+    
+    <p style="font-size:12px;color:#6b7280;text-align:center;margin-top:32px;">
+      Powered by Apex Financial
+    </p>
+  </div>
+</body>
+</html>
+    `;
+
+    // Send admin/manager notification
+    const { error: adminEmailError } = await resend.emails.send({
+      from: "APEX Financial <noreply@apex-financial.org>",
+      to: adminRecipients,
+      subject: `🎓 ${finalAgentName} Completed Onboarding Course!`,
+      html: adminEmailHtml,
     });
 
-    if (emailError) {
-      console.error("Error sending course complete email:", emailError);
-      throw new Error(`Failed to send email: ${emailError.message}`);
+    if (adminEmailError) {
+      console.error("Error sending admin notification:", adminEmailError);
+    } else {
+      console.log(`Admin notification sent to: ${adminRecipients.join(", ")}`);
+    }
+
+    // Send congratulations to the agent
+    if (finalAgentEmail) {
+      const { error: agentEmailError } = await resend.emails.send({
+        from: "APEX Financial <noreply@apex-financial.org>",
+        to: [finalAgentEmail],
+        subject: `🎉 Congratulations! You've Completed Your Training!`,
+        html: agentCongratulationsHtml,
+      });
+
+      if (agentEmailError) {
+        console.error("Error sending agent congratulations:", agentEmailError);
+      } else {
+        console.log(`Congratulations email sent to: ${finalAgentEmail}`);
+      }
     }
 
     // Update agent's onboarding stage to in_field_training
@@ -160,7 +261,7 @@ const handler = async (req: Request): Promise<Response> => {
       notes: "Completed online coursework, ready for field training",
     });
 
-    console.log(`Course completion notification sent for ${finalAgentName}`);
+    console.log(`Course completion processed for ${finalAgentName}`);
 
     return new Response(
       JSON.stringify({ success: true }),

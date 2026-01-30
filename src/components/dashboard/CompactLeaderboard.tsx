@@ -327,8 +327,8 @@ export function CompactLeaderboard({ currentAgentId, className }: CompactLeaderb
     setIsConnected(true);
   }, [fetchLeaderboard]);
 
-  // Use shared realtime hook instead of individual channel
-  useProductionRealtime(fetchLeaderboard, 1500);
+  // Use shared realtime hook for instant updates
+  useProductionRealtime(fetchLeaderboard, 300);
 
   const periodLabels: Record<Period, string> = {
     day: "Today",

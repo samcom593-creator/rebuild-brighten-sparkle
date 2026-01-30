@@ -11,6 +11,8 @@ import { format } from "date-fns";
 import { getTodayPST, getWeekStartPST, getMonthStartPST } from "@/lib/dateUtils";
 import { toZonedTime } from "date-fns-tz";
 import { useAuth } from "@/hooks/useAuth";
+import { useProductionRealtime } from "@/hooks/useProductionRealtime";
+import { getClosingRateColor } from "@/lib/closingRateColors";
 
 type TimePeriod = "day" | "week" | "month" | "custom";
 
@@ -189,21 +191,8 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
     fetchStats();
   }, [fetchStats]);
 
-  // Real-time subscription for live updates
-  useEffect(() => {
-    const channel = supabase
-      .channel("personal-stats-live")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "daily_production" },
-        () => fetchStats()
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [fetchStats]);
+  // Use shared realtime hook for instant updates
+  useProductionRealtime(fetchStats, 300);
 
   const myClosingRate = personalStats?.closingRate || 0;
   const myPresentations = personalStats?.presentations || 0;
@@ -225,6 +214,9 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
 
   // Dynamic title based on role
   const cardTitle = isAdmin ? "Agency Performance" : isManager ? "Team Performance" : "Your Performance";
+  
+  // Get closing rate color
+  const closeRateColor = getClosingRateColor(myClosingRate);
 
   const stats = [
     {
@@ -235,6 +227,7 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
       comparisonLabel: isTeamView ? "Per Agent Avg" : "Agency Avg",
       isAbove: isAboveAvgClosing,
       icon: Target,
+      colorClass: closeRateColor.textClass,
     },
     {
       label: isTeamView ? "Total Presentations" : "Presentations",

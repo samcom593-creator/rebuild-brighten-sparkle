@@ -51,8 +51,8 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
 
   const isInitialMount = useRef(true);
 
-  // Debounced refetch for realtime updates
-  const debouncedRefetch = useDebouncedRefetch(() => fetchBuildingLeaderboard(false), 1500);
+  // Debounced refetch for instant updates
+  const debouncedRefetch = useDebouncedRefetch(() => fetchBuildingLeaderboard(false), 300);
 
   useEffect(() => {
     fetchBuildingLeaderboard(true);

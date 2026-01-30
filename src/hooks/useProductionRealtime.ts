@@ -13,7 +13,7 @@ let subscriberCount = 0;
 
 const PRODUCTION_UPDATE_EVENT = "production-realtime-update";
 
-export function useProductionRealtime(onUpdate: () => void, delay = 1500) {
+export function useProductionRealtime(onUpdate: () => void, delay = 300) {
   const debouncedCallback = useDebouncedRefetch(onUpdate, delay);
 
   const handleUpdate = useCallback(() => {

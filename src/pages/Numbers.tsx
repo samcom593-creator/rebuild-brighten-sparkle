@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Loader2, Mail, Phone, User, LogIn, Link2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,6 @@ import { CompactLeaderboard } from "@/components/dashboard/CompactLeaderboard";
 import { AgentRankBadge } from "@/components/dashboard/AgentRankBadge";
 import { SkeletonLoader } from "@/components/ui/skeleton-loader";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
-import { cn } from "@/lib/utils";
 
 export default function Numbers() {
   const [loading, setLoading] = useState(true);
@@ -33,94 +32,110 @@ export default function Numbers() {
   const [newPhone, setNewPhone] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
-  // Check session on mount
+  // Track current user ID for deferred loading
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const mountedRef = useRef(true);
+
+  // FIXED: Separate auth state change handling from DB queries
   useEffect(() => {
-    checkSession();
-    
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    mountedRef.current = true;
+
+    // Initial session check
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mountedRef.current) return;
       if (session?.user) {
-        loadAgentData(session.user.id);
+        setCurrentUserId(session.user.id);
       } else {
-        setIsAuthenticated(false);
-        setAgentId(null);
         setLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    // Auth state change listener - ONLY set state, no DB calls
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mountedRef.current) return;
+      
+      if (session?.user) {
+        setCurrentUserId(session.user.id);
+      } else {
+        setIsAuthenticated(false);
+        setAgentId(null);
+        setCurrentUserId(null);
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      mountedRef.current = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const checkSession = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
-      await loadAgentData(session.user.id);
-    } else {
-      setLoading(false);
-    }
-  };
+  // FIXED: Defer DB calls to separate effect triggered by userId change
+  useEffect(() => {
+    if (!currentUserId) return;
 
-  const loadAgentData = async (userId: string) => {
-    try {
-      console.log("Loading agent data for userId:", userId);
-      
-      // Query agent first without strict FK join (more resilient)
-      const { data: agent, error: agentError } = await supabase
-        .from("agents")
-        .select("id, profile_id")
-        .eq("user_id", userId)
-        .maybeSingle();
+    const loadAgentData = async () => {
+      try {
+        // Query agent without strict FK join (more resilient)
+        const { data: agent, error: agentError } = await supabase
+          .from("agents")
+          .select("id, profile_id")
+          .eq("user_id", currentUserId)
+          .maybeSingle();
 
-      if (agentError) {
-        console.error("Agent query error:", agentError);
-        throw agentError;
-      }
-
-      console.log("Agent query result:", agent);
-
-      if (agent) {
-        setAgentId(agent.id);
-        
-        // Separately fetch profile name - try profile_id first, then user_id fallback
-        let agentName = "Agent";
-        
-        if (agent.profile_id) {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("full_name")
-            .eq("id", agent.profile_id)
-            .maybeSingle();
-          agentName = profile?.full_name || "Agent";
-          console.log("Found profile by profile_id:", profile);
-        } else {
-          // Fallback: get name from user's profile by user_id
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("full_name")
-            .eq("user_id", userId)
-            .maybeSingle();
-          agentName = profile?.full_name || "Agent";
-          console.log("Found profile by user_id fallback:", profile);
+        if (agentError || !mountedRef.current) {
+          if (agentError) console.error("Agent query error:", agentError);
+          setLoading(false);
+          return;
         }
-        
-        setAgentName(agentName);
-        setIsAuthenticated(true);
-        console.log("Authentication successful, agent:", agent.id);
-      } else {
-        // User exists but no agent record - don't set authenticated
-        // This shows login UI instead of broken form
-        console.log("No agent record found for userId:", userId);
-        setAgentId(null);
-        setIsAuthenticated(false);
+
+        if (agent) {
+          setAgentId(agent.id);
+          
+          // Fetch profile name
+          let name = "Agent";
+          if (agent.profile_id) {
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("full_name")
+              .eq("id", agent.profile_id)
+              .maybeSingle();
+            name = profile?.full_name || "Agent";
+          } else {
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("full_name")
+              .eq("user_id", currentUserId)
+              .maybeSingle();
+            name = profile?.full_name || "Agent";
+          }
+          
+          if (mountedRef.current) {
+            setAgentName(name);
+            setIsAuthenticated(true);
+          }
+        } else {
+          // User exists but no agent record
+          if (mountedRef.current) {
+            setAgentId(null);
+            setIsAuthenticated(false);
+          }
+        }
+      } catch (error) {
+        console.error("Error loading agent data:", error);
+        if (mountedRef.current) {
+          setAgentId(null);
+          setIsAuthenticated(false);
+        }
+      } finally {
+        if (mountedRef.current) {
+          setLoading(false);
+        }
       }
-    } catch (error) {
-      console.error("Error loading agent data:", error);
-      // On error, allow retry via login
-      setAgentId(null);
-      setIsAuthenticated(false);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    loadAgentData();
+  }, [currentUserId]);
 
   const handleSimpleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -155,22 +170,19 @@ export default function Numbers() {
       }
 
       if (data.success && data.session) {
-        // Password login returned a session directly
         await supabase.auth.setSession(data.session);
         toast.success(`Welcome back, ${data.name}!`);
         return;
       }
 
       if (data.success && data.tokenHash) {
-        // Simple login - verify OTP
-        const { data: otpResult, error: otpError } = await supabase.auth.verifyOtp({
+        const { error: otpError } = await supabase.auth.verifyOtp({
           email: data.email,
           token: data.tokenHash,
           type: "magiclink",
         });
 
         if (otpError) {
-          console.error("OTP verification failed:", otpError);
           toast.error("Login failed. Please try again.");
           setAuthenticating(false);
           return;
@@ -216,17 +228,61 @@ export default function Numbers() {
     }
   };
 
+  const handleCreateAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newName.trim() || !newEmail.trim() || !newPassword.trim()) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+    
+    setAuthenticating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-new-agent-account", {
+        body: {
+          email: newEmail.trim(),
+          password: newPassword,
+          fullName: newName.trim(),
+          phone: newPhone.trim() || undefined,
+        },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      toast.success("Account created! Logging you in...");
+      
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: newEmail.trim().toLowerCase(),
+        password: newPassword,
+      });
+
+      if (signInError) {
+        toast.error("Account created but login failed. Please try logging in.");
+        setNeedsAccount(false);
+        setIdentifier(newEmail);
+      }
+    } catch (error: any) {
+      console.error("Signup error:", error);
+      toast.error(error.message || "Failed to create account");
+    } finally {
+      setAuthenticating(false);
+    }
+  };
+
   // Loading state
   if (loading) {
     return <SkeletonLoader variant="page" />;
   }
 
-  // Authenticated view - show entry + leaderboard
+  // Authenticated view
   if (isAuthenticated && agentId) {
     return (
       <DashboardLayout>
         <div className="max-w-lg mx-auto space-y-4">
-          {/* Header */}
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -243,16 +299,13 @@ export default function Numbers() {
             </div>
           </motion.div>
 
-          {/* Stat Entry */}
           <CompactProductionEntry 
             agentId={agentId} 
             agentName={agentName}
           />
 
-          {/* Leaderboard */}
           <CompactLeaderboard currentAgentId={agentId} />
 
-          {/* Share Link Footer */}
           <div className="text-center text-xs text-muted-foreground py-4 flex items-center justify-center gap-2">
             <Link2 className="h-3 w-3" />
             <button
@@ -279,7 +332,6 @@ export default function Numbers() {
         className="w-full max-w-sm"
       >
         <div className="bg-card/50 backdrop-blur-sm rounded-xl border border-border/50 p-6">
-          {/* Logo */}
           <div className="text-center mb-6">
             <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-emerald-400 bg-clip-text text-transparent">
               APEX Daily Numbers
@@ -289,7 +341,6 @@ export default function Numbers() {
             </p>
           </div>
 
-          {/* Password required form */}
           {requiresPassword ? (
             <form onSubmit={handlePasswordSubmit} className="space-y-4">
               <div className="text-center mb-4">
@@ -331,52 +382,7 @@ export default function Numbers() {
               </button>
             </form>
           ) : needsAccount ? (
-            /* Create account form */
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              if (!newName.trim() || !newEmail.trim() || !newPassword.trim()) {
-                toast.error("Please fill in all fields");
-                return;
-              }
-              if (newPassword.length < 6) {
-                toast.error("Password must be at least 6 characters");
-                return;
-              }
-              
-              setAuthenticating(true);
-              try {
-                const { data, error } = await supabase.functions.invoke("create-new-agent-account", {
-                  body: {
-                    email: newEmail.trim(),
-                    password: newPassword,
-                    fullName: newName.trim(),
-                    phone: newPhone.trim() || undefined,
-                  },
-                });
-
-                if (error) throw error;
-                if (data.error) throw new Error(data.error);
-
-                toast.success("Account created! Logging you in...");
-                
-                // Auto-login after account creation
-                const { error: signInError } = await supabase.auth.signInWithPassword({
-                  email: newEmail.trim().toLowerCase(),
-                  password: newPassword,
-                });
-
-                if (signInError) {
-                  toast.error("Account created but login failed. Please try logging in.");
-                  setNeedsAccount(false);
-                  setIdentifier(newEmail);
-                }
-              } catch (error: any) {
-                console.error("Signup error:", error);
-                toast.error(error.message || "Failed to create account");
-              } finally {
-                setAuthenticating(false);
-              }
-            }} className="space-y-3">
+            <form onSubmit={handleCreateAccount} className="space-y-3">
               <div className="text-center mb-2">
                 <p className="text-sm text-muted-foreground">Create your agent account</p>
               </div>
@@ -465,7 +471,6 @@ export default function Numbers() {
               </button>
             </form>
           ) : (
-            /* Simple login form */
             <form onSubmit={handleSimpleLogin} className="space-y-4">
               <div>
                 <Label htmlFor="identifier" className="text-xs flex items-center gap-1">
@@ -495,11 +500,14 @@ export default function Numbers() {
                 )}
                 Continue
               </Button>
-              <p className="text-center text-[10px] text-muted-foreground">
-                No password required • Just enter & go
-              </p>
             </form>
           )}
+
+          <div className="mt-6 pt-4 border-t border-border/50 text-center">
+            <p className="text-[10px] text-muted-foreground">
+              APEX Financial Empire • Fast daily tracking
+            </p>
+          </div>
         </div>
       </motion.div>
     </div>

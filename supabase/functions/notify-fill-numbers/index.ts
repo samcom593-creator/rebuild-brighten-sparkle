@@ -17,14 +17,14 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     const { reminderType } = await req.json();
-    // reminderType: "7pm" | "9pm" | "9am"
+    // reminderType: "4pm" | "7pm" | "9pm"
 
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Get all "Live" agents
+    // Get all "Live" agents (evaluated stage = active producers)
     const { data: liveAgents, error: agentsError } = await supabaseClient
       .from("agents")
       .select("id, user_id")
@@ -40,12 +40,9 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Determine which date to check
+    // Check today's date
     const now = new Date();
-    const isNextDayReminder = reminderType === "9am";
-    const targetDate = isNextDayReminder 
-      ? new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString().split("T")[0]
-      : now.toISOString().split("T")[0];
+    const targetDate = now.toISOString().split("T")[0];
 
     // Get agents who haven't filled in their numbers
     const { data: filledAgents } = await supabaseClient
@@ -70,20 +67,27 @@ const handler = async (req: Request): Promise<Response> => {
       .select("user_id, full_name, email")
       .in("user_id", userIds);
 
-    // Build profile map for quick lookup
     const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
 
     const emailsSent: string[] = [];
+    
+    // Increasing urgency based on time
     const subjectByType: Record<string, string> = {
-      "7pm": "📊 Time to Log Your Numbers!",
-      "9pm": "⏰ Don't Forget Your Daily Numbers",
-      "9am": "🌅 Yesterday's Numbers Still Missing",
+      "4pm": "📊 Don't forget to log your numbers!",
+      "7pm": "⏰ Time is running out - log your numbers now!",
+      "9pm": "🚨 FINAL REMINDER: Log your numbers before midnight!",
     };
 
     const urgencyByType: Record<string, string> = {
-      "7pm": "End of day is approaching!",
-      "9pm": "Final reminder for today.",
-      "9am": "Please log yesterday's numbers ASAP.",
+      "4pm": "End of day is approaching - take a moment to log your production.",
+      "7pm": "Only a few hours left! Don't miss today's numbers.",
+      "9pm": "LAST CHANCE! Log your numbers now before the day ends.",
+    };
+
+    const urgencyColorByType: Record<string, string> = {
+      "4pm": "#14b8a6", // teal
+      "7pm": "#f59e0b", // amber
+      "9pm": "#ef4444", // red
     };
 
     // BATCH: Send emails in parallel batches of 10
@@ -97,6 +101,7 @@ const handler = async (req: Request): Promise<Response> => {
           if (!profile?.email) return null;
 
           const firstName = profile.full_name?.split(" ")[0] || "Agent";
+          const urgencyColor = urgencyColorByType[reminderType] || "#14b8a6";
 
           await resend.emails.send({
             from: "APEX Financial Empire <notifications@tx.apex-financial.org>",
@@ -111,13 +116,13 @@ const handler = async (req: Request): Promise<Response> => {
               </head>
               <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; background-color: #0a0f1a;">
                 <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-                  <div style="background: linear-gradient(135deg, #0d1526 0%, #1a2a4a 100%); border-radius: 16px; padding: 40px; border: 1px solid rgba(20, 184, 166, 0.2);">
+                  <div style="background: linear-gradient(135deg, #0d1526 0%, #1a2a4a 100%); border-radius: 16px; padding: 40px; border: 1px solid ${urgencyColor}40;">
                     
-                    <h1 style="color: #14b8a6; font-size: 24px; margin: 0 0 20px 0;">
+                    <h1 style="color: ${urgencyColor}; font-size: 24px; margin: 0 0 20px 0;">
                       Hey ${firstName}! 👋
                     </h1>
                     
-                    <p style="color: #f59e0b; font-size: 16px; font-weight: bold; margin: 0 0 16px 0;">
+                    <p style="color: ${urgencyColor}; font-size: 16px; font-weight: bold; margin: 0 0 16px 0;">
                       ${urgencyByType[reminderType]}
                     </p>
                     
@@ -126,7 +131,7 @@ const handler = async (req: Request): Promise<Response> => {
                     </p>
                     
                     <div style="text-align: center; margin: 32px 0;">
-                      <a href="${PORTAL_URL}" style="display: inline-block; background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); color: #0a0f1a; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-weight: bold; font-size: 16px;">
+                      <a href="${PORTAL_URL}" style="display: inline-block; background: linear-gradient(135deg, ${urgencyColor} 0%, ${urgencyColor}dd 100%); color: #0a0f1a; text-decoration: none; padding: 16px 40px; border-radius: 8px; font-weight: bold; font-size: 16px;">
                         Log My Numbers Now →
                       </a>
                     </div>
@@ -152,7 +157,6 @@ const handler = async (req: Request): Promise<Response> => {
         })
       );
 
-      // Collect successful sends
       results.forEach((result) => {
         if (result.status === "fulfilled" && result.value) {
           emailsSent.push(result.value);

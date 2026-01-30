@@ -2,19 +2,20 @@ import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { 
-  Crown, 
   Users, 
   DollarSign, 
   TrendingUp, 
   AlertTriangle,
   Shield,
   Search,
-  Filter,
   MoreVertical,
   Calendar,
   UserPlus,
   Pencil,
-  UserX
+  UserX,
+  ChevronDown,
+  Upload,
+  Download
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -31,6 +32,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { AgentProfileEditor } from "@/components/admin/AgentProfileEditor";
 import { QuickFilters } from "@/components/admin/QuickFilters";
 import { RecognitionQueue } from "@/components/admin/RecognitionQueue";
@@ -38,9 +44,19 @@ import { DuplicateMergeTool } from "@/components/admin/DuplicateMergeTool";
 import { CourseProgressPanel } from "@/components/admin/CourseProgressPanel";
 import { InviteTeamModal } from "@/components/dashboard/InviteTeamModal";
 import { DeactivateAgentDialog } from "@/components/dashboard/DeactivateAgentDialog";
+import { TeamHierarchyManager } from "@/components/dashboard/TeamHierarchyManager";
+import { AdminManagerInvites } from "@/components/dashboard/AdminManagerInvites";
+import { BulkLeadAssignment } from "@/components/dashboard/BulkLeadAssignment";
+import { ManagerInviteLinks } from "@/components/dashboard/ManagerInviteLinks";
+import { LeadReassignment } from "@/components/dashboard/LeadReassignment";
+import { LeadImporter } from "@/components/dashboard/LeadImporter";
+import { LeadExporter } from "@/components/dashboard/LeadExporter";
+import { TerminatedAgentLeadsPanel } from "@/components/dashboard/TerminatedAgentLeadsPanel";
+import { AbandonedLeadsPanel } from "@/components/dashboard/AbandonedLeadsPanel";
+import { AllLeadsPanel } from "@/components/dashboard/AllLeadsPanel";
 import { DateRangePicker, type DateRange } from "@/components/ui/date-range-picker";
 import { cn } from "@/lib/utils";
-import { format, startOfWeek, startOfMonth, startOfYear } from "date-fns";
+import { format, startOfWeek, startOfMonth } from "date-fns";
 
 type TimePeriod = "day" | "week" | "month" | "custom";
 type FilterType = "all" | "producers" | "weak" | "zero" | "inactive";
@@ -71,6 +87,12 @@ export default function DashboardCommandCenter() {
   const [showDuplicateTool, setShowDuplicateTool] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [deactivateAgent, setDeactivateAgent] = useState<AgentWithStats | null>(null);
+  
+  // Collapsible sections state
+  const [showInviteLinks, setShowInviteLinks] = useState(false);
+  const [showTerminated, setShowTerminated] = useState(false);
+  const [showAbandoned, setShowAbandoned] = useState(false);
+  const [showAllLeads, setShowAllLeads] = useState(false);
 
   // Get date range based on time period
   const dateRange = useMemo(() => {
@@ -277,7 +299,9 @@ export default function DashboardCommandCenter() {
             <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Command Center</h1>
             <p className="text-muted-foreground">Full agency control. Zero spreadsheets.</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <LeadImporter />
+            <LeadExporter />
             <Button 
               variant="default" 
               onClick={() => setShowInviteModal(true)}
@@ -557,6 +581,92 @@ export default function DashboardCommandCenter() {
             <RecognitionQueue />
             <CourseProgressPanel />
           </div>
+        </div>
+
+        {/* Team Hierarchy Manager */}
+        <TeamHierarchyManager />
+
+        {/* Manager Invites + Bulk Assignment (side by side) */}
+        <div className="grid lg:grid-cols-2 gap-4">
+          <AdminManagerInvites />
+          <BulkLeadAssignment />
+        </div>
+
+        {/* Collapsible: Invite Links + Lead Reassignment */}
+        <Collapsible open={showInviteLinks} onOpenChange={setShowInviteLinks}>
+          <CollapsibleTrigger asChild>
+            <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
+              <CardHeader className="py-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base font-medium">Manager Links & Lead Reassignment</CardTitle>
+                  <ChevronDown className={cn("h-4 w-4 transition-transform", showInviteLinks && "rotate-180")} />
+                </div>
+              </CardHeader>
+            </Card>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-4">
+            <div className="grid lg:grid-cols-2 gap-4">
+              <ManagerInviteLinks />
+              <LeadReassignment />
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+
+        {/* Collapsible sections for Terminated, Abandoned, All Leads */}
+        <div className="space-y-3">
+          <Collapsible open={showTerminated} onOpenChange={setShowTerminated}>
+            <CollapsibleTrigger asChild>
+              <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
+                <CardHeader className="py-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base font-medium flex items-center gap-2">
+                      Terminated Agent Leads
+                    </CardTitle>
+                    <ChevronDown className={cn("h-4 w-4 transition-transform", showTerminated && "rotate-180")} />
+                  </div>
+                </CardHeader>
+              </Card>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-4">
+              <TerminatedAgentLeadsPanel />
+            </CollapsibleContent>
+          </Collapsible>
+
+          <Collapsible open={showAbandoned} onOpenChange={setShowAbandoned}>
+            <CollapsibleTrigger asChild>
+              <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
+                <CardHeader className="py-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base font-medium flex items-center gap-2">
+                      Abandoned Applications
+                    </CardTitle>
+                    <ChevronDown className={cn("h-4 w-4 transition-transform", showAbandoned && "rotate-180")} />
+                  </div>
+                </CardHeader>
+              </Card>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-4">
+              <AbandonedLeadsPanel />
+            </CollapsibleContent>
+          </Collapsible>
+
+          <Collapsible open={showAllLeads} onOpenChange={setShowAllLeads}>
+            <CollapsibleTrigger asChild>
+              <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
+                <CardHeader className="py-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base font-medium flex items-center gap-2">
+                      All Leads
+                    </CardTitle>
+                    <ChevronDown className={cn("h-4 w-4 transition-transform", showAllLeads && "rotate-180")} />
+                  </div>
+                </CardHeader>
+              </Card>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-4">
+              <AllLeadsPanel />
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       </div>
 

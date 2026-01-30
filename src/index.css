@@ -9,117 +9,117 @@
 
 @layer base {
   :root {
-    /* Light mode - HYBRID: Cool gray background + warm cream cards (premium, eye-friendly) */
-    --background: 215 18% 86%;
-    --foreground: 222 47% 11%;
+    /* Light mode - ULTRA SOFT: Muted warm gray background + soft cream cards (zero eye strain) */
+    --background: 220 14% 89%;
+    --foreground: 220 25% 20%;
 
-    --card: 40 16% 95%;
-    --card-foreground: 222 47% 11%;
+    --card: 45 20% 96%;
+    --card-foreground: 220 25% 18%;
 
-    --popover: 40 14% 96%;
-    --popover-foreground: 222 47% 11%;
+    --popover: 45 18% 97%;
+    --popover-foreground: 220 25% 18%;
 
-    --primary: 168 84% 32%;
+    --primary: 168 70% 34%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 215 12% 82%;
-    --secondary-foreground: 222 47% 12%;
+    --secondary: 220 10% 85%;
+    --secondary-foreground: 220 25% 18%;
 
-    --muted: 215 10% 80%;
-    --muted-foreground: 220 14% 38%;
+    --muted: 220 8% 83%;
+    --muted-foreground: 220 12% 45%;
 
-    --accent: 168 84% 32%;
+    --accent: 168 70% 34%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 72% 50%;
+    --destructive: 0 65% 48%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 215 10% 74%;
-    --input: 215 10% 84%;
-    --ring: 168 84% 32%;
+    --border: 220 10% 78%;
+    --input: 220 10% 88%;
+    --ring: 168 70% 34%;
 
     --radius: 0.75rem;
 
-    /* Custom APEX tokens */
+    /* Custom APEX tokens - softer for light mode */
     --apex-navy: 222 47% 6%;
     --apex-navy-light: 222 40% 12%;
     --apex-navy-lighter: 222 35% 18%;
-    --apex-slate: 220 25% 25%;
-    --apex-teal: 168 84% 38%;
-    --apex-teal-light: 168 76% 48%;
-    --apex-teal-glow: 168 90% 55%;
-    --apex-emerald: 160 84% 36%;
-    --apex-gold: 45 93% 55%;
-    --apex-success: 142 76% 34%;
-    --apex-warning: 38 92% 48%;
-    --apex-error: 0 84% 58%;
+    --apex-slate: 220 20% 30%;
+    --apex-teal: 168 70% 38%;
+    --apex-teal-light: 168 65% 45%;
+    --apex-teal-glow: 168 75% 50%;
+    --apex-emerald: 160 70% 38%;
+    --apex-gold: 45 85% 52%;
+    --apex-success: 142 65% 36%;
+    --apex-warning: 38 85% 50%;
+    --apex-error: 0 70% 52%;
 
-    /* Glass morphism - cool gray background + warm cream accents */
-    --glass-bg: hsl(40 20% 97% / 0.94);
-    --glass-border: hsl(215 12% 70% / 0.40);
-    --glass-shadow: 0 4px 24px hsl(215 20% 28% / 0.06);
+    /* Glass morphism - warm soft cream */
+    --glass-bg: 45 22% 98% / 0.92;
+    --glass-border: 220 10% 75% / 0.35;
+    --glass-shadow: 0 4px 24px hsl(220 15% 35% / 0.04);
 
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(168 84% 38%), hsl(160 84% 36%));
-    --gradient-hero: linear-gradient(180deg, hsl(215 18% 86%) 0%, hsl(215 14% 83%) 100%);
-    --gradient-card: linear-gradient(145deg, hsl(40 16% 95%) 0%, hsl(40 12% 93%) 100%);
-    --gradient-glow: radial-gradient(ellipse at center, hsl(168 84% 38% / 0.06) 0%, transparent 70%);
+    /* Gradients - softer, warmer */
+    --gradient-primary: linear-gradient(135deg, hsl(168 70% 38%), hsl(160 70% 38%));
+    --gradient-hero: linear-gradient(180deg, hsl(220 14% 89%) 0%, hsl(220 12% 87%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(45 20% 96%) 0%, hsl(45 16% 94%) 100%);
+    --gradient-glow: radial-gradient(ellipse at center, hsl(168 70% 38% / 0.04) 0%, transparent 70%);
 
-    /* Sidebar - cool gray to match background */
-    --sidebar-background: 215 16% 88%;
-    --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 168 84% 32%;
+    /* Sidebar - soft warm gray */
+    --sidebar-background: 220 12% 91%;
+    --sidebar-foreground: 220 25% 18%;
+    --sidebar-primary: 168 70% 34%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 12% 84%;
-    --sidebar-accent-foreground: 222 47% 12%;
-    --sidebar-border: 215 10% 74%;
-    --sidebar-ring: 168 84% 32%;
+    --sidebar-accent: 220 10% 87%;
+    --sidebar-accent-foreground: 220 25% 18%;
+    --sidebar-border: 220 10% 78%;
+    --sidebar-ring: 168 70% 34%;
   }
 
   .light {
-    /* HYBRID light mode: Cool gray-blue background + warm cream cards */
-    --background: 215 18% 86%;
-    --foreground: 222 47% 11%;
+    /* ULTRA SOFT light mode: Muted warm gray background + soft cream cards (zero eye strain) */
+    --background: 220 14% 89%;
+    --foreground: 220 25% 20%;
 
-    --card: 40 16% 95%;
-    --card-foreground: 222 47% 11%;
+    --card: 45 20% 96%;
+    --card-foreground: 220 25% 18%;
 
-    --popover: 40 14% 96%;
-    --popover-foreground: 222 47% 11%;
+    --popover: 45 18% 97%;
+    --popover-foreground: 220 25% 18%;
 
-    --primary: 168 84% 32%;
+    --primary: 168 70% 34%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 215 12% 82%;
-    --secondary-foreground: 222 47% 12%;
+    --secondary: 220 10% 85%;
+    --secondary-foreground: 220 25% 18%;
 
-    --muted: 215 10% 80%;
-    --muted-foreground: 220 14% 38%;
+    --muted: 220 8% 83%;
+    --muted-foreground: 220 12% 45%;
 
-    --accent: 168 84% 32%;
+    --accent: 168 70% 34%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 72% 50%;
+    --destructive: 0 65% 48%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 215 10% 74%;
-    --input: 215 10% 84%;
-    --ring: 168 84% 32%;
+    --border: 220 10% 78%;
+    --input: 220 10% 88%;
+    --ring: 168 70% 34%;
 
-    /* Sidebar - cool gray to match background */
-    --sidebar-background: 215 16% 88%;
-    --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 168 84% 32%;
+    /* Sidebar - soft warm gray */
+    --sidebar-background: 220 12% 91%;
+    --sidebar-foreground: 220 25% 18%;
+    --sidebar-primary: 168 70% 34%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 215 12% 84%;
-    --sidebar-accent-foreground: 222 47% 11%;
-    --sidebar-border: 215 10% 74%;
-    --sidebar-ring: 168 84% 32%;
+    --sidebar-accent: 220 10% 87%;
+    --sidebar-accent-foreground: 220 25% 18%;
+    --sidebar-border: 220 10% 78%;
+    --sidebar-ring: 168 70% 34%;
 
-    /* Glass morphism - cool gray bg + warm cream accent */
-    --glass-bg: hsl(40 20% 97% / 0.94);
-    --glass-border: hsl(215 12% 72% / 0.40);
-    --glass-shadow: 0 4px 24px hsl(215 22% 26% / 0.05);
+    /* Glass morphism - warm soft cream */
+    --glass-bg: 45 22% 98% / 0.92;
+    --glass-border: 220 10% 75% / 0.35;
+    --glass-shadow: 0 4px 24px hsl(220 15% 35% / 0.04);
   }
 
   .dark {
@@ -198,26 +198,26 @@
     border: 1px solid hsl(222 30% 20% / 0.6);
   }
 
-  /* Light mode glass override - warm cream tones */
+  /* Light mode glass override - ultra soft warm cream tones */
   .light .glass {
-    background: var(--glass-bg);
-    border: 1px solid var(--glass-border);
-    box-shadow: 0 2px 16px hsl(35 30% 30% / 0.05), 0 1px 3px hsl(35 30% 30% / 0.04);
+    background: hsl(var(--glass-bg));
+    border: 1px solid hsl(var(--glass-border));
+    box-shadow: 0 2px 12px hsl(40 20% 35% / 0.03), 0 1px 2px hsl(40 20% 35% / 0.02);
   }
 
   .light .glass-strong {
-    background: hsl(40 25% 100% / 0.95);
-    border: 1px solid hsl(35 20% 82% / 0.6);
-    box-shadow: 0 4px 20px hsl(35 30% 30% / 0.06);
+    background: hsl(45 25% 99% / 0.96);
+    border: 1px solid hsl(40 15% 82% / 0.5);
+    box-shadow: 0 3px 16px hsl(40 20% 35% / 0.04);
   }
 
-  /* Light mode card enhancements */
+  /* Light mode card enhancements - softer shadows */
   .light .stat-card {
-    box-shadow: 0 2px 12px hsl(35 30% 30% / 0.04), 0 1px 3px hsl(35 30% 30% / 0.03);
+    box-shadow: 0 1px 8px hsl(40 20% 35% / 0.03), 0 1px 2px hsl(40 20% 35% / 0.02);
   }
 
   .light .stat-card:hover {
-    box-shadow: 0 4px 20px hsl(168 84% 42% / 0.12), 0 2px 6px hsl(35 30% 30% / 0.04);
+    box-shadow: 0 3px 16px hsl(168 70% 42% / 0.08), 0 1px 4px hsl(40 20% 35% / 0.03);
   }
 
   /* Glow effects */

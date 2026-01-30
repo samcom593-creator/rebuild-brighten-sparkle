@@ -14,7 +14,10 @@ const ToastViewport = React.forwardRef<
   <ToastPrimitives.Viewport
     ref={ref}
     className={cn(
-      "fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]",
+      // IMPORTANT: The viewport is a fixed-position layer that can span the screen.
+      // Make it non-interactive so it never blocks clicks; individual toasts opt back
+      // in via `pointer-events-auto` (see `toastVariants`).
+      "pointer-events-none fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]",
       className,
     )}
     {...props}

@@ -737,6 +737,13 @@ export function TeamHierarchyManager() {
                               <Pencil className="h-3 w-3 mr-2" />
                               Edit Profile
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              // Pre-select this agent and open merge tool
+                              setShowMergeTool(true);
+                            }}>
+                              <Merge className="h-3 w-3 mr-2" />
+                              Merge with...
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
                               className="text-destructive focus:text-destructive"

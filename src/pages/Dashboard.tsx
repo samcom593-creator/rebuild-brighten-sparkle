@@ -299,11 +299,11 @@ export default function Dashboard() {
             <p className="text-xs text-muted-foreground">View performance</p>
           </GlassCard>
         </Link>
-        <Link to="/dashboard/team">
+        <Link to="/dashboard/crm">
           <GlassCard className="p-4 hover:border-emerald-500/50 hover:bg-emerald-500/5 cursor-pointer transition-all group">
             <Users className="h-5 w-5 text-emerald-500 mb-2 group-hover:scale-110 transition-transform" />
-            <p className="font-semibold text-sm">My Team</p>
-            <p className="text-xs text-muted-foreground">Team directory</p>
+            <p className="font-semibold text-sm">CRM</p>
+            <p className="text-xs text-muted-foreground">Manage agents</p>
           </GlassCard>
         </Link>
         <Link to="/dashboard/applicants">
@@ -371,12 +371,6 @@ export default function Dashboard() {
             data={sourceData}
           />
 
-          {/* License Distribution (at bottom per plan) */}
-          <AnalyticsPieChart
-            title="License Status"
-            icon={<Award className="h-4 w-4 text-primary" />}
-            data={licenseData}
-          />
         </div>
       </div>
 

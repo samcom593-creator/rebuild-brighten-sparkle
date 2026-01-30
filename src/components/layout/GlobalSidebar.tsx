@@ -119,13 +119,7 @@ export function GlobalSidebar({
       });
     }
 
-    // All users get team view
-    items.push({ 
-      icon: UsersRound, 
-      label: "My Team", 
-      href: "/dashboard/team",
-      roles: ["admin", "manager", "agent"]
-    });
+    // Removed: My Team navigation (redundant and slow)
 
     // Admin/Manager: Accounts
     if (isAdmin || isManager) {

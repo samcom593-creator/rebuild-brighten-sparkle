@@ -14,6 +14,7 @@ import {
   ArrowRight,
   BookOpen,
   XCircle,
+  Eye,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -38,6 +39,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { AddToCourseButton } from "@/components/dashboard/AddToCourseButton";
+import { CourseContentViewer } from "@/components/admin/CourseContentViewer";
 
 interface ModuleInfo {
   id: string;
@@ -67,6 +69,7 @@ type FilterType = "all" | "not_started" | "in_progress" | "stalled" | "complete"
 export default function CourseProgress() {
   const [filter, setFilter] = useState<FilterType>("all");
   const [sendingReminder, setSendingReminder] = useState<string | null>(null);
+  const [showContentViewer, setShowContentViewer] = useState(false);
   const queryClient = useQueryClient();
 
   // Fetch modules
@@ -327,7 +330,11 @@ export default function CourseProgress() {
               Track agent coursework completion and send reminders
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" size="sm" onClick={() => setShowContentViewer(true)} className="gap-1.5">
+              <Eye className="h-3.5 w-3.5" />
+              View Course Content
+            </Button>
             <Button variant="outline" size="sm" onClick={copyToClipboard} className="gap-1.5">
               <Copy className="h-3.5 w-3.5" />
               Copy
@@ -575,6 +582,12 @@ export default function CourseProgress() {
             </div>
           )}
         </GlassCard>
+
+        {/* Course Content Viewer */}
+        <CourseContentViewer
+          open={showContentViewer}
+          onClose={() => setShowContentViewer(false)}
+        />
       </div>
     </DashboardLayout>
   );

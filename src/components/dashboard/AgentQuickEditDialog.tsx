@@ -37,6 +37,8 @@ interface AgentQuickEditDialogProps {
   production?: number;
   deals?: number;
   onUpdate?: () => void;
+  period?: "day" | "week" | "month" | "custom";
+  dateRange?: { from?: string; to?: string };
 }
 
 interface PossibleMatch {
@@ -68,6 +70,8 @@ export function AgentQuickEditDialog({
   production = 0,
   deals = 0,
   onUpdate,
+  period,
+  dateRange,
 }: AgentQuickEditDialogProps) {
   const { isAdmin } = useAuth();
   const [displayName, setDisplayName] = useState(currentName);
@@ -253,37 +257,63 @@ export function AgentQuickEditDialog({
         }
       }
 
-      // If admin changed ALP or deals, update today's production record
+      // If admin changed ALP or deals, update production record
       if (isAdmin && (editAlp !== production || editDeals !== deals)) {
-        const today = new Date().toISOString().split('T')[0];
+        // Determine target date based on period
+        let targetDate = new Date().toISOString().split('T')[0]; // Default: today
         
-        // Check if there's already a record for today
+        // For non-day periods, calculate delta and apply to end date
+        const isRangeEdit = period && period !== "day";
+        
+        if (isRangeEdit && dateRange?.to) {
+          targetDate = dateRange.to;
+        }
+        
+        // Calculate the delta (difference from displayed total)
+        const alpDelta = editAlp - production;
+        const dealsDelta = editDeals - deals;
+        
+        // Fetch existing record for target date
         const { data: existingRecord } = await supabase
           .from("daily_production")
-          .select("id")
+          .select("id, aop, deals_closed, presentations")
           .eq("agent_id", agentId)
-          .eq("production_date", today)
+          .eq("production_date", targetDate)
           .maybeSingle();
 
         if (existingRecord) {
-          // Update existing record
-          await supabase
-            .from("daily_production")
-            .update({ 
-              aop: editAlp,
-              deals_closed: editDeals,
-            })
-            .eq("id", existingRecord.id);
+          if (isRangeEdit) {
+            // Add delta to existing values (adjusting the total)
+            await supabase
+              .from("daily_production")
+              .update({ 
+                aop: Math.max(0, Number(existingRecord.aop) + alpDelta),
+                deals_closed: Math.max(0, Number(existingRecord.deals_closed) + dealsDelta),
+              })
+              .eq("id", existingRecord.id);
+          } else {
+            // Direct overwrite for "day" period
+            await supabase
+              .from("daily_production")
+              .update({ 
+                aop: editAlp,
+                deals_closed: editDeals,
+              })
+              .eq("id", existingRecord.id);
+          }
         } else {
-          // Create new record for today
+          // Create new record
+          const newAlp = isRangeEdit ? Math.max(0, alpDelta) : editAlp;
+          const newDeals = isRangeEdit ? Math.max(0, dealsDelta) : editDeals;
+          
           await supabase
             .from("daily_production")
             .insert({
               agent_id: agentId,
-              production_date: today,
-              aop: editAlp,
-              deals_closed: editDeals,
-              presentations: editDeals > 0 ? editDeals : 0,
+              production_date: targetDate,
+              aop: newAlp,
+              deals_closed: newDeals,
+              presentations: newDeals > 0 ? newDeals : 0,
             });
         }
       }
@@ -634,7 +664,7 @@ export function AgentQuickEditDialog({
             <div className="space-y-3 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
               <Label className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
                 <Edit2 className="h-4 w-4" />
-                Edit Today's Production (Admin)
+                {period && period !== "day" ? "Edit Range Total (Admin)" : "Edit Today's Production (Admin)"}
               </Label>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
@@ -658,9 +688,15 @@ export function AgentQuickEditDialog({
                   />
                 </div>
               </div>
-              <p className="text-[10px] text-muted-foreground">
-                Changes will update today's production record for this agent.
-              </p>
+              {period && period !== "day" && dateRange?.from && dateRange?.to ? (
+                <p className="text-[10px] text-muted-foreground">
+                  Changes will adjust the total for {dateRange.from} to {dateRange.to}.
+                </p>
+              ) : (
+                <p className="text-[10px] text-muted-foreground">
+                  Changes will update today's production record for this agent.
+                </p>
+              )}
             </div>
           )}
 

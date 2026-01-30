@@ -118,6 +118,7 @@ export function AddAgentToCourseDialog({ onSuccess }: AddAgentToCourseDialogProp
     onSuccess: () => {
       toast.success(`${selectedAgents.length} agent(s) enrolled in course`);
       queryClient.invalidateQueries({ queryKey: ["course-progress-full"] });
+      queryClient.invalidateQueries({ queryKey: ["course-progress-admin"] });
       queryClient.invalidateQueries({ queryKey: ["eligible-agents-for-course"] });
       setSelectedAgents([]);
       setOpen(false);

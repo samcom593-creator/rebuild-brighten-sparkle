@@ -38,6 +38,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -100,19 +111,21 @@ export default function CourseProgress() {
   const { data: agentProgress = [], isLoading, refetch } = useQuery({
     queryKey: ["course-progress-full"],
     queryFn: async () => {
-      // Get agents in onboarding stages
+      // Get agents actively in course (training_online stage with has_training_course flag)
       const { data: agents } = await supabase
         .from("agents")
         .select(`
           id,
           onboarding_stage,
           invited_by_manager_id,
+          has_training_course,
           profiles!agents_profile_id_fkey (
             full_name,
             email
           )
         `)
-        .in("onboarding_stage", ["onboarding", "training_online"])
+        .eq("onboarding_stage", "training_online")
+        .eq("has_training_course", true)
         .eq("is_deactivated", false);
 
       if (!agents?.length) return [];
@@ -304,13 +317,19 @@ export default function CourseProgress() {
         .eq("id", agentId);
       if (agentError) throw agentError;
     },
-    onSuccess: () => {
+    onSuccess: (_, agentId) => {
       toast.success("Agent unenrolled from course");
+      // Optimistically remove from cache immediately
+      queryClient.setQueryData(["course-progress-full"], (old: AgentProgress[] | undefined) => 
+        old?.filter(a => a.agentId !== agentId) || []
+      );
+      // Also invalidate both caches for consistency
       queryClient.invalidateQueries({ queryKey: ["course-progress-full"] });
+      queryClient.invalidateQueries({ queryKey: ["course-progress-admin"] });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error("Unenroll error:", error);
-      toast.error("Failed to unenroll agent");
+      toast.error(`Failed to unenroll agent: ${error?.message || "Unknown error"}`);
     },
   });
 
@@ -604,17 +623,38 @@ export default function CourseProgress() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          {/* Quick X button for unenroll */}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                            onClick={() => unenrollMutation.mutate(agent.agentId)}
-                            disabled={unenrollMutation.isPending}
-                            title="Unenroll from course"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
+                          {/* Unenroll button with confirmation */}
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                                disabled={unenrollMutation.isPending}
+                                title="Remove from course"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Remove from Course?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will remove <strong>{agent.agentName}</strong> from the course progress list and reset their progress. They will need to be re-enrolled to appear again.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => unenrollMutation.mutate(agent.agentId)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Remove
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                           
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>

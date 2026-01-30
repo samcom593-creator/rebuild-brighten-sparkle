@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 
 interface SnapshotStats {
   totalALP: number;
@@ -259,20 +260,8 @@ export function TeamSnapshotCard() {
     }
   }, [fetchStats, authLoading, user]);
 
-  useEffect(() => {
-    const channel = supabase
-      .channel("team-snapshot-live")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "daily_production" },
-        () => fetchStats()
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [fetchStats]);
+  // Use shared realtime hook instead of individual channel
+  useProductionRealtime(fetchStats, 1500);
 
   const handleStatClick = (type: DrilldownType) => {
     if (!isAdmin && !isManager) return; // Only admin/manager can drilldown

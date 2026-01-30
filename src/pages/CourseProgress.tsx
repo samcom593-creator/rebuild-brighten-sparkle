@@ -54,7 +54,12 @@ interface AgentProgress {
   managerId: string | null;
   managerName: string;
   onboardingStage: string;
-  modules: Record<string, { passed: boolean; completedAt: string | null; watchedPercent: number }>;
+  modules: Record<string, { 
+    passed: boolean; 
+    completedAt: string | null; 
+    watchedPercent: number;
+    quizScore: number | null;
+  }>;
   completedCount: number;
   totalModules: number;
   percentComplete: number;
@@ -62,6 +67,7 @@ interface AgentProgress {
   isStalled: boolean;
   isAtRisk: boolean;
   hasStarted: boolean;
+  courseStartedAt: string | null;
 }
 
 type FilterType = "all" | "not_started" | "in_progress" | "stalled" | "complete";
@@ -136,7 +142,7 @@ export default function CourseProgress() {
       // Fetch progress for these agents
       const { data: progress } = await supabase
         .from("onboarding_progress")
-        .select("agent_id, module_id, passed, completed_at, video_watched_percent")
+        .select("agent_id, module_id, passed, completed_at, video_watched_percent, score")
         .in("agent_id", agentIds);
 
       // Fetch total modules count
@@ -147,8 +153,9 @@ export default function CourseProgress() {
       const totalModules = allModules?.length || 0;
 
       // Build progress map per agent
-      const progressByAgent = new Map<string, Map<string, { passed: boolean; completedAt: string | null; watchedPercent: number }>>();
+      const progressByAgent = new Map<string, Map<string, { passed: boolean; completedAt: string | null; watchedPercent: number; quizScore: number | null }>>();
       const lastActivityByAgent = new Map<string, string>();
+      const courseStartByAgent = new Map<string, string>();
 
       progress?.forEach((p) => {
         if (!progressByAgent.has(p.agent_id)) {
@@ -158,6 +165,7 @@ export default function CourseProgress() {
           passed: p.passed || false,
           completedAt: p.completed_at,
           watchedPercent: p.video_watched_percent || 0,
+          quizScore: p.score || null,
         });
 
         // Track last activity
@@ -167,6 +175,15 @@ export default function CourseProgress() {
             lastActivityByAgent.set(p.agent_id, p.completed_at);
           }
         }
+        
+        // Track when course started (first progress entry)
+        const startedAt = (p as any).started_at || p.completed_at;
+        if (startedAt) {
+          const currentStart = courseStartByAgent.get(p.agent_id);
+          if (!currentStart || startedAt < currentStart) {
+            courseStartByAgent.set(p.agent_id, startedAt);
+          }
+        }
       });
 
       // Build agent progress list
@@ -174,9 +191,10 @@ export default function CourseProgress() {
         const profile = agent.profiles;
         const agentModules = progressByAgent.get(agent.id) || new Map();
         const lastActivity = lastActivityByAgent.get(agent.id) || null;
+        const courseStartedAt = courseStartByAgent.get(agent.id) || null;
         
         let completedCount = 0;
-        const modulesRecord: Record<string, { passed: boolean; completedAt: string | null; watchedPercent: number }> = {};
+        const modulesRecord: Record<string, { passed: boolean; completedAt: string | null; watchedPercent: number; quizScore: number | null }> = {};
         
         agentModules.forEach((value, key) => {
           if (value.passed) completedCount++;
@@ -209,6 +227,7 @@ export default function CourseProgress() {
           isStalled,
           isAtRisk,
           hasStarted,
+          courseStartedAt,
         };
       });
 
@@ -504,11 +523,18 @@ export default function CourseProgress() {
                         return (
                           <TableCell key={module.id} className="text-center">
                             {progress?.passed ? (
-                              <CheckCircle className="h-4 w-4 text-green-500 mx-auto" />
+                              <div className="flex flex-col items-center">
+                                <CheckCircle className="h-4 w-4 text-green-500" />
+                                {progress.quizScore !== null && (
+                                  <span className="text-[9px] text-green-600 dark:text-green-400 font-medium">
+                                    {progress.quizScore}%
+                                  </span>
+                                )}
+                              </div>
                             ) : progress?.watchedPercent > 0 ? (
-                              <div className="flex items-center justify-center">
+                              <div className="flex flex-col items-center">
                                 <Clock className="h-3.5 w-3.5 text-blue-400" />
-                                <span className="text-[10px] ml-0.5">{progress.watchedPercent}%</span>
+                                <span className="text-[9px] text-muted-foreground">{progress.watchedPercent}%</span>
                               </div>
                             ) : (
                               <span className="text-muted-foreground">—</span>

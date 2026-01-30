@@ -228,3 +228,9 @@ verify_jwt = false
 
 [functions.send-daily-sales-leaderboard]
 verify_jwt = false
+
+[functions.send-course-hurry-emails]
+verify_jwt = false
+
+[functions.reset-monthly-goals]
+verify_jwt = false

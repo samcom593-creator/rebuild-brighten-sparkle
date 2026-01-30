@@ -868,7 +868,7 @@ export default function DashboardCRM() {
         </div>
 
         {/* Clickable Stats Filters - Reordered: In Course, Meeting Eligible, In-Field, Live, Attendance */}
-        <AnimatePresence mode="wait">
+        <AnimatePresence initial={false}>
           {!expandedColumn && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
@@ -971,7 +971,7 @@ export default function DashboardCRM() {
         </AnimatePresence>
 
         {/* Filters - Only show when not expanded */}
-        <AnimatePresence mode="wait">
+        <AnimatePresence initial={false}>
           {!expandedColumn && (
             <motion.div
               initial={{ opacity: 0 }}
@@ -1021,7 +1021,7 @@ export default function DashboardCRM() {
         </AnimatePresence>
 
         {/* Main Content - Either 3-Column Overview or Full-Screen Expanded View */}
-        <AnimatePresence mode="wait">
+        <AnimatePresence initial={false}>
           {loading ? (
             <motion.div
               key="loading"

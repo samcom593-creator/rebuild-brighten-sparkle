@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Trophy, Medal, Award, Target, Percent, Crown, Users, Flame, Circle, Building2 } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -19,6 +19,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { format } from "date-fns";
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
 import { getTodayPST, getWeekStartPST, getMonthStartPST, getDateDaysAgoPST } from "@/lib/dateUtils";
+import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 
 interface LeaderboardTabsProps {
   currentAgentId?: string;
@@ -91,29 +92,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
 
   const isInitialMount = useRef(true);
 
-  useEffect(() => {
-    // Only reset tracking on initial mount
-    if (isInitialMount.current) {
-      resetTracking();
-      isInitialMount.current = false;
-    }
-    fetchLeaderboard(true);
-    
-    const channel = supabase
-      .channel("leaderboard-changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "daily_production" },
-        () => fetchLeaderboard(false)
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [period, customDateRange, currentAgentId]);
-
-  const fetchLeaderboard = async (isInitialLoad = true) => {
+  const fetchLeaderboard = useCallback(async (isInitialLoad = true) => {
     try {
       if (isInitialLoad) setLoading(true);
       
@@ -282,7 +261,19 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [period, customDateRange, currentAgentId, checkForCelebration]);
+
+  useEffect(() => {
+    // Only reset tracking on initial mount
+    if (isInitialMount.current) {
+      resetTracking();
+      isInitialMount.current = false;
+    }
+    fetchLeaderboard(true);
+  }, [fetchLeaderboard]);
+
+  // Use shared realtime hook instead of individual channel
+  useProductionRealtime(() => fetchLeaderboard(false), 1500);
 
   const leaders = useMemo<CategoryLeaders>(() => {
     if (entries.length === 0) {
@@ -419,13 +410,13 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                   )}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <AnimatePresence mode="wait">
+                <AnimatePresence mode="sync">
                     <motion.span
                       key={leaderboardMode}
-                      initial={{ rotateY: 90, opacity: 0 }}
-                      animate={{ rotateY: 0, opacity: 1 }}
-                      exit={{ rotateY: -90, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
                       className="flex items-center gap-1"
                     >
                       {leaderboardMode === "production" ? (

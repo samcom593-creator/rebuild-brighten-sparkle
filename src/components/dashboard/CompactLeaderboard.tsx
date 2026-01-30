@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Trophy, Medal, Award, Users, Flame, Zap } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { subDays, format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
+import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 
 interface CompactLeaderboardProps {
   currentAgentId?: string;
@@ -219,29 +220,7 @@ export function CompactLeaderboard({ currentAgentId, className }: CompactLeaderb
     to: new Date(),
   });
 
-  useEffect(() => {
-    fetchLeaderboard();
-    
-    const channel = supabase
-      .channel("compact-leaderboard")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "daily_production" },
-        () => {
-          setIsConnected(true);
-          fetchLeaderboard();
-        }
-      )
-      .subscribe((status) => {
-        setIsConnected(status === "SUBSCRIBED");
-      });
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [period, currentAgentId, customRange]);
-
-  const fetchLeaderboard = async () => {
+  const fetchLeaderboard = useCallback(async () => {
     try {
       let startDate: string;
       let endDate: string;
@@ -341,7 +320,15 @@ export function CompactLeaderboard({ currentAgentId, className }: CompactLeaderb
     } finally {
       setLoading(false);
     }
-  };
+  }, [period, currentAgentId, customRange]);
+
+  useEffect(() => {
+    fetchLeaderboard();
+    setIsConnected(true);
+  }, [fetchLeaderboard]);
+
+  // Use shared realtime hook instead of individual channel
+  useProductionRealtime(fetchLeaderboard, 1500);
 
   const periodLabels: Record<Period, string> = {
     day: "Today",

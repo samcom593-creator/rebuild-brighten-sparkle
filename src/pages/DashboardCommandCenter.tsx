@@ -506,11 +506,11 @@ export default function DashboardCommandCenter() {
         <QuickFilters activeFilter={activeFilter} onFilterChange={setActiveFilter} />
 
         {/* Main Content Grid */}
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Leaderboard - 2 columns */}
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader className="pb-3">
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Leaderboard - Takes 70% on desktop */}
+          <div className="w-full lg:w-[70%]">
+            <Card className="flex flex-col h-full">
+              <CardHeader className="pb-3 shrink-0">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg font-semibold">Production Leaderboard</CardTitle>
                   <Badge variant="outline" className="text-xs">
@@ -518,26 +518,26 @@ export default function DashboardCommandCenter() {
                   </Badge>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="flex-1 min-h-0 p-0">
                 {isLoading ? (
-                  <div className="space-y-3">
+                  <div className="space-y-3 px-6 pb-6">
                     {[...Array(5)].map((_, i) => (
                       <div key={i} className="h-14 bg-muted animate-pulse rounded-lg" />
                     ))}
                   </div>
                 ) : filteredAgents.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
+                  <div className="text-center py-12 text-muted-foreground px-6">
                     <Users className="h-10 w-10 mx-auto mb-3 opacity-50" />
                     <p>No agents match your filters</p>
                   </div>
                 ) : (
-                  <div className="space-y-2 max-h-[500px] overflow-y-auto scrollbar-custom">
+                  <div className="space-y-2 overflow-y-auto scrollbar-custom px-6 pb-6 max-h-none lg:max-h-[70vh]">
                     {filteredAgents.map((agent, index) => (
                       <div
                         key={agent.id}
                         onClick={() => setSelectedAgent(agent)}
                         className={cn(
-                          "flex items-center gap-4 p-3 rounded-lg cursor-pointer transition-all",
+                          "flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 rounded-lg cursor-pointer transition-all min-h-[56px]",
                           "hover:bg-muted/50 border border-transparent hover:border-border",
                           index === 0 && "bg-primary/5 border-primary/20",
                           index === 1 && "bg-muted/30",
@@ -546,56 +546,61 @@ export default function DashboardCommandCenter() {
                           (agent.isDeactivated || agent.isInactive) && "opacity-60"
                         )}
                       >
-                        {/* Rank */}
-                        <div className={cn(
-                          "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold",
-                          index === 0 && "bg-amber-500 text-black",
-                          index === 1 && "bg-gray-300 text-black",
-                          index === 2 && "bg-amber-700 text-white",
-                          index > 2 && "bg-muted text-muted-foreground"
-                        )}>
-                          {index + 1}
-                        </div>
-
-                        {/* Agent Info */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium truncate">{agent.fullName}</span>
-                            {!agent.hasCrmLink && (
-                              <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-600 border-amber-500/30">
-                                No CRM
-                              </Badge>
-                            )}
-                            {agent.isDeactivated && (
-                              <Badge variant="destructive" className="text-xs">Terminated</Badge>
-                            )}
-                            {agent.isInactive && !agent.isDeactivated && (
-                              <Badge variant="secondary" className="text-xs">Inactive</Badge>
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {agent.email || "No email"}
-                          </p>
-                        </div>
-
-                        {/* Stats */}
-                        <div className="flex items-center gap-4 text-right">
-                          <div>
-                            <p className="font-bold text-lg">${Math.round(agent.totalAlp).toLocaleString()}</p>
-                            <p className="text-xs text-muted-foreground">{agent.totalDeals} deals</p>
-                          </div>
+                        {/* Top row: Rank + Name + Badges */}
+                        <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                          {/* Rank */}
                           <div className={cn(
-                            "text-sm font-medium",
-                            getClosingRateColor(agent.closingRate).textClass
+                            "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0",
+                            index === 0 && "bg-amber-500 text-black",
+                            index === 1 && "bg-gray-300 text-black",
+                            index === 2 && "bg-amber-700 text-white",
+                            index > 2 && "bg-muted text-muted-foreground"
                           )}>
-                            {agent.closingRate}%
+                            {index + 1}
+                          </div>
+
+                          {/* Agent Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium truncate">{agent.fullName}</span>
+                              {!agent.hasCrmLink && (
+                                <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-600 border-amber-500/30 shrink-0">
+                                  No CRM
+                                </Badge>
+                              )}
+                              {agent.isDeactivated && (
+                                <Badge variant="destructive" className="text-xs shrink-0">Terminated</Badge>
+                              )}
+                              {agent.isInactive && !agent.isDeactivated && (
+                                <Badge variant="secondary" className="text-xs shrink-0">Inactive</Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {agent.email || "No email"}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Stats row - stacks on mobile */}
+                        <div className="flex items-center justify-between sm:justify-end gap-4 pl-11 sm:pl-0">
+                          <div className="flex items-center gap-4">
+                            <div className="text-left sm:text-right">
+                              <p className="font-bold text-lg">${Math.round(agent.totalAlp).toLocaleString()}</p>
+                              <p className="text-xs text-muted-foreground">{agent.totalDeals} deals</p>
+                            </div>
+                            <div className={cn(
+                              "text-sm font-medium",
+                              getClosingRateColor(agent.closingRate).textClass
+                            )}>
+                              {agent.closingRate}%
+                            </div>
                           </div>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button 
                                 variant="ghost" 
                                 size="icon" 
-                                className="h-8 w-8"
+                                className="h-10 w-10 sm:h-8 sm:w-8 shrink-0"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <MoreVertical className="h-4 w-4" />
@@ -646,8 +651,8 @@ export default function DashboardCommandCenter() {
             </Card>
           </div>
 
-          {/* Recognition Queue & Course Progress - 1 column */}
-          <div className="space-y-6">
+          {/* Recognition Queue & Course Progress - 30% on desktop */}
+          <div className="w-full lg:w-[30%] space-y-6">
             <RecognitionQueue />
             <CourseProgressPanel />
           </div>

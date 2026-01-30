@@ -1,125 +1,89 @@
 
+# Fix Plan: Ensure All Dashboard Numbers Are Live and Active
 
-# Fix Dashboard Numbers to Match Leaderboard
+## Findings
 
-## Problem
+After investigating the codebase, all the core "numbers" files exist:
+- `/numbers` page (Numbers.tsx) - Compact login + production entry
+- `/apex-daily-numbers` page (LogNumbers.tsx) - Full production logging
+- Dashboard components (`TeamSnapshotCard`, `LeaderboardTabs`, `ManagerProductionStats`, etc.)
 
-Dashboard numbers (Total ALP, Week ALP, Deals, etc.) are not matching the Leaderboard because the components use **different date calculation methods**:
+However, **two critical components are missing real-time subscriptions**:
 
-| Component | Date Calculation | Issue |
-|-----------|------------------|-------|
-| **LeaderboardTabs** | Uses PST utilities (`getWeekStartPST()`, `getTodayPST()`) | Correct - PST timezone |
-| **TeamSnapshotCard** | Uses `useDateRange` hook with `startOfWeek(new Date())` | Uses **local system time**, not PST |
-| **ManagerProductionStats** | Uses `getDateDaysAgoPST(7)` for "week" | Uses "7 days ago" instead of **week start (Sunday)** |
+| Component | Has Real-time? | Issue |
+|-----------|---------------|-------|
+| TeamSnapshotCard | Yes | Working |
+| LeaderboardTabs | Yes | Working |
+| ManagerProductionStats | Yes | Working |
+| ClosingRateLeaderboard | Yes | Working |
+| ReferralLeaderboard | Yes | Working |
+| **PersonalStatsCard** | **No** | Not updating live |
+| **DashboardCommandCenter** | **No** | Stats not live |
 
-This causes data mismatch when:
-1. User is in a different timezone than PST
-2. "Week" is interpreted as "last 7 days" vs "Sunday to Saturday"
-
-Additionally, `ManagerProductionStats` has **no real-time subscription** so it doesn't update live.
+Additionally, **PersonalStatsCard uses local time** instead of PST utilities, causing potential date mismatches.
 
 ---
 
-## Solution
+## Changes Required
 
-Align all dashboard components to use the same PST-based date utilities that the leaderboard uses.
+### 1. Add Real-time Subscription to PersonalStatsCard
 
-### Files to Modify
+**File:** `src/components/dashboard/PersonalStatsCard.tsx`
 
-#### 1. `src/components/ui/date-range-picker.tsx` (useDateRange hook)
-
-**Problem:** Uses `new Date()` and `startOfWeek()` from date-fns with local time.
-
-**Fix:** Import and use PST utilities for date calculations:
+Add Supabase real-time subscription to refresh stats when production changes:
 
 ```tsx
-import { getNowPST, getTodayPST, getWeekStartPST, getMonthStartPST, getDateDaysAgoPST } from "@/lib/dateUtils";
-import { format, endOfWeek, endOfMonth } from "date-fns";
-import { toZonedTime } from "date-fns-tz";
-
-// In useDateRange hook:
-export function useDateRange(initialPeriod: DateRangePeriod = "week") {
-  const today = getNowPST(); // PST time instead of local
-  
-  const getInitialRange = (): DateRange => {
-    switch (initialPeriod) {
-      case "today":
-        return { from: today, to: today };
-      case "week":
-        return {
-          from: toZonedTime(new Date(getWeekStartPST()), "America/Los_Angeles"),
-          to: endOfWeek(today, { weekStartsOn: 0 }),
-        };
-      case "month":
-        return {
-          from: toZonedTime(new Date(getMonthStartPST()), "America/Los_Angeles"),
-          to: endOfMonth(today),
-        };
-      default:
-        return { from: subDays(today, 30), to: today };
-    }
-  };
-  // ...
-}
-```
-
-Also update `handlePresetClick` to use PST times for consistency.
-
-#### 2. `src/components/dashboard/ManagerProductionStats.tsx`
-
-**Problem:** 
-- Uses `getDateDaysAgoPST(7)` for week which is "7 days ago", not "start of week"
-- No real-time subscription for live updates
-
-**Fix:**
-```tsx
-import { getTodayPST, getWeekStartPST, getMonthStartPST } from "@/lib/dateUtils";
-
-// Change from:
-const weekStart = getDateDaysAgoPST(7);
-const monthStart = getDateDaysAgoPST(30);
-
-// To:
-const weekStart = getWeekStartPST();
-const monthStart = getMonthStartPST();
-
-// Add real-time subscription:
 useEffect(() => {
   const channel = supabase
-    .channel("manager-production-live")
+    .channel("personal-stats-live")
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "daily_production" },
-      () => fetchTeamStats()
+      () => fetchStats()
     )
     .subscribe();
 
   return () => {
     supabase.removeChannel(channel);
   };
-}, [managerId]);
+}, [fetchStats]);
 ```
 
-#### 3. `src/lib/dateUtils.ts` - Add missing utility
+Also update date calculations to use PST utilities:
+```tsx
+import { getTodayPST, getWeekStartPST, getMonthStartPST } from "@/lib/dateUtils";
+import { toZonedTime } from "date-fns-tz";
 
-Add `getWeekEndPST()` helper for consistency:
+// In dateRange useMemo:
+const now = toZonedTime(new Date(), "America/Los_Angeles");
+case "week":
+  return { start: getWeekStartPST(), end: getTodayPST() };
+case "month":
+  return { start: getMonthStartPST(), end: getTodayPST() };
+```
+
+### 2. Add Real-time Subscription to DashboardCommandCenter
+
+**File:** `src/pages/DashboardCommandCenter.tsx`
+
+Add real-time subscription to the command center so stats update live:
 
 ```tsx
-/**
- * Get the end of current week in PST (Saturday end) as YYYY-MM-DD string
- */
-export function getWeekEndPST(): string {
-  const pstNow = getNowPST();
-  return format(endOfWeek(pstNow, { weekStartsOn: 0 }), "yyyy-MM-dd");
-}
+// After the useQuery hook, add:
+useEffect(() => {
+  const channel = supabase
+    .channel("command-center-live")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: "daily_production" },
+      () => refetch()
+    )
+    .subscribe();
 
-/**
- * Get the end of current month in PST as YYYY-MM-DD string
- */
-export function getMonthEndPST(): string {
-  const pstNow = getNowPST();
-  return format(endOfMonth(pstNow), "yyyy-MM-dd");
-}
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, [refetch]);
 ```
 
 ---
@@ -128,15 +92,10 @@ export function getMonthEndPST(): string {
 
 | File | Change |
 |------|--------|
-| `src/lib/dateUtils.ts` | Add `getWeekEndPST()` and `getMonthEndPST()` utilities |
-| `src/components/ui/date-range-picker.tsx` | Update `useDateRange` hook to use PST utilities |
-| `src/components/dashboard/ManagerProductionStats.tsx` | Use `getWeekStartPST()` instead of `getDateDaysAgoPST(7)`, add real-time subscription |
-
----
+| `src/components/dashboard/PersonalStatsCard.tsx` | Add real-time subscription + use PST date utilities |
+| `src/pages/DashboardCommandCenter.tsx` | Add real-time subscription for live stats |
 
 ## Result
-
-- Dashboard "Total ALP", "Deals", "Week ALP" will match Leaderboard exactly
-- All components use consistent PST timezone and "Sunday-Saturday" week definition
-- ManagerProductionStats updates in real-time when production is logged
-
+- All dashboard numbers will update in real-time when production is logged
+- Date calculations will be consistent with leaderboard (PST timezone)
+- No manual refresh needed - stats sync automatically across the platform

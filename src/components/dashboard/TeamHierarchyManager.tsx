@@ -49,6 +49,11 @@ interface AgentHierarchyEntry {
   courseProgress: number;
   isDeactivated: boolean;
   isInactive: boolean;
+  // Production data
+  weeklyAlp: number;
+  weeklyDeals: number;
+  monthlyAlp: number;
+  monthlyDeals: number;
 }
 
 interface Manager {
@@ -114,18 +119,46 @@ export function TeamHierarchyManager() {
       }
 
       const userIds = agentsData.map(a => a.user_id).filter(Boolean);
+      const agentIds = agentsData.map(a => a.id);
       
-      const [profilesResult, managerRolesResult, progressResult, modulesResult] = await Promise.all([
+      // Get week start (Sunday) in PST
+      const now = new Date();
+      const dayOfWeek = now.getDay();
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - dayOfWeek);
+      weekStart.setHours(0, 0, 0, 0);
+      const weekStartStr = weekStart.toISOString().split('T')[0];
+      
+      // Get month start
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthStartStr = monthStart.toISOString().split('T')[0];
+      
+      const [profilesResult, managerRolesResult, progressResult, modulesResult, productionResult] = await Promise.all([
         supabase.from("profiles").select("user_id, full_name, email, phone").in("user_id", userIds),
         supabase.from("user_roles").select("user_id").in("role", ["manager", "admin"]),
         supabase.from("onboarding_progress").select("agent_id, passed"),
         supabase.from("onboarding_modules").select("id").eq("is_active", true),
+        supabase.from("daily_production").select("agent_id, production_date, aop, deals_closed").in("agent_id", agentIds).gte("production_date", monthStartStr),
       ]);
 
       const profiles = profilesResult.data || [];
       const managerUserIds = new Set(managerRolesResult.data?.map(r => r.user_id) || []);
       const progressData = progressResult.data || [];
       const totalModules = modulesResult.data?.length || 1;
+      const productionData = productionResult.data || [];
+
+      // Aggregate production by agent
+      const productionMap = new Map<string, { weeklyAlp: number; weeklyDeals: number; monthlyAlp: number; monthlyDeals: number }>();
+      productionData.forEach(p => {
+        const existing = productionMap.get(p.agent_id) || { weeklyAlp: 0, weeklyDeals: 0, monthlyAlp: 0, monthlyDeals: 0 };
+        const isThisWeek = p.production_date >= weekStartStr;
+        productionMap.set(p.agent_id, {
+          weeklyAlp: existing.weeklyAlp + (isThisWeek ? Number(p.aop) || 0 : 0),
+          weeklyDeals: existing.weeklyDeals + (isThisWeek ? p.deals_closed || 0 : 0),
+          monthlyAlp: existing.monthlyAlp + (Number(p.aop) || 0),
+          monthlyDeals: existing.monthlyDeals + (p.deals_closed || 0),
+        });
+      });
 
       const agentProgressMap = new Map<string, { hasProgress: boolean; passedCount: number }>();
       progressData.forEach(p => {
@@ -140,6 +173,7 @@ export function TeamHierarchyManager() {
         const profile = profiles?.find(p => p.user_id === agent.user_id);
         const isManager = managerUserIds.has(agent.user_id || "");
         const progressInfo = agentProgressMap.get(agent.id);
+        const production = productionMap.get(agent.id) || { weeklyAlp: 0, weeklyDeals: 0, monthlyAlp: 0, monthlyDeals: 0 };
         
         let managerName: string | null = null;
         if (agent.invited_by_manager_id) {
@@ -166,8 +200,15 @@ export function TeamHierarchyManager() {
             : 0,
           isDeactivated: agent.is_deactivated || false,
           isInactive: agent.is_inactive || false,
+          weeklyAlp: production.weeklyAlp,
+          weeklyDeals: production.weeklyDeals,
+          monthlyAlp: production.monthlyAlp,
+          monthlyDeals: production.monthlyDeals,
         };
       });
+
+      // Sort by monthly production (highest first)
+      agentEntries.sort((a, b) => b.monthlyAlp - a.monthlyAlp);
 
       const managerList: Manager[] = agentEntries
         .filter(a => a.isManager)
@@ -423,23 +464,24 @@ export function TeamHierarchyManager() {
             </Select>
           </div>
 
-          {/* Agents Table */}
+          {/* Agents Table - Premium Production Display */}
           <div className="rounded-lg border bg-card/50 overflow-hidden">
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/30">
                   <TableHead className="text-xs">Agent</TableHead>
-                  <TableHead className="text-xs">Email</TableHead>
+                  <TableHead className="text-xs text-right">Week ALP</TableHead>
+                  <TableHead className="text-xs text-right">Deals</TableHead>
+                  <TableHead className="text-xs text-right">Month ALP</TableHead>
                   <TableHead className="text-xs w-36">Stage</TableHead>
                   <TableHead className="text-xs w-28">Course</TableHead>
-                  <TableHead className="text-xs w-40">Reports To</TableHead>
                   <TableHead className="text-xs w-10"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredAgents.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-6 text-muted-foreground text-sm">
+                    <TableCell colSpan={7} className="text-center py-6 text-muted-foreground text-sm">
                       No agents found
                     </TableCell>
                   </TableRow>
@@ -452,6 +494,7 @@ export function TeamHierarchyManager() {
                         agent.id === adminAgentId && "bg-primary/5"
                       )}
                     >
+                      {/* Agent Name with Badges */}
                       <TableCell className="py-2">
                         <div className="flex items-center gap-1.5">
                           <span className="font-medium text-sm">{agent.name}</span>
@@ -462,10 +505,40 @@ export function TeamHierarchyManager() {
                             <Badge className="text-[10px] px-1 py-0 bg-primary/20 text-primary border-primary/30">You</Badge>
                           )}
                         </div>
+                        <span className="text-[10px] text-muted-foreground">{agent.email}</span>
                       </TableCell>
-                      <TableCell className="text-muted-foreground text-xs py-2">
-                        {agent.email}
+                      
+                      {/* Weekly ALP - Highlighted */}
+                      <TableCell className="text-right py-2">
+                        <span className={cn(
+                          "font-bold text-sm tabular-nums",
+                          agent.weeklyAlp > 0 ? "text-primary" : "text-muted-foreground"
+                        )}>
+                          ${agent.weeklyAlp.toLocaleString()}
+                        </span>
                       </TableCell>
+                      
+                      {/* Weekly Deals */}
+                      <TableCell className="text-right py-2">
+                        <span className={cn(
+                          "font-semibold text-sm tabular-nums",
+                          agent.weeklyDeals > 0 ? "text-foreground" : "text-muted-foreground"
+                        )}>
+                          {agent.weeklyDeals}
+                        </span>
+                      </TableCell>
+                      
+                      {/* Monthly ALP */}
+                      <TableCell className="text-right py-2">
+                        <span className={cn(
+                          "text-sm tabular-nums",
+                          agent.monthlyAlp > 0 ? "text-muted-foreground font-medium" : "text-muted-foreground/50"
+                        )}>
+                          ${agent.monthlyAlp.toLocaleString()}
+                        </span>
+                      </TableCell>
+                      
+                      {/* Stage Dropdown */}
                       <TableCell className="py-2">
                         {agent.id === adminAgentId ? (
                           <span className="text-xs text-muted-foreground">—</span>
@@ -492,6 +565,8 @@ export function TeamHierarchyManager() {
                           </Select>
                         )}
                       </TableCell>
+                      
+                      {/* Course Progress */}
                       <TableCell className="py-2">
                         {agent.id === adminAgentId ? (
                           <span className="text-xs text-muted-foreground">—</span>
@@ -514,40 +589,8 @@ export function TeamHierarchyManager() {
                           />
                         )}
                       </TableCell>
-                      <TableCell className="py-2">
-                        {agent.id === adminAgentId ? (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        ) : (
-                          <Select
-                            value={agent.managerId || "none"}
-                            onValueChange={(value) => 
-                              handleReassign(agent.id, value === "none" ? null : value)
-                            }
-                            disabled={updating === agent.id}
-                          >
-                            <SelectTrigger className="w-full h-6 text-[10px]">
-                              {updating === agent.id ? (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              ) : (
-                                <SelectValue placeholder="Select" />
-                              )}
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none" className="text-xs">
-                                <span className="text-muted-foreground">No Manager</span>
-                              </SelectItem>
-                              {managers
-                                .filter(m => m.id !== agent.id)
-                                .map((manager) => (
-                                  <SelectItem key={manager.id} value={manager.id} className="text-xs">
-                                    {manager.name}
-                                    {manager.id === adminAgentId && " (You)"}
-                                  </SelectItem>
-                                ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                      </TableCell>
+                      
+                      {/* Actions Menu */}
                       <TableCell className="py-2">
                         {agent.id !== adminAgentId && (
                           <DropdownMenu>

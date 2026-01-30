@@ -13,7 +13,9 @@ import {
   Edit3,
   BarChart3,
   Sparkles,
+  ChevronDown,
 } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { StatCard } from "@/components/dashboard/StatCard";
@@ -323,10 +325,25 @@ export default function Dashboard() {
         <TeamSnapshotCard />
       </div>
 
-      {/* ====== 1.5. WEEKLY PERFORMANCE BREAKDOWN (Managers/Admins - Desktop Only) ====== */}
-      {(isManager || isAdmin) && !isMobile && (
+      {/* ====== 1.5. WEEKLY PERFORMANCE BREAKDOWN (Managers/Admins) ====== */}
+      {(isManager || isAdmin) && (
         <div className="mb-6">
-          <TeamPerformanceBreakdown />
+          {isMobile ? (
+            <Collapsible>
+              <CollapsibleTrigger asChild>
+                <Button variant="outline" className="w-full gap-2">
+                  <BarChart3 className="h-4 w-4" />
+                  View Performance Breakdown
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-4">
+                <TeamPerformanceBreakdown />
+              </CollapsibleContent>
+            </Collapsible>
+          ) : (
+            <TeamPerformanceBreakdown />
+          )}
         </div>
       )}
 

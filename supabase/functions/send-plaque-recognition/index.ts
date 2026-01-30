@@ -154,7 +154,8 @@ const getMilestoneDetails = (type: string, amount: number) => {
 const generatePlaqueHTML = (
   agentName: string,
   milestone: ReturnType<typeof getMilestoneDetails>,
-  date: string
+  date: string,
+  instagram?: string | null
 ) => {
   const formattedDate = new Date(date).toLocaleDateString("en-US", {
     year: "numeric",
@@ -162,57 +163,73 @@ const generatePlaqueHTML = (
     day: "numeric",
   });
 
-  // INSTITUTIONAL DESIGN - Clean, minimalist, hedge-fund aesthetic
+  const instagramSection = instagram ? `
+    <p style="font-family:'Inter',sans-serif;font-size:11px;font-weight:400;color:#666;margin:16px 0 0;letter-spacing:0.5px;">
+      @${instagram}
+    </p>
+  ` : '';
+
+  // PREMIUM MINIMALIST DESIGN - Clean, screenshot-worthy, professional
   return `
     <!DOCTYPE html>
     <html>
     <head>
       <style>
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=Inter:wght@300;400;500&display=swap');
       </style>
     </head>
     <body style="margin:0;padding:40px;background:#0a0a0a;font-family:'Inter',sans-serif;">
-      <div style="max-width:600px;margin:0 auto;">
-        <!-- Plaque Container -->
-        <div style="background:linear-gradient(180deg,#141414 0%,#0a0a0a 100%);border:1px solid #2a2a2a;border-radius:4px;padding:48px;text-align:center;">
+      <div style="max-width:540px;margin:0 auto;">
+        <!-- Plaque Container - Clean Border -->
+        <div style="background:#0f0f0f;border:1px solid ${milestone.color}40;border-radius:2px;padding:56px 48px;text-align:center;">
           
-          <!-- Header Line -->
-          <div style="width:60px;height:1px;background:${milestone.color};margin:0 auto 32px;"></div>
+          <!-- Top Accent Line -->
+          <div style="width:48px;height:2px;background:${milestone.color};margin:0 auto 36px;opacity:0.8;"></div>
           
-          <!-- Badge Type -->
-          <p style="font-family:'Inter',sans-serif;font-size:11px;font-weight:500;letter-spacing:3px;color:#666;margin:0 0 24px;text-transform:uppercase;">
+          <!-- Badge Label -->
+          <p style="font-family:'Inter',sans-serif;font-size:10px;font-weight:500;letter-spacing:4px;color:${milestone.color};margin:0 0 28px;text-transform:uppercase;">
             ${milestone.badge}
           </p>
           
           <!-- Recipient Name -->
-          <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:32px;font-weight:600;color:#ffffff;margin:0 0 8px;letter-spacing:1px;">
+          <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:28px;font-weight:500;color:#ffffff;margin:0 0 6px;letter-spacing:0.5px;">
             ${agentName}
           </h1>
           
+          <!-- Instagram Handle -->
+          ${instagramSection}
+          
           <!-- Company -->
-          <p style="font-family:'Inter',sans-serif;font-size:12px;font-weight:400;color:#888;margin:0 0 40px;letter-spacing:1px;">
-            APEX FINANCIAL GROUP
+          <p style="font-family:'Inter',sans-serif;font-size:10px;font-weight:400;color:#555;margin:20px 0 44px;letter-spacing:2px;text-transform:uppercase;">
+            Apex Financial Group
           </p>
           
-          <!-- Amount - WHOLE DOLLARS ONLY -->
-          <div style="background:#141414;border:1px solid #222;border-radius:2px;padding:24px 32px;margin:0 0 32px;display:inline-block;">
-            <p style="font-family:'Playfair Display',Georgia,serif;font-size:42px;font-weight:700;color:${milestone.color};margin:0;">
+          <!-- Amount - Clean & Bold -->
+          <div style="margin:0 0 44px;">
+            <p style="font-family:'Playfair Display',Georgia,serif;font-size:48px;font-weight:600;color:${milestone.color};margin:0;letter-spacing:-1px;">
               $${milestone.amount.toLocaleString()}
             </p>
           </div>
           
           <!-- Achievement Description -->
-          <p style="font-family:'Inter',sans-serif;font-size:13px;font-weight:400;color:#888;margin:0 0 8px;line-height:1.6;">
+          <p style="font-family:'Inter',sans-serif;font-size:12px;font-weight:400;color:#777;margin:0 0 8px;line-height:1.5;">
             ${milestone.description}
           </p>
           
-          <p style="font-family:'Inter',sans-serif;font-size:11px;font-weight:400;color:#555;margin:0 0 40px;">
+          <p style="font-family:'Inter',sans-serif;font-size:10px;font-weight:400;color:#444;margin:0;">
             ${formattedDate}
           </p>
           
-          <!-- Footer Line -->
-          <div style="width:60px;height:1px;background:#2a2a2a;margin:0 auto;"></div>
+          <!-- Bottom Accent Line -->
+          <div style="width:48px;height:2px;background:#222;margin:36px auto 0;"></div>
           
+        </div>
+        
+        <!-- Powered By Footer -->
+        <div style="text-align:center;margin-top:20px;">
+          <p style="font-family:'Inter',sans-serif;font-size:9px;font-weight:400;color:#333;margin:0;letter-spacing:1px;text-transform:uppercase;">
+            Powered by Apex Financial
+          </p>
         </div>
       </div>
     </body>
@@ -224,7 +241,8 @@ const generateEmailHTML = (
   agentName: string,
   milestone: ReturnType<typeof getMilestoneDetails>,
   date: string,
-  isManager: boolean = false
+  isManager: boolean = false,
+  instagram?: string | null
 ) => {
   const formattedDate = new Date(date).toLocaleDateString("en-US", {
     year: "numeric",
@@ -361,6 +379,15 @@ serve(async (req: Request) => {
         agentEmail = profileData.email;
       }
     }
+
+    // Fetch instagram handle
+    let instagramHandle: string | null = null;
+    const { data: fullProfile } = await supabase
+      .from("profiles")
+      .select("instagram_handle")
+      .eq("id", agentData.profile_id)
+      .single();
+    instagramHandle = fullProfile?.instagram_handle || null;
 
     const milestone = getMilestoneDetails(milestoneType, amount);
 

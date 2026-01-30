@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
+import { format, subDays, endOfWeek, endOfMonth } from "date-fns";
+import { toZonedTime } from "date-fns-tz";
 import { CalendarIcon, Calendar as CalendarDays } from "lucide-react";
+import { getNowPST, getWeekStartPST, getMonthStartPST } from "@/lib/dateUtils";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -45,23 +47,23 @@ export function DateRangePicker({
   const setPeriod = onPeriodChange || setInternalPeriod;
 
   const handlePresetClick = (preset: DateRangePeriod) => {
-    const today = new Date();
+    const pstNow = getNowPST();
     let newRange: DateRange;
 
     switch (preset) {
       case "today":
-        newRange = { from: today, to: today };
+        newRange = { from: pstNow, to: pstNow };
         break;
       case "week":
         newRange = {
-          from: startOfWeek(today, { weekStartsOn: 0 }),
-          to: endOfWeek(today, { weekStartsOn: 0 }),
+          from: toZonedTime(new Date(getWeekStartPST()), "America/Los_Angeles"),
+          to: endOfWeek(pstNow, { weekStartsOn: 0 }),
         };
         break;
       case "month":
         newRange = {
-          from: startOfMonth(today),
-          to: endOfMonth(today),
+          from: toZonedTime(new Date(getMonthStartPST()), "America/Los_Angeles"),
+          to: endOfMonth(pstNow),
         };
         break;
       default:
@@ -216,26 +218,26 @@ export function DateRangePicker({
   );
 }
 
-// Hook for managing date range state
+// Hook for managing date range state - uses PST timezone for consistency
 export function useDateRange(initialPeriod: DateRangePeriod = "week") {
-  const today = new Date();
+  const pstNow = getNowPST();
   
   const getInitialRange = (): DateRange => {
     switch (initialPeriod) {
       case "today":
-        return { from: today, to: today };
+        return { from: pstNow, to: pstNow };
       case "week":
         return {
-          from: startOfWeek(today, { weekStartsOn: 0 }),
-          to: endOfWeek(today, { weekStartsOn: 0 }),
+          from: toZonedTime(new Date(getWeekStartPST()), "America/Los_Angeles"),
+          to: endOfWeek(pstNow, { weekStartsOn: 0 }),
         };
       case "month":
         return {
-          from: startOfMonth(today),
-          to: endOfMonth(today),
+          from: toZonedTime(new Date(getMonthStartPST()), "America/Los_Angeles"),
+          to: endOfMonth(pstNow),
         };
       default:
-        return { from: subDays(today, 30), to: today };
+        return { from: subDays(pstNow, 30), to: pstNow };
     }
   };
 

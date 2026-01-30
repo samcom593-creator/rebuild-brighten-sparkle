@@ -350,9 +350,9 @@ export default function CourseProgress() {
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">
-            <Button variant="outline" size="sm" onClick={() => setShowContentViewer(true)} className="gap-1.5">
+            <Button variant="outline" size="sm" onClick={() => window.location.href = '/course-progress/content'} className="gap-1.5">
               <Eye className="h-3.5 w-3.5" />
-              View Course Content
+              View Full Course
             </Button>
             <Button variant="outline" size="sm" onClick={copyToClipboard} className="gap-1.5">
               <Copy className="h-3.5 w-3.5" />

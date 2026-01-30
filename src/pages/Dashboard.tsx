@@ -26,6 +26,7 @@ import { LeaderboardTabs } from "@/components/dashboard/LeaderboardTabs";
 import { ClosingRateLeaderboard } from "@/components/dashboard/ClosingRateLeaderboard";
 import { ReferralLeaderboard } from "@/components/dashboard/ReferralLeaderboard";
 import { TeamSnapshotCard } from "@/components/dashboard/TeamSnapshotCard";
+import { TeamPerformanceBreakdown } from "@/components/dashboard/TeamPerformanceBreakdown";
 import { OnboardingPipelineCard } from "@/components/dashboard/OnboardingPipelineCard";
 import { useAuth } from "@/hooks/useAuth";
 import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration";
@@ -319,6 +320,13 @@ export default function Dashboard() {
       <div className="mb-6">
         <TeamSnapshotCard />
       </div>
+
+      {/* ====== 1.5. WEEKLY PERFORMANCE BREAKDOWN (Managers/Admins) ====== */}
+      {(isManager || isAdmin) && (
+        <div className="mb-6">
+          <TeamPerformanceBreakdown />
+        </div>
+      )}
 
       {/* ====== 2. MAIN CONTENT LAYOUT ====== */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">

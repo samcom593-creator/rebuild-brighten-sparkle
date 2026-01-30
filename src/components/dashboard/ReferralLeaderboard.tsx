@@ -7,6 +7,7 @@ import { ConfettiCelebration } from "./ConfettiCelebration";
 import { RankChangeIndicator } from "./RankChangeIndicator";
 import { useTop3Celebration } from "@/hooks/useTop3Celebration";
 import { useRankChange } from "@/hooks/useRankChange";
+import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 import { cn } from "@/lib/utils";
 import { getTodayPST, getWeekStartPST, getMonthStartPST } from "@/lib/dateUtils";
 
@@ -180,23 +181,10 @@ export function ReferralLeaderboard({ currentAgentId, period = "week" }: Referra
       isInitialMount.current = false;
     }
     fetchLeaderboard(true);
-
-    // Subscribe to realtime updates
-    const channel = supabase
-      .channel("referral-leaderboard")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "daily_production" },
-        () => {
-          fetchLeaderboard(false);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, [fetchLeaderboard]);
+
+  // Use shared realtime hook instead of individual channel
+  useProductionRealtime(() => fetchLeaderboard(false), 1500);
 
   return (
     <>

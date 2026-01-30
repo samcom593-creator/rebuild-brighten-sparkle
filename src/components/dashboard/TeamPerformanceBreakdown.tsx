@@ -17,7 +17,7 @@ import { format, subWeeks, startOfWeek, endOfWeek, isWithinInterval, parseISO } 
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useDebouncedRefetch } from "@/hooks/useDebouncedRefetch";
+import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 import { getClosingRateColor } from "@/lib/closingRateColors";
 
 interface WeeklyStats {
@@ -267,23 +267,8 @@ export function TeamPerformanceBreakdown() {
     }
   }, [fetchWeeklyData, authLoading, user]);
 
-  // Debounced refetch to prevent storms
-  const debouncedRefetch = useDebouncedRefetch(fetchWeeklyData, 1200);
-
-  useEffect(() => {
-    const channel = supabase
-      .channel("team-performance-breakdown-live")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "daily_production" },
-        () => debouncedRefetch()
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [debouncedRefetch]);
+  // Use shared realtime hook instead of individual channel
+  useProductionRealtime(fetchWeeklyData, 1500);
 
   const handleWeekClick = (week: WeeklyStats) => {
     if (expandedWeek === week.weekStart) {

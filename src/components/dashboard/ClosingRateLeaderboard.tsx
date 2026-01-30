@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Percent, Trophy, Medal, Award, Radio } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,7 +6,7 @@ import { ConfettiCelebration } from "./ConfettiCelebration";
 import { RankChangeIndicator } from "./RankChangeIndicator";
 import { useTop3Celebration } from "@/hooks/useTop3Celebration";
 import { useRankChange } from "@/hooks/useRankChange";
-import { useDebouncedRefetch } from "@/hooks/useDebouncedRefetch";
+import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 import { getClosingRateColor } from "@/lib/closingRateColors";
 import { cn } from "@/lib/utils";
 import { getTodayPST, getWeekStartPST, getMonthStartPST } from "@/lib/dateUtils";
@@ -145,11 +145,10 @@ export function ClosingRateLeaderboard({ currentAgentId, period = "week" }: Clos
     }
   };
 
-  // Debounced refetch to prevent storms
-  const debouncedRefetch = useDebouncedRefetch(() => {
+  const handleRealtimeUpdate = useCallback(() => {
     setLastUpdated(new Date());
     fetchLeaderboard(false);
-  }, 1000);
+  }, []);
 
   useEffect(() => {
     // Only reset tracking on initial mount
@@ -158,21 +157,10 @@ export function ClosingRateLeaderboard({ currentAgentId, period = "week" }: Clos
       isInitialMount.current = false;
     }
     fetchLeaderboard(true);
-
-    // Subscribe to realtime updates with debounced refetch
-    const channel = supabase
-      .channel("closing-rate-leaderboard")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "daily_production" },
-        () => debouncedRefetch()
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, [period, currentAgentId]);
+
+  // Use shared realtime hook instead of individual channel
+  useProductionRealtime(handleRealtimeUpdate, 1500);
 
   return (
     <>

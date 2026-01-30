@@ -10,6 +10,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { getTodayPST, getDateDaysAgoPST } from "@/lib/dateUtils";
+import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 
 interface AgentRankBadgeProps {
   agentId: string;
@@ -77,27 +78,10 @@ export function AgentRankBadge({
 
   useEffect(() => {
     fetchRanks();
-
-    // Subscribe to real-time updates
-    const channel = supabase
-      .channel("agent-rank-updates")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "daily_production"
-        },
-        () => {
-          fetchRanks();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, [fetchRanks]);
+
+  // Use shared realtime hook instead of individual channel
+  useProductionRealtime(fetchRanks, 1500);
 
   if (loading || currentRank === null) {
     return null;

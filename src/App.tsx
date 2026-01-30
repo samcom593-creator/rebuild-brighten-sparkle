@@ -46,7 +46,16 @@ const Install = lazy(() => import("./pages/Install"));
 const CourseProgress = lazy(() => import("./pages/CourseProgress"));
 const CourseContent = lazy(() => import("./pages/CourseContent"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 120000, // 2 minutes - data stays "fresh"
+      gcTime: 300000,    // 5 minutes - keep in cache
+      refetchOnWindowFocus: false, // Prevent focus-triggered refetches
+      retry: 1,
+    },
+  },
+});
 
 // Page loading fallback
 function PageLoader() {

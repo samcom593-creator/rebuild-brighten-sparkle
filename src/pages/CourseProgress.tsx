@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { format, differenceInDays } from "date-fns";
 import {
@@ -80,6 +81,7 @@ export default function CourseProgress() {
   const [sendingReminder, setSendingReminder] = useState<string | null>(null);
   const [showContentViewer, setShowContentViewer] = useState(false);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // Fetch modules
   const { data: modules = [] } = useQuery({
@@ -384,7 +386,7 @@ export default function CourseProgress() {
           </div>
           <div className="flex gap-2 flex-wrap">
             <AddAgentToCourseDialog onSuccess={() => refetch()} />
-            <Button variant="outline" size="sm" onClick={() => window.location.href = '/course-progress/content'} className="gap-1.5">
+            <Button variant="outline" size="sm" onClick={() => navigate('/course-progress/content')} className="gap-1.5">
               <Eye className="h-3.5 w-3.5" />
               View Full Course
             </Button>

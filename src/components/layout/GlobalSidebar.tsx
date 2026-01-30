@@ -72,22 +72,24 @@ export function GlobalSidebar({
       roles: ["admin", "manager", "agent"]
     });
 
-    // Admin-only: Command Center and Course Progress
+    // Admin-only: Command Center
     if (isAdmin) {
-      items.push(
-        { 
-          icon: Crown, 
-          label: "Command Center", 
-          href: "/dashboard/command",
-          roles: ["admin"]
-        },
-        {
-          icon: BarChart3,
-          label: "Course Progress",
-          href: "/course-progress",
-          roles: ["admin"]
-        }
-      );
+      items.push({ 
+        icon: Crown, 
+        label: "Command Center", 
+        href: "/dashboard/command",
+        roles: ["admin"]
+      });
+    }
+
+    // Admin and Managers: Course Progress
+    if (isAdmin || isManager) {
+      items.push({
+        icon: BarChart3,
+        label: "Course Progress",
+        href: "/course-progress",
+        roles: ["admin", "manager"]
+      });
     }
 
     // All users see applicants (Pipeline)

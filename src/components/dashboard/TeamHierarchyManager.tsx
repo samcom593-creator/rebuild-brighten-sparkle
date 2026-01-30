@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, RefreshCw, AlertTriangle, Loader2, Network, MoreVertical, Pencil, UserX, Trash2 } from "lucide-react";
+import { Users, RefreshCw, AlertTriangle, Loader2, Network, MoreVertical, Pencil, UserX, Trash2, Merge } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +45,7 @@ import { cn } from "@/lib/utils";
 import { AddToCourseButton } from "./AddToCourseButton";
 import { AgentProfileEditor } from "@/components/admin/AgentProfileEditor";
 import { DeactivateAgentDialog } from "./DeactivateAgentDialog";
+import { DuplicateMergeTool } from "@/components/admin/DuplicateMergeTool";
 
 interface AgentHierarchyEntry {
   id: string;
@@ -99,6 +100,7 @@ export function TeamHierarchyManager() {
   // Editor states
   const [selectedAgent, setSelectedAgent] = useState<AgentHierarchyEntry | null>(null);
   const [deactivateAgent, setDeactivateAgent] = useState<AgentHierarchyEntry | null>(null);
+  const [showMergeTool, setShowMergeTool] = useState(false);
 
   useEffect(() => {
     fetchHierarchy();
@@ -494,6 +496,15 @@ export function TeamHierarchyManager() {
               Refresh
             </Button>
             <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowMergeTool(true)}
+              className="h-7 text-xs"
+            >
+              <Merge className="h-3 w-3 mr-1" />
+              Merge
+            </Button>
+            <Button
               variant="default"
               size="sm"
               onClick={handleAssignAllToMe}
@@ -871,6 +882,16 @@ export function TeamHierarchyManager() {
         onComplete={() => {
           fetchHierarchy();
           setDeactivateAgent(null);
+        }}
+      />
+
+      {/* Duplicate Merge Tool */}
+      <DuplicateMergeTool
+        open={showMergeTool}
+        onClose={() => setShowMergeTool(false)}
+        onMergeComplete={() => {
+          fetchHierarchy();
+          setShowMergeTool(false);
         }}
       />
     </>

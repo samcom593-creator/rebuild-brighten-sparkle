@@ -116,19 +116,27 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
           });
         });
 
-        const totalAgents = agentTotals.size;
+        // Filter agents with at least $2,000 ALP for agency averages (exclude new agents)
+        const qualifiedAgentTotals = new Map<string, typeof agentTotals extends Map<string, infer V> ? V : never>();
+        agentTotals.forEach((totals, agentId) => {
+          if (totals.alp >= 2000) {
+            qualifiedAgentTotals.set(agentId, totals);
+          }
+        });
+
+        const totalQualifiedAgents = qualifiedAgentTotals.size;
         let totalClosingRate = 0, totalPresentations = 0, totalAlp = 0;
-        agentTotals.forEach((t) => {
+        qualifiedAgentTotals.forEach((t) => {
           totalClosingRate += t.presentations > 0 ? (t.deals / t.presentations) * 100 : 0;
           totalPresentations += t.presentations;
           totalAlp += t.alp;
         });
 
         setAgencyStats({
-          avgClosingRate: totalAgents > 0 ? totalClosingRate / totalAgents : 0,
-          avgPresentations: totalAgents > 0 ? totalPresentations / totalAgents : 0,
-          avgAlp: totalAgents > 0 ? totalAlp / totalAgents : 0,
-          totalAgents,
+          avgClosingRate: totalQualifiedAgents > 0 ? totalClosingRate / totalQualifiedAgents : 0,
+          avgPresentations: totalQualifiedAgents > 0 ? totalPresentations / totalQualifiedAgents : 0,
+          avgAlp: totalQualifiedAgents > 0 ? totalAlp / totalQualifiedAgents : 0,
+          totalAgents: totalQualifiedAgents,
         });
 
         // Get stats for the target agents (role-based)

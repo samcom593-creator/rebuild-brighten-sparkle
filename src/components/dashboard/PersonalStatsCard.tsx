@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { getTodayPST, getWeekStartPST, getMonthStartPST } from "@/lib/dateUtils";
 import { toZonedTime } from "date-fns-tz";
+import { useAuth } from "@/hooks/useAuth";
 
 type TimePeriod = "day" | "week" | "month" | "custom";
 
@@ -33,6 +34,7 @@ interface PeriodStats {
 }
 
 export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCardProps) {
+  const { user, isAdmin, isManager } = useAuth();
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("week");
   const [customDateRange, setCustomDateRange] = useState<DateRange>({ from: undefined, to: undefined });
   const [agencyStats, setAgencyStats] = useState<AgencyStats | null>(null);
@@ -64,7 +66,36 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
     try {
       setLoading(true);
       
-      // Get all production for the period (agency-wide)
+      // Determine which agents to include based on role
+      let targetAgentIds: string[] = [agentId];
+      
+      if (isAdmin) {
+        // Admin sees all active agents
+        const { data: allAgents } = await supabase
+          .from("agents")
+          .select("id")
+          .eq("is_deactivated", false);
+        targetAgentIds = allAgents?.map(a => a.id) || [agentId];
+      } else if (isManager && user) {
+        // Manager sees self + downline
+        const { data: currentAgent } = await supabase
+          .from("agents")
+          .select("id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (currentAgent) {
+          const { data: downlineAgents } = await supabase
+            .from("agents")
+            .select("id")
+            .eq("invited_by_manager_id", currentAgent.id)
+            .eq("is_deactivated", false);
+
+          targetAgentIds = [currentAgent.id, ...(downlineAgents?.map(a => a.id) || [])];
+        }
+      }
+      
+      // Get all production for the period (agency-wide for comparison)
       const { data: allProduction } = await supabase
         .from("daily_production")
         .select("agent_id, closing_rate, presentations, aop, deals_closed")
@@ -100,41 +131,50 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
           totalAgents,
         });
 
-        // Get personal stats for the period
-        const myData = agentTotals.get(agentId);
-        if (myData) {
-          setPersonalStats({
-            closingRate: myData.presentations > 0 ? Math.round((myData.deals / myData.presentations) * 100) : 0,
-            presentations: myData.presentations,
-            alp: myData.alp,
-            deals: myData.deals,
-          });
-        } else {
-          setPersonalStats({ closingRate: 0, presentations: 0, alp: 0, deals: 0 });
-        }
+        // Get stats for the target agents (role-based)
+        let targetPresentations = 0, targetDeals = 0, targetAlp = 0;
+        targetAgentIds.forEach(id => {
+          const data = agentTotals.get(id);
+          if (data) {
+            targetPresentations += data.presentations;
+            targetDeals += data.deals;
+            targetAlp += data.alp;
+          }
+        });
+
+        setPersonalStats({
+          closingRate: targetPresentations > 0 ? Math.round((targetDeals / targetPresentations) * 100) : 0,
+          presentations: targetPresentations,
+          alp: targetAlp,
+          deals: targetDeals,
+        });
       } else {
         setAgencyStats(null);
         setPersonalStats({ closingRate: 0, presentations: 0, alp: 0, deals: 0 });
       }
 
-      // Get personal best ALP (all-time)
-      const { data: bestData } = await supabase
-        .from("daily_production")
-        .select("aop")
-        .eq("agent_id", agentId)
-        .order("aop", { ascending: false })
-        .limit(1)
-        .single();
+      // Get personal best ALP (all-time) - for agents only, or skip for admin/manager
+      if (!isAdmin && !isManager) {
+        const { data: bestData } = await supabase
+          .from("daily_production")
+          .select("aop")
+          .eq("agent_id", agentId)
+          .order("aop", { ascending: false })
+          .limit(1)
+          .single();
 
-      if (bestData) {
-        setPersonalBest(Number(bestData.aop));
+        if (bestData) {
+          setPersonalBest(Number(bestData.aop));
+        }
+      } else {
+        setPersonalBest(0); // No personal best for team views
       }
     } catch (error) {
       console.error("Error fetching stats:", error);
     } finally {
       setLoading(false);
     }
-  }, [agentId, dateRange]);
+  }, [agentId, dateRange, isAdmin, isManager, user]);
 
   // Initial fetch
   useEffect(() => {
@@ -162,9 +202,11 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
   const myAlp = personalStats?.alp || 0;
   const myDeals = personalStats?.deals || 0;
 
+  // For admin/manager, compare to per-agent average; for agents, compare to agency average
+  const isTeamView = isAdmin || isManager;
   const isAboveAvgClosing = agencyStats && myClosingRate > agencyStats.avgClosingRate;
   const isAboveAvgPresentations = agencyStats && myPresentations > agencyStats.avgPresentations;
-  const isPersonalBest = myAlp > 0 && myAlp >= personalBest;
+  const isPersonalBest = !isTeamView && myAlp > 0 && myAlp >= personalBest;
 
   const periodLabels: Record<TimePeriod, string> = {
     day: "Today",
@@ -173,26 +215,29 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
     custom: "Custom Range",
   };
 
+  // Dynamic title based on role
+  const cardTitle = isAdmin ? "Agency Performance" : isManager ? "Team Performance" : "Your Performance";
+
   const stats = [
     {
-      label: "Your Closing Rate",
+      label: isTeamView ? "Close Rate" : "Your Closing Rate",
       value: myClosingRate,
       suffix: "%",
       comparison: agencyStats?.avgClosingRate,
-      comparisonLabel: "Agency Avg",
+      comparisonLabel: isTeamView ? "Per Agent Avg" : "Agency Avg",
       isAbove: isAboveAvgClosing,
       icon: Target,
     },
     {
-      label: "Presentations",
+      label: isTeamView ? "Total Presentations" : "Presentations",
       value: myPresentations,
       comparison: agencyStats?.avgPresentations,
-      comparisonLabel: "Agency Avg",
+      comparisonLabel: isTeamView ? "Per Agent Avg" : "Agency Avg",
       isAbove: isAboveAvgPresentations,
       icon: Zap,
     },
     {
-      label: "Deals Closed",
+      label: isTeamView ? "Total Deals" : "Deals Closed",
       value: myDeals,
       icon: Trophy,
       highlight: myDeals >= 3,
@@ -216,7 +261,7 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
         {/* Header with Time Period Selector */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-2">
-            <h3 className="text-lg font-semibold gradient-text">Your Performance</h3>
+            <h3 className="text-lg font-semibold gradient-text">{cardTitle}</h3>
             {isPersonalBest && myAlp > 0 && (
               <motion.span
                 initial={{ scale: 0 }}

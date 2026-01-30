@@ -46,6 +46,7 @@ interface Agent {
 }
 
 export function LeadReassignment() {
+  // Component wrapped in div to prevent React forwardRef warnings with Radix Dialog
   const [applications, setApplications] = useState<Application[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -187,7 +188,7 @@ export function LeadReassignment() {
   };
 
   return (
-    <>
+    <div>
       <GlassCard className="p-6">
         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
           <ArrowRightLeft className="h-5 w-5 text-primary" />
@@ -300,6 +301,6 @@ export function LeadReassignment() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }

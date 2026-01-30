@@ -1,101 +1,129 @@
 
-# Fix Plan: Ensure All Dashboard Numbers Are Live and Active
+# Fix Plan: Admin "Your Performance" Should Show Whole Team Stats
 
-## Findings
+## Problem
 
-After investigating the codebase, all the core "numbers" files exist:
-- `/numbers` page (Numbers.tsx) - Compact login + production entry
-- `/apex-daily-numbers` page (LogNumbers.tsx) - Full production logging
-- Dashboard components (`TeamSnapshotCard`, `LeaderboardTabs`, `ManagerProductionStats`, etc.)
+The `PersonalStatsCard` component always shows the logged-in user's **personal stats only**, regardless of their role. As an admin, you want "Your Performance" to reflect your **entire team's aggregated metrics**.
 
-However, **two critical components are missing real-time subscriptions**:
+Currently:
+- Admin sees: Their own closing rate, presentations, deals, ALP
+- Admin expects: Agency-wide closing rate, total presentations, total deals, total ALP
 
-| Component | Has Real-time? | Issue |
-|-----------|---------------|-------|
-| TeamSnapshotCard | Yes | Working |
-| LeaderboardTabs | Yes | Working |
-| ManagerProductionStats | Yes | Working |
-| ClosingRateLeaderboard | Yes | Working |
-| ReferralLeaderboard | Yes | Working |
-| **PersonalStatsCard** | **No** | Not updating live |
-| **DashboardCommandCenter** | **No** | Stats not live |
+## Solution
 
-Additionally, **PersonalStatsCard uses local time** instead of PST utilities, causing potential date mismatches.
+Update `PersonalStatsCard` to be **role-aware**:
+- **Agents**: Show personal stats only (current behavior)
+- **Managers**: Show aggregated team stats (manager + their downline)
+- **Admins**: Show aggregated agency-wide stats (all active agents)
 
----
+### File to Modify
 
-## Changes Required
+**`src/components/dashboard/PersonalStatsCard.tsx`**
 
-### 1. Add Real-time Subscription to PersonalStatsCard
+### Changes Required
 
-**File:** `src/components/dashboard/PersonalStatsCard.tsx`
-
-Add Supabase real-time subscription to refresh stats when production changes:
-
+1. **Import `useAuth` hook** to detect user role:
 ```tsx
-useEffect(() => {
-  const channel = supabase
-    .channel("personal-stats-live")
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "daily_production" },
-      () => fetchStats()
-    )
-    .subscribe();
-
-  return () => {
-    supabase.removeChannel(channel);
-  };
-}, [fetchStats]);
+import { useAuth } from "@/hooks/useAuth";
 ```
 
-Also update date calculations to use PST utilities:
+2. **Update the component** to use role-based data fetching:
 ```tsx
-import { getTodayPST, getWeekStartPST, getMonthStartPST } from "@/lib/dateUtils";
-import { toZonedTime } from "date-fns-tz";
-
-// In dateRange useMemo:
-const now = toZonedTime(new Date(), "America/Los_Angeles");
-case "week":
-  return { start: getWeekStartPST(), end: getTodayPST() };
-case "month":
-  return { start: getMonthStartPST(), end: getTodayPST() };
+export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCardProps) {
+  const { user, isAdmin, isManager } = useAuth();
+  // ...
 ```
 
-### 2. Add Real-time Subscription to DashboardCommandCenter
-
-**File:** `src/pages/DashboardCommandCenter.tsx`
-
-Add real-time subscription to the command center so stats update live:
+3. **Modify `fetchStats` function** to fetch team/agency data when admin/manager:
 
 ```tsx
-// After the useQuery hook, add:
-useEffect(() => {
-  const channel = supabase
-    .channel("command-center-live")
-    .on(
-      "postgres_changes",
-      { event: "*", schema: "public", table: "daily_production" },
-      () => refetch()
-    )
-    .subscribe();
+const fetchStats = useCallback(async () => {
+  try {
+    setLoading(true);
+    
+    // Determine which agents to include based on role
+    let targetAgentIds: string[] = [agentId];
+    
+    if (isAdmin) {
+      // Admin sees all active agents
+      const { data: allAgents } = await supabase
+        .from("agents")
+        .select("id")
+        .eq("is_deactivated", false);
+      targetAgentIds = allAgents?.map(a => a.id) || [];
+    } else if (isManager) {
+      // Manager sees self + downline
+      const { data: currentAgent } = await supabase
+        .from("agents")
+        .select("id")
+        .eq("user_id", user?.id)
+        .maybeSingle();
 
-  return () => {
-    supabase.removeChannel(channel);
-  };
-}, [refetch]);
+      if (currentAgent) {
+        const { data: downlineAgents } = await supabase
+          .from("agents")
+          .select("id")
+          .eq("invited_by_manager_id", currentAgent.id)
+          .eq("is_deactivated", false);
+
+        targetAgentIds = [currentAgent.id, ...(downlineAgents?.map(a => a.id) || [])];
+      }
+    }
+    
+    // Fetch production for ALL target agents
+    const { data: allProduction } = await supabase
+      .from("daily_production")
+      .select("agent_id, closing_rate, presentations, aop, deals_closed")
+      .in("agent_id", targetAgentIds)  // Changed from .eq to .in
+      .gte("production_date", dateRange.start)
+      .lte("production_date", dateRange.end);
+    
+    // ... rest of aggregation logic stays the same
+  }
+}, [..., isAdmin, isManager, user]);
 ```
 
----
+4. **Update the title dynamically** based on role:
+```tsx
+// Line 219 - Update header title
+<h3 className="text-lg font-semibold gradient-text">
+  {isAdmin ? "Agency Performance" : isManager ? "Team Performance" : "Your Performance"}
+</h3>
+```
+
+5. **Update stat labels** to reflect scope:
+```tsx
+const stats = [
+  {
+    label: isAdmin || isManager ? "Close Rate" : "Your Closing Rate",
+    // ...
+  },
+  {
+    label: isAdmin || isManager ? "Total Presentations" : "Presentations",
+    // ...
+  },
+  // ...
+];
+```
+
+6. **Update comparison labels** - For admin/manager, compare to individual agent average:
+```tsx
+comparisonLabel: isAdmin || isManager ? "Per Agent Avg" : "Agency Avg",
+```
 
 ## Summary
 
-| File | Change |
-|------|--------|
-| `src/components/dashboard/PersonalStatsCard.tsx` | Add real-time subscription + use PST date utilities |
-| `src/pages/DashboardCommandCenter.tsx` | Add real-time subscription for live stats |
+| Change | Description |
+|--------|-------------|
+| Import `useAuth` | Get role context (isAdmin, isManager) |
+| Role-based agent selection | Admin gets all agents, Manager gets downline, Agent gets self |
+| Update query from `.eq()` to `.in()` | Fetch production for multiple agents |
+| Dynamic header title | "Agency Performance" / "Team Performance" / "Your Performance" |
+| Updated stat labels | Reflect team vs personal scope |
 
 ## Result
-- All dashboard numbers will update in real-time when production is logged
-- Date calculations will be consistent with leaderboard (PST timezone)
-- No manual refresh needed - stats sync automatically across the platform
+
+- **Admins** see aggregated agency-wide stats (total ALP, total deals, agency close rate)
+- **Managers** see aggregated team stats (self + downline)
+- **Agents** continue to see only personal stats
+- All stats remain live with real-time subscriptions

@@ -25,7 +25,7 @@ const handler = async (req: Request): Promise<Response> => {
     const input = identifier || email;
 
     if (!input) {
-      throw new Error("Email or phone is required");
+      throw new Error("Email, phone, or name is required");
     }
 
     const trimmedInput = input.trim();
@@ -33,14 +33,19 @@ const handler = async (req: Request): Promise<Response> => {
     // Detect if input is a phone number (contains mostly digits)
     const digitsOnly = trimmedInput.replace(/\D/g, "");
     const isPhone = /^[\d\s\-\(\)\+]+$/.test(trimmedInput) && digitsOnly.length >= 10;
+    
+    // Detect if input looks like a name (contains space, no @ symbol, not all digits)
+    const isName = !trimmedInput.includes("@") && 
+                   trimmedInput.includes(" ") && 
+                   !/^\d+$/.test(trimmedInput.replace(/\s/g, ""));
 
-    console.log(`Checking status for: ${trimmedInput} (isPhone: ${isPhone})`);
+    console.log(`Checking status for: ${trimmedInput} (isPhone: ${isPhone}, isName: ${isName})`);
 
     let profile = null;
     let profileError = null;
 
     if (isPhone) {
-      // Search by phone - try to match last 10 digits, use limit(1) to handle duplicates
+      // Search by phone - try to match last 10 digits
       const last10 = digitsOnly.slice(-10);
       console.log(`Searching by phone, last 10 digits: ${last10}`);
       
@@ -53,8 +58,22 @@ const handler = async (req: Request): Promise<Response> => {
       
       profile = data?.[0] || null;
       profileError = error;
+    } else if (isName) {
+      // Search by full name (case-insensitive)
+      const normalizedName = trimmedInput.toLowerCase().trim();
+      console.log(`Searching by name: ${normalizedName}`);
+      
+      const { data, error } = await supabaseAdmin
+        .from("profiles")
+        .select("id, user_id, full_name, email, phone, city, state")
+        .ilike("full_name", normalizedName)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      
+      profile = data?.[0] || null;
+      profileError = error;
     } else {
-      // Search by email - use limit(1) to handle duplicates gracefully
+      // Search by email
       const normalizedEmail = trimmedInput.toLowerCase();
       console.log(`Searching by email: ${normalizedEmail}`);
       
@@ -93,7 +112,7 @@ const handler = async (req: Request): Promise<Response> => {
       passwordRequired = agentData?.password_required ?? false;
     }
 
-    // Check if there's an auth user with this email
+    // Check if there's an auth user - OPTIMIZED: avoid heavy listUsers call
     let hasAuthAccount = false;
     
     if (inCRM && profileUserId) {
@@ -101,23 +120,9 @@ const handler = async (req: Request): Promise<Response> => {
       const isPlaceholderUUID = /^[a-f]1{7}-1{4}-1{4}-1{4}-1{12}$/i.test(profileUserId);
       
       if (!isPlaceholderUUID) {
+        // Fast check: try to get user by ID directly
         const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(profileUserId);
         hasAuthAccount = !authError && !!authUser?.user;
-      }
-    }
-    
-    // Also check directly by email in auth.users if profile email exists
-    if (!hasAuthAccount && agentEmail) {
-      const { data: authUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers({
-        page: 1,
-        perPage: 1000,
-      });
-      
-      if (!listError && authUsers?.users) {
-        const foundUser = authUsers.users.find(
-          (u) => u.email?.toLowerCase() === agentEmail.toLowerCase()
-        );
-        hasAuthAccount = !!foundUser;
       }
     }
 

@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Crown,
   LayoutDashboard,
@@ -30,6 +30,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useIsTouchDevice } from "@/hooks/useIsTouchDevice";
 
 interface GlobalSidebarProps {
   isOpen: boolean;
@@ -48,6 +49,7 @@ export function GlobalSidebar({
   const location = useLocation();
   const { user, isAdmin, isManager, isAgent } = useAuth();
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const isTouch = useIsTouchDevice();
 
   const navItems = useMemo(() => {
     const items = [];
@@ -136,18 +138,46 @@ export function GlobalSidebar({
 
   const isCollapsed = !isOpen;
 
-  // Wrapper component to always show tooltip on hover
-  const NavItemWithTooltip = ({ item, isActive }: { item: typeof navItems[0], isActive: boolean }) => {
+  // Only show tooltips on desktop when sidebar is collapsed
+  const showTooltips = isCollapsed && !isTouch;
+
+  // Wrapper for conditional tooltip
+  const ConditionalTooltip = ({ 
+    children, 
+    label 
+  }: { 
+    children: React.ReactNode; 
+    label: string;
+  }) => {
+    if (!showTooltips) {
+      return <>{children}</>;
+    }
+    return (
+      <Tooltip delayDuration={100}>
+        <TooltipTrigger asChild>
+          {children}
+        </TooltipTrigger>
+        <TooltipContent side="right" sideOffset={8} className="font-medium">
+          {label}
+        </TooltipContent>
+      </Tooltip>
+    );
+  };
+
+  // Navigation item component with tap hardening
+  const NavItem = ({ item, isActive }: { item: typeof navItems[0], isActive: boolean }) => {
     const linkContent = (
       <Link
         to={item.href}
         className={cn(
-          "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
+          "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-100",
+          "touch-action-manipulation select-none",
           isActive
             ? "bg-primary text-primary-foreground"
-            : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            : "text-muted-foreground hover:bg-muted hover:text-foreground active:bg-muted/80",
           isCollapsed && "justify-center px-2"
         )}
+        style={{ touchAction: "manipulation" }}
       >
         <item.icon className="h-5 w-5 flex-shrink-0" />
         {!isCollapsed && (
@@ -159,32 +189,26 @@ export function GlobalSidebar({
       </Link>
     );
 
-    // ALWAYS show tooltip on desktop for quick discovery
     return (
-      <Tooltip delayDuration={100}>
-        <TooltipTrigger asChild>
-          {linkContent}
-        </TooltipTrigger>
-        <TooltipContent side="right" sideOffset={8} className="font-medium">
-          {item.label}
-        </TooltipContent>
-      </Tooltip>
+      <ConditionalTooltip label={item.label}>
+        {linkContent}
+      </ConditionalTooltip>
     );
   };
 
+  // Calculate width for CSS transition
+  const sidebarWidth = isFullscreen ? 0 : isCollapsed ? 64 : 256;
+
   return (
     <>
-      <motion.aside
-        initial={false}
-        animate={{
-          width: isFullscreen ? 0 : isCollapsed ? 64 : 256,
-          opacity: isFullscreen ? 0 : 1,
-        }}
-        transition={{ duration: 0.2, ease: "easeInOut" }}
+      {/* Sidebar with CSS transitions instead of Framer Motion */}
+      <aside
         className={cn(
           "fixed top-0 left-0 z-40 h-full glass-strong border-r border-border overflow-hidden",
-          isFullscreen && "pointer-events-none"
+          "transition-all duration-200 ease-in-out",
+          isFullscreen && "pointer-events-none opacity-0"
         )}
+        style={{ width: sidebarWidth }}
       >
         <div className="flex flex-col h-full">
           {/* Logo & Toggle */}
@@ -211,70 +235,60 @@ export function GlobalSidebar({
               </Link>
             )}
             {!isCollapsed && (isAdmin || isManager) && (
-              <Tooltip delayDuration={0}>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setShowInviteModal(true)}
-                    className="h-8 w-8 text-primary hover:bg-primary/10"
-                  >
-                    <Plus className="h-5 w-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="right">Add Team Member</TooltipContent>
-              </Tooltip>
+              <ConditionalTooltip label="Add Team Member">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowInviteModal(true)}
+                  className="h-8 w-8 text-primary hover:bg-primary/10"
+                  style={{ touchAction: "manipulation" }}
+                >
+                  <Plus className="h-5 w-5" />
+                </Button>
+              </ConditionalTooltip>
             )}
           </div>
 
           {/* Quick Add Button - Collapsed State */}
           {isCollapsed && (isAdmin || isManager) && (
             <div className="px-2 py-2 border-b border-border">
-              <Tooltip delayDuration={0}>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowInviteModal(true)}
-                    className="w-full justify-center text-primary hover:bg-primary/10"
-                  >
-                    <Plus className="h-5 w-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="right" sideOffset={8}>
-                  Add Team Member
-                </TooltipContent>
-              </Tooltip>
+              <ConditionalTooltip label="Add Team Member">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowInviteModal(true)}
+                  className="w-full justify-center text-primary hover:bg-primary/10"
+                  style={{ touchAction: "manipulation" }}
+                >
+                  <Plus className="h-5 w-5" />
+                </Button>
+              </ConditionalTooltip>
             </div>
           )}
 
           {/* Collapse Toggle Button */}
           <div className="px-2 py-2 border-b border-border">
-            <Tooltip delayDuration={0}>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onToggle}
-                  className={cn(
-                    "w-full transition-all",
-                    isCollapsed ? "justify-center" : "justify-start"
-                  )}
-                >
-                  {isCollapsed ? (
-                    <ChevronRight className="h-4 w-4" />
-                  ) : (
-                    <>
-                      <ChevronLeft className="h-4 w-4 mr-2" />
-                      <span className="text-sm">Collapse</span>
-                    </>
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={8}>
-                {isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-              </TooltipContent>
-            </Tooltip>
+            <ConditionalTooltip label={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onToggle}
+                className={cn(
+                  "w-full transition-all",
+                  isCollapsed ? "justify-center" : "justify-start"
+                )}
+                style={{ touchAction: "manipulation" }}
+              >
+                {isCollapsed ? (
+                  <ChevronRight className="h-4 w-4" />
+                ) : (
+                  <>
+                    <ChevronLeft className="h-4 w-4 mr-2" />
+                    <span className="text-sm">Collapse</span>
+                  </>
+                )}
+              </Button>
+            </ConditionalTooltip>
           </div>
 
           {/* Navigation */}
@@ -282,7 +296,7 @@ export function GlobalSidebar({
             {navItems.map((item) => {
               const isActive = location.pathname === item.href;
               return (
-                <NavItemWithTooltip key={item.href} item={item} isActive={isActive} />
+                <NavItem key={item.href} item={item} isActive={isActive} />
               );
             })}
           </nav>
@@ -307,55 +321,47 @@ export function GlobalSidebar({
             </div>
 
             {/* Fullscreen toggle */}
-            <Tooltip delayDuration={0}>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onFullscreenToggle}
-                  className={cn(
-                    "w-full mb-1",
-                    isCollapsed ? "justify-center" : "justify-start px-3"
-                  )}
-                >
-                  {isFullscreen ? (
-                    <>
-                      <Minimize2 className="h-4 w-4" />
-                      {!isCollapsed && <span className="text-sm ml-2">Exit Fullscreen</span>}
-                    </>
-                  ) : (
-                    <>
-                      <Maximize2 className="h-4 w-4" />
-                      {!isCollapsed && <span className="text-sm ml-2">Fullscreen</span>}
-                    </>
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={8}>
-                {isFullscreen ? "Exit Fullscreen" : "Fullscreen Mode"}
-              </TooltipContent>
-            </Tooltip>
+            <ConditionalTooltip label={isFullscreen ? "Exit Fullscreen" : "Fullscreen Mode"}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onFullscreenToggle}
+                className={cn(
+                  "w-full mb-1",
+                  isCollapsed ? "justify-center" : "justify-start px-3"
+                )}
+                style={{ touchAction: "manipulation" }}
+              >
+                {isFullscreen ? (
+                  <>
+                    <Minimize2 className="h-4 w-4" />
+                    {!isCollapsed && <span className="text-sm ml-2">Exit Fullscreen</span>}
+                  </>
+                ) : (
+                  <>
+                    <Maximize2 className="h-4 w-4" />
+                    {!isCollapsed && <span className="text-sm ml-2">Fullscreen</span>}
+                  </>
+                )}
+              </Button>
+            </ConditionalTooltip>
 
             {/* Logout */}
-            <Tooltip delayDuration={0}>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleLogout}
-                  className={cn(
-                    "w-full text-muted-foreground hover:text-destructive hover:bg-destructive/10",
-                    isCollapsed ? "justify-center" : "justify-start px-3"
-                  )}
-                >
-                  <LogOut className="h-4 w-4" />
-                  {!isCollapsed && <span className="text-sm ml-2">Sign Out</span>}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={8}>
-                Sign Out
-              </TooltipContent>
-            </Tooltip>
+            <ConditionalTooltip label="Sign Out">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                className={cn(
+                  "w-full text-muted-foreground hover:text-destructive hover:bg-destructive/10",
+                  isCollapsed ? "justify-center" : "justify-start px-3"
+                )}
+                style={{ touchAction: "manipulation" }}
+              >
+                <LogOut className="h-4 w-4" />
+                {!isCollapsed && <span className="text-sm ml-2">Sign Out</span>}
+              </Button>
+            </ConditionalTooltip>
 
             {!isCollapsed && (
               <div className="mt-3 pt-3 border-t border-border/50 text-center">
@@ -366,7 +372,7 @@ export function GlobalSidebar({
             )}
           </div>
         </div>
-      </motion.aside>
+      </aside>
 
       {/* Floating toggle when fullscreen */}
       <AnimatePresence>
@@ -382,6 +388,7 @@ export function GlobalSidebar({
               size="icon"
               onClick={onFullscreenToggle}
               className="shadow-lg"
+              style={{ touchAction: "manipulation" }}
             >
               <Menu className="h-5 w-5" />
             </Button>

@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Users, UserPlus, Briefcase, DollarSign, TrendingUp, TrendingDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { AgentQuickEditDialog } from "./AgentQuickEditDialog";
 import { getTodayPST, getDateDaysAgoPST, getWeekStartPST, getMonthStartPST } from "@/lib/dateUtils";
+import { useDebouncedRefetch } from "@/hooks/useDebouncedRefetch";
 
 interface BuildingLeaderboardProps {
   currentAgentId?: string;
@@ -50,20 +51,23 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
 
   const isInitialMount = useRef(true);
 
+  // Debounced refetch for realtime updates
+  const debouncedRefetch = useDebouncedRefetch(() => fetchBuildingLeaderboard(false), 1500);
+
   useEffect(() => {
     fetchBuildingLeaderboard(true);
     
-    // Realtime subscription
+    // Realtime subscription for applications/agents (different table, so keep separate)
     const channel = supabase
       .channel("building-leaderboard")
-      .on("postgres_changes", { event: "*", schema: "public", table: "applications" }, () => fetchBuildingLeaderboard(false))
-      .on("postgres_changes", { event: "*", schema: "public", table: "agents" }, () => fetchBuildingLeaderboard(false))
+      .on("postgres_changes", { event: "*", schema: "public", table: "applications" }, () => debouncedRefetch())
+      .on("postgres_changes", { event: "*", schema: "public", table: "agents" }, () => debouncedRefetch())
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [period, currentAgentId]);
+  }, [period, currentAgentId, debouncedRefetch]);
 
   const fetchBuildingLeaderboard = async (isInitialLoad = true) => {
     try {

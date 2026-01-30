@@ -1,5 +1,4 @@
 import { ReactNode, useState, useEffect, useRef, memo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Menu, Crown } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { GlobalSidebar } from "./GlobalSidebar";
@@ -9,25 +8,11 @@ import { Button } from "@/components/ui/button";
 import { useSidebarState } from "@/hooks/useSidebarState";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { cn } from "@/lib/utils";
-import { Skeleton } from "@/components/ui/skeleton";
 
 interface SidebarLayoutProps {
   children: ReactNode;
   showPhoneBanner?: boolean;
 }
-
-// Page transition animation variants for smooth navigation
-const pageVariants = {
-  initial: { opacity: 0, y: 4 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -4 },
-};
-
-const pageTransition = {
-  type: "tween" as const,
-  ease: [0.4, 0, 0.2, 1] as const,
-  duration: 0.15,
-};
 
 // Memoized page content wrapper to prevent unnecessary re-renders
 const PageContent = memo(({ children, showPhoneBanner }: { children: ReactNode; showPhoneBanner: boolean }) => (
@@ -93,18 +78,22 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
       {/* Mobile Sidebar Overlay */}
       <div
         className={cn(
-          "fixed inset-0 z-30 bg-background/80 backdrop-blur-sm lg:hidden transition-opacity duration-200",
+          "fixed inset-0 z-30 bg-background/80 backdrop-blur-sm lg:hidden",
           mobileOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         )}
+        style={{ transition: "opacity 150ms ease-out" }}
         onClick={() => setMobileOpen(false)}
       />
       
       {/* Mobile Sidebar Panel */}
       <div 
         className={cn(
-          "fixed top-0 left-0 z-40 h-full w-64 lg:hidden transition-transform duration-200 ease-out",
-          mobileOpen ? "translate-x-0" : "-translate-x-full"
+          "fixed top-0 left-0 z-40 h-full w-64 lg:hidden"
         )}
+        style={{ 
+          transform: mobileOpen ? "translateX(0)" : "translateX(-100%)",
+          transition: "transform 150ms ease-out"
+        }}
       >
         <GlobalSidebar
           isOpen={true}
@@ -114,15 +103,15 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
         />
       </div>
 
-      {/* Main Content with smooth page transitions */}
+      {/* Main Content - CSS transitions only, no framer-motion */}
       <main
         className={cn(
-          "min-h-screen",
-          // Only animate margin on desktop to prevent mobile glitches
-          isDesktop && "transition-[margin-left] duration-200 ease-out",
-          "pt-16 lg:pt-0"
+          "min-h-screen pt-16 lg:pt-0"
         )}
-        style={{ marginLeft: isDesktop ? `${marginLeft}px` : 0 }}
+        style={{ 
+          marginLeft: isDesktop ? `${marginLeft}px` : 0,
+          transition: isDesktop ? "margin-left 150ms ease-out" : "none"
+        }}
       >
         <div className="p-4 sm:p-6 lg:p-8">
           <PageContent showPhoneBanner={showPhoneBanner}>

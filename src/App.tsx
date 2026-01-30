@@ -38,7 +38,7 @@ import Terms from "./pages/Terms";
 import Disclosures from "./pages/Disclosures";
 import Install from "./pages/Install";
 import CourseProgress from "./pages/CourseProgress";
-
+import CourseContent from "./pages/CourseContent";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -160,6 +160,15 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <CourseProgress />
+              </ProtectedRoute>
+            }
+          />
+          {/* Full Course Content View */}
+          <Route
+            path="/course-progress/content"
+            element={
+              <ProtectedRoute>
+                <CourseContent />
               </ProtectedRoute>
             }
           />

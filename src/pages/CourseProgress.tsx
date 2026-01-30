@@ -15,6 +15,8 @@ import {
   BookOpen,
   XCircle,
   Eye,
+  X,
+  UserPlus,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -39,6 +41,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { AddToCourseButton } from "@/components/dashboard/AddToCourseButton";
+import { AddAgentToCourseDialog } from "@/components/dashboard/AddAgentToCourseDialog";
 import { CourseContentViewer } from "@/components/admin/CourseContentViewer";
 
 interface ModuleInfo {
@@ -380,6 +383,7 @@ export default function CourseProgress() {
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">
+            <AddAgentToCourseDialog onSuccess={() => refetch()} />
             <Button variant="outline" size="sm" onClick={() => window.location.href = '/course-progress/content'} className="gap-1.5">
               <Eye className="h-3.5 w-3.5" />
               View Full Course
@@ -598,6 +602,18 @@ export default function CourseProgress() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
+                          {/* Quick X button for unenroll */}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                            onClick={() => unenrollMutation.mutate(agent.agentId)}
+                            disabled={unenrollMutation.isPending}
+                            title="Unenroll from course"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                          
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1">
@@ -637,14 +653,6 @@ export default function CourseProgress() {
                                   {sendingReminder === agent.agentId ? "Sending..." : "Send Reminder"}
                                 </DropdownMenuItem>
                               )}
-                              <DropdownMenuItem
-                                onClick={() => unenrollMutation.mutate(agent.agentId)}
-                                disabled={unenrollMutation.isPending}
-                                className="text-destructive focus:text-destructive"
-                              >
-                                <XCircle className="h-3.5 w-3.5 mr-2" />
-                                Unenroll from Course
-                              </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>

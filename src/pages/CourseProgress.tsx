@@ -279,6 +279,36 @@ export default function CourseProgress() {
     },
   });
 
+  // Unenroll from course - resets progress and stage
+  const unenrollMutation = useMutation({
+    mutationFn: async (agentId: string) => {
+      // Delete all onboarding_progress for this agent
+      const { error: progressError } = await supabase
+        .from("onboarding_progress")
+        .delete()
+        .eq("agent_id", agentId);
+      if (progressError) throw progressError;
+
+      // Reset agent stage back to onboarding (or you could use a different stage)
+      const { error: agentError } = await supabase
+        .from("agents")
+        .update({ 
+          onboarding_stage: "onboarding",
+          has_training_course: false
+        })
+        .eq("id", agentId);
+      if (agentError) throw agentError;
+    },
+    onSuccess: () => {
+      toast.success("Agent unenrolled from course");
+      queryClient.invalidateQueries({ queryKey: ["course-progress-full"] });
+    },
+    onError: (error) => {
+      console.error("Unenroll error:", error);
+      toast.error("Failed to unenroll agent");
+    },
+  });
+
   // Bulk send reminders to stalled
   const sendBulkReminders = async () => {
     const stalledAgents = agentProgress.filter(a => a.isStalled || a.isAtRisk);
@@ -568,37 +598,55 @@ export default function CourseProgress() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          {agent.percentComplete >= 100 ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-6 text-[10px] gap-1"
-                              onClick={() => pushToFieldMutation.mutate(agent.agentId)}
-                              disabled={pushToFieldMutation.isPending}
-                            >
-                              <ArrowRight className="h-3 w-3" />
-                              Field Train
-                            </Button>
-                          ) : !agent.hasStarted ? (
-                            <AddToCourseButton
-                              agentId={agent.agentId}
-                              agentName={agent.agentName}
-                              hasProgress={false}
-                              onSuccess={() => refetch()}
-                              size="sm"
-                            />
-                          ) : (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 text-[10px] gap-1"
-                              onClick={() => sendReminderMutation.mutate(agent.agentId)}
-                              disabled={sendingReminder === agent.agentId}
-                            >
-                              <Send className="h-3 w-3" />
-                              {sendingReminder === agent.agentId ? "..." : "Remind"}
-                            </Button>
-                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-6 text-[10px] gap-1">
+                                Actions
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {agent.percentComplete >= 100 && (
+                                <DropdownMenuItem
+                                  onClick={() => pushToFieldMutation.mutate(agent.agentId)}
+                                  disabled={pushToFieldMutation.isPending}
+                                >
+                                  <ArrowRight className="h-3.5 w-3.5 mr-2" />
+                                  Push to Field Training
+                                </DropdownMenuItem>
+                              )}
+                              {!agent.hasStarted && (
+                                <DropdownMenuItem asChild>
+                                  <div>
+                                    <AddToCourseButton
+                                      agentId={agent.agentId}
+                                      agentName={agent.agentName}
+                                      hasProgress={false}
+                                      onSuccess={() => refetch()}
+                                      size="sm"
+                                      variant="ghost"
+                                    />
+                                  </div>
+                                </DropdownMenuItem>
+                              )}
+                              {agent.hasStarted && agent.percentComplete < 100 && (
+                                <DropdownMenuItem
+                                  onClick={() => sendReminderMutation.mutate(agent.agentId)}
+                                  disabled={sendingReminder === agent.agentId}
+                                >
+                                  <Send className="h-3.5 w-3.5 mr-2" />
+                                  {sendingReminder === agent.agentId ? "Sending..." : "Send Reminder"}
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuItem
+                                onClick={() => unenrollMutation.mutate(agent.agentId)}
+                                disabled={unenrollMutation.isPending}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <XCircle className="h-3.5 w-3.5 mr-2" />
+                                Unenroll from Course
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </TableCell>
                     </motion.tr>

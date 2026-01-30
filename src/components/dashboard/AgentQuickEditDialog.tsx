@@ -74,6 +74,8 @@ export function AgentQuickEditDialog({
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [instagram, setInstagram] = useState("");
+  const [editAlp, setEditAlp] = useState(production);
+  const [editDeals, setEditDeals] = useState(deals);
   const [possibleMatches, setPossibleMatches] = useState<PossibleMatch[]>([]);
   const [selectedMergeId, setSelectedMergeId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -89,6 +91,8 @@ export function AgentQuickEditDialog({
   useEffect(() => {
     if (open && agentId) {
       setDisplayName(currentName);
+      setEditAlp(production);
+      setEditDeals(deals);
       setSelectedMergeId(null);
       setLinkedProfile(null);
       setAgentData(null);
@@ -98,7 +102,7 @@ export function AgentQuickEditDialog({
       fetchAgentData();
       fetchPossibleMatches();
     }
-  }, [open, agentId, currentName]);
+  }, [open, agentId, currentName, production, deals]);
 
   const fetchAgentData = async () => {
     try {
@@ -246,6 +250,41 @@ export function AgentQuickEditDialog({
 
         if (profileError) {
           console.error("Error updating profile phone:", profileError);
+        }
+      }
+
+      // If admin changed ALP or deals, update today's production record
+      if (isAdmin && (editAlp !== production || editDeals !== deals)) {
+        const today = new Date().toISOString().split('T')[0];
+        
+        // Check if there's already a record for today
+        const { data: existingRecord } = await supabase
+          .from("daily_production")
+          .select("id")
+          .eq("agent_id", agentId)
+          .eq("production_date", today)
+          .maybeSingle();
+
+        if (existingRecord) {
+          // Update existing record
+          await supabase
+            .from("daily_production")
+            .update({ 
+              aop: editAlp,
+              deals_closed: editDeals,
+            })
+            .eq("id", existingRecord.id);
+        } else {
+          // Create new record for today
+          await supabase
+            .from("daily_production")
+            .insert({
+              agent_id: agentId,
+              production_date: today,
+              aop: editAlp,
+              deals_closed: editDeals,
+              presentations: editDeals > 0 ? editDeals : 0,
+            });
         }
       }
 
@@ -589,6 +628,41 @@ export function AgentQuickEditDialog({
               </p>
             )}
           </div>
+
+          {/* Admin: Edit Production (ALP & Deals) */}
+          {isAdmin && (
+            <div className="space-y-3 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
+              <Label className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                <Edit2 className="h-4 w-4" />
+                Edit Today's Production (Admin)
+              </Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="editAlp" className="text-xs">ALP ($)</Label>
+                  <Input
+                    id="editAlp"
+                    type="number"
+                    value={editAlp}
+                    onChange={(e) => setEditAlp(Number(e.target.value) || 0)}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="editDeals" className="text-xs">Deals</Label>
+                  <Input
+                    id="editDeals"
+                    type="number"
+                    value={editDeals}
+                    onChange={(e) => setEditDeals(Number(e.target.value) || 0)}
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Changes will update today's production record for this agent.
+              </p>
+            </div>
+          )}
 
           {/* Admin: Create & Send Login Section */}
           {isAdmin && !hasExistingLogin && (

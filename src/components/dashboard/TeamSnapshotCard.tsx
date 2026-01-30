@@ -260,8 +260,8 @@ export function TeamSnapshotCard() {
     }
   }, [fetchStats, authLoading, user]);
 
-  // Use shared realtime hook instead of individual channel
-  useProductionRealtime(fetchStats, 1500);
+  // Use shared realtime hook for instant updates
+  useProductionRealtime(fetchStats, 300);
 
   const handleStatClick = (type: DrilldownType) => {
     if (!isAdmin && !isManager) return; // Only admin/manager can drilldown

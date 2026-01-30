@@ -267,8 +267,8 @@ export function TeamPerformanceBreakdown() {
     }
   }, [fetchWeeklyData, authLoading, user]);
 
-  // Use shared realtime hook instead of individual channel
-  useProductionRealtime(fetchWeeklyData, 1500);
+  // Use shared realtime hook for instant updates
+  useProductionRealtime(fetchWeeklyData, 300);
 
   const handleWeekClick = (week: WeeklyStats) => {
     if (expandedWeek === week.weekStart) {

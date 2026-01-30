@@ -183,8 +183,8 @@ export function ReferralLeaderboard({ currentAgentId, period = "week" }: Referra
     fetchLeaderboard(true);
   }, [fetchLeaderboard]);
 
-  // Use shared realtime hook instead of individual channel
-  useProductionRealtime(() => fetchLeaderboard(false), 1500);
+  // Use shared realtime hook for instant updates
+  useProductionRealtime(() => fetchLeaderboard(false), 300);
 
   return (
     <>

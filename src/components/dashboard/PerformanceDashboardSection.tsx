@@ -92,6 +92,11 @@ export function PerformanceDashboardSection({
         {/* Subtle background gradient for prominence */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-violet-500/5 pointer-events-none" />
         
+        {/* Powered by Apex - subtle branding */}
+        <span className="absolute top-3 right-4 text-[10px] text-muted-foreground/40 font-medium tracking-wider uppercase">
+          Powered by Apex
+        </span>
+        
         <div className="relative">
           {/* Header - Larger */}
           <div className="flex items-center gap-4 mb-6">

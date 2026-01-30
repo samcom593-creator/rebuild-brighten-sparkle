@@ -5,14 +5,12 @@ import {
   Crown,
   LayoutDashboard,
   Users,
-  Shield,
   LogOut,
   Menu,
   ChevronLeft,
   ChevronRight,
   Settings,
   UserCog,
-  UsersRound,
   Briefcase,
   Archive,
   BarChart3,
@@ -25,7 +23,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
-
 import { InviteTeamModal } from "@/components/dashboard/InviteTeamModal";
 import { cn } from "@/lib/utils";
 import {
@@ -52,14 +49,9 @@ export function GlobalSidebar({
   const { user, isAdmin, isManager, isAgent } = useAuth();
   const [showInviteModal, setShowInviteModal] = useState(false);
 
-  // Role-based navigation items - STRICT PERMISSIONS
-  // Admin: Full access (Dashboard, Log Numbers, Command Center, Course Progress, Pipeline, Agent Portal, CRM, Aged Leads, Accounts, Settings)
-  // Manager: Dashboard, Log Numbers, Course Progress, Pipeline, Agent Portal, CRM, Settings
-  // Agent: Dashboard, Log Numbers, My Portal, My Course, Settings ONLY
   const navItems = useMemo(() => {
     const items = [];
 
-    // ALL users: Dashboard & Log Numbers
     items.push({ 
       icon: LayoutDashboard, 
       label: "Dashboard", 
@@ -71,7 +63,6 @@ export function GlobalSidebar({
       href: "/numbers",
     });
 
-    // ADMIN ONLY: Command Center, Aged Leads, Accounts
     if (isAdmin) {
       items.push({ 
         icon: Crown, 
@@ -80,7 +71,6 @@ export function GlobalSidebar({
       });
     }
 
-    // ADMIN + MANAGER: Course Progress, Pipeline, Agent Portal, CRM
     if (isAdmin || isManager) {
       items.push({
         icon: BarChart3,
@@ -104,7 +94,6 @@ export function GlobalSidebar({
       });
     }
 
-    // ADMIN ONLY: Aged Leads, Accounts
     if (isAdmin) {
       items.push({ 
         icon: Archive, 
@@ -118,7 +107,6 @@ export function GlobalSidebar({
       });
     }
 
-    // AGENT ONLY (not admin, not manager): My Portal & My Course
     if (isAgent && !isAdmin && !isManager) {
       items.push({ 
         icon: BarChart3, 
@@ -132,7 +120,6 @@ export function GlobalSidebar({
       });
     }
 
-    // ALL users: Settings
     items.push({ 
       icon: Settings, 
       label: "Settings", 
@@ -147,12 +134,46 @@ export function GlobalSidebar({
     navigate("/login");
   }, [navigate]);
 
-  // Collapsed (mini) state shows only icons
   const isCollapsed = !isOpen;
+
+  // Wrapper component to always show tooltip on hover
+  const NavItemWithTooltip = ({ item, isActive }: { item: typeof navItems[0], isActive: boolean }) => {
+    const linkContent = (
+      <Link
+        to={item.href}
+        className={cn(
+          "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
+          isActive
+            ? "bg-primary text-primary-foreground"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground",
+          isCollapsed && "justify-center px-2"
+        )}
+      >
+        <item.icon className="h-5 w-5 flex-shrink-0" />
+        {!isCollapsed && (
+          <span className="font-medium text-sm truncate">{item.label}</span>
+        )}
+        {isActive && !isCollapsed && (
+          <ChevronRight className="h-4 w-4 ml-auto flex-shrink-0" />
+        )}
+      </Link>
+    );
+
+    // ALWAYS show tooltip on desktop for quick discovery
+    return (
+      <Tooltip delayDuration={100}>
+        <TooltipTrigger asChild>
+          {linkContent}
+        </TooltipTrigger>
+        <TooltipContent side="right" sideOffset={8} className="font-medium">
+          {item.label}
+        </TooltipContent>
+      </Tooltip>
+    );
+  };
 
   return (
     <>
-      {/* Sidebar */}
       <motion.aside
         initial={false}
         animate={{
@@ -189,16 +210,20 @@ export function GlobalSidebar({
                 <div className="absolute inset-0 bg-primary/20 blur-lg rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
               </Link>
             )}
-            {/* Quick Add Button */}
             {!isCollapsed && (isAdmin || isManager) && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setShowInviteModal(true)}
-                className="h-8 w-8 text-primary hover:bg-primary/10"
-              >
-                <Plus className="h-5 w-5" />
-              </Button>
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowInviteModal(true)}
+                    className="h-8 w-8 text-primary hover:bg-primary/10"
+                  >
+                    <Plus className="h-5 w-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Add Team Member</TooltipContent>
+              </Tooltip>
             )}
           </div>
 
@@ -225,74 +250,45 @@ export function GlobalSidebar({
 
           {/* Collapse Toggle Button */}
           <div className="px-2 py-2 border-b border-border">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onToggle}
-              className={cn(
-                "w-full transition-all",
-                isCollapsed ? "justify-center" : "justify-start"
-              )}
-            >
-              {isCollapsed ? (
-                <ChevronRight className="h-4 w-4" />
-              ) : (
-                <>
-                  <ChevronLeft className="h-4 w-4 mr-2" />
-                  <span className="text-sm">Collapse</span>
-                </>
-              )}
-            </Button>
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onToggle}
+                  className={cn(
+                    "w-full transition-all",
+                    isCollapsed ? "justify-center" : "justify-start"
+                  )}
+                >
+                  {isCollapsed ? (
+                    <ChevronRight className="h-4 w-4" />
+                  ) : (
+                    <>
+                      <ChevronLeft className="h-4 w-4 mr-2" />
+                      <span className="text-sm">Collapse</span>
+                    </>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={8}>
+                {isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+              </TooltipContent>
+            </Tooltip>
           </div>
 
           {/* Navigation */}
           <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
             {navItems.map((item) => {
               const isActive = location.pathname === item.href;
-              
-              const linkContent = (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
-                    isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground",
-                    isCollapsed && "justify-center px-2"
-                  )}
-                >
-                  <item.icon className="h-5 w-5 flex-shrink-0" />
-                  {!isCollapsed && (
-                    <span className="font-medium text-sm truncate">{item.label}</span>
-                  )}
-                  {isActive && !isCollapsed && (
-                    <ChevronRight className="h-4 w-4 ml-auto flex-shrink-0" />
-                  )}
-                </Link>
+              return (
+                <NavItemWithTooltip key={item.href} item={item} isActive={isActive} />
               );
-
-              if (isCollapsed) {
-                return (
-                  <Tooltip key={item.href} delayDuration={0}>
-                    <TooltipTrigger asChild>
-                      {linkContent}
-                    </TooltipTrigger>
-                    <TooltipContent side="right" sideOffset={8}>
-                      {item.label}
-                    </TooltipContent>
-                  </Tooltip>
-                );
-              }
-
-              return linkContent;
             })}
           </nav>
 
-
           {/* User & Actions */}
           <div className="border-t border-border p-2">
-            {/* User info - only when expanded */}
             {user && !isCollapsed && (
               <div className="mb-2 px-3 py-2">
                 <p className="text-sm font-medium truncate">
@@ -302,7 +298,6 @@ export function GlobalSidebar({
               </div>
             )}
 
-            {/* Theme toggle */}
             <div className={cn(
               "flex items-center mb-2",
               isCollapsed ? "justify-center px-2" : "justify-between px-3"
@@ -312,73 +307,56 @@ export function GlobalSidebar({
             </div>
 
             {/* Fullscreen toggle */}
-            {isCollapsed ? (
-              <Tooltip delayDuration={0}>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={onFullscreenToggle}
-                    className="w-full justify-center"
-                  >
-                    {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="right" sideOffset={8}>
-                  {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-                </TooltipContent>
-              </Tooltip>
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onFullscreenToggle}
-                className="w-full justify-start px-3 mb-1"
-              >
-                {isFullscreen ? (
-                  <>
-                    <Minimize2 className="h-4 w-4 mr-2" />
-                    <span className="text-sm">Exit Fullscreen</span>
-                  </>
-                ) : (
-                  <>
-                    <Maximize2 className="h-4 w-4 mr-2" />
-                    <span className="text-sm">Fullscreen</span>
-                  </>
-                )}
-              </Button>
-            )}
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onFullscreenToggle}
+                  className={cn(
+                    "w-full mb-1",
+                    isCollapsed ? "justify-center" : "justify-start px-3"
+                  )}
+                >
+                  {isFullscreen ? (
+                    <>
+                      <Minimize2 className="h-4 w-4" />
+                      {!isCollapsed && <span className="text-sm ml-2">Exit Fullscreen</span>}
+                    </>
+                  ) : (
+                    <>
+                      <Maximize2 className="h-4 w-4" />
+                      {!isCollapsed && <span className="text-sm ml-2">Fullscreen</span>}
+                    </>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={8}>
+                {isFullscreen ? "Exit Fullscreen" : "Fullscreen Mode"}
+              </TooltipContent>
+            </Tooltip>
 
             {/* Logout */}
-            {isCollapsed ? (
-              <Tooltip delayDuration={0}>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleLogout}
-                    className="w-full justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                  >
-                    <LogOut className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="right" sideOffset={8}>
-                  Sign Out
-                </TooltipContent>
-              </Tooltip>
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full justify-start px-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                onClick={handleLogout}
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                <span className="text-sm">Sign Out</span>
-              </Button>
-            )}
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleLogout}
+                  className={cn(
+                    "w-full text-muted-foreground hover:text-destructive hover:bg-destructive/10",
+                    isCollapsed ? "justify-center" : "justify-start px-3"
+                  )}
+                >
+                  <LogOut className="h-4 w-4" />
+                  {!isCollapsed && <span className="text-sm ml-2">Sign Out</span>}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={8}>
+                Sign Out
+              </TooltipContent>
+            </Tooltip>
 
-            {/* Powered by Apex */}
             {!isCollapsed && (
               <div className="mt-3 pt-3 border-t border-border/50 text-center">
                 <p className="text-[9px] text-muted-foreground/70 uppercase tracking-widest">
@@ -411,7 +389,6 @@ export function GlobalSidebar({
         )}
       </AnimatePresence>
 
-      {/* Invite Team Modal */}
       <InviteTeamModal
         open={showInviteModal}
         onClose={() => setShowInviteModal(false)}

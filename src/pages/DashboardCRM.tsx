@@ -24,6 +24,7 @@ import {
   Video,
   Send,
   ArrowLeft,
+  CheckSquare,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -56,6 +57,7 @@ import { EvaluationButtons } from "@/components/dashboard/EvaluationButtons";
 import { PerformanceBadges } from "@/components/dashboard/PerformanceBadges";
 import { DeactivateAgentDialog } from "@/components/dashboard/DeactivateAgentDialog";
 import { InstagramPromptDialog } from "@/components/dashboard/InstagramPromptDialog";
+import { BulkStageActions, AgentSelectCheckbox } from "@/components/crm/BulkStageActions";
 // AbandonedLeadsPanel removed from CRM - exists only in Admin Panel
 import { cn } from "@/lib/utils";
 import { Database } from "@/integrations/supabase/types";
@@ -186,6 +188,8 @@ export default function DashboardCRM() {
   const [instagramPromptAgent, setInstagramPromptAgent] = useState<AgentCRM | null>(null);
   const [expandedColumn, setExpandedColumn] = useState<string | null>(null);
   const [sendingBulkLogins, setSendingBulkLogins] = useState(false);
+  const [bulkMode, setBulkMode] = useState(false);
+  const [selectedAgents, setSelectedAgents] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -559,6 +563,21 @@ export default function DashboardCRM() {
           {/* Top Row: Agent Info + Star Rating + Deactivate */}
           <div className="flex items-start justify-between gap-1.5">
             <div className="flex items-start gap-1.5 min-w-0">
+              {/* Bulk Selection Checkbox */}
+              <AgentSelectCheckbox
+                agentId={agent.id}
+                isSelected={selectedAgents.has(agent.id)}
+                onToggle={(id) => {
+                  const newSet = new Set(selectedAgents);
+                  if (newSet.has(id)) {
+                    newSet.delete(id);
+                  } else {
+                    newSet.add(id);
+                  }
+                  setSelectedAgents(newSet);
+                }}
+                isEnabled={bulkMode}
+              />
               <div className={cn(
                 "h-7 w-7 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-xs font-bold shrink-0",
                 getAvatarColor(agent.name)
@@ -847,6 +866,20 @@ export default function DashboardCRM() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            {(isAdmin || isManager) && (
+              <Button
+                variant={bulkMode ? "secondary" : "outline"}
+                size="sm"
+                className="gap-1.5"
+                onClick={() => {
+                  setBulkMode(!bulkMode);
+                  setSelectedAgents(new Set());
+                }}
+              >
+                <CheckSquare className="h-3.5 w-3.5" />
+                {bulkMode ? "Exit Bulk Mode" : "Bulk Actions"}
+              </Button>
+            )}
             {isAdmin && (
               <Button 
                 onClick={handleBulkSendPortalLogins} 
@@ -867,6 +900,28 @@ export default function DashboardCRM() {
           </div>
         </div>
 
+        {/* Bulk Actions Bar */}
+        {bulkMode && (
+          <BulkStageActions
+            agents={stageFilteredAgents.map(a => ({
+              id: a.id,
+              name: a.name,
+              onboardingStage: a.onboardingStage,
+            }))}
+            selectedIds={selectedAgents}
+            onSelectionChange={setSelectedAgents}
+            onBulkUpdate={() => {
+              fetchAgents();
+              setSelectedAgents(new Set());
+            }}
+            isEnabled={bulkMode}
+            onToggle={() => {
+              setBulkMode(false);
+              setSelectedAgents(new Set());
+            }}
+          />
+        )}
+
         {/* Clickable Stats Filters - Reordered: In Course, Meeting Eligible, In-Field, Live, Attendance */}
         <AnimatePresence initial={false}>
           {!expandedColumn && (
@@ -877,7 +932,7 @@ export default function DashboardCRM() {
               transition={{ duration: 0.2 }}
               className="grid grid-cols-2 md:grid-cols-5 gap-2"
             >
-              <GlassCard 
+              <GlassCard
                 className={cn(
                   "p-2 cursor-pointer transition-all hover:ring-2 hover:ring-primary/50 hover:scale-[1.02]",
                   stageFilter === "in_course" && "ring-2 ring-primary"

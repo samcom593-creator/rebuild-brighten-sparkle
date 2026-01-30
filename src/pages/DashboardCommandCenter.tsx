@@ -42,6 +42,7 @@ import { QuickFilters } from "@/components/admin/QuickFilters";
 import { RecognitionQueue } from "@/components/admin/RecognitionQueue";
 import { DuplicateMergeTool } from "@/components/admin/DuplicateMergeTool";
 import { CourseProgressPanel } from "@/components/admin/CourseProgressPanel";
+import { StatCardPopup, type StatType } from "@/components/dashboard/StatCardPopup";
 import { InviteTeamModal } from "@/components/dashboard/InviteTeamModal";
 import { DeactivateAgentDialog } from "@/components/dashboard/DeactivateAgentDialog";
 import { TeamHierarchyManager } from "@/components/dashboard/TeamHierarchyManager";
@@ -93,6 +94,9 @@ export default function DashboardCommandCenter() {
   const [showTerminated, setShowTerminated] = useState(false);
   const [showAbandoned, setShowAbandoned] = useState(false);
   const [showAllLeads, setShowAllLeads] = useState(false);
+  
+  // Stat card popup state
+  const [statPopup, setStatPopup] = useState<{ type: StatType; open: boolean }>({ type: "totalAlp", open: false });
 
   // Get date range based on time period
   const dateRange = useMemo(() => {
@@ -117,7 +121,8 @@ export default function DashboardCommandCenter() {
   // Fetch all agents with production stats - CLEAN query excluding unknowns/duplicates
   const { data: agentsData, isLoading, refetch } = useQuery({
     queryKey: ["command-center-agents", dateRange],
-    staleTime: 30000, // 30 seconds - prevent unnecessary refetches
+    staleTime: 60000, // 60 seconds - prevent unnecessary refetches
+    gcTime: 300000, // 5 minutes cache
     queryFn: async () => {
       // First get all agents with profiles
       const { data: agents, error: agentsError } = await supabase
@@ -322,9 +327,12 @@ export default function DashboardCommandCenter() {
           </div>
         </div>
 
-        {/* Summary Stats */}
+        {/* Summary Stats - Clickable */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="stat-card">
+          <Card 
+            className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+            onClick={() => setStatPopup({ type: "totalAlp", open: true })}
+          >
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-primary/10">
@@ -338,7 +346,10 @@ export default function DashboardCommandCenter() {
             </CardContent>
           </Card>
 
-          <Card className="stat-card">
+          <Card 
+            className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+            onClick={() => setStatPopup({ type: "activeAgents", open: true })}
+          >
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-primary/10">
@@ -352,7 +363,10 @@ export default function DashboardCommandCenter() {
             </CardContent>
           </Card>
 
-          <Card className="stat-card">
+          <Card 
+            className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+            onClick={() => setStatPopup({ type: "producers", open: true })}
+          >
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-primary/10">
@@ -366,7 +380,10 @@ export default function DashboardCommandCenter() {
             </CardContent>
           </Card>
 
-          <Card className="stat-card border-destructive/20">
+          <Card 
+            className="stat-card border-destructive/20 cursor-pointer hover:ring-2 hover:ring-destructive/50 transition-all"
+            onClick={() => setStatPopup({ type: "needsAttention", open: true })}
+          >
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-destructive/10">
@@ -681,6 +698,15 @@ export default function DashboardCommandCenter() {
           refetch();
           setDeactivateAgent(null);
         }}
+      />
+
+      {/* Stat Card Popup */}
+      <StatCardPopup
+        type={statPopup.type}
+        open={statPopup.open}
+        onOpenChange={(open) => setStatPopup({ ...statPopup, open })}
+        agents={agentsData || []}
+        timePeriod={timePeriod}
       />
     </DashboardLayout>
   );

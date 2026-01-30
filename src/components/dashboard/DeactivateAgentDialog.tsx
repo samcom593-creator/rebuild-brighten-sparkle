@@ -116,6 +116,24 @@ export function DeactivateAgentDialog({
     }
   };
 
+  // Direct delete function for admins - no approval needed
+  const performDirectDelete = async (targetAgentId: string) => {
+    // Delete from related tables in order (typed individually to avoid TS issues)
+    await supabase.from('agent_notes').delete().eq('agent_id', targetAgentId);
+    await supabase.from('agent_attendance').delete().eq('agent_id', targetAgentId);
+    await supabase.from('agent_goals').delete().eq('agent_id', targetAgentId);
+    await supabase.from('agent_ratings').delete().eq('agent_id', targetAgentId);
+    await supabase.from('onboarding_progress').delete().eq('agent_id', targetAgentId);
+    await supabase.from('agent_onboarding').delete().eq('agent_id', targetAgentId);
+    await supabase.from('daily_production').delete().eq('agent_id', targetAgentId);
+    await supabase.from('agent_achievements').delete().eq('agent_id', targetAgentId);
+    await supabase.from('plaque_awards').delete().eq('agent_id', targetAgentId);
+    await supabase.from('contact_history').delete().eq('agent_id', targetAgentId);
+    
+    // Finally delete agent
+    await supabase.from('agents').delete().eq('id', targetAgentId);
+  };
+
   const handleAction = async (action: "bad_business" | "inactive" | "switch_teams" | "remove_from_system") => {
     if (action === "switch_teams" && !selectedManagerId) {
       toast.error("Please select a manager to transfer to");
@@ -151,27 +169,33 @@ export function DeactivateAgentDialog({
         playSound("success");
         toast.success(`${agentName} added to inactive agents`);
       } else if (action === "remove_from_system") {
-        // Get user's profile for the request
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("full_name")
-          .eq("user_id", user?.id)
-          .single();
+        // Admin bypass - direct delete without email approval
+        if (isAdmin) {
+          await performDirectDelete(agentId);
+          playSound("success");
+          toast.success(`${agentName} permanently removed from system`);
+        } else {
+          // Non-admins need email approval
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("full_name")
+            .eq("user_id", user?.id)
+            .single();
 
-        // Create removal request and send email
-        const { error } = await supabase.functions.invoke("confirm-agent-removal", {
-          body: {
-            agentId,
-            agentName,
-            reason: removalReason || "No reason provided",
-            requestedBy: user?.id,
-            requestedByName: profile?.full_name || "Unknown",
-          }
-        });
+          const { error } = await supabase.functions.invoke("confirm-agent-removal", {
+            body: {
+              agentId,
+              agentName,
+              reason: removalReason || "No reason provided",
+              requestedBy: user?.id,
+              requestedByName: profile?.full_name || "Unknown",
+            }
+          });
 
-        if (error) throw error;
-        playSound("success");
-        toast.success("Removal request sent - awaiting admin approval");
+          if (error) throw error;
+          playSound("success");
+          toast.success("Removal request sent - awaiting admin approval");
+        }
       } else {
         const { error } = await supabase
           .from("agents")
@@ -300,12 +324,14 @@ export function DeactivateAgentDialog({
                 <Button
                   variant="outline"
                   className="w-full justify-start gap-3"
-                  onClick={() => navigateTo("remove_reason")}
+                  onClick={() => isAdmin ? handleAction("remove_from_system") : navigateTo("remove_reason")}
                   disabled={loading}
                 >
                   <Trash2 className="h-4 w-4" />
                   Remove from System
-                  <span className="ml-auto text-xs text-muted-foreground">Email approval</span>
+                  <span className="ml-auto text-xs text-muted-foreground">
+                    {isAdmin ? "Immediate" : "Email approval"}
+                  </span>
                 </Button>
 
                 <Button

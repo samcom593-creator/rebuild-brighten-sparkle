@@ -16,6 +16,8 @@ import {
   UserX,
   UserCheck,
   Loader2,
+  Key,
+  Link2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -478,6 +480,36 @@ export default function DashboardAccounts() {
                             <DropdownMenuItem onClick={() => handleEditAccount(account)}>
                               <Edit className="h-4 w-4 mr-2" />
                               Edit Account
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={async () => {
+                                try {
+                                  const { error } = await supabase.auth.resetPasswordForEmail(account.email);
+                                  if (error) throw error;
+                                  toast.success(`Password reset email sent to ${account.email}`);
+                                } catch (err: any) {
+                                  toast.error(err.message || "Failed to send password reset");
+                                }
+                              }}
+                            >
+                              <Key className="h-4 w-4 mr-2" />
+                              Send Password Reset
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={async () => {
+                                try {
+                                  const { error } = await supabase.functions.invoke("generate-magic-link", {
+                                    body: { email: account.email, destination: "portal" }
+                                  });
+                                  if (error) throw error;
+                                  toast.success(`Magic login link sent to ${account.email}`);
+                                } catch (err: any) {
+                                  toast.error(err.message || "Failed to send login link");
+                                }
+                              }}
+                            >
+                              <Link2 className="h-4 w-4 mr-2" />
+                              Send Magic Login Link
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             {account.status === "active" ? (

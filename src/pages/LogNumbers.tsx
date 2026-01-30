@@ -381,7 +381,7 @@ export default function LogNumbers() {
           <p className="text-muted-foreground mt-1">Daily production entry</p>
         </div>
 
-        <AnimatePresence mode="wait">
+        <AnimatePresence initial={false}>
           {/* Step 1: Search */}
           {step === "search" && (
             <motion.div

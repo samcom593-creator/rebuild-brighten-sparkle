@@ -159,8 +159,8 @@ export function ClosingRateLeaderboard({ currentAgentId, period = "week" }: Clos
     fetchLeaderboard(true);
   }, [period, currentAgentId]);
 
-  // Use shared realtime hook instead of individual channel
-  useProductionRealtime(handleRealtimeUpdate, 1500);
+  // Use shared realtime hook for instant updates
+  useProductionRealtime(handleRealtimeUpdate, 300);
 
   return (
     <>

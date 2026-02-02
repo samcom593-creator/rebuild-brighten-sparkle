@@ -34,7 +34,7 @@ function generateCertificateHTML(
   agentName: string,
   amount: number,
   weekEndingDate: string,
-  ownerName: string = "King of Sales"
+  ownerName: string = "Standard of Excellence"
 ): string {
   const formattedDate = formatDate(weekEndingDate);
   const formattedAmount = formatAmount(amount);
@@ -47,64 +47,64 @@ function generateCertificateHTML(
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body style="margin:0;padding:0;background-color:#f5f5f5;font-family:Georgia,'Times New Roman',serif;">
-  <div style="max-width:700px;margin:40px auto;background:#ffffff;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
+  <div style="width:100%;max-width:700px;margin:20px auto;background:#ffffff;box-shadow:0 4px 20px rgba(0,0,0,0.1);">
     
     <!-- Gold accent top border -->
     <div style="height:6px;background:linear-gradient(90deg,#C9A962,#E8D5A3,#C9A962);"></div>
     
-    <div style="padding:60px 50px;text-align:center;">
+    <div style="padding:40px 25px;text-align:center;">
       
-      <!-- Main Header -->
-      <h1 style="font-family:Georgia,serif;font-size:38px;font-weight:bold;color:#1a1a1a;margin:0 0 4px 0;letter-spacing:3px;text-transform:uppercase;">
+      <!-- Main Header - Mobile Optimized -->
+      <h1 style="font-family:Georgia,serif;font-size:28px;font-weight:bold;color:#1a1a1a;margin:0 0 4px 0;letter-spacing:2px;text-transform:uppercase;word-break:break-word;">
         OUTSTANDING
       </h1>
-      <h1 style="font-family:Georgia,serif;font-size:38px;font-weight:bold;color:#1a1a1a;margin:0 0 40px 0;letter-spacing:3px;text-transform:uppercase;">
+      <h1 style="font-family:Georgia,serif;font-size:28px;font-weight:bold;color:#1a1a1a;margin:0 0 30px 0;letter-spacing:2px;text-transform:uppercase;word-break:break-word;">
         PERFORMANCE
       </h1>
       
       <!-- Decorative line -->
-      <div style="width:120px;height:2px;background:#C9A962;margin:0 auto 40px;"></div>
+      <div style="width:100px;height:2px;background:#C9A962;margin:0 auto 30px;"></div>
       
       <!-- Company Name -->
-      <p style="font-size:18px;font-weight:600;color:#333333;margin:0 0 8px 0;letter-spacing:1px;">
+      <p style="font-size:16px;font-weight:600;color:#333333;margin:0 0 8px 0;letter-spacing:1px;">
         APEX Financial Group
       </p>
-      <p style="font-size:14px;color:#666666;margin:0 0 35px 0;font-style:italic;">
+      <p style="font-size:13px;color:#666666;margin:0 0 25px 0;font-style:italic;">
         hereby expresses its appreciation to
       </p>
       
-      <!-- Agent Name -->
-      <h2 style="font-family:Georgia,serif;font-size:36px;font-weight:bold;color:#1a1a1a;margin:0 0 35px 0;border-bottom:2px solid #C9A962;display:inline-block;padding-bottom:8px;">
+      <!-- Agent Name - Mobile Optimized -->
+      <h2 style="font-family:Georgia,serif;font-size:26px;font-weight:bold;color:#1a1a1a;margin:0 0 25px 0;border-bottom:2px solid #C9A962;display:inline-block;padding-bottom:8px;word-break:break-word;">
         ${agentName}
       </h2>
       
       <!-- Achievement Description -->
-      <p style="font-size:14px;color:#666666;margin:0 0 12px 0;">
+      <p style="font-size:13px;color:#666666;margin:0 0 10px 0;">
         for outstanding achievement for the week ending
       </p>
-      <p style="font-size:22px;font-weight:bold;color:#1a1a1a;margin:0 0 20px 0;">
+      <p style="font-size:18px;font-weight:bold;color:#1a1a1a;margin:0 0 15px 0;">
         ${formattedDate}
       </p>
       
-      <!-- Amount Box -->
-      <div style="background:linear-gradient(135deg,#f8f6f0,#ffffff);border:2px solid #C9A962;border-radius:8px;padding:20px 30px;margin:0 auto 35px;display:inline-block;">
-        <p style="font-size:24px;font-weight:bold;color:#1a1a1a;margin:0;letter-spacing:1px;">
+      <!-- Amount Box - Mobile Optimized -->
+      <div style="background:linear-gradient(135deg,#f8f6f0,#ffffff);border:2px solid #C9A962;border-radius:8px;padding:15px 20px;margin:0 auto 25px;display:inline-block;max-width:90%;box-sizing:border-box;">
+        <p style="font-size:18px;font-weight:bold;color:#1a1a1a;margin:0;letter-spacing:0.5px;word-break:break-word;">
           FOR WRITING $${formattedAmount} IN ALP
         </p>
       </div>
       
       <!-- Appreciation -->
-      <p style="font-size:15px;font-style:italic;color:#555555;margin:0 0 50px 0;">
+      <p style="font-size:14px;font-style:italic;color:#555555;margin:0 0 35px 0;">
         Your efforts are greatly appreciated.
       </p>
       
       <!-- Signature Section -->
-      <div style="margin-top:30px;">
-        <p style="font-family:'Brush Script MT','Lucida Handwriting',cursive;font-size:32px;color:#333333;margin:0 0 5px 0;">
+      <div style="margin-top:25px;">
+        <p style="font-family:'Brush Script MT','Lucida Handwriting',cursive;font-size:26px;color:#333333;margin:0 0 5px 0;">
           ${ownerName}
         </p>
-        <div style="width:200px;height:1px;background:#333333;margin:0 auto 10px;"></div>
-        <p style="font-size:12px;color:#666666;margin:0;line-height:1.6;">
+        <div style="width:180px;height:1px;background:#333333;margin:0 auto 10px;"></div>
+        <p style="font-size:11px;color:#666666;margin:0;line-height:1.5;">
           ${ownerName}<br>
           Chief Executive Officer<br>
           APEX Financial Group
@@ -114,8 +114,8 @@ function generateCertificateHTML(
     </div>
     
     <!-- Footer -->
-    <div style="background:#1a1a1a;padding:15px;text-align:center;">
-      <p style="font-size:11px;color:#888888;margin:0;">
+    <div style="background:#1a1a1a;padding:12px;text-align:center;">
+      <p style="font-size:10px;color:#888888;margin:0;">
         Powered by APEX Financial
       </p>
     </div>

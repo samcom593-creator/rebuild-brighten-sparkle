@@ -410,7 +410,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                   )}
                   whileTap={{ scale: 0.95 }}
                 >
-                <AnimatePresence mode="sync">
+                <AnimatePresence mode="popLayout">
                     <motion.span
                       key={leaderboardMode}
                       initial={{ opacity: 0 }}

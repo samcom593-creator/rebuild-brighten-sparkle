@@ -69,9 +69,10 @@ serve(async (req: Request) => {
     const results: Array<{ agentId: string; total: number; success: boolean; result?: unknown; error?: string }> = [];
     for (const [agentId, total] of diamondAgents) {
       try {
-        console.log(`🏆 Triggering Diamond plaque for agent ${agentId}: $${total.toLocaleString()}`);
+        console.log(`🏆 Triggering Outstanding Performance certificate for agent ${agentId}: $${total.toLocaleString()}`);
         
-        const response = await fetch(`${supabaseUrl}/functions/v1/send-plaque-recognition`, {
+        // Send the formal Outstanding Performance certificate
+        const response = await fetch(`${supabaseUrl}/functions/v1/send-outstanding-performance`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -79,9 +80,9 @@ serve(async (req: Request) => {
           },
           body: JSON.stringify({
             agentId,
-            milestoneType: "weekly",
             amount: total,
-            date: weekEndStr,
+            weekEndingDate: weekEndStr,
+            milestoneType: "weekly",
           }),
         });
 

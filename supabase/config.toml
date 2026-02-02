@@ -249,3 +249,6 @@ verify_jwt = false
 
 [functions.notify-set-goals]
 verify_jwt = false
+
+[functions.send-outstanding-performance]
+verify_jwt = false

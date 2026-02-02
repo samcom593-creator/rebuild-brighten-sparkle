@@ -105,7 +105,6 @@ function generateCertificateHTML(
         </p>
         <div style="width:180px;height:1px;background:#333333;margin:0 auto 10px;"></div>
         <p style="font-size:11px;color:#666666;margin:0;line-height:1.5;">
-          ${ownerName}<br>
           Chief Executive Officer<br>
           APEX Financial Group
         </p>

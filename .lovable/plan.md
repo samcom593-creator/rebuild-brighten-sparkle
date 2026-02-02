@@ -1,102 +1,226 @@
 
-Goal
-- Fix the “X” (Unenroll) button so when you click it, the agent is removed from the Course Progress list (the progress bar list) immediately and does not reappear.
 
-Root cause (why it “does nothing” visually)
-- The Unenroll logic in `src/pages/CourseProgress.tsx` currently:
-  1) Deletes rows from `onboarding_progress`
-  2) Sets the agent’s `onboarding_stage` back to `"onboarding"` and `has_training_course` to `false`
-- BUT the list you’re looking at is built from agents where `onboarding_stage IN ("onboarding","training_online")`.
-  - So after unenroll, the agent is still eligible for the list (because they’re still in `"onboarding"`), and you keep seeing them (often as 0% / not started), which feels like the X “didn’t work”.
+## Comprehensive Platform Optimization Plan
 
-What “remove them” should mean
-- “Remove from the Course Progress progress-bar list” should mean: they are no longer considered “in course / being tracked for course progress”.
-- That should be represented by: `onboarding_stage = "training_online"` (in course) vs anything else (not in course).
-- Therefore, the Course Progress monitor should only display agents who are actually in the course stage (and optionally flagged with `has_training_course=true`).
+### Overview
 
-Implementation plan (code changes)
+This plan addresses all the issues raised:
+1. **Navigation freezes/delays** - Getting stuck on screens, can't click anything
+2. **Team LP Goal** - Change from $75,000 to $400,000
+3. **4-Week Production Chart** - Show agency production, not personal
+4. **Mass message to agents** - Notify all agents to set their goals and text them to you
+5. **Site-wide optimization** - Remove any remaining performance bottlenecks
 
-1) Fix the data source for the Course Progress list (the actual cause)
-A) Update the FULL Course Progress page query
-- File: `src/pages/CourseProgress.tsx`
-- Change the agents query from:
-  - `.in("onboarding_stage", ["onboarding", "training_online"])`
-  to:
-  - `.eq("onboarding_stage", "training_online")`
-- Optional additional safety filter (recommended):
-  - also require `.eq("has_training_course", true)` so the definition of “in course” is consistent even if a stage is accidentally toggled.
+---
 
-Result:
-- Once an agent is unenrolled and moved back to `"onboarding"`, they disappear from this list immediately after refetch.
+### Issue 1: Navigation Freezes and UI Blocking
 
-B) Update the Command Center “Course Progress” sidebar card query
-- File: `src/components/admin/CourseProgressPanel.tsx`
-- Change the agents query from:
-  - `.in("onboarding_stage", ["onboarding", "training_online"])`
-  to:
-  - `.eq("onboarding_stage", "training_online")`
-- Optional: same additional filter `.eq("has_training_course", true)`.
+**Root Cause Identified:**
+There are 11 files with `AnimatePresence mode="wait"` which causes Framer Motion to **block rendering** until exit animations complete. When you click a nav link, if any component is still animating, the app appears frozen.
 
-Result:
-- After unenroll, they also disappear from the small progress-bar card on `/dashboard/command`, preventing the “I still see them” confusion.
+**Affected Files:**
+- `src/components/dashboard/LeaderboardTabs.tsx` (line 499)
+- `src/components/dashboard/CompactLeaderboard.tsx` (line 395)
+- `src/components/dashboard/CompactProductionEntry.tsx` (lines 220, 342)
+- `src/components/dashboard/DeactivateAgentDialog.tsx` (line 258)
+- `src/components/dashboard/PerformanceBreakdownModal.tsx` (line 295)
+- `src/components/course/CourseQuiz.tsx` (line 165)
+- `src/pages/Apply.tsx` (line 438)
+- `src/pages/AgentNumbersLogin.tsx` (lines 326, 353)
+- `src/components/landing/DealsTicker.tsx` (line 64)
+- `src/components/landing/HeroSection.tsx` (line 181)
+- `src/components/landing/SystemsSection.tsx` (line 195)
 
-2) Make the X button behave like a true “remove”
-A) Only show the X button when it makes sense
-- File: `src/pages/CourseProgress.tsx`
-- Right now the X button renders for every row.
-- Update so the X button only shows for agents who are actually “in course”, e.g.:
-  - `agent.onboardingStage === "training_online"` (and/or `agent.hasStarted` / `has_training_course` if we add it to the query response).
-This prevents clicks that appear “broken” (like clicking X on someone not in course / no progress).
+**Fix Strategy:**
+1. Replace `mode="wait"` with `mode="sync"` or remove the mode entirely for dashboard components
+2. This allows new content to render immediately without waiting for exit animations
+3. Keep `mode="wait"` only on multi-step forms (Apply, AgentNumbersLogin) where it's intentional
 
-B) Add a confirmation (prevents accidental removals)
-- Add a small confirm UI before executing the unenroll mutation:
-  - Option 1: Simple `AlertDialog` (Radix UI exists in the project)
-  - Option 2: A lightweight confirm toast action
-- Label clearly: “Remove from Course (hide from progress list)”.
+**Files to Change:**
+- `src/components/dashboard/LeaderboardTabs.tsx`
+- `src/components/dashboard/CompactLeaderboard.tsx`
+- `src/components/dashboard/CompactProductionEntry.tsx`
+- `src/components/dashboard/DeactivateAgentDialog.tsx`
+- `src/components/dashboard/PerformanceBreakdownModal.tsx`
+- `src/components/course/CourseQuiz.tsx`
 
-C) Make the UI update instantly (no waiting / no doubt)
-- After successful unenroll:
-  - Immediately remove the agent from the local `["course-progress-full"]` cache via `queryClient.setQueryData(...)` (optimistic UX).
-  - Then also `invalidateQueries` to ensure the backend is the source of truth.
+---
 
-3) Ensure every place that shows “course progress bars” updates
-A) Invalidate both relevant React Query caches after unenroll/enroll
-- File: `src/pages/CourseProgress.tsx`
-  - On unenroll success, invalidate:
-    - `["course-progress-full"]`
-    - `["course-progress-admin"]` (so the command-center card refreshes too)
-- File: `src/components/dashboard/AddAgentToCourseDialog.tsx`
-  - On enroll success, also invalidate:
-    - `["course-progress-admin"]` (same reason)
+### Issue 2: Team LP Goal Update ($75K → $400K)
 
-(Other screens like Team Directory / Team Hierarchy may not use React Query; they typically refresh on navigation. If any do cache, we’ll add their keys too after we verify.)
+**Current Location:** `src/components/dashboard/TeamGoalsTracker.tsx` line 29-34
 
-4) (If needed) Verify the backend permission is not the blocker (quick sanity check)
-Even though the RLS policy exists, we’ll confirm we’re not silently failing:
-- Add explicit error logging/toast detail when `progressError` or `agentError` occurs (including the message).
-- This way, if deletion is blocked for a specific user role, you’ll see “Permission denied” instead of a silent “nothing happened”.
+```typescript
+const MONTHLY_TARGETS = {
+  alp: 75000, // Currently $75k
+  deals: 40,
+  presentations: 150,
+  referrals: 25,
+};
+```
 
-Acceptance criteria (what you should see)
-- On `/course-progress`: click X → the agent disappears from the list immediately.
-- Navigate back to `/dashboard/command`: the Course Progress card no longer shows that agent.
-- If you re-enroll them, they appear again under “training_online”.
+**Fix:**
+Change `alp: 75000` to `alp: 400000` and proportionally adjust other targets:
+- ALP: $400,000 (new target)
+- Deals: 200 (scaled from 40 proportionally)
+- Presentations: 800 (scaled from 150)
+- Referrals: 100 (scaled from 25)
 
-Testing checklist (end-to-end)
-1) Pick a test agent currently in course (`training_online`) with visible progress.
-2) Go to `/course-progress`, click X, confirm:
-   - agent disappears immediately
-   - refresh page: still gone
-3) Go to `/dashboard/command` and confirm:
-   - agent is not in the Course Progress card
-4) Re-enroll the same agent via “Add to Course”:
-   - agent shows again in `/course-progress`
-   - agent shows again in the command-center card
+---
 
-Files that will be changed
-- `src/pages/CourseProgress.tsx` (fix query stage filter, improve X button behavior, invalidate both caches, optional optimistic removal + confirm)
-- `src/components/admin/CourseProgressPanel.tsx` (fix query stage filter)
-- `src/components/dashboard/AddAgentToCourseDialog.tsx` (invalidate the admin course progress cache after enroll)
+### Issue 3: 4-Week Production Chart → Agency-Wide
 
-Notes / why this is the correct fix
-- The backend delete/update is likely already working; the UI logic is what keeps the agent visible because “onboarding” is still included in the “in course” list.
-- Restricting the progress monitor to `training_online` makes the progress-bar list represent “currently in course,” which aligns with your intent: remove = stop tracking in this course progress monitor.
+**Current Behavior:** `ProductionHistoryChart.tsx` takes an `agentId` prop and shows that single agent's production.
+
+**Required Change:** Make it show **agency-wide production** (all agents aggregated) when used by admins.
+
+**Fix Strategy:**
+1. Add an optional `showAgencyWide` prop to the component
+2. When `showAgencyWide=true`, query ALL production data instead of filtering by `agent_id`
+3. Update the Dashboard usage to pass this prop based on user role
+
+**Files to Change:**
+- `src/components/dashboard/ProductionHistoryChart.tsx` - Add agency-wide mode
+- Where it's used (Dashboard) - Pass the prop accordingly
+
+---
+
+### Issue 4: Send Goal-Setting Notification to All Agents
+
+**Implementation:** Create a new Edge Function `notify-set-goals` that:
+1. Fetches all active agents with valid email addresses
+2. Sends an email instructing them to:
+   - Log into their portal
+   - Set their income goals for the month
+   - Text their goals to the owner
+3. Uses the same Resend email infrastructure as existing functions
+
+**Email Content:**
+- Subject: "📊 Action Required: Set Your February Goals"
+- Body: Clear instructions to set goals and text the numbers to you
+- Include magic link for one-tap portal access
+
+---
+
+### Issue 5: Additional Site Optimization
+
+**A. Query Optimization for TeamSnapshotCard:**
+Current issue: Multiple sequential queries for agent IDs, then production data.
+Fix: Combine into fewer, more efficient queries.
+
+**B. Real-time Channel Cleanup:**
+Ensure `ProductionHistoryChart.tsx` uses the shared `useProductionRealtime` hook instead of creating its own channel (line 68-81 creates a separate channel).
+
+**C. Remove Redundant Re-renders:**
+Add `useMemo` and `useCallback` where missing in heavy components.
+
+---
+
+### Implementation Details
+
+#### File 1: LeaderboardTabs.tsx (Remove blocking animations)
+
+```typescript
+// Line 499: Change from
+<AnimatePresence mode="wait">
+
+// To
+<AnimatePresence mode="sync">
+```
+
+#### File 2: CompactLeaderboard.tsx
+
+```typescript
+// Line 395: Change from
+<AnimatePresence mode="wait">
+
+// To
+<AnimatePresence mode="sync">
+```
+
+#### File 3: CompactProductionEntry.tsx
+
+```typescript
+// Lines 220 and 342: Change from
+<AnimatePresence mode="wait">
+
+// To
+<AnimatePresence mode="sync">
+```
+
+#### File 4: TeamGoalsTracker.tsx
+
+```typescript
+// Line 29-34: Update targets
+const MONTHLY_TARGETS = {
+  alp: 400000, // $400k team ALP for February
+  deals: 200,  // 200 deals (scaled)
+  presentations: 800, // 800 presentations
+  referrals: 100, // 100 referrals caught
+};
+```
+
+#### File 5: ProductionHistoryChart.tsx
+
+Add agency-wide mode:
+
+```typescript
+interface ProductionHistoryChartProps {
+  agentId?: string;  // Optional now
+  weeks?: 4 | 8 | 12;
+  showAgencyWide?: boolean;  // NEW prop
+}
+
+// In fetchHistory():
+if (showAgencyWide) {
+  // Fetch ALL production data without agent filter
+  const { data: production } = await supabase
+    .from("daily_production")
+    .select("production_date, aop, deals_closed, closing_rate")
+    .gte("production_date", startDate.toISOString().split("T")[0])
+    .order("production_date", { ascending: true });
+} else {
+  // Keep existing single-agent query
+}
+```
+
+Also use shared realtime hook instead of separate channel.
+
+#### File 6: New Edge Function - notify-set-goals/index.ts
+
+Create at `supabase/functions/notify-set-goals/index.ts`:
+
+```typescript
+// Edge function that:
+// 1. Gets all active agents with emails
+// 2. Generates magic portal links
+// 3. Sends email with instructions to:
+//    - Set their monthly income goals
+//    - Text those goals to [your number]
+// 4. Tracks email opens
+```
+
+---
+
+### Summary of Changes
+
+| Change | File | Impact |
+|--------|------|--------|
+| Remove `mode="wait"` blocking | 6 dashboard files | Fixes navigation freezes |
+| Update monthly targets | TeamGoalsTracker.tsx | $400K ALP goal |
+| Agency-wide production view | ProductionHistoryChart.tsx | Shows team totals |
+| Goal notification email | notify-set-goals (NEW) | Mass agent notification |
+| Use shared realtime channel | ProductionHistoryChart.tsx | Fewer connections |
+| Query optimization | TeamSnapshotCard.tsx | Faster loading |
+
+---
+
+### Expected Results
+
+After implementation:
+1. **Navigation** - Instant page transitions, no more getting stuck
+2. **Team Goals** - Shows $400,000 target with proportionally scaled sub-goals
+3. **4-Week Chart** - Displays agency-wide production aggregated from all agents
+4. **Agent Notification** - All active agents receive email with goal-setting instructions
+5. **Performance** - Reduced realtime channel count, optimized queries
+

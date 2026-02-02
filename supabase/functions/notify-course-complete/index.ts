@@ -32,10 +32,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Processing course completion for agent: ${agentId}`);
 
-    // Get agent's manager and profile
+    // Get agent's manager and profile (include manager_id as fallback)
     const { data: agent } = await supabase
       .from("agents")
-      .select("invited_by_manager_id, profile_id")
+      .select("invited_by_manager_id, manager_id, profile_id")
       .eq("id", agentId)
       .single();
 
@@ -57,14 +57,16 @@ const handler = async (req: Request): Promise<Response> => {
     // Get admin email
     const adminEmail = "info@kingofsales.net";
 
-    // Get manager's email if exists
+    // Get manager's email if exists (use invited_by_manager_id first, fallback to manager_id)
     let managerEmail: string | null = null;
     let managerName = "Apex Team";
-    if (agent?.invited_by_manager_id) {
+    const managerId = agent?.invited_by_manager_id || agent?.manager_id;
+    
+    if (managerId) {
       const { data: manager } = await supabase
         .from("agents")
         .select("profile_id")
-        .eq("id", agent.invited_by_manager_id)
+        .eq("id", managerId)
         .single();
 
       if (manager?.profile_id) {

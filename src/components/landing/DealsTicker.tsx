@@ -61,7 +61,7 @@ export function DealsTicker() {
             <span className="text-amber-400">🔥</span>
             <span className="text-white font-medium">{deal.name}</span>
             <span className="text-white/50">•</span>
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode="sync">
               <motion.span
                 key={deal.carrier}
                 initial={{ opacity: 0, y: 10 }}

@@ -1,171 +1,94 @@
 
 
-## Globe Life-Style "Outstanding Performance" Certificate Implementation
+## Outstanding Performance Certificate Refinement
 
-### Overview
+### Changes Required
 
-You want to implement a professional certificate format inspired by the Globe Life "Outstanding Performance" plaque, but branded for Apex Financial. The system will:
+#### 1. Replace "King of Sales" with "Standard of Excellence"
 
-1. **Send certificate emails to Admin only** for weekly/milestone accolades
-2. **Send the same certificate format to the Agent** with their name personalized
-3. Use the clean, formal design from the Globe Life PDF (without their logo - using Apex branding instead)
+**Current (lines 103-111):**
+- Cursive signature shows "King of Sales"
+- CEO title line shows "King of Sales"
 
----
-
-### Certificate Design Specifications
-
-Based on the uploaded PDF, the certificate format will include:
-
-| Element | Content |
-|---------|---------|
-| Header | "OUTSTANDING PERFORMANCE" (large, bold) |
-| Company | "APEX Financial Group" |
-| Intro | "hereby expresses its appreciation to" |
-| Name | **[AGENT NAME]** (bold, prominent) |
-| Achievement | "for outstanding achievement for the week ending" |
-| Date | **[WEEK ENDING DATE]** (formatted nicely) |
-| Amount | "FOR WRITING $X,XXX IN ALP" |
-| Closing | "Your efforts are greatly appreciated." |
-| Signature | Owner's signature line |
-| Footer | "Powered by Apex Financial" |
+**Updated:**
+- Change both instances to "Standard of Excellence"
 
 ---
 
-### Implementation Plan
+#### 2. Mobile-Responsive Header Fix
 
-#### Step 1: Create New Email Template Function
+**Problem:** The header "OUTSTANDING PERFORMANCE" at 38px font-size overflows on mobile screens (typically 320-414px wide).
 
-**File: `supabase/functions/send-outstanding-performance/index.ts`** (NEW)
+**Solution:** Use responsive font sizing and adjusted layout:
 
-This new edge function will:
-- Accept `agentId`, `amount`, `weekEndingDate`, `milestoneType`
-- Generate the Globe Life-style certificate HTML
-- Send to admin (info@kingofsales.net) with full details
-- Send to the agent with the same certificate format
-- Use clean, screenshot-worthy design without emojis in the body
+| Element | Desktop | Mobile |
+|---------|---------|--------|
+| Header font | 38px | 24px |
+| Padding | 60px 50px | 40px 20px |
+| Letter-spacing | 3px | 1px |
+| Agent name | 36px | 24px |
+| Amount box | 24px | 18px |
 
-#### Step 2: Certificate HTML Template
+**Technique:** Since email clients don't support media queries well, we'll use:
+- Percentage-based max-width
+- Smaller base fonts that scale well
+- `mso-` conditional comments for Outlook
+- Mobile-first approach with max-font-sizes
 
+---
+
+### Technical Implementation
+
+**File: `supabase/functions/send-outstanding-performance/index.ts`**
+
+Key HTML changes:
 ```html
-<!-- Premium Certificate Design -->
-<body style="background:#ffffff;">
-  <div style="max-width:700px;margin:0 auto;padding:60px;">
-    
-    <!-- Gold accent line -->
-    <div style="border-top:4px solid #C9A962;margin-bottom:40px;"></div>
-    
-    <!-- Main Header -->
-    <h1 style="font-family:Georgia,serif;font-size:42px;font-weight:bold;
-               color:#1a1a1a;margin:0 0 8px;letter-spacing:2px;">
-      OUTSTANDING
-    </h1>
-    <h1 style="font-family:Georgia,serif;font-size:42px;font-weight:bold;
-               color:#1a1a1a;margin:0 0 40px;letter-spacing:2px;">
-      PERFORMANCE
-    </h1>
-    
-    <!-- Company Name -->
-    <p style="font-size:18px;font-weight:600;color:#333;margin:0 0 8px;">
-      APEX Financial Group
-    </p>
-    <p style="font-size:14px;color:#666;margin:0 0 30px;">
-      hereby expresses its appreciation to
-    </p>
-    
-    <!-- Agent Name (Bold, Large) -->
-    <h2 style="font-family:Georgia,serif;font-size:32px;font-weight:bold;
-               color:#1a1a1a;margin:0 0 30px;">
-      [AGENT NAME]
-    </h2>
-    
-    <!-- Achievement Description -->
-    <p style="font-size:14px;color:#666;margin:0 0 8px;">
-      for outstanding achievement for the week ending
-    </p>
-    <p style="font-size:20px;font-weight:bold;color:#1a1a1a;margin:0 0 8px;">
-      [WEEK ENDING DATE]
-    </p>
-    <p style="font-size:22px;font-weight:bold;color:#1a1a1a;margin:0 0 30px;">
-      FOR WRITING $X,XXX IN ALP
-    </p>
-    
-    <!-- Appreciation -->
-    <p style="font-size:14px;font-style:italic;color:#666;margin:0 0 40px;">
-      Your efforts are greatly appreciated.
-    </p>
-    
-    <!-- Signature -->
-    <div style="margin-top:30px;">
-      <p style="font-family:'Brush Script MT',cursive;font-size:28px;
-                color:#333;margin:0 0 8px;">
-        [Owner Signature]
-      </p>
-      <div style="border-top:1px solid #333;width:200px;margin-bottom:8px;"></div>
-      <p style="font-size:12px;color:#666;margin:0;">
-        [Owner Name]<br>
-        Chief Executive Officer<br>
-        APEX Financial Group
-      </p>
-    </div>
-    
-  </div>
-</body>
+<!-- Mobile-optimized header -->
+<h1 style="font-family:Georgia,serif;font-size:28px;font-weight:bold;
+           color:#1a1a1a;margin:0 0 4px 0;letter-spacing:2px;
+           text-transform:uppercase;word-break:break-word;">
+  OUTSTANDING
+</h1>
+<h1 style="font-family:Georgia,serif;font-size:28px;font-weight:bold;
+           color:#1a1a1a;margin:0 0 30px 0;letter-spacing:2px;
+           text-transform:uppercase;word-break:break-word;">
+  PERFORMANCE
+</h1>
+
+<!-- Signature with "Standard of Excellence" -->
+<p style="font-family:'Brush Script MT','Lucida Handwriting',cursive;
+          font-size:28px;color:#333333;margin:0 0 5px 0;">
+  Standard of Excellence
+</p>
+<p style="font-size:12px;color:#666666;margin:0;line-height:1.6;">
+  Standard of Excellence<br>
+  Chief Executive Officer<br>
+  APEX Financial Group
+</p>
 ```
 
-#### Step 3: Update Weekly Milestone Check
-
-**File: `supabase/functions/check-weekly-milestones/index.ts`**
-
-Modify to call the new `send-outstanding-performance` function for weekly achievements, ensuring both admin and agent receive the certificate.
-
-#### Step 4: Email Distribution Logic
-
-- **To Admin**: Full certificate + agent details + any additional notes
-- **To Agent**: Same certificate with their name, clean format
+**Additional Mobile Refinements:**
+- Reduce container padding to `padding:40px 25px`
+- Use `width:100%` with `max-width:700px` for fluid scaling
+- Reduce agent name font to 28px
+- Reduce amount box font to 20px
+- Add `word-break:break-word` to prevent overflow
 
 ---
 
-### Technical Details
+### Expected Result
 
-#### New Edge Function Structure
-
-```typescript
-// supabase/functions/send-outstanding-performance/index.ts
-
-interface PerformanceRequest {
-  agentId: string;
-  amount: number;
-  weekEndingDate: string;
-  ownerName?: string;  // Default: "King of Sales"
-}
-
-// 1. Fetch agent details (name, email)
-// 2. Generate certificate HTML
-// 3. Send to admin (info@kingofsales.net)
-// 4. Send to agent with same format
-```
-
-#### Subject Lines
-
-- **Admin**: `Weekly Performance: [Agent Name] - $X,XXX ALP`
-- **Agent**: `Outstanding Performance Recognition - [Week Ending Date]`
+The certificate will now:
+1. Display **"Standard of Excellence"** as the signatory name
+2. Render cleanly on mobile devices (iPhone, Android) without text overflow
+3. Maintain the premium, executive appearance on desktop
+4. Scale proportionally across all screen sizes
 
 ---
 
-### Files to Create/Modify
+### Files to Modify
 
-| File | Action |
-|------|--------|
-| `supabase/functions/send-outstanding-performance/index.ts` | CREATE - New Globe Life-style certificate |
-| `supabase/functions/check-weekly-milestones/index.ts` | MODIFY - Trigger new certificate function |
-| `supabase/config.toml` | MODIFY - Add new function config |
-
----
-
-### Expected Results
-
-1. **Admin receives** a formal "Outstanding Performance" certificate email for each agent milestone
-2. **Agent receives** the same certificate with their name, clean and screenshot-worthy
-3. **Design matches** the Globe Life PDF format but with Apex Financial branding
-4. **Professional appearance** - no emojis in the certificate body, formal tone
+| File | Changes |
+|------|---------|
+| `supabase/functions/send-outstanding-performance/index.ts` | Update HTML template with mobile-responsive fonts and "Standard of Excellence" |
 

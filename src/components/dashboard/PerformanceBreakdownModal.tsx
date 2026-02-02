@@ -292,7 +292,7 @@ export function PerformanceBreakdownModal({ currentAgentId, entries, period }: P
                 )}
               </Button>
             </div>
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode="popLayout">
               {aiSummary && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}

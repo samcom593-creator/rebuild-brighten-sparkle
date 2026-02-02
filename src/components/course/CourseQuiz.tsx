@@ -162,7 +162,7 @@ export function CourseQuiz({
       </CardHeader>
       
       <CardContent className="pt-4">
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="popLayout">
           <motion.div
             key={currentIndex}
             initial={{ opacity: 0, x: 20 }}

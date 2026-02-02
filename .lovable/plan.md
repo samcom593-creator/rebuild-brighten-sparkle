@@ -1,172 +1,171 @@
 
 
-## Critical Platform Fix: Navigation Freezes, Crown Logo & Course Completion Notifications
+## Globe Life-Style "Outstanding Performance" Certificate Implementation
 
-### Executive Summary
+### Overview
 
-After investigating the codebase, I've identified the root causes of the navigation freezes and understand all the requirements:
+You want to implement a professional certificate format inspired by the Globe Life "Outstanding Performance" plaque, but branded for Apex Financial. The system will:
 
-1. **Navigation Freezes** - Still caused by `AnimatePresence mode="wait"` in the main LeaderboardTabs component (line 499) which blocks UI during tab switches
-2. **Crown Logo Behavior** - Should go to Dashboard if logged in, otherwise stay on Home
-3. **Course Completion Notifications** - Need to notify both admin AND manager when agent completes coursework (already implemented in edge function but need to verify manager notification flow)
-
----
-
-### Issue 1: Navigation Freezes (Both Dashboard + Public Pages)
-
-**Root Cause Found:**
-
-There's still one critical `AnimatePresence mode="wait"` at line 499 in LeaderboardTabs.tsx that causes the main content flip animation to block navigation. When you click another nav item while the leaderboard is animating, the entire app freezes.
-
-**Files with blocking `mode="wait"` that need fixing:**
-
-| File | Line | Impact |
-|------|------|--------|
-| `src/components/dashboard/LeaderboardTabs.tsx` | 499 | HIGH - Main leaderboard flip blocks navigation |
-| `src/components/landing/HeroSection.tsx` | 181 | LOW - Carrier logos on landing |
-| `src/components/landing/DealsTicker.tsx` | 64 | LOW - Deal ticker animation |
-| `src/components/landing/SystemsSection.tsx` | 195 | LOW - Tab content on landing |
-
-**Fix:**
-- Change `mode="wait"` to `mode="popLayout"` in LeaderboardTabs.tsx (the high-impact one)
-- For landing page components, change to `mode="sync"` to allow immediate rendering
+1. **Send certificate emails to Admin only** for weekly/milestone accolades
+2. **Send the same certificate format to the Agent** with their name personalized
+3. Use the clean, formal design from the Globe Life PDF (without their logo - using Apex branding instead)
 
 ---
 
-### Issue 2: Crown Logo Navigation Logic
+### Certificate Design Specifications
 
-**Current Behavior:**
-The Crown logo in the sidebar (`GlobalSidebar.tsx` lines 220-235) always links to `/dashboard`.
+Based on the uploaded PDF, the certificate format will include:
 
-**Required Behavior:**
-- If logged in → Go to `/dashboard`
-- If NOT logged in → Stay on `/` (home)
-
-**Files to Change:**
-- `src/components/layout/GlobalSidebar.tsx` - The crown is already linked to `/dashboard`, which is correct since this sidebar only appears for authenticated users. This works as expected.
-- `src/components/landing/Navbar.tsx` - The crown on the public landing page already links to `/` (home). This is correct.
-- `src/components/layout/SidebarLayout.tsx` (mobile header) - Crown links to `/dashboard`. Since this layout is only used inside protected routes, this is correct.
-
-**Conclusion:** The crown behavior is already correct. The GlobalSidebar and SidebarLayout are only rendered for authenticated users, so linking to `/dashboard` is correct. The landing Navbar links to `/` which is correct for public visitors.
-
----
-
-### Issue 3: Course Completion Notifications to Admin + Manager
-
-**Current Implementation Review:**
-
-The `notify-course-complete` edge function (reviewed above) already:
-1. Gets the agent's manager via `invited_by_manager_id`
-2. Sends email to both admin (`info@kingofsales.net`) AND manager
-3. Sends congratulations email to the agent
-4. Updates agent stage to `in_field_training`
-
-**However, there's a potential issue:** The function looks up manager by `agent.invited_by_manager_id`, but some agents may not have this set if they were added differently.
-
-**Improvement:**
-Add a fallback to check `agent.manager_id` if `invited_by_manager_id` is null, ensuring manager notifications always reach the right person.
-
-**Email Content Already Includes:**
-- Admin/Manager: "Course Completed!" notification with recommended actions
-- Agent: Congratulations with Discord link, daily meeting info (10 AM CST, Camera ON), and $20k standard
+| Element | Content |
+|---------|---------|
+| Header | "OUTSTANDING PERFORMANCE" (large, bold) |
+| Company | "APEX Financial Group" |
+| Intro | "hereby expresses its appreciation to" |
+| Name | **[AGENT NAME]** (bold, prominent) |
+| Achievement | "for outstanding achievement for the week ending" |
+| Date | **[WEEK ENDING DATE]** (formatted nicely) |
+| Amount | "FOR WRITING $X,XXX IN ALP" |
+| Closing | "Your efforts are greatly appreciated." |
+| Signature | Owner's signature line |
+| Footer | "Powered by Apex Financial" |
 
 ---
 
 ### Implementation Plan
 
-#### Step 1: Fix Navigation Freezes
+#### Step 1: Create New Email Template Function
 
-**File: `src/components/dashboard/LeaderboardTabs.tsx` (Line 499)**
-```typescript
-// Change from:
-<AnimatePresence mode="wait">
+**File: `supabase/functions/send-outstanding-performance/index.ts`** (NEW)
 
-// To:
-<AnimatePresence mode="popLayout">
+This new edge function will:
+- Accept `agentId`, `amount`, `weekEndingDate`, `milestoneType`
+- Generate the Globe Life-style certificate HTML
+- Send to admin (info@kingofsales.net) with full details
+- Send to the agent with the same certificate format
+- Use clean, screenshot-worthy design without emojis in the body
+
+#### Step 2: Certificate HTML Template
+
+```html
+<!-- Premium Certificate Design -->
+<body style="background:#ffffff;">
+  <div style="max-width:700px;margin:0 auto;padding:60px;">
+    
+    <!-- Gold accent line -->
+    <div style="border-top:4px solid #C9A962;margin-bottom:40px;"></div>
+    
+    <!-- Main Header -->
+    <h1 style="font-family:Georgia,serif;font-size:42px;font-weight:bold;
+               color:#1a1a1a;margin:0 0 8px;letter-spacing:2px;">
+      OUTSTANDING
+    </h1>
+    <h1 style="font-family:Georgia,serif;font-size:42px;font-weight:bold;
+               color:#1a1a1a;margin:0 0 40px;letter-spacing:2px;">
+      PERFORMANCE
+    </h1>
+    
+    <!-- Company Name -->
+    <p style="font-size:18px;font-weight:600;color:#333;margin:0 0 8px;">
+      APEX Financial Group
+    </p>
+    <p style="font-size:14px;color:#666;margin:0 0 30px;">
+      hereby expresses its appreciation to
+    </p>
+    
+    <!-- Agent Name (Bold, Large) -->
+    <h2 style="font-family:Georgia,serif;font-size:32px;font-weight:bold;
+               color:#1a1a1a;margin:0 0 30px;">
+      [AGENT NAME]
+    </h2>
+    
+    <!-- Achievement Description -->
+    <p style="font-size:14px;color:#666;margin:0 0 8px;">
+      for outstanding achievement for the week ending
+    </p>
+    <p style="font-size:20px;font-weight:bold;color:#1a1a1a;margin:0 0 8px;">
+      [WEEK ENDING DATE]
+    </p>
+    <p style="font-size:22px;font-weight:bold;color:#1a1a1a;margin:0 0 30px;">
+      FOR WRITING $X,XXX IN ALP
+    </p>
+    
+    <!-- Appreciation -->
+    <p style="font-size:14px;font-style:italic;color:#666;margin:0 0 40px;">
+      Your efforts are greatly appreciated.
+    </p>
+    
+    <!-- Signature -->
+    <div style="margin-top:30px;">
+      <p style="font-family:'Brush Script MT',cursive;font-size:28px;
+                color:#333;margin:0 0 8px;">
+        [Owner Signature]
+      </p>
+      <div style="border-top:1px solid #333;width:200px;margin-bottom:8px;"></div>
+      <p style="font-size:12px;color:#666;margin:0;">
+        [Owner Name]<br>
+        Chief Executive Officer<br>
+        APEX Financial Group
+      </p>
+    </div>
+    
+  </div>
+</body>
 ```
 
-This allows the new content to render immediately while the old content animates out, preventing the freeze.
+#### Step 3: Update Weekly Milestone Check
 
-**File: `src/components/landing/HeroSection.tsx` (Line 181)**
-```typescript
-// Change from:
-<AnimatePresence mode="wait">
+**File: `supabase/functions/check-weekly-milestones/index.ts`**
 
-// To:
-<AnimatePresence mode="sync">
-```
+Modify to call the new `send-outstanding-performance` function for weekly achievements, ensuring both admin and agent receive the certificate.
 
-**File: `src/components/landing/DealsTicker.tsx` (Line 64)**
-```typescript
-// Change from:
-<AnimatePresence mode="wait">
+#### Step 4: Email Distribution Logic
 
-// To:
-<AnimatePresence mode="sync">
-```
-
-**File: `src/components/landing/SystemsSection.tsx` (Line 195)**
-```typescript
-// Change from:
-<AnimatePresence mode="wait">
-
-// To:
-<AnimatePresence mode="sync">
-```
-
-#### Step 2: Improve Manager Notification (Edge Function)
-
-**File: `supabase/functions/notify-course-complete/index.ts`**
-
-Add fallback to also check `manager_id` field:
-```typescript
-// After getting agent, check both fields
-let managerId = agent?.invited_by_manager_id || null;
-
-// If no invited_by_manager_id, check if there's a manager_id
-if (!managerId && agent?.manager_id) {
-  managerId = agent.manager_id;
-}
-```
-
-Update the select to include `manager_id`:
-```typescript
-const { data: agent } = await supabase
-  .from("agents")
-  .select("invited_by_manager_id, manager_id, profile_id")
-  .eq("id", agentId)
-  .single();
-```
+- **To Admin**: Full certificate + agent details + any additional notes
+- **To Agent**: Same certificate with their name, clean format
 
 ---
 
-### Technical Summary
+### Technical Details
 
-| Change | File | Purpose |
-|--------|------|---------|
-| `mode="wait"` → `mode="popLayout"` | LeaderboardTabs.tsx | Fix dashboard navigation freeze |
-| `mode="wait"` → `mode="sync"` | HeroSection.tsx | Fix landing page animations |
-| `mode="wait"` → `mode="sync"` | DealsTicker.tsx | Fix landing page animations |
-| `mode="wait"` → `mode="sync"` | SystemsSection.tsx | Fix landing page animations |
-| Add manager_id fallback | notify-course-complete/index.ts | Ensure manager always notified |
+#### New Edge Function Structure
+
+```typescript
+// supabase/functions/send-outstanding-performance/index.ts
+
+interface PerformanceRequest {
+  agentId: string;
+  amount: number;
+  weekEndingDate: string;
+  ownerName?: string;  // Default: "King of Sales"
+}
+
+// 1. Fetch agent details (name, email)
+// 2. Generate certificate HTML
+// 3. Send to admin (info@kingofsales.net)
+// 4. Send to agent with same format
+```
+
+#### Subject Lines
+
+- **Admin**: `Weekly Performance: [Agent Name] - $X,XXX ALP`
+- **Agent**: `Outstanding Performance Recognition - [Week Ending Date]`
+
+---
+
+### Files to Create/Modify
+
+| File | Action |
+|------|--------|
+| `supabase/functions/send-outstanding-performance/index.ts` | CREATE - New Globe Life-style certificate |
+| `supabase/functions/check-weekly-milestones/index.ts` | MODIFY - Trigger new certificate function |
+| `supabase/config.toml` | MODIFY - Add new function config |
 
 ---
 
 ### Expected Results
 
-After implementation:
-1. **Navigation** - Instant page transitions, no more getting stuck when clicking sidebar items
-2. **Crown Logo** - Already works correctly (Dashboard if logged in, Home if not)
-3. **Course Completion** - Both admin and manager will always receive notification when agent completes coursework
-4. **Landing Page** - Smoother animations that don't block interaction
-
----
-
-### Files to Modify
-
-1. `src/components/dashboard/LeaderboardTabs.tsx`
-2. `src/components/landing/HeroSection.tsx`
-3. `src/components/landing/DealsTicker.tsx`
-4. `src/components/landing/SystemsSection.tsx`
-5. `supabase/functions/notify-course-complete/index.ts`
+1. **Admin receives** a formal "Outstanding Performance" certificate email for each agent milestone
+2. **Agent receives** the same certificate with their name, clean and screenshot-worthy
+3. **Design matches** the Globe Life PDF format but with Apex Financial branding
+4. **Professional appearance** - no emojis in the certificate body, formal tone
 

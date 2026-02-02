@@ -137,7 +137,7 @@ serve(async (req: Request) => {
       amount,
       weekEndingDate,
       milestoneType = "weekly",
-      ownerName = "King of Sales",
+      ownerName = "Standard of Excellence",
     }: PerformanceRequest = await req.json();
 
     console.log(`📜 Generating Outstanding Performance certificate for agent ${agentId}`);

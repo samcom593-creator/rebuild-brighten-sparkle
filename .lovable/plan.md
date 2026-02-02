@@ -1,38 +1,56 @@
 
 
-## Quick Fix: Remove "King of Sales" Default
+## Outstanding Performance Certificate Update
 
-### Issue Found
+### Part 1: Remove Duplicate "Standard of Excellence"
 
-There's one remaining instance of "King of Sales" on **line 140** that sets the default when parsing the request body. This overrides the correct "Standard of Excellence" default in the function signature (line 37).
-
-### Single Change Required
-
-**File: `supabase/functions/send-outstanding-performance/index.ts`**
-
-| Line | Current | Change To |
-|------|---------|-----------|
-| 140 | `ownerName = "King of Sales"` | `ownerName = "Standard of Excellence"` |
-
-### Technical Details
-
-The destructuring on line 140 currently reads:
-```typescript
-ownerName = "King of Sales",
+**Current Signature Block (lines 101-112):**
+```html
+<p style="cursive...">${ownerName}</p>           <!-- Signature -->
+<div style="line..."></div>                       <!-- Underline -->
+<p style="...">
+  ${ownerName}<br>                                <!-- REMOVE THIS -->
+  Chief Executive Officer<br>
+  APEX Financial Group
+</p>
 ```
 
-This will be changed to:
-```typescript
-ownerName = "Standard of Excellence",
+**Updated Signature Block:**
+```html
+<p style="cursive...">${ownerName}</p>           <!-- Signature only -->
+<div style="line..."></div>                       <!-- Underline -->
+<p style="...">
+  Chief Executive Officer<br>                     <!-- Title only -->
+  APEX Financial Group
+</p>
 ```
 
-This ensures that when no `ownerName` is passed in the request, it defaults to "Standard of Excellence" throughout the entire certificate.
+---
 
-### After the Fix
+### Part 2: Send Outstanding Performance Emails
 
-The certificate will show:
-- **Cursive signature**: "Standard of Excellence"  
-- **Title block**: "Standard of Excellence, Chief Executive Officer, APEX Financial Group"
+**Logic:**
+1. Query `daily_production` for last month (January 2026)
+2. Aggregate AOP by agent
+3. For agents with **$10K+ last month** → send email with monthly total and end date of January 31
+4. For agents with **under $10K last month** → query last 2 weeks production and send email with that total
 
-I'll deploy the fix and send a fresh test email so you can verify it looks perfect.
+**Date Ranges:**
+- Last month: January 1-31, 2026
+- Last 2 weeks: January 19 - February 1, 2026
+
+---
+
+### Files to Modify
+
+| File | Change |
+|------|--------|
+| `supabase/functions/send-outstanding-performance/index.ts` | Remove duplicate `${ownerName}` from title block |
+
+### After Template Fix
+
+I'll execute the email sends by:
+1. Querying production data for all agents
+2. Calculating totals for each period
+3. Calling `send-outstanding-performance` for each qualifying agent
 

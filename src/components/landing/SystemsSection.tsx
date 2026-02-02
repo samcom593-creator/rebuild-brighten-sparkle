@@ -192,7 +192,7 @@ export function SystemsSection() {
             </div>
 
             {/* Tab Content */}
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode="sync">
               <motion.div
                 key={activeTab}
                 initial={{ opacity: 0 }}

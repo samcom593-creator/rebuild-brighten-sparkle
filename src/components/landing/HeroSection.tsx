@@ -178,7 +178,7 @@ export function HeroSection() {
           >
             <p className="text-xs text-muted-foreground mb-3 uppercase tracking-wider">Partnered with Top Carriers</p>
             <div className="h-10 relative overflow-hidden">
-              <AnimatePresence mode="wait">
+              <AnimatePresence mode="sync">
                 <motion.div
                   key={currentCarrierIndex}
                   initial={{ opacity: 0, y: 20 }}

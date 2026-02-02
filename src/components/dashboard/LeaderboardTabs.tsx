@@ -496,7 +496,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
           </div>
 
           {/* Leaderboard Content with Flip Animation */}
-          <AnimatePresence mode="wait">
+          <AnimatePresence mode="popLayout">
             {leaderboardMode === "production" ? (
               <motion.div
                 key="production-leaderboard"

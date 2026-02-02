@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, forwardRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -16,8 +16,6 @@ import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Progress } from "@/components/ui/progress";
 import {
   Collapsible,
   CollapsibleContent,
@@ -25,27 +23,9 @@ import {
 } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import type { CourseModule, CourseQuestion } from "@/types/course";
 
-interface Module {
-  id: string;
-  title: string;
-  description: string | null;
-  video_url: string;
-  order_index: number;
-  pass_threshold: number | null;
-}
-
-interface Question {
-  id: string;
-  module_id: string;
-  question: string;
-  options: string[];
-  correct_answer: number;
-  explanation: string | null;
-  order_index: number | null;
-}
-
-export default function CourseContent() {
+const CourseContent = forwardRef<HTMLDivElement>((_, ref) => {
   const navigate = useNavigate();
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [activeVideo, setActiveVideo] = useState<string | null>(null);
@@ -59,7 +39,7 @@ export default function CourseContent() {
         .select("*")
         .eq("is_active", true)
         .order("order_index");
-      return (data || []) as Module[];
+      return (data || []) as CourseModule[];
     },
   });
 
@@ -71,7 +51,7 @@ export default function CourseContent() {
         .from("onboarding_questions")
         .select("*")
         .order("order_index");
-      return (data || []) as Question[];
+      return (data || []) as CourseQuestion[];
     },
   });
 
@@ -109,7 +89,7 @@ export default function CourseContent() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div ref={ref} className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -373,4 +353,8 @@ export default function CourseContent() {
       </div>
     </DashboardLayout>
   );
-}
+});
+
+CourseContent.displayName = "CourseContent";
+
+export default CourseContent;

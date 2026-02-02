@@ -1,9 +1,10 @@
-import { useState, useEffect, memo } from "react";
+import { useState, useEffect, memo, useCallback } from "react";
 import { motion } from "framer-motion";
-import { TrendingUp, TrendingDown, Calendar, DollarSign } from "lucide-react";
+import { TrendingUp, TrendingDown, Calendar } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { supabase } from "@/integrations/supabase/client";
 import { AnimatedNumber } from "./AnimatedNumber";
+import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 import {
   AreaChart,
   Area,
@@ -36,8 +37,9 @@ const CustomTooltip = memo(({ active, payload, label }: any) => {
 CustomTooltip.displayName = "CustomTooltip";
 
 interface ProductionHistoryChartProps {
-  agentId: string;
-  weeks?: 4 | 8 | 12; // Configurable weeks (default 4)
+  agentId?: string;
+  weeks?: 4 | 8 | 12;
+  showAgencyWide?: boolean; // NEW: Show all agents aggregated
 }
 
 interface DayData {
@@ -48,7 +50,11 @@ interface DayData {
   closingRate: number;
 }
 
-export function ProductionHistoryChart({ agentId, weeks = 4 }: ProductionHistoryChartProps) {
+export function ProductionHistoryChart({ 
+  agentId, 
+  weeks = 4, 
+  showAgencyWide = false 
+}: ProductionHistoryChartProps) {
   const [data, setData] = useState<DayData[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedWeeks, setSelectedWeeks] = useState<4 | 8 | 12>(weeks);
@@ -60,55 +66,58 @@ export function ProductionHistoryChart({ agentId, weeks = 4 }: ProductionHistory
     trend: 0,
   });
 
-  useEffect(() => {
-    if (agentId) {
-      fetchHistory();
-
-      // Real-time subscription for live updates
-      const channel = supabase
-        .channel("production-history-live")
-        .on(
-          "postgres_changes",
-          { event: "*", schema: "public", table: "daily_production" },
-          () => {
-            fetchHistory();
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
-  }, [agentId, selectedWeeks]);
-
-  const fetchHistory = async () => {
+  const fetchHistory = useCallback(async () => {
     try {
       const today = new Date();
       const daysBack = selectedWeeks * 7;
       const startDate = subDays(today, daysBack);
       
-      const { data: production } = await supabase
+      let query = supabase
         .from("daily_production")
         .select("production_date, aop, deals_closed, closing_rate")
-        .eq("agent_id", agentId)
         .gte("production_date", startDate.toISOString().split("T")[0])
         .order("production_date", { ascending: true });
+      
+      // If showing individual agent, filter by agent_id
+      if (!showAgencyWide && agentId) {
+        query = query.eq("agent_id", agentId);
+      }
+      
+      const { data: production } = await query;
 
       if (production) {
+        // Aggregate by date (for agency-wide, sum all agents per day)
+        const dateMap: Record<string, { alp: number; deals: number; closingRates: number[] }> = {};
+        
+        production.forEach((p) => {
+          const dateStr = p.production_date;
+          if (!dateMap[dateStr]) {
+            dateMap[dateStr] = { alp: 0, deals: 0, closingRates: [] };
+          }
+          dateMap[dateStr].alp += Number(p.aop || 0);
+          dateMap[dateStr].deals += Number(p.deals_closed || 0);
+          if (Number(p.closing_rate) > 0) {
+            dateMap[dateStr].closingRates.push(Number(p.closing_rate));
+          }
+        });
+
         // Fill in missing days with zeros
         const filledData: DayData[] = [];
         for (let i = daysBack - 1; i >= 0; i--) {
           const date = subDays(today, i);
           const dateStr = date.toISOString().split("T")[0];
-          const existing = production.find((p) => p.production_date === dateStr);
+          const existing = dateMap[dateStr];
+          
+          const avgClosingRate = existing?.closingRates.length 
+            ? existing.closingRates.reduce((a, b) => a + b, 0) / existing.closingRates.length 
+            : 0;
           
           filledData.push({
             date: dateStr,
             displayDate: format(date, "MMM d"),
-            alp: Number(existing?.aop || 0),
-            deals: Number(existing?.deals_closed || 0),
-            closingRate: Number(existing?.closing_rate || 0),
+            alp: existing?.alp || 0,
+            deals: existing?.deals || 0,
+            closingRate: avgClosingRate,
           });
         }
 
@@ -133,7 +142,7 @@ export function ProductionHistoryChart({ agentId, weeks = 4 }: ProductionHistory
           totalAlp,
           totalDeals,
           avgDaily,
-          bestDay: { date: best.displayDate, amount: best.alp },
+          bestDay: { date: best?.displayDate || "", amount: best?.alp || 0 },
           trend,
         });
       }
@@ -142,7 +151,14 @@ export function ProductionHistoryChart({ agentId, weeks = 4 }: ProductionHistory
     } finally {
       setLoading(false);
     }
-  };
+  }, [agentId, selectedWeeks, showAgencyWide]);
+
+  useEffect(() => {
+    fetchHistory();
+  }, [fetchHistory]);
+
+  // Use shared realtime hook instead of creating separate channel
+  useProductionRealtime(fetchHistory, 500);
 
   if (loading) {
     return (
@@ -155,6 +171,9 @@ export function ProductionHistoryChart({ agentId, weeks = 4 }: ProductionHistory
     );
   }
 
+  const chartTitle = showAgencyWide 
+    ? `${selectedWeeks}-Week Agency Production` 
+    : `${selectedWeeks}-Week Production History`;
 
   return (
     <motion.div
@@ -166,7 +185,7 @@ export function ProductionHistoryChart({ agentId, weeks = 4 }: ProductionHistory
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold gradient-text flex items-center gap-2">
             <Calendar className="h-5 w-5" />
-            {selectedWeeks}-Week Production History
+            {chartTitle}
           </h3>
           <div className="flex items-center gap-2">
             {/* Time Range Selector */}

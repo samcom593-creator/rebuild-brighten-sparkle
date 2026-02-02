@@ -392,7 +392,7 @@ export function CompactLeaderboard({ currentAgentId, className }: CompactLeaderb
         </div>
       </div>
 
-      <AnimatePresence mode="wait">
+      <AnimatePresence mode="popLayout">
         {loading ? (
           <motion.div
             key="loading"

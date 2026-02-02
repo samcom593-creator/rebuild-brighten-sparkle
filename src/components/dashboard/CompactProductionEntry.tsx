@@ -217,7 +217,7 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
               </div>
             </div>
             
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode="popLayout">
               {totalALP > 0 && (
                 <motion.div
                   key={totalALP}
@@ -339,7 +339,7 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
                 size="lg"
                 disabled={saving}
               >
-                <AnimatePresence mode="wait">
+                <AnimatePresence mode="popLayout">
                   {saving ? (
                     <motion.div
                       key="saving"

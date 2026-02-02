@@ -637,7 +637,7 @@ export default function AgentPortal() {
             transition={{ delay: 0.35 }}
             className="hidden sm:block"
           >
-            <ProductionHistoryChart key={`history-${refreshKey}`} agentId={agentId} />
+            <ProductionHistoryChart key={`history-${refreshKey}`} agentId={agentId} showAgencyWide={isAdmin} />
           </motion.section>
         )}
 

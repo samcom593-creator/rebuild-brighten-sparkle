@@ -255,7 +255,7 @@ export function DeactivateAgentDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="popLayout">
           <motion.div
             key={screen}
             variants={screenVariants}

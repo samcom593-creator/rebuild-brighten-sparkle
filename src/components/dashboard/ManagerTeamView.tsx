@@ -9,6 +9,9 @@ import {
   ChevronUp,
   DollarSign,
   ArrowUpDown,
+  ChevronRight,
+  Award,
+  Clock,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -22,6 +25,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { OnboardingTracker } from "./OnboardingTracker";
 import { cn } from "@/lib/utils";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
@@ -43,6 +51,9 @@ interface TeamMember {
   weekALP: number;
   monthALP: number;
   monthDeals: number;
+  licenseStatus: "licensed" | "unlicensed" | "pending";
+  managerName: string | null;
+  isDirectReport: boolean;
 }
 
 interface TeamStats {
@@ -50,6 +61,8 @@ interface TeamStats {
   totalLeads: number;
   totalClosed: number;
   avgCloseRate: number;
+  licensedCount: number;
+  unlicensedCount: number;
 }
 
 export function ManagerTeamView() {
@@ -60,14 +73,18 @@ export function ManagerTeamView() {
     totalLeads: 0,
     totalClosed: 0,
     avgCloseRate: 0,
+    licensedCount: 0,
+    unlicensedCount: 0,
   });
   const [loading, setLoading] = useState(true);
   const [expandedMember, setExpandedMember] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>("production-desc");
+  const [licensedOpen, setLicensedOpen] = useState(true);
+  const [unlicensedOpen, setUnlicensedOpen] = useState(false);
 
   useEffect(() => {
     fetchTeamData();
-  }, [user]);
+  }, [user, isAdmin]);
 
   const fetchTeamData = async () => {
     if (!user) return;
@@ -85,27 +102,87 @@ export function ManagerTeamView() {
         return;
       }
 
-      // Fetch team members (agents invited by this manager)
-      const { data: teamAgents, error } = await supabase
-        .from("agents")
-        .select(`
-          id,
-          user_id,
-          status,
-          onboarding_stage,
-          created_at
-        `)
-        .eq("invited_by_manager_id", currentAgent.id);
+      let teamAgents: any[] = [];
 
-      if (error) {
-        console.error("Error fetching team:", error);
+      if (isAdmin) {
+        // Admin: Fetch ALL agents in the agency (not deactivated)
+        const { data: allAgents, error } = await supabase
+          .from("agents")
+          .select(`
+            id,
+            user_id,
+            status,
+            onboarding_stage,
+            created_at,
+            license_status,
+            invited_by_manager_id
+          `)
+          .eq("is_deactivated", false);
+
+        if (error) {
+          console.error("Error fetching all agents:", error);
+          setLoading(false);
+          return;
+        }
+
+        teamAgents = allAgents || [];
+      } else {
+        // Manager: Fetch only direct reports
+        const { data: directReports, error } = await supabase
+          .from("agents")
+          .select(`
+            id,
+            user_id,
+            status,
+            onboarding_stage,
+            created_at,
+            license_status,
+            invited_by_manager_id
+          `)
+          .eq("invited_by_manager_id", currentAgent.id);
+
+        if (error) {
+          console.error("Error fetching team:", error);
+          setLoading(false);
+          return;
+        }
+
+        teamAgents = directReports || [];
+      }
+
+      if (teamAgents.length === 0) {
         setLoading(false);
         return;
       }
 
-      if (!teamAgents || teamAgents.length === 0) {
-        setLoading(false);
-        return;
+      // Get all manager IDs to fetch their names
+      const managerIds = [...new Set(teamAgents
+        .map(a => a.invited_by_manager_id)
+        .filter(Boolean))];
+
+      // Fetch manager agents and their profiles
+      let managerProfiles: Record<string, string> = {};
+      if (managerIds.length > 0) {
+        const { data: managerAgents } = await supabase
+          .from("agents")
+          .select("id, user_id")
+          .in("id", managerIds);
+
+        if (managerAgents && managerAgents.length > 0) {
+          const managerUserIds = managerAgents.map(m => m.user_id).filter(Boolean);
+          const { data: profiles } = await supabase
+            .from("profiles")
+            .select("user_id, full_name")
+            .in("user_id", managerUserIds);
+
+          // Build a map of manager agent id -> manager name
+          managerAgents.forEach(manager => {
+            const profile = profiles?.find(p => p.user_id === manager.user_id);
+            if (profile) {
+              managerProfiles[manager.id] = profile.full_name || "Unknown Manager";
+            }
+          });
+        }
       }
 
       // Get profiles for team members
@@ -159,6 +236,14 @@ export function ManagerTeamView() {
         const monthALP = agentMonthProduction.reduce((sum, p) => sum + (Number(p.aop) || 0), 0);
         const monthDeals = agentMonthProduction.reduce((sum, p) => sum + (p.deals_closed || 0), 0);
 
+        // Determine if direct report
+        const isDirectReport = agent.invited_by_manager_id === currentAgent.id;
+
+        // Get manager name
+        const managerName = agent.invited_by_manager_id
+          ? managerProfiles[agent.invited_by_manager_id] || null
+          : null;
+
         return {
           id: agent.id,
           userId: agent.user_id || "",
@@ -174,6 +259,9 @@ export function ManagerTeamView() {
           weekALP,
           monthALP,
           monthDeals,
+          licenseStatus: agent.license_status as "licensed" | "unlicensed" | "pending",
+          managerName,
+          isDirectReport,
         };
       });
 
@@ -182,11 +270,16 @@ export function ManagerTeamView() {
       // Calculate team stats
       const totalLeads = members.reduce((sum, m) => sum + m.totalLeads, 0);
       const totalClosed = members.reduce((sum, m) => sum + m.closed, 0);
+      const licensedCount = members.filter(m => m.licenseStatus === "licensed").length;
+      const unlicensedCount = members.filter(m => m.licenseStatus !== "licensed").length;
+
       setTeamStats({
         totalMembers: members.length,
         totalLeads,
         totalClosed,
         avgCloseRate: totalLeads > 0 ? (totalClosed / totalLeads) * 100 : 0,
+        licensedCount,
+        unlicensedCount,
       });
     } catch (err) {
       console.error("Error in fetchTeamData:", err);
@@ -212,6 +305,17 @@ export function ManagerTeamView() {
     }
   }, [teamMembers, sortBy]);
 
+  // Split into licensed and unlicensed
+  const licensedMembers = useMemo(() => 
+    sortedMembers.filter(m => m.licenseStatus === "licensed"),
+    [sortedMembers]
+  );
+
+  const unlicensedMembers = useMemo(() => 
+    sortedMembers.filter(m => m.licenseStatus !== "licensed"),
+    [sortedMembers]
+  );
+
   const toggleExpand = (memberId: string) => {
     setExpandedMember(expandedMember === memberId ? null : memberId);
   };
@@ -228,6 +332,125 @@ export function ManagerTeamView() {
         return "bg-muted text-muted-foreground";
     }
   };
+
+  const renderMemberCard = (member: TeamMember, index: number) => (
+    <motion.div
+      key={member.id}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.03 }}
+      className="border border-border rounded-lg overflow-hidden"
+    >
+      <div
+        className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
+        onClick={() => toggleExpand(member.id)}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
+              <span className="text-sm font-semibold text-primary">
+                {member.name.charAt(0).toUpperCase()}
+              </span>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="font-medium">{member.name}</p>
+                {/* Show manager badge for non-direct reports (admin view) */}
+                {isAdmin && !member.isDirectReport && member.managerName && (
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                    Manager: {member.managerName}
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">{member.email}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            {/* Production Stats - Desktop */}
+            <div className="hidden md:flex items-center gap-4 text-sm">
+              <div className="text-center">
+                <span className="font-semibold text-primary">${member.weekALP.toLocaleString()}</span>
+                <p className="text-[10px] text-muted-foreground">Week ALP</p>
+              </div>
+              <div className="text-center">
+                <span className="font-semibold text-emerald-500">${member.monthALP.toLocaleString()}</span>
+                <p className="text-[10px] text-muted-foreground">Month ALP</p>
+              </div>
+              <div className="text-center">
+                <span className="font-semibold">{member.monthDeals}</span>
+                <p className="text-[10px] text-muted-foreground">Deals</p>
+              </div>
+            </div>
+            <Badge className={cn(
+              "text-[10px] capitalize",
+              member.onboardingStage === "evaluated" && "bg-emerald-500/20 text-emerald-400",
+              member.onboardingStage === "in_field_training" && "bg-violet-500/20 text-violet-400",
+              member.onboardingStage === "training_online" && "bg-amber-500/20 text-amber-400",
+              member.onboardingStage === "onboarding" && "bg-blue-500/20 text-blue-400"
+            )}>
+              {member.onboardingStage.replace(/_/g, ' ')}
+            </Badge>
+            <Badge className={cn("text-xs", getStatusColor(member.status))}>
+              {member.status}
+            </Badge>
+            {expandedMember === member.id ? (
+              <ChevronUp className="h-5 w-5 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="h-5 w-5 text-muted-foreground" />
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Expanded Content */}
+      {expandedMember === member.id && (
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: "auto", opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          className="border-t border-border bg-muted/30 p-4"
+        >
+          {/* Mobile Production Stats */}
+          <div className="grid grid-cols-3 gap-4 mb-4 md:hidden">
+            <div className="text-center">
+              <p className="text-lg font-semibold text-primary">${member.weekALP.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">Week ALP</p>
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-semibold text-emerald-500">${member.monthALP.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">Month ALP</p>
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-semibold">{member.monthDeals}</p>
+              <p className="text-xs text-muted-foreground">Deals</p>
+            </div>
+          </div>
+
+          {/* CRM Stats */}
+          <div className="grid grid-cols-3 gap-4 mb-4">
+            <div className="text-center">
+              <p className="text-lg font-semibold">{member.totalLeads}</p>
+              <p className="text-xs text-muted-foreground">Leads</p>
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-semibold">{member.closed}</p>
+              <p className="text-xs text-muted-foreground">Closed</p>
+            </div>
+            <div className="text-center">
+              <p className="text-lg font-semibold">{member.closeRate.toFixed(0)}%</p>
+              <p className="text-xs text-muted-foreground">Rate</p>
+            </div>
+          </div>
+          
+          <OnboardingTracker
+            agentId={member.id}
+            currentStage={member.onboardingStage as "onboarding" | "training_online" | "in_field_training" | "evaluated"}
+            onStageUpdate={fetchTeamData}
+          />
+        </motion.div>
+      )}
+    </motion.div>
+  );
 
   if (loading) {
     return (
@@ -270,23 +493,23 @@ export function ManagerTeamView() {
         </GlassCard>
         <GlassCard className="p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Phone className="h-5 w-5 text-primary" />
+            <div className="p-2 rounded-lg bg-emerald-500/10">
+              <Award className="h-5 w-5 text-emerald-500" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{teamStats.totalLeads}</p>
-              <p className="text-xs text-muted-foreground">Total Leads</p>
+              <p className="text-2xl font-bold">{teamStats.licensedCount}</p>
+              <p className="text-xs text-muted-foreground">Licensed</p>
             </div>
           </div>
         </GlassCard>
         <GlassCard className="p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-emerald-500/10">
-              <CheckCircle className="h-5 w-5 text-emerald-500" />
+            <div className="p-2 rounded-lg bg-amber-500/10">
+              <Clock className="h-5 w-5 text-amber-500" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{teamStats.totalClosed}</p>
-              <p className="text-xs text-muted-foreground">Total Closed</p>
+              <p className="text-2xl font-bold">{teamStats.unlicensedCount}</p>
+              <p className="text-xs text-muted-foreground">Unlicensed Pipeline</p>
             </div>
           </div>
         </GlassCard>
@@ -308,7 +531,7 @@ export function ManagerTeamView() {
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold flex items-center gap-2">
             <Users className="h-5 w-5 text-primary" />
-            Your Team ({teamMembers.length})
+            {isAdmin ? "Agency Roster" : "Your Team"} ({teamMembers.length})
           </h3>
           
           {/* Sort Dropdown */}
@@ -326,117 +549,62 @@ export function ManagerTeamView() {
           </Select>
         </div>
 
-        <div className="space-y-3">
-          {sortedMembers.map((member, index) => (
-            <motion.div
-              key={member.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              className="border border-border rounded-lg overflow-hidden"
-            >
-              <div
-                className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
-                onClick={() => toggleExpand(member.id)}
+        <div className="space-y-4">
+          {/* Licensed Agents Section */}
+          <Collapsible open={licensedOpen} onOpenChange={setLicensedOpen}>
+            <CollapsibleTrigger asChild>
+              <Button
+                variant="ghost"
+                className="w-full flex items-center justify-between p-3 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-lg"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
-                      <span className="text-sm font-semibold text-primary">
-                        {member.name.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="font-medium">{member.name}</p>
-                      <p className="text-xs text-muted-foreground">{member.email}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {/* Production Stats - Desktop */}
-                    <div className="hidden md:flex items-center gap-4 text-sm">
-                      <div className="text-center">
-                        <span className="font-semibold text-primary">${member.weekALP.toLocaleString()}</span>
-                        <p className="text-[10px] text-muted-foreground">Week ALP</p>
-                      </div>
-                      <div className="text-center">
-                        <span className="font-semibold text-emerald-500">${member.monthALP.toLocaleString()}</span>
-                        <p className="text-[10px] text-muted-foreground">Month ALP</p>
-                      </div>
-                      <div className="text-center">
-                        <span className="font-semibold">{member.monthDeals}</span>
-                        <p className="text-[10px] text-muted-foreground">Deals</p>
-                      </div>
-                    </div>
-                    <Badge className={cn(
-                      "text-[10px] capitalize",
-                      member.onboardingStage === "evaluated" && "bg-emerald-500/20 text-emerald-400",
-                      member.onboardingStage === "in_field_training" && "bg-violet-500/20 text-violet-400",
-                      member.onboardingStage === "training_online" && "bg-amber-500/20 text-amber-400",
-                      member.onboardingStage === "onboarding" && "bg-blue-500/20 text-blue-400"
-                    )}>
-                      {member.onboardingStage.replace(/_/g, ' ')}
-                    </Badge>
-                    <Badge className={cn("text-xs", getStatusColor(member.status))}>
-                      {member.status}
-                    </Badge>
-                    {expandedMember === member.id ? (
-                      <ChevronUp className="h-5 w-5 text-muted-foreground" />
-                    ) : (
-                      <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                    )}
-                  </div>
+                <div className="flex items-center gap-2">
+                  <Award className="h-4 w-4 text-emerald-500" />
+                  <span className="font-medium">Licensed Agents ({licensedMembers.length})</span>
                 </div>
-              </div>
-
-              {/* Expanded Content */}
-              {expandedMember === member.id && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="border-t border-border bg-muted/30 p-4"
-                >
-                  {/* Mobile Production Stats */}
-                  <div className="grid grid-cols-3 gap-4 mb-4 md:hidden">
-                    <div className="text-center">
-                      <p className="text-lg font-semibold text-primary">${member.weekALP.toLocaleString()}</p>
-                      <p className="text-xs text-muted-foreground">Week ALP</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-lg font-semibold text-emerald-500">${member.monthALP.toLocaleString()}</p>
-                      <p className="text-xs text-muted-foreground">Month ALP</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-lg font-semibold">{member.monthDeals}</p>
-                      <p className="text-xs text-muted-foreground">Deals</p>
-                    </div>
-                  </div>
-
-                  {/* CRM Stats */}
-                  <div className="grid grid-cols-3 gap-4 mb-4">
-                    <div className="text-center">
-                      <p className="text-lg font-semibold">{member.totalLeads}</p>
-                      <p className="text-xs text-muted-foreground">Leads</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-lg font-semibold">{member.closed}</p>
-                      <p className="text-xs text-muted-foreground">Closed</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-lg font-semibold">{member.closeRate.toFixed(0)}%</p>
-                      <p className="text-xs text-muted-foreground">Rate</p>
-                    </div>
-                  </div>
-                  
-                  <OnboardingTracker
-                    agentId={member.id}
-                    currentStage={member.onboardingStage as "onboarding" | "training_online" | "in_field_training" | "evaluated"}
-                    onStageUpdate={fetchTeamData}
-                  />
-                </motion.div>
+                <ChevronRight className={cn(
+                  "h-4 w-4 transition-transform duration-200",
+                  licensedOpen && "rotate-90"
+                )} />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-3 space-y-3">
+              {licensedMembers.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No licensed agents yet
+                </p>
+              ) : (
+                licensedMembers.map((member, index) => renderMemberCard(member, index))
               )}
-            </motion.div>
-          ))}
+            </CollapsibleContent>
+          </Collapsible>
+
+          {/* Unlicensed Pipeline Section */}
+          <Collapsible open={unlicensedOpen} onOpenChange={setUnlicensedOpen}>
+            <CollapsibleTrigger asChild>
+              <Button
+                variant="ghost"
+                className="w-full flex items-center justify-between p-3 bg-amber-500/10 hover:bg-amber-500/20 rounded-lg"
+              >
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-amber-500" />
+                  <span className="font-medium">Unlicensed Pipeline ({unlicensedMembers.length})</span>
+                </div>
+                <ChevronRight className={cn(
+                  "h-4 w-4 transition-transform duration-200",
+                  unlicensedOpen && "rotate-90"
+                )} />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-3 space-y-3">
+              {unlicensedMembers.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No unlicensed agents in pipeline
+                </p>
+              ) : (
+                unlicensedMembers.map((member, index) => renderMemberCard(member, index))
+              )}
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       </GlassCard>
     </div>

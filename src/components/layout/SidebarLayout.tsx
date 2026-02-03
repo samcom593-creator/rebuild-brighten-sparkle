@@ -7,6 +7,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { useSidebarState } from "@/hooks/useSidebarState";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
+import { useNavigationGuard } from "@/hooks/useNavigationGuard";
 import { cn } from "@/lib/utils";
 
 interface SidebarLayoutProps {
@@ -27,6 +28,9 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
   const location = useLocation();
   const prevPathRef = useRef(location.pathname);
   const isDesktop = useIsDesktop();
+
+  // Navigation guard: cleans up stuck overlays on route change
+  useNavigationGuard();
 
   // Mobile sidebar state (separate from desktop collapse)
   const [mobileOpen, setMobileOpen] = useState(false);

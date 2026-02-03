@@ -1568,6 +1568,16 @@ export type Database = {
       current_agent_id: { Args: never; Returns: string }
       current_manager_agent_id: { Args: never; Returns: string }
       get_agent_id: { Args: { _user_id: string }; Returns: string }
+      get_agent_production_stats: {
+        Args: { end_date: string; start_date: string }
+        Returns: {
+          agent_id: string
+          last_activity_date: string
+          total_alp: number
+          total_deals: number
+          total_presentations: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

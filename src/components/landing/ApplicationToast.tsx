@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, forwardRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle } from "lucide-react";
 
@@ -40,7 +40,8 @@ function getRandomTimeAgo(): string {
   return options[Math.floor(Math.random() * options.length)];
 }
 
-export function ApplicationToast() {
+// Forward ref to prevent React warning when used with AnimatePresence
+export const ApplicationToast = forwardRef<HTMLDivElement, object>((_, ref) => {
   const [visible, setVisible] = useState(false);
   const [notification, setNotification] = useState<{
     firstName: string;
@@ -80,15 +81,16 @@ export function ApplicationToast() {
   };
 
   return (
-    <AnimatePresence>
-      {visible && notification && (
-        <motion.div
-          initial={{ opacity: 0, x: -100, y: 20 }}
-          animate={{ opacity: 1, x: 0, y: 0 }}
-          exit={{ opacity: 0, x: -100 }}
-          transition={{ type: "spring", damping: 25, stiffness: 200 }}
-          className="fixed bottom-6 left-6 z-50"
-        >
+    <div ref={ref}>
+      <AnimatePresence>
+        {visible && notification && (
+          <motion.div
+            initial={{ opacity: 0, x: -100, y: 20 }}
+            animate={{ opacity: 1, x: 0, y: 0 }}
+            exit={{ opacity: 0, x: -100 }}
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            className="fixed bottom-6 left-6 z-50"
+          >
           <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-background/95 backdrop-blur-lg border border-primary/20 shadow-2xl shadow-primary/10 max-w-xs">
             {/* Animated ring indicator */}
             <div className="relative flex-shrink-0">
@@ -108,8 +110,11 @@ export function ApplicationToast() {
               </p>
             </div>
           </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
-}
+});
+
+ApplicationToast.displayName = "ApplicationToast";

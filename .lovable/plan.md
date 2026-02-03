@@ -1,116 +1,109 @@
 
-Goal
-- Fix the “navigation center” freeze where clicks stop working and the only recovery is a full page reload.
-- Make navigation and dashboard/leaderboard interactions resilient (no UI lockups), while keeping refresh/realtime fast.
+## Plan: Enhance "Your Team" Section for Agency-Wide View + Unlicensed Pipeline
 
-What I found (from code review already loaded in this chat)
-- The “Command Center” page (`src/pages/DashboardCommandCenter.tsx`) is very heavy:
-  - It fetches all agents, then fetches all `daily_production` rows for a date range, then aggregates in JS.
-  - It also creates its own realtime channel (`command-center-live`) that refetches (debounced 1000ms).
-  - It renders many large sub-panels and long lists.
-- You already have a proven “singleton realtime channel + debounced update” pattern (`src/hooks/useProductionRealtime.ts`), but Command Center does not use it.
-- There are console warnings about refs (ApplicationToast / AnimatedCounter). These are not the freeze root-cause, but they are indicators of component patterns that can cause extra work and unstable UI behavior when combined with heavy pages.
+### Problem Summary
+The current "Your Team" section (`ManagerTeamView`) only shows direct reports (`invited_by_manager_id === currentAgent.id`). For admins, it needs to:
+1. Show **all agents in the agency**
+2. Display who each agent's manager is (if not direct report)
+3. Add a **collapsible section for unlicensed agents** to view the unlicensed pipeline
 
-Likely root cause(s)
-- Main-thread saturation: Command Center does large client-side aggregation + renders large lists + multiple heavy panels. When realtime triggers or state updates hit, the UI thread can become unresponsive long enough that clicks “don’t work”.
-- Duplicate realtime subscriptions / refetch storms: having multiple separate channels across pages (and possibly multiple mounted-heavy pages/components) can lead to frequent re-renders and expensive query refetches.
-- “Invisible overlay” edge case: a stuck portal/overlay (Radix menus/dialogs/sheets) can capture pointer events after navigation if not cleaned up correctly. This feels like “the site is frozen” but is actually “clicks are blocked”.
+---
 
-Implementation plan (fix + harden)
-Phase 0 — Reproduce and lock down the exact failure mode
-1) Add a lightweight “Freeze/Long Task” diagnostic (development + optionally production-safe)
-   - Track:
-     - route changes (start/end times)
-     - long tasks (PerformanceObserver for “longtask”)
-     - repeated rapid state updates (basic counters for refetch triggers)
-   - When the app detects UI thread stalls (e.g., >2s long tasks or navigation that doesn’t complete in N seconds), show a non-blocking banner with:
-     - “App is busy, still loading…”
-     - a “Recover” button (soft recovery first, full reload only if needed)
-   - This gives us proof of whether the problem is CPU lockup vs. click-blocking overlay.
+### Implementation
 
-Phase 1 — Stop realtime/refetch storms (highest impact)
-2) Centralize `daily_production` realtime to a single shared channel
-   - Replace the per-page channel in `DashboardCommandCenter.tsx` with the existing singleton hook pattern (`useProductionRealtime`).
-   - Ensure other production-driven dashboards/leaderboards also use the singleton hook instead of creating their own channels.
-   - Outcome: only one websocket subscription for `daily_production` across the entire app, with a single debounced “refetch requested” signal.
+#### 1. Update ManagerTeamView Data Fetching
 
-3) Debounce and dedupe refetch triggers more aggressively for heavy pages
-   - Keep global debounce at ~300ms–1000ms depending on page weight.
-   - Add “in-flight” protection: if a refetch is already running, don’t start another (or queue one trailing refetch).
-   - Outcome: no piling up of refetch work that blocks the UI.
+Modify `fetchTeamData()` to fetch differently based on role:
 
-Phase 2 — Remove the biggest CPU bottleneck (server-side aggregation)
-4) Stop downloading and aggregating all raw `daily_production` rows in the browser for Command Center
-   - Move aggregation to the backend (database-side) so the client fetches pre-aggregated per-agent totals:
-     - total_alp, total_deals, total_presentations, last_activity_date for the date range.
-   - Implementation options:
-     A) Database view / SQL function (preferred for performance and simplicity)
-     B) Backend function that queries and aggregates server-side
-   - Then Command Center does:
-     - Query agents (light fields)
-     - Query aggregated stats (already grouped per agent)
-     - Merge maps client-side (cheap)
-   - Outcome: dramatically smaller payloads and much less JS work, especially for “month” and “custom” ranges.
+- **Admin**: Fetch ALL agents (not deactivated), including their manager info
+- **Manager**: Keep current behavior (only direct reports)
 
-Phase 3 — Prevent “clicks don’t work” overlays
-5) Global overlay cleanup on route change
-   - On every route change:
-     - close mobile sidebar overlay
-     - ensure any “sheet/dialog/menu” portals are closed (where possible via state)
-     - as a last resort (only if we detect click-blocking): remove stray `pointer-events: none/auto` locks on the body/html that were left behind by an interrupted overlay animation.
-   - Outcome: navigation can’t get “stuck behind” an invisible overlay.
+```typescript
+// For admins: fetch all agents with manager info
+if (isAdmin) {
+  const { data: allAgents } = await supabase
+    .from("agents")
+    .select(`
+      id, user_id, status, onboarding_stage, created_at, license_status,
+      invited_by_manager_id,
+      inviting_manager:agents!invited_by_manager_id(
+        id,
+        profile:profiles!agents_profile_id_fkey(full_name)
+      )
+    `)
+    .eq("is_deactivated", false);
+}
+```
 
-6) Make sidebar navigation more resilient
-   - Add a small “navigation lock” so rapid repeated clicks don’t queue multiple route transitions.
-   - Add immediate visual feedback on click (active state + subtle loading indicator) so it never feels like the click didn’t register.
+#### 2. Add Manager Name to TeamMember Interface
 
-Phase 4 — Clean up noisy warnings that can hide real issues
-7) Fix ref warnings for:
-   - `src/components/landing/ApplicationToast.tsx`
-   - `src/components/ui/animated-counter.tsx` (used in CareerPathwaySection)
-   - Make them `forwardRef` compatible or remove the pattern that causes ref injection.
-   - Outcome: cleaner console so real errors stand out; reduces risk of ref-related edge behavior in animation wrappers.
+```typescript
+interface TeamMember {
+  // ... existing fields
+  licenseStatus: "licensed" | "unlicensed" | "pending";
+  managerName: string | null; // New field - shows who their manager is
+  isDirectReport: boolean;    // New field - true if invited_by_manager_id matches current user
+}
+```
 
-Phase 5 — Verification: “every button works” regression pass
-8) End-to-end test checklist (manual, targeted)
-   - Desktop + Mobile
-   - Key routes:
-     - Dashboard
-     - Command Center (/dashboard/command)
-     - Applicants/Pipeline
-     - CRM
-     - Course Progress
-     - Agent Portal
-   - Actions:
-     - Switch routes rapidly via sidebar
-     - Open/close dropdown menus, dialogs, sheets
-     - Change date ranges and filters in Command Center
-     - Trigger realtime updates (log a production entry) and verify UI updates without stutter/freeze
-   - Add a temporary “QA mode” toggle to show internal timing (optional) while we confirm the fix.
+#### 3. Split Display into Licensed and Unlicensed Sections
 
-Files/components expected to change (implementation)
-- src/pages/DashboardCommandCenter.tsx
-  - remove local realtime channel, use shared realtime hook
-  - refactor data fetching to use aggregated stats (stop pulling all daily_production rows)
-  - add in-flight refetch guard
-- src/hooks/useProductionRealtime.ts (may extend to support multi-table or configurable debounce)
-- src/components/layout/SidebarLayout.tsx and/or src/components/layout/GlobalSidebar.tsx
-  - route-change overlay cleanup + navigation resilience
-- src/components/landing/ApplicationToast.tsx
-- src/components/ui/animated-counter.tsx
-- (Backend/database) add aggregation helper (view or function) to return per-agent stats per date range
+Create two collapsible sections:
 
-Risk management / rollout
-- Implement in stages: Phase 1 + Phase 2 should eliminate freezes even if overlay issues remain.
-- Keep diagnostics for one iteration; once stable, we can keep them minimal or behind a dev flag.
+```text
++------------------------------------------+
+| Your Team (12)                    [Sort] |
++------------------------------------------+
+| [Collapsible] Licensed Agents (8)        |
+|   - Agent A (Week: $5k | Month: $12k)    |
+|   - Agent B - Manager: Obi [badge]       |
+|   ...                                    |
++------------------------------------------+
+| [Collapsible] Unlicensed Pipeline (4)    |
+|   - Agent C (Onboarding)                 |
+|   - Agent D (Training) - Manager: Sam    |
+|   ...                                    |
++------------------------------------------+
+```
 
-What I will need from you during verification (after implementation)
-- Confirm whether the freeze happens mostly on:
-  - Desktop or mobile
-  - Command Center specifically, or any dashboard page
-  - When filters/date range are changed, or just when clicking sidebar navigation
+#### 4. Add Manager Badge for Non-Direct Reports
 
-Success criteria
-- You can click between navigation items repeatedly without a lockup.
-- Command Center loads and filters without causing the whole app to become unresponsive.
-- Realtime updates do not cause stutters or “freeze until reload”.
+For admins viewing agents who are not their direct reports:
+
+```tsx
+{!member.isDirectReport && member.managerName && (
+  <Badge variant="outline" className="text-xs">
+    Manager: {member.managerName}
+  </Badge>
+)}
+```
+
+---
+
+### Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/components/dashboard/ManagerTeamView.tsx` | Add license filtering, manager info display, collapsible sections |
+
+---
+
+### UI Changes
+
+**For Admins:**
+- Two collapsible sections: "Licensed Agents" and "Unlicensed Pipeline"
+- Each agent shows their manager's name if not a direct report
+- Both sections are expandable, defaulting to Licensed open and Unlicensed collapsed
+
+**For Managers:**
+- Same two-section layout for their direct reports only
+- No manager badge needed (all are direct reports)
+
+---
+
+### Technical Details
+
+1. **Query Enhancement**: Use Supabase's relationship syntax to join the manager's profile name in a single query
+2. **Filtering Logic**: Split `sortedMembers` into `licensedMembers` and `unlicensedMembers` arrays
+3. **Collapsible Component**: Use existing `Collapsible` from Radix UI
+4. **Sorting**: Apply same sort options to both sections independently

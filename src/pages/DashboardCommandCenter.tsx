@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { 
   Users, 
@@ -13,11 +13,8 @@ import {
   Pencil,
   UserX,
   ChevronDown,
-  Upload,
-  Download,
   Mail,
   Copy,
-  Link as LinkIcon
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -58,7 +55,8 @@ import { TerminatedAgentLeadsPanel } from "@/components/dashboard/TerminatedAgen
 import { AbandonedLeadsPanel } from "@/components/dashboard/AbandonedLeadsPanel";
 import { AllLeadsPanel } from "@/components/dashboard/AllLeadsPanel";
 import { DateRangePicker, type DateRange } from "@/components/ui/date-range-picker";
-import { useDebouncedRefetch } from "@/hooks/useDebouncedRefetch";
+import { useProductionRealtime } from "@/hooks/useProductionRealtime";
+import { useInFlightGuard } from "@/hooks/useInFlightGuard";
 import { getClosingRateColor } from "@/lib/closingRateColors";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -124,7 +122,7 @@ export default function DashboardCommandCenter() {
     }
   }, [timePeriod, customDateRange]);
 
-  // Fetch all agents with production stats - CLEAN query excluding unknowns/duplicates
+  // Fetch all agents with production stats using server-side aggregation
   const { data: agentsData, isLoading, refetch } = useQuery({
     queryKey: ["command-center-agents", dateRange],
     staleTime: 120000, // 2 minutes - prevent unnecessary refetches
@@ -151,24 +149,23 @@ export default function DashboardCommandCenter() {
 
       if (agentsError) throw agentsError;
 
-      // Get production data for the period
+      // Get pre-aggregated production stats from database function (server-side aggregation)
       const { data: production, error: prodError } = await supabase
-        .from("daily_production")
-        .select("agent_id, aop, deals_closed, presentations, production_date")
-        .gte("production_date", dateRange.start)
-        .lte("production_date", dateRange.end);
+        .rpc("get_agent_production_stats", {
+          start_date: dateRange.start,
+          end_date: dateRange.end,
+        });
 
       if (prodError) throw prodError;
 
-      // Aggregate production by agent
+      // Build production map from pre-aggregated data (cheap operation)
       const productionMap = new Map<string, { alp: number; deals: number; presentations: number; lastDate: string }>();
       production?.forEach((p) => {
-        const existing = productionMap.get(p.agent_id) || { alp: 0, deals: 0, presentations: 0, lastDate: "" };
         productionMap.set(p.agent_id, {
-          alp: existing.alp + Number(p.aop || 0),
-          deals: existing.deals + Number(p.deals_closed || 0),
-          presentations: existing.presentations + Number(p.presentations || 0),
-          lastDate: p.production_date > existing.lastDate ? p.production_date : existing.lastDate,
+          alp: Number(p.total_alp || 0),
+          deals: Number(p.total_deals || 0),
+          presentations: Number(p.total_presentations || 0),
+          lastDate: p.last_activity_date || "",
         });
       });
 
@@ -213,24 +210,11 @@ export default function DashboardCommandCenter() {
     },
   });
 
-  // Debounced refetch to prevent realtime storms
-  const debouncedRefetch = useDebouncedRefetch(refetch, 1000);
+  // In-flight guard to prevent multiple simultaneous refetches
+  const guardedRefetch = useInFlightGuard(refetch);
 
-  // Real-time subscription for live updates
-  useEffect(() => {
-    const channel = supabase
-      .channel("command-center-live")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "daily_production" },
-        () => debouncedRefetch()
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [debouncedRefetch]);
+  // Use singleton realtime hook (shared channel across app, 1s debounce)
+  useProductionRealtime(() => guardedRefetch(), 1000);
 
   // Login link handlers
   const handleEmailLoginLink = useCallback(async (agent: AgentWithStats) => {

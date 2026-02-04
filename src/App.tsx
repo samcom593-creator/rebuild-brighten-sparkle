@@ -46,6 +46,7 @@ const Disclosures = lazy(() => import("./pages/Disclosures"));
 const Install = lazy(() => import("./pages/Install"));
 const CourseProgress = lazy(() => import("./pages/CourseProgress"));
 const CourseContent = lazy(() => import("./pages/CourseContent"));
+const PurchaseLeads = lazy(() => import("./pages/PurchaseLeads"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -210,6 +211,15 @@ const App = () => (
             <Route path="/disclosures" element={<Disclosures />} />
             {/* PWA Install page */}
             <Route path="/install" element={<Install />} />
+            {/* Purchase Leads */}
+            <Route
+              path="/purchase-leads"
+              element={
+                <ProtectedRoute>
+                  <PurchaseLeads />
+                </ProtectedRoute>
+              }
+            />
             {/* Legacy redirect */}
             <Route path="/dashboard/leads" element={<DashboardApplicants />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

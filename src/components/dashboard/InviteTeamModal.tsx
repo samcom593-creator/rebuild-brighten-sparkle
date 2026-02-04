@@ -161,22 +161,28 @@ export function InviteTeamModal({ open, onClose }: InviteTeamModalProps) {
         throw new Error("Unable to find your agent profile");
       }
 
-      // Create a UUID for the new agent
-      const newUserId = crypto.randomUUID();
-      const newProfileId = crypto.randomUUID();
+      // Create a REAL auth account via edge function
+      const { data: accountData, error: accountError } = await supabase.functions.invoke(
+        "create-new-agent-account",
+        {
+          body: {
+            email: email.trim(),
+            fullName: fullName.trim(),
+            phone: phone.trim() || null,
+            licenseStatus,
+            managerId: currentAgent.id,
+          },
+        }
+      );
 
-      // Create profile
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .insert({
-          id: newProfileId,
-          user_id: newUserId,
-          email: email.trim(),
-          full_name: fullName.trim(),
-          phone: phone.trim() || null,
-        });
+      if (accountError || !accountData?.userId) {
+        console.error("Account creation error:", accountError || accountData?.error);
+        throw new Error(accountData?.error || "Failed to create agent account");
+      }
 
-      if (profileError) throw profileError;
+      const newUserId = accountData.userId;
+      const newProfileId = accountData.profileId;
+      console.log(`Created auth account: ${newUserId}, profile: ${newProfileId}`);
 
       // Create agent record - set stage based on license status
       const onboardingStage = licenseStatus === "licensed" && !sendCourse 

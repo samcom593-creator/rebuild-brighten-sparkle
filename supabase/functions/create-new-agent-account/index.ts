@@ -19,31 +19,36 @@ const handler = async (req: Request): Promise<Response> => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    const { email, password, fullName, phone } = await req.json();
+    const { email, fullName, phone, licenseStatus, managerId } = await req.json();
 
-    if (!email || !password || !fullName) {
-      throw new Error("Email, password, and full name are required");
-    }
-
-    if (password.length < 6) {
-      throw new Error("Password must be at least 6 characters");
+    if (!email || !fullName) {
+      throw new Error("Email and full name are required");
     }
 
     const normalizedEmail = email.toLowerCase().trim();
     console.log(`Creating new agent account for: ${normalizedEmail}`);
 
-    // 1. Check if email already exists in profiles
+    // Check if email already exists in profiles
     const { data: existingProfile } = await supabaseAdmin
       .from("profiles")
-      .select("id")
+      .select("id, user_id")
       .ilike("email", normalizedEmail)
       .maybeSingle();
 
     if (existingProfile) {
-      throw new Error("This email is already registered. Please use the login form or set up your password.");
+      // Return existing user_id if profile exists
+      console.log(`Profile already exists for ${normalizedEmail}, returning existing user_id`);
+      return new Response(
+        JSON.stringify({ 
+          userId: existingProfile.user_id,
+          profileId: existingProfile.id,
+          existed: true 
+        }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
     }
 
-    // 2. Check if auth user already exists
+    // Check if auth user already exists
     const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers({
       page: 1,
       perPage: 1000,
@@ -54,14 +59,41 @@ const handler = async (req: Request): Promise<Response> => {
     );
     
     if (existingAuthUser) {
-      throw new Error("An account with this email already exists. Please log in instead.");
+      console.log(`Auth user already exists for ${normalizedEmail}`);
+      // Create profile and agent for existing auth user
+      const { data: newProfile, error: profileError } = await supabaseAdmin
+        .from("profiles")
+        .insert({
+          user_id: existingAuthUser.id,
+          email: normalizedEmail,
+          full_name: fullName,
+          phone: phone || null,
+        })
+        .select("id")
+        .single();
+
+      if (profileError) {
+        console.error("Error creating profile for existing auth user:", profileError);
+        throw new Error("Failed to create profile");
+      }
+
+      return new Response(
+        JSON.stringify({ 
+          userId: existingAuthUser.id,
+          profileId: newProfile.id,
+          existed: true 
+        }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
     }
 
-    // 3. Create auth user with email confirmed
+    // Create new auth user with random password (they'll use magic links)
+    const randomPassword = crypto.randomUUID() + crypto.randomUUID();
+    
     const { data: newAuthUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email: normalizedEmail,
-      password: password,
-      email_confirm: true,
+      password: randomPassword,
+      email_confirm: true, // Skip email confirmation
       user_metadata: {
         full_name: fullName,
       },
@@ -69,33 +101,25 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (createError || !newAuthUser?.user) {
       console.error("Error creating auth user:", createError);
-      throw new Error("Failed to create account. Please try again.");
+      throw new Error("Failed to create auth account");
     }
 
     const userId = newAuthUser.user.id;
     console.log(`Created auth user: ${userId}`);
 
-    // 4. Delete the trigger-created profile (it has userId) to avoid unique constraint violation
-    const { error: deleteProfileError } = await supabaseAdmin
+    // Delete the trigger-created profile (if any) to avoid conflicts
+    await supabaseAdmin
       .from("profiles")
       .delete()
       .eq("user_id", userId);
 
-    if (deleteProfileError) {
-      console.log("No trigger-created profile to delete or error:", deleteProfileError.message);
-    }
-
-    // 5. Delete the trigger-created role to avoid duplicates
-    const { error: deleteRoleError } = await supabaseAdmin
+    // Delete the trigger-created role (if any) to avoid duplicates
+    await supabaseAdmin
       .from("user_roles")
       .delete()
       .eq("user_id", userId);
 
-    if (deleteRoleError) {
-      console.log("No trigger-created role to delete or error:", deleteRoleError.message);
-    }
-
-    // 6. Create profile record fresh
+    // Create profile record
     const { data: newProfile, error: profileError } = await supabaseAdmin
       .from("profiles")
       .insert({
@@ -109,35 +133,14 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (profileError) {
       console.error("Error creating profile:", profileError);
-      // Try to clean up the auth user
+      // Clean up the auth user if profile creation fails
       await supabaseAdmin.auth.admin.deleteUser(userId);
-      throw new Error("Failed to create profile. Please try again.");
+      throw new Error("Failed to create profile");
     }
 
-    console.log(`Created profile: ${newProfile.id} for user: ${userId}`);
+    console.log(`Created profile: ${newProfile.id}`);
 
-    // 7. Create agent record
-    const { data: newAgent, error: agentError } = await supabaseAdmin
-      .from("agents")
-      .insert({
-        user_id: userId,
-        profile_id: newProfile.id,
-        status: "active",
-        onboarding_stage: "evaluated",
-        license_status: "unlicensed",
-        portal_password_set: true,
-      })
-      .select("id")
-      .single();
-
-    if (agentError) {
-      console.error("Error creating agent:", agentError);
-      // Don't fail - user can still log in
-    } else {
-      console.log(`Created agent: ${newAgent?.id} with profile_id: ${newProfile.id} for user: ${userId}`);
-    }
-
-    // 8. Add agent role (we deleted the trigger-created one)
+    // Add agent role
     const { error: roleError } = await supabaseAdmin
       .from("user_roles")
       .insert({ user_id: userId, role: "agent" });
@@ -146,12 +149,11 @@ const handler = async (req: Request): Promise<Response> => {
       console.error("Error adding agent role:", roleError);
     }
 
-    console.log(`Account created successfully for: ${normalizedEmail}`);
-
     return new Response(
       JSON.stringify({ 
-        success: true, 
-        message: "Account created successfully. You can now log in." 
+        userId: userId,
+        profileId: newProfile.id,
+        existed: false 
       }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );

@@ -62,6 +62,18 @@ const NumOptional = (min: number, max: number) =>
     z.number().min(min).max(max).optional(),
   );
 
+// Consent data schema for Twilio compliance
+const ConsentSchema = z.object({
+  smsConsentGiven: z.boolean().default(false),
+  smsConsentText: z.string().max(2000).optional().nullable(),
+  emailConsentGiven: z.boolean().default(false),
+  emailConsentText: z.string().max(2000).optional().nullable(),
+  consentTimestampUtc: z.string().optional().nullable(),
+  sourceUrl: z.string().max(500).optional().nullable(),
+  userAgent: z.string().max(1000).optional().nullable(),
+  formVersion: z.string().max(50).optional().nullable(),
+});
+
 const SubmitApplicationSchema = z.object({
   firstName: z.string().min(1).max(100).regex(/^[a-zA-Z\s'-]+$/, "Invalid name format"),
   lastName: z.string().min(1).max(100).regex(/^[a-zA-Z\s'-]+$/, "Invalid name format"),
@@ -85,6 +97,9 @@ const SubmitApplicationSchema = z.object({
   
   // New: selected referral agent ID
   selectedReferralAgentId: z.string().uuid().optional().nullable(),
+  
+  // Consent data for Twilio compliance
+  consent: ConsentSchema.optional().nullable(),
 });
 
 type SubmitApplicationRequest = z.infer<typeof SubmitApplicationSchema>;
@@ -817,6 +832,9 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // Extract consent data
+    const consent = data.consent;
+
     const insertPayload = {
       ...(raw?.id && typeof raw.id === "string" && uuidRegex.test(raw.id)
         ? { id: raw.id }
@@ -855,6 +873,17 @@ const handler = async (req: Request): Promise<Response> => {
       contacted_at: null,
       qualified_at: null,
       closed_at: null,
+      
+      // Consent audit trail for Twilio compliance
+      sms_consent_given: consent?.smsConsentGiven ?? false,
+      sms_consent_text: consent?.smsConsentText ?? null,
+      email_consent_given: consent?.emailConsentGiven ?? false,
+      email_consent_text: consent?.emailConsentText ?? null,
+      consent_timestamp_utc: consent?.consentTimestampUtc ?? null,
+      consent_source_url: consent?.sourceUrl ?? null,
+      consent_ip_address: clientIP,
+      consent_user_agent: consent?.userAgent ?? null,
+      consent_form_version: consent?.formVersion ?? null,
     };
 
     const { data: inserted, error } = await supabaseAdmin

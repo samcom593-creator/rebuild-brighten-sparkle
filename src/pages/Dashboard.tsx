@@ -252,15 +252,11 @@ export default function Dashboard() {
 
   // Show skeleton while auth is loading
   if (authLoading) {
-    return (
-      <DashboardLayout>
-        <SkeletonLoader variant="page" />
-      </DashboardLayout>
-    );
+    return <SkeletonLoader variant="page" />;
   }
 
   return (
-    <DashboardLayout>
+    <>
       {/* Confetti on first load */}
       {showConfetti && <ConfettiCelebration trigger={showConfetti} />}
       
@@ -498,6 +494,6 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-    </DashboardLayout>
+    </>
   );
 }

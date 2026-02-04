@@ -281,7 +281,7 @@ export default function Numbers() {
   // Authenticated view
   if (isAuthenticated && agentId) {
     return (
-      <DashboardLayout>
+      <div className="max-w-lg mx-auto space-y-4">
         <div className="max-w-lg mx-auto space-y-4">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -319,7 +319,7 @@ export default function Numbers() {
             </button>
           </div>
         </div>
-      </DashboardLayout>
+      </div>
     );
   }
 

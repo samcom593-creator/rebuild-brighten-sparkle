@@ -323,7 +323,7 @@ export default function AgentNumbersLogin() {
         </div>
 
         {/* Feature highlights - only show on identifier step */}
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="popLayout">
           {step === "identifier" && (
             <motion.div 
               className="flex justify-center gap-4 mb-6"
@@ -350,7 +350,7 @@ export default function AgentNumbersLogin() {
           )}
         </AnimatePresence>
 
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="popLayout">
           {/* Step 1: Email/Phone Input */}
           {step === "identifier" && (
             <motion.div

@@ -252,18 +252,15 @@ export default function TeamDirectory() {
 
   if (authLoading || loading) {
     return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </DashboardLayout>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
     );
   }
 
-  // Admin/Manager View - show hierarchy tree
   if (isAdmin || isManager) {
     return (
-      <DashboardLayout>
+      <div className="space-y-6">
         <div className="space-y-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -403,13 +400,12 @@ export default function TeamDirectory() {
             )}
           </div>
         </div>
-      </DashboardLayout>
+      </div>
     );
   }
 
-  // Agent View - show their specific manager
   return (
-    <DashboardLayout>
+    <div className="max-w-2xl mx-auto space-y-6">
       <div className="max-w-2xl mx-auto space-y-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -556,6 +552,6 @@ export default function TeamDirectory() {
           </motion.div>
         ) : null}
       </div>
-    </DashboardLayout>
+    </div>
   );
 }

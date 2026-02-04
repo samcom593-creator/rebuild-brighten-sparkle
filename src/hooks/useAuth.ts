@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, createContext, useContext, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 
@@ -19,7 +19,25 @@ interface UserRole {
   role: "admin" | "manager" | "agent";
 }
 
-export function useAuth() {
+interface AuthContextValue {
+  user: User | null;
+  session: Session | null;
+  profile: Profile | null;
+  roles: UserRole[];
+  isLoading: boolean;
+  isAdmin: boolean;
+  isManager: boolean;
+  isAgent: boolean;
+  hasRole: (role: "admin" | "manager" | "agent") => boolean;
+  signUp: (email: string, password: string, fullName?: string) => Promise<any>;
+  signIn: (email: string, password: string) => Promise<any>;
+  signOut: () => Promise<{ error: any }>;
+  refreshProfile: () => void;
+}
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -34,7 +52,6 @@ export function useAuth() {
       .eq("user_id", userId)
       .maybeSingle();
     
-    // Auto-sync profile email if it doesn't match auth email
     if (data && authEmail && data.email !== authEmail) {
       console.log("Syncing profile email with auth email:", authEmail);
       await supabase
@@ -42,7 +59,6 @@ export function useAuth() {
         .update({ email: authEmail })
         .eq("user_id", userId);
       
-      // Refetch with updated email
       const { data: updatedData } = await supabase
         .from("profiles")
         .select("*")
@@ -69,7 +85,6 @@ export function useAuth() {
   useEffect(() => {
     let isMounted = true;
 
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!isMounted) return;
@@ -78,7 +93,6 @@ export function useAuth() {
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          // Use setTimeout to prevent potential deadlock with Supabase
           setTimeout(async () => {
             if (!isMounted) return;
             await Promise.all([
@@ -96,7 +110,6 @@ export function useAuth() {
       }
     );
 
-    // THEN get initial session
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!isMounted) return;
       
@@ -154,16 +167,14 @@ export function useAuth() {
   const isAdmin = hasRole("admin");
   const isManager = hasRole("manager");
   const isAgent = hasRole("agent");
-
-  // Combined loading state - wait for BOTH auth check AND roles to load
   const isFullyLoaded = !isLoading && !rolesLoading;
 
-  return {
+  const value: AuthContextValue = {
     user,
     session,
     profile,
     roles,
-    isLoading: !isFullyLoaded, // Only report as loaded when roles are also loaded
+    isLoading: !isFullyLoaded,
     isAdmin,
     isManager,
     isAgent,
@@ -173,4 +184,14 @@ export function useAuth() {
     signOut,
     refreshProfile: () => user && fetchProfile(user.id),
   };
+
+  return React.createElement(AuthContext.Provider, { value }, children);
+}
+
+export function useAuth(): AuthContextValue {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
 }

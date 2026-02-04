@@ -453,7 +453,7 @@ export default function Apply() {
 
           {/* Form */}
           <form onSubmit={handleSubmit(onSubmit)}>
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode="popLayout">
               <motion.div
                 key={currentStep}
                 initial={{ opacity: 0, x: 20 }}

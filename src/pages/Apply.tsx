@@ -59,10 +59,11 @@ const applicationSchema = z.object({
   referralSource: z.string().optional(),
   whyJoin: z.string().optional(),
   
-  // SMS Consent
+  // Communication Consent
   smsConsent: z.boolean().refine(val => val === true, {
-    message: "You must agree to receive SMS messages to submit",
+    message: "SMS consent is required to receive onboarding steps by text",
   }),
+  emailConsent: z.boolean().default(false),
 });
 
 type ApplicationFormData = z.infer<typeof applicationSchema>;
@@ -115,6 +116,7 @@ export default function Apply() {
       licenseStatus: "unlicensed",
       licensedStates: [],
       smsConsent: false,
+      emailConsent: false,
     },
   });
 
@@ -271,6 +273,10 @@ export default function Apply() {
         ? (data.numberOfDownlines as number)
         : undefined;
 
+      // Capture consent disclosure text
+      const smsConsentText = document.getElementById("smsConsentDisclosure")?.textContent?.trim() || "";
+      const emailConsentText = document.getElementById("emailConsentDisclosure")?.textContent?.trim() || "";
+
       const { data: submitResult, error } = await supabase.functions.invoke(
         "submit-application",
         {
@@ -294,6 +300,18 @@ export default function Apply() {
 
             availability: data.availability,
             referralSource: data.referralSource,
+
+            // Consent data for Twilio compliance
+            consent: {
+              smsConsentGiven: data.smsConsent,
+              smsConsentText,
+              emailConsentGiven: data.emailConsent,
+              emailConsentText,
+              consentTimestampUtc: new Date().toISOString(),
+              sourceUrl: window.location.href,
+              userAgent: navigator.userAgent,
+              formVersion: "apply_v2.0",
+            },
           },
         },
       );
@@ -754,23 +772,66 @@ export default function Apply() {
                         </Select>
                       </div>
 
-                      {/* SMS Consent Disclosure */}
-                      <div className="flex items-start gap-3 p-4 rounded-lg bg-muted/50 border border-border">
-                        <Checkbox
-                          id="smsConsent"
-                          checked={watch("smsConsent") || false}
-                          onCheckedChange={(checked) => 
-                            setValue("smsConsent", checked === true, { shouldValidate: true })
-                          }
-                          className="mt-0.5"
-                        />
-                        <Label htmlFor="smsConsent" className="text-sm text-muted-foreground cursor-pointer leading-relaxed">
-                          I agree to receive SMS/text messages from Apex Financial at the phone number provided for application updates and onboarding steps. Message frequency varies. Message and data rates may apply. Reply STOP to cancel.
-                        </Label>
+                      {/* Communication Consent Section */}
+                      <div className="p-6 rounded-lg border border-border bg-muted/30 space-y-5">
+                        <h3 className="font-semibold text-foreground">Communication Consent</h3>
+                        
+                        {/* SMS Consent */}
+                        <div className="space-y-3">
+                          <p id="smsConsentDisclosure" className="text-sm text-muted-foreground leading-relaxed">
+                            By checking the box below, you agree to receive SMS/text messages from{" "}
+                            <strong className="text-foreground">King of Sales / Unitrust Financial</strong> at the number you provide 
+                            regarding application updates, onboarding steps, training instructions, and support. 
+                            Message frequency varies. Message & data rates may apply. Reply STOP to cancel, HELP for help. 
+                            Consent is not a condition of purchase.
+                          </p>
+                          <div className="flex items-start gap-3">
+                            <Checkbox
+                              id="smsConsent"
+                              checked={watch("smsConsent") || false}
+                              onCheckedChange={(checked) => 
+                                setValue("smsConsent", checked === true, { shouldValidate: true })
+                              }
+                              className="mt-0.5"
+                            />
+                            <Label htmlFor="smsConsent" className="text-sm text-foreground cursor-pointer leading-relaxed font-medium">
+                              I agree to receive SMS/text messages from King of Sales / Unitrust Financial. *
+                            </Label>
+                          </div>
+                          {errors.smsConsent && (
+                            <p className="text-sm text-destructive">{errors.smsConsent.message}</p>
+                          )}
+                        </div>
+
+                        {/* Email Consent */}
+                        <div className="space-y-3 pt-2 border-t border-border">
+                          <p id="emailConsentDisclosure" className="text-sm text-muted-foreground leading-relaxed">
+                            By checking the box below, you agree to receive emails from{" "}
+                            <strong className="text-foreground">King of Sales / Unitrust Financial</strong> regarding 
+                            application updates and onboarding.
+                          </p>
+                          <div className="flex items-start gap-3">
+                            <Checkbox
+                              id="emailConsent"
+                              checked={watch("emailConsent") || false}
+                              onCheckedChange={(checked) => 
+                                setValue("emailConsent", checked === true)
+                              }
+                              className="mt-0.5"
+                            />
+                            <Label htmlFor="emailConsent" className="text-sm text-foreground cursor-pointer leading-relaxed font-medium">
+                              I agree to receive emails from King of Sales / Unitrust Financial.
+                            </Label>
+                          </div>
+                        </div>
+
+                        {/* Policy Links */}
+                        <div className="flex items-center gap-3 pt-2 border-t border-border text-sm">
+                          <Link to="/privacy" className="text-primary hover:underline">Privacy Policy</Link>
+                          <span className="text-muted-foreground">|</span>
+                          <Link to="/terms" className="text-primary hover:underline">Terms & Conditions</Link>
+                        </div>
                       </div>
-                      {errors.smsConsent && (
-                        <p className="text-sm text-destructive">{errors.smsConsent.message}</p>
-                      )}
                     </div>
                   )}
 

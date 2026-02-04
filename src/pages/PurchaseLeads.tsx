@@ -21,37 +21,37 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-// Payment links - update these with actual links
-const VENMO_LINK = "https://venmo.com/apex-financial";
-const CASHAPP_LINK = "https://cash.app/$apexfinancial";
+// Payment links
+const VENMO_LINK = "https://venmo.com/code?user_id=4525479197410766547&created=1770247428.1210961&printed=1";
+const CASHAPP_LINK = "https://cash.app/$ApexFinancial";
 
 // Package data
 const packages = [
   {
     id: "standard",
     name: "Apex Standard Leads",
-    description: "High-quality pre-screened leads from verified sources. Perfect for agents looking to build a consistent pipeline.",
+    description: "Quality leads that are 30 days old or less. Perfect for agents building a consistent pipeline with proven prospects.",
     features: [
+      "Leads 30 days or less old",
       "Pre-qualified prospects",
       "Verified contact info",
       "Weekly delivery",
-      "Support included",
-    ],
-    price: 250,
-    popular: true,
-  },
-  {
-    id: "non-standard",
-    name: "Apex Non-Standard Leads",
-    description: "Alternative market leads with higher conversion potential. Ideal for experienced agents targeting niche markets.",
-    features: [
-      "Alternative market focus",
-      "Higher avg. policy value",
-      "Exclusive territories",
-      "Priority support",
     ],
     price: 250,
     popular: false,
+  },
+  {
+    id: "premium",
+    name: "Apex Premium Leads",
+    description: "Fresh leads logged within the past week. Ideal for agents who want the hottest prospects with maximum conversion potential.",
+    features: [
+      "Leads logged this week",
+      "Highest conversion rates",
+      "First-priority access",
+      "Real-time delivery",
+    ],
+    price: 500,
+    popular: true,
   },
 ];
 
@@ -99,7 +99,7 @@ function useCountdown(targetDate: Date) {
 
 export default function PurchaseLeads() {
   const { isAdmin } = useAuth();
-  const [leadCount, setLeadCount] = useState(0);
+  const [leadCount, setLeadCount] = useState(800);
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -200,7 +200,7 @@ export default function PurchaseLeads() {
                     ) : (
                       <div className="flex items-center gap-2">
                         <span className="text-3xl font-bold text-primary">
-                          {isLoading ? "..." : leadCount.toLocaleString()}+
+                          {leadCount.toLocaleString()}+
                         </span>
                         {isAdmin && (
                           <Button

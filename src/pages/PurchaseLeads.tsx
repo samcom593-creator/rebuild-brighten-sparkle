@@ -10,12 +10,21 @@ import {
   X,
   DollarSign,
   Flame,
+  Copy,
+  ExternalLink,
 } from "lucide-react";
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -97,12 +106,24 @@ function useCountdown(targetDate: Date) {
   return timeLeft;
 }
 
+interface PaymentDialogState {
+  open: boolean;
+  method: "venmo" | "cashapp" | null;
+  packageName: string;
+  price: number;
+}
+
 export default function PurchaseLeads() {
   const { isAdmin } = useAuth();
-  const [leadCount, setLeadCount] = useState(800);
+  const [leadCount, setLeadCount] = useState(800); // Default to sensible value for instant render
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
+  const [paymentDialog, setPaymentDialog] = useState<PaymentDialogState>({
+    open: false,
+    method: null,
+    packageName: "",
+    price: 0,
+  });
 
   const nextSunday = useMemo(() => getNextSundayMidnightCST(), []);
   const countdown = useCountdown(nextSunday);
@@ -122,10 +143,15 @@ export default function PurchaseLeads() {
       setLeadCount(data.count);
       setEditValue(String(data.count));
     }
-    setIsLoading(false);
   };
 
   const handleSaveCount = async () => {
+    // Extra guard: block non-admins at the function level
+    if (!isAdmin) {
+      toast.error("Only admins can edit the lead count.");
+      return;
+    }
+
     const newCount = parseInt(editValue, 10);
     if (isNaN(newCount) || newCount < 0) {
       toast.error("Please enter a valid number");
@@ -147,14 +173,28 @@ export default function PurchaseLeads() {
     }
   };
 
-  const handlePayment = (method: "venmo" | "cashapp", packageName: string) => {
-    const link = method === "venmo" ? VENMO_LINK : CASHAPP_LINK;
-    toast.info(`Opening ${method === "venmo" ? "Venmo" : "Cash App"}...`);
+  const handlePaymentClick = (method: "venmo" | "cashapp", packageName: string, price: number) => {
+    setPaymentDialog({
+      open: true,
+      method,
+      packageName,
+      price,
+    });
+  };
+
+  const handleCopyNote = () => {
+    navigator.clipboard.writeText("leads");
+    toast.success("Copied 'leads' to clipboard!");
+  };
+
+  const handleContinueToPayment = () => {
+    const link = paymentDialog.method === "venmo" ? VENMO_LINK : CASHAPP_LINK;
     window.open(link, "_blank");
+    setPaymentDialog({ open: false, method: null, packageName: "", price: 0 });
   };
 
   return (
-    <DashboardLayout>
+    <>
       <div className="min-h-screen p-4 md:p-8">
         <div className="max-w-5xl mx-auto space-y-8">
           {/* Header */}
@@ -317,14 +357,14 @@ export default function PurchaseLeads() {
                   {/* Payment Buttons */}
                   <div className="grid grid-cols-2 gap-3 pt-2">
                     <Button
-                      onClick={() => handlePayment("venmo", pkg.name)}
+                      onClick={() => handlePaymentClick("venmo", pkg.name, pkg.price)}
                       className="bg-[#008CFF] hover:bg-[#0070CC] text-white gap-2"
                     >
                       <DollarSign className="h-4 w-4" />
                       Venmo
                     </Button>
                     <Button
-                      onClick={() => handlePayment("cashapp", pkg.name)}
+                      onClick={() => handlePaymentClick("cashapp", pkg.name, pkg.price)}
                       className="bg-[#00D632] hover:bg-[#00B82B] text-white gap-2"
                     >
                       <DollarSign className="h-4 w-4" />
@@ -347,6 +387,59 @@ export default function PurchaseLeads() {
           </div>
         </div>
       </div>
-    </DashboardLayout>
+
+      {/* Payment Instructions Dialog */}
+      <Dialog 
+        open={paymentDialog.open} 
+        onOpenChange={(open) => !open && setPaymentDialog({ open: false, method: null, packageName: "", price: 0 })}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-primary" />
+              Payment Instructions
+            </DialogTitle>
+            <DialogDescription>
+              You're purchasing <strong>{paymentDialog.packageName}</strong> for <strong>${paymentDialog.price}/week</strong>
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+              <p className="text-sm font-medium mb-2">Important:</p>
+              <p className="text-sm text-muted-foreground">
+                In the payment <strong>note field</strong>, type:
+              </p>
+              <div className="flex items-center gap-2 mt-2">
+                <code className="flex-1 rounded bg-muted px-3 py-2 text-lg font-bold text-primary">
+                  leads
+                </code>
+                <Button size="sm" variant="outline" onClick={handleCopyNote} className="gap-1">
+                  <Copy className="h-3 w-3" />
+                  Copy
+                </Button>
+              </div>
+            </div>
+            
+            <p className="text-xs text-muted-foreground text-center">
+              This helps us match your payment to your account quickly.
+            </p>
+          </div>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setPaymentDialog({ open: false, method: null, packageName: "", price: 0 })}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleContinueToPayment} className="gap-2">
+              <ExternalLink className="h-4 w-4" />
+              Continue to {paymentDialog.method === "venmo" ? "Venmo" : "Cash App"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

@@ -4,11 +4,12 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ScrollToTop } from "@/components/ui/scroll-to-top";
 import { SidebarProvider } from "@/hooks/useSidebarState";
+import { AuthProvider } from "@/hooks/useAuth";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AuthenticatedShell } from "@/components/layout/AuthenticatedShell";
 
 // Eagerly loaded pages (critical path)
 import Index from "./pages/Index";
@@ -75,160 +76,67 @@ function PageLoader() {
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <SidebarProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <ScrollToTop />
-            <Suspense fallback={<PageLoader />}>
-            <Routes>
-            <Route path="/" element={<Index />} />
-            <Route
-              path="/apex-daily-numbers"
-              element={
-                <ProtectedRoute>
-                  <LogNumbers />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/log-numbers" element={<Navigate to="/apex-daily-numbers" replace />} />
-            <Route path="/agent-login" element={<AgentNumbersLogin />} />
-            <Route path="/apply" element={<Apply />} />
-            <Route path="/apply/success" element={<ApplySuccess />} />
-            <Route path="/apply/success/licensed" element={<ApplySuccessLicensed />} />
-            <Route path="/apply/success/unlicensed" element={<ApplySuccessUnlicensed />} />
-            <Route path="/get-licensed" element={<GetLicensed />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/join" element={<AgentSignup />} />
-            <Route path="/magic-login" element={<MagicLogin />} />
-            <Route path="/numbers" element={<Numbers />} />
-            <Route path="/schedule-call" element={<ScheduleCall />} />
-            <Route path="/pending-approval" element={<PendingApproval />} />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/applicants"
-              element={
-                <ProtectedRoute>
-                  <DashboardApplicants />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/admin"
-              element={
-                <ProtectedRoute>
-                  <DashboardAdmin />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/accounts"
-              element={
-                <ProtectedRoute>
-                  <DashboardAccounts />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/settings"
-              element={
-                <ProtectedRoute>
-                  <Settings />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/team"
-              element={
-                <ProtectedRoute>
-                  <TeamDirectory />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/crm"
-              element={
-                <ProtectedRoute>
-                  <DashboardCRM />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/aged-leads"
-              element={
-                <ProtectedRoute>
-                  <DashboardAgedLeads />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard/command"
-              element={
-                <ProtectedRoute>
-                  <DashboardCommandCenter />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/agent-portal" element={<AgentPortal />} />
-            <Route
-              path="/onboarding-course"
-              element={
-                <ProtectedRoute>
-                  <OnboardingCourse />
-                </ProtectedRoute>
-              }
-            />
-            {/* Course Progress - Admin only */}
-            <Route
-              path="/course-progress"
-              element={
-                <ProtectedRoute>
-                  <CourseProgress />
-                </ProtectedRoute>
-              }
-            />
-            {/* Full Course Content View */}
-            <Route
-              path="/course-progress/content"
-              element={
-                <ProtectedRoute>
-                  <CourseContent />
-                </ProtectedRoute>
-              }
-            />
-            {/* Legal pages */}
-            <Route path="/privacy" element={<Privacy />} />
-            <Route path="/terms" element={<Terms />} />
-            <Route path="/disclosures" element={<Disclosures />} />
-            {/* PWA Install page */}
-            <Route path="/install" element={<Install />} />
-            {/* Purchase Leads */}
-            <Route
-              path="/purchase-leads"
-              element={
-                <ProtectedRoute>
-                  <PurchaseLeads />
-                </ProtectedRoute>
-              }
-            />
-            {/* Legacy redirect */}
-            <Route path="/dashboard/leads" element={<DashboardApplicants />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-            </Suspense>
-          </BrowserRouter>
-        </SidebarProvider>
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <SidebarProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <ScrollToTop />
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  {/* Public routes */}
+                  <Route path="/" element={<Index />} />
+                  <Route path="/apply" element={<Apply />} />
+                  <Route path="/apply/success" element={<ApplySuccess />} />
+                  <Route path="/apply/success/licensed" element={<ApplySuccessLicensed />} />
+                  <Route path="/apply/success/unlicensed" element={<ApplySuccessUnlicensed />} />
+                  <Route path="/get-licensed" element={<GetLicensed />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/signup" element={<Signup />} />
+                  <Route path="/join" element={<AgentSignup />} />
+                  <Route path="/agent-login" element={<AgentNumbersLogin />} />
+                  <Route path="/magic-login" element={<MagicLogin />} />
+                  <Route path="/schedule-call" element={<ScheduleCall />} />
+                  <Route path="/pending-approval" element={<PendingApproval />} />
+                  <Route path="/privacy" element={<Privacy />} />
+                  <Route path="/terms" element={<Terms />} />
+                  <Route path="/disclosures" element={<Disclosures />} />
+                  <Route path="/install" element={<Install />} />
+
+                  {/* Authenticated shell - sidebar mounted once */}
+                  <Route element={<AuthenticatedShell />}>
+                    <Route path="/apex-daily-numbers" element={<LogNumbers />} />
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/dashboard/applicants" element={<DashboardApplicants />} />
+                    <Route path="/dashboard/admin" element={<DashboardAdmin />} />
+                    <Route path="/dashboard/accounts" element={<DashboardAccounts />} />
+                    <Route path="/dashboard/settings" element={<Settings />} />
+                    <Route path="/dashboard/team" element={<TeamDirectory />} />
+                    <Route path="/dashboard/crm" element={<DashboardCRM />} />
+                    <Route path="/dashboard/aged-leads" element={<DashboardAgedLeads />} />
+                    <Route path="/dashboard/command" element={<DashboardCommandCenter />} />
+                    <Route path="/agent-portal" element={<AgentPortal />} />
+                    <Route path="/onboarding-course" element={<OnboardingCourse />} />
+                    <Route path="/course-progress" element={<CourseProgress />} />
+                    <Route path="/course-progress/content" element={<CourseContent />} />
+                    <Route path="/numbers" element={<Numbers />} />
+                    <Route path="/purchase-leads" element={<PurchaseLeads />} />
+                    {/* Legacy redirect */}
+                    <Route path="/dashboard/leads" element={<DashboardApplicants />} />
+                  </Route>
+
+                  {/* Legacy redirect */}
+                  <Route path="/log-numbers" element={<Navigate to="/apex-daily-numbers" replace />} />
+
+                  {/* Catch-all */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
+            </BrowserRouter>
+          </SidebarProvider>
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   </ErrorBoundary>
 );

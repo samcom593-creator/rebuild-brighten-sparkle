@@ -18,6 +18,7 @@ import {
   Minimize2,
   Plus,
   Edit3,
+  ShoppingCart,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -122,7 +123,14 @@ export function GlobalSidebar({
       });
     }
 
+    // Purchase Leads - available to all authenticated users
     items.push({ 
+      icon: ShoppingCart, 
+      label: "Purchase Leads", 
+      href: "/purchase-leads",
+    });
+
+    items.push({
       icon: Settings, 
       label: "Settings", 
       href: "/dashboard/settings",

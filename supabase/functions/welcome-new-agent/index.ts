@@ -19,7 +19,7 @@ interface WelcomeEmailRequest {
   courseLink?: string;
 }
 
-const discordLink = "https://discord.gg/GygkGEhb";
+// Discord link removed from initial email - now sent after course completion
 const defaultCourseLink = "https://apex-financial.org/onboarding-course";
 
 const handler = async (req: Request): Promise<Response> => {
@@ -105,18 +105,6 @@ const handler = async (req: Request): Promise<Response> => {
         <p>Once you're set up, complete the onboarding course to learn our systems and processes.</p>
         <p><strong style="color:#f59e0b;">Expectation: Complete this the same day you receive it.</strong></p>
         <a href="${finalCourseLink}" class="button">Start Coursework →</a>
-      </div>
-      
-      <!-- Step 3: Discord -->
-      <div class="step">
-        <h3><span class="step-number">3</span> Join Discord</h3>
-        <p>All team communication happens here. This is where you'll connect with the team and get support.</p>
-        <a href="${discordLink}" class="button" style="background:#5865F2;">Join Discord →</a>
-        
-        <p style="margin-top:15px;padding:12px;background:rgba(20,184,166,0.1);border-radius:8px;">
-          <strong>Daily meetings at 10:00 AM CST</strong><br>
-          Camera ON required • Remember: <span style="color:#f59e0b;">On time is LATE</span>
-        </p>
       </div>
       
       <!-- Expectations -->

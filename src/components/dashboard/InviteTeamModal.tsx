@@ -216,13 +216,15 @@ export function InviteTeamModal({ open, onClose }: InviteTeamModalProps) {
       const magicLink = linkData?.magicLink || `${window.location.origin}/agent-portal`;
       setGeneratedLink(magicLink);
 
-      // Send welcome email with portal link
-      await supabase.functions.invoke("send-agent-portal-login", {
+      // Send welcome email with onboarding flow (Contracting + Course)
+      // Discord link will be sent after course completion
+      await supabase.functions.invoke("welcome-new-agent", {
         body: {
-          email: email.trim(),
-          name: fullName.trim(),
-          magicLink,
-          sendCourse,
+          agentName: fullName.trim(),
+          agentEmail: email.trim(),
+          agentId: newAgent.id,
+          managerId: currentAgent.id,
+          courseLink: magicLink,
         },
       });
 

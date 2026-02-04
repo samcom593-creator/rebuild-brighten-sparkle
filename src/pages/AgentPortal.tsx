@@ -401,7 +401,7 @@ export default function AgentPortal() {
   }
 
   return (
-    <DashboardLayout>
+    <div className="space-y-6">
       <div className="space-y-6">
         {/* Hero Section with Quick Stats */}
         <section className="space-y-4">
@@ -796,6 +796,6 @@ export default function AgentPortal() {
           </GlassCard>
         </motion.section>
       </div>
-    </DashboardLayout>
+    </div>
   );
 }

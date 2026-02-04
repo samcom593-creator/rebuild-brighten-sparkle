@@ -718,11 +718,18 @@ export type Database = {
           availability: string | null
           city: string | null
           closed_at: string | null
+          consent_form_version: string | null
+          consent_ip_address: string | null
+          consent_source_url: string | null
+          consent_timestamp_utc: string | null
+          consent_user_agent: string | null
           contacted_at: string | null
           contracted_at: string | null
           created_at: string
           desired_income: number | null
           email: string
+          email_consent_given: boolean | null
+          email_consent_text: string | null
           first_name: string
           followup_licensed_sent_at: string | null
           followup_sent_at: string | null
@@ -748,6 +755,8 @@ export type Database = {
           resume_url: string | null
           reviewed_at: string | null
           reviewed_by: string | null
+          sms_consent_given: boolean | null
+          sms_consent_text: string | null
           start_date: string | null
           started_training: boolean | null
           state: string | null
@@ -762,11 +771,18 @@ export type Database = {
           availability?: string | null
           city?: string | null
           closed_at?: string | null
+          consent_form_version?: string | null
+          consent_ip_address?: string | null
+          consent_source_url?: string | null
+          consent_timestamp_utc?: string | null
+          consent_user_agent?: string | null
           contacted_at?: string | null
           contracted_at?: string | null
           created_at?: string
           desired_income?: number | null
           email: string
+          email_consent_given?: boolean | null
+          email_consent_text?: string | null
           first_name: string
           followup_licensed_sent_at?: string | null
           followup_sent_at?: string | null
@@ -792,6 +808,8 @@ export type Database = {
           resume_url?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          sms_consent_given?: boolean | null
+          sms_consent_text?: string | null
           start_date?: string | null
           started_training?: boolean | null
           state?: string | null
@@ -806,11 +824,18 @@ export type Database = {
           availability?: string | null
           city?: string | null
           closed_at?: string | null
+          consent_form_version?: string | null
+          consent_ip_address?: string | null
+          consent_source_url?: string | null
+          consent_timestamp_utc?: string | null
+          consent_user_agent?: string | null
           contacted_at?: string | null
           contracted_at?: string | null
           created_at?: string
           desired_income?: number | null
           email?: string
+          email_consent_given?: boolean | null
+          email_consent_text?: string | null
           first_name?: string
           followup_licensed_sent_at?: string | null
           followup_sent_at?: string | null
@@ -836,6 +861,8 @@ export type Database = {
           resume_url?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
+          sms_consent_given?: boolean | null
+          sms_consent_text?: string | null
           start_date?: string | null
           started_training?: boolean | null
           state?: string | null

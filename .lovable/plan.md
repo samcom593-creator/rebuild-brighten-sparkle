@@ -1,268 +1,184 @@
 
-
-# Plan: Call Center UI Optimization + Aged Lead Email System + Homepage Update
+# Plan: Email Flows Verification + "Resend Licensing Instructions" Button
 
 ## Summary
 
-This plan addresses multiple improvements:
-1. **Call Center Pipeline UI** - Add last contact date display, 2-week countdown timer, better screen utilization
-2. **Aged Lead Auto-Email** - Improve the email sent when importing leads with a high-converting "new position" email + test preview
-3. **Homepage Update** - Change "50%" commission references to "70%"
+This plan addresses three issues:
+1. **Applicant emails not being received** after applying - verify the submit-application email flow
+2. **Proper licensing instruction emails** for licensed vs unlicensed applicants
+3. **Add "Resend Licensing Instructions" button** to Call Center and Pipeline for quick resends
 
 ---
 
-## Database Changes
+## Issue Analysis
 
-Add column to `aged_leads` table to track when lead was first imported (for 2-week countdown):
+### Current Email Flow After Application Submit
 
-```sql
-ALTER TABLE aged_leads
-ADD COLUMN IF NOT EXISTS contacted_at timestamp with time zone;
-```
+The `submit-application` edge function at lines 906-909 calls `sendEmailNotifications()` which:
+- **Admin notification** - Sent to `info@apex-financial.org`
+- **Applicant confirmation** - Sent with conditional content:
+  - **Licensed applicants** (lines 516-589): Get Calendly link, testimonials video, onboarding steps
+  - **Unlicensed applicants** (lines 591-680): Get 3-step licensing guide:
+    1. Video: `https://youtu.be/i1e5p-GEfAU`
+    2. Doc: `https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg`
+    3. Course: `https://partners.xcelsolutions.com/afe`
 
----
+**Potential Issue**: The edge function is using the correct Resend setup, but there's no dedicated "send licensing instructions" template that can be resent on demand.
 
-## 1. Call Center Pipeline UI Improvements
+### What's Needed
 
-### Files to Modify
-
-#### `src/components/callcenter/CallCenterLeadCard.tsx`
-
-**Changes:**
-- Add "Last Contacted" badge showing date of last contact
-- Add 2-week countdown progress bar showing days remaining
-- Expand the card to use more horizontal space (remove `max-w-3xl` constraint)
-- Better visual hierarchy with larger touch targets
-
-**New UI Elements:**
-
-| Element | Description |
-|---------|-------------|
-| Last Contact Badge | Shows "Last: Called • 2d ago" or "No contact yet" |
-| 2-Week Countdown | Progress bar showing X of 14 days elapsed |
-| Urgency Indicator | Red warning when under 3 days remaining |
-
-**Visual Design:**
-```text
-┌─────────────────────────────────────────────────────────────────┐
-│  Aged Lead  •  Unlicensed                                       │
-│  John Smith                                                     │
-│  Added 3 days ago  •  Last contact: 2d ago                      │
-│                                                                 │
-│  ⏱️ Lead Expiry: 11 days remaining                              │
-│  [██████████░░░░░░░░░░░░░░]                                     │
-│                                                                 │
-│  [📞 CALL NOW] john@email.com | @johndoe                        │
-│                                                                 │
-│  Notes: Looking for remote sales opportunity...                 │
-│                                                                 │
-│  [🎙️ Record Call]  [📧 Email]  [🔀 Reassign]                    │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-#### `src/pages/CallCenter.tsx`
-
-**Changes:**
-- Remove `max-w-3xl` constraint to use full screen width
-- Update grid layout for better space utilization
-- Fetch `contacted_at` for aged leads (add to query)
-- Track when leads are contacted (update on action)
+1. **New "Send Licensing Instructions" template** - A dedicated email template specifically for resending licensing resources
+2. **Quick access button** - "Resend Licensing" button in Call Center and Pipeline
+3. **Verification** - Ensure the existing application email is working (deploy check)
 
 ---
 
-## 2. Aged Lead High-Converting Email
+## Solution Design
 
-### Current Flow
-When leads are imported via `AgedLeadImporter.tsx`, emails are sent via `send-aged-lead-email` edge function.
+### 1. Create New Edge Function: `send-licensing-instructions`
 
-### Improvements Needed
+A dedicated function to resend the comprehensive licensing email with:
+- YouTube video link
+- Google Doc licensing guide
+- Pre-licensing course link
+- Clear step-by-step instructions
 
-#### A. Test Email Preview (Before Import)
+This mirrors the unlicensed applicant welcome email but can be triggered on demand.
 
-**New Component:** `AgedLeadEmailPreview.tsx`
+### 2. Add "Resend Licensing" Button Component
 
-Add a preview modal that shows the exact email before importing. User can review and approve.
+Create a reusable `ResendLicensingButton` component that:
+- Shows only for unlicensed leads
+- Calls the `send-licensing-instructions` edge function
+- Shows loading/success/error states
+- Has tooltip explaining what it does
 
-**Integration in `AgedLeadImporter.tsx`:**
-- Add "Preview Email" button in step 2 (before import)
-- Show modal with full email content
-- Allow minor customization if needed
+### 3. Integrate into Call Center & Pipeline
 
-#### B. High-Converting Email Content
-
-**Update:** `supabase/functions/send-aged-lead-email/index.ts`
-
-Replace current generic email with a high-converting "new position opened" message:
-
-**New Subject Line:**
-```
-🔥 New Remote Sales Position Just Opened – Apply Now
-```
-
-**Email Structure:**
-1. **Attention-grabbing header** - "A new position just opened up"
-2. **Urgency** - "Limited spots available"
-3. **Benefits list** - Starting at 70% commission, free leads, etc.
-4. **Social proof** - Agent success stories
-5. **Clear CTA** - "Claim Your Spot"
-
-**New Email Copy:**
-```text
-Hey [Name]!
-
-A new remote sales position just opened up at Apex Financial and we thought of you.
-
-Here's what's on the table:
-
-✓ Start at 70% commission (up to 145%)
-✓ Free warm leads provided daily  
-✓ Complete training program included
-✓ No cold calling required
-✓ Work from anywhere
-
-Our top performers are earning $10K-$50K+ per month, and we're looking for motivated individuals to join the team.
-
-[🚀 CLAIM YOUR SPOT]
-
-Spots are limited and filling fast.
-
-– The Apex Financial Team
-```
+| Location | Component to Modify |
+|----------|---------------------|
+| Call Center | `CallCenterLeadCard.tsx` - Add button next to Email menu |
+| CRM/Pipeline | `DashboardCRM.tsx` or applicant row actions |
 
 ---
 
-## 3. Homepage 50% → 70% Update
+## Files to Create/Modify
 
-### Files to Modify
+### New Files
 
-#### `src/components/landing/HeroSection.tsx`
-**Line 182:** Change `"50%-145%"` to `"70%-145%"`
+| File | Purpose |
+|------|---------|
+| `supabase/functions/send-licensing-instructions/index.ts` | Edge function to send licensing email |
+| `src/components/callcenter/ResendLicensingButton.tsx` | Reusable button component |
 
-#### `src/components/landing/CareerPathwaySection.tsx`
-**Line 139:** Change `"50%-145%"` to `"70%-145%"`
-**Line 209:** Change `"50%-145%"` to `"70%-145%"`
+### Modified Files
 
-#### `src/components/landing/EarningsSection.tsx`
-**Lines 15, 23:** Update `commissionRate` from `"50%-145%"` to `"70%-145%"`
-
----
-
-## 4. Post-Contact Thank You Email Enhancement
-
-### Current State
-`send-post-call-followup` already sends emails after contact with licensing resources for unlicensed leads.
-
-### Verify Functionality
-- Licensed leads receive Calendly rebook link
-- Unlicensed leads receive 3-step resource package (video, doc, course link)
-
-**No changes needed** - this is already implemented correctly per the memory context.
+| File | Changes |
+|------|---------|
+| `supabase/config.toml` | Register `send-licensing-instructions` function |
+| `src/components/callcenter/CallCenterLeadCard.tsx` | Add ResendLicensingButton for unlicensed leads |
+| `src/components/callcenter/index.ts` | Export new component |
 
 ---
 
-## Technical Implementation Details
+## Technical Implementation
 
-### 2-Week Countdown Component
+### Edge Function: `send-licensing-instructions`
 
 ```typescript
-// New component: LeadExpiryCountdown.tsx
-interface LeadExpiryCountdownProps {
-  createdAt: string;
-  contactedAt?: string;
+interface LicensingEmailRequest {
+  email: string;
+  firstName: string;
+  licenseStatus: "licensed" | "unlicensed" | "pending";
 }
 
-function LeadExpiryCountdown({ createdAt, contactedAt }: LeadExpiryCountdownProps) {
-  const created = new Date(createdAt);
-  const now = new Date();
-  const twoWeeksMs = 14 * 24 * 60 * 60 * 1000;
-  
-  const elapsed = now.getTime() - created.getTime();
-  const remaining = Math.max(0, twoWeeksMs - elapsed);
-  const daysRemaining = Math.ceil(remaining / (24 * 60 * 60 * 1000));
-  const progress = Math.min(100, (elapsed / twoWeeksMs) * 100);
-  
-  const isUrgent = daysRemaining <= 3;
-  
-  return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between text-xs">
-        <span className={cn("font-medium", isUrgent && "text-red-400")}>
-          {daysRemaining > 0 ? `${daysRemaining} days remaining` : "Expired"}
-        </span>
-        {contactedAt && <span className="text-green-400">Contacted</span>}
-      </div>
-      <Progress 
-        value={progress} 
-        className={cn("h-1.5", isUrgent && "[&>div]:bg-red-500")} 
-      />
-    </div>
-  );
-}
+// For unlicensed leads:
+// - YouTube video: How to get licensed
+// - Google Doc: Step-by-step licensing guide
+// - Xcel Solutions course link
+// - "We cover the costs" messaging
+
+// For licensed leads:
+// - Calendly link for onboarding call
+// - Testimonials video
+// - Next steps for getting started
 ```
 
-### Email Preview Modal for Imports
+### Button Component Logic
 
 ```typescript
-// New component: AgedLeadEmailPreview.tsx
-interface EmailPreviewProps {
-  isOpen: boolean;
-  onClose: () => void;
-  sampleFirstName: string;
-  onApprove: () => void;
+interface ResendLicensingButtonProps {
+  recipientEmail: string;
+  recipientName: string;
+  licenseStatus: "licensed" | "unlicensed" | "pending";
 }
 
-function AgedLeadEmailPreview({ isOpen, onClose, sampleFirstName, onApprove }) {
-  // Shows the exact HTML that will be sent
-  // Uses same template as send-aged-lead-email function
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Email Preview</DialogTitle>
-          <DialogDescription>
-            This is what your leads will receive
-          </DialogDescription>
-        </DialogHeader>
-        
-        {/* Render email preview */}
-        <div className="border rounded-lg p-4 bg-black text-white">
-          {/* Email content preview */}
-        </div>
-        
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={onApprove}>Looks Good, Import Leads</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
+// Only show for unlicensed/pending leads
+// Loading spinner while sending
+// Toast notification on success/failure
+```
+
+### Call Center Integration
+
+In `CallCenterLeadCard.tsx`, add the button next to the existing Email menu:
+
+```typescript
+<div className="flex items-center gap-2 shrink-0">
+  {/* Existing QuickEmailMenu */}
+  <QuickEmailMenu ... />
+  
+  {/* New: Resend Licensing for unlicensed leads */}
+  {lead.licenseStatus !== "licensed" && (
+    <ResendLicensingButton
+      recipientEmail={lead.email}
+      recipientName={lead.firstName}
+      licenseStatus={lead.licenseStatus}
+    />
+  )}
+  
+  {/* Existing Admin Reassign */}
+  {isAdmin && <LeadReassignButton ... />}
+</div>
 ```
 
 ---
 
-## Files Summary
+## Email Content for Licensing Instructions
 
-| File | Change Type | Description |
-|------|-------------|-------------|
-| `src/components/callcenter/CallCenterLeadCard.tsx` | Modify | Add last contact badge, 2-week countdown, wider layout |
-| `src/pages/CallCenter.tsx` | Modify | Remove width constraint, fetch contacted_at, update on action |
-| `supabase/functions/send-aged-lead-email/index.ts` | Modify | High-converting "new position" email, 70% commission |
-| `src/components/dashboard/AgedLeadImporter.tsx` | Modify | Add email preview step before import |
-| `src/components/landing/HeroSection.tsx` | Modify | 50% → 70% |
-| `src/components/landing/CareerPathwaySection.tsx` | Modify | 50% → 70% (2 locations) |
-| `src/components/landing/EarningsSection.tsx` | Modify | 50% → 70% (2 locations) |
-| **NEW** `src/components/callcenter/LeadExpiryCountdown.tsx` | Create | 2-week countdown progress bar component |
-| **NEW** `src/components/dashboard/AgedLeadEmailPreview.tsx` | Create | Email preview modal for lead imports |
+### Subject Line
+"Your Licensing Resources – Let's Get You Started! 🚀"
+
+### Email Body Structure
+1. **Header**: APEX Financial branding
+2. **Greeting**: Personalized with first name
+3. **Intro**: "Here are the resources you need to get your life insurance license"
+4. **Step 1**: Watch the licensing overview video (YouTube embed/link)
+5. **Step 2**: Review the licensing guide (Google Doc link)
+6. **Step 3**: Start the pre-licensing course (Xcel Solutions link)
+7. **Benefits box**: "We cover licensing costs", "Takes about 7 days", "Full support"
+8. **CTA**: Schedule a help call (Calendly)
+9. **Footer**: Powered by Apex Financial
 
 ---
 
-## Expected Outcomes
+## Verification Steps
 
 After implementation:
-1. **Better Call Center UX** - Full-width layout with last contact dates and urgency indicators
-2. **Lead urgency visibility** - 2-week countdown shows how long until lead expires
-3. **Safer email sending** - Preview exactly what goes out before importing leads
-4. **Higher email conversions** - Compelling "new position opened" email with 70% commission highlight
-5. **Consistent messaging** - Homepage matches actual commission structure (70% starting)
+1. **Test application flow**: Submit a test application and verify email is received
+2. **Test resend button**: Click "Resend Licensing" in Call Center and verify email arrives
+3. **Check edge function logs**: Verify no errors in `send-licensing-instructions` logs
+4. **Test both license types**: Ensure licensed leads get appropriate content vs unlicensed
 
+---
+
+## Summary of Changes
+
+| Category | Action |
+|----------|--------|
+| **New Edge Function** | `send-licensing-instructions` - Dedicated licensing email resend |
+| **New Component** | `ResendLicensingButton` - One-click licensing email resend |
+| **Call Center** | Add resend button for unlicensed leads |
+| **Email Templates** | Comprehensive 3-step licensing guide with video, doc, and course links |
+| **Deploy** | Register and deploy new edge function |
+
+This ensures applicants always have access to licensing resources, whether through the initial application email or through manual resends from the Call Center.

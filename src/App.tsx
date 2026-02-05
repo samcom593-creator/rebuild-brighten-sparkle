@@ -48,6 +48,7 @@ const Install = lazy(() => import("./pages/Install"));
 const CourseProgress = lazy(() => import("./pages/CourseProgress"));
 const CourseContent = lazy(() => import("./pages/CourseContent"));
 const PurchaseLeads = lazy(() => import("./pages/PurchaseLeads"));
+const CallCenter = lazy(() => import("./pages/CallCenter"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -122,6 +123,7 @@ const App = () => (
                     <Route path="/course-progress/content" element={<CourseContent />} />
                     <Route path="/numbers" element={<Numbers />} />
                     <Route path="/purchase-leads" element={<PurchaseLeads />} />
+                    <Route path="/dashboard/call-center" element={<CallCenter />} />
                     {/* Legacy redirect */}
                     <Route path="/dashboard/leads" element={<DashboardApplicants />} />
                   </Route>

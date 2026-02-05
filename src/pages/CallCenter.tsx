@@ -186,20 +186,21 @@ export default function CallCenter() {
   };
 
   // Send post-call follow-up email
-  const sendFollowUpEmail = async (lead: UnifiedLead) => {
+  const sendFollowUpEmail = async (lead: UnifiedLead, actionType: string = "contacted") => {
     try {
       const { error } = await supabase.functions.invoke("send-post-call-followup", {
         body: {
           firstName: lead.firstName,
           email: lead.email,
           licenseStatus: lead.licenseStatus,
+          actionType,
         },
       });
 
       if (error) {
         console.error("Failed to send follow-up email:", error);
       } else {
-        console.log("Follow-up email sent to:", lead.email);
+        console.log(`Follow-up email (${actionType}) sent to:`, lead.email);
       }
     } catch (err) {
       console.error("Error sending follow-up email:", err);
@@ -280,10 +281,11 @@ export default function CallCenter() {
         if (error) throw error;
       }
 
-      // Send follow-up email for "contacted" action
-      if (actionId === "contacted") {
-        await sendFollowUpEmail(currentLead);
-        toast.success("Lead marked as contacted - follow-up email sent!");
+      // Send follow-up email for applicable actions
+      const emailActions = ["contacted", "hired", "contracted", "licensing"];
+      if (emailActions.includes(actionId)) {
+        await sendFollowUpEmail(currentLead, actionId);
+        toast.success(`Lead marked as ${actionId.replace("_", " ")} - follow-up email sent!`);
       } else {
         toast.success(`Lead marked as ${actionId.replace("_", " ")}`);
       }

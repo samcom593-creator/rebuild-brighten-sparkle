@@ -1,205 +1,116 @@
 
-# Plan: Premium Call Center with AI Voice Recording & Auto Follow-Up Emails
+# Plan: Enhanced Post-Call Follow-Up Email with Licensing Resources
 
 ## Summary
 
-This plan delivers a **world-class Call Center** with AI-powered voice recording for automatic note-taking, premium high-tech UI effects, pipeline stage tracking, last contact visibility, and automated follow-up emails after every contact.
+Enhance the post-call follow-up email to include:
+1. **Calendar link** for rebooking (already exists)
+2. **Licensing steps** for unlicensed leads
+3. **YouTube video** explaining the licensing process
+4. **Licensing document** with detailed guide
+
+The email will be customized based on license status:
+- **Licensed leads**: Simple "great talking to you" + calendar link
+- **Unlicensed leads**: Full licensing resources package (video, document, course link, steps)
 
 ---
 
-## Features to Implement
+## What Will Change
 
-### 1. AI Voice Recording with Auto-Transcription
-- **Record calls** using browser's Web Speech API (already exists in `InterviewRecorder.tsx`)
-- **Live transcription** as you speak - notes appear in real-time
-- **Auto-save notes** to the lead's record when call ends
-- Single button to start/stop recording with pulsing animation
+### Updated Email Content for Unlicensed Leads
 
-### 2. Premium High-Tech UI Redesign
-- **Glass morphism cards** with subtle glow effects
-- **Animated transitions** between leads (slide/fade with framer-motion)
-- **Pulsing recording indicator** when voice recording active
-- **Progress ring** instead of bar (more premium feel)
-- **Gradient accent buttons** with hover animations
-- **"Call Active" mode** with visual indicator when phone is active
-- **Waveform visualizer** during recording
+The email will now include:
 
-### 3. Pipeline Stage Selector
-- Visual stage selector showing where lead is in pipeline:
-  - New → Contacted → Qualified → Contracted → Onboarding → Active
-- Quick-select to update stage directly from Call Center
-- Color-coded badges for each stage
+```text
+Hey [First Name]! 📞
 
-### 4. Last Contact Display
-- Show **last contact date** for each lead
-- Display **contact method** (call, email, text)
-- Time ago format ("2 days ago", "1 week ago")
+Great talking with you! Here's everything you need to get started on your licensing journey:
 
-### 5. Automatic Follow-Up Emails
-After marking a lead as "Contacted":
-- **Trigger automatic email** saying "Great talking to you!"
-- Include **calendar link** to rebook if needed
-- Uses existing Resend email infrastructure
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📺 STEP 1: WATCH THE OVERVIEW VIDEO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Learn about the licensing process and what to expect.
+[Watch Video Button → YouTube Link]
 
----
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📄 STEP 2: REVIEW THE LICENSING GUIDE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Our comprehensive guide walks you through every step.
+[View Document Button → Google Doc]
 
-## Technical Architecture
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎓 STEP 3: START YOUR PRE-LICENSING COURSE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Complete your state-required education. We cover the cost!
+[Start Course Button → Course Link]
 
-### New Edge Function: `send-post-call-followup`
-Sends branded email after a call:
-- Subject: "Great Talking to You, [Name]! 📞"
-- Body: Warm message about the conversation
-- Includes Calendly link based on license status
-- Updates `contacted_at` timestamp
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-### UI Component Structure
-```
-CallCenter.tsx (redesigned)
-├── CallCenterFilters (source, license, status)
-├── CallCenterLeadCard (premium card with lead info)
-│   ├── VoiceRecorder (inline recording controls)
-│   ├── LastContactBadge (contact history)
-│   ├── PipelineStageSelector (stage dropdown)
-│   └── NotesEditor (quick notes with transcription)
-├── CallCenterActions (premium action buttons)
-└── CallCenterProgress (ring progress indicator)
+✅ We Cover Licensing Costs – No upfront costs
+✅ Takes About 7 Days – Complete in one week
+✅ Full Training Provided – Learn everything you need
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📅 Need help? Book a follow-up call:
+[Schedule Follow-Up Call Button]
+
+– The APEX Team
 ```
 
-### Database Interactions
-- **aged_leads.notes**: Append transcription
-- **applications.notes**: Append transcription
-- **applications.contacted_at**: Update on contact
-- **contact_history**: Log each interaction
-
 ---
-
-## Files to Create
-
-| File | Purpose |
-|------|---------|
-| `supabase/functions/send-post-call-followup/index.ts` | Auto email after contact |
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/pages/CallCenter.tsx` | Complete premium redesign with voice recording, stage selector, last contact |
-| `supabase/config.toml` | Register new edge function |
+| `supabase/functions/send-post-call-followup/index.ts` | Add licensing resources section for unlicensed leads |
 
 ---
 
-## Visual Design Details
+## Technical Details
 
-### Lead Card (Premium Glass Effect)
-- Soft glow border on hover
-- Gradient background header with lead source badge
-- Large, readable phone number with "Tap to Call" button
-- Recording indicator (pulsing red dot) when active
-- Live transcription area that expands when recording
+### Resource URLs (from GetLicensed.tsx)
+- **YouTube Video**: `https://www.youtube.com/embed/i1e5p-GEfAU` (will convert to watch link)
+- **Licensing Document**: `https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg/edit?usp=sharing`
+- **Pre-Licensing Course**: `https://partners.xcelsolutions.com/afe`
+- **Calendly URL**: `https://calendly.com/sam-com593/licensed-prospect-call-clone`
 
-### Action Buttons (Gradient Style)
-- **Contacted**: Teal gradient with check icon
-- **Hired**: Green gradient with success animation
-- **Contracted**: Blue gradient with document icon
-- **Not Qualified**: Subtle red outline
-- **No Pickup**: Amber with phone-off icon
+### Email Logic
+```typescript
+const isLicensed = licenseStatus === "licensed";
 
-### Progress Indicator
-- Circular ring progress (not bar)
-- Shows X of Y leads processed
-- Animated count-up numbers
-
----
-
-## Auto Follow-Up Email Content
-
-**Subject**: "Great Talking to You, [First Name]! 📞"
-
-**Body** (for licensed leads):
-```
-Hey [First Name]!
-
-It was great chatting with you just now! I'm excited about the possibility 
-of having you join the APEX team.
-
-If you have any questions or want to continue our conversation, feel free 
-to book another call:
-
-[Schedule Follow-Up Call Button → Calendly Link]
-
-Looking forward to working with you!
-
-– The APEX Team
+if (isLicensed) {
+  // Simple follow-up + calendar link
+} else {
+  // Full licensing resources package:
+  // - Step 1: YouTube video
+  // - Step 2: Google Doc guide
+  // - Step 3: Pre-licensing course link
+  // - Quick benefits list
+  // - Calendar link for questions
+}
 ```
 
-**Body** (for unlicensed leads):
-```
-Hey [First Name]!
+### Enhanced Email Design
 
-Great talking with you! I know the licensing process can seem overwhelming, 
-but we're here to help every step of the way.
-
-If you need any guidance or want to chat more:
-
-[Schedule a Call Button → Calendly Link]
-
-You've got this!
-
-– The APEX Team
-```
-
----
-
-## User Flow
-
-1. **Open Call Center** → Select filters → Click "Start Calling"
-2. **View lead card** with premium glass design
-3. **Click phone number** to initiate call
-4. **Click "Record Call"** → AI transcription starts automatically
-5. **Speak** → Watch notes appear in real-time
-6. **Click "Stop Recording"** → Notes are saved
-7. **Select action** (Contacted, Hired, etc.)
-8. **If "Contacted"** → Auto email sent with calendar link
-9. **Next lead slides in** with smooth animation
-
----
-
-## Keyboard Shortcuts (Enhanced)
-- `R` - Start/Stop recording
-- `1-5` - Quick actions
-- `N` - Skip to next
-- `ESC` - Exit call mode
-
----
-
-## Technical Implementation Notes
-
-### Voice Recording
-Uses the existing `SpeechRecognition` API pattern from `InterviewRecorder.tsx`:
-- Browser-native, no external API needed
-- Continuous transcription with interim results
-- Fallback message for unsupported browsers
-
-### Email Sending
-Uses existing Resend infrastructure:
-- RESEND_API_KEY already configured
-- Follows same email template patterns as other functions
-- Branded APEX styling
-
-### Stage Updates
-Maps to existing application status enum:
-- new → reviewing → contracting → approved
-- Updates `status`, `contacted_at`, `contracted_at` as appropriate
+For unlicensed leads, the email will have:
+- **Three clear steps** with icons and buttons
+- **Embedded video thumbnail** linking to YouTube
+- **Visual step indicators** (Step 1 → Step 2 → Step 3)
+- **Benefits checklist** (costs covered, 7 days, full training)
+- **Calendar booking button** at the bottom
 
 ---
 
 ## Expected Outcomes
 
 After implementation:
-- Premium, high-tech Call Center interface
-- Voice recording with live AI transcription
-- Automatic follow-up emails on every contact
-- Pipeline stage visibility and quick updates
-- Last contact tracking on every lead
-- Smooth animations and professional UX
-- Keyboard shortcuts for power users
+- Every post-call email for **unlicensed leads** includes:
+  - YouTube video link with thumbnail
+  - Licensing document link
+  - Pre-licensing course link
+  - Clear 3-step process
+  - Calendar booking option
+- **Licensed leads** continue to receive the simple follow-up email
+- Email design matches APEX branding (dark theme, teal accents, gradient buttons)

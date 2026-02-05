@@ -22,65 +22,79 @@ const getEmailHtml = (firstName: string) => `
     <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:16px;padding:32px;border:1px solid rgba(20,184,166,0.2);">
       <h2 style="font-size:24px;margin:0 0 16px 0;color:#14b8a6;">Hey ${firstName}!</h2>
       
-      <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 16px 0;">
-        It looks like you were interested in a remote high-ticket sales opportunity with Apex Financial and learning how to join a competitive brokerage.
+      <p style="font-size:16px;line-height:1.7;color:#d1d5db;margin:0 0 20px 0;">
+        A new remote sales position just opened up at Apex Financial and we thought of you.
       </p>
       
-      <div style="background:rgba(20,184,166,0.1);border-radius:8px;padding:20px;margin:20px 0;">
-        <p style="font-size:16px;color:#14b8a6;margin:0 0 12px 0;font-weight:bold;">What our new agents are earning:</p>
-        <ul style="margin:0;padding-left:20px;color:#d1d5db;">
-          <li style="margin-bottom:8px;"><strong style="color:#ffffff;">Starting income:</strong> $10,000+/month</li>
-          <li style="margin-bottom:8px;"><strong style="color:#ffffff;">Top performers:</strong> $50,000+/month within 4 months</li>
-        </ul>
+      <p style="font-size:16px;line-height:1.7;color:#ffffff;margin:0 0 12px 0;font-weight:600;">
+        Here's what's on the table:
+      </p>
+      
+      <div style="background:rgba(20,184,166,0.1);border-radius:12px;padding:24px;margin:20px 0;">
+        <table style="width:100%;border-collapse:collapse;">
+          <tr>
+            <td style="padding:10px 0;color:#d1d5db;font-size:15px;">
+              <span style="color:#14b8a6;font-weight:bold;margin-right:8px;">✓</span>
+              Start at <strong style="color:#ffffff;">70% commission</strong> (up to 145%)
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:10px 0;color:#d1d5db;font-size:15px;">
+              <span style="color:#14b8a6;font-weight:bold;margin-right:8px;">✓</span>
+              Free warm leads provided daily
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:10px 0;color:#d1d5db;font-size:15px;">
+              <span style="color:#14b8a6;font-weight:bold;margin-right:8px;">✓</span>
+              Complete training program included
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:10px 0;color:#d1d5db;font-size:15px;">
+              <span style="color:#14b8a6;font-weight:bold;margin-right:8px;">✓</span>
+              No cold calling required
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:10px 0;color:#d1d5db;font-size:15px;">
+              <span style="color:#14b8a6;font-weight:bold;margin-right:8px;">✓</span>
+              Work from anywhere
+            </td>
+          </tr>
+        </table>
       </div>
       
-      <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 16px 0;">
-        <strong style="color:#ffffff;">What's included:</strong>
-      </p>
-      <ul style="margin:0 0 20px 0;padding-left:20px;color:#d1d5db;">
-        <li style="margin-bottom:8px;">✓ Free leads provided daily</li>
-        <li style="margin-bottom:8px;">✓ Comprehensive training program</li>
-        <li style="margin-bottom:8px;">✓ Free CRM access</li>
-        <li style="margin-bottom:8px;">✓ Equity partnership opportunity</li>
-        <li style="margin-bottom:8px;">✓ Work virtually or from the office</li>
-      </ul>
-      
-      <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 24px 0;">
-        We're now accepting applications. Here are your options:
+      <p style="font-size:16px;line-height:1.7;color:#d1d5db;margin:20px 0;">
+        Our top performers are earning <strong style="color:#14b8a6;">$10K-$50K+ per month</strong>, and we're looking for motivated individuals to join the team.
       </p>
       
-      <!-- CTA Buttons -->
+      <!-- Primary CTA -->
       <div style="text-align:center;margin:32px 0;">
         <a href="https://apex-financial.org/apply" 
-           style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#ffffff;padding:16px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;margin:8px;">
-          Apply Now
+           style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#ffffff;padding:18px 48px;text-decoration:none;border-radius:12px;font-weight:bold;font-size:18px;box-shadow:0 6px 24px rgba(20,184,166,0.35);">
+          🚀 CLAIM YOUR SPOT
         </a>
       </div>
       
-      <div style="text-align:center;margin:20px 0;">
-        <a href="https://apex-financial.org" 
-           style="display:inline-block;color:#14b8a6;padding:12px 24px;text-decoration:none;border:1px solid #14b8a6;border-radius:8px;font-weight:bold;font-size:14px;margin:8px;">
-          Learn More About Us
-        </a>
-      </div>
-      
-      <div style="text-align:center;margin:20px 0;">
-        <a href="https://apex-financial.org/schedule-call"
-           style="display:inline-block;color:#ffffff;padding:12px 24px;text-decoration:none;border:1px solid rgba(255,255,255,0.3);border-radius:8px;font-size:14px;margin:8px;">
-          📞 Schedule a Call
-        </a>
-      </div>
-      
-      <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
-        Looking forward to hearing from you,<br>
-        <strong style="color:#ffffff;">The Apex Financial Team</strong>
+      <p style="font-size:15px;color:#9ca3af;text-align:center;margin:24px 0 0 0;font-style:italic;">
+        Spots are limited and filling fast.
       </p>
+      
+      <div style="border-top:1px solid rgba(255,255,255,0.1);margin-top:28px;padding-top:20px;">
+        <p style="font-size:14px;color:#9ca3af;margin:0;">
+          – The Apex Financial Team
+        </p>
+      </div>
     </div>
     
-    <p style="font-size:12px;color:#6b7280;text-align:center;margin-top:32px;">
-      © ${new Date().getFullYear()} Apex Financial. All rights reserved.<br>
-      <a href="https://apex-financial.org" style="color:#6b7280;">Visit our website</a>
-    </p>
+    <!-- Footer -->
+    <div style="text-align:center;margin-top:32px;">
+      <p style="font-size:12px;color:#6b7280;margin:0 0 8px 0;">
+        © ${new Date().getFullYear()} Apex Financial. All rights reserved.
+      </p>
+      <a href="https://apex-financial.org" style="color:#6b7280;font-size:12px;">Visit our website</a>
+    </div>
   </div>
 </body>
 </html>
@@ -115,7 +129,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { error: emailError } = await resend.emails.send({
       from: "Apex Financial <team@apex-financial.org>",
       to: [email],
-      subject: "Ready to restart your financial services career?",
+      subject: "🔥 New Remote Sales Position Just Opened – Apply Now",
       html,
     });
 

@@ -136,7 +136,7 @@ const phases: Phase[] = [
       {
         icon: DollarSign,
         title: "Earn Income Quickly & Efficiently",
-        description: "Commission payouts within 72 hours. Competitive rates from 50%-145% based on production.",
+        description: "Commission payouts within 72 hours. Competitive rates from 70%-145% based on production.",
         benefit: "✓ 72-hour payouts",
       },
       {
@@ -206,7 +206,7 @@ const whyAgentsChoose = [
   {
     icon: DollarSign,
     title: "Top Commission Rates",
-    description: "Earn 50%-145% on every policy with APEX",
+    description: "Earn 70%-145% on every policy with APEX",
   },
   {
     icon: Target,

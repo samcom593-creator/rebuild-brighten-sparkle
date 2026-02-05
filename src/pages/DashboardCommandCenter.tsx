@@ -15,6 +15,8 @@ import {
   ChevronDown,
   Mail,
   Copy,
+  Crown,
+  UserMinus,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -69,12 +71,14 @@ type FilterType = "all" | "producers" | "weak" | "zero" | "inactive";
 interface AgentWithStats {
   id: string;
   profileId: string | null;
+  userId: string | null;
   fullName: string;
   email: string | null;
   phone: string | null;
   status: string;
   isDeactivated: boolean;
   isInactive: boolean;
+  isManager: boolean;
   totalAlp: number;
   totalDeals: number;
   closingRate: number;
@@ -158,6 +162,14 @@ export default function DashboardCommandCenter() {
 
       if (prodError) throw prodError;
 
+      // Fetch manager roles to determine which agents are managers
+      const { data: managerRoles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "manager");
+
+      const managerUserIds = new Set(managerRoles?.map(r => r.user_id) || []);
+
       // Build production map from pre-aggregated data (cheap operation)
       const productionMap = new Map<string, { alp: number; deals: number; presentations: number; lastDate: string }>();
       production?.forEach((p) => {
@@ -192,12 +204,14 @@ export default function DashboardCommandCenter() {
           return {
             id: a.id,
             profileId: a.profile_id,
+            userId: a.user_id,
             fullName: profile?.full_name || "Unknown",
             email: profile?.email || null,
             phone: profile?.phone || null,
             status: a.status,
             isDeactivated: a.is_deactivated || false,
             isInactive: a.is_inactive || false,
+            isManager: a.user_id ? managerUserIds.has(a.user_id) : false,
             totalAlp: prod?.alp || 0,
             totalDeals: prod?.deals || 0,
             closingRate,
@@ -258,7 +272,59 @@ export default function DashboardCommandCenter() {
     }
   }, []);
 
-  // Apply filters
+  // Promote agent to manager
+  const handlePromoteToManager = useCallback(async (agent: AgentWithStats) => {
+    if (!agent.userId) {
+      toast.error("This agent has no user account linked");
+      return;
+    }
+    
+    try {
+      const { error } = await supabase
+        .from("user_roles")
+        .insert({ user_id: agent.userId, role: "manager" });
+      
+      if (error) {
+        if (error.code === "23505") {
+          toast.info("This agent is already a manager");
+        } else {
+          throw error;
+        }
+        return;
+      }
+      
+      toast.success(`${agent.fullName} is now a Manager!`);
+      refetch();
+    } catch (error: any) {
+      console.error("Error promoting to manager:", error);
+      toast.error("Failed to promote agent to manager");
+    }
+  }, [refetch]);
+
+  // Demote agent from manager
+  const handleDemoteFromManager = useCallback(async (agent: AgentWithStats) => {
+    if (!agent.userId) {
+      toast.error("This agent has no user account linked");
+      return;
+    }
+    
+    try {
+      const { error } = await supabase
+        .from("user_roles")
+        .delete()
+        .eq("user_id", agent.userId)
+        .eq("role", "manager");
+      
+      if (error) throw error;
+      
+      toast.success(`${agent.fullName} is no longer a Manager`);
+      refetch();
+    } catch (error: any) {
+      console.error("Error demoting from manager:", error);
+      toast.error("Failed to remove manager role");
+    }
+  }, [refetch]);
+
   const filteredAgents = useMemo(() => {
     if (!agentsData) return [];
     
@@ -547,6 +613,11 @@ export default function DashboardCommandCenter() {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-medium truncate">{agent.fullName}</span>
+                              {agent.isManager && (
+                                <Badge variant="outline" className="text-xs bg-teal-500/10 text-teal-600 border-teal-500/30 shrink-0">
+                                  Manager
+                                </Badge>
+                              )}
                               {!agent.hasCrmLink && (
                                 <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-600 border-amber-500/30 shrink-0">
                                   No CRM
@@ -598,6 +669,26 @@ export default function DashboardCommandCenter() {
                                 <Pencil className="h-4 w-4 mr-2" />
                                 Edit Profile
                               </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              {agent.userId && (
+                                agent.isManager ? (
+                                  <DropdownMenuItem onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    handleDemoteFromManager(agent); 
+                                  }}>
+                                    <UserMinus className="h-4 w-4 mr-2" />
+                                    Remove Manager Role
+                                  </DropdownMenuItem>
+                                ) : (
+                                  <DropdownMenuItem onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    handlePromoteToManager(agent); 
+                                  }}>
+                                    <Crown className="h-4 w-4 mr-2" />
+                                    Promote to Manager
+                                  </DropdownMenuItem>
+                                )
+                              )}
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={(e) => { 
                                 e.stopPropagation(); 

@@ -32,19 +32,24 @@ interface AddAgentModalProps {
 }
 
 export function AddAgentModal({ onAgentAdded }: AddAgentModalProps) {
-  const { user, isAdmin } = useAuth();
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingManagers, setLoadingManagers] = useState(false);
   const [managers, setManagers] = useState<Manager[]>([]);
-  
+
   // Form state
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [managerId, setManagerId] = useState("");
+  const [licenseStatus, setLicenseStatus] = useState<"licensed" | "unlicensed" | "in_progress">("unlicensed");
   const [notes, setNotes] = useState("");
   const [startDate, setStartDate] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
+  const [instagramHandle, setInstagramHandle] = useState("");
 
   useEffect(() => {
     if (open) {
@@ -53,130 +58,112 @@ export function AddAgentModal({ onAgentAdded }: AddAgentModalProps) {
   }, [open]);
 
   const fetchManagers = async () => {
+    setLoadingManagers(true);
     try {
-      // Fetch managers with their profiles
-      const { data: managerRoles } = await supabase
-        .from("user_roles")
-        .select("user_id")
-        .eq("role", "manager");
+      // Use the edge function that bypasses RLS
+      const { data, error } = await supabase.functions.invoke("get-active-managers");
 
-      if (!managerRoles?.length) return;
+      if (error) {
+        console.error("Error fetching managers:", error);
+        toast.error("Failed to load managers");
+        return;
+      }
 
-      const managerUserIds = managerRoles.map(r => r.user_id);
+      if (data?.managers && Array.isArray(data.managers)) {
+        setManagers(data.managers);
 
-      // Get agent IDs for managers
-      const { data: managerAgents } = await supabase
-        .from("agents")
-        .select("id, user_id")
-        .in("user_id", managerUserIds)
-        .eq("status", "active");
+        // Pre-select current user's agent record if they're a manager
+        if (user) {
+          const { data: currentAgent } = await supabase
+            .from("agents")
+            .select("id")
+            .eq("user_id", user.id)
+            .maybeSingle();
 
-      if (!managerAgents?.length) return;
-
-      // Get profiles
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, full_name")
-        .in("user_id", managerUserIds);
-
-      const profileMap = new Map(profiles?.map(p => [p.user_id, p.full_name]) || []);
-
-      const managerList: Manager[] = managerAgents.map(agent => ({
-        id: agent.id,
-        name: profileMap.get(agent.user_id) || "Unknown Manager",
-      }));
-
-      setManagers(managerList);
-
-      // Pre-select current user if they're a manager
-      if (user) {
-        const currentAgent = managerAgents.find(a => a.user_id === user.id);
-        if (currentAgent) {
-          setManagerId(currentAgent.id);
-        } else if (managerList.length > 0) {
-          setManagerId(managerList[0].id);
+          if (currentAgent) {
+            const isCurrentUserManager = data.managers.some((m: Manager) => m.id === currentAgent.id);
+            if (isCurrentUserManager) {
+              setManagerId(currentAgent.id);
+            } else if (data.managers.length > 0) {
+              setManagerId(data.managers[0].id);
+            }
+          } else if (data.managers.length > 0) {
+            setManagerId(data.managers[0].id);
+          }
         }
       }
     } catch (error) {
       console.error("Error fetching managers:", error);
+      toast.error("Failed to load managers");
+    } finally {
+      setLoadingManagers(false);
     }
+  };
+
+  const formatPhoneNumber = (value: string) => {
+    const cleaned = value.replace(/\D/g, "");
+    if (cleaned.length <= 3) return cleaned;
+    if (cleaned.length <= 6) return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3)}`;
+    return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6, 10)}`;
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatPhoneNumber(e.target.value);
+    setPhone(formatted);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!firstName || !lastName || !email || !phone || !managerId) {
       toast.error("Please fill in all required fields");
       return;
     }
 
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast.error("Please enter a valid email address");
+      return;
+    }
+
     setLoading(true);
     try {
-      // Create a profile first (without user_id since we're adding manually)
-      // For manually added agents, we'll create a placeholder user_id
-      const tempUserId = crypto.randomUUID();
-
-      // Create profile
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .insert({
-          user_id: tempUserId,
-          full_name: `${firstName} ${lastName}`,
+      const { data, error } = await supabase.functions.invoke("add-agent", {
+        body: {
+          firstName,
+          lastName,
           email,
           phone,
-        });
+          managerId,
+          licenseStatus,
+          notes: notes.trim() || undefined,
+          startDate: startDate || undefined,
+          city: city.trim() || undefined,
+          state: state.trim() || undefined,
+          instagramHandle: instagramHandle.trim() || undefined,
+        },
+      });
 
-      if (profileError) throw profileError;
-
-      // Create agent record
-      const { error: agentError } = await supabase
-        .from("agents")
-        .insert({
-          user_id: tempUserId,
-          invited_by_manager_id: managerId,
-          status: "active",
-          license_status: "licensed",
-          onboarding_stage: "onboarding",
-          start_date: startDate || null,
-        });
-
-      if (agentError) throw agentError;
-
-      // Add initial note if provided
-      if (notes.trim()) {
-        const { data: newAgent } = await supabase
-          .from("agents")
-          .select("id")
-          .eq("user_id", tempUserId)
-          .single();
-
-        if (newAgent) {
-          await supabase
-            .from("agent_notes")
-            .insert({
-              agent_id: newAgent.id,
-              note: notes,
-              created_by: user?.id,
-            });
-        }
+      if (error) {
+        console.error("Error adding agent:", error);
+        toast.error(error.message || "Failed to add agent");
+        return;
       }
 
-      // Send welcome email
-      try {
-        await supabase.functions.invoke("welcome-new-agent", {
-          body: { agentName: `${firstName} ${lastName}`, agentEmail: email },
-        });
-      } catch (emailError) {
-        console.log("Welcome email skipped:", emailError);
+      if (data?.error) {
+        toast.error(data.error);
+        return;
       }
 
-      toast.success("Agent added successfully!");
+      toast.success(data?.message || "Agent added successfully!");
       setOpen(false);
       resetForm();
       onAgentAdded?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error adding agent:", error);
-      toast.error(error.message || "Failed to add agent");
+      const errorMessage = error instanceof Error ? error.message : "Failed to add agent";
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -188,8 +175,12 @@ export function AddAgentModal({ onAgentAdded }: AddAgentModalProps) {
     setEmail("");
     setPhone("");
     setManagerId("");
+    setLicenseStatus("unlicensed");
     setNotes("");
     setStartDate("");
+    setCity("");
+    setState("");
+    setInstagramHandle("");
   };
 
   return (
@@ -200,11 +191,12 @@ export function AddAgentModal({ onAgentAdded }: AddAgentModalProps) {
           Add Agent
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Agent</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+          {/* Name Row */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="firstName">First Name *</Label>
@@ -228,56 +220,119 @@ export function AddAgentModal({ onAgentAdded }: AddAgentModalProps) {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="email">Email *</Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="john@example.com"
-              required
-            />
+          {/* Contact Row */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email *</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="john@example.com"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone *</Label>
+              <Input
+                id="phone"
+                type="tel"
+                value={phone}
+                onChange={handlePhoneChange}
+                placeholder="(555) 123-4567"
+                required
+              />
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="phone">Phone *</Label>
-            <Input
-              id="phone"
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="(555) 123-4567"
-              required
-            />
+          {/* Manager & License Status Row */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="manager">Assign to Manager *</Label>
+              <Select value={managerId} onValueChange={setManagerId} required>
+                <SelectTrigger>
+                  <SelectValue placeholder={loadingManagers ? "Loading..." : "Select a manager"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {loadingManagers ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    </div>
+                  ) : managers.length === 0 ? (
+                    <div className="px-2 py-4 text-sm text-muted-foreground text-center">
+                      No managers available
+                    </div>
+                  ) : (
+                    managers.map((manager) => (
+                      <SelectItem key={manager.id} value={manager.id}>
+                        {manager.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="licenseStatus">License Status</Label>
+              <Select value={licenseStatus} onValueChange={(v) => setLicenseStatus(v as typeof licenseStatus)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unlicensed">Unlicensed</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="licensed">Licensed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="manager">Assign to Manager *</Label>
-            <Select value={managerId} onValueChange={setManagerId} required>
-              <SelectTrigger>
-                <SelectValue placeholder="Select a manager" />
-              </SelectTrigger>
-              <SelectContent>
-                {managers.map((manager) => (
-                  <SelectItem key={manager.id} value={manager.id}>
-                    {manager.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* Location Row */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="city">City</Label>
+              <Input
+                id="city"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="New York"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="state">State</Label>
+              <Input
+                id="state"
+                value={state}
+                onChange={(e) => setState(e.target.value)}
+                placeholder="NY"
+              />
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="startDate">Start Date</Label>
-            <Input
-              id="startDate"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-            />
+          {/* Start Date & Instagram Row */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="startDate">Start Date</Label>
+              <Input
+                id="startDate"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="instagram">Instagram Handle</Label>
+              <Input
+                id="instagram"
+                value={instagramHandle}
+                onChange={(e) => setInstagramHandle(e.target.value)}
+                placeholder="@username"
+              />
+            </div>
           </div>
 
+          {/* Notes */}
           <div className="space-y-2">
             <Label htmlFor="notes">Initial Notes</Label>
             <Textarea
@@ -289,11 +344,12 @@ export function AddAgentModal({ onAgentAdded }: AddAgentModalProps) {
             />
           </div>
 
+          {/* Actions */}
           <div className="flex justify-end gap-3 pt-4">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || managers.length === 0}>
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />

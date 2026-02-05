@@ -333,9 +333,34 @@ export default function Apply() {
       
       // Move to referral step
       setCurrentStep(5);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting application:", error);
-      toast.error("Failed to submit application. Please try again.");
+      
+      // Handle specific error types for better user feedback
+      const errorMessage = error?.message?.toLowerCase() || "";
+      const errorStatus = error?.status || error?.code;
+      
+      if (errorMessage.includes("duplicate") || errorStatus === 409) {
+        toast.error("An application with this email or phone already exists. Please contact support if you need to update it.", {
+          duration: 6000,
+        });
+      } else if (errorStatus === 404) {
+        toast.error("Service temporarily unavailable. Please try again in a moment.", {
+          duration: 5000,
+        });
+      } else if (errorStatus === 429) {
+        toast.error("Too many requests. Please wait a moment and try again.", {
+          duration: 5000,
+        });
+      } else if (errorMessage.includes("network") || errorMessage.includes("fetch")) {
+        toast.error("Network error. Please check your connection and try again.", {
+          duration: 5000,
+        });
+      } else {
+        toast.error("Failed to submit application. Please check your connection and try again.", {
+          duration: 5000,
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }

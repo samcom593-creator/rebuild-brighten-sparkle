@@ -1,9 +1,10 @@
 import { motion } from "framer-motion";
-import { Phone, Mail, Instagram, Clock, User, MapPin, Calendar } from "lucide-react";
+import { Phone, Mail, Instagram, Clock, User, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, format } from "date-fns";
 import { CallCenterVoiceRecorder } from "./CallCenterVoiceRecorder";
 import { CallCenterStageSelector, type PipelineStage } from "./CallCenterStageSelector";
+import { QuickEmailMenu } from "@/components/dashboard/QuickEmailMenu";
 
 interface UnifiedLead {
   id: string;
@@ -222,12 +223,24 @@ export function CallCenterLeadCard({
           </div>
         )}
 
-        {/* Voice Recorder */}
-        <div className="pt-4 border-t border-border/30">
-          <CallCenterVoiceRecorder
-            onTranscriptionUpdate={onTranscriptionUpdate}
-            onRecordingStateChange={onRecordingStateChange}
-          />
+        {/* Voice Recorder & Quick Email */}
+        <div className="pt-4 border-t border-border/30 space-y-4">
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <CallCenterVoiceRecorder
+                onTranscriptionUpdate={onTranscriptionUpdate}
+                onRecordingStateChange={onRecordingStateChange}
+              />
+            </div>
+            <QuickEmailMenu
+              applicationId={lead.id}
+              agentId={null}
+              licenseStatus={lead.licenseStatus as "licensed" | "unlicensed" | "pending"}
+              recipientEmail={lead.email}
+              recipientName={lead.firstName + (lead.lastName ? ` ${lead.lastName}` : "")}
+              className="shrink-0"
+            />
+          </div>
         </div>
       </div>
     </motion.div>

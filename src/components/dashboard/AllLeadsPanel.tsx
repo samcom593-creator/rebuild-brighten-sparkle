@@ -40,6 +40,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { QuickAssignMenu } from "@/components/dashboard/QuickAssignMenu";
 
 interface Lead {
   id: string;
@@ -248,6 +249,11 @@ export function AllLeadsPanel() {
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-1">
+          <QuickAssignMenu
+            applicationId={lead.id}
+            currentAgentId={lead.assignedAgentId || null}
+            onAssigned={fetchAllLeads}
+          />
           <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
             <a href={`tel:${lead.phone}`}>
               <Phone className="h-4 w-4" />
@@ -357,6 +363,7 @@ export function AllLeadsPanel() {
                 <TableHead>License</TableHead>
                 <TableHead>Assigned To</TableHead>
                 <TableHead>Applied</TableHead>
+                <TableHead>Assign</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -400,6 +407,7 @@ export function AllLeadsPanel() {
                     <TableHead>License</TableHead>
                     <TableHead>Assigned To</TableHead>
                     <TableHead>Applied</TableHead>
+                    <TableHead>Assign</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>

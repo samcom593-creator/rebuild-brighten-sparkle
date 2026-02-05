@@ -3,7 +3,7 @@ import { Phone, Mail, Instagram, Clock, User, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, format } from "date-fns";
 import { CallCenterVoiceRecorder } from "./CallCenterVoiceRecorder";
-import { CallCenterStageSelector, type PipelineStage } from "./CallCenterStageSelector";
+import { CallCenterStageSelector, type LicensingStage } from "./CallCenterStageSelector";
 import { QuickEmailMenu } from "@/components/dashboard/QuickEmailMenu";
 
 interface UnifiedLead {
@@ -17,6 +17,8 @@ interface UnifiedLead {
   notes?: string;
   motivation?: string;
   licenseStatus: string;
+  licenseProgress?: string | null;
+  testScheduledDate?: string | null;
   createdAt: string;
   status: string;
   contactedAt?: string;
@@ -25,34 +27,40 @@ interface UnifiedLead {
 interface CallCenterLeadCardProps {
   lead: UnifiedLead;
   onTranscriptionUpdate: (notes: string) => void;
-  onStageChange: (stage: PipelineStage) => void;
+  onStageChange: (stage: LicensingStage) => void;
+  onTestDateChange?: (date: Date | undefined) => void;
   onCall: () => void;
   isRecording: boolean;
   onRecordingStateChange: (recording: boolean) => void;
   className?: string;
 }
 
-// Map status to pipeline stage
-function statusToStage(status: string): PipelineStage {
-  switch (status) {
-    case "new":
-      return "new";
-    case "contacted":
-    case "reviewing":
-      return "contacted";
-    case "qualified":
-      return "qualified";
-    case "contracted":
-    case "contracting":
-      return "contracted";
-    case "approved":
-    case "onboarding":
-      return "onboarding";
-    case "active":
-    case "hired":
-      return "active";
+// Map license_progress to LicensingStage
+function progressToStage(licenseProgress: string | null | undefined, licenseStatus: string): LicensingStage {
+  // If licensed, always show licensed
+  if (licenseStatus === "licensed") {
+    return "licensed";
+  }
+  
+  // Map license_progress values
+  switch (licenseProgress) {
+    case "course_purchased":
+      return "course_purchased";
+    case "finished_course":
+      return "finished_course";
+    case "test_scheduled":
+      return "test_scheduled";
+    case "passed_test":
+      return "passed_test";
+    case "fingerprints_done":
+      return "fingerprints_done";
+    case "waiting_on_license":
+      return "waiting_on_license";
+    case "licensed":
+      return "licensed";
     default:
-      return "new";
+      // Default to course_purchased for unlicensed leads
+      return "course_purchased";
   }
 }
 
@@ -60,12 +68,13 @@ export function CallCenterLeadCard({
   lead,
   onTranscriptionUpdate,
   onStageChange,
+  onTestDateChange,
   onCall,
   isRecording,
   onRecordingStateChange,
   className,
 }: CallCenterLeadCardProps) {
-  const currentStage = statusToStage(lead.status);
+  const currentStage = progressToStage(lead.licenseProgress, lead.licenseStatus);
 
   return (
     <motion.div
@@ -143,10 +152,12 @@ export function CallCenterLeadCard({
           </div>
 
           {/* Stage Selector */}
-          <div className="w-40">
+          <div className="w-48">
             <CallCenterStageSelector
               currentStage={currentStage}
               onStageChange={onStageChange}
+              testScheduledDate={lead.testScheduledDate}
+              onTestDateChange={onTestDateChange}
             />
           </div>
         </div>

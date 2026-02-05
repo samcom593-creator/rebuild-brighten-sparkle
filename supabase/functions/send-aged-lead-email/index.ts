@@ -113,7 +113,7 @@ const handler = async (req: Request): Promise<Response> => {
     const html = getEmailHtml(name);
 
     const { error: emailError } = await resend.emails.send({
-      from: "Apex Financial <team@updates.apexlifeadvisors.com>",
+      from: "Apex Financial <team@apex-financial.org>",
       to: [email],
       subject: "Ready to restart your financial services career?",
       html,

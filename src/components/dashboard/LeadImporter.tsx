@@ -46,35 +46,22 @@ export function LeadImporter({ className }: { className?: string }) {
   const [selectedManager, setSelectedManager] = useState<string>("");
   const [importing, setImporting] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
+  const [loadingManagers, setLoadingManagers] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchManagers = async () => {
-    const { data: managerRoles } = await supabase
-      .from("user_roles")
-      .select("user_id")
-      .eq("role", "manager");
-
-    if (!managerRoles) return;
-
-    const { data: agents } = await supabase
-      .from("agents")
-      .select("id, user_id")
-      .in("user_id", managerRoles.map((r) => r.user_id))
-      .eq("status", "active");
-
-    if (!agents) return;
-
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("user_id, full_name")
-      .in("user_id", managerRoles.map((r) => r.user_id));
-
-    const managersData = agents.map((a) => ({
-      id: a.id,
-      name: profiles?.find((p) => p.user_id === a.user_id)?.full_name || "Unknown",
-    }));
-
-    setManagers(managersData);
+    setLoadingManagers(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("get-active-managers");
+      if (error) throw error;
+      setManagers(data?.managers || []);
+    } catch (err) {
+      console.error("Failed to fetch managers:", err);
+      toast.error("Failed to load managers");
+      setManagers([]);
+    } finally {
+      setLoadingManagers(false);
+    }
   };
 
   const handleOpenChange = (newOpen: boolean) => {
@@ -87,6 +74,7 @@ export function LeadImporter({ className }: { className?: string }) {
       setParsedLeads([]);
       setSelectedManager("");
       setParseError(null);
+      setLoadingManagers(false);
     }
   };
 
@@ -287,16 +275,20 @@ export function LeadImporter({ className }: { className?: string }) {
           {/* Manager Selection */}
           <div>
             <Label>Assign to Manager</Label>
-            <Select value={selectedManager} onValueChange={setSelectedManager}>
+            <Select value={selectedManager} onValueChange={setSelectedManager} disabled={loadingManagers}>
               <SelectTrigger className="mt-2">
-                <SelectValue placeholder="Select a manager..." />
+                <SelectValue placeholder={loadingManagers ? "Loading managers..." : "Select a manager..."} />
               </SelectTrigger>
               <SelectContent>
-                {managers.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    {m.name}
-                  </SelectItem>
-                ))}
+                {managers.length === 0 && !loadingManagers ? (
+                  <div className="p-2 text-sm text-muted-foreground text-center">No managers available</div>
+                ) : (
+                  managers.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.name}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>

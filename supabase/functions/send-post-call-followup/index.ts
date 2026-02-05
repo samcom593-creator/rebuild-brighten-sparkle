@@ -73,10 +73,69 @@ const handler = async (req: Request): Promise<Response> => {
       ` : `
       <!-- Unlicensed Message -->
       <p style="margin: 0 0 20px 0; font-size: 16px; line-height: 1.7; color: #e5e7eb;">
-        Great talking with you! I know the licensing process can seem overwhelming, but we're here to help every step of the way.
+        Great talking with you! Here's everything you need to get started on your licensing journey:
       </p>
-      <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.7; color: #e5e7eb;">
-        Thousands of agents have started exactly where you are. If you need any guidance or want to chat more about getting started:
+
+      <!-- Step 1: Video -->
+      <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 16px; padding: 24px; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+          <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">1</div>
+          <h3 style="margin: 0; font-size: 18px; font-weight: 700; color: #10b981;">📺 Watch the Overview Video</h3>
+        </div>
+        <p style="margin: 0 0 16px 0; font-size: 14px; color: #9ca3af;">
+          Learn about the licensing process and what to expect in this quick video.
+        </p>
+        <a href="https://www.youtube.com/watch?v=i1e5p-GEfAU" style="display: inline-block; background: #ef4444; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600;">
+          ▶️ Watch Video
+        </a>
+      </div>
+
+      <!-- Step 2: Document -->
+      <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 16px; padding: 24px; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+          <div style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">2</div>
+          <h3 style="margin: 0; font-size: 18px; font-weight: 700; color: #3b82f6;">📄 Review the Licensing Guide</h3>
+        </div>
+        <p style="margin: 0 0 16px 0; font-size: 14px; color: #9ca3af;">
+          Our comprehensive guide walks you through every step of the process.
+        </p>
+        <a href="https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg/edit?usp=sharing" style="display: inline-block; background: #3b82f6; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600;">
+          📖 View Guide
+        </a>
+      </div>
+
+      <!-- Step 3: Course -->
+      <div style="background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 16px; padding: 24px; margin-bottom: 24px;">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+          <div style="background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%); color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px;">3</div>
+          <h3 style="margin: 0; font-size: 18px; font-weight: 700; color: #a855f7;">🎓 Start Your Pre-Licensing Course</h3>
+        </div>
+        <p style="margin: 0 0 16px 0; font-size: 14px; color: #9ca3af;">
+          Complete your state-required education. We cover the cost!
+        </p>
+        <a href="https://partners.xcelsolutions.com/afe" style="display: inline-block; background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%); color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600;">
+          🚀 Start Course
+        </a>
+      </div>
+
+      <!-- Benefits -->
+      <div style="background: rgba(16, 185, 129, 0.05); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+          <span style="color: #10b981;">✅</span>
+          <span style="color: #e5e7eb; font-size: 14px;"><strong>We Cover Licensing Costs</strong> – No upfront costs to get started</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+          <span style="color: #10b981;">✅</span>
+          <span style="color: #e5e7eb; font-size: 14px;"><strong>Takes About 7 Days</strong> – Complete your licensing in one week</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="color: #10b981;">✅</span>
+          <span style="color: #e5e7eb; font-size: 14px;"><strong>Full Training Provided</strong> – Learn everything you need to succeed</span>
+        </div>
+      </div>
+
+      <p style="margin: 0 0 16px 0; font-size: 16px; line-height: 1.7; color: #e5e7eb;">
+        📅 <strong>Have questions?</strong> Book a follow-up call anytime:
       </p>
       `}
 

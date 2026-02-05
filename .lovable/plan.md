@@ -1,145 +1,248 @@
 
-## Goals
-1. On the **Purchase Leads** page, when a user taps **Venmo** or **Cash App**, clearly instruct them to type **“leads”** in the payment **note field** (so payments are easy to match).
-2. Make navigation/load screens feel **way faster**, especially around the sidebar and route changes.
-3. Keep lead-count editing locked to **you only** (admin), both in UI and enforced by backend rules.
+
+## Comprehensive Plan: Aged Leads System + Call Mode + Purchase Lead Notifications
+
+This plan addresses all your requirements for the aged leads system, call mode feature, purchase lead notifications, and overall performance optimization.
 
 ---
 
-## What I found (root causes of slowness)
-### 1) `useAuth()` is being instantiated dozens of times
-- `useAuth()` is used across many components (GlobalSidebar + lots of dashboard widgets/pages).
-- The current `useAuth()` implementation sets up:
-  - `supabase.auth.onAuthStateChange(...)` subscription
-  - `supabase.auth.getSession()`
-  - profile + roles queries
-- Because it’s a plain hook (not a shared provider), those listeners/queries happen **per component mount**, which can create:
-  - repeated loading states
-  - extra re-renders
-  - event subscription overhead
-  - “load screen” flashes in `ProtectedRoute` (since it shows a skeleton while `isLoading` is true)
+## Summary of Features
 
-### 2) The sidebar re-renders more than it should
-- Many pages wrap their content in `<DashboardLayout>` which mounts the sidebar from inside the page component.
-- Any frequent state update inside a page (timers, realtime refetches, animations) can cause the layout + sidebar to re-render more often than necessary.
-- Example: `PurchaseLeads` has a 1-second countdown tick, which will re-render the page frequently.
-
-### 3) Blocking Framer Motion transitions
-- `AnimatePresence mode="wait"` exists in `Apply.tsx` and `AgentNumbersLogin.tsx`.
-- `mode="wait"` can make transitions feel “stuck” because it waits for exit animations before entering the next view.
+| Feature | Description |
+|---------|-------------|
+| Licensed/Unlicensed Filters | Filter buttons to toggle between licensed and unlicensed aged leads |
+| Role-Based Access | Admin sees all + can add/move leads; Managers see only their assigned leads |
+| Enhanced Lead Importer | CSV upload with first_name, last_name, email, phone, instagram, motivation/notes |
+| Call Mode | High-performance one-lead-at-a-time calling interface with action buttons |
+| Purchase Notifications | Email alerts to admin, manager, and purchaser when leads are bought |
+| Performance Optimizations | Faster loading, optimized queries, and reduced re-renders |
 
 ---
 
-## Changes I will implement
+## 1. Database Schema Enhancement
 
-### A) Purchase Leads: “Type leads in the note” instruction on tap
-**File:** `src/pages/PurchaseLeads.tsx`
+### Add columns to `aged_leads` table:
+```sql
+ALTER TABLE aged_leads ADD COLUMN IF NOT EXISTS instagram_handle text;
+ALTER TABLE aged_leads ADD COLUMN IF NOT EXISTS motivation text;
+```
 
-1. Add a small, clear instruction in the UI near the payment buttons:
-   - “Important: In the payment note field, type: **leads**”
-2. When the user taps **Venmo** or **Cash App**, open a lightweight confirmation dialog (instead of immediately opening the link):
-   - Shows:
-     - Package name + weekly price
-     - Instruction: “In the note field, type: leads”
-   - Includes buttons:
-     - “Copy ‘leads’” (copies to clipboard)
-     - “Continue to Venmo/Cash App” (then opens the external link)
-3. Keep current links exactly as provided:
-   - Venmo QR link
-   - Cash App `$ApexFinancial`
-
-Why: This guarantees users see the instruction at the exact moment they’re about to pay.
+**Why**: These columns support the new import fields (Instagram handle and motivation/notes that get summarized).
 
 ---
 
-### B) Ensure only you can edit lead count (extra hardening)
-**File:** `src/pages/PurchaseLeads.tsx`
+## 2. Enhanced Aged Leads Page
 
-1. Add an explicit guard in `handleSaveCount()`:
-   - If `!isAdmin`, block immediately and show a toast (“Only admins can edit the lead count.”).
-2. Keep relying on backend rules as the real enforcement (UI is just the convenience).
+### A) License Status Filter Buttons
 
-Why: Even though the edit icon is hidden for non-admins, this prevents any accidental/edge UI invocation.
+Add toggle buttons at the top of the aged leads page:
+- **Show Licensed** - Only appears if there are licensed leads
+- **Show Unlicensed** - Only appears if there are unlicensed leads
+- Buttons are hidden if that category is empty
 
----
+### B) Role-Based Visibility (Already Partially Implemented)
+- **Admin**: Full access - sees all leads, can import, assign, and move leads
+- **Manager**: Only sees leads assigned to them via `assigned_manager_id`
+- **Agents**: No access (already blocked in sidebar navigation)
 
-### C) Major performance fix: make auth state a singleton (AuthProvider)
-**Files:**
-- `src/hooks/useAuth.ts` (refactor)
-- `src/App.tsx` (wrap the app with provider)
-
-1. Convert auth into a single shared provider (one subscription, one session fetch):
-   - Create an `AuthContext` and `AuthProvider` (implemented in the same file to avoid changing imports everywhere).
-   - `AuthProvider` does:
-     - initial session fetch once
-     - a single `onAuthStateChange` subscription once
-     - fetch profile + roles once per session change
-2. Update exported `useAuth()` to simply read from context.
-3. Wrap the application in `<AuthProvider>` once at the top level (in `App.tsx`).
-
-Expected result:
-- No more duplicated auth listeners across the app
-- Dramatically reduced “loading” flashes during navigation
-- Sidebar and pages stop fighting over auth initialization work
+### C) Updated Stats Display
+- Admin sees total counts across all leads
+- Managers see counts only for their assigned leads
 
 ---
 
-### D) Make navigation feel instant: move the sidebar layout to a route shell (so it doesn’t re-render constantly)
-**Files:**
-- `src/App.tsx` (route structure update)
-- Multiple pages currently wrapping themselves with `DashboardLayout`:
-  - `src/pages/Dashboard*.tsx`, `AgentPortal.tsx`, `Numbers.tsx`, `OnboardingCourse.tsx`, `PurchaseLeads.tsx`, `CourseProgress.tsx`, etc.
+## 3. Enhanced Lead Importer
 
-1. Create a single “authenticated shell route” that renders:
-   - `SidebarLayout` (the sidebar + mobile header)
-   - an `<Outlet />` for page content
-2. Apply `ProtectedRoute` at the shell level (so it doesn’t remount repeatedly for every child route).
-3. Update each dashboard/authenticated page to render **only the page body**, not the layout wrapper.
+### Improved CSV Parser with New Fields
 
-Expected result:
-- Sidebar stays mounted and stable
-- Page-level timers/realtime updates won’t cause sidebar/layout rerenders
-- Route transitions feel much faster because the app frame persists
+**Supported columns:**
+- `first_name` (required)
+- `last_name` (required)
+- `email` (required)
+- `phone` (required)
+- `instagram` or `instagram_handle` (optional)
+- `motivation` or `notes` or `about_me` (optional - gets summarized into notes)
+- `license_status` (optional - defaults to "unlicensed")
 
----
+**Logic:**
+1. Parse CSV headers intelligently (handle variations like "first name" vs "first_name")
+2. Detect motivation-related columns and summarize into the `notes` field
+3. Validate required fields before import
+4. Show preview with license status breakdown
+5. Admin selects manager to assign leads to
 
-### E) Remove blocking animations (`mode="wait"`)
-**Files:**
-- `src/pages/Apply.tsx`
-- `src/pages/AgentNumbersLogin.tsx`
-
-1. Replace `AnimatePresence mode="wait"` with:
-   - `mode="popLayout"` (preferred for snappy feel), or
-   - remove `mode` entirely (defaults to non-blocking behavior)
-2. Keep animations but avoid “exit must finish first” behavior.
-
-Expected result:
-- Steps/pages feel responsive instead of “hanging” between transitions
+**New UI Elements:**
+- File upload with drag-and-drop
+- Auto-detect license status from CSV or let admin set default
+- Preview shows: First 10 leads, counts by license status
+- Clear error messages for validation issues
 
 ---
 
-## Validation / Testing checklist (what you’ll verify)
-1. Purchase Leads:
-   - Tap Venmo/Cash App → dialog appears → instruction is obvious → “Copy ‘leads’” works → Continue opens correct link.
-2. Lead count editing:
-   - Non-admin cannot see edit icon
-   - Non-admin cannot save even if attempting (toast + no update)
-   - Admin can update successfully
-3. Navigation speed:
-   - Clicking sidebar items no longer shows long full-page skeleton delays
-   - Sidebar stays responsive while pages load
-4. Auth stability:
-   - No repeated loading flicker when navigating
-   - No “multiple listeners” behavior during long sessions
-5. Mobile:
-   - Mobile menu still opens/closes quickly, overlay doesn’t get stuck
+## 4. Call Mode Feature
+
+### A) Entry Point
+Add a prominent "Call Mode" button at the top of the Aged Leads page.
+
+### B) Mode Selection Dialog
+When tapped, shows:
+- **Licensed Leads** button (only if licensed leads exist for this user)
+- **Unlicensed Leads** button (only if unlicensed leads exist for this user)
+- If either category is empty, that button doesn't appear
+- If both are empty, show "No leads available" message
+
+### C) Call Mode Interface
+
+**Design Goals:**
+- High-performance, minimal distractions
+- One lead at a time with large, tappable action buttons
+- Keyboard shortcuts for power users
+- Progress indicator (e.g., "Lead 5 of 32")
+
+**Layout:**
+```
++------------------------------------------+
+|  CALL MODE: Licensed Leads     [X Close] |
+|  Progress: 5 / 32 remaining              |
++------------------------------------------+
+
++------------------------------------------+
+|                                          |
+|        [Lead Card - Full Width]          |
+|                                          |
+|   👤 John Smith                          |
+|   📧 john@email.com                      |
+|   📱 555-123-4567  [Tap to Call]         |
+|   📸 @johnsmith_ig                       |
+|                                          |
+|   Notes:                                 |
+|   "Looking to start a new career..."    |
+|                                          |
++------------------------------------------+
+
++------------------------------------------+
+|            ACTION BUTTONS                |
+|                                          |
+|  [✓ Hired]  [📄 Contracted]  [🎓 Lic.]   |
+|                                          |
+|  [❌ Not Qualified]    [📵 No Pickup]    |
+|                                          |
++------------------------------------------+
+```
+
+**Actions and Outcomes:**
+| Action | Status Set | Effect |
+|--------|------------|--------|
+| Hired | `hired` | Lead marked as successful, moves to next |
+| Contracted | `contracted` | Lead marked as contracted, moves to next |
+| Licensing (only for unlicensed) | `licensing` | Lead starting licensing process |
+| Not Qualified | `not_qualified` | Lead rejected, moves to next |
+| No Pickup | `no_pickup` | No answer, moves to next (can retry later) |
+
+**Performance Optimizations:**
+- Pre-fetch next 5 leads in background
+- Instant UI updates (optimistic updates)
+- Minimal animations to feel snappy
+- Session persists across page refreshes
 
 ---
 
-## Technical notes (for completeness)
-- This plan focuses on reducing unnecessary work on navigation:
-  - Singleton auth subscription
-  - Stable layout shell
-  - Non-blocking transitions
-- These are the highest-impact changes for the “side navigation slow + load screens slow” symptoms you described.
+## 5. Purchase Lead Notifications
+
+### When a user clicks "Continue to Venmo/Cash App" in the payment dialog:
+
+**A) Capture the purchase intent:**
+Store a pending purchase record before opening the payment link.
+
+**B) Create new edge function: `notify-lead-purchase`**
+
+Sends email notifications to:
+1. **Admin** - "New lead purchase: [Package Name] from [User Name]"
+2. **Manager (if user has one assigned)** - Same notification
+3. **Purchaser** - Confirmation: "You've initiated a purchase for [Package Name]"
+
+**Email Content:**
+- Package name and price
+- Purchaser name and email
+- Payment method selected (Venmo/Cash App)
+- Timestamp
+- Note that payment confirmation is pending manual verification
+
+**C) Update PurchaseLeads.tsx:**
+- Call `notify-lead-purchase` edge function when user clicks "Continue to Payment"
+- Store the user's intent in database (optional for tracking)
+- Show toast: "Payment link opened - we've notified your manager"
+
+---
+
+## 6. Performance Optimizations
+
+### A) Already Implemented (from previous work):
+- AuthProvider singleton (single subscription)
+- Route shell architecture (sidebar doesn't re-render)
+- Removed blocking animations
+
+### B) Additional Optimizations for Aged Leads:
+
+1. **Pagination**: Load leads in batches of 50 instead of all at once
+2. **Virtualized List**: Use virtual scrolling for large lead lists
+3. **Optimistic Updates**: Update UI immediately, sync in background
+4. **Debounced Search**: Prevent excessive re-renders while typing
+5. **Memoized Filters**: Cache filtered results to avoid recalculation
+
+### C) Query Optimizations:
+- Add database indexes on `aged_leads.license_status` and `aged_leads.assigned_manager_id`
+- Use `.select()` with only needed columns instead of `*`
+- Implement cursor-based pagination for large datasets
+
+---
+
+## Technical Implementation Details
+
+### Files to Create:
+1. `src/components/dashboard/CallModeInterface.tsx` - The one-by-one lead calling UI
+2. `src/components/dashboard/AgedLeadImporter.tsx` - Enhanced CSV importer
+3. `supabase/functions/notify-lead-purchase/index.ts` - Email notification function
+
+### Files to Modify:
+1. `src/pages/DashboardAgedLeads.tsx` - Add filters, Call Mode button, update stats
+2. `src/pages/PurchaseLeads.tsx` - Trigger notification on payment
+3. `src/components/layout/GlobalSidebar.tsx` - Make Aged Leads visible to managers too
+
+### Database Changes:
+```sql
+-- Add new columns to aged_leads
+ALTER TABLE aged_leads ADD COLUMN IF NOT EXISTS instagram_handle text;
+ALTER TABLE aged_leads ADD COLUMN IF NOT EXISTS motivation text;
+
+-- Add index for faster filtering
+CREATE INDEX IF NOT EXISTS idx_aged_leads_license_status 
+ON aged_leads(license_status);
+
+CREATE INDEX IF NOT EXISTS idx_aged_leads_manager_status 
+ON aged_leads(assigned_manager_id, status);
+```
+
+---
+
+## Access Control Summary
+
+| Role | Aged Leads Access | Call Mode | Import Leads | Move/Assign Leads |
+|------|-------------------|-----------|--------------|-------------------|
+| Admin | All leads | Yes | Yes | Yes |
+| Manager | Only assigned | Yes | No | No |
+| Agent | None | No | No | No |
+
+---
+
+## Website Speed Notes
+
+The previous changes (AuthProvider, route shell, animation fixes) should significantly improve navigation speed. Additional suggestions:
+
+1. **Current hosting is adequate** - Lovable's hosting is optimized for React apps
+2. **No additional purchases needed** - The performance issues were code-related, not infrastructure
+3. **If still slow after these changes**, we can:
+   - Implement service worker caching for static assets
+   - Add React Query's `staleTime` optimization (already set to 2 minutes)
+   - Lazy-load heavy components on demand
 

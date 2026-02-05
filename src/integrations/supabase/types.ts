@@ -78,6 +78,7 @@ export type Database = {
         Row: {
           about_me: string | null
           assigned_manager_id: string | null
+          contacted_at: string | null
           created_at: string | null
           email: string
           first_name: string
@@ -96,6 +97,7 @@ export type Database = {
         Insert: {
           about_me?: string | null
           assigned_manager_id?: string | null
+          contacted_at?: string | null
           created_at?: string | null
           email: string
           first_name: string
@@ -114,6 +116,7 @@ export type Database = {
         Update: {
           about_me?: string | null
           assigned_manager_id?: string | null
+          contacted_at?: string | null
           created_at?: string | null
           email?: string
           first_name?: string

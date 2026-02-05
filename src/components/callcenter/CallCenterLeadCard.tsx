@@ -5,6 +5,7 @@ import { formatDistanceToNow, format } from "date-fns";
 import { CallCenterVoiceRecorder } from "./CallCenterVoiceRecorder";
 import { CallCenterStageSelector, type LicensingStage } from "./CallCenterStageSelector";
 import { LeadReassignButton } from "./LeadReassignButton";
+import { LeadExpiryCountdown } from "./LeadExpiryCountdown";
 import { QuickEmailMenu } from "@/components/dashboard/QuickEmailMenu";
 
 interface UnifiedLead {
@@ -168,8 +169,14 @@ export function CallCenterLeadCard({
         </div>
       </div>
 
-      {/* Contact Info */}
+      {/* Contact Info & Countdown */}
       <div className="p-6 space-y-4">
+        {/* 2-Week Countdown */}
+        <LeadExpiryCountdown 
+          createdAt={lead.createdAt} 
+          contactedAt={lead.contactedAt} 
+        />
+
         <div className="grid gap-3">
           {/* Phone - Primary CTA */}
           {lead.phone && (

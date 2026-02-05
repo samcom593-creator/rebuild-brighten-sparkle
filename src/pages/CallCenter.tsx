@@ -81,7 +81,7 @@ export default function CallCenter() {
       if (sourceFilter === "all" || sourceFilter === "aged_leads") {
         let query = supabase
           .from("aged_leads")
-          .select("id, first_name, last_name, email, phone, instagram_handle, notes, motivation, license_status, created_at, status")
+          .select("id, first_name, last_name, email, phone, instagram_handle, notes, motivation, license_status, created_at, status, contacted_at")
           .order("created_at", { ascending: true });
 
         // Status filter
@@ -120,6 +120,7 @@ export default function CallCenter() {
             licenseStatus: lead.license_status || "unknown",
             createdAt: lead.created_at || new Date().toISOString(),
             status: lead.status || "new",
+            contactedAt: lead.contacted_at || undefined,
           });
         });
       }
@@ -261,6 +262,7 @@ export default function CallCenter() {
           .update({
             status: actionId,
             processed_at: new Date().toISOString(),
+            contacted_at: new Date().toISOString(),
           })
           .eq("id", currentLead.id);
 
@@ -463,7 +465,7 @@ export default function CallCenter() {
 
   // Active calling UI
   return (
-    <div className="flex flex-col h-full max-w-3xl mx-auto p-4 md:p-6">
+    <div className="flex flex-col h-full w-full max-w-5xl mx-auto p-4 md:p-6">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}

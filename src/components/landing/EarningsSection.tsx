@@ -12,7 +12,7 @@ const earningsData = {
     monthly: 20833,
     yearly: 250000,
     policiesPerMonth: 30,
-    commissionRate: "50%-145%",
+    commissionRate: "70%-145%",
   },
   topProducer: {
     label: "Top Producer",
@@ -20,7 +20,7 @@ const earningsData = {
     monthly: 42000,
     yearly: 504000,
     policiesPerMonth: 35,
-    commissionRate: "80%-145%",
+    commissionRate: "90%-145%",
   },
 };
 

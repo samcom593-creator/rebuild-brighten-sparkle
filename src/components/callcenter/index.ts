@@ -12,3 +12,5 @@ export { CallCenterStageSelector } from "./CallCenterStageSelector";
 export type { LicensingStage } from "./CallCenterStageSelector";
 
 export { CallCenterVoiceRecorder } from "./CallCenterVoiceRecorder";
+
+export { LeadReassignButton } from "./LeadReassignButton";

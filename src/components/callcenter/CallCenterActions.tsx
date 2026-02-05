@@ -1,18 +1,15 @@
 import { motion } from "framer-motion";
 import {
-  Phone,
   CheckCircle2,
   XCircle,
-  GraduationCap,
   FileText,
-  PhoneOff,
   ChevronRight,
   MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export type ActionId = "contacted" | "hired" | "contracted" | "licensing" | "not_qualified" | "no_pickup";
+export type ActionId = "contacted" | "hired" | "contracted" | "bad_applicant";
 
 interface ActionDef {
   id: ActionId;
@@ -21,7 +18,6 @@ interface ActionDef {
   color: string;
   gradient: string;
   key: string;
-  unlicensedOnly?: boolean;
 }
 
 const actions: ActionDef[] = [
@@ -50,29 +46,12 @@ const actions: ActionDef[] = [
     key: "3",
   },
   {
-    id: "licensing",
-    label: "Licensing",
-    icon: GraduationCap,
-    color: "text-purple-400",
-    gradient: "from-purple-500/20 to-violet-500/20 hover:from-purple-500/30 hover:to-violet-500/30 border-purple-500/30",
-    key: "4",
-    unlicensedOnly: true,
-  },
-  {
-    id: "not_qualified",
-    label: "Not Qualified",
+    id: "bad_applicant",
+    label: "Bad Applicant",
     icon: XCircle,
     color: "text-red-400",
     gradient: "from-red-500/10 to-rose-500/10 hover:from-red-500/20 hover:to-rose-500/20 border-red-500/20",
-    key: "5",
-  },
-  {
-    id: "no_pickup",
-    label: "No Pickup",
-    icon: PhoneOff,
-    color: "text-amber-400",
-    gradient: "from-amber-500/10 to-orange-500/10 hover:from-amber-500/20 hover:to-orange-500/20 border-amber-500/20",
-    key: "6",
+    key: "4",
   },
 ];
 
@@ -80,7 +59,6 @@ interface CallCenterActionsProps {
   onAction: (actionId: ActionId) => void;
   onSkip: () => void;
   processing: boolean;
-  isLicensed: boolean;
   className?: string;
 }
 
@@ -88,18 +66,13 @@ export function CallCenterActions({
   onAction,
   onSkip,
   processing,
-  isLicensed,
   className,
 }: CallCenterActionsProps) {
-  const visibleActions = actions.filter(
-    (action) => !action.unlicensedOnly || !isLicensed
-  );
-
   return (
     <div className={cn("space-y-4", className)}>
       {/* Action Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-        {visibleActions.map((action, index) => (
+      <div className="grid grid-cols-2 gap-3">
+        {actions.map((action, index) => (
           <motion.div
             key={action.id}
             initial={{ opacity: 0, y: 10 }}
@@ -147,7 +120,7 @@ export function CallCenterActions({
       <div className="text-center text-xs text-muted-foreground hidden sm:block">
         <span className="opacity-60">
           Press <kbd className="px-1.5 py-0.5 rounded bg-muted/50 text-foreground">R</kbd> to record
-          • <kbd className="px-1.5 py-0.5 rounded bg-muted/50 text-foreground">1-6</kbd> for actions
+          • <kbd className="px-1.5 py-0.5 rounded bg-muted/50 text-foreground">1-4</kbd> for actions
           • <kbd className="px-1.5 py-0.5 rounded bg-muted/50 text-foreground">N</kbd> skip
           • <kbd className="px-1.5 py-0.5 rounded bg-muted/50 text-foreground">ESC</kbd> exit
         </span>

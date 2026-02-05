@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { formatDistanceToNow, format } from "date-fns";
 import { CallCenterVoiceRecorder } from "./CallCenterVoiceRecorder";
 import { CallCenterStageSelector, type LicensingStage } from "./CallCenterStageSelector";
+import { LeadReassignButton } from "./LeadReassignButton";
 import { QuickEmailMenu } from "@/components/dashboard/QuickEmailMenu";
 
 interface UnifiedLead {
@@ -32,6 +33,8 @@ interface CallCenterLeadCardProps {
   onCall: () => void;
   isRecording: boolean;
   onRecordingStateChange: (recording: boolean) => void;
+  isAdmin?: boolean;
+  onReassigned?: (newManagerId: string) => void;
   className?: string;
 }
 
@@ -72,6 +75,8 @@ export function CallCenterLeadCard({
   onCall,
   isRecording,
   onRecordingStateChange,
+  isAdmin = false,
+  onReassigned,
   className,
 }: CallCenterLeadCardProps) {
   const currentStage = progressToStage(lead.licenseProgress, lead.licenseStatus);
@@ -234,7 +239,7 @@ export function CallCenterLeadCard({
           </div>
         )}
 
-        {/* Voice Recorder & Quick Email */}
+        {/* Voice Recorder & Quick Email & Admin Reassign */}
         <div className="pt-4 border-t border-border/30 space-y-4">
           <div className="flex items-center gap-4">
             <div className="flex-1">
@@ -243,14 +248,22 @@ export function CallCenterLeadCard({
                 onRecordingStateChange={onRecordingStateChange}
               />
             </div>
-            <QuickEmailMenu
-              applicationId={lead.id}
-              agentId={null}
-              licenseStatus={lead.licenseStatus as "licensed" | "unlicensed" | "pending"}
-              recipientEmail={lead.email}
-              recipientName={lead.firstName + (lead.lastName ? ` ${lead.lastName}` : "")}
-              className="shrink-0"
-            />
+            <div className="flex items-center gap-2 shrink-0">
+              <QuickEmailMenu
+                applicationId={lead.id}
+                agentId={null}
+                licenseStatus={lead.licenseStatus as "licensed" | "unlicensed" | "pending"}
+                recipientEmail={lead.email}
+                recipientName={lead.firstName + (lead.lastName ? ` ${lead.lastName}` : "")}
+              />
+              {isAdmin && (
+                <LeadReassignButton
+                  leadId={lead.id}
+                  leadSource={lead.source}
+                  onReassigned={onReassigned}
+                />
+              )}
+            </div>
           </div>
         </div>
       </div>

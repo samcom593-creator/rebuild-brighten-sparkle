@@ -7,6 +7,7 @@ import { CallCenterStageSelector, type LicensingStage } from "./CallCenterStageS
 import { LeadReassignButton } from "./LeadReassignButton";
 import { LeadExpiryCountdown } from "./LeadExpiryCountdown";
 import { QuickEmailMenu } from "@/components/dashboard/QuickEmailMenu";
+import { ResendLicensingButton } from "./ResendLicensingButton";
 
 interface UnifiedLead {
   id: string;
@@ -246,7 +247,7 @@ export function CallCenterLeadCard({
           </div>
         )}
 
-        {/* Voice Recorder & Quick Email & Admin Reassign */}
+        {/* Voice Recorder & Quick Email & Resend Licensing & Admin Reassign */}
         <div className="pt-4 border-t border-border/30 space-y-4">
           <div className="flex items-center gap-4">
             <div className="flex-1">
@@ -263,6 +264,13 @@ export function CallCenterLeadCard({
                 recipientEmail={lead.email}
                 recipientName={lead.firstName + (lead.lastName ? ` ${lead.lastName}` : "")}
               />
+              {lead.licenseStatus !== "licensed" && (
+                <ResendLicensingButton
+                  recipientEmail={lead.email}
+                  recipientName={lead.firstName}
+                  licenseStatus={lead.licenseStatus as "licensed" | "unlicensed" | "pending"}
+                />
+              )}
               {isAdmin && (
                 <LeadReassignButton
                   leadId={lead.id}

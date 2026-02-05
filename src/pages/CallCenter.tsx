@@ -1,36 +1,23 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Phone,
-  CheckCircle2,
-  XCircle,
-  GraduationCap,
-  FileText,
-  PhoneOff,
-  Mail,
-  Instagram,
-  Loader2,
-  ChevronRight,
-  Filter,
-  Clock,
-} from "lucide-react";
+import { Phone, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { GlassCard } from "@/components/ui/glass-card";
-import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { formatDistanceToNow } from "date-fns";
+  CallCenterFilters,
+  CallCenterLeadCard,
+  CallCenterActions,
+  CallCenterProgressRing,
+  type SourceFilter,
+  type LicenseFilter,
+  type StatusFilter,
+  type ActionId,
+  type PipelineStage,
+} from "@/components/callcenter";
 
-// Unified lead interface for both aged_leads and applications
+// Unified lead interface
 interface UnifiedLead {
   id: string;
   source: "aged_leads" | "applications";
@@ -44,19 +31,8 @@ interface UnifiedLead {
   licenseStatus: string;
   createdAt: string;
   status: string;
+  contactedAt?: string;
 }
-
-type SourceFilter = "all" | "aged_leads" | "applications";
-type LicenseFilter = "all" | "licensed" | "unlicensed";
-type StatusFilter = "new" | "no_pickup" | "contacted";
-
-const statusActions = [
-  { id: "hired", label: "Hired", icon: CheckCircle2, color: "text-green-500 border-green-500/30 hover:bg-green-500/10", key: "1" },
-  { id: "contracted", label: "Contracted", icon: FileText, color: "text-primary border-primary/30 hover:bg-primary/10", key: "2" },
-  { id: "licensing", label: "Licensing", icon: GraduationCap, color: "text-purple-500 border-purple-500/30 hover:bg-purple-500/10", unlicensedOnly: true, key: "3" },
-  { id: "not_qualified", label: "Not Qualified", icon: XCircle, color: "text-red-500 border-red-500/30 hover:bg-red-500/10", key: "4" },
-  { id: "no_pickup", label: "No Pickup", icon: PhoneOff, color: "text-amber-500 border-amber-500/30 hover:bg-amber-500/10", key: "5" },
-];
 
 export default function CallCenter() {
   const { isAdmin, isManager, user } = useAuth();
@@ -66,6 +42,8 @@ export default function CallCenter() {
   const [processing, setProcessing] = useState(false);
   const [started, setStarted] = useState(false);
   const [agentId, setAgentId] = useState<string | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [currentTranscription, setCurrentTranscription] = useState("");
 
   // Filters
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
@@ -74,7 +52,7 @@ export default function CallCenter() {
 
   const currentLead = leads[currentIndex];
   const totalLeads = leads.length;
-  const progressPercent = totalLeads > 0 ? (currentIndex / totalLeads) * 100 : 0;
+  const processedCount = currentIndex;
 
   // Fetch agent ID for role-based filtering
   useEffect(() => {
@@ -146,18 +124,16 @@ export default function CallCenter() {
       if (sourceFilter === "all" || sourceFilter === "applications") {
         let appQuery = supabase
           .from("applications")
-          .select("id, first_name, last_name, email, phone, instagram_handle, notes, license_status, created_at, status")
+          .select("id, first_name, last_name, email, phone, instagram_handle, notes, license_status, created_at, status, contacted_at")
           .is("terminated_at", null)
           .order("created_at", { ascending: true });
 
-        // Status filter for applications - map to valid application statuses
+        // Status filter for applications
         if (statusFilter === "new") {
           appQuery = appQuery.eq("status", "new");
         } else if (statusFilter === "contacted") {
-          // Use "reviewing" as the contacted equivalent for applications
           appQuery = appQuery.eq("status", "reviewing");
         }
-        // Note: no_pickup isn't a valid application status, skip those
 
         // License filter
         if (licenseFilter !== "all") {
@@ -186,6 +162,7 @@ export default function CallCenter() {
             licenseStatus: app.license_status || "unknown",
             createdAt: app.created_at,
             status: app.status || "new",
+            contactedAt: app.contacted_at || undefined,
           });
         });
       }
@@ -208,11 +185,64 @@ export default function CallCenter() {
     fetchLeads();
   };
 
-  const handleAction = useCallback(async (actionId: string) => {
+  // Send post-call follow-up email
+  const sendFollowUpEmail = async (lead: UnifiedLead) => {
+    try {
+      const { error } = await supabase.functions.invoke("send-post-call-followup", {
+        body: {
+          firstName: lead.firstName,
+          email: lead.email,
+          licenseStatus: lead.licenseStatus,
+        },
+      });
+
+      if (error) {
+        console.error("Failed to send follow-up email:", error);
+      } else {
+        console.log("Follow-up email sent to:", lead.email);
+      }
+    } catch (err) {
+      console.error("Error sending follow-up email:", err);
+    }
+  };
+
+  // Save transcription notes
+  const saveNotes = async (lead: UnifiedLead, notes: string) => {
+    if (!notes.trim()) return;
+
+    try {
+      const timestamp = new Date().toISOString();
+      const noteEntry = `\n\n[Call Notes - ${timestamp}]\n${notes}`;
+
+      if (lead.source === "aged_leads") {
+        const existingNotes = lead.notes || "";
+        await supabase
+          .from("aged_leads")
+          .update({ notes: existingNotes + noteEntry })
+          .eq("id", lead.id);
+      } else {
+        const existingNotes = lead.notes || "";
+        await supabase
+          .from("applications")
+          .update({ notes: existingNotes + noteEntry })
+          .eq("id", lead.id);
+      }
+    } catch (error) {
+      console.error("Error saving notes:", error);
+    }
+  };
+
+  const handleAction = useCallback(async (actionId: ActionId) => {
     if (!currentLead || processing) return;
 
     setProcessing(true);
     try {
+      // Save any transcription notes first
+      if (currentTranscription) {
+        await saveNotes(currentLead, currentTranscription);
+        setCurrentTranscription("");
+      }
+
       if (currentLead.source === "aged_leads") {
         const { error } = await supabase
           .from("aged_leads")
@@ -224,10 +254,9 @@ export default function CallCenter() {
 
         if (error) throw error;
       } else {
-        // For applications, map status appropriately to valid enum values
-        const updateData: Record<string, any> = {};
-        
-        // Map action to valid application status
+        // For applications, map status appropriately
+        const updateData: Record<string, string> = {};
+
         if (actionId === "hired" || actionId === "contracted") {
           updateData.status = "approved";
           updateData.contracted_at = new Date().toISOString();
@@ -235,8 +264,10 @@ export default function CallCenter() {
           updateData.status = "rejected";
         } else if (actionId === "licensing") {
           updateData.status = "contracting";
+        } else if (actionId === "contacted") {
+          updateData.status = "reviewing";
+          updateData.contacted_at = new Date().toISOString();
         } else {
-          // Default: mark as reviewed
           updateData.status = "reviewing";
           updateData.contacted_at = new Date().toISOString();
         }
@@ -249,9 +280,16 @@ export default function CallCenter() {
         if (error) throw error;
       }
 
+      // Send follow-up email for "contacted" action
+      if (actionId === "contacted") {
+        await sendFollowUpEmail(currentLead);
+        toast.success("Lead marked as contacted - follow-up email sent!");
+      } else {
+        toast.success(`Lead marked as ${actionId.replace("_", " ")}`);
+      }
+
       // Remove lead from list and move to next
       setLeads((prev) => prev.filter((l) => l.id !== currentLead.id));
-      toast.success(`Lead marked as ${actionId.replace("_", " ")}`);
 
       // If no more leads after removal
       if (leads.length <= 1) {
@@ -263,21 +301,65 @@ export default function CallCenter() {
     } finally {
       setProcessing(false);
     }
-  }, [currentLead, processing, leads.length]);
+  }, [currentLead, processing, leads.length, currentTranscription]);
 
   const handleSkip = useCallback(() => {
+    // Save any transcription notes before skipping
+    if (currentLead && currentTranscription) {
+      saveNotes(currentLead, currentTranscription);
+      setCurrentTranscription("");
+    }
+
     if (currentIndex < leads.length - 1) {
       setCurrentIndex((prev) => prev + 1);
     } else {
       toast.info("You've reached the last lead");
     }
-  }, [currentIndex, leads.length]);
+  }, [currentIndex, leads.length, currentLead, currentTranscription]);
 
   const handleCall = useCallback(() => {
     if (currentLead?.phone) {
       window.open(`tel:${currentLead.phone}`, "_self");
     }
   }, [currentLead]);
+
+  const handleStageChange = useCallback(async (stage: PipelineStage) => {
+    if (!currentLead || processing) return;
+
+    setProcessing(true);
+    try {
+      // Map stage back to valid application status
+      type ApplicationStatus = "new" | "reviewing" | "interview" | "contracting" | "approved" | "rejected";
+      
+      const statusMap: Record<PipelineStage, ApplicationStatus> = {
+        new: "new",
+        contacted: "reviewing",
+        qualified: "interview",
+        contracted: "contracting",
+        onboarding: "approved",
+        active: "approved",
+      };
+
+      if (currentLead.source === "applications") {
+        await supabase
+          .from("applications")
+          .update({ status: statusMap[stage] })
+          .eq("id", currentLead.id);
+      } else {
+        await supabase
+          .from("aged_leads")
+          .update({ status: stage })
+          .eq("id", currentLead.id);
+      }
+
+      toast.success(`Stage updated to ${stage}`);
+    } catch (error) {
+      console.error("Error updating stage:", error);
+      toast.error("Failed to update stage");
+    } finally {
+      setProcessing(false);
+    }
+  }, [currentLead, processing]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -286,27 +368,34 @@ export default function CallCenter() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (processing) return;
 
-      switch (e.key) {
+      // Ignore if typing in input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      switch (e.key.toLowerCase()) {
         case "1":
-          handleAction("hired");
+          handleAction("contacted");
           break;
         case "2":
-          handleAction("contracted");
+          handleAction("hired");
           break;
         case "3":
-          if (currentLead?.licenseStatus === "unlicensed") handleAction("licensing");
+          handleAction("contracted");
           break;
         case "4":
-          handleAction("not_qualified");
+          if (currentLead?.licenseStatus !== "licensed") handleAction("licensing");
           break;
         case "5":
+          handleAction("not_qualified");
+          break;
+        case "6":
           handleAction("no_pickup");
           break;
         case "n":
-        case "N":
           handleSkip();
           break;
-        case "Escape":
+        case "escape":
           setStarted(false);
           break;
       }
@@ -319,247 +408,99 @@ export default function CallCenter() {
   // Filter selection UI
   if (!started) {
     return (
-      <div className="container max-w-2xl mx-auto py-8 px-4">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-            <Phone className="h-8 w-8 text-primary" />
-          </div>
-          <h1 className="text-3xl font-bold mb-2">Call Center</h1>
-          <p className="text-muted-foreground">
-            Process leads one at a time with quick action buttons
-          </p>
-        </div>
-
-        <GlassCard className="p-6 space-y-6">
-          <div className="space-y-4">
-            <h3 className="font-semibold flex items-center gap-2">
-              <Filter className="h-4 w-4" />
-              Configure Filters
-            </h3>
-
-            <div className="grid gap-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">Lead Source</label>
-                <Select value={sourceFilter} onValueChange={(v) => setSourceFilter(v as SourceFilter)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Sources</SelectItem>
-                    <SelectItem value="aged_leads">Aged Leads Only</SelectItem>
-                    <SelectItem value="applications">New Applicants Only</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium mb-2 block">License Status</label>
-                <Select value={licenseFilter} onValueChange={(v) => setLicenseFilter(v as LicenseFilter)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="licensed">Licensed</SelectItem>
-                    <SelectItem value="unlicensed">Unlicensed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium mb-2 block">Lead Status</label>
-                <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="new">New / Uncontacted</SelectItem>
-                    <SelectItem value="no_pickup">No Pickup (Retry)</SelectItem>
-                    <SelectItem value="contacted">Contacted</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-
-          <Button onClick={handleStartCalling} className="w-full" size="lg">
-            <Phone className="h-5 w-5 mr-2" />
-            Start Calling
-          </Button>
-        </GlassCard>
-
-        <p className="text-xs text-muted-foreground text-center mt-4">
-          Keyboard shortcuts: 1-5 for actions • N for skip • ESC to exit
-        </p>
-      </div>
+      <CallCenterFilters
+        sourceFilter={sourceFilter}
+        licenseFilter={licenseFilter}
+        statusFilter={statusFilter}
+        onSourceChange={setSourceFilter}
+        onLicenseChange={setLicenseFilter}
+        onStatusChange={setStatusFilter}
+        onStart={handleStartCalling}
+      />
     );
   }
 
   // Active calling UI
   return (
-    <div className="flex flex-col h-full max-w-2xl mx-auto p-4">
+    <div className="flex flex-col h-full max-w-3xl mx-auto p-4 md:p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="text-xl font-bold flex items-center gap-2">
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between mb-6"
+      >
+        <div className="flex items-center gap-4">
+          <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/30">
             <Phone className="h-5 w-5 text-primary" />
-            Call Center
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {totalLeads - currentIndex} leads remaining
-          </p>
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-foreground">Call Center</h2>
+            <p className="text-sm text-muted-foreground">
+              {totalLeads - processedCount} leads remaining
+            </p>
+          </div>
         </div>
-        <Button variant="outline" onClick={() => setStarted(false)}>
-          Exit
-        </Button>
-      </div>
 
-      {/* Progress Bar */}
-      <div className="mb-6">
-        <Progress value={progressPercent} className="h-2" />
-        <p className="text-xs text-muted-foreground mt-1 text-right">
-          {currentIndex} / {totalLeads} processed
-        </p>
-      </div>
+        <div className="flex items-center gap-4">
+          <CallCenterProgressRing
+            current={processedCount}
+            total={totalLeads}
+          />
+          <Button variant="outline" onClick={() => setStarted(false)}>
+            Exit
+          </Button>
+        </div>
+      </motion.div>
 
       {/* Content */}
       {loading ? (
         <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          >
+            <Loader2 className="h-10 w-10 text-primary" />
+          </motion.div>
         </div>
       ) : !currentLead ? (
-        <div className="flex-1 flex flex-col items-center justify-center text-center">
-          <CheckCircle2 className="h-16 w-16 text-green-500 mb-4" />
-          <h3 className="text-2xl font-bold mb-2">All Done!</h3>
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="flex-1 flex flex-col items-center justify-center text-center"
+        >
+          <div className="p-6 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 mb-6">
+            <CheckCircle2 className="h-16 w-16 text-primary" />
+          </div>
+          <h3 className="text-2xl font-bold mb-2 text-foreground">All Done!</h3>
           <p className="text-muted-foreground mb-6">
             No more leads matching your filters.
           </p>
           <Button onClick={() => setStarted(false)}>Back to Filters</Button>
-        </div>
+        </motion.div>
       ) : (
-        <>
+        <div className="flex-1 flex flex-col gap-6 overflow-hidden">
           {/* Lead Card */}
-          <GlassCard className="flex-1 p-6 mb-4 overflow-y-auto">
-            <div className="space-y-4">
-              {/* Source Badge */}
-              <div className="flex items-center justify-between">
-                <span className={cn(
-                  "text-xs px-2 py-1 rounded-full font-medium",
-                  currentLead.source === "aged_leads" 
-                    ? "bg-amber-500/20 text-amber-500" 
-                    : "bg-blue-500/20 text-blue-500"
-                )}>
-                  {currentLead.source === "aged_leads" ? "Aged Lead" : "New Applicant"}
-                </span>
-                <span className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  {formatDistanceToNow(new Date(currentLead.createdAt), { addSuffix: true })}
-                </span>
-              </div>
-
-              {/* Name */}
-              <div>
-                <h3 className="text-2xl font-bold">
-                  {currentLead.firstName} {currentLead.lastName || ""}
-                </h3>
-                <span className={cn(
-                  "text-xs px-2 py-0.5 rounded-full",
-                  currentLead.licenseStatus === "licensed" 
-                    ? "bg-green-500/20 text-green-500" 
-                    : "bg-muted text-muted-foreground"
-                )}>
-                  {currentLead.licenseStatus === "licensed" ? "Licensed" : "Unlicensed"}
-                </span>
-              </div>
-
-              {/* Contact Info */}
-              <div className="space-y-3">
-                <a
-                  href={`mailto:${currentLead.email}`}
-                  className="flex items-center gap-3 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <Mail className="h-5 w-5 text-primary" />
-                  <span>{currentLead.email}</span>
-                </a>
-
-                {currentLead.phone && (
-                  <button
-                    onClick={handleCall}
-                    className="flex items-center gap-3 text-muted-foreground hover:text-foreground transition-colors w-full text-left"
-                  >
-                    <Phone className="h-5 w-5 text-green-500" />
-                    <span className="font-medium">{currentLead.phone}</span>
-                    <span className="ml-auto text-xs bg-green-500/20 text-green-500 px-2 py-1 rounded">
-                      Tap to Call
-                    </span>
-                  </button>
-                )}
-
-                {currentLead.instagramHandle && (
-                  <a
-                    href={`https://instagram.com/${currentLead.instagramHandle.replace("@", "")}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <Instagram className="h-5 w-5 text-pink-500" />
-                    <span>@{currentLead.instagramHandle.replace("@", "")}</span>
-                  </a>
-                )}
-              </div>
-
-              {/* Notes / Motivation */}
-              {(currentLead.notes || currentLead.motivation) && (
-                <div className="pt-4 border-t border-border">
-                  <p className="text-sm font-medium mb-2">Notes:</p>
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                    {currentLead.motivation || currentLead.notes}
-                  </p>
-                </div>
-              )}
-            </div>
-          </GlassCard>
+          <AnimatePresence mode="wait">
+            <CallCenterLeadCard
+              key={currentLead.id}
+              lead={currentLead}
+              onTranscriptionUpdate={setCurrentTranscription}
+              onStageChange={handleStageChange}
+              onCall={handleCall}
+              isRecording={isRecording}
+              onRecordingStateChange={setIsRecording}
+              className="flex-1 overflow-y-auto"
+            />
+          </AnimatePresence>
 
           {/* Action Buttons */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
-            {statusActions
-              .filter((action) => !action.unlicensedOnly || currentLead.licenseStatus === "unlicensed")
-              .map((action) => (
-                <Button
-                  key={action.id}
-                  variant="outline"
-                  size="lg"
-                  disabled={processing}
-                  onClick={() => handleAction(action.id)}
-                  className={cn("gap-2 h-14 text-sm font-medium", action.color)}
-                >
-                  <action.icon className="h-5 w-5" />
-                  {action.label}
-                  <span className="text-[10px] opacity-60 ml-auto hidden sm:inline">
-                    [{action.key}]
-                  </span>
-                </Button>
-              ))}
-          </div>
-
-          {/* Skip Button */}
-          <Button
-            variant="ghost"
-            size="lg"
-            onClick={handleSkip}
-            disabled={processing}
-            className="w-full"
-          >
-            Skip to Next
-            <ChevronRight className="h-4 w-4 ml-2" />
-            <span className="text-[10px] opacity-60 ml-2 hidden sm:inline">[N]</span>
-          </Button>
-
-          {/* Keyboard hint */}
-          <p className="text-xs text-muted-foreground text-center mt-4 hidden sm:block">
-            Press 1-5 for quick actions • N for skip • ESC to exit
-          </p>
-        </>
+          <CallCenterActions
+            onAction={handleAction}
+            onSkip={handleSkip}
+            processing={processing}
+            isLicensed={currentLead.licenseStatus === "licensed"}
+          />
+        </div>
       )}
     </div>
   );

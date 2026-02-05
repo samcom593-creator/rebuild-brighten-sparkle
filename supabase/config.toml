@@ -255,3 +255,6 @@ verify_jwt = false
 
 [functions.send-outstanding-performance]
 verify_jwt = false
+
+[functions.send-post-call-followup]
+verify_jwt = false

@@ -13,6 +13,7 @@ import {
   type SourceFilter,
   type LicenseFilter,
   type StatusFilter,
+  type ProgressFilter,
   type ActionId,
   type PipelineStage,
 } from "@/components/callcenter";
@@ -49,6 +50,7 @@ export default function CallCenter() {
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [licenseFilter, setLicenseFilter] = useState<LicenseFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("new");
+  const [progressFilter, setProgressFilter] = useState<ProgressFilter>("all");
 
   const currentLead = leads[currentIndex];
   const totalLeads = leads.length;
@@ -124,7 +126,7 @@ export default function CallCenter() {
       if (sourceFilter === "all" || sourceFilter === "applications") {
         let appQuery = supabase
           .from("applications")
-          .select("id, first_name, last_name, email, phone, instagram_handle, notes, license_status, created_at, status, contacted_at")
+          .select("id, first_name, last_name, email, phone, instagram_handle, notes, license_status, license_progress, created_at, status, contacted_at")
           .is("terminated_at", null)
           .order("created_at", { ascending: true });
 
@@ -138,6 +140,11 @@ export default function CallCenter() {
         // License filter
         if (licenseFilter !== "all") {
           appQuery = appQuery.eq("license_status", licenseFilter);
+        }
+
+        // License progress filter
+        if (progressFilter !== "all") {
+          appQuery = appQuery.eq("license_progress", progressFilter);
         }
 
         // Role-based filtering for managers
@@ -178,7 +185,7 @@ export default function CallCenter() {
     } finally {
       setLoading(false);
     }
-  }, [sourceFilter, licenseFilter, statusFilter, isAdmin, isManager, agentId]);
+  }, [sourceFilter, licenseFilter, statusFilter, progressFilter, isAdmin, isManager, agentId]);
 
   const handleStartCalling = () => {
     setStarted(true);
@@ -414,9 +421,11 @@ export default function CallCenter() {
         sourceFilter={sourceFilter}
         licenseFilter={licenseFilter}
         statusFilter={statusFilter}
+        progressFilter={progressFilter}
         onSourceChange={setSourceFilter}
         onLicenseChange={setLicenseFilter}
         onStatusChange={setStatusFilter}
+        onProgressChange={setProgressFilter}
         onStart={handleStartCalling}
       />
     );

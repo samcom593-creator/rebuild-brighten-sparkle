@@ -90,7 +90,7 @@ export default function DashboardCommandCenter() {
   const { isAdmin } = useAuth();
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("week");
   const [customDateRange, setCustomDateRange] = useState<DateRange>({ from: undefined, to: undefined });
-  const [activeFilter, setActiveFilter] = useState<FilterType>("producers");
+  const [activeFilter, setActiveFilter] = useState<"all" | "producers" | "weak" | "zero" | "course_purchased">("producers");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedAgent, setSelectedAgent] = useState<AgentWithStats | null>(null);
   const [showDuplicateTool, setShowDuplicateTool] = useState(false);
@@ -361,8 +361,10 @@ export default function DashboardCommandCenter() {
       case "zero":
         filtered = filtered.filter((a) => a.totalAlp === 0 && !a.isDeactivated && !a.isInactive);
         break;
-      case "inactive":
-        filtered = filtered.filter((a) => a.isDeactivated || a.isInactive);
+      case "course_purchased":
+        // This filter is for applicants, not agents - show empty for now
+        // Course purchased filtering happens in the applicants pipeline
+        filtered = [];
         break;
       case "all":
       default:

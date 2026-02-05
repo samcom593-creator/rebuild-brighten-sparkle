@@ -99,16 +99,20 @@ export function GlobalSidebar({
 
     if (isAdmin) {
       items.push({ 
-        icon: Archive, 
-        label: "Aged Leads", 
-        href: "/dashboard/aged-leads",
-      });
-      items.push({ 
         icon: UserCog, 
         label: "Accounts", 
         href: "/dashboard/accounts",
       });
     }
+ 
+     // Aged Leads - visible to Admin and Managers
+     if (isAdmin || isManager) {
+       items.push({ 
+         icon: Archive, 
+         label: "Aged Leads", 
+         href: "/dashboard/aged-leads",
+       });
+     }
 
     if (isAgent && !isAdmin && !isManager) {
       items.push({ 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+ import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
 import {
   Archive,
@@ -16,8 +16,9 @@ import {
   Phone,
   ChevronDown,
   AlertCircle,
+   PhoneCall,
+   Filter,
 } from "lucide-react";
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +43,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+ import { CallModeInterface } from "@/components/dashboard/CallModeInterface";
+ import { AgedLeadImporter } from "@/components/dashboard/AgedLeadImporter";
 
 interface AgedLead {
   id: string;
@@ -56,6 +59,8 @@ interface AgedLead {
   licenseStatus: string;
   createdAt: string;
   notes?: string;
+   instagramHandle?: string;
+   motivation?: string;
 }
 
 interface Manager {
@@ -64,11 +69,11 @@ interface Manager {
 }
 
 const statusColors: Record<string, string> = {
-  new: "bg-blue-500/20 text-blue-400",
-  contacted: "bg-amber-500/20 text-amber-400",
-  hired: "bg-green-500/20 text-green-400",
-  not_qualified: "bg-red-500/20 text-red-400",
-  licensing: "bg-purple-500/20 text-purple-400",
+   new: "bg-primary/20 text-primary",
+   contacted: "bg-secondary text-secondary-foreground",
+   hired: "bg-primary/20 text-primary",
+   not_qualified: "bg-destructive/20 text-destructive",
+   licensing: "bg-accent text-accent-foreground",
   contracted: "bg-primary/20 text-primary",
 };
 
@@ -79,10 +84,12 @@ export default function DashboardAgedLeads() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [importOpen, setImportOpen] = useState(false);
-  const [importing, setImporting] = useState(false);
-  const [csvData, setCsvData] = useState("");
-  const [selectedManager, setSelectedManager] = useState<string>("");
+   const [licenseFilter, setLicenseFilter] = useState<"all" | "licensed" | "unlicensed">("all");
+   const [showImporter, setShowImporter] = useState(false);
+   const [callModeOpen, setCallModeOpen] = useState(false);
+   const [callModeLicense, setCallModeLicense] = useState<"licensed" | "unlicensed">("unlicensed");
+   const [callModeSelectOpen, setCallModeSelectOpen] = useState(false);
+   const [myAgentId, setMyAgentId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -90,8 +97,22 @@ export default function DashboardAgedLeads() {
       if (isAdmin) {
         fetchManagers();
       }
+       // Get current user's agent ID for call mode filtering
+       fetchMyAgentId();
     }
   }, [user, authLoading]);
+ 
+   const fetchMyAgentId = async () => {
+     if (!user) return;
+     const { data } = await supabase
+       .from("agents")
+       .select("id")
+       .eq("user_id", user.id)
+       .single();
+     if (data) {
+       setMyAgentId(data.id);
+     }
+   };
 
   const fetchManagers = async () => {
     try {
@@ -130,10 +151,13 @@ export default function DashboardAgedLeads() {
     }
   };
 
-  const fetchLeads = async () => {
+   const fetchLeads = async () => {
     setLoading(true);
     try {
-      let query = supabase.from("aged_leads").select("*").order("created_at", { ascending: false });
+       let query = supabase
+         .from("aged_leads")
+         .select("id, first_name, last_name, email, phone, about_me, original_date, assigned_manager_id, status, license_status, created_at, notes, instagram_handle, motivation")
+         .order("created_at", { ascending: false });
 
       // If manager (not admin), only show their assigned leads
       if (isManager && !isAdmin) {
@@ -166,6 +190,8 @@ export default function DashboardAgedLeads() {
           licenseStatus: lead.license_status || "unknown",
           createdAt: lead.created_at,
           notes: lead.notes || undefined,
+           instagramHandle: lead.instagram_handle || undefined,
+           motivation: lead.motivation || undefined,
         }))
       );
     } catch (error) {
@@ -206,68 +232,6 @@ export default function DashboardAgedLeads() {
     }
   };
 
-  const handleBulkImport = async () => {
-    if (!csvData.trim() || !selectedManager) {
-      toast.error("Please provide CSV data and select a manager");
-      return;
-    }
-
-    setImporting(true);
-    try {
-      const lines = csvData.trim().split("\n");
-      const leadsToImport: any[] = [];
-
-      for (const line of lines) {
-        const parts = line.split(",").map(s => s.trim());
-        if (parts.length >= 2) {
-          const [firstName, lastName, email, phone, aboutMe, dateStr] = parts;
-          leadsToImport.push({
-            first_name: firstName || "Unknown",
-            last_name: lastName || null,
-            email: email || `unknown-${Date.now()}@placeholder.com`,
-            phone: phone || null,
-            about_me: aboutMe || null,
-            original_date: dateStr ? new Date(dateStr).toISOString().split("T")[0] : null,
-            assigned_manager_id: selectedManager,
-            status: "new",
-            license_status: "unknown",
-          });
-        }
-      }
-
-      if (leadsToImport.length === 0) {
-        toast.error("No valid leads found in CSV");
-        return;
-      }
-
-      const { error } = await supabase.from("aged_leads").insert(leadsToImport);
-
-      if (error) throw error;
-
-      toast.success(`Imported ${leadsToImport.length} aged leads`);
-      setImportOpen(false);
-      setCsvData("");
-      setSelectedManager("");
-      fetchLeads();
-
-      // Trigger emails for each lead
-      for (const lead of leadsToImport) {
-        try {
-          await supabase.functions.invoke("send-aged-lead-email", {
-            body: { email: lead.email, firstName: lead.first_name },
-          });
-        } catch (e) {
-          console.error("Error sending aged lead email:", e);
-        }
-      }
-    } catch (error) {
-      console.error("Error importing leads:", error);
-      toast.error("Failed to import leads");
-    } finally {
-      setImporting(false);
-    }
-  };
-
   const filteredLeads = leads.filter(lead => {
     const matchesSearch =
       lead.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -275,8 +239,9 @@ export default function DashboardAgedLeads() {
       lead.email.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesStatus = statusFilter === "all" || lead.status === statusFilter;
+     const matchesLicense = licenseFilter === "all" || lead.licenseStatus === licenseFilter;
 
-    return matchesSearch && matchesStatus;
+     return matchesSearch && matchesStatus && matchesLicense;
   });
 
   // Stats
@@ -284,20 +249,25 @@ export default function DashboardAgedLeads() {
   const newLeads = leads.filter(l => l.status === "new").length;
   const processedLeads = leads.filter(l => l.status !== "new").length;
   const hiredLeads = leads.filter(l => l.status === "hired" || l.status === "contracted").length;
+   const licensedLeads = leads.filter(l => l.licenseStatus === "licensed" && ["new", "contacted", "no_pickup"].includes(l.status)).length;
+   const unlicensedLeads = leads.filter(l => l.licenseStatus === "unlicensed" && ["new", "contacted", "no_pickup"].includes(l.status)).length;
+ 
+   const handleOpenCallMode = (license: "licensed" | "unlicensed") => {
+     setCallModeLicense(license);
+     setCallModeSelectOpen(false);
+     setCallModeOpen(true);
+   };
 
   if (authLoading) {
     return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center h-64">
-          <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      </DashboardLayout>
+       <div className="flex items-center justify-center h-64">
+         <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+       </div>
     );
   }
 
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
+     <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -307,8 +277,51 @@ export default function DashboardAgedLeads() {
             </p>
           </div>
           <div className="flex gap-2">
+             {/* Call Mode Button */}
+             {/* Call Mode Button */}
+             {(licensedLeads > 0 || unlicensedLeads > 0) && (
+               <div className="relative">
+                 <Button
+                   onClick={() => setCallModeSelectOpen(!callModeSelectOpen)}
+                   className="gap-2"
+                   variant="default"
+                 >
+                   <PhoneCall className="h-4 w-4" />
+                   Call Mode
+                 </Button>
+                 <AnimatePresence>
+                   {callModeSelectOpen && (
+                     <motion.div
+                       initial={{ opacity: 0, y: -10 }}
+                       animate={{ opacity: 1, y: 0 }}
+                       exit={{ opacity: 0, y: -10 }}
+                       className="absolute top-full right-0 mt-2 w-48 rounded-lg border border-border bg-background shadow-lg z-50"
+                     >
+                       {licensedLeads > 0 && (
+                         <button
+                           onClick={() => handleOpenCallMode("licensed")}
+                           className="w-full px-4 py-3 text-left hover:bg-muted transition-colors flex justify-between items-center"
+                         >
+                           <span>Licensed</span>
+                           <Badge variant="secondary">{licensedLeads}</Badge>
+                         </button>
+                       )}
+                       {unlicensedLeads > 0 && (
+                         <button
+                           onClick={() => handleOpenCallMode("unlicensed")}
+                           className="w-full px-4 py-3 text-left hover:bg-muted transition-colors flex justify-between items-center border-t border-border"
+                         >
+                           <span>Unlicensed</span>
+                           <Badge variant="secondary">{unlicensedLeads}</Badge>
+                         </button>
+                       )}
+                     </motion.div>
+                   )}
+                 </AnimatePresence>
+               </div>
+             )}
             {isAdmin && (
-              <Button onClick={() => setImportOpen(true)} className="gap-2">
+               <Button onClick={() => setShowImporter(true)} className="gap-2">
                 <Upload className="h-4 w-4" />
                 Bulk Import
               </Button>
@@ -336,8 +349,8 @@ export default function DashboardAgedLeads() {
 
           <GlassCard className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-500/20">
-                <UserPlus className="h-5 w-5 text-blue-400" />
+               <div className="p-2 rounded-lg bg-primary/20">
+                 <UserPlus className="h-5 w-5 text-primary" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{newLeads}</p>
@@ -348,8 +361,8 @@ export default function DashboardAgedLeads() {
 
           <GlassCard className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-amber-500/20">
-                <Phone className="h-5 w-5 text-amber-400" />
+               <div className="p-2 rounded-lg bg-secondary">
+                 <Phone className="h-5 w-5 text-secondary-foreground" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{processedLeads}</p>
@@ -360,8 +373,8 @@ export default function DashboardAgedLeads() {
 
           <GlassCard className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-500/20">
-                <CheckCircle2 className="h-5 w-5 text-green-400" />
+               <div className="p-2 rounded-lg bg-primary/20">
+                 <CheckCircle2 className="h-5 w-5 text-primary" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{hiredLeads}</p>
@@ -382,6 +395,38 @@ export default function DashboardAgedLeads() {
               className="pl-10"
             />
           </div>
+           {/* License Status Filter */}
+           <div className="flex gap-2">
+             <Button
+               variant={licenseFilter === "all" ? "default" : "outline"}
+               size="sm"
+               onClick={() => setLicenseFilter("all")}
+             >
+               All
+             </Button>
+             {leads.some(l => l.licenseStatus === "licensed") && (
+               <Button
+                 variant={licenseFilter === "licensed" ? "default" : "outline"}
+                 size="sm"
+                 onClick={() => setLicenseFilter("licensed")}
+                 className="gap-1"
+               >
+                 <CheckCircle2 className="h-3 w-3" />
+                 Licensed
+               </Button>
+             )}
+             {leads.some(l => l.licenseStatus === "unlicensed") && (
+               <Button
+                 variant={licenseFilter === "unlicensed" ? "default" : "outline"}
+                 size="sm"
+                 onClick={() => setLicenseFilter("unlicensed")}
+                 className="gap-1"
+               >
+                 <GraduationCap className="h-3 w-3" />
+                 Unlicensed
+               </Button>
+             )}
+           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filter by status" />
@@ -439,7 +484,7 @@ export default function DashboardAgedLeads() {
                         </p>
                       )}
                     </div>
-                    <Badge className={cn("text-xs", statusColors[lead.status] || "bg-muted")}>
+                       <Badge className={cn("text-xs", statusColors[lead.status] || "bg-secondary text-secondary-foreground")}>
                       {lead.status.replace("_", " ")}
                     </Badge>
                   </div>
@@ -462,7 +507,7 @@ export default function DashboardAgedLeads() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="gap-1 text-green-500 border-green-500/30 hover:bg-green-500/10"
+                         className="gap-1 text-primary border-primary/30 hover:bg-primary/10"
                         onClick={() => handleStatusChange(lead.id, "hired")}
                       >
                         <CheckCircle2 className="h-3 w-3" />
@@ -471,7 +516,7 @@ export default function DashboardAgedLeads() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="gap-1 text-red-500 border-red-500/30 hover:bg-red-500/10"
+                         className="gap-1 text-destructive border-destructive/30 hover:bg-destructive/10"
                         onClick={() => handleStatusChange(lead.id, "not_qualified")}
                       >
                         <XCircle className="h-3 w-3" />
@@ -480,7 +525,7 @@ export default function DashboardAgedLeads() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="gap-1 text-purple-500 border-purple-500/30 hover:bg-purple-500/10"
+                         className="gap-1 text-accent-foreground border-accent/30 hover:bg-accent/10"
                         onClick={() => handleStatusChange(lead.id, "licensing")}
                       >
                         <GraduationCap className="h-3 w-3" />
@@ -503,71 +548,23 @@ export default function DashboardAgedLeads() {
           </div>
         )}
 
-        {/* Bulk Import Modal */}
-        <Dialog open={importOpen} onOpenChange={setImportOpen}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <Upload className="h-5 w-5 text-primary" />
-                Bulk Import Aged Leads
-              </DialogTitle>
-            </DialogHeader>
-
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Assign to Manager</Label>
-                <Select value={selectedManager} onValueChange={setSelectedManager}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a manager" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {managers.map(m => (
-                      <SelectItem key={m.id} value={m.id}>
-                        {m.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>CSV Data</Label>
-                <p className="text-xs text-muted-foreground">
-                  Format: FirstName, LastName, Email, Phone, AboutMe, OriginalDate (one per line)
-                </p>
-                <Textarea
-                  placeholder="John, Doe, john@example.com, 555-1234, Previous sales experience, 2024-01-15"
-                  value={csvData}
-                  onChange={(e) => setCsvData(e.target.value)}
-                  className="min-h-[200px] font-mono text-sm"
-                />
-              </div>
-
-              <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 p-3 text-sm text-amber-400 flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                <span>
-                  Each imported lead will automatically receive an outreach email inviting them to 
-                  apply or schedule a call.
-                </span>
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button variant="ghost" onClick={() => setImportOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleBulkImport} disabled={importing} className="gap-2">
-                {importing ? (
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Upload className="h-4 w-4" />
-                )}
-                Import Leads
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-    </DashboardLayout>
+         {/* Call Mode Interface */}
+         <CallModeInterface
+           isOpen={callModeOpen}
+           onClose={() => setCallModeOpen(false)}
+           licenseFilter={callModeLicense}
+           managerId={myAgentId}
+           isAdmin={isAdmin}
+           onLeadProcessed={fetchLeads}
+         />
+ 
+         {/* Enhanced Importer Modal */}
+         <AgedLeadImporter
+           isOpen={showImporter}
+           onClose={() => setShowImporter(false)}
+           managers={managers}
+           onImportComplete={fetchLeads}
+         />
+     </div>
   );
 }

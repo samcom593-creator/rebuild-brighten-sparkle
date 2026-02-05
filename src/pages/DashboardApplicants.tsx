@@ -211,53 +211,33 @@ export default function DashboardApplicants() {
       return;
     }
     
-    // For admins/managers with a highlighted lead, fetch that specific lead first
-    if (highlightedLeadId && (isAdmin || isManager)) {
-      const { data: specificLead, error: specificError } = await supabase
+    // ADMINS: Always see ALL applications
+    if (isAdmin) {
+      const { data: adminApps } = await supabase
         .from("applications")
         .select("*")
-        .eq("id", highlightedLeadId)
-        .maybeSingle();
-      
-      if (!specificError && specificLead) {
-        // If the lead is not assigned to current agent, still show it for admin/manager
-        if (!agentData || specificLead.assigned_agent_id !== agentData.id) {
-          // Fetch all applications the user has access to + this specific one
-          let allApps: Application[] = [];
-          
-          if (isAdmin) {
-            // Admins see ALL applications
-            const { data: adminApps } = await supabase
-              .from("applications")
-              .select("*")
-              .order("created_at", { ascending: false });
-            allApps = (adminApps || []) as Application[];
-          } else if (agentData) {
-            // Manager sees their own + team's apps
-            const { data: managerApps } = await supabase
-              .from("applications")
-              .select("*")
-              .order("created_at", { ascending: false });
-            allApps = (managerApps || []) as Application[];
-          }
-          
-          // Ensure the highlighted lead is in the list
-          if (!allApps.find(a => a.id === highlightedLeadId)) {
-            allApps.unshift(specificLead as Application);
-          }
-          
-          setApplications(allApps);
-          setIsLoading(false);
-          return;
-        }
-      }
+        .order("created_at", { ascending: false });
+      setApplications((adminApps || []) as Application[]);
+      setIsLoading(false);
+      return;
     }
 
-    // Standard fetch for assigned applications
+    // MANAGERS: See all applications (RLS filters to their team + unassigned)
+    if (isManager) {
+      const { data: managerApps } = await supabase
+        .from("applications")
+        .select("*")
+        .order("created_at", { ascending: false });
+      setApplications((managerApps || []) as Application[]);
+      setIsLoading(false);
+      return;
+    }
+
+    // AGENTS: Only see their assigned applications
     if (agentData) {
       const { data, error } = await supabase
         .from("applications")
-        .select("*, assigned_agent_id")
+        .select("*")
         .eq("assigned_agent_id", agentData.id)
         .order("created_at", { ascending: false });
 
@@ -265,7 +245,6 @@ export default function DashboardApplicants() {
         setApplications(data as Application[]);
       }
     } else {
-      // No demo data - show empty state for new agents
       setApplications([]);
     }
     

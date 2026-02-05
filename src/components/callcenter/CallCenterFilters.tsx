@@ -17,14 +17,17 @@ import { cn } from "@/lib/utils";
 export type SourceFilter = "all" | "aged_leads" | "applications";
 export type LicenseFilter = "all" | "licensed" | "unlicensed";
 export type StatusFilter = "new" | "no_pickup" | "contacted";
+export type ProgressFilter = "all" | "course_purchased" | "passed_test" | "waiting_on_license";
 
 interface CallCenterFiltersProps {
   sourceFilter: SourceFilter;
   licenseFilter: LicenseFilter;
   statusFilter: StatusFilter;
+  progressFilter: ProgressFilter;
   onSourceChange: (value: SourceFilter) => void;
   onLicenseChange: (value: LicenseFilter) => void;
   onStatusChange: (value: StatusFilter) => void;
+  onProgressChange: (value: ProgressFilter) => void;
   onStart: () => void;
   className?: string;
 }
@@ -33,9 +36,11 @@ export function CallCenterFilters({
   sourceFilter,
   licenseFilter,
   statusFilter,
+  progressFilter,
   onSourceChange,
   onLicenseChange,
   onStatusChange,
+  onProgressChange,
   onStart,
   className,
 }: CallCenterFiltersProps) {
@@ -125,6 +130,23 @@ export function CallCenterFilters({
                   <SelectItem value="new">New / Uncontacted</SelectItem>
                   <SelectItem value="no_pickup">No Pickup (Retry)</SelectItem>
                   <SelectItem value="contacted">Contacted</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block text-muted-foreground">
+                License Progress
+              </label>
+              <Select value={progressFilter} onValueChange={(v) => onProgressChange(v as ProgressFilter)}>
+                <SelectTrigger className="bg-background/50 border-border/50">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Progress</SelectItem>
+                  <SelectItem value="course_purchased">Course Purchased</SelectItem>
+                  <SelectItem value="passed_test">Passed Test</SelectItem>
+                  <SelectItem value="waiting_on_license">Waiting on License</SelectItem>
                 </SelectContent>
               </Select>
             </div>

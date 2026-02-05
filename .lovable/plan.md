@@ -1,116 +1,259 @@
 
-# Plan: Enhanced Post-Call Follow-Up Email with Licensing Resources
+# Plan: Admin Lead Center + Call Center Enhancements + Email Integration
 
 ## Summary
 
-Enhance the post-call follow-up email to include:
-1. **Calendar link** for rebooking (already exists)
-2. **Licensing steps** for unlicensed leads
-3. **YouTube video** explaining the licensing process
-4. **Licensing document** with detailed guide
-
-The email will be customized based on license status:
-- **Licensed leads**: Simple "great talking to you" + calendar link
-- **Unlicensed leads**: Full licensing resources package (video, document, course link, steps)
+This plan addresses all the issues you've raised:
+1. **Lead Center** - Add dedicated admin navigation item for full lead management with assignment capabilities
+2. **Lead Assignment Fix** - Add assignment buttons in the AllLeadsPanel table so you can reassign leads away from Aisha
+3. **Call Center Fixes** - Ensure all lead details display correctly (Instagram, email, notes)
+4. **Email Integration** - Add quick email menu to Call Center for sending pre-made emails
+5. **High-Tech UI** - Polish the interface with premium design elements
 
 ---
 
-## What Will Change
+## What Will Be Fixed/Added
 
-### Updated Email Content for Unlicensed Leads
+### 1. Add "Lead Center" to Admin Navigation
 
-The email will now include:
+Add a new sidebar item for admins only:
+- **Icon**: Database or Target icon
+- **Label**: "Lead Center"
+- **Route**: `/dashboard/leads`
+- Appears after "Command Center" in the navigation
 
-```text
-Hey [First Name]! 📞
+### 2. Create New Lead Center Page
 
-Great talking with you! Here's everything you need to get started on your licensing journey:
+A dedicated admin page (`/dashboard/leads`) for:
+- **Viewing all leads** from both applications and aged_leads tables
+- **Bulk assignment** - Dropdown to assign/reassign leads to any manager
+- **Filter by manager** - See only leads assigned to a specific person
+- **Filter by status** - New, Contacted, Qualified, etc.
+- **Filter by license** - Licensed vs Unlicensed
+- **Quick actions** - Call, Email, View Profile
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📺 STEP 1: WATCH THE OVERVIEW VIDEO
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Learn about the licensing process and what to expect.
-[Watch Video Button → YouTube Link]
+Key feature: **Assign button on EVERY lead row** so you can fix the Aisha situation immediately.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📄 STEP 2: REVIEW THE LICENSING GUIDE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Our comprehensive guide walks you through every step.
-[View Document Button → Google Doc]
+### 3. Enhance AllLeadsPanel with Assignment
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎓 STEP 3: START YOUR PRE-LICENSING COURSE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Complete your state-required education. We cover the cost!
-[Start Course Button → Course Link]
+Update the existing `AllLeadsPanel.tsx` to add an "Assign" button in each row:
+- Uses existing `QuickAssignMenu` component
+- Allows admin to reassign leads to any manager
+- Immediately updates the lead's `assigned_agent_id`
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
+### 4. Call Center Enhancements
 
-✅ We Cover Licensing Costs – No upfront costs
-✅ Takes About 7 Days – Complete in one week
-✅ Full Training Provided – Learn everything you need
+Fix and enhance the Call Center lead card to show:
+- Phone (tap to call) - Already works
+- Email - Already displays but will enhance
+- Instagram handle - Already displays
+- Notes/Motivation - Already displays
+- **NEW: Quick Email Menu** - Add the same email menu from Pipeline
+- Keep Record Call button and Analysis features
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Add to `CallCenterLeadCard.tsx`:
+- Integrate `QuickEmailMenu` component
+- Add email templates dropdown
+- Keep voice recorder prominent
 
-📅 Need help? Book a follow-up call:
-[Schedule Follow-Up Call Button]
+### 5. Trigger Follow-Up Emails on All Actions
 
-– The APEX Team
-```
+Currently, follow-up emails only send when "Contacted" is clicked. Update to:
+- Send follow-up email on **ANY action** (Contacted, Hired, Contracted, Licensing, etc.)
+- Each action type can have a slightly customized email message
 
 ---
+
+## Files to Create
+
+| File | Purpose |
+|------|---------|
+| `src/pages/LeadCenter.tsx` | New admin-only lead management hub |
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `supabase/functions/send-post-call-followup/index.ts` | Add licensing resources section for unlicensed leads |
+| `src/components/layout/GlobalSidebar.tsx` | Add "Lead Center" nav item for admins |
+| `src/App.tsx` | Add route for `/dashboard/leads` |
+| `src/components/dashboard/AllLeadsPanel.tsx` | Add assignment button to each lead row |
+| `src/components/callcenter/CallCenterLeadCard.tsx` | Add QuickEmailMenu and ensure all info displays |
+| `src/pages/CallCenter.tsx` | Send follow-up emails on all action types (not just "contacted") |
+
+---
+
+## Lead Center Page Design
+
+```text
++----------------------------------------------------------+
+|  Lead Center                          [Refresh] [Export] |
++----------------------------------------------------------+
+| [Search leads...]  [Filter: Manager ▼] [Status ▼] [License ▼] |
++----------------------------------------------------------+
+|                                                          |
+|  Stats Cards:                                            |
+|  [Total: 234] [Unassigned: 45] [Licensed: 89] [New: 67]  |
+|                                                          |
++----------------------------------------------------------+
+|                                                          |
+|  Lead Table with Assignment:                             |
+|  +------+-------+--------+--------+----------+---------+ |
+|  | Name | Phone | Status | License| Assigned | Actions | |
+|  +------+-------+--------+--------+----------+---------+ |
+|  | John | 555.. | New    | Yes    | Aisha    | [Assign]| |
+|  |      |       |        |        |          | [Call]  | |
+|  |      |       |        |        |          | [Email] | |
+|  +------+-------+--------+--------+----------+---------+ |
+|                                                          |
++----------------------------------------------------------+
+```
+
+### Assignment Dropdown
+
+When clicking "Assign", shows all active managers:
+- Samuel James
+- Aisha (current)
+- Other Manager
+- **Unassign** - Sets `assigned_agent_id` to NULL
+
+---
+
+## Call Center Lead Card Updates
+
+Current card already shows:
+- Name, phone (tap to call), email, Instagram, notes, source badge, license badge
+
+Will add:
+- **Quick Email button** - Opens dropdown with email templates
+- Keep voice recorder section prominent
+- Enhanced styling for a premium feel
+
+```text
++----------------------------------------------------------+
+|  [Aged Lead] [Unlicensed]                                |
+|                                                          |
+|  John Smith                              [Stage: ▼ New]  |
+|  Added 3 days ago • Last contact: Feb 1                  |
+|                                                          |
+|  +----------------------------------------------------+  |
+|  | 📞 (555) 123-4567           [TAP TO CALL]         |  |
+|  +----------------------------------------------------+  |
+|  | ✉️  john@email.com                                  |  |
+|  | 📷 @johnsmith                                      |  |
+|  +----------------------------------------------------+  |
+|                                                          |
+|  Notes: Interested in financial career, has sales exp... |
+|                                                          |
+|  +----------------------------------------------------+  |
+|  | 🎤 Record Call               📧 Quick Email        |  |
+|  |    [Start Recording]          [Select Template ▼] |  |
+|  +----------------------------------------------------+  |
+|                                                          |
++----------------------------------------------------------+
+|  [Contacted] [Hired] [Contracted] [Licensing] [Not Qual] |
+|                    [Skip to Next →]                      |
++----------------------------------------------------------+
+```
+
+---
+
+## Follow-Up Email on All Actions
+
+Update `CallCenter.tsx` to send follow-up emails when ANY action is clicked:
+
+```text
+Action Clicked → Update Lead Status → Send Follow-Up Email → Next Lead
+
+Email content varies by action:
+- Contacted: "Great talking to you! Here's the calendar link..."
+- Hired: "Welcome to the team! Next steps..."
+- Contracted: "Congratulations on getting contracted!..."
+- Licensing: "Here are your licensing resources..."
+- Not Qualified: No email (they're disqualified)
+- No Pickup: No email (will retry later)
+```
 
 ---
 
 ## Technical Details
 
-### Resource URLs (from GetLicensed.tsx)
-- **YouTube Video**: `https://www.youtube.com/embed/i1e5p-GEfAU` (will convert to watch link)
-- **Licensing Document**: `https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg/edit?usp=sharing`
-- **Pre-Licensing Course**: `https://partners.xcelsolutions.com/afe`
-- **Calendly URL**: `https://calendly.com/sam-com593/licensed-prospect-call-clone`
+### Lead Center Query Logic
 
-### Email Logic
 ```typescript
-const isLicensed = licenseStatus === "licensed";
+// Fetch ALL applications (admin sees everything)
+const { data: applications } = await supabase
+  .from("applications")
+  .select("*")
+  .is("terminated_at", null)
+  .order("created_at", { ascending: false });
 
-if (isLicensed) {
-  // Simple follow-up + calendar link
-} else {
-  // Full licensing resources package:
-  // - Step 1: YouTube video
-  // - Step 2: Google Doc guide
-  // - Step 3: Pre-licensing course link
-  // - Quick benefits list
-  // - Calendar link for questions
-}
+// Also fetch aged_leads for unified view
+const { data: agedLeads } = await supabase
+  .from("aged_leads")
+  .select("*")
+  .order("created_at", { ascending: false });
 ```
 
-### Enhanced Email Design
+### Assignment Update
 
-For unlicensed leads, the email will have:
-- **Three clear steps** with icons and buttons
-- **Embedded video thumbnail** linking to YouTube
-- **Visual step indicators** (Step 1 → Step 2 → Step 3)
-- **Benefits checklist** (costs covered, 7 days, full training)
-- **Calendar booking button** at the bottom
+```typescript
+// Reassign lead to different manager
+const handleAssign = async (leadId: string, newAgentId: string | null) => {
+  await supabase
+    .from("applications")
+    .update({ assigned_agent_id: newAgentId })
+    .eq("id", leadId);
+  
+  // Notify new manager
+  if (newAgentId) {
+    await supabase.functions.invoke("notify-lead-assigned", {
+      body: { applicationId: leadId, agentId: newAgentId }
+    });
+  }
+  
+  toast.success("Lead reassigned successfully");
+  refetch();
+};
+```
+
+### Enhanced Follow-Up Trigger
+
+```typescript
+// In CallCenter.tsx handleAction function
+const shouldSendEmail = ["contacted", "hired", "contracted", "licensing"].includes(actionId);
+
+if (shouldSendEmail) {
+  await supabase.functions.invoke("send-post-call-followup", {
+    body: {
+      firstName: currentLead.firstName,
+      email: currentLead.email,
+      licenseStatus: currentLead.licenseStatus,
+      actionType: actionId, // Pass action type for customized email
+    },
+  });
+}
+```
 
 ---
 
 ## Expected Outcomes
 
 After implementation:
-- Every post-call email for **unlicensed leads** includes:
-  - YouTube video link with thumbnail
-  - Licensing document link
-  - Pre-licensing course link
-  - Clear 3-step process
-  - Calendar booking option
-- **Licensed leads** continue to receive the simple follow-up email
-- Email design matches APEX branding (dark theme, teal accents, gradient buttons)
+1. **Lead Center** - Admin-only page in sidebar for full lead management
+2. **Easy Reassignment** - Click "Assign" on any lead to move it to a different manager
+3. **Aisha Fix** - You can immediately reassign all leads assigned to Aisha back to yourself or others
+4. **Call Center Emails** - Quick email button to send pre-made templates from Call Center
+5. **Auto Follow-Ups** - Emails sent on Contacted, Hired, Contracted, and Licensing actions
+6. **Premium UI** - Clean, high-tech design throughout
+
+---
+
+## UI Styling Notes
+
+All components will feature:
+- Glass morphism cards with subtle borders
+- Gradient accent colors (teal for primary actions)
+- Smooth hover transitions
+- Consistent spacing and typography
+- Mobile-responsive layouts
+- Dark theme optimized colors

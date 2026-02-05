@@ -272,10 +272,8 @@ export default function CallCenter() {
         if (actionId === "hired" || actionId === "contracted") {
           updateData.status = "approved";
           updateData.contracted_at = new Date().toISOString();
-        } else if (actionId === "not_qualified") {
+        } else if (actionId === "bad_applicant") {
           updateData.status = "rejected";
-        } else if (actionId === "licensing") {
-          updateData.status = "contracting";
         } else if (actionId === "contacted") {
           updateData.status = "reviewing";
           updateData.contacted_at = new Date().toISOString();
@@ -293,7 +291,7 @@ export default function CallCenter() {
       }
 
       // Send follow-up email for applicable actions
-      const emailActions = ["contacted", "hired", "contracted", "licensing"];
+      const emailActions = ["contacted", "hired", "contracted"];
       if (emailActions.includes(actionId)) {
         await sendFollowUpEmail(currentLead, actionId);
         toast.success(`Lead marked as ${actionId.replace("_", " ")} - follow-up email sent!`);
@@ -431,13 +429,7 @@ export default function CallCenter() {
           handleAction("contracted");
           break;
         case "4":
-          if (currentLead?.licenseStatus !== "licensed") handleAction("licensing");
-          break;
-        case "5":
-          handleAction("not_qualified");
-          break;
-        case "6":
-          handleAction("no_pickup");
+          handleAction("bad_applicant");
           break;
         case "n":
           handleSkip();
@@ -450,7 +442,7 @@ export default function CallCenter() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [started, processing, handleAction, handleSkip, currentLead]);
+  }, [started, processing, handleAction, handleSkip]);
 
   // Filter selection UI
   if (!started) {
@@ -539,6 +531,11 @@ export default function CallCenter() {
               onCall={handleCall}
               isRecording={isRecording}
               onRecordingStateChange={setIsRecording}
+              isAdmin={isAdmin}
+              onReassigned={() => {
+                // Remove lead from list after reassignment
+                setLeads((prev) => prev.filter((l) => l.id !== currentLead.id));
+              }}
               className="flex-1 overflow-y-auto"
             />
           </AnimatePresence>
@@ -548,7 +545,6 @@ export default function CallCenter() {
             onAction={handleAction}
             onSkip={handleSkip}
             processing={processing}
-            isLicensed={currentLead.licenseStatus === "licensed"}
           />
         </div>
       )}

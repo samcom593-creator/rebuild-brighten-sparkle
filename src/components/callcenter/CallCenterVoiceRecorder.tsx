@@ -1,24 +1,40 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, Loader2 } from "lucide-react";
+import { Mic, MicOff, Loader2, ChevronDown, ChevronUp, Sparkles, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+
+interface CallSummary {
+  keyPoints: string[];
+  sentiment: "positive" | "neutral" | "negative";
+  actionItems: string[];
+  recommendation: string;
+  briefSummary: string;
+}
 
 interface CallCenterVoiceRecorderProps {
   onTranscriptionUpdate: (text: string) => void;
   onRecordingStateChange?: (isRecording: boolean) => void;
+  onSummaryComplete?: (summary: CallSummary) => void;
   className?: string;
 }
 
 export function CallCenterVoiceRecorder({
   onTranscriptionUpdate,
   onRecordingStateChange,
+  onSummaryComplete,
   className,
 }: CallCenterVoiceRecorderProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [isSupported, setIsSupported] = useState(true);
   const [transcript, setTranscript] = useState("");
   const [interimTranscript, setInterimTranscript] = useState("");
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [callSummary, setCallSummary] = useState<CallSummary | null>(null);
+  const [showFullTranscript, setShowFullTranscript] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
+  
   const recognitionRef = useRef<any>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>();
@@ -148,8 +164,49 @@ export function CallCenterVoiceRecorder({
     draw();
   }, [isRecording]);
 
+  const analyzeTranscript = async (fullTranscript: string) => {
+    if (!fullTranscript.trim() || fullTranscript.length < 20) {
+      setAnalyzeError("Transcript too short to analyze");
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setAnalyzeError(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("analyze-call-transcript", {
+        body: { transcript: fullTranscript },
+      });
+
+      if (error) {
+        console.error("Error analyzing transcript:", error);
+        setAnalyzeError(error.message || "Failed to analyze call");
+        return;
+      }
+
+      if (data?.summary) {
+        setCallSummary(data.summary);
+        onSummaryComplete?.(data.summary);
+      } else if (data?.error) {
+        setAnalyzeError(data.error);
+      }
+    } catch (err) {
+      console.error("Failed to analyze transcript:", err);
+      setAnalyzeError("Connection error. Please try again.");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
   const startRecording = async () => {
     try {
+      // Reset previous summary and transcript
+      setCallSummary(null);
+      setTranscript("");
+      setInterimTranscript("");
+      setAnalyzeError(null);
+      setShowFullTranscript(false);
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
@@ -171,6 +228,8 @@ export function CallCenterVoiceRecorder({
   };
 
   const stopRecording = () => {
+    const fullTranscript = transcript + interimTranscript;
+
     if (recognitionRef.current) {
       recognitionRef.current.stop();
     }
@@ -183,9 +242,22 @@ export function CallCenterVoiceRecorder({
     if (audioContextRef.current) {
       audioContextRef.current.close();
     }
+
     setIsRecording(false);
     onRecordingStateChange?.(false);
     setInterimTranscript("");
+
+    // Update final transcript
+    if (interimTranscript) {
+      const finalTranscript = transcript + interimTranscript;
+      setTranscript(finalTranscript);
+      onTranscriptionUpdate(finalTranscript);
+    }
+
+    // Analyze the transcript
+    if (fullTranscript.trim()) {
+      analyzeTranscript(fullTranscript);
+    }
   };
 
   const toggleRecording = () => {
@@ -193,6 +265,22 @@ export function CallCenterVoiceRecorder({
       stopRecording();
     } else {
       startRecording();
+    }
+  };
+
+  const getSentimentEmoji = (sentiment: string) => {
+    switch (sentiment) {
+      case "positive": return "😊";
+      case "negative": return "😟";
+      default: return "😐";
+    }
+  };
+
+  const getSentimentColor = (sentiment: string) => {
+    switch (sentiment) {
+      case "positive": return "text-green-400";
+      case "negative": return "text-red-400";
+      default: return "text-yellow-400";
     }
   };
 
@@ -212,6 +300,7 @@ export function CallCenterVoiceRecorder({
           variant="outline"
           size="lg"
           onClick={toggleRecording}
+          disabled={isAnalyzing}
           className={cn(
             "relative overflow-hidden transition-all duration-300",
             isRecording
@@ -221,7 +310,6 @@ export function CallCenterVoiceRecorder({
         >
           {isRecording ? (
             <>
-              {/* Pulsing recording indicator */}
               <motion.div
                 className="absolute inset-0 bg-red-500/20"
                 animate={{ opacity: [0.2, 0.4, 0.2] }}
@@ -247,10 +335,21 @@ export function CallCenterVoiceRecorder({
           <motion.span
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
-            className="text-sm text-red-400 flex items-center gap-2"
+            className="text-sm text-muted-foreground flex items-center gap-2"
           >
-            <Loader2 className="h-3 w-3 animate-spin" />
-            Transcribing...
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            Recording...
+          </motion.span>
+        )}
+
+        {isAnalyzing && (
+          <motion.span
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="text-sm text-primary flex items-center gap-2"
+          >
+            <Sparkles className="h-4 w-4 animate-pulse" />
+            Analyzing call...
           </motion.span>
         )}
       </div>
@@ -269,23 +368,151 @@ export function CallCenterVoiceRecorder({
         )}
       </AnimatePresence>
 
-      {/* Live Transcript */}
+      {/* AI Call Summary */}
       <AnimatePresence>
-        {(transcript || interimTranscript) && (
+        {callSummary && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="p-4 rounded-lg bg-black/20 border border-border/50"
+            className="rounded-xl bg-gradient-to-br from-primary/5 via-card to-primary/5 border border-primary/20 overflow-hidden"
           >
-            <div className="text-xs text-muted-foreground mb-2 flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-              Call Notes (Live Transcription)
+            {/* Summary Header */}
+            <div className="p-4 border-b border-border/30 bg-primary/5">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <span className="font-medium text-foreground">Call Summary</span>
+              </div>
             </div>
-            <p className="text-sm text-foreground leading-relaxed">
-              {transcript}
+
+            {/* Key Points */}
+            <div className="p-4 space-y-4">
+              <div>
+                <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                  📋 Key Points
+                </div>
+                <ul className="space-y-1">
+                  {callSummary.keyPoints.map((point, i) => (
+                    <li key={i} className="text-sm text-foreground flex items-start gap-2">
+                      <span className="text-primary mt-1">•</span>
+                      {point}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Sentiment */}
+              <div className="flex items-center gap-3 py-2 px-3 rounded-lg bg-muted/30">
+                <span className="text-lg">{getSentimentEmoji(callSummary.sentiment)}</span>
+                <span className="text-sm text-muted-foreground">Sentiment:</span>
+                <span className={cn("text-sm font-medium capitalize", getSentimentColor(callSummary.sentiment))}>
+                  {callSummary.sentiment}
+                </span>
+              </div>
+
+              {/* Action Items */}
+              {callSummary.actionItems.length > 0 && (
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                    ✅ Action Items
+                  </div>
+                  <ul className="space-y-1">
+                    {callSummary.actionItems.map((item, i) => (
+                      <li key={i} className="text-sm text-foreground flex items-start gap-2">
+                        <span className="text-green-400 mt-1">•</span>
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Recommendation */}
+              <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                <div className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-2">
+                  💡 Recommendation
+                </div>
+                <p className="text-sm font-medium text-primary">{callSummary.recommendation}</p>
+              </div>
+
+              {/* Brief Summary */}
+              <div className="text-sm text-muted-foreground italic">
+                "{callSummary.briefSummary}"
+              </div>
+            </div>
+
+            {/* View Full Transcript Toggle */}
+            {transcript && (
+              <div className="border-t border-border/30">
+                <button
+                  onClick={() => setShowFullTranscript(!showFullTranscript)}
+                  className="w-full p-3 flex items-center justify-center gap-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
+                >
+                  {showFullTranscript ? (
+                    <>
+                      <ChevronUp className="h-4 w-4" />
+                      Hide Full Transcript
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="h-4 w-4" />
+                      View Full Transcript
+                    </>
+                  )}
+                </button>
+
+                <AnimatePresence>
+                  {showFullTranscript && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="p-4 bg-muted/20 border-t border-border/30">
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">{transcript}</p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Error Display */}
+      <AnimatePresence>
+        {analyzeError && !callSummary && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center gap-2 text-sm text-red-400"
+          >
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            {analyzeError}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Recording in Progress - Show Live Indicator */}
+      <AnimatePresence>
+        {isRecording && transcript && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="p-3 rounded-lg bg-muted/20 border border-border/30"
+          >
+            <div className="text-xs text-muted-foreground mb-1 flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              Transcribing live...
+            </div>
+            <p className="text-sm text-muted-foreground line-clamp-2">
+              {transcript.slice(-100)}
               {interimTranscript && (
-                <span className="text-muted-foreground italic">{interimTranscript}</span>
+                <span className="italic opacity-60"> {interimTranscript}</span>
               )}
             </p>
           </motion.div>

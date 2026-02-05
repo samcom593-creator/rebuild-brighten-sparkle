@@ -258,3 +258,6 @@ verify_jwt = false
 
 [functions.send-post-call-followup]
 verify_jwt = false
+
+[functions.analyze-call-transcript]
+verify_jwt = false

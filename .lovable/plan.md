@@ -1,229 +1,268 @@
 
-# Plan: Call Center Optimization - Actions, AI Call Summary & Lead Reassignment
+
+# Plan: Call Center UI Optimization + Aged Lead Email System + Homepage Update
 
 ## Summary
 
-Optimize the Call Center with three major improvements:
-1. **Simplify action buttons** - Keep: Contacted, Contracted, Hired (replacing Licensing), Bad Applicant (renamed from Not Qualified), remove No Pickup
-2. **Replace raw transcription with AI call summary** - Instead of showing word-by-word transcription, use AI to analyze the recording and provide a structured breakdown
-3. **Admin-only lead reassignment button** - Quick button to assign leads to any manager's pipeline
+This plan addresses multiple improvements:
+1. **Call Center Pipeline UI** - Add last contact date display, 2-week countdown timer, better screen utilization
+2. **Aged Lead Auto-Email** - Improve the email sent when importing leads with a high-converting "new position" email + test preview
+3. **Homepage Update** - Change "50%" commission references to "70%"
 
 ---
 
-## 1. Action Button Changes
+## Database Changes
 
-### Current Buttons (6)
-- Contacted
-- Hired
-- Contracted
-- Licensing (unlicensed only)
-- Not Qualified
-- No Pickup
+Add column to `aged_leads` table to track when lead was first imported (for 2-week countdown):
 
-### New Buttons (4)
-| Button | Action ID | Icon | Purpose |
-|--------|-----------|------|---------|
-| Contacted | `contacted` | MessageSquare | Mark as contacted |
-| Hired | `hired` | CheckCircle2 | Mark as hired (decision made) |
-| Contracted | `contracted` | FileText | Mark as contracted |
-| Bad Applicant | `bad_applicant` | XCircle | Disqualify lead |
+```sql
+ALTER TABLE aged_leads
+ADD COLUMN IF NOT EXISTS contacted_at timestamp with time zone;
+```
+
+---
+
+## 1. Call Center Pipeline UI Improvements
 
 ### Files to Modify
-- `src/components/callcenter/CallCenterActions.tsx`
-- `src/pages/CallCenter.tsx` (update action handler for new IDs)
+
+#### `src/components/callcenter/CallCenterLeadCard.tsx`
+
+**Changes:**
+- Add "Last Contacted" badge showing date of last contact
+- Add 2-week countdown progress bar showing days remaining
+- Expand the card to use more horizontal space (remove `max-w-3xl` constraint)
+- Better visual hierarchy with larger touch targets
+
+**New UI Elements:**
+
+| Element | Description |
+|---------|-------------|
+| Last Contact Badge | Shows "Last: Called • 2d ago" or "No contact yet" |
+| 2-Week Countdown | Progress bar showing X of 14 days elapsed |
+| Urgency Indicator | Red warning when under 3 days remaining |
+
+**Visual Design:**
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│  Aged Lead  •  Unlicensed                                       │
+│  John Smith                                                     │
+│  Added 3 days ago  •  Last contact: 2d ago                      │
+│                                                                 │
+│  ⏱️ Lead Expiry: 11 days remaining                              │
+│  [██████████░░░░░░░░░░░░░░]                                     │
+│                                                                 │
+│  [📞 CALL NOW] john@email.com | @johndoe                        │
+│                                                                 │
+│  Notes: Looking for remote sales opportunity...                 │
+│                                                                 │
+│  [🎙️ Record Call]  [📧 Email]  [🔀 Reassign]                    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### `src/pages/CallCenter.tsx`
+
+**Changes:**
+- Remove `max-w-3xl` constraint to use full screen width
+- Update grid layout for better space utilization
+- Fetch `contacted_at` for aged leads (add to query)
+- Track when leads are contacted (update on action)
 
 ---
 
-## 2. AI Call Summary (Replace Raw Transcription)
+## 2. Aged Lead High-Converting Email
 
-### Current Problem
-The voice recorder shows every word transcribed in real-time, which is overwhelming and not useful. Users want an **analyzed summary** instead.
+### Current Flow
+When leads are imported via `AgedLeadImporter.tsx`, emails are sent via `send-aged-lead-email` edge function.
 
-### Solution
-1. Record/transcribe the call as before (using Web Speech API)
-2. When recording stops, send the full transcript to AI for analysis
-3. Display a structured call summary with:
-   - Key Points discussed
-   - Lead Sentiment (positive/neutral/negative)
-   - Action Items identified
-   - Recommended next steps
+### Improvements Needed
 
-### Technical Implementation
+#### A. Test Email Preview (Before Import)
 
-**New Edge Function**: `analyze-call-transcript`
-- Takes raw transcript as input
-- Uses Lovable AI (gemini-2.5-flash) to analyze
-- Returns structured summary
+**New Component:** `AgedLeadEmailPreview.tsx`
 
-**Updated CallCenterVoiceRecorder.tsx:**
-- Keep transcription running in background (for accuracy)
-- On stop: send transcript to edge function for analysis
-- Display summary instead of raw text
-- Option to view full transcript if needed
+Add a preview modal that shows the exact email before importing. User can review and approve.
 
-### AI Summary Output Format
+**Integration in `AgedLeadImporter.tsx`:**
+- Add "Preview Email" button in step 2 (before import)
+- Show modal with full email content
+- Allow minor customization if needed
+
+#### B. High-Converting Email Content
+
+**Update:** `supabase/functions/send-aged-lead-email/index.ts`
+
+Replace current generic email with a high-converting "new position opened" message:
+
+**New Subject Line:**
+```
+🔥 New Remote Sales Position Just Opened – Apply Now
+```
+
+**Email Structure:**
+1. **Attention-grabbing header** - "A new position just opened up"
+2. **Urgency** - "Limited spots available"
+3. **Benefits list** - Starting at 70% commission, free leads, etc.
+4. **Social proof** - Agent success stories
+5. **Clear CTA** - "Claim Your Spot"
+
+**New Email Copy:**
+```text
+Hey [Name]!
+
+A new remote sales position just opened up at Apex Financial and we thought of you.
+
+Here's what's on the table:
+
+✓ Start at 70% commission (up to 145%)
+✓ Free warm leads provided daily  
+✓ Complete training program included
+✓ No cold calling required
+✓ Work from anywhere
+
+Our top performers are earning $10K-$50K+ per month, and we're looking for motivated individuals to join the team.
+
+[🚀 CLAIM YOUR SPOT]
+
+Spots are limited and filling fast.
+
+– The Apex Financial Team
+```
+
+---
+
+## 3. Homepage 50% → 70% Update
+
+### Files to Modify
+
+#### `src/components/landing/HeroSection.tsx`
+**Line 182:** Change `"50%-145%"` to `"70%-145%"`
+
+#### `src/components/landing/CareerPathwaySection.tsx`
+**Line 139:** Change `"50%-145%"` to `"70%-145%"`
+**Line 209:** Change `"50%-145%"` to `"70%-145%"`
+
+#### `src/components/landing/EarningsSection.tsx`
+**Lines 15, 23:** Update `commissionRate` from `"50%-145%"` to `"70%-145%"`
+
+---
+
+## 4. Post-Contact Thank You Email Enhancement
+
+### Current State
+`send-post-call-followup` already sends emails after contact with licensing resources for unlicensed leads.
+
+### Verify Functionality
+- Licensed leads receive Calendly rebook link
+- Unlicensed leads receive 3-step resource package (video, doc, course link)
+
+**No changes needed** - this is already implemented correctly per the memory context.
+
+---
+
+## Technical Implementation Details
+
+### 2-Week Countdown Component
+
 ```typescript
-interface CallSummary {
-  keyPoints: string[];
-  sentiment: "positive" | "neutral" | "negative";
-  actionItems: string[];
-  recommendation: string;
-  briefSummary: string;
+// New component: LeadExpiryCountdown.tsx
+interface LeadExpiryCountdownProps {
+  createdAt: string;
+  contactedAt?: string;
+}
+
+function LeadExpiryCountdown({ createdAt, contactedAt }: LeadExpiryCountdownProps) {
+  const created = new Date(createdAt);
+  const now = new Date();
+  const twoWeeksMs = 14 * 24 * 60 * 60 * 1000;
+  
+  const elapsed = now.getTime() - created.getTime();
+  const remaining = Math.max(0, twoWeeksMs - elapsed);
+  const daysRemaining = Math.ceil(remaining / (24 * 60 * 60 * 1000));
+  const progress = Math.min(100, (elapsed / twoWeeksMs) * 100);
+  
+  const isUrgent = daysRemaining <= 3;
+  
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between text-xs">
+        <span className={cn("font-medium", isUrgent && "text-red-400")}>
+          {daysRemaining > 0 ? `${daysRemaining} days remaining` : "Expired"}
+        </span>
+        {contactedAt && <span className="text-green-400">Contacted</span>}
+      </div>
+      <Progress 
+        value={progress} 
+        className={cn("h-1.5", isUrgent && "[&>div]:bg-red-500")} 
+      />
+    </div>
+  );
+}
+```
+
+### Email Preview Modal for Imports
+
+```typescript
+// New component: AgedLeadEmailPreview.tsx
+interface EmailPreviewProps {
+  isOpen: boolean;
+  onClose: () => void;
+  sampleFirstName: string;
+  onApprove: () => void;
+}
+
+function AgedLeadEmailPreview({ isOpen, onClose, sampleFirstName, onApprove }) {
+  // Shows the exact HTML that will be sent
+  // Uses same template as send-aged-lead-email function
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Email Preview</DialogTitle>
+          <DialogDescription>
+            This is what your leads will receive
+          </DialogDescription>
+        </DialogHeader>
+        
+        {/* Render email preview */}
+        <div className="border rounded-lg p-4 bg-black text-white">
+          {/* Email content preview */}
+        </div>
+        
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={onApprove}>Looks Good, Import Leads</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 ```
 
 ---
 
-## 3. Admin-Only Lead Reassignment Button
+## Files Summary
 
-### Feature
-- Only visible to admins
-- Appears on the lead card in Call Center
-- Click to open manager selector dropdown
-- Select manager to reassign lead to their pipeline
-
-### Implementation
-- Add "Reassign Lead" button to `CallCenterLeadCard.tsx`
-- Reuse existing `QuickAssignMenu` component logic
-- Conditionally render based on `isAdmin` prop
-- For both `aged_leads` and `applications` tables:
-  - `aged_leads`: Update `assigned_manager_id`
-  - `applications`: Update `assigned_agent_id`
-
----
-
-## Files to Modify
-
-### 1. `src/components/callcenter/CallCenterActions.tsx`
-```typescript
-// Updated ActionId type
-export type ActionId = "contacted" | "hired" | "contracted" | "bad_applicant";
-
-// New actions array (4 buttons)
-const actions: ActionDef[] = [
-  { id: "contacted", label: "Contacted", icon: MessageSquare, color: "text-teal-400", ... },
-  { id: "hired", label: "Hired", icon: CheckCircle2, color: "text-green-400", ... },
-  { id: "contracted", label: "Contracted", icon: FileText, color: "text-blue-400", ... },
-  { id: "bad_applicant", label: "Bad Applicant", icon: XCircle, color: "text-red-400", ... },
-];
-```
-
-### 2. `src/components/callcenter/CallCenterVoiceRecorder.tsx`
-- Add `onAnalyzeComplete` callback prop
-- Add state for `isAnalyzing` and `callSummary`
-- On stop recording: call edge function for AI analysis
-- Display structured summary UI instead of raw transcript
-
-### 3. `supabase/functions/analyze-call-transcript/index.ts` (NEW)
-- Edge function to analyze call transcripts using Lovable AI
-- Returns structured summary with key points, sentiment, action items
-
-### 4. `src/components/callcenter/CallCenterLeadCard.tsx`
-- Add `isAdmin` prop
-- Add "Reassign Lead" button (admin-only)
-- Import and use manager dropdown component
-
-### 5. `src/pages/CallCenter.tsx`
-- Pass `isAdmin` to CallCenterLeadCard
-- Update action handler for new action IDs (`bad_applicant` instead of `not_qualified`)
-- Remove `no_pickup` and `licensing` handling
-- Update keyboard shortcuts (1-4 for 4 buttons)
-
-### 6. `src/components/callcenter/index.ts`
-- Update exported types to reflect new ActionId
-
----
-
-## UI Changes
-
-### Call Center Actions (Before → After)
-```text
-Before (6 buttons):
-[Contacted] [Hired] [Contracted]
-[Licensing] [Not Qualified] [No Pickup]
-
-After (4 buttons):
-[Contacted] [Hired]
-[Contracted] [Bad Applicant]
-```
-
-### Voice Recording (Before → After)
-```text
-Before:
-"Call Notes (Live Transcription)"
-Hi I'm calling about the insurance position you applied for
-um yeah I'm interested in learning more about it actually
-I have some experience in sales from my previous job...
-[entire word-by-word transcript]
-
-After:
-"Call Summary"
-┌─────────────────────────────────────┐
-│ 📋 Key Points                        │
-│ • Candidate has sales experience     │
-│ • Interested in insurance career     │
-│ • Available to start next week       │
-├─────────────────────────────────────┤
-│ 😊 Sentiment: Positive               │
-├─────────────────────────────────────┤
-│ ✅ Action Items                      │
-│ • Send contracting paperwork         │
-│ • Schedule onboarding call           │
-├─────────────────────────────────────┤
-│ 💡 Recommendation: Move to Hired     │
-└─────────────────────────────────────┘
-[View Full Transcript]
-```
-
-### Lead Card (Admin-Only Addition)
-```text
-┌─────────────────────────────────────┐
-│ John Smith                          │
-│ Aged Lead • Unlicensed              │
-│ ...                                 │
-│ [📞 CALL] [📧 Email] [🔀 Reassign] │  ← New button for admin
-└─────────────────────────────────────┘
-```
-
----
-
-## Data Flow
-
-### AI Call Analysis
-```text
-User stops recording
-        ↓
-Full transcript sent to edge function
-        ↓
-Edge function calls Lovable AI (gemini-2.5-flash)
-        ↓
-AI returns structured analysis
-        ↓
-UI displays formatted summary
-        ↓
-Summary saved to lead notes
-```
-
-### Lead Reassignment
-```text
-Admin clicks "Reassign"
-        ↓
-Manager dropdown appears
-        ↓
-Admin selects manager
-        ↓
-Database updated:
-  - aged_leads.assigned_manager_id = managerId
-  - OR applications.assigned_agent_id = managerId
-        ↓
-Lead moves to new manager's pipeline
-```
+| File | Change Type | Description |
+|------|-------------|-------------|
+| `src/components/callcenter/CallCenterLeadCard.tsx` | Modify | Add last contact badge, 2-week countdown, wider layout |
+| `src/pages/CallCenter.tsx` | Modify | Remove width constraint, fetch contacted_at, update on action |
+| `supabase/functions/send-aged-lead-email/index.ts` | Modify | High-converting "new position" email, 70% commission |
+| `src/components/dashboard/AgedLeadImporter.tsx` | Modify | Add email preview step before import |
+| `src/components/landing/HeroSection.tsx` | Modify | 50% → 70% |
+| `src/components/landing/CareerPathwaySection.tsx` | Modify | 50% → 70% (2 locations) |
+| `src/components/landing/EarningsSection.tsx` | Modify | 50% → 70% (2 locations) |
+| **NEW** `src/components/callcenter/LeadExpiryCountdown.tsx` | Create | 2-week countdown progress bar component |
+| **NEW** `src/components/dashboard/AgedLeadEmailPreview.tsx` | Create | Email preview modal for lead imports |
 
 ---
 
 ## Expected Outcomes
 
-1. **Cleaner action buttons** - 4 focused actions instead of 6
-2. **Useful call summaries** - AI-analyzed breakdown instead of overwhelming raw text
-3. **Fast lead distribution** - Admins can quickly assign leads to managers
-4. **Keyboard shortcuts updated** - 1-4 for actions, N to skip, ESC to exit
+After implementation:
+1. **Better Call Center UX** - Full-width layout with last contact dates and urgency indicators
+2. **Lead urgency visibility** - 2-week countdown shows how long until lead expires
+3. **Safer email sending** - Preview exactly what goes out before importing leads
+4. **Higher email conversions** - Compelling "new position opened" email with 70% commission highlight
+5. **Consistent messaging** - Homepage matches actual commission structure (70% starting)
+

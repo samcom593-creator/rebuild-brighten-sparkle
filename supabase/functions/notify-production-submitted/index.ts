@@ -96,7 +96,7 @@ serve(async (req) => {
       : 0;
 
     // Admin email + CC manager if available
-    const adminEmail = "info@kingofsales.net";
+    const adminEmail = "info@apex-financial.org";
     const recipients = managerEmail && managerEmail !== adminEmail 
       ? [adminEmail, managerEmail]
       : [adminEmail];

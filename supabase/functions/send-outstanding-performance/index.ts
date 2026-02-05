@@ -194,7 +194,7 @@ serve(async (req: Request) => {
       console.log("📧 Sending certificate to admin...");
       const adminResult = await resend.emails.send({
         from: "APEX Financial <noreply@apex-financial.org>",
-        to: ["info@kingofsales.net"],
+        to: ["info@apex-financial.org"],
         subject: `Weekly Performance: ${agentName} - $${formattedAmount} ALP`,
         html: certificateHTML,
       });

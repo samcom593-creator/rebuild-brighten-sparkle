@@ -82,7 +82,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Send email to agent
     if (agentEmail) {
       await resend.emails.send({
-        from: "King of Sales <notifications@kingofsales.net>",
+        from: "Apex Financial <notifications@apex-financial.org>",
         to: [agentEmail],
         subject: `Missed ${attendanceLabel.charAt(0).toUpperCase() + attendanceLabel.slice(1)} - ${dateStr}`,
         html: `
@@ -93,7 +93,7 @@ const handler = async (req: Request): Promise<Response> => {
             <p>If this was an error or you have a valid reason for your absence, please reach out to your manager immediately.</p>
             <p>Consistent attendance is crucial for your success in the program.</p>
             <br/>
-            <p>Best regards,<br/>King of Sales Team</p>
+            <p>Best regards,<br/>Apex Financial Team</p>
           </div>
         `,
       });
@@ -102,7 +102,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Send email to manager
     if (managerEmail) {
       await resend.emails.send({
-        from: "King of Sales <notifications@kingofsales.net>",
+        from: "Apex Financial <notifications@apex-financial.org>",
         to: [managerEmail],
         subject: `Agent Absent: ${agentName} - ${dateStr}`,
         html: `
@@ -112,7 +112,7 @@ const handler = async (req: Request): Promise<Response> => {
             <p>Your agent <strong>${agentName}</strong> was marked as absent for ${attendanceLabel} on ${dateStr}.</p>
             <p>Please follow up with them to understand the reason for their absence.</p>
             <br/>
-            <p>Best regards,<br/>King of Sales System</p>
+            <p>Best regards,<br/>Apex Financial</p>
           </div>
         `,
       });

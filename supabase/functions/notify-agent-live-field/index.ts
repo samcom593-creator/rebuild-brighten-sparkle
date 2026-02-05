@@ -166,7 +166,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Also notify admin and manager
-    const adminEmail = "info@kingofsales.net";
+    const adminEmail = "info@apex-financial.org";
     const notifyRecipients = [adminEmail];
     if (managerEmail && managerEmail !== adminEmail) {
       notifyRecipients.push(managerEmail);

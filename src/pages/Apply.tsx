@@ -326,27 +326,8 @@ export default function Apply() {
       setApplicationId(submitResult.applicationId);
       setSavedLicenseStatus(data.licenseStatus);
 
-      // Send email notifications (don't block on this)
-      supabase.functions.invoke("send-application-notification", {
-        body: {
-          firstName: data.firstName,
-          lastName: data.lastName,
-          email: data.email,
-          phone: data.phone,
-          city: data.city,
-          state: data.state,
-          licenseStatus: data.licenseStatus,
-          hasInsuranceExperience: data.hasInsuranceExperience,
-          yearsExperience: data.yearsExperience,
-          previousCompany: data.previousCompany,
-          availability: data.availability,
-          referralSource: data.referralSource,
-        },
-      }).then(({ error: emailError }) => {
-        if (emailError) {
-          console.error("Failed to send notification email:", emailError);
-        }
-      });
+      // Email notifications are now handled by submit-application function
+      // No need to call send-application-notification separately
 
       toast.success("Application submitted! One more step...");
       

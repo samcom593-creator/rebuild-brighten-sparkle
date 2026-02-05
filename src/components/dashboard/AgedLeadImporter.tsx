@@ -7,6 +7,7 @@ import {
   X,
   Download,
   Users,
+  Eye,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -30,6 +31,7 @@ import { Badge } from "@/components/ui/badge";
 import { GlassCard } from "@/components/ui/glass-card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { AgedLeadEmailPreview } from "./AgedLeadEmailPreview";
 
 interface Manager {
   id: string;
@@ -231,7 +233,8 @@ export const AgedLeadImporter = forwardRef<HTMLDivElement, AgedLeadImporterProps
     const [defaultLicenseStatus, setDefaultLicenseStatus] = useState("unlicensed");
     const [leadSource, setLeadSource] = useState<"aged" | "new_drip">("aged");
     const [importing, setImporting] = useState(false);
-    const [step, setStep] = useState<"input" | "preview">("input");
+    const [step, setStep] = useState<"input" | "preview" | "email_preview">("input");
+    const [showEmailPreview, setShowEmailPreview] = useState(false);
 
     // Parse and validate the spreadsheet data
     const parsedData = useMemo(() => {
@@ -641,6 +644,14 @@ export const AgedLeadImporter = forwardRef<HTMLDivElement, AgedLeadImporterProps
                   Back
                 </Button>
                 <Button
+                  variant="outline"
+                  onClick={() => setShowEmailPreview(true)}
+                  className="gap-2"
+                >
+                  <Eye className="h-4 w-4" />
+                  Preview Email
+                </Button>
+                <Button
                   onClick={handleImport}
                   disabled={importing || validLeads.length === 0 || !selectedManager}
                   className="flex-1"
@@ -653,7 +664,7 @@ export const AgedLeadImporter = forwardRef<HTMLDivElement, AgedLeadImporterProps
               <div className="rounded-lg bg-primary/10 border border-primary/30 p-3 text-sm text-primary flex items-start gap-2">
                 <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
                 <span>
-                  Each imported lead will receive an outreach email inviting them to apply or schedule a call.
+                  Each imported lead will receive an outreach email inviting them to apply. Use "Preview Email" to see the exact message.
                 </span>
               </div>
             </div>
@@ -664,6 +675,18 @@ export const AgedLeadImporter = forwardRef<HTMLDivElement, AgedLeadImporterProps
               Cancel
             </Button>
           </DialogFooter>
+
+          {/* Email Preview Modal */}
+          <AgedLeadEmailPreview
+            isOpen={showEmailPreview}
+            onClose={() => setShowEmailPreview(false)}
+            sampleFirstName={validLeads[0]?.first_name || "there"}
+            onApprove={() => {
+              setShowEmailPreview(false);
+              handleImport();
+            }}
+            isLoading={importing}
+          />
         </DialogContent>
       </Dialog>
     );

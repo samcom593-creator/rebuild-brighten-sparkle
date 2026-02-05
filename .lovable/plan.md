@@ -1,111 +1,93 @@
 
-## Fix: Landing Page Resetting When Scrolling/Tab Switching
+## Plan: Perfect the Add Agent Functionality
 
 ### Problem Summary
-The homepage resets (scroll position, animations replay, state resets) when users scroll away or switch browser tabs. This is caused by React component re-rendering issues and missing stability patterns.
-
-### Root Causes Identified
-
-1. **Missing `forwardRef` on Components**
-   - `CTASection` and `Footer` are missing `forwardRef`, causing React warnings
-   - These warnings indicate React is attempting to pass refs that fail, potentially triggering re-renders
-
-2. **Tab Visibility Triggering Re-renders**
-   - The `HeroSection` and `DealsTicker` use `setInterval` for rotating content
-   - When the tab loses focus and regains it, these intervals can behave unexpectedly
-
-3. **Animation Libraries Re-triggering**
-   - Framer Motion's `whileInView` animations may re-trigger in certain conditions
-   - Components remounting causes all `useEffect` hooks to re-run
+The current Add Agent modal has several issues preventing it from working reliably:
+1. **Empty Manager Dropdown**: Managers without agent records (like KJ Vaughns) don't appear
+2. **RLS Blocking Inserts**: Client-side inserts fail because RLS policies require matching user IDs
+3. **Missing Agent Records**: Some managers exist in `user_roles` but don't have corresponding `agents` table entries
 
 ---
 
-### Implementation Plan
+### Solution Overview
 
-#### Step 1: Add `forwardRef` to Landing Components
-Wrap `CTASection` and `Footer` with `forwardRef` to eliminate React warnings and prevent ref-related re-renders.
+We will create a dedicated backend function to handle agent creation and fix the dropdown to include all managers properly.
 
-**Files to update:**
-- `src/components/landing/CTASection.tsx`
-- `src/components/landing/Footer.tsx`
+---
 
-#### Step 2: Add Tab Visibility Guards to Interval-Based Components
-Pause intervals when the browser tab is not visible to prevent state drift and unnecessary updates.
+### Implementation Steps
 
-**Files to update:**
-- `src/components/landing/HeroSection.tsx` - carrier rotation interval
-- `src/components/landing/DealsTicker.tsx` - carrier index interval
+#### Step 1: Create Backend Function for Agent Creation
+Create a new edge function `add-agent` that uses the service role key to bypass RLS and properly create:
+- Auth user (with random password)
+- Profile record
+- Agent record linked to the specified manager
+- Agent role in user_roles
+- Optional initial note
 
-#### Step 3: Stabilize Animation Initial States
-Ensure animations only run once and don't re-trigger on scroll position changes.
+**New file:** `supabase/functions/add-agent/index.ts`
 
-**Files to update:**
-- `src/components/landing/BenefitsSection.tsx`
-- `src/components/landing/CTASection.tsx`
-- All sections using `whileInView`
+#### Step 2: Fix Manager Dropdown Logic
+Update the modal to use the existing `get-active-managers` edge function instead of client-side queries. This edge function already uses the service role key and can see all managers.
 
-#### Step 4: Memoize the Index Page Structure
-Wrap heavy sections in `React.memo` to prevent unnecessary re-renders when parent state changes.
+Alternatively, fix the client-side query to also include admins who have the manager role.
 
-**Files to update:**
-- `src/pages/Index.tsx` - add memo wrappers
+**File to modify:** `src/components/dashboard/AddAgentModal.tsx`
+
+#### Step 3: Create Missing Manager Agent Records
+Run a database fix to create agent records for managers who are missing them:
+- KJ Vaughns (user_id: 75b17131-...)
+- Obiajulu Ifediora (user_id: 80010a1e-...)
+
+#### Step 4: Add License Status Selection
+Add a license status selector to the form (Licensed/Unlicensed/In Progress) since agents may be at different stages.
+
+#### Step 5: Add Optional Fields
+- City/State fields for location
+- Instagram handle field
+- Onboarding stage selector (for admins)
 
 ---
 
 ### Technical Details
 
-**Tab Visibility Pattern:**
-```typescript
-useEffect(() => {
-  let intervalId: NodeJS.Timeout;
-  
-  const startInterval = () => {
-    intervalId = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % items.length);
-    }, 3000);
-  };
-
-  const handleVisibilityChange = () => {
-    if (document.hidden) {
-      clearInterval(intervalId);
-    } else {
-      startInterval();
-    }
-  };
-
-  startInterval();
-  document.addEventListener("visibilitychange", handleVisibilityChange);
-
-  return () => {
-    clearInterval(intervalId);
-    document.removeEventListener("visibilitychange", handleVisibilityChange);
-  };
-}, []);
+**Edge Function Logic:**
+```text
+1. Receive: firstName, lastName, email, phone, managerId, licenseStatus, notes, startDate
+2. Normalize email
+3. Check if profile already exists (return error if duplicate)
+4. Create auth user with service role
+5. Create profile record
+6. Create agent record with invited_by_manager_id = managerId
+7. Add 'agent' role to user_roles
+8. Create initial note if provided
+9. Trigger welcome email
+10. Return success with new agent ID
 ```
 
-**forwardRef Pattern:**
-```typescript
-export const CTASection = forwardRef<HTMLElement, object>((_, ref) => {
-  return <section ref={ref}>...</section>;
-});
-CTASection.displayName = "CTASection";
-```
+**Form Improvements:**
+- Show loading state while fetching managers
+- Show "No managers available" message if dropdown is empty
+- Add email validation
+- Add phone number formatting
+- Pre-select current user's manager (for managers adding to their own team)
 
 ---
 
-### Files to Modify
+### Files to Create/Modify
 
-| File | Change |
+| File | Action |
 |------|--------|
-| `src/components/landing/CTASection.tsx` | Add `forwardRef` wrapper |
-| `src/components/landing/Footer.tsx` | Add `forwardRef` wrapper |
-| `src/components/landing/HeroSection.tsx` | Add tab visibility guard to interval |
-| `src/components/landing/DealsTicker.tsx` | Add tab visibility guard to interval |
+| `supabase/functions/add-agent/index.ts` | Create - New edge function |
+| `src/components/dashboard/AddAgentModal.tsx` | Modify - Use edge function, improve UI |
+
+### Database Fixes (One-Time)
+Create agent records for managers missing them so the dropdown shows all available managers.
 
 ---
 
 ### Expected Outcome
-- No more React ref warnings in console
-- Page scroll position preserved when switching tabs
-- Animations don't replay when returning to the page
-- Carrier rotation pauses when tab is hidden, preventing drift
+- Add Agent button works reliably for admins and managers
+- All managers appear in the dropdown
+- Proper error handling with clear messages
+- New agents receive welcome email and can be tracked in CRM

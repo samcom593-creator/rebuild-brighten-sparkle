@@ -111,7 +111,7 @@ export default function Terms() {
                 For questions about these Terms of Service, please contact us at:
               </p>
               <div className="text-muted-foreground">
-                <p>Email: info@kingofsales.net</p>
+                <p>Email: info@apex-financial.org</p>
                 <p>Phone: (469) 767-6068</p>
               </div>
             </GlassCard>

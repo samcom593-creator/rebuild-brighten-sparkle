@@ -780,7 +780,7 @@ export default function Apply() {
                         <div className="space-y-3">
                           <p id="smsConsentDisclosure" className="text-sm text-muted-foreground leading-relaxed">
                             By checking the box below, you agree to receive SMS/text messages from{" "}
-                            <strong className="text-foreground">King of Sales / Unitrust Financial</strong> at the number you provide 
+                            <strong className="text-foreground">Apex Financial</strong> at the number you provide 
                             regarding application updates, onboarding steps, training instructions, and support. 
                             Message frequency varies. Message & data rates may apply. Reply STOP to cancel, HELP for help. 
                             Consent is not a condition of purchase.
@@ -795,7 +795,7 @@ export default function Apply() {
                               className="mt-0.5"
                             />
                             <Label htmlFor="smsConsent" className="text-sm text-foreground cursor-pointer leading-relaxed font-medium">
-                              I agree to receive SMS/text messages from King of Sales / Unitrust Financial. *
+                              I agree to receive SMS/text messages from Apex Financial. *
                             </Label>
                           </div>
                           {errors.smsConsent && (
@@ -807,7 +807,7 @@ export default function Apply() {
                         <div className="space-y-3 pt-2 border-t border-border">
                           <p id="emailConsentDisclosure" className="text-sm text-muted-foreground leading-relaxed">
                             By checking the box below, you agree to receive emails from{" "}
-                            <strong className="text-foreground">King of Sales / Unitrust Financial</strong> regarding 
+                            <strong className="text-foreground">Apex Financial</strong> regarding 
                             application updates and onboarding.
                           </p>
                           <div className="flex items-start gap-3">
@@ -820,7 +820,7 @@ export default function Apply() {
                               className="mt-0.5"
                             />
                             <Label htmlFor="emailConsent" className="text-sm text-foreground cursor-pointer leading-relaxed font-medium">
-                              I agree to receive emails from King of Sales / Unitrust Financial.
+                              I agree to receive emails from Apex Financial.
                             </Label>
                           </div>
                         </div>

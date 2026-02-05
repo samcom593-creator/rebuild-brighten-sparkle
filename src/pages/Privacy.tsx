@@ -75,7 +75,7 @@ export default function Privacy() {
               <h2 className="text-xl font-semibold mb-3 text-primary">Your Rights</h2>
               <p className="text-muted-foreground leading-relaxed">
                 You have the right to access, correct, or delete your personal information. 
-                To exercise these rights, please contact us at info@kingofsales.net. 
+                To exercise these rights, please contact us at info@apex-financial.org. 
                 We will respond to your request within 30 days.
               </p>
             </GlassCard>
@@ -87,7 +87,7 @@ export default function Privacy() {
                 please contact us at:
               </p>
               <div className="text-muted-foreground">
-                <p>Email: info@kingofsales.net</p>
+                <p>Email: info@apex-financial.org</p>
                 <p>Phone: (469) 767-6068</p>
               </div>
             </GlassCard>

@@ -772,6 +772,7 @@ export type Database = {
           status: Database["public"]["Enums"]["application_status"]
           terminated_at: string | null
           termination_reason: string | null
+          test_scheduled_date: string | null
           updated_at: string
           years_experience: number | null
         }
@@ -825,6 +826,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["application_status"]
           terminated_at?: string | null
           termination_reason?: string | null
+          test_scheduled_date?: string | null
           updated_at?: string
           years_experience?: number | null
         }
@@ -878,6 +880,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["application_status"]
           terminated_at?: string | null
           termination_reason?: string | null
+          test_scheduled_date?: string | null
           updated_at?: string
           years_experience?: number | null
         }
@@ -1643,7 +1646,10 @@ export type Database = {
       license_progress:
         | "unlicensed"
         | "course_purchased"
+        | "finished_course"
+        | "test_scheduled"
         | "passed_test"
+        | "fingerprints_done"
         | "waiting_on_license"
         | "licensed"
       license_status: "licensed" | "unlicensed" | "pending"
@@ -1802,7 +1808,10 @@ export const Constants = {
       license_progress: [
         "unlicensed",
         "course_purchased",
+        "finished_course",
+        "test_scheduled",
         "passed_test",
+        "fingerprints_done",
         "waiting_on_license",
         "licensed",
       ],

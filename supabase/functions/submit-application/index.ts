@@ -347,7 +347,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
     // Send notification email to APEX team
     const adminEmailResponse = await resend.emails.send({
       from: "APEX Applications <applications@apex-financial.org>",
-      to: ["info@kingofsales.net"],
+      to: ["info@apex-financial.org"],
       subject: adminSubject,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

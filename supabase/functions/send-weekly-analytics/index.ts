@@ -216,7 +216,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Also send to admin
-    const adminEmail = "info@kingofsales.net";
+    const adminEmail = "info@apex-financial.org";
     const totalStats: ManagerStats = {
       managerId: "admin",
       managerName: "Admin",

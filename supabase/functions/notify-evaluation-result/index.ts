@@ -99,7 +99,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Send email to agent
     if (agentEmail) {
       await resend.emails.send({
-        from: "King of Sales <notifications@kingofsales.net>",
+        from: "Apex Financial <notifications@apex-financial.org>",
         to: [agentEmail],
         subject: `${config.emoji} Field Training Evaluation Result`,
         html: `
@@ -116,7 +116,7 @@ const handler = async (req: Request): Promise<Response> => {
               </ul>
             ` : ""}
             <br/>
-            <p>Best regards,<br/>King of Sales Team</p>
+            <p>Best regards,<br/>Apex Financial Team</p>
           </div>
         `,
       });
@@ -125,7 +125,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Send email to manager
     if (managerEmail) {
       await resend.emails.send({
-        from: "King of Sales <notifications@kingofsales.net>",
+        from: "Apex Financial <notifications@apex-financial.org>",
         to: [managerEmail],
         subject: `Evaluation Complete: ${agentName} - ${result.toUpperCase()}`,
         html: `
@@ -139,7 +139,7 @@ const handler = async (req: Request): Promise<Response> => {
             </ul>
             ${result !== "passed" ? `<p>Please follow up with ${agentName} to discuss next steps.</p>` : ""}
             <br/>
-            <p>Best regards,<br/>King of Sales System</p>
+            <p>Best regards,<br/>Apex Financial</p>
           </div>
         `,
       });
@@ -147,8 +147,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email to admin
     await resend.emails.send({
-      from: "King of Sales <notifications@kingofsales.net>",
-      to: ["info@kingofsales.net"],
+      from: "Apex Financial <notifications@apex-financial.org>",
+      to: ["info@apex-financial.org"],
       subject: `[Admin] Evaluation: ${agentName} - ${result.toUpperCase()}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

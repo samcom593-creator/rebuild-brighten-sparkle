@@ -78,7 +78,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email to manager
     await resend.emails.send({
-      from: "King of Sales <notifications@kingofsales.net>",
+        from: "Apex Financial <notifications@apex-financial.org>",
       to: [managerProfile.email],
       subject: `New Note Added: ${agentName}`,
       html: `
@@ -91,7 +91,7 @@ const handler = async (req: Request): Promise<Response> => {
           </div>
           <p>Log in to the CRM to view full details and history.</p>
           <br/>
-          <p>Best regards,<br/>King of Sales System</p>
+          <p>Best regards,<br/>Apex Financial</p>
         </div>
       `,
     });

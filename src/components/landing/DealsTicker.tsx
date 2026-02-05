@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 const deals = [
   { name: "John M.", carrier: "American National", amount: "$45,000" },
@@ -38,13 +38,38 @@ const carriers = [
 
 export function DealsTicker() {
   const [currentCarrierIndex, setCurrentCarrierIndex] = useState(0);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Rotate carrier name with dissolve effect
+  // Rotate carrier name with dissolve effect and tab visibility guard
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentCarrierIndex((prev) => (prev + 1) % carriers.length);
-    }, 3000);
-    return () => clearInterval(interval);
+    const startInterval = () => {
+      intervalRef.current = setInterval(() => {
+        setCurrentCarrierIndex((prev) => (prev + 1) % carriers.length);
+      }, 3000);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+      } else {
+        if (!intervalRef.current) {
+          startInterval();
+        }
+      }
+    };
+
+    startInterval();
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, []);
 
   // Duplicate deals for seamless loop

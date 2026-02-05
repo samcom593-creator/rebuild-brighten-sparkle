@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ArrowRight, Shield, TrendingUp, Users } from "lucide-react";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { useLeadCounter } from "@/hooks/useLeadCounter";
@@ -34,13 +34,38 @@ const carriers = [
 export function HeroSection() {
   const { count: dealCount, isLoading: isCountLoading } = useLeadCounter();
   const [currentCarrierIndex, setCurrentCarrierIndex] = useState(0);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Rotate carriers every 3 seconds
+  // Rotate carriers every 3 seconds with tab visibility guard
   useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentCarrierIndex((prev) => (prev + 1) % carriers.length);
-    }, 3000);
-    return () => clearInterval(interval);
+    const startInterval = () => {
+      intervalRef.current = setInterval(() => {
+        setCurrentCarrierIndex((prev) => (prev + 1) % carriers.length);
+      }, 3000);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+      } else {
+        if (!intervalRef.current) {
+          startInterval();
+        }
+      }
+    };
+
+    startInterval();
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, []);
 
   return (

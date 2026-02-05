@@ -1,66 +1,111 @@
 
+## Fix: Landing Page Resetting When Scrolling/Tab Switching
 
-## Fix: Aged Lead Email Not Sending
+### Problem Summary
+The homepage resets (scroll position, animations replay, state resets) when users scroll away or switch browser tabs. This is caused by React component re-rendering issues and missing stability patterns.
 
-### Problem Identified
+### Root Causes Identified
 
-The `send-aged-lead-email` edge function is failing with the error:
+1. **Missing `forwardRef` on Components**
+   - `CTASection` and `Footer` are missing `forwardRef`, causing React warnings
+   - These warnings indicate React is attempting to pass refs that fail, potentially triggering re-renders
 
-> **"The updates.apexlifeadvisors.com domain is not verified. Please, add and verify your domain on https://resend.com/domains"**
+2. **Tab Visibility Triggering Re-renders**
+   - The `HeroSection` and `DealsTicker` use `setInterval` for rotating content
+   - When the tab loses focus and regains it, these intervals can behave unexpectedly
 
-This means the email sender address `team@updates.apexlifeadvisors.com` cannot be used until the domain is verified in your Resend account.
-
----
-
-## Two Options to Fix This
-
-### Option A: Verify the Domain in Resend (Recommended)
-
-1. Log into your Resend dashboard at https://resend.com/domains
-2. Add and verify `updates.apexlifeadvisors.com`
-3. Follow the DNS verification steps Resend provides
-4. Once verified, emails will start working automatically
-
-No code changes needed if you verify the domain.
+3. **Animation Libraries Re-triggering**
+   - Framer Motion's `whileInView` animations may re-trigger in certain conditions
+   - Components remounting causes all `useEffect` hooks to re-run
 
 ---
 
-### Option B: Change the Sender Domain to an Already-Verified One
+### Implementation Plan
 
-If you have another verified domain (like `apexlifeadvisors.com` without the subdomain, or a different sending domain), I can update the edge function to use that instead.
+#### Step 1: Add `forwardRef` to Landing Components
+Wrap `CTASection` and `Footer` with `forwardRef` to eliminate React warnings and prevent ref-related re-renders.
 
-**File to update:** `supabase/functions/send-aged-lead-email/index.ts`
+**Files to update:**
+- `src/components/landing/CTASection.tsx`
+- `src/components/landing/Footer.tsx`
 
-Change line 116 from:
+#### Step 2: Add Tab Visibility Guards to Interval-Based Components
+Pause intervals when the browser tab is not visible to prevent state drift and unnecessary updates.
+
+**Files to update:**
+- `src/components/landing/HeroSection.tsx` - carrier rotation interval
+- `src/components/landing/DealsTicker.tsx` - carrier index interval
+
+#### Step 3: Stabilize Animation Initial States
+Ensure animations only run once and don't re-trigger on scroll position changes.
+
+**Files to update:**
+- `src/components/landing/BenefitsSection.tsx`
+- `src/components/landing/CTASection.tsx`
+- All sections using `whileInView`
+
+#### Step 4: Memoize the Index Page Structure
+Wrap heavy sections in `React.memo` to prevent unnecessary re-renders when parent state changes.
+
+**Files to update:**
+- `src/pages/Index.tsx` - add memo wrappers
+
+---
+
+### Technical Details
+
+**Tab Visibility Pattern:**
 ```typescript
-from: "Apex Financial <team@updates.apexlifeadvisors.com>",
+useEffect(() => {
+  let intervalId: NodeJS.Timeout;
+  
+  const startInterval = () => {
+    intervalId = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % items.length);
+    }, 3000);
+  };
+
+  const handleVisibilityChange = () => {
+    if (document.hidden) {
+      clearInterval(intervalId);
+    } else {
+      startInterval();
+    }
+  };
+
+  startInterval();
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+
+  return () => {
+    clearInterval(intervalId);
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
+  };
+}, []);
 ```
 
-To use a verified domain, for example:
+**forwardRef Pattern:**
 ```typescript
-from: "Apex Financial <team@apex-financial.org>",
-```
-or
-```typescript
-from: "Apex Financial <noreply@apexlifeadvisors.com>",
+export const CTASection = forwardRef<HTMLElement, object>((_, ref) => {
+  return <section ref={ref}>...</section>;
+});
+CTASection.displayName = "CTASection";
 ```
 
 ---
 
-## Additionally: Fix the React Ref Warning (Minor)
+### Files to Modify
 
-The console shows a warning about refs on `AgedLeadImporter`. While this doesn't break functionality, I'll fix it by wrapping the component with `forwardRef` to eliminate the warning.
-
-**File:** `src/components/dashboard/AgedLeadImporter.tsx`
+| File | Change |
+|------|--------|
+| `src/components/landing/CTASection.tsx` | Add `forwardRef` wrapper |
+| `src/components/landing/Footer.tsx` | Add `forwardRef` wrapper |
+| `src/components/landing/HeroSection.tsx` | Add tab visibility guard to interval |
+| `src/components/landing/DealsTicker.tsx` | Add tab visibility guard to interval |
 
 ---
 
-## Summary
-
-| Issue | Root Cause | Fix |
-|-------|-----------|-----|
-| Emails not sending | Unverified sender domain in Resend | Verify domain OR change to verified domain |
-| React ref warning | Dialog passing ref to function component | Add `forwardRef` wrapper |
-
-**Which domain would you like me to use for sending aged lead emails?** Or would you prefer to verify the `updates.apexlifeadvisors.com` domain in Resend?
-
+### Expected Outcome
+- No more React ref warnings in console
+- Page scroll position preserved when switching tabs
+- Animations don't replay when returning to the page
+- Carrier rotation pauses when tab is hidden, preventing drift

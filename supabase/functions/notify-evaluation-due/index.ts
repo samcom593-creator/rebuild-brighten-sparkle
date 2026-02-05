@@ -87,7 +87,7 @@ const handler = async (req: Request): Promise<Response> => {
       if (agentEmail) {
         try {
           await resend.emails.send({
-            from: "King of Sales <notifications@kingofsales.net>",
+            from: "Apex Financial <notifications@apex-financial.org>",
             to: [agentEmail],
             subject: "⏰ Your Field Training Evaluation is Due!",
             html: `
@@ -101,7 +101,7 @@ const handler = async (req: Request): Promise<Response> => {
                 </div>
                 <p>Make sure you're prepared to demonstrate what you've learned!</p>
                 <br/>
-                <p>Best regards,<br/>King of Sales Team</p>
+                <p>Best regards,<br/>Apex Financial Team</p>
               </div>
             `,
           });
@@ -114,7 +114,7 @@ const handler = async (req: Request): Promise<Response> => {
       if (managerEmail) {
         try {
           await resend.emails.send({
-            from: "King of Sales <notifications@kingofsales.net>",
+            from: "Apex Financial <notifications@apex-financial.org>",
             to: [managerEmail],
             subject: `🎯 Evaluation Due: ${agentName}`,
             html: `
@@ -127,7 +127,7 @@ const handler = async (req: Request): Promise<Response> => {
                   <p style="margin: 8px 0 0 0;">Please log into the CRM and record their evaluation result (Passed, Failed, or Probational).</p>
                 </div>
                 <br/>
-                <p>Best regards,<br/>King of Sales System</p>
+                <p>Best regards,<br/>Apex Financial</p>
               </div>
             `,
           });
@@ -139,8 +139,8 @@ const handler = async (req: Request): Promise<Response> => {
       // Send to admin
       try {
         await resend.emails.send({
-          from: "King of Sales <notifications@kingofsales.net>",
-          to: ["info@kingofsales.net"],
+          from: "Apex Financial <notifications@apex-financial.org>",
+          to: ["info@apex-financial.org"],
           subject: `[Admin] Evaluation Due: ${agentName} (${daysInTraining} days)`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

@@ -17,9 +17,9 @@ export function Footer() {
               Join America's fastest-growing life insurance agency.
             </p>
             <div className="flex flex-col gap-2 text-sm text-muted-foreground">
-              <a href="mailto:info@kingofsales.net" className="flex items-center gap-2 hover:text-primary transition-colors">
+              <a href="mailto:info@apex-financial.org" className="flex items-center gap-2 hover:text-primary transition-colors">
                 <Mail className="h-4 w-4" />
-                info@kingofsales.net
+                info@apex-financial.org
               </a>
               <a href="tel:+14697676068" className="flex items-center gap-2 hover:text-primary transition-colors">
                 <Phone className="h-4 w-4" />

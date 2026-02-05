@@ -19,6 +19,7 @@ import {
   Plus,
   Edit3,
   ShoppingCart,
+  Headphones,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -111,6 +112,11 @@ export function GlobalSidebar({
          icon: Archive, 
          label: "Aged Leads", 
          href: "/dashboard/aged-leads",
+       });
+       items.push({ 
+         icon: Headphones, 
+         label: "Call Center", 
+         href: "/dashboard/call-center",
        });
      }
 

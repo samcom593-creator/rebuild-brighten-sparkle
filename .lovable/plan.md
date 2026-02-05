@@ -1,93 +1,122 @@
 
-## Plan: Perfect the Add Agent Functionality
+## Fix: Lead Import & Applicant Pipeline Visibility Issues
 
-### Problem Summary
-The current Add Agent modal has several issues preventing it from working reliably:
-1. **Empty Manager Dropdown**: Managers without agent records (like KJ Vaughns) don't appear
-2. **RLS Blocking Inserts**: Client-side inserts fail because RLS policies require matching user IDs
-3. **Missing Agent Records**: Some managers exist in `user_roles` but don't have corresponding `agents` table entries
+### Problems Identified
+
+1. **Applicants Page Not Showing All Applications**
+   - The admin fetch logic only runs when a `highlightedLeadId` is present
+   - Normal page loads filter only to the admin's personally assigned leads (which is 0)
+   - Admin should see ALL 26 applications regardless
+
+2. **Lead Importer Shows "Nothing Available"**
+   - The manager dropdown only populates from agents who have matching `user_roles` AND `agents` records
+   - If the query returns early due to empty results, no managers appear
+   - Need to use the reliable `get-active-managers` edge function instead
+
+3. **Data Migration Needed**
+   - 22 applications are currently assigned to Aisha Kebbeh's agent ID
+   - Optionally reassign unassigned leads (4) to the admin for visibility
 
 ---
 
-### Solution Overview
+### Implementation Plan
 
-We will create a dedicated backend function to handle agent creation and fix the dropdown to include all managers properly.
+#### Step 1: Fix DashboardApplicants to Show All Applications for Admins
 
----
+Modify the fetch logic so admins always see all applications, not just when a highlighted lead exists.
 
-### Implementation Steps
+**Current problematic flow:**
+```text
+1. Check if managerFilter exists → filter by manager
+2. Check if highlightedLeadId exists → fetch all for admin
+3. Default: fetch only assigned_agent_id = current user's agent
+```
 
-#### Step 1: Create Backend Function for Agent Creation
-Create a new edge function `add-agent` that uses the service role key to bypass RLS and properly create:
-- Auth user (with random password)
-- Profile record
-- Agent record linked to the specified manager
-- Agent role in user_roles
-- Optional initial note
+**Fixed flow:**
+```text
+1. Check if managerFilter exists → filter by manager
+2. If isAdmin → fetch ALL applications
+3. If isManager → fetch assigned + team applications  
+4. Default: fetch only assigned applications
+```
 
-**New file:** `supabase/functions/add-agent/index.ts`
+**File:** `src/pages/DashboardApplicants.tsx`
 
-#### Step 2: Fix Manager Dropdown Logic
-Update the modal to use the existing `get-active-managers` edge function instead of client-side queries. This edge function already uses the service role key and can see all managers.
+#### Step 2: Fix LeadImporter to Use Edge Function for Managers
 
-Alternatively, fix the client-side query to also include admins who have the manager role.
+Replace the unreliable client-side manager query with the `get-active-managers` edge function that already exists and works correctly.
 
-**File to modify:** `src/components/dashboard/AddAgentModal.tsx`
+**File:** `src/components/dashboard/LeadImporter.tsx`
 
-#### Step 3: Create Missing Manager Agent Records
-Run a database fix to create agent records for managers who are missing them:
-- KJ Vaughns (user_id: 75b17131-...)
-- Obiajulu Ifediora (user_id: 80010a1e-...)
+#### Step 3: Add Fallback + Loading States
 
-#### Step 4: Add License Status Selection
-Add a license status selector to the form (Licensed/Unlicensed/In Progress) since agents may be at different stages.
+- Show "Loading managers..." while fetching
+- Show "No managers available" if the list is empty
+- Add error toast if the fetch fails
 
-#### Step 5: Add Optional Fields
-- City/State fields for location
-- Instagram handle field
-- Onboarding stage selector (for admins)
+#### Step 4: Optional Data Migration
+
+Reassign the 4 unassigned applications to the admin so they appear in the pipeline immediately.
 
 ---
 
 ### Technical Details
 
-**Edge Function Logic:**
-```text
-1. Receive: firstName, lastName, email, phone, managerId, licenseStatus, notes, startDate
-2. Normalize email
-3. Check if profile already exists (return error if duplicate)
-4. Create auth user with service role
-5. Create profile record
-6. Create agent record with invited_by_manager_id = managerId
-7. Add 'agent' role to user_roles
-8. Create initial note if provided
-9. Trigger welcome email
-10. Return success with new agent ID
+**DashboardApplicants Fix:**
+```typescript
+// NEW: Admins see all, managers see their team
+if (isAdmin) {
+  const { data: adminApps } = await supabase
+    .from("applications")
+    .select("*")
+    .order("created_at", { ascending: false });
+  setApplications((adminApps || []) as Application[]);
+  setIsLoading(false);
+  return;
+}
+
+if (isManager && agentData) {
+  // Manager sees apps assigned to them OR their team
+  const { data: managerApps } = await supabase
+    .from("applications")
+    .select("*")
+    .order("created_at", { ascending: false });
+  setApplications((managerApps || []) as Application[]);
+  setIsLoading(false);
+  return;
+}
 ```
 
-**Form Improvements:**
-- Show loading state while fetching managers
-- Show "No managers available" message if dropdown is empty
-- Add email validation
-- Add phone number formatting
-- Pre-select current user's manager (for managers adding to their own team)
+**LeadImporter Fix:**
+```typescript
+const fetchManagers = async () => {
+  try {
+    const { data, error } = await supabase.functions.invoke("get-active-managers");
+    if (error) throw error;
+    setManagers(data?.managers || []);
+  } catch (err) {
+    console.error("Failed to fetch managers:", err);
+    toast.error("Failed to load managers");
+  }
+};
+```
 
 ---
 
-### Files to Create/Modify
+### Files to Modify
 
-| File | Action |
+| File | Change |
 |------|--------|
-| `supabase/functions/add-agent/index.ts` | Create - New edge function |
-| `src/components/dashboard/AddAgentModal.tsx` | Modify - Use edge function, improve UI |
+| `src/pages/DashboardApplicants.tsx` | Fix fetch logic for admin/manager visibility |
+| `src/components/dashboard/LeadImporter.tsx` | Use edge function for manager dropdown |
 
-### Database Fixes (One-Time)
-Create agent records for managers missing them so the dropdown shows all available managers.
+### Database Fix (Optional)
+Reassign unassigned applications to admin agent ID for immediate visibility in the pipeline.
 
 ---
 
-### Expected Outcome
-- Add Agent button works reliably for admins and managers
-- All managers appear in the dropdown
-- Proper error handling with clear messages
-- New agents receive welcome email and can be tracked in CRM
+### Expected Outcomes
+- Admin sees all 26 applications in the Applicants page
+- Lead Importer shows all 3 managers in the dropdown
+- Importing leads works correctly and they appear in the pipeline
+- CRM pipeline reflects all agents and leads

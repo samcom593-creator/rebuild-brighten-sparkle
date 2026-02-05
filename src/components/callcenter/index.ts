@@ -14,3 +14,5 @@ export type { LicensingStage } from "./CallCenterStageSelector";
 export { CallCenterVoiceRecorder } from "./CallCenterVoiceRecorder";
 
 export { LeadReassignButton } from "./LeadReassignButton";
+
+export { ResendLicensingButton } from "./ResendLicensingButton";

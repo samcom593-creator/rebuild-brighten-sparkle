@@ -261,3 +261,6 @@ verify_jwt = false
 
 [functions.analyze-call-transcript]
 verify_jwt = false
+
+[functions.send-licensing-instructions]
+verify_jwt = false

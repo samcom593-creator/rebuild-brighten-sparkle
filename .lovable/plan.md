@@ -1,236 +1,196 @@
 
 
-# Implementation Plan: Admin Lead Center + Call Center Enhancements + Email Integration
+# Plan: Update Call Center Pipeline Stages + Test Date Scheduler
 
-## Overview
+## Summary
 
-This plan implements a comprehensive lead management system including:
-1. A new Admin Lead Center page with full assignment capabilities
-2. Assignment buttons in existing AllLeadsPanel
-3. Quick Email Menu integration in Call Center
-4. Enhanced follow-up email triggers for all actions
+Replace the current Call Center pipeline stages with license-progress-focused stages that reflect the actual licensing journey:
+- Started (just bought course)
+- Finished Course
+- Test Scheduled (with date picker)
+- Fingerprints
+- Waiting on License
+
+Plus add the ability to schedule/view test dates when at the "Test Scheduled" stage.
 
 ---
 
-## Files to Create
+## Database Changes
 
-### 1. `src/pages/LeadCenter.tsx` (New File)
+Add a new column to the `applications` table to track test scheduling:
 
-A dedicated admin-only page for full lead management with:
-- Unified view of all leads from `applications` and `aged_leads` tables
-- Search, filter by manager, status, and license type
-- Stats cards showing totals, unassigned, licensed, and new counts
-- Table with Assign button on every row using `QuickAssignMenu`
-- Quick actions for call, email, and view
-- Premium glass-morphism styling
+| Column | Type | Purpose |
+|--------|------|---------|
+| `test_scheduled_date` | `date` | When the licensing test is scheduled |
+
+Also, we need to expand the `license_progress` enum to include more granular steps:
+- Add: `finished_course`, `test_scheduled`, `fingerprints_done`
+
+**Migration SQL:**
+```sql
+-- Add test scheduled date column
+ALTER TABLE applications
+ADD COLUMN test_scheduled_date date;
+
+-- Add new enum values for more granular progress tracking
+ALTER TYPE license_progress ADD VALUE IF NOT EXISTS 'finished_course' AFTER 'course_purchased';
+ALTER TYPE license_progress ADD VALUE IF NOT EXISTS 'test_scheduled' AFTER 'finished_course';
+ALTER TYPE license_progress ADD VALUE IF NOT EXISTS 'fingerprints_done' AFTER 'passed_test';
+```
 
 ---
 
 ## Files to Modify
 
-### 2. `src/components/layout/GlobalSidebar.tsx`
+### 1. `src/components/callcenter/CallCenterStageSelector.tsx`
+
+Complete overhaul to use license progress stages instead of application status:
+
+**New Stages:**
+| Stage ID | Label | Icon | Color |
+|----------|-------|------|-------|
+| `course_purchased` | Course Started | BookOpen | Blue |
+| `finished_course` | Finished Course | BookCheck | Indigo |
+| `test_scheduled` | Test Scheduled | CalendarClock | Purple |
+| `passed_test` | Passed Test | FileCheck | Violet |
+| `fingerprints_done` | Fingerprints | Fingerprint | Teal |
+| `waiting_on_license` | Waiting on License | Clock | Orange |
+| `licensed` | Licensed | Award | Green |
 
 **Changes:**
-- Add "Lead Center" navigation item with `Target` icon
-- Place after "Command Center" for admins only
-- Route: `/dashboard/leads`
+- Rename type from `PipelineStage` to `LicensingStage`
+- Update stages array with new licensing-focused options
+- Add conditional rendering for test date picker when `test_scheduled` is selected
+- Add props for `testScheduledDate` and `onTestDateChange`
 
-**Location:** After line 75 (after Command Center item)
-
-```typescript
-items.push({ 
-  icon: Target, 
-  label: "Lead Center", 
-  href: "/dashboard/leads",
-});
-```
-
-### 3. `src/App.tsx`
+### 2. `src/components/callcenter/CallCenterLeadCard.tsx`
 
 **Changes:**
-- Add lazy import for LeadCenter page
-- Add route inside AuthenticatedShell for `/dashboard/leads`
+- Pass `licenseProgress` (from applications.license_progress) instead of status
+- Add `testScheduledDate` to the UnifiedLead interface
+- Pass test date props to CallCenterStageSelector
+- Update the `statusToStage` function to use `license_progress` values
 
-**Location:** Line ~45 (lazy imports) and line ~110 (routes)
-
-### 4. `src/components/dashboard/AllLeadsPanel.tsx`
-
-**Changes:**
-- Import `QuickAssignMenu` component
-- Add "Assign" column to table header
-- Add `QuickAssignMenu` button in each lead row
-- Add `fetchAllLeads` to refresh after assignment
-
-**Key Addition (in renderLeadRow function):**
-```typescript
-<TableCell>
-  <QuickAssignMenu
-    applicationId={lead.id}
-    currentAgentId={lead.assignedAgentId || null}
-    onAssigned={fetchAllLeads}
-  />
-</TableCell>
-```
-
-### 5. `src/components/callcenter/CallCenterLeadCard.tsx`
+### 3. `src/pages/CallCenter.tsx`
 
 **Changes:**
-- Import `QuickEmailMenu` component
-- Add Quick Email button alongside voice recorder
-- Ensure all lead info (Instagram, email, notes) displays prominently
+- Fetch `license_progress` and `test_scheduled_date` in the query
+- Add handler for test date changes
+- Update lead mapping to include new fields
 
-**Key Addition (after voice recorder section):**
-```typescript
-<QuickEmailMenu
-  applicationId={lead.id}
-  agentId={null}
-  licenseStatus={lead.licenseStatus as "licensed" | "unlicensed" | "pending"}
-  recipientEmail={lead.email}
-  recipientName={lead.firstName + (lead.lastName ? ` ${lead.lastName}` : "")}
-/>
-```
-
-### 6. `src/pages/CallCenter.tsx`
+### 4. `src/components/dashboard/LicenseProgressSelector.tsx`
 
 **Changes:**
-- Update `sendFollowUpEmail` to accept `actionType` parameter
-- Trigger follow-up email on multiple actions: `contacted`, `hired`, `contracted`, `licensing`
-- Pass actionType to edge function for customized emails
-
-**Key Update (in handleAction function):**
-```typescript
-const emailActions = ["contacted", "hired", "contracted", "licensing"];
-if (emailActions.includes(actionId)) {
-  await sendFollowUpEmail(currentLead, actionId);
-  toast.success(`Lead marked as ${actionId} - follow-up email sent!`);
-} else {
-  toast.success(`Lead marked as ${actionId.replace("_", " ")}`);
-}
-```
-
-### 7. `supabase/functions/send-post-call-followup/index.ts`
-
-**Changes:**
-- Accept optional `actionType` parameter in request body
-- Customize email subject and opening based on action type
-- Keep existing licensed/unlicensed branching for content
-
-**Updated Interface:**
-```typescript
-interface PostCallFollowupRequest {
-  firstName: string;
-  email: string;
-  licenseStatus: string;
-  actionType?: string; // "contacted" | "hired" | "contracted" | "licensing"
-  calendarLink?: string;
-}
-```
-
-**Custom Subject Lines:**
-- `contacted`: "Great Talking to You, {name}!"
-- `hired`: "Welcome to the APEX Team, {name}!"
-- `contracted`: "Congratulations on Getting Contracted, {name}!"
-- `licensing`: "Your Licensing Journey Starts Now, {name}!"
+- Add the new enum values (`finished_course`, `test_scheduled`, `fingerprints_done`)
+- Add ability to set test date when clicking "Test Scheduled"
+- Add date display for scheduled tests
 
 ---
 
-## Technical Details
-
-### Lead Center Page Structure
+## New Call Center Stage Selector Design
 
 ```text
-LeadCenter.tsx
-├── Header: "Lead Center" + Refresh/Export buttons
-├── Stats Row: [Total] [Unassigned] [Licensed] [New]
-├── Filters: Search | Manager | Status | License
-└── Table
-    ├── Name (+ email)
-    ├── Phone
-    ├── Location
-    ├── Status (badge)
-    ├── License (badge)
-    ├── Assigned (name or "Unassigned")
-    ├── Applied Date
-    └── Actions: [Assign] [Call] [Email]
++----------------------------------------------------------+
+|  Licensing Progress                                       |
+|  +------------------------------------------------------+|
+|  | [▼ Finished Course]                                  ||
+|  +------------------------------------------------------+|
+|                                                          |
+|  Progress Bar:                                           |
+|  [===][===][===][   ][   ][   ][   ]                     |
+|   ↑     ↑     ↑                                          |
+|  Started Course Test                                     |
+|                                                          |
+|  When "Test Scheduled" is selected:                      |
+|  +------------------------------------------------------+|
+|  | 📅 Test Date: Feb 15, 2025          [Change Date]   ||
+|  +------------------------------------------------------+|
++----------------------------------------------------------+
 ```
 
-### Data Flow for Assignment
+---
+
+## Technical Implementation
+
+### Updated Stage Selector Component
+
+```typescript
+export type LicensingStage = 
+  | "course_purchased"
+  | "finished_course"
+  | "test_scheduled"
+  | "passed_test"
+  | "fingerprints_done"
+  | "waiting_on_license"
+  | "licensed";
+
+const stages: StageDef[] = [
+  { id: "course_purchased", label: "Course Started", icon: BookOpen, color: "text-blue-400", bgColor: "bg-blue-500/20" },
+  { id: "finished_course", label: "Finished Course", icon: BookCheck, color: "text-indigo-400", bgColor: "bg-indigo-500/20" },
+  { id: "test_scheduled", label: "Test Scheduled", icon: CalendarClock, color: "text-purple-400", bgColor: "bg-purple-500/20" },
+  { id: "passed_test", label: "Passed Test", icon: FileCheck, color: "text-violet-400", bgColor: "bg-violet-500/20" },
+  { id: "fingerprints_done", label: "Fingerprints", icon: Fingerprint, color: "text-teal-400", bgColor: "bg-teal-500/20" },
+  { id: "waiting_on_license", label: "Waiting on License", icon: Clock, color: "text-orange-400", bgColor: "bg-orange-500/20" },
+  { id: "licensed", label: "Licensed", icon: Award, color: "text-green-400", bgColor: "bg-green-500/20" },
+];
+```
+
+### Test Date Picker (shown when test_scheduled is selected)
+
+```typescript
+{currentStage === "test_scheduled" && (
+  <div className="mt-3 p-3 rounded-lg bg-purple-500/10 border border-purple-500/30">
+    <label className="text-xs text-muted-foreground mb-2 block">
+      Test Scheduled Date
+    </label>
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="w-full justify-start">
+          <CalendarIcon className="h-4 w-4 mr-2" />
+          {testScheduledDate 
+            ? format(new Date(testScheduledDate), "MMM d, yyyy")
+            : "Select date"
+          }
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent>
+        <Calendar
+          mode="single"
+          selected={testScheduledDate ? new Date(testScheduledDate) : undefined}
+          onSelect={(date) => onTestDateChange?.(date)}
+        />
+      </PopoverContent>
+    </Popover>
+  </div>
+)}
+```
+
+---
+
+## Data Flow
 
 ```text
-Admin clicks [Assign] → QuickAssignMenu opens
-→ Selects new manager
-→ Updates applications.assigned_agent_id
-→ Invokes notify-lead-assigned function
-→ Refreshes lead list
+User selects stage → onStageChange called
+                  ↓
+If "test_scheduled" → Show date picker
+                  ↓
+User picks date → onTestDateChange called
+                  ↓
+CallCenter updates applications table:
+  - license_progress = new stage
+  - test_scheduled_date = selected date (if applicable)
+                  ↓
+Lead card refreshes with new data
 ```
-
-### Email Trigger Flow
-
-```text
-Call Center Action clicked
-→ Update lead status in DB
-→ Check if action is in emailActions array
-→ Send follow-up email with actionType
-→ Edge function customizes subject/content
-→ Show success toast
-```
-
----
-
-## QuickAssignMenu Integration
-
-The existing `QuickAssignMenu` component already:
-- Fetches all managers with the `manager` role
-- Handles the assignment update to `applications.assigned_agent_id`
-- Sends notification to the assigned manager
-- Shows loading states and success/error toasts
-
-We'll reuse this component in:
-1. LeadCenter page (every row)
-2. AllLeadsPanel (every row)
-3. Optionally in CallCenterLeadCard
-
----
-
-## UI/UX Enhancements
-
-### Call Center Lead Card
-- Instagram handle with direct link to profile
-- Email with mailto link
-- Phone with tap-to-call
-- Notes/Motivation in clear section
-- Voice recorder kept prominent
-- New Quick Email dropdown
-
-### Lead Center
-- Glass-morphism card container
-- Gradient accents (teal/primary)
-- Responsive table with horizontal scroll on mobile
-- Filter pills for quick status filtering
-- Export button for CSV download
-
----
-
-## Implementation Order
-
-1. **GlobalSidebar.tsx** - Add navigation item (quick)
-2. **App.tsx** - Add route (quick)
-3. **LeadCenter.tsx** - Create new page (main work)
-4. **AllLeadsPanel.tsx** - Add Assign column (moderate)
-5. **CallCenterLeadCard.tsx** - Add QuickEmailMenu (moderate)
-6. **CallCenter.tsx** - Update email triggers (moderate)
-7. **send-post-call-followup Edge Function** - Add actionType support (moderate)
 
 ---
 
 ## Expected Outcomes
 
 After implementation:
-1. **Lead Center in sidebar** - Admins see "Lead Center" after "Command Center"
-2. **Full lead visibility** - View all applications and aged leads in one place
-3. **One-click assignment** - Click Assign on any lead to reassign to any manager
-4. **Aisha fix** - Immediately reassign leads from Aisha back to yourself
-5. **Call Center emails** - Quick email templates available during calls
-6. **Auto follow-ups** - Emails sent on Contacted, Hired, Contracted, and Licensing
-7. **Customized emails** - Subject lines vary based on action taken
+1. **License-focused stages** - Pipeline shows licensing journey: Course Started → Finished Course → Test Scheduled → Passed Test → Fingerprints → Waiting on License → Licensed
+2. **Test date scheduler** - When selecting "Test Scheduled", a date picker appears to set when the test is scheduled
+3. **Visual feedback** - Test date displays on the lead card when set
+4. **Filter integration** - The existing license progress filter will work with the new stages
+5. **Data persistence** - Test scheduled dates saved to the applications table
 

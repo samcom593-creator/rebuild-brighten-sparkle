@@ -1,237 +1,239 @@
 
-# Plan: Admin Lead Center + Call Center Enhancements + Email Integration
+
+# Plan: Add "Promote to Manager" Action in Command Center
 
 ## Summary
 
-This plan addresses all the issues you've raised:
-1. **Lead Center** - Add dedicated admin navigation item for full lead management with assignment capabilities
-2. **Lead Assignment Fix** - Add assignment buttons in the AllLeadsPanel table so you can reassign leads away from Aisha
-3. **Call Center Fixes** - Ensure all lead details display correctly (Instagram, email, notes)
-4. **Email Integration** - Add quick email menu to Call Center for sending pre-made emails
-5. **High-Tech UI** - Polish the interface with premium design elements
+Add a simple one-click "Promote to Manager" option in the Command Center's agent dropdown menu. This allows admins to instantly promote any agent to manager status so they can be assigned leads.
 
 ---
 
-## What Will Be Fixed/Added
+## What Will Be Added
 
-### 1. Add "Lead Center" to Admin Navigation
+### 1. "Promote to Manager" Menu Option
 
-Add a new sidebar item for admins only:
-- **Icon**: Database or Target icon
-- **Label**: "Lead Center"
-- **Route**: `/dashboard/leads`
-- Appears after "Command Center" in the navigation
+In the Command Center's agent dropdown menu (the three dots), add a new option:
+- **Icon**: Crown or Shield icon
+- **Label**: "Promote to Manager"
+- **Visibility**: Only show if agent is NOT already a manager
+- **Action**: Inserts a `manager` role into `user_roles` table
 
-### 2. Create New Lead Center Page
+### 2. "Demote from Manager" Option (for flexibility)
 
-A dedicated admin page (`/dashboard/leads`) for:
-- **Viewing all leads** from both applications and aged_leads tables
-- **Bulk assignment** - Dropdown to assign/reassign leads to any manager
-- **Filter by manager** - See only leads assigned to a specific person
-- **Filter by status** - New, Contacted, Qualified, etc.
-- **Filter by license** - Licensed vs Unlicensed
-- **Quick actions** - Call, Email, View Profile
+Also add the reverse action:
+- **Icon**: UserMinus icon
+- **Label**: "Remove Manager Role"
+- **Visibility**: Only show if agent IS already a manager
+- **Action**: Deletes the `manager` role from `user_roles` table
 
-Key feature: **Assign button on EVERY lead row** so you can fix the Aisha situation immediately.
+### 3. Manager Badge
 
-### 3. Enhance AllLeadsPanel with Assignment
-
-Update the existing `AllLeadsPanel.tsx` to add an "Assign" button in each row:
-- Uses existing `QuickAssignMenu` component
-- Allows admin to reassign leads to any manager
-- Immediately updates the lead's `assigned_agent_id`
-
-### 4. Call Center Enhancements
-
-Fix and enhance the Call Center lead card to show:
-- Phone (tap to call) - Already works
-- Email - Already displays but will enhance
-- Instagram handle - Already displays
-- Notes/Motivation - Already displays
-- **NEW: Quick Email Menu** - Add the same email menu from Pipeline
-- Keep Record Call button and Analysis features
-
-Add to `CallCenterLeadCard.tsx`:
-- Integrate `QuickEmailMenu` component
-- Add email templates dropdown
-- Keep voice recorder prominent
-
-### 5. Trigger Follow-Up Emails on All Actions
-
-Currently, follow-up emails only send when "Contacted" is clicked. Update to:
-- Send follow-up email on **ANY action** (Contacted, Hired, Contracted, Licensing, etc.)
-- Each action type can have a slightly customized email message
+Show a small badge next to agent names who are managers for quick identification.
 
 ---
 
-## Files to Create
+## User Flow
 
-| File | Purpose |
-|------|---------|
-| `src/pages/LeadCenter.tsx` | New admin-only lead management hub |
+1. Open Command Center
+2. Find any agent in the leaderboard
+3. Click the three dots menu
+4. Click "Promote to Manager"
+5. Agent immediately becomes a manager and can be assigned leads
+
+No complicated invite links. No separate pages. Just one click.
+
+---
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/components/layout/GlobalSidebar.tsx` | Add "Lead Center" nav item for admins |
-| `src/App.tsx` | Add route for `/dashboard/leads` |
-| `src/components/dashboard/AllLeadsPanel.tsx` | Add assignment button to each lead row |
-| `src/components/callcenter/CallCenterLeadCard.tsx` | Add QuickEmailMenu and ensure all info displays |
-| `src/pages/CallCenter.tsx` | Send follow-up emails on all action types (not just "contacted") |
+| `src/pages/DashboardCommandCenter.tsx` | Add promote/demote menu items, fetch manager status, handle role updates |
 
 ---
 
-## Lead Center Page Design
+## Technical Implementation
 
-```text
-+----------------------------------------------------------+
-|  Lead Center                          [Refresh] [Export] |
-+----------------------------------------------------------+
-| [Search leads...]  [Filter: Manager ▼] [Status ▼] [License ▼] |
-+----------------------------------------------------------+
-|                                                          |
-|  Stats Cards:                                            |
-|  [Total: 234] [Unassigned: 45] [Licensed: 89] [New: 67]  |
-|                                                          |
-+----------------------------------------------------------+
-|                                                          |
-|  Lead Table with Assignment:                             |
-|  +------+-------+--------+--------+----------+---------+ |
-|  | Name | Phone | Status | License| Assigned | Actions | |
-|  +------+-------+--------+--------+----------+---------+ |
-|  | John | 555.. | New    | Yes    | Aisha    | [Assign]| |
-|  |      |       |        |        |          | [Call]  | |
-|  |      |       |        |        |          | [Email] | |
-|  +------+-------+--------+--------+----------+---------+ |
-|                                                          |
-+----------------------------------------------------------+
-```
+### Step 1: Fetch Manager Status for Each Agent
 
-### Assignment Dropdown
-
-When clicking "Assign", shows all active managers:
-- Samuel James
-- Aisha (current)
-- Other Manager
-- **Unassign** - Sets `assigned_agent_id` to NULL
-
----
-
-## Call Center Lead Card Updates
-
-Current card already shows:
-- Name, phone (tap to call), email, Instagram, notes, source badge, license badge
-
-Will add:
-- **Quick Email button** - Opens dropdown with email templates
-- Keep voice recorder section prominent
-- Enhanced styling for a premium feel
-
-```text
-+----------------------------------------------------------+
-|  [Aged Lead] [Unlicensed]                                |
-|                                                          |
-|  John Smith                              [Stage: ▼ New]  |
-|  Added 3 days ago • Last contact: Feb 1                  |
-|                                                          |
-|  +----------------------------------------------------+  |
-|  | 📞 (555) 123-4567           [TAP TO CALL]         |  |
-|  +----------------------------------------------------+  |
-|  | ✉️  john@email.com                                  |  |
-|  | 📷 @johnsmith                                      |  |
-|  +----------------------------------------------------+  |
-|                                                          |
-|  Notes: Interested in financial career, has sales exp... |
-|                                                          |
-|  +----------------------------------------------------+  |
-|  | 🎤 Record Call               📧 Quick Email        |  |
-|  |    [Start Recording]          [Select Template ▼] |  |
-|  +----------------------------------------------------+  |
-|                                                          |
-+----------------------------------------------------------+
-|  [Contacted] [Hired] [Contracted] [Licensing] [Not Qual] |
-|                    [Skip to Next →]                      |
-+----------------------------------------------------------+
-```
-
----
-
-## Follow-Up Email on All Actions
-
-Update `CallCenter.tsx` to send follow-up emails when ANY action is clicked:
-
-```text
-Action Clicked → Update Lead Status → Send Follow-Up Email → Next Lead
-
-Email content varies by action:
-- Contacted: "Great talking to you! Here's the calendar link..."
-- Hired: "Welcome to the team! Next steps..."
-- Contracted: "Congratulations on getting contracted!..."
-- Licensing: "Here are your licensing resources..."
-- Not Qualified: No email (they're disqualified)
-- No Pickup: No email (will retry later)
-```
-
----
-
-## Technical Details
-
-### Lead Center Query Logic
+When fetching agents, also check if they have the manager role:
 
 ```typescript
-// Fetch ALL applications (admin sees everything)
-const { data: applications } = await supabase
-  .from("applications")
-  .select("*")
-  .is("terminated_at", null)
-  .order("created_at", { ascending: false });
+// In the query, also fetch user_roles
+const { data: managerRoles } = await supabase
+  .from("user_roles")
+  .select("user_id")
+  .eq("role", "manager");
 
-// Also fetch aged_leads for unified view
-const { data: agedLeads } = await supabase
-  .from("aged_leads")
-  .select("*")
-  .order("created_at", { ascending: false });
+// Add isManager flag to each agent
+const managerUserIds = new Set(managerRoles?.map(r => r.user_id) || []);
+
+// When mapping agents, add:
+isManager: managerUserIds.has(agent.user_id)
 ```
 
-### Assignment Update
+### Step 2: Add Promote Handler
 
 ```typescript
-// Reassign lead to different manager
-const handleAssign = async (leadId: string, newAgentId: string | null) => {
-  await supabase
-    .from("applications")
-    .update({ assigned_agent_id: newAgentId })
-    .eq("id", leadId);
+const handlePromoteToManager = async (agent: AgentWithStats) => {
+  // Get the user_id for this agent
+  const { data: agentRecord } = await supabase
+    .from("agents")
+    .select("user_id")
+    .eq("id", agent.id)
+    .single();
   
-  // Notify new manager
-  if (newAgentId) {
-    await supabase.functions.invoke("notify-lead-assigned", {
-      body: { applicationId: leadId, agentId: newAgentId }
-    });
+  if (!agentRecord?.user_id) {
+    toast.error("Could not find user account for this agent");
+    return;
   }
   
-  toast.success("Lead reassigned successfully");
+  // Insert manager role
+  const { error } = await supabase
+    .from("user_roles")
+    .insert({ user_id: agentRecord.user_id, role: "manager" });
+  
+  if (error) {
+    if (error.code === "23505") { // Unique constraint violation
+      toast.info("This agent is already a manager");
+    } else {
+      toast.error("Failed to promote agent");
+    }
+    return;
+  }
+  
+  toast.success(`${agent.fullName} is now a Manager!`);
   refetch();
 };
 ```
 
-### Enhanced Follow-Up Trigger
+### Step 3: Add Demote Handler
 
 ```typescript
-// In CallCenter.tsx handleAction function
-const shouldSendEmail = ["contacted", "hired", "contracted", "licensing"].includes(actionId);
+const handleDemoteFromManager = async (agent: AgentWithStats) => {
+  const { data: agentRecord } = await supabase
+    .from("agents")
+    .select("user_id")
+    .eq("id", agent.id)
+    .single();
+  
+  if (!agentRecord?.user_id) {
+    toast.error("Could not find user account for this agent");
+    return;
+  }
+  
+  // Remove manager role
+  const { error } = await supabase
+    .from("user_roles")
+    .delete()
+    .eq("user_id", agentRecord.user_id)
+    .eq("role", "manager");
+  
+  if (error) {
+    toast.error("Failed to remove manager role");
+    return;
+  }
+  
+  toast.success(`${agent.fullName} is no longer a Manager`);
+  refetch();
+};
+```
 
-if (shouldSendEmail) {
-  await supabase.functions.invoke("send-post-call-followup", {
-    body: {
-      firstName: currentLead.firstName,
-      email: currentLead.email,
-      licenseStatus: currentLead.licenseStatus,
-      actionType: actionId, // Pass action type for customized email
-    },
-  });
-}
+### Step 4: Update Dropdown Menu
+
+Add new menu items in the dropdown:
+
+```tsx
+<DropdownMenuContent align="end" className="bg-popover">
+  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setSelectedAgent(agent); }}>
+    <Pencil className="h-4 w-4 mr-2" />
+    Edit Profile
+  </DropdownMenuItem>
+  
+  {/* NEW: Promote/Demote Manager */}
+  <DropdownMenuSeparator />
+  {agent.isManager ? (
+    <DropdownMenuItem onClick={(e) => { 
+      e.stopPropagation(); 
+      handleDemoteFromManager(agent); 
+    }}>
+      <UserMinus className="h-4 w-4 mr-2" />
+      Remove Manager Role
+    </DropdownMenuItem>
+  ) : (
+    <DropdownMenuItem onClick={(e) => { 
+      e.stopPropagation(); 
+      handlePromoteToManager(agent); 
+    }}>
+      <Crown className="h-4 w-4 mr-2" />
+      Promote to Manager
+    </DropdownMenuItem>
+  )}
+  
+  <DropdownMenuSeparator />
+  {/* Existing items... */}
+</DropdownMenuContent>
+```
+
+### Step 5: Add Manager Badge
+
+Show a badge next to manager names:
+
+```tsx
+<span className="font-medium truncate">{agent.fullName}</span>
+{agent.isManager && (
+  <Badge className="text-xs bg-teal-500/10 text-teal-600 border-teal-500/30 shrink-0">
+    Manager
+  </Badge>
+)}
+```
+
+---
+
+## RLS Considerations
+
+The existing RLS policy on `user_roles` allows admins to manage all roles:
+
+```sql
+Policy: "Admins can manage all roles"
+Command: ALL
+Using Expression: has_role(auth.uid(), 'admin'::app_role)
+```
+
+This means only admins can promote/demote managers, which is the correct behavior.
+
+---
+
+## UI Preview
+
+After implementation, the dropdown will look like:
+
+```text
++---------------------------+
+| Edit Profile              |
++---------------------------+
+| Promote to Manager ⭐     |  ← NEW
++---------------------------+
+| Email Login Link          |
+| Copy Login Link           |
++---------------------------+
+| Remove from Pipeline      |
++---------------------------+
+```
+
+And for existing managers:
+
+```text
++---------------------------+
+| Edit Profile              |
++---------------------------+
+| Remove Manager Role       |  ← Shows instead
++---------------------------+
+| Email Login Link          |
+| Copy Login Link           |
++---------------------------+
+| Remove from Pipeline      |
++---------------------------+
 ```
 
 ---
@@ -239,21 +241,9 @@ if (shouldSendEmail) {
 ## Expected Outcomes
 
 After implementation:
-1. **Lead Center** - Admin-only page in sidebar for full lead management
-2. **Easy Reassignment** - Click "Assign" on any lead to move it to a different manager
-3. **Aisha Fix** - You can immediately reassign all leads assigned to Aisha back to yourself or others
-4. **Call Center Emails** - Quick email button to send pre-made templates from Call Center
-5. **Auto Follow-Ups** - Emails sent on Contacted, Hired, Contracted, and Licensing actions
-6. **Premium UI** - Clean, high-tech design throughout
+1. **One-click promotion** - Click on any agent → three dots → "Promote to Manager"
+2. **Instant effect** - Agent immediately becomes a manager and can be assigned leads
+3. **Manager badge** - Easy to see who's already a manager in the leaderboard
+4. **Reversible** - Can demote if needed (Remove Manager Role option)
+5. **Admin-only** - Only admins can see and use this feature (enforced by RLS)
 
----
-
-## UI Styling Notes
-
-All components will feature:
-- Glass morphism cards with subtle borders
-- Gradient accent colors (teal for primary actions)
-- Smooth hover transitions
-- Consistent spacing and typography
-- Mobile-responsive layouts
-- Dark theme optimized colors

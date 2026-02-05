@@ -15,7 +15,7 @@ import {
   type StatusFilter,
   type ProgressFilter,
   type ActionId,
-  type PipelineStage,
+  type LicensingStage,
 } from "@/components/callcenter";
 
 // Unified lead interface
@@ -30,6 +30,8 @@ interface UnifiedLead {
   notes?: string;
   motivation?: string;
   licenseStatus: string;
+  licenseProgress?: string | null;
+  testScheduledDate?: string | null;
   createdAt: string;
   status: string;
   contactedAt?: string;
@@ -126,7 +128,7 @@ export default function CallCenter() {
       if (sourceFilter === "all" || sourceFilter === "applications") {
         let appQuery = supabase
           .from("applications")
-          .select("id, first_name, last_name, email, phone, instagram_handle, notes, license_status, license_progress, created_at, status, contacted_at")
+          .select("id, first_name, last_name, email, phone, instagram_handle, notes, license_status, license_progress, test_scheduled_date, created_at, status, contacted_at")
           .is("terminated_at", null)
           .order("created_at", { ascending: true });
 
@@ -167,6 +169,8 @@ export default function CallCenter() {
             notes: app.notes || undefined,
             motivation: undefined,
             licenseStatus: app.license_status || "unknown",
+            licenseProgress: app.license_progress || null,
+            testScheduledDate: app.test_scheduled_date || null,
             createdAt: app.created_at,
             status: app.status || "new",
             contactedAt: app.contacted_at || undefined,
@@ -332,39 +336,73 @@ export default function CallCenter() {
     }
   }, [currentLead]);
 
-  const handleStageChange = useCallback(async (stage: PipelineStage) => {
+  const handleStageChange = useCallback(async (stage: LicensingStage) => {
     if (!currentLead || processing) return;
 
     setProcessing(true);
     try {
-      // Map stage back to valid application status
-      type ApplicationStatus = "new" | "reviewing" | "interview" | "contracting" | "approved" | "rejected";
-      
-      const statusMap: Record<PipelineStage, ApplicationStatus> = {
-        new: "new",
-        contacted: "reviewing",
-        qualified: "interview",
-        contracted: "contracting",
-        onboarding: "approved",
-        active: "approved",
-      };
-
       if (currentLead.source === "applications") {
+        // Update license_progress for applications
+        const updateData: Record<string, unknown> = {
+          license_progress: stage,
+        };
+
+        // If licensed, also update license_status
+        if (stage === "licensed") {
+          updateData.license_status = "licensed";
+        }
+
         await supabase
           .from("applications")
-          .update({ status: statusMap[stage] })
+          .update(updateData)
           .eq("id", currentLead.id);
       } else {
+        // For aged_leads, just update status
         await supabase
           .from("aged_leads")
           .update({ status: stage })
           .eq("id", currentLead.id);
       }
 
-      toast.success(`Stage updated to ${stage}`);
+      // Update local state
+      setLeads((prev) =>
+        prev.map((l) =>
+          l.id === currentLead.id ? { ...l, licenseProgress: stage } : l
+        )
+      );
+
+      toast.success(`Stage updated to ${stage.replace("_", " ")}`);
     } catch (error) {
       console.error("Error updating stage:", error);
       toast.error("Failed to update stage");
+    } finally {
+      setProcessing(false);
+    }
+  }, [currentLead, processing]);
+
+  const handleTestDateChange = useCallback(async (date: Date | undefined) => {
+    if (!currentLead || processing || currentLead.source !== "applications") return;
+
+    setProcessing(true);
+    try {
+      const dateStr = date ? date.toISOString().split("T")[0] : null;
+
+      await supabase
+        .from("applications")
+        .update({ test_scheduled_date: dateStr })
+        .eq("id", currentLead.id);
+
+      // Update local state
+      setLeads((prev) =>
+        prev.map((l) =>
+          l.id === currentLead.id ? { ...l, testScheduledDate: dateStr } : l
+        )
+      );
+
+      toast.success(date ? `Test scheduled for ${date.toLocaleDateString()}` : "Test date cleared");
+    } catch (error) {
+      console.error("Error updating test date:", error);
+      toast.error("Failed to update test date");
     } finally {
       setProcessing(false);
     }
@@ -497,6 +535,7 @@ export default function CallCenter() {
               lead={currentLead}
               onTranscriptionUpdate={setCurrentTranscription}
               onStageChange={handleStageChange}
+              onTestDateChange={handleTestDateChange}
               onCall={handleCall}
               isRecording={isRecording}
               onRecordingStateChange={setIsRecording}

@@ -82,8 +82,10 @@ export type Database = {
           email: string
           first_name: string
           id: string
+          instagram_handle: string | null
           last_name: string | null
           license_status: string | null
+          motivation: string | null
           notes: string | null
           original_date: string | null
           phone: string | null
@@ -97,8 +99,10 @@ export type Database = {
           email: string
           first_name: string
           id?: string
+          instagram_handle?: string | null
           last_name?: string | null
           license_status?: string | null
+          motivation?: string | null
           notes?: string | null
           original_date?: string | null
           phone?: string | null
@@ -112,8 +116,10 @@ export type Database = {
           email?: string
           first_name?: string
           id?: string
+          instagram_handle?: string | null
           last_name?: string | null
           license_status?: string | null
+          motivation?: string | null
           notes?: string | null
           original_date?: string | null
           phone?: string | null

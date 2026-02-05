@@ -114,7 +114,7 @@ interface PaymentDialogState {
 }
 
 export default function PurchaseLeads() {
-  const { isAdmin } = useAuth();
+   const { user, isAdmin, profile } = useAuth();
   const [leadCount, setLeadCount] = useState(800); // Default to sensible value for instant render
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
@@ -124,6 +124,7 @@ export default function PurchaseLeads() {
     packageName: "",
     price: 0,
   });
+   const [notifying, setNotifying] = useState(false);
 
   const nextSunday = useMemo(() => getNextSundayMidnightCST(), []);
   const countdown = useCountdown(nextSunday);
@@ -187,7 +188,41 @@ export default function PurchaseLeads() {
     toast.success("Copied 'leads' to clipboard!");
   };
 
-  const handleContinueToPayment = () => {
+   const handleContinueToPayment = async () => {
+     setNotifying(true);
+ 
+     // Send notification to admin, manager, and purchaser
+     try {
+       // Get user's manager ID if they have one
+       let managerId: string | undefined;
+       if (user) {
+         const { data: agent } = await supabase
+           .from("agents")
+           .select("invited_by_manager_id")
+           .eq("user_id", user.id)
+           .single();
+         managerId = agent?.invited_by_manager_id || undefined;
+       }
+ 
+       await supabase.functions.invoke("notify-lead-purchase", {
+         body: {
+           purchaserName: profile?.full_name || user?.email || "Unknown",
+           purchaserEmail: profile?.email || user?.email || "",
+           packageName: paymentDialog.packageName,
+           price: paymentDialog.price,
+           paymentMethod: paymentDialog.method,
+           managerId,
+         },
+       });
+ 
+       toast.success("Your manager has been notified!");
+     } catch (error) {
+       console.error("Error sending notification:", error);
+       // Don't block payment if notification fails
+     } finally {
+       setNotifying(false);
+     }
+ 
     const link = paymentDialog.method === "venmo" ? VENMO_LINK : CASHAPP_LINK;
     window.open(link, "_blank");
     setPaymentDialog({ open: false, method: null, packageName: "", price: 0 });
@@ -430,12 +465,19 @@ export default function PurchaseLeads() {
             <Button 
               variant="outline" 
               onClick={() => setPaymentDialog({ open: false, method: null, packageName: "", price: 0 })}
+               disabled={notifying}
             >
               Cancel
             </Button>
-            <Button onClick={handleContinueToPayment} className="gap-2">
+             <Button onClick={handleContinueToPayment} className="gap-2" disabled={notifying}>
+               {notifying ? (
+                 <span className="animate-pulse">Notifying...</span>
+               ) : (
+                 <>
               <ExternalLink className="h-4 w-4" />
               Continue to {paymentDialog.method === "venmo" ? "Venmo" : "Cash App"}
+                 </>
+               )}
             </Button>
           </DialogFooter>
         </DialogContent>

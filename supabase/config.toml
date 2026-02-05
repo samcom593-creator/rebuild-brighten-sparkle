@@ -1,5 +1,8 @@
 project_id = "msydzhzolwourcdmqxvn"
 
+[functions.add-agent]
+verify_jwt = false
+
 [functions.import-production-data]
 verify_jwt = false
 

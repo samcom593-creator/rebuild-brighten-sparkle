@@ -13,6 +13,7 @@ interface PostCallFollowupRequest {
   firstName: string;
   email: string;
   licenseStatus: string;
+  actionType?: string; // "contacted" | "hired" | "contracted" | "licensing"
   calendarLink?: string;
 }
 
@@ -22,19 +23,36 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { firstName, email, licenseStatus, calendarLink }: PostCallFollowupRequest = await req.json();
+    const { firstName, email, licenseStatus, actionType = "contacted", calendarLink }: PostCallFollowupRequest = await req.json();
 
     if (!firstName || !email) {
       throw new Error("Missing required fields: firstName and email");
     }
 
-    console.log(`Sending post-call followup to ${email} (${licenseStatus})`);
+    console.log(`Sending post-call followup (${actionType}) to ${email} (${licenseStatus})`);
 
     const isLicensed = licenseStatus === "licensed";
     const defaultCalendarLink = isLicensed 
       ? "https://calendly.com/apex-financial/licensed-consultation"
       : "https://calendly.com/apex-financial/getting-started";
     const finalCalendarLink = calendarLink || defaultCalendarLink;
+
+    // Customize subject and greeting based on action type
+    const subjectLines: Record<string, string> = {
+      contacted: `Great Talking to You, ${firstName}! 📞`,
+      hired: `Welcome to the APEX Team, ${firstName}! 🎉`,
+      contracted: `Congratulations on Getting Contracted, ${firstName}! 🏆`,
+      licensing: `Your Licensing Journey Starts Now, ${firstName}! 🚀`,
+    };
+    const emailSubject = subjectLines[actionType] || subjectLines.contacted;
+
+    const greetingLines: Record<string, string> = {
+      contacted: `Hey ${firstName}! 📞`,
+      hired: `Welcome to APEX, ${firstName}! 🎉`,
+      contracted: `Congratulations, ${firstName}! 🏆`,
+      licensing: `Let's Get You Licensed, ${firstName}! 🚀`,
+    };
+    const greeting = greetingLines[actionType] || greetingLines.contacted;
 
     const emailHtml = `
 <!DOCTYPE html>
@@ -59,7 +77,7 @@ const handler = async (req: Request): Promise<Response> => {
       
       <!-- Greeting -->
       <h1 style="margin: 0 0 24px 0; font-size: 28px; font-weight: 700; background: linear-gradient(135deg, #10b981, #14b8a6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
-        Hey ${firstName}! 📞
+        ${greeting}
       </h1>
 
       ${isLicensed ? `
@@ -174,7 +192,7 @@ const handler = async (req: Request): Promise<Response> => {
     const emailResponse = await resend.emails.send({
       from: "APEX Team <team@apexfinancialfirm.com>",
       to: [email],
-      subject: `Great Talking to You, ${firstName}! 📞`,
+      subject: emailSubject,
       html: emailHtml,
     });
 

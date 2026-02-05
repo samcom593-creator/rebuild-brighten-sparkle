@@ -20,6 +20,7 @@ import {
   Edit3,
   ShoppingCart,
   Headphones,
+  Target,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -72,6 +73,11 @@ export function GlobalSidebar({
         icon: Crown, 
         label: "Command Center", 
         href: "/dashboard/command",
+      });
+      items.push({ 
+        icon: Target, 
+        label: "Lead Center", 
+        href: "/dashboard/leads",
       });
     }
 

@@ -1,59 +1,236 @@
-# ✅ COMPLETED: Add "Promote to Manager" Action in Command Center
 
-## Summary
 
-Added a simple one-click "Promote to Manager" option in the Command Center's agent dropdown menu. Admins can now instantly promote any agent to manager status so they can be assigned leads.
+# Implementation Plan: Admin Lead Center + Call Center Enhancements + Email Integration
 
----
+## Overview
 
-## What Was Implemented
-
-### 1. "Promote to Manager" Menu Option ✅
-
-In the Command Center's agent dropdown menu (the three dots):
-- **Icon**: Crown icon
-- **Label**: "Promote to Manager"
-- **Visibility**: Only shows if agent is NOT already a manager and has a user account
-- **Action**: Inserts a `manager` role into `user_roles` table
-
-### 2. "Remove Manager Role" Option ✅
-
-The reverse action for flexibility:
-- **Icon**: UserMinus icon
-- **Label**: "Remove Manager Role"
-- **Visibility**: Only shows if agent IS already a manager
-- **Action**: Deletes the `manager` role from `user_roles` table
-
-### 3. Manager Badge ✅
-
-Shows a teal "Manager" badge next to agent names who are managers for quick identification.
+This plan implements a comprehensive lead management system including:
+1. A new Admin Lead Center page with full assignment capabilities
+2. Assignment buttons in existing AllLeadsPanel
+3. Quick Email Menu integration in Call Center
+4. Enhanced follow-up email triggers for all actions
 
 ---
 
-## User Flow
+## Files to Create
 
-1. Open Command Center
-2. Find any agent in the leaderboard
-3. Click the three dots menu
-4. Click "Promote to Manager"
-5. Agent immediately becomes a manager and can be assigned leads
+### 1. `src/pages/LeadCenter.tsx` (New File)
 
-No complicated invite links. No separate pages. Just one click.
+A dedicated admin-only page for full lead management with:
+- Unified view of all leads from `applications` and `aged_leads` tables
+- Search, filter by manager, status, and license type
+- Stats cards showing totals, unassigned, licensed, and new counts
+- Table with Assign button on every row using `QuickAssignMenu`
+- Quick actions for call, email, and view
+- Premium glass-morphism styling
 
 ---
 
-## Files Modified
+## Files to Modify
 
-| File | Changes |
-|------|---------|
-| `src/pages/DashboardCommandCenter.tsx` | Added promote/demote menu items, fetch manager status, handle role updates, manager badge |
+### 2. `src/components/layout/GlobalSidebar.tsx`
+
+**Changes:**
+- Add "Lead Center" navigation item with `Target` icon
+- Place after "Command Center" for admins only
+- Route: `/dashboard/leads`
+
+**Location:** After line 75 (after Command Center item)
+
+```typescript
+items.push({ 
+  icon: Target, 
+  label: "Lead Center", 
+  href: "/dashboard/leads",
+});
+```
+
+### 3. `src/App.tsx`
+
+**Changes:**
+- Add lazy import for LeadCenter page
+- Add route inside AuthenticatedShell for `/dashboard/leads`
+
+**Location:** Line ~45 (lazy imports) and line ~110 (routes)
+
+### 4. `src/components/dashboard/AllLeadsPanel.tsx`
+
+**Changes:**
+- Import `QuickAssignMenu` component
+- Add "Assign" column to table header
+- Add `QuickAssignMenu` button in each lead row
+- Add `fetchAllLeads` to refresh after assignment
+
+**Key Addition (in renderLeadRow function):**
+```typescript
+<TableCell>
+  <QuickAssignMenu
+    applicationId={lead.id}
+    currentAgentId={lead.assignedAgentId || null}
+    onAssigned={fetchAllLeads}
+  />
+</TableCell>
+```
+
+### 5. `src/components/callcenter/CallCenterLeadCard.tsx`
+
+**Changes:**
+- Import `QuickEmailMenu` component
+- Add Quick Email button alongside voice recorder
+- Ensure all lead info (Instagram, email, notes) displays prominently
+
+**Key Addition (after voice recorder section):**
+```typescript
+<QuickEmailMenu
+  applicationId={lead.id}
+  agentId={null}
+  licenseStatus={lead.licenseStatus as "licensed" | "unlicensed" | "pending"}
+  recipientEmail={lead.email}
+  recipientName={lead.firstName + (lead.lastName ? ` ${lead.lastName}` : "")}
+/>
+```
+
+### 6. `src/pages/CallCenter.tsx`
+
+**Changes:**
+- Update `sendFollowUpEmail` to accept `actionType` parameter
+- Trigger follow-up email on multiple actions: `contacted`, `hired`, `contracted`, `licensing`
+- Pass actionType to edge function for customized emails
+
+**Key Update (in handleAction function):**
+```typescript
+const emailActions = ["contacted", "hired", "contracted", "licensing"];
+if (emailActions.includes(actionId)) {
+  await sendFollowUpEmail(currentLead, actionId);
+  toast.success(`Lead marked as ${actionId} - follow-up email sent!`);
+} else {
+  toast.success(`Lead marked as ${actionId.replace("_", " ")}`);
+}
+```
+
+### 7. `supabase/functions/send-post-call-followup/index.ts`
+
+**Changes:**
+- Accept optional `actionType` parameter in request body
+- Customize email subject and opening based on action type
+- Keep existing licensed/unlicensed branching for content
+
+**Updated Interface:**
+```typescript
+interface PostCallFollowupRequest {
+  firstName: string;
+  email: string;
+  licenseStatus: string;
+  actionType?: string; // "contacted" | "hired" | "contracted" | "licensing"
+  calendarLink?: string;
+}
+```
+
+**Custom Subject Lines:**
+- `contacted`: "Great Talking to You, {name}!"
+- `hired`: "Welcome to the APEX Team, {name}!"
+- `contracted`: "Congratulations on Getting Contracted, {name}!"
+- `licensing`: "Your Licensing Journey Starts Now, {name}!"
 
 ---
 
 ## Technical Details
 
-- Fetches manager roles from `user_roles` table alongside agent data
-- Uses `isManager` flag in `AgentWithStats` interface
-- Promote handler inserts into `user_roles` with `role: "manager"`
-- Demote handler deletes from `user_roles` where `role = "manager"`
-- RLS ensures only admins can perform these actions
+### Lead Center Page Structure
+
+```text
+LeadCenter.tsx
+├── Header: "Lead Center" + Refresh/Export buttons
+├── Stats Row: [Total] [Unassigned] [Licensed] [New]
+├── Filters: Search | Manager | Status | License
+└── Table
+    ├── Name (+ email)
+    ├── Phone
+    ├── Location
+    ├── Status (badge)
+    ├── License (badge)
+    ├── Assigned (name or "Unassigned")
+    ├── Applied Date
+    └── Actions: [Assign] [Call] [Email]
+```
+
+### Data Flow for Assignment
+
+```text
+Admin clicks [Assign] → QuickAssignMenu opens
+→ Selects new manager
+→ Updates applications.assigned_agent_id
+→ Invokes notify-lead-assigned function
+→ Refreshes lead list
+```
+
+### Email Trigger Flow
+
+```text
+Call Center Action clicked
+→ Update lead status in DB
+→ Check if action is in emailActions array
+→ Send follow-up email with actionType
+→ Edge function customizes subject/content
+→ Show success toast
+```
+
+---
+
+## QuickAssignMenu Integration
+
+The existing `QuickAssignMenu` component already:
+- Fetches all managers with the `manager` role
+- Handles the assignment update to `applications.assigned_agent_id`
+- Sends notification to the assigned manager
+- Shows loading states and success/error toasts
+
+We'll reuse this component in:
+1. LeadCenter page (every row)
+2. AllLeadsPanel (every row)
+3. Optionally in CallCenterLeadCard
+
+---
+
+## UI/UX Enhancements
+
+### Call Center Lead Card
+- Instagram handle with direct link to profile
+- Email with mailto link
+- Phone with tap-to-call
+- Notes/Motivation in clear section
+- Voice recorder kept prominent
+- New Quick Email dropdown
+
+### Lead Center
+- Glass-morphism card container
+- Gradient accents (teal/primary)
+- Responsive table with horizontal scroll on mobile
+- Filter pills for quick status filtering
+- Export button for CSV download
+
+---
+
+## Implementation Order
+
+1. **GlobalSidebar.tsx** - Add navigation item (quick)
+2. **App.tsx** - Add route (quick)
+3. **LeadCenter.tsx** - Create new page (main work)
+4. **AllLeadsPanel.tsx** - Add Assign column (moderate)
+5. **CallCenterLeadCard.tsx** - Add QuickEmailMenu (moderate)
+6. **CallCenter.tsx** - Update email triggers (moderate)
+7. **send-post-call-followup Edge Function** - Add actionType support (moderate)
+
+---
+
+## Expected Outcomes
+
+After implementation:
+1. **Lead Center in sidebar** - Admins see "Lead Center" after "Command Center"
+2. **Full lead visibility** - View all applications and aged leads in one place
+3. **One-click assignment** - Click Assign on any lead to reassign to any manager
+4. **Aisha fix** - Immediately reassign leads from Aisha back to yourself
+5. **Call Center emails** - Quick email templates available during calls
+6. **Auto follow-ups** - Emails sent on Contacted, Hired, Contracted, and Licensing
+7. **Customized emails** - Subject lines vary based on action taken
+

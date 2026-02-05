@@ -57,10 +57,11 @@ interface AgedLead {
   assignedManagerId?: string;
   status: string;
   licenseStatus: string;
+  leadSource: "aged" | "new_drip";
   createdAt: string;
   notes?: string;
-   instagramHandle?: string;
-   motivation?: string;
+  instagramHandle?: string;
+  motivation?: string;
 }
 
 interface Manager {
@@ -86,6 +87,7 @@ export default function DashboardAgedLeads() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
    const [licenseFilter, setLicenseFilter] = useState<"all" | "licensed" | "unlicensed">("all");
    const [showImporter, setShowImporter] = useState(false);
+   const [sourceFilter, setSourceFilter] = useState<"all" | "aged" | "new_drip">("all");
    const [callModeOpen, setCallModeOpen] = useState(false);
    const [callModeLicense, setCallModeLicense] = useState<"licensed" | "unlicensed">("unlicensed");
    const [callModeSelectOpen, setCallModeSelectOpen] = useState(false);
@@ -156,7 +158,7 @@ export default function DashboardAgedLeads() {
     try {
        let query = supabase
          .from("aged_leads")
-         .select("id, first_name, last_name, email, phone, about_me, original_date, assigned_manager_id, status, license_status, created_at, notes, instagram_handle, motivation")
+         .select("id, first_name, last_name, email, phone, about_me, original_date, assigned_manager_id, status, license_status, lead_source, created_at, notes, instagram_handle, motivation")
          .order("created_at", { ascending: false });
 
       // If manager (not admin), only show their assigned leads
@@ -188,10 +190,11 @@ export default function DashboardAgedLeads() {
           assignedManagerId: lead.assigned_manager_id || undefined,
           status: lead.status || "new",
           licenseStatus: lead.license_status || "unknown",
+          leadSource: (lead.lead_source as "aged" | "new_drip") || "aged",
           createdAt: lead.created_at,
           notes: lead.notes || undefined,
-           instagramHandle: lead.instagram_handle || undefined,
-           motivation: lead.motivation || undefined,
+          instagramHandle: lead.instagram_handle || undefined,
+          motivation: lead.motivation || undefined,
         }))
       );
     } catch (error) {
@@ -239,9 +242,10 @@ export default function DashboardAgedLeads() {
       lead.email.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesStatus = statusFilter === "all" || lead.status === statusFilter;
-     const matchesLicense = licenseFilter === "all" || lead.licenseStatus === licenseFilter;
+    const matchesLicense = licenseFilter === "all" || lead.licenseStatus === licenseFilter;
+    const matchesSource = sourceFilter === "all" || lead.leadSource === sourceFilter;
 
-     return matchesSearch && matchesStatus && matchesLicense;
+    return matchesSearch && matchesStatus && matchesLicense && matchesSource;
   });
 
   // Stats
@@ -249,8 +253,10 @@ export default function DashboardAgedLeads() {
   const newLeads = leads.filter(l => l.status === "new").length;
   const processedLeads = leads.filter(l => l.status !== "new").length;
   const hiredLeads = leads.filter(l => l.status === "hired" || l.status === "contracted").length;
-   const licensedLeads = leads.filter(l => l.licenseStatus === "licensed" && ["new", "contacted", "no_pickup"].includes(l.status)).length;
-   const unlicensedLeads = leads.filter(l => l.licenseStatus === "unlicensed" && ["new", "contacted", "no_pickup"].includes(l.status)).length;
+  const agedCount = leads.filter(l => l.leadSource === "aged").length;
+  const newDripCount = leads.filter(l => l.leadSource === "new_drip").length;
+  const licensedLeads = leads.filter(l => l.licenseStatus === "licensed" && ["new", "contacted", "no_pickup"].includes(l.status)).length;
+  const unlicensedLeads = leads.filter(l => l.licenseStatus === "unlicensed" && ["new", "contacted", "no_pickup"].includes(l.status)).length;
  
    const handleOpenCallMode = (license: "licensed" | "unlicensed") => {
      setCallModeLicense(license);
@@ -427,6 +433,17 @@ export default function DashboardAgedLeads() {
                </Button>
              )}
            </div>
+          {/* Lead Source Filter */}
+          <Select value={sourceFilter} onValueChange={(v) => setSourceFilter(v as "all" | "aged" | "new_drip")}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Lead Source" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sources</SelectItem>
+              <SelectItem value="aged">Aged ({agedCount})</SelectItem>
+              <SelectItem value="new_drip">New Drip ({newDripCount})</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Filter by status" />
@@ -484,9 +501,22 @@ export default function DashboardAgedLeads() {
                         </p>
                       )}
                     </div>
-                       <Badge className={cn("text-xs", statusColors[lead.status] || "bg-secondary text-secondary-foreground")}>
-                      {lead.status.replace("_", " ")}
-                    </Badge>
+                    <div className="flex gap-1">
+                      <Badge 
+                        variant="outline" 
+                        className={cn(
+                          "text-xs",
+                          lead.leadSource === "new_drip" 
+                            ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/30" 
+                            : "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                        )}
+                      >
+                        {lead.leadSource === "new_drip" ? "New Drip" : "Aged"}
+                      </Badge>
+                      <Badge className={cn("text-xs", statusColors[lead.status] || "bg-secondary text-secondary-foreground")}>
+                        {lead.status.replace("_", " ")}
+                      </Badge>
+                    </div>
                   </div>
 
                   {lead.aboutMe && (

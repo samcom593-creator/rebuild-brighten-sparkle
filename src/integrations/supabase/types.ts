@@ -84,6 +84,7 @@ export type Database = {
           id: string
           instagram_handle: string | null
           last_name: string | null
+          lead_source: string | null
           license_status: string | null
           motivation: string | null
           notes: string | null
@@ -101,6 +102,7 @@ export type Database = {
           id?: string
           instagram_handle?: string | null
           last_name?: string | null
+          lead_source?: string | null
           license_status?: string | null
           motivation?: string | null
           notes?: string | null
@@ -118,6 +120,7 @@ export type Database = {
           id?: string
           instagram_handle?: string | null
           last_name?: string | null
+          lead_source?: string | null
           license_status?: string | null
           motivation?: string | null
           notes?: string | null

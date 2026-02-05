@@ -229,6 +229,7 @@ export const AgedLeadImporter = forwardRef<HTMLDivElement, AgedLeadImporterProps
     const [csvData, setCsvData] = useState("");
     const [selectedManager, setSelectedManager] = useState("");
     const [defaultLicenseStatus, setDefaultLicenseStatus] = useState("unlicensed");
+    const [leadSource, setLeadSource] = useState<"aged" | "new_drip">("aged");
     const [importing, setImporting] = useState(false);
     const [step, setStep] = useState<"input" | "preview">("input");
 
@@ -363,6 +364,7 @@ export const AgedLeadImporter = forwardRef<HTMLDivElement, AgedLeadImporterProps
           motivation: lead.motivation || null,
           license_status: lead.license_status,
           assigned_manager_id: selectedManager,
+          lead_source: leadSource,
           status: "new",
         }));
 
@@ -389,6 +391,7 @@ export const AgedLeadImporter = forwardRef<HTMLDivElement, AgedLeadImporterProps
         // Reset and close
         setCsvData("");
         setSelectedManager("");
+        setLeadSource("aged");
         setStep("input");
         onImportComplete();
         onClose();
@@ -452,6 +455,23 @@ export const AgedLeadImporter = forwardRef<HTMLDivElement, AgedLeadImporterProps
                         {m.name}
                       </SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Lead Source Category */}
+              <div className="space-y-2">
+                <Label>Lead Category *</Label>
+                <p className="text-xs text-muted-foreground">
+                  Categorize these leads for tracking and filtering
+                </p>
+                <Select value={leadSource} onValueChange={(v) => setLeadSource(v as "aged" | "new_drip")}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="aged">Aged Leads</SelectItem>
+                    <SelectItem value="new_drip">New Drip-Ins</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

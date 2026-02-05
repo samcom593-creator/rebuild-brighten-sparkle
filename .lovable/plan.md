@@ -1,122 +1,136 @@
 
-## Fix: Lead Import & Applicant Pipeline Visibility Issues
+# Plan: Create Dedicated Call Center + Fix Pipeline
 
-### Problems Identified
+## Summary
 
-1. **Applicants Page Not Showing All Applications**
-   - The admin fetch logic only runs when a `highlightedLeadId` is present
-   - Normal page loads filter only to the admin's personally assigned leads (which is 0)
-   - Admin should see ALL 26 applications regardless
+You want two distinct experiences:
+1. **Pipeline** - Visual organization of leads by category, for seeing where leads are at different stages
+2. **Call Center** - Dedicated page for processing leads one at a time with action buttons
 
-2. **Lead Importer Shows "Nothing Available"**
-   - The manager dropdown only populates from agents who have matching `user_roles` AND `agents` records
-   - If the query returns early due to empty results, no managers appear
-   - Need to use the reliable `get-active-managers` edge function instead
-
-3. **Data Migration Needed**
-   - 22 applications are currently assigned to Aisha Kebbeh's agent ID
-   - Optionally reassign unassigned leads (4) to the admin for visibility
+Currently, there's a "Call Mode" popup that only works for aged leads. We'll create a proper standalone **Call Center page** that works with both aged leads AND new applicants, with filtering options.
 
 ---
 
-### Implementation Plan
+## What Will Be Built
 
-#### Step 1: Fix DashboardApplicants to Show All Applications for Admins
+### 1. New Call Center Page (`/dashboard/call-center`)
 
-Modify the fetch logic so admins always see all applications, not just when a highlighted lead exists.
+A dedicated full-page experience for calling leads:
 
-**Current problematic flow:**
+- **Pre-call filters**: Choose what to call
+  - Source: Aged Leads, New Applicants, or All
+  - License Status: Licensed, Unlicensed, or All
+  
+- **One lead at a time display** showing:
+  - Name, phone (tap to call), email, Instagram
+  - Notes and motivation
+  - How long ago they applied
+  
+- **Quick action buttons**:
+  - Hired (green)
+  - Contracted (blue)
+  - Licensing (purple) - unlicensed only
+  - Not Qualified (red)
+  - No Pickup (amber)
+  - **Skip** (move to next without updating)
+  
+- **Progress tracker**: Shows X of Y leads processed
+- **Keyboard shortcuts**: 1-5 for actions, N for next, ESC to exit
+
+### 2. Sidebar Navigation Update
+
+Add "Call Center" with a phone icon to the sidebar, visible to Admins and Managers.
+
+### 3. Keep Pipeline Separate
+
+The Pipeline page (`/dashboard/applicants`) stays focused on visual organization - seeing all leads categorized by status without the one-at-a-time calling flow.
+
+---
+
+## User Experience Flow
+
 ```text
-1. Check if managerFilter exists → filter by manager
-2. Check if highlightedLeadId exists → fetch all for admin
-3. Default: fetch only assigned_agent_id = current user's agent
+Sidebar → Call Center → Select filters → Start Calling
+          ↓
+     [Lead Card]
+     Name: John Smith
+     Phone: (555) 123-4567 [Tap to Call]
+     Email: john@email.com
+     Instagram: @johnsmith
+     Notes: Interested in financial career...
+          ↓
+     [Action Buttons]
+     [Hired] [Contracted] [Licensing] [Not Qualified] [No Pickup]
+                    [Skip to Next →]
+          ↓
+     Progress: 5/32 processed • 27 remaining
 ```
 
-**Fixed flow:**
+---
+
+## Files to Create/Modify
+
+| File | Action | Purpose |
+|------|--------|---------|
+| `src/pages/CallCenter.tsx` | Create | New dedicated Call Center page |
+| `src/components/layout/GlobalSidebar.tsx` | Modify | Add Call Center nav item |
+| `src/App.tsx` | Modify | Add route for `/dashboard/call-center` |
+
+---
+
+## Technical Details
+
+### Call Center Page Logic
+
+1. **Data Sources**: Query both `aged_leads` and `applications` tables based on source filter
+2. **Unified Lead Interface**: Normalize data from both tables into a common format
+3. **Status Updates**: 
+   - For aged_leads: Update `status` column
+   - For applications: Update `status` column with matching values
+4. **Skip Functionality**: Move to next lead without database update
+5. **Role-based filtering**:
+   - Admins see all leads
+   - Managers see only their assigned leads
+
+### Filter Options
+
 ```text
-1. Check if managerFilter exists → filter by manager
-2. If isAdmin → fetch ALL applications
-3. If isManager → fetch assigned + team applications  
-4. Default: fetch only assigned applications
+Source Filter:
+- All Sources
+- Aged Leads (from aged_leads table)
+- New Applicants (from applications table)
+
+License Filter:
+- All
+- Licensed
+- Unlicensed
+
+Status Filter (what to show):
+- New / Uncontacted
+- No Pickup (retry)
+- Contacted
 ```
 
-**File:** `src/pages/DashboardApplicants.tsx`
+### Action Button Mappings
 
-#### Step 2: Fix LeadImporter to Use Edge Function for Managers
-
-Replace the unreliable client-side manager query with the `get-active-managers` edge function that already exists and works correctly.
-
-**File:** `src/components/dashboard/LeadImporter.tsx`
-
-#### Step 3: Add Fallback + Loading States
-
-- Show "Loading managers..." while fetching
-- Show "No managers available" if the list is empty
-- Add error toast if the fetch fails
-
-#### Step 4: Optional Data Migration
-
-Reassign the 4 unassigned applications to the admin so they appear in the pipeline immediately.
+| Button | Status Value | Available For |
+|--------|-------------|---------------|
+| Hired | `hired` | All leads |
+| Contracted | `contracted` | All leads |
+| Licensing | `licensing` | Unlicensed only |
+| Not Qualified | `not_qualified` | All leads |
+| No Pickup | `no_pickup` | All leads |
 
 ---
 
-### Technical Details
+## Expected Outcomes
 
-**DashboardApplicants Fix:**
-```typescript
-// NEW: Admins see all, managers see their team
-if (isAdmin) {
-  const { data: adminApps } = await supabase
-    .from("applications")
-    .select("*")
-    .order("created_at", { ascending: false });
-  setApplications((adminApps || []) as Application[]);
-  setIsLoading(false);
-  return;
-}
-
-if (isManager && agentData) {
-  // Manager sees apps assigned to them OR their team
-  const { data: managerApps } = await supabase
-    .from("applications")
-    .select("*")
-    .order("created_at", { ascending: false });
-  setApplications((managerApps || []) as Application[]);
-  setIsLoading(false);
-  return;
-}
-```
-
-**LeadImporter Fix:**
-```typescript
-const fetchManagers = async () => {
-  try {
-    const { data, error } = await supabase.functions.invoke("get-active-managers");
-    if (error) throw error;
-    setManagers(data?.managers || []);
-  } catch (err) {
-    console.error("Failed to fetch managers:", err);
-    toast.error("Failed to load managers");
-  }
-};
-```
-
----
-
-### Files to Modify
-
-| File | Change |
-|------|--------|
-| `src/pages/DashboardApplicants.tsx` | Fix fetch logic for admin/manager visibility |
-| `src/components/dashboard/LeadImporter.tsx` | Use edge function for manager dropdown |
-
-### Database Fix (Optional)
-Reassign unassigned applications to admin agent ID for immediate visibility in the pipeline.
-
----
-
-### Expected Outcomes
-- Admin sees all 26 applications in the Applicants page
-- Lead Importer shows all 3 managers in the dropdown
-- Importing leads works correctly and they appear in the pipeline
-- CRM pipeline reflects all agents and leads
+After implementation:
+- New "Call Center" link appears in sidebar for Admins/Managers
+- Clicking it opens a full-page calling interface
+- Users can filter by aged leads vs new applicants, and by license status
+- Leads display one at a time with tap-to-call functionality
+- Action buttons update lead status and automatically advance to the next lead
+- Skip button allows moving to next without updating
+- Progress bar shows calling progress
+- Pipeline page remains unchanged for visual lead organization

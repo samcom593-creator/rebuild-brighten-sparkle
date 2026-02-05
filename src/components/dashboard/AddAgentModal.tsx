@@ -64,7 +64,7 @@ export function AddAgentModal({ onAgentAdded }: AddAgentModalProps) {
 
       const managerUserIds = managerRoles.map(r => r.user_id);
 
-      // Get agent IDs and profiles for managers
+      // Get agent IDs for managers
       const { data: managerAgents } = await supabase
         .from("agents")
         .select("id, user_id")
@@ -73,6 +73,7 @@ export function AddAgentModal({ onAgentAdded }: AddAgentModalProps) {
 
       if (!managerAgents?.length) return;
 
+      // Get profiles
       const { data: profiles } = await supabase
         .from("profiles")
         .select("user_id, full_name")
@@ -87,11 +88,13 @@ export function AddAgentModal({ onAgentAdded }: AddAgentModalProps) {
 
       setManagers(managerList);
 
-      // If current user is a manager (not admin), pre-select themselves
-      if (!isAdmin && user) {
+      // Pre-select current user if they're a manager
+      if (user) {
         const currentAgent = managerAgents.find(a => a.user_id === user.id);
         if (currentAgent) {
           setManagerId(currentAgent.id);
+        } else if (managerList.length > 0) {
+          setManagerId(managerList[0].id);
         }
       }
     } catch (error) {

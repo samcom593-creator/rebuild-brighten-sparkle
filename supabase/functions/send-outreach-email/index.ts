@@ -646,7 +646,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email
     const { error: emailError } = await resend.emails.send({
-      from: "Apex Financial <team@updates.apexlifeadvisors.com>",
+      from: "APEX Financial <noreply@apex-financial.org>",
       to: [application.email],
       subject,
       html,

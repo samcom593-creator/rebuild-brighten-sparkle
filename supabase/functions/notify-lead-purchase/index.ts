@@ -183,12 +183,12 @@
      // Send all emails
      for (const email of emailsToSend) {
        try {
-         await resend.emails.send({
-           from: "Apex Financial <noreply@apexfinancialnetwork.com>",
-           to: [email.to],
-           subject: email.subject,
-           html: email.html,
-         });
+          await resend.emails.send({
+            from: "APEX Financial <noreply@apex-financial.org>",
+            to: [email.to],
+            subject: email.subject,
+            html: email.html,
+          });
          console.log(`Email sent to ${email.to}`);
        } catch (emailError) {
          console.error(`Failed to send email to ${email.to}:`, emailError);

@@ -1,21 +1,30 @@
 
-# Plan: Email Flows Verification + "Resend Licensing Instructions" Button
+# Email Domain Fix - Completed
 
-## Status: ✅ COMPLETED
+## Issue
+Multiple edge functions were using unverified email domains (apexfinancialmarketing.com, apexfinancialnetwork.com, apexlifeadvisors.com, apexfinancialfirm.com, apexfinancialpeople.com), causing "domain not verified" errors.
 
-### Implemented
+## Solution
+Changed all email functions to use the verified domain: `apex-financial.org`
 
-1. **New Edge Function**: `send-licensing-instructions` - Sends licensing/onboarding emails on demand
-   - Licensed: Calendly link + onboarding steps
-   - Unlicensed: 3-step guide (video, doc, course link) + "we cover costs" messaging
+## Functions Fixed (9 total)
 
-2. **ResendLicensingButton Component**: Added to Call Center for quick resends
-   - Shows graduation cap icon
-   - Tooltip explains what it does
-   - Success/loading states
+| Function | Previous Domain | Status |
+|----------|-----------------|--------|
+| send-post-call-followup | apexfinancialfirm.com | ✅ Fixed |
+| send-outreach-email | apexlifeadvisors.com | ✅ Fixed |
+| notify-agent-contracted | apexlifeadvisors.com | ✅ Fixed |
+| notify-stage-change | apexfinancialpeople.com | ✅ Fixed |
+| notify-lead-purchase | apexfinancialnetwork.com | ✅ Fixed |
+| notify-set-goals | apexfinancialnetwork.com | ✅ Fixed |
+| check-stale-onboarding | apexfinancialmarketing.com | ✅ Fixed |
+| manager-daily-digest | apexfinancialmarketing.com | ✅ Fixed |
+| send-course-reminder | apexfinancialmarketing.com | ✅ Fixed |
 
-3. **Call Center Integration**: Button appears next to QuickEmailMenu for unlicensed leads
+## New Features Added
 
-### Email Domain
-Using verified domain: `apex-financial.org`
+- **ResendLicensingButton** - One-click button in Call Center to resend licensing instructions
+- **send-licensing-instructions** edge function - Sends licensing/onboarding emails on demand
 
+## Verified Domain
+All emails now use: `APEX Financial <noreply@apex-financial.org>`

@@ -33,7 +33,8 @@ type EmailTemplate =
   | "licensing_reminder"
   | "licensing_checkin"
   | "course_help"
-  | "schedule_consultation";
+  | "schedule_consultation"
+  | "couldnt_reach_you";
 
 const emailTemplateLabels: Record<EmailTemplate, string> = {
   cold_licensed: "Cold Outreach (Licensed)",
@@ -46,6 +47,7 @@ const emailTemplateLabels: Record<EmailTemplate, string> = {
   licensing_checkin: "Check-in (Need Help?)",
   course_help: "Course Help Request",
   schedule_consultation: "Schedule Consultation",
+  couldnt_reach_you: "Couldn't Reach You",
 };
 
 // Sample email content for preview (would ideally come from backend)
@@ -92,6 +94,10 @@ const getEmailContent = (template: EmailTemplate, name: string): { subject: stri
     schedule_consultation: {
       subject: `Let's Schedule a Call`,
       html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;"><h2>Hi ${firstName},</h2><p>I'd love to schedule a quick consultation call to discuss your career goals.</p><p>What time works best for you this week?</p><p>Best,<br/>Apex Financial Team</p></body></html>`,
+    },
+    couldnt_reach_you: {
+      subject: `${firstName}, We Tried to Call You! 📞`,
+      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;background-color:#f9fafb;"><div style="max-width:500px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;box-shadow:0 2px 8px rgba(0,0,0,0.05);"><h2 style="color:#14b8a6;margin:0 0 16px 0;">Hey ${firstName}!</h2><p style="color:#374151;line-height:1.6;margin:0 0 16px 0;">We tried reaching out to you today about the opportunity at <strong>Apex Financial</strong>, but we couldn't get through to your number.</p><p style="color:#374151;line-height:1.6;margin:0 0 16px 0;">No worries—we still want to connect! Here's what you can do:</p><ul style="color:#374151;line-height:1.8;margin:0 0 24px 0;padding-left:20px;"><li>✓ Reply to this email with your best phone number</li><li>✓ Or schedule a time that works for you below</li></ul><div style="text-align:center;margin:24px 0;"><a href="https://calendly.com/apexlifeadvisors/15min" style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#fff;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:bold;">Schedule a Call</a></div><p style="color:#6b7280;font-size:14px;margin:24px 0 0 0;">Talk soon,<br/><strong style="color:#111827;">Apex Financial Team</strong></p></div></body></html>`,
     },
   };
   
@@ -153,8 +159,8 @@ export function QuickEmailMenu({
 
   // Contextual templates (shown by default)
   const contextualTemplates: EmailTemplate[] = isLicensed 
-    ? ["cold_licensed", "followup1_licensed", "followup2_licensed"]
-    : ["cold_unlicensed", "followup1_unlicensed", "followup2_unlicensed", "licensing_reminder", "licensing_checkin"];
+    ? ["cold_licensed", "followup1_licensed", "followup2_licensed", "couldnt_reach_you"]
+    : ["cold_unlicensed", "followup1_unlicensed", "followup2_unlicensed", "couldnt_reach_you", "licensing_reminder", "licensing_checkin"];
 
   // All templates
   const allTemplates: EmailTemplate[] = [
@@ -164,6 +170,7 @@ export function QuickEmailMenu({
     "followup2_licensed",
     "followup1_unlicensed",
     "followup2_unlicensed",
+    "couldnt_reach_you",
     "licensing_reminder",
     "licensing_checkin",
     "course_help",

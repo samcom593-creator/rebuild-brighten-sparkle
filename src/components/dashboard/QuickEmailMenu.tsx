@@ -19,6 +19,7 @@ interface QuickEmailMenuProps {
   licenseStatus: "licensed" | "unlicensed" | "pending";
   recipientEmail: string;
   recipientName: string;
+  leadSource?: "aged_leads" | "applications";
   onEmailSent?: () => void;
   className?: string;
 }
@@ -110,6 +111,7 @@ export function QuickEmailMenu({
   licenseStatus,
   recipientEmail,
   recipientName,
+  leadSource = "applications",
   onEmailSent,
   className,
 }: QuickEmailMenuProps) {
@@ -138,6 +140,7 @@ export function QuickEmailMenu({
           templateType: selectedTemplate,
           customSubject,
           customBody,
+          leadSource,
         },
       });
 

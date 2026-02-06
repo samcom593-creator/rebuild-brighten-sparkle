@@ -14,6 +14,7 @@ import {
   Download,
   Loader2,
   X,
+  Trash2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -57,6 +58,8 @@ interface Lead {
   assignedAgentId?: string;
   assignedAgentName?: string;
   createdAt: string;
+  referralSource?: string;
+  contactedAt?: string;
 }
 
 interface Manager {
@@ -77,10 +80,42 @@ const statusColors: Record<string, string> = {
   contracted: "bg-teal-500/20 text-teal-400 border-teal-500/30",
   rejected: "bg-red-500/20 text-red-400 border-red-500/30",
   not_qualified: "bg-red-500/20 text-red-400 border-red-500/30",
+  not_contacted: "bg-gray-500/20 text-gray-400 border-gray-500/30",
+};
+
+// Format referral source nicely
+const formatReferralSource = (source?: string): string => {
+  if (!source) return "Direct Apply";
+  const mapping: Record<string, string> = {
+    "agent-referral": "Agent Referral",
+    "friend-referral": "Friend Referral",
+    "social-media": "Social Media",
+    "event": "Event",
+    "other": "Other",
+  };
+  return mapping[source] || source;
+};
+
+// Format status nicely
+const formatStatus = (status: string): string => {
+  const mapping: Record<string, string> = {
+    new: "New",
+    reviewing: "Reviewing",
+    contacted: "Contacted",
+    interview: "Interview",
+    qualified: "Qualified",
+    contracting: "Contracting",
+    approved: "Approved",
+    hired: "Hired",
+    contracted: "Contracted",
+    rejected: "Rejected",
+    not_qualified: "Not Qualified",
+  };
+  return mapping[status] || status;
 };
 
 export default function LeadCenter() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [managers, setManagers] = useState<Manager[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,6 +127,7 @@ export default function LeadCenter() {
   // Bulk selection state
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
   const [bulkAssigning, setBulkAssigning] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [bulkManagerId, setBulkManagerId] = useState<string>("");
 
   const fetchLeads = async () => {
@@ -150,6 +186,8 @@ export default function LeadCenter() {
           ? agentNameMap[app.assigned_agent_id]
           : undefined,
         createdAt: app.created_at,
+        referralSource: app.referral_source || undefined,
+        contactedAt: app.contacted_at || undefined,
       }));
 
       // Transform aged leads
@@ -169,6 +207,8 @@ export default function LeadCenter() {
           ? agentNameMap[lead.assigned_manager_id]
           : undefined,
         createdAt: lead.created_at || new Date().toISOString(),
+        referralSource: undefined,
+        contactedAt: lead.contacted_at || undefined,
       }));
 
       const allLeads = [...appLeads, ...aged];
@@ -330,6 +370,109 @@ export default function LeadCenter() {
     }
   };
 
+  // Bulk delete handler - moves leads to vault
+  const handleBulkDelete = async () => {
+    if (selectedLeads.size === 0) return;
+
+    const confirmed = window.confirm(
+      `Delete ${selectedLeads.size} leads? They will be moved to the vault and can be restored from Settings.`
+    );
+    if (!confirmed) return;
+
+    setBulkDeleting(true);
+    try {
+      // Separate leads by source
+      const applicationIds: string[] = [];
+      const agedLeadIds: string[] = [];
+
+      selectedLeads.forEach((key) => {
+        const [source, id] = key.split("-");
+        if (source === "applications") applicationIds.push(id);
+        else if (source === "aged_leads") agedLeadIds.push(id);
+      });
+
+      // Move applications to vault
+      if (applicationIds.length > 0) {
+        const { data: apps } = await supabase
+          .from("applications")
+          .select("*")
+          .in("id", applicationIds);
+
+        if (apps?.length) {
+          // Insert into vault
+          const { error: vaultError } = await supabase
+            .from("deleted_leads")
+            .insert(
+              apps.map((app) => ({
+                original_id: app.id,
+                source: "applications",
+                first_name: app.first_name,
+                last_name: app.last_name,
+                email: app.email,
+                phone: app.phone,
+                city: app.city,
+                state: app.state,
+                license_status: app.license_status,
+                assigned_agent_id: app.assigned_agent_id,
+                original_data: app,
+                deleted_by: user?.id,
+              }))
+            );
+
+          if (vaultError) throw vaultError;
+
+          // Soft delete applications by setting terminated_at
+          await supabase
+            .from("applications")
+            .update({ terminated_at: new Date().toISOString(), termination_reason: "Deleted via Lead Center" })
+            .in("id", applicationIds);
+        }
+      }
+
+      // Move aged leads to vault and hard delete
+      if (agedLeadIds.length > 0) {
+        const { data: aged } = await supabase
+          .from("aged_leads")
+          .select("*")
+          .in("id", agedLeadIds);
+
+        if (aged?.length) {
+          // Insert into vault
+          const { error: vaultError } = await supabase
+            .from("deleted_leads")
+            .insert(
+              aged.map((lead) => ({
+                original_id: lead.id,
+                source: "aged_leads",
+                first_name: lead.first_name,
+                last_name: lead.last_name,
+                email: lead.email,
+                phone: lead.phone,
+                license_status: lead.license_status,
+                assigned_agent_id: lead.assigned_manager_id,
+                original_data: lead,
+                deleted_by: user?.id,
+              }))
+            );
+
+          if (vaultError) throw vaultError;
+
+          // Hard delete aged leads
+          await supabase.from("aged_leads").delete().in("id", agedLeadIds);
+        }
+      }
+
+      toast.success(`${selectedLeads.size} leads moved to vault`);
+      clearSelection();
+      fetchLeads();
+    } catch (error) {
+      console.error("Error deleting leads:", error);
+      toast.error("Failed to delete leads");
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
   const handleExport = () => {
     const csvContent = [
       ["Name", "Email", "Phone", "Status", "License", "Assigned To", "Source", "Created"].join(","),
@@ -362,7 +505,7 @@ export default function LeadCenter() {
 
   // Get list of managers for bulk assign (not just those with leads)
   const [allManagers, setAllManagers] = useState<{ id: string; name: string }[]>([]);
-  
+
   useEffect(() => {
     const fetchAllManagers = async () => {
       try {
@@ -531,6 +674,7 @@ export default function LeadCenter() {
               <SelectItem value="all">All Licenses</SelectItem>
               <SelectItem value="licensed">Licensed</SelectItem>
               <SelectItem value="unlicensed">Unlicensed</SelectItem>
+              <SelectItem value="unknown">Unknown</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -575,8 +719,12 @@ export default function LeadCenter() {
                   const leadKey = `${lead.source}-${lead.id}`;
                   const isSelected = selectedLeads.has(leadKey);
                   
+                  // Determine display status
+                  const displayStatus = !lead.contactedAt ? "Not Contacted" : formatStatus(lead.status);
+                  const statusColorKey = !lead.contactedAt ? "not_contacted" : lead.status;
+
                   return (
-                    <TableRow 
+                    <TableRow
                       key={leadKey}
                       className={cn(isSelected && "bg-primary/5")}
                     >
@@ -603,10 +751,10 @@ export default function LeadCenter() {
                         <Badge
                           variant="outline"
                           className={cn(
-                            statusColors[lead.status] || "bg-muted text-muted-foreground"
+                            statusColors[statusColorKey] || "bg-muted text-muted-foreground"
                           )}
                         >
-                          {lead.status}
+                          {displayStatus}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -615,6 +763,8 @@ export default function LeadCenter() {
                           className={
                             lead.licenseStatus === "licensed"
                               ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                              : lead.licenseStatus === "unknown"
+                              ? "bg-gray-500/20 text-gray-400 border-gray-500/30"
                               : "bg-amber-500/20 text-amber-400 border-amber-500/30"
                           }
                         >
@@ -640,7 +790,9 @@ export default function LeadCenter() {
                               : "bg-amber-500/20 text-amber-400 border-amber-500/30"
                           }
                         >
-                          {lead.source === "applications" ? "App" : "Aged"}
+                          {lead.source === "applications"
+                            ? formatReferralSource(lead.referralSource)
+                            : "Aged Lead"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
@@ -720,6 +872,19 @@ export default function LeadCenter() {
                   <Users className="h-4 w-4 mr-2" />
                 )}
                 Assign
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleBulkDelete}
+                disabled={bulkDeleting}
+                size="sm"
+              >
+                {bulkDeleting ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4 mr-2" />
+                )}
+                Delete
               </Button>
               <Button
                 variant="ghost"

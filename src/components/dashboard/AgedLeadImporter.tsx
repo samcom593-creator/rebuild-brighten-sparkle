@@ -295,6 +295,8 @@ export const AgedLeadImporter = forwardRef<HTMLDivElement, AgedLeadImporterProps
           const lower = licenseStatus.toLowerCase();
           if (lower.includes("yes") || lower.includes("licensed") || lower === "true" || lower === "1" || lower === "y") {
             licenseStatus = "licensed";
+          } else if (lower.includes("unknown") || lower.includes("?") || lower === "n/a" || lower === "na" || lower === "unk") {
+            licenseStatus = "unknown";
           } else {
             licenseStatus = "unlicensed";
           }
@@ -492,6 +494,7 @@ export const AgedLeadImporter = forwardRef<HTMLDivElement, AgedLeadImporterProps
                   <SelectContent>
                     <SelectItem value="unlicensed">Unlicensed</SelectItem>
                     <SelectItem value="licensed">Licensed</SelectItem>
+                    <SelectItem value="unknown">Unknown</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

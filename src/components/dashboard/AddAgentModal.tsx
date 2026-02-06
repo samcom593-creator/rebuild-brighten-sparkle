@@ -280,11 +280,33 @@ export function AddAgentModal({ onAgentAdded }: AddAgentModalProps) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="unlicensed">Unlicensed</SelectItem>
-                  <SelectItem value="in_progress">In Progress</SelectItem>
-                  <SelectItem value="licensed">Licensed</SelectItem>
+                  <SelectItem value="unlicensed">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-amber-500" />
+                      <span>Unlicensed</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="in_progress">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-blue-500" />
+                      <span>In Progress</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="licensed">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                      <span>Licensed</span>
+                    </div>
+                  </SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                {licenseStatus === "licensed" 
+                  ? "Agent already has their insurance license"
+                  : licenseStatus === "in_progress"
+                  ? "Agent is currently working on getting licensed"
+                  : "Agent needs to complete the licensing process"}
+              </p>
             </div>
           </div>
 

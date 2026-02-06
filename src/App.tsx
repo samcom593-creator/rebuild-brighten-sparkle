@@ -35,6 +35,7 @@ const DashboardAgedLeads = lazy(() => import("./pages/DashboardAgedLeads"));
 const DashboardCommandCenter = lazy(() => import("./pages/DashboardCommandCenter"));
 const ScheduleCall = lazy(() => import("./pages/ScheduleCall"));
 const Settings = lazy(() => import("./pages/Settings"));
+const DeletedLeadsVault = lazy(() => import("./pages/DeletedLeadsVault"));
 const TeamDirectory = lazy(() => import("./pages/TeamDirectory"));
 const PendingApproval = lazy(() => import("./pages/PendingApproval"));
 const AgentPortal = lazy(() => import("./pages/AgentPortal"));
@@ -114,6 +115,7 @@ const App = () => (
                     <Route path="/dashboard/admin" element={<DashboardAdmin />} />
                     <Route path="/dashboard/accounts" element={<DashboardAccounts />} />
                     <Route path="/dashboard/settings" element={<Settings />} />
+                    <Route path="/dashboard/settings/deleted-leads" element={<DeletedLeadsVault />} />
                     <Route path="/dashboard/team" element={<TeamDirectory />} />
                     <Route path="/dashboard/crm" element={<DashboardCRM />} />
                     <Route path="/dashboard/aged-leads" element={<DashboardAgedLeads />} />

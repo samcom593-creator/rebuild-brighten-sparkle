@@ -1042,6 +1042,60 @@ export type Database = {
           },
         ]
       }
+      deleted_leads: {
+        Row: {
+          assigned_agent_id: string | null
+          city: string | null
+          deleted_at: string | null
+          deleted_by: string | null
+          email: string
+          first_name: string
+          id: string
+          last_name: string | null
+          license_status: string | null
+          original_data: Json | null
+          original_id: string
+          phone: string | null
+          reason: string | null
+          source: string
+          state: string | null
+        }
+        Insert: {
+          assigned_agent_id?: string | null
+          city?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          email: string
+          first_name: string
+          id?: string
+          last_name?: string | null
+          license_status?: string | null
+          original_data?: Json | null
+          original_id: string
+          phone?: string | null
+          reason?: string | null
+          source: string
+          state?: string | null
+        }
+        Update: {
+          assigned_agent_id?: string | null
+          city?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
+          email?: string
+          first_name?: string
+          id?: string
+          last_name?: string | null
+          license_status?: string | null
+          original_data?: Json | null
+          original_id?: string
+          phone?: string | null
+          reason?: string | null
+          source?: string
+          state?: string | null
+        }
+        Relationships: []
+      }
       email_tracking: {
         Row: {
           agent_id: string | null

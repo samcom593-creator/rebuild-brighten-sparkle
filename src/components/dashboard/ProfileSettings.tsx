@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import {
   User,
   Mail,
@@ -13,6 +14,7 @@ import {
   Instagram,
   Eye,
   EyeOff,
+  Trash2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -26,7 +28,8 @@ import { AvatarUpload } from "@/components/dashboard/AvatarUpload";
 import { toast } from "@/hooks/use-toast";
 
 export function ProfileSettings() {
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile, isAdmin } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
@@ -556,6 +559,26 @@ export function ProfileSettings() {
           Note: Notification preferences are stored locally for now.
         </p>
       </GlassCard>
+
+      {/* Admin Only: Deleted Leads Vault */}
+      {isAdmin && (
+        <GlassCard className="p-6">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <Trash2 className="h-5 w-5 text-destructive" />
+            Deleted Leads Vault
+          </h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            View, restore, or permanently delete leads that have been removed from the Lead Center.
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => navigate("/dashboard/settings/deleted-leads")}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            View Deleted Leads
+          </Button>
+        </GlassCard>
+      )}
     </div>
   );
 }

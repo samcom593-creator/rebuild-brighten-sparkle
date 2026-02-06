@@ -1,8 +1,5 @@
 import { motion } from "framer-motion";
-import {
-  Phone,
-  Filter,
-} from "lucide-react";
+import { Phone, Filter, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
 import {
@@ -32,6 +29,25 @@ interface CallCenterFiltersProps {
   className?: string;
 }
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.1,
+    },
+  },
+} as const;
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+  },
+} as const;
+
 export function CallCenterFilters({
   sourceFilter,
   licenseFilter,
@@ -45,135 +61,213 @@ export function CallCenterFilters({
   className,
 }: CallCenterFiltersProps) {
   return (
-    <div className={cn("container max-w-2xl mx-auto py-8 px-4", className)}>
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className={cn("container max-w-2xl mx-auto py-8 px-4", className)}
+    >
       {/* Header */}
-      <div className="text-center mb-8">
+      <motion.div variants={itemVariants} className="text-center mb-8">
         <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/30 mb-4"
+          className="relative inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/30 mb-4"
+          whileHover={{ scale: 1.05, rotate: 5 }}
+          transition={{ type: "spring", stiffness: 400, damping: 20 }}
         >
-          <Phone className="h-10 w-10 text-primary" />
+          {/* Floating animation for phone icon */}
+          <motion.div
+            animate={{
+              y: [0, -4, 0],
+              rotate: [0, 5, -5, 0],
+            }}
+            transition={{
+              duration: 3,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          >
+            <Phone className="h-10 w-10 text-primary" />
+          </motion.div>
+
+          {/* Sparkle decoration */}
+          <motion.div
+            className="absolute -top-1 -right-1"
+            animate={{ rotate: [0, 20, -20, 0], scale: [1, 1.1, 1] }}
+            transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
+          >
+            <Sparkles className="h-4 w-4 text-yellow-400" />
+          </motion.div>
+
+          {/* Pulse ring */}
+          <motion.div
+            className="absolute inset-0 rounded-2xl border-2 border-primary/30"
+            animate={{ scale: [1, 1.15, 1.15], opacity: [0.5, 0, 0] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
+          />
         </motion.div>
+
         <motion.h1
-          initial={{ y: 10, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.1 }}
-          className="text-3xl font-bold mb-2 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text"
+          variants={itemVariants}
+          className="text-3xl font-bold mb-2 bg-gradient-to-r from-foreground via-foreground to-foreground/70 bg-clip-text"
         >
           Call Center
         </motion.h1>
-        <motion.p
-          initial={{ y: 10, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.2 }}
-          className="text-muted-foreground"
-        >
+        <motion.p variants={itemVariants} className="text-muted-foreground">
           Process leads one at a time with AI-powered note taking
         </motion.p>
-      </div>
+      </motion.div>
 
       {/* Filters Card */}
-      <motion.div
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.3 }}
-      >
-        <GlassCard className="p-6 space-y-6">
-          <div className="flex items-center gap-2 text-foreground font-semibold">
-            <Filter className="h-4 w-4 text-primary" />
-            Configure Filters
-          </div>
+      <motion.div variants={itemVariants}>
+        <GlassCard className="p-6 space-y-6 relative overflow-hidden group">
+          {/* Hover glow effect */}
+          <motion.div
+            className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+          />
 
-          <div className="grid gap-5">
-            <div>
-              <label className="text-sm font-medium mb-2 block text-muted-foreground">
-                Lead Source
-              </label>
-              <Select value={sourceFilter} onValueChange={(v) => onSourceChange(v as SourceFilter)}>
-                <SelectTrigger className="bg-background/50 border-border/50">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Sources</SelectItem>
-                  <SelectItem value="aged_leads">Aged Leads Only</SelectItem>
-                  <SelectItem value="applications">New Applicants Only</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium mb-2 block text-muted-foreground">
-                License Status
-              </label>
-              <Select value={licenseFilter} onValueChange={(v) => onLicenseChange(v as LicenseFilter)}>
-                <SelectTrigger className="bg-background/50 border-border/50">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="licensed">Licensed</SelectItem>
-                  <SelectItem value="unlicensed">Unlicensed</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium mb-2 block text-muted-foreground">
-                Lead Status
-              </label>
-              <Select value={statusFilter} onValueChange={(v) => onStatusChange(v as StatusFilter)}>
-                <SelectTrigger className="bg-background/50 border-border/50">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="new">New / Uncontacted</SelectItem>
-                  <SelectItem value="no_pickup">No Pickup (Retry)</SelectItem>
-                  <SelectItem value="contacted">Contacted</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium mb-2 block text-muted-foreground">
-                License Progress
-              </label>
-              <Select value={progressFilter} onValueChange={(v) => onProgressChange(v as ProgressFilter)}>
-                <SelectTrigger className="bg-background/50 border-border/50">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Progress</SelectItem>
-                  <SelectItem value="course_purchased">Course Purchased</SelectItem>
-                  <SelectItem value="passed_test">Passed Test</SelectItem>
-                  <SelectItem value="waiting_on_license">Waiting on License</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <Button
-            onClick={onStart}
-            size="lg"
-            className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/20"
+          <motion.div
+            variants={itemVariants}
+            className="flex items-center gap-2 text-foreground font-semibold relative z-10"
           >
-            <Phone className="h-5 w-5 mr-2" />
-            Start Calling
-          </Button>
+            <motion.div
+              animate={{ rotate: [0, 10, -10, 0] }}
+              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <Filter className="h-4 w-4 text-primary" />
+            </motion.div>
+            Configure Filters
+          </motion.div>
+
+          <div className="grid gap-5 relative z-10">
+            {[
+              {
+                label: "Lead Source",
+                value: sourceFilter,
+                onChange: onSourceChange,
+                options: [
+                  { value: "all", label: "All Sources" },
+                  { value: "aged_leads", label: "Aged Leads Only" },
+                  { value: "applications", label: "New Applicants Only" },
+                ],
+              },
+              {
+                label: "License Status",
+                value: licenseFilter,
+                onChange: onLicenseChange,
+                options: [
+                  { value: "all", label: "All" },
+                  { value: "licensed", label: "Licensed" },
+                  { value: "unlicensed", label: "Unlicensed" },
+                ],
+              },
+              {
+                label: "Lead Status",
+                value: statusFilter,
+                onChange: onStatusChange,
+                options: [
+                  { value: "new", label: "New / Uncontacted" },
+                  { value: "no_pickup", label: "No Pickup (Retry)" },
+                  { value: "contacted", label: "Contacted" },
+                ],
+              },
+              {
+                label: "License Progress",
+                value: progressFilter,
+                onChange: onProgressChange,
+                options: [
+                  { value: "all", label: "All Progress" },
+                  { value: "course_purchased", label: "Course Purchased" },
+                  { value: "passed_test", label: "Passed Test" },
+                  { value: "waiting_on_license", label: "Waiting on License" },
+                ],
+              },
+            ].map((filter, index) => (
+              <motion.div
+                key={filter.label}
+                variants={itemVariants}
+                custom={index}
+                whileHover={{ x: 4 }}
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              >
+                <label className="text-sm font-medium mb-2 block text-muted-foreground">
+                  {filter.label}
+                </label>
+                <Select value={filter.value} onValueChange={filter.onChange as (v: string) => void}>
+                  <SelectTrigger className="bg-background/50 border-border/50 hover:border-primary/50 transition-colors focus:ring-2 focus:ring-primary/20">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filter.options.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </motion.div>
+            ))}
+          </div>
+
+          <motion.div variants={itemVariants} className="relative z-10">
+            <motion.div
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
+            >
+              <Button
+                onClick={onStart}
+                size="lg"
+                className="w-full relative overflow-hidden bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/20 group"
+              >
+                {/* Shimmer effect */}
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full"
+                  animate={{ translateX: ["−100%", "100%"] }}
+                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+                />
+
+                <Phone className="h-5 w-5 mr-2 group-hover:rotate-12 transition-transform" />
+                Start Calling
+              </Button>
+            </motion.div>
+          </motion.div>
         </GlassCard>
       </motion.div>
 
+      {/* Keyboard Hints */}
       <motion.p
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.5 }}
+        variants={itemVariants}
         className="text-xs text-muted-foreground text-center mt-6"
       >
-        Keyboard: <span className="text-foreground/70">R</span> record
-        • <span className="text-foreground/70">1-6</span> actions
-        • <span className="text-foreground/70">N</span> skip
-        • <span className="text-foreground/70">ESC</span> exit
+        Keyboard:{" "}
+        <motion.span
+          className="text-foreground/70"
+          whileHover={{ color: "hsl(var(--primary))" }}
+        >
+          R
+        </motion.span>{" "}
+        record •{" "}
+        <motion.span
+          className="text-foreground/70"
+          whileHover={{ color: "hsl(var(--primary))" }}
+        >
+          1-3
+        </motion.span>{" "}
+        actions •{" "}
+        <motion.span
+          className="text-foreground/70"
+          whileHover={{ color: "hsl(var(--primary))" }}
+        >
+          N
+        </motion.span>{" "}
+        skip •{" "}
+        <motion.span
+          className="text-foreground/70"
+          whileHover={{ color: "hsl(var(--primary))" }}
+        >
+          ESC
+        </motion.span>{" "}
+        exit
       </motion.p>
-    </div>
+    </motion.div>
   );
 }

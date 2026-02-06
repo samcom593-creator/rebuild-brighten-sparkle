@@ -1,11 +1,13 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Phone, CheckCircle2, Loader2 } from "lucide-react";
+import { Phone, CheckCircle2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { ContractedModal } from "@/components/dashboard/ContractedModal";
+import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   CallCenterFilters,
   CallCenterLeadCard,
@@ -49,6 +51,7 @@ export default function CallCenter() {
   const [isRecording, setIsRecording] = useState(false);
   const [currentTranscription, setCurrentTranscription] = useState("");
   const [showContractedModal, setShowContractedModal] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   // Filters
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
@@ -295,9 +298,11 @@ export default function CallCenter() {
         if (error) throw error;
       }
 
-      // Send follow-up email for hired action
+      // Send follow-up email and show celebration for hired action
       if (actionId === "hired") {
         await sendFollowUpEmail(currentLead, "hired");
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 3000);
         toast.success("Lead marked as hired - follow-up email sent!");
       } else {
         toast.success(`Lead marked as ${actionId.replace("_", " ")}`);
@@ -324,6 +329,10 @@ export default function CallCenter() {
       setLeads((prev) => prev.filter((l) => l.id !== currentLead.id));
     }
     setShowContractedModal(false);
+    
+    // Trigger celebration
+    setShowConfetti(true);
+    setTimeout(() => setShowConfetti(false), 3000);
 
     if (leads.length <= 1) {
       toast.info("All leads processed!");
@@ -508,13 +517,26 @@ export default function CallCenter() {
 
       {/* Content */}
       {loading ? (
-        <div className="flex-1 flex items-center justify-center">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          >
-            <Loader2 className="h-10 w-10 text-primary" />
-          </motion.div>
+        <div className="flex-1 flex flex-col gap-6 p-6">
+          {/* Skeleton loader */}
+          <div className="space-y-4 rounded-2xl border border-border/50 p-6">
+            <div className="flex gap-2">
+              <Skeleton className="h-6 w-24 rounded-full" />
+              <Skeleton className="h-6 w-20 rounded-full" />
+            </div>
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-32" />
+            <div className="space-y-3 pt-4">
+              <Skeleton className="h-16 w-full rounded-xl" />
+              <Skeleton className="h-12 w-full rounded-xl" />
+              <Skeleton className="h-12 w-full rounded-xl" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Skeleton className="h-20 rounded-xl" />
+            <Skeleton className="h-20 rounded-xl" />
+          </div>
+          <Skeleton className="h-14 w-full rounded-xl" />
         </div>
       ) : !currentLead ? (
         <motion.div
@@ -581,6 +603,8 @@ export default function CallCenter() {
           onSuccess={handleContractedSuccess}
         />
       )}
+      {/* Confetti Celebration */}
+      <ConfettiCelebration trigger={showConfetti} />
     </div>
   );
 }

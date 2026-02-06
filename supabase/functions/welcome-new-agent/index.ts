@@ -20,7 +20,8 @@ interface WelcomeEmailRequest {
 }
 
 // Discord link removed from initial email - now sent after course completion
-const defaultCourseLink = "https://apex-financial.org/onboarding-course";
+// XcelSolutions licensing course for unlicensed agents to get their license
+const defaultCourseLink = "https://partners.xcelsolutions.com/afe";
 
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests

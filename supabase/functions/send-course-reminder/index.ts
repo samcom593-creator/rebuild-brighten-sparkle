@@ -148,7 +148,7 @@ serve(async (req) => {
     `;
 
     const { error: emailError } = await resend.emails.send({
-      from: "Apex Financial <noreply@apexfinancialmarketing.com>",
+      from: "APEX Financial <noreply@apex-financial.org>",
       to: [profile.email],
       subject: `📚 ${firstName}, your course is waiting for you!`,
       html: emailHtml,

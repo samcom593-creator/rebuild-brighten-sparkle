@@ -646,12 +646,13 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { applicationId, agentId, templateType, customSubject, customBody } = await req.json() as {
+    const { applicationId, agentId, templateType, customSubject, customBody, leadSource } = await req.json() as {
       applicationId: string;
       agentId: string;
       templateType: EmailTemplate;
       customSubject?: string;
       customBody?: string;
+      leadSource?: "aged_leads" | "applications";
     };
 
     if (!applicationId || !templateType) {
@@ -663,15 +664,19 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error(`Invalid template type: ${templateType}`);
     }
 
-    // Fetch application
-    const { data: application, error: appError } = await supabase
-      .from("applications")
+    // Determine which table to query based on leadSource
+    const tableName = leadSource === "aged_leads" ? "aged_leads" : "applications";
+    
+    // Fetch lead from appropriate table
+    const { data: lead, error: leadError } = await supabase
+      .from(tableName)
       .select("*")
       .eq("id", applicationId)
       .single();
 
-    if (appError || !application) {
-      throw new Error("Application not found");
+    if (leadError || !lead) {
+      console.error(`Lead not found in ${tableName}:`, leadError);
+      throw new Error(`Lead not found in ${tableName}`);
     }
 
     // Fetch agent name
@@ -697,7 +702,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const template = emailTemplates[templateType];
-    const firstName = application.first_name;
+    const firstName = lead.first_name;
     
     // Use custom content if provided, otherwise use template defaults
     const subject = customSubject || template.subject;
@@ -706,7 +711,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Send email
     const { error: emailError } = await resend.emails.send({
       from: "APEX Financial <noreply@apex-financial.org>",
-      to: [application.email],
+      to: [lead.email],
       subject,
       html,
     });
@@ -716,17 +721,28 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error(`Failed to send email: ${emailError.message}`);
     }
 
-    // Log to contact_history
-    await supabase.from("contact_history").insert({
-      application_id: applicationId,
-      agent_id: agentId || null,
-      contact_type: templateType.startsWith("cold") ? "cold_outreach" : "followup",
-      email_template: templateType,
-      subject: subject,
-      notes: customBody ? `Sent customized ${templateType.replace(/_/g, " ")} email` : `Sent ${templateType.replace(/_/g, " ")} email`,
-    });
+    // Log to contact_history only for applications (aged_leads don't have contact_history)
+    if (leadSource !== "aged_leads") {
+      await supabase.from("contact_history").insert({
+        application_id: applicationId,
+        agent_id: agentId || null,
+        contact_type: templateType.startsWith("cold") ? "cold_outreach" : "followup",
+        email_template: templateType,
+        subject: subject,
+        notes: customBody ? `Sent customized ${templateType.replace(/_/g, " ")} email` : `Sent ${templateType.replace(/_/g, " ")} email`,
+      });
+    }
 
-    console.log(`Email sent successfully: ${templateType} to ${application.email}`);
+    // Update last_contacted_at timestamp
+    await supabase
+      .from(tableName)
+      .update({ 
+        last_contacted_at: new Date().toISOString(),
+        contacted_at: lead.contacted_at || new Date().toISOString(), // Set first contact if not already set
+      })
+      .eq("id", applicationId);
+
+    console.log(`Email sent successfully: ${templateType} to ${lead.email}`);
 
     return new Response(
       JSON.stringify({ success: true, template: templateType }),

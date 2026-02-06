@@ -294,7 +294,7 @@ serve(async (req) => {
 
       try {
         await resend.emails.send({
-          from: "Apex Financial <noreply@apexfinancialmarketing.com>",
+          from: "APEX Financial <noreply@apex-financial.org>",
           to: [profile.email],
           subject: `☀️ ${firstName}'s Daily Digest - $${weeklyALP.toLocaleString()} this week`,
           html: emailHtml,

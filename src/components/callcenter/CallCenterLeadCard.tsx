@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Phone, Mail, Instagram, Clock, User, Calendar } from "lucide-react";
+import { Phone, Mail, Instagram, Clock, User, Calendar, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, format } from "date-fns";
 import { CallCenterVoiceRecorder } from "./CallCenterVoiceRecorder";
@@ -42,32 +43,49 @@ interface CallCenterLeadCardProps {
 
 // Map license_progress to LicensingStage
 function progressToStage(licenseProgress: string | null | undefined, licenseStatus: string): LicensingStage {
-  // If licensed, always show licensed
-  if (licenseStatus === "licensed") {
-    return "licensed";
-  }
+  if (licenseStatus === "licensed") return "licensed";
   
-  // Map license_progress values
   switch (licenseProgress) {
-    case "course_purchased":
-      return "course_purchased";
-    case "finished_course":
-      return "finished_course";
-    case "test_scheduled":
-      return "test_scheduled";
-    case "passed_test":
-      return "passed_test";
-    case "fingerprints_done":
-      return "fingerprints_done";
-    case "waiting_on_license":
-      return "waiting_on_license";
-    case "licensed":
-      return "licensed";
-    default:
-      // Default to course_purchased for unlicensed leads
-      return "course_purchased";
+    case "course_purchased": return "course_purchased";
+    case "finished_course": return "finished_course";
+    case "test_scheduled": return "test_scheduled";
+    case "passed_test": return "passed_test";
+    case "fingerprints_done": return "fingerprints_done";
+    case "waiting_on_license": return "waiting_on_license";
+    case "licensed": return "licensed";
+    default: return "course_purchased";
   }
 }
+
+// Animation variants - simplified for type compatibility
+const containerVariants = {
+  hidden: { opacity: 0, x: 60, scale: 0.96 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    scale: 1,
+    transition: {
+      staggerChildren: 0.04,
+      delayChildren: 0.08,
+    },
+  },
+  exit: {
+    opacity: 0,
+    x: -60,
+    scale: 0.96,
+    transition: { duration: 0.2 },
+  },
+} as const;
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 12 },
+  visible: { opacity: 1, y: 0 },
+} as const;
+
+const badgeVariants = {
+  hidden: { opacity: 0, scale: 0.8 },
+  visible: { opacity: 1, scale: 1 },
+} as const;
 
 export function CallCenterLeadCard({
   lead,
@@ -82,41 +100,62 @@ export function CallCenterLeadCard({
   className,
 }: CallCenterLeadCardProps) {
   const currentStage = progressToStage(lead.licenseProgress, lead.licenseStatus);
+  const [showRipple, setShowRipple] = useState(false);
+
+  const handleCall = () => {
+    setShowRipple(true);
+    setTimeout(() => setShowRipple(false), 600);
+    onCall();
+  };
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20, scale: 0.98 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -20, scale: 0.98 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      exit="exit"
       className={cn(
         "relative overflow-hidden rounded-2xl",
-        "bg-gradient-to-br from-card/90 via-card/80 to-card/70",
+        "bg-gradient-to-br from-card/95 via-card/90 to-card/85",
         "backdrop-blur-xl border border-border/50",
         "shadow-2xl shadow-black/20",
-        "hover:border-primary/30 transition-all duration-300",
+        "transition-all duration-300",
+        "hover:border-primary/40 hover:shadow-primary/10",
         className
       )}
     >
-      {/* Glow effect */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 pointer-events-none" />
-      
+      {/* Ambient glow effect */}
+      <motion.div
+        className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 pointer-events-none"
+        animate={{ opacity: [0.3, 0.5, 0.3] }}
+        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+      />
+
       {/* Recording indicator overlay */}
       {isRecording && (
         <motion.div
-          className="absolute inset-0 border-2 border-red-500/30 rounded-2xl pointer-events-none"
-          animate={{ opacity: [0.3, 0.6, 0.3] }}
-          transition={{ duration: 1.5, repeat: Infinity }}
+          className="absolute inset-0 border-2 border-red-500/40 rounded-2xl pointer-events-none z-10"
+          animate={{
+            opacity: [0.4, 0.8, 0.4],
+            boxShadow: [
+              "0 0 0 0 rgba(239, 68, 68, 0)",
+              "0 0 20px 4px rgba(239, 68, 68, 0.3)",
+              "0 0 0 0 rgba(239, 68, 68, 0)",
+            ],
+          }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
         />
       )}
 
       {/* Header */}
-      <div className="relative p-6 border-b border-border/30">
+      <motion.div variants={itemVariants} className="relative p-6 border-b border-border/30">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
-            {/* Source Badge */}
-            <div className="flex items-center gap-2 mb-3">
-              <span
+            {/* Source Badges */}
+            <motion.div variants={itemVariants} className="flex items-center gap-2 mb-3">
+              <motion.span
+                variants={badgeVariants}
+                whileHover={{ scale: 1.05 }}
                 className={cn(
                   "text-xs px-3 py-1 rounded-full font-medium",
                   lead.source === "aged_leads"
@@ -125,8 +164,10 @@ export function CallCenterLeadCard({
                 )}
               >
                 {lead.source === "aged_leads" ? "Aged Lead" : "New Applicant"}
-              </span>
-              <span
+              </motion.span>
+              <motion.span
+                variants={badgeVariants}
+                whileHover={{ scale: 1.05 }}
                 className={cn(
                   "text-xs px-3 py-1 rounded-full font-medium",
                   lead.licenseStatus === "licensed"
@@ -135,16 +176,24 @@ export function CallCenterLeadCard({
                 )}
               >
                 {lead.licenseStatus === "licensed" ? "Licensed" : "Unlicensed"}
-              </span>
-            </div>
+              </motion.span>
+            </motion.div>
 
-            {/* Name */}
-            <h2 className="text-2xl font-bold text-foreground mb-1">
-              {lead.firstName} {lead.lastName || ""}
-            </h2>
+            {/* Name with sparkle */}
+            <motion.div variants={itemVariants} className="flex items-center gap-2">
+              <h2 className="text-2xl font-bold text-foreground">
+                {lead.firstName} {lead.lastName || ""}
+              </h2>
+              <motion.div
+                animate={{ rotate: [0, 15, -15, 0] }}
+                transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+              >
+                <Sparkles className="h-4 w-4 text-primary/60" />
+              </motion.div>
+            </motion.div>
 
             {/* Time info */}
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <motion.div variants={itemVariants} className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
               <span className="flex items-center gap-1.5">
                 <Clock className="h-3.5 w-3.5" />
                 Added {formatDistanceToNow(new Date(lead.createdAt), { addSuffix: true })}
@@ -155,88 +204,117 @@ export function CallCenterLeadCard({
                   Last contact: {format(new Date(lead.contactedAt), "MMM d")}
                 </span>
               )}
-            </div>
+            </motion.div>
           </div>
 
           {/* Stage Selector */}
-          <div className="w-48">
+          <motion.div variants={itemVariants} className="w-48">
             <CallCenterStageSelector
               currentStage={currentStage}
               onStageChange={onStageChange}
               testScheduledDate={lead.testScheduledDate}
               onTestDateChange={onTestDateChange}
             />
-          </div>
+          </motion.div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Contact Info & Countdown */}
       <div className="p-6 space-y-4">
         {/* 2-Week Countdown */}
-        <LeadExpiryCountdown 
-          createdAt={lead.createdAt} 
-          contactedAt={lead.contactedAt} 
-        />
+        <motion.div variants={itemVariants}>
+          <LeadExpiryCountdown
+            createdAt={lead.createdAt}
+            contactedAt={lead.contactedAt}
+          />
+        </motion.div>
 
-        <div className="grid gap-3">
-          {/* Phone - Primary CTA */}
+        <motion.div variants={itemVariants} className="grid gap-3">
+          {/* Phone - Primary CTA with ripple */}
           {lead.phone && (
-            <button
-              onClick={onCall}
+            <motion.button
+              onClick={handleCall}
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
               className={cn(
-                "flex items-center gap-4 p-4 rounded-xl w-full text-left transition-all",
+                "relative flex items-center gap-4 p-4 rounded-xl w-full text-left transition-all overflow-hidden",
                 "bg-gradient-to-r from-green-500/10 to-emerald-500/10",
                 "border border-green-500/30 hover:border-green-500/50",
                 "hover:from-green-500/20 hover:to-emerald-500/20",
                 "group"
               )}
             >
-              <div className="p-3 rounded-full bg-green-500/20 group-hover:bg-green-500/30 transition-colors">
+              {/* Ripple effect */}
+              {showRipple && (
+                <motion.div
+                  className="absolute inset-0 bg-green-500/30 rounded-xl"
+                  initial={{ scale: 0, opacity: 1 }}
+                  animate={{ scale: 2.5, opacity: 0 }}
+                  transition={{ duration: 0.6, ease: "easeOut" }}
+                />
+              )}
+
+              <motion.div
+                className="relative p-3 rounded-full bg-green-500/20 group-hover:bg-green-500/30 transition-colors"
+                animate={{ scale: [1, 1.05, 1] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              >
                 <Phone className="h-5 w-5 text-green-400" />
-              </div>
-              <div className="flex-1">
+                {/* Pulsing ring */}
+                <motion.div
+                  className="absolute inset-0 rounded-full border-2 border-green-400/40"
+                  animate={{ scale: [1, 1.4, 1.4], opacity: [0.6, 0, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
+                />
+              </motion.div>
+              <div className="flex-1 relative z-10">
                 <div className="text-lg font-semibold text-foreground">{lead.phone}</div>
                 <div className="text-xs text-green-400">Tap to call</div>
               </div>
               <motion.div
-                className="text-xs px-3 py-1.5 rounded-lg bg-green-500/20 text-green-400 font-medium"
-                whileHover={{ scale: 1.05 }}
+                className="relative z-10 text-xs px-3 py-1.5 rounded-lg bg-green-500/20 text-green-400 font-medium"
+                whileHover={{ scale: 1.05, backgroundColor: "rgba(34, 197, 94, 0.3)" }}
               >
                 CALL NOW
               </motion.div>
-            </button>
+            </motion.button>
           )}
 
           {/* Email */}
-          <a
+          <motion.a
             href={`mailto:${lead.email}`}
+            whileHover={{ scale: 1.01, x: 2 }}
             className="flex items-center gap-4 p-3 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors"
           >
             <div className="p-2.5 rounded-full bg-primary/10">
               <Mail className="h-4 w-4 text-primary" />
             </div>
             <span className="text-sm text-foreground">{lead.email}</span>
-          </a>
+          </motion.a>
 
           {/* Instagram */}
           {lead.instagramHandle && (
-            <a
+            <motion.a
               href={`https://instagram.com/${lead.instagramHandle.replace("@", "")}`}
               target="_blank"
               rel="noopener noreferrer"
+              whileHover={{ scale: 1.01, x: 2 }}
               className="flex items-center gap-4 p-3 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors"
             >
               <div className="p-2.5 rounded-full bg-pink-500/10">
                 <Instagram className="h-4 w-4 text-pink-400" />
               </div>
               <span className="text-sm text-foreground">@{lead.instagramHandle.replace("@", "")}</span>
-            </a>
+            </motion.a>
           )}
-        </div>
+        </motion.div>
 
         {/* Notes / Motivation */}
         {(lead.notes || lead.motivation) && (
-          <div className="p-4 rounded-xl bg-muted/20 border border-border/30">
+          <motion.div
+            variants={itemVariants}
+            className="p-4 rounded-xl bg-muted/20 border border-border/30"
+          >
             <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-2">
               <User className="h-3.5 w-3.5" />
               Lead Notes
@@ -244,11 +322,11 @@ export function CallCenterLeadCard({
             <p className="text-sm text-muted-foreground leading-relaxed">
               {lead.motivation || lead.notes}
             </p>
-          </div>
+          </motion.div>
         )}
 
-        {/* Voice Recorder & Quick Email & Resend Licensing & Admin Reassign */}
-        <div className="pt-4 border-t border-border/30 space-y-4">
+        {/* Voice Recorder & Quick Email & Admin Actions */}
+        <motion.div variants={itemVariants} className="pt-4 border-t border-border/30 space-y-4">
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <CallCenterVoiceRecorder
@@ -280,7 +358,7 @@ export function CallCenterLeadCard({
               )}
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
     </motion.div>
   );

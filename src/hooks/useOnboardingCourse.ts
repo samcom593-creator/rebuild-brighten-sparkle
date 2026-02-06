@@ -122,6 +122,7 @@ export function useOnboardingCourse(agentId: string | null) {
         }));
       }
     } else {
+      // This is the first progress entry - agent is starting the course!
       const { data, error } = await supabase
         .from("onboarding_progress")
         .insert({
@@ -140,6 +141,21 @@ export function useOnboardingCourse(agentId: string | null) {
             answers: data.answers as number[] | null
           }
         }));
+
+        // Check if this is the first progress entry ever for this agent
+        // (meaning they just started the course)
+        const existingProgressCount = Object.keys(progress).length;
+        if (existingProgressCount === 0) {
+          // Notify admin that agent started the course
+          try {
+            await supabase.functions.invoke("notify-course-started", {
+              body: { agentId }
+            });
+            console.log("Course started notification sent for agent:", agentId);
+          } catch (notifyError) {
+            console.error("Failed to send course started notification:", notifyError);
+          }
+        }
       }
     }
   }, [agentId, progress]);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, RefreshCw, AlertTriangle, Loader2, Network, MoreVertical, Pencil, UserX, Trash2, Merge } from "lucide-react";
+import { Users, RefreshCw, AlertTriangle, Loader2, Network, MoreVertical, Pencil, UserX, Trash2, Merge, Mail } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +38,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -101,6 +106,7 @@ export function TeamHierarchyManager() {
   const [selectedAgent, setSelectedAgent] = useState<AgentHierarchyEntry | null>(null);
   const [deactivateAgent, setDeactivateAgent] = useState<AgentHierarchyEntry | null>(null);
   const [showMergeTool, setShowMergeTool] = useState(false);
+  const [sendingLoginTo, setSendingLoginTo] = useState<string | null>(null);
 
   useEffect(() => {
     fetchHierarchy();
@@ -422,6 +428,30 @@ export function TeamHierarchyManager() {
     }
   };
 
+  // Send Login Handler
+  const handleSendLogin = async (agentId: string, email: string) => {
+    setSendingLoginTo(agentId);
+    try {
+      const { error } = await supabase.functions.invoke("send-agent-portal-login", {
+        body: { agentId }
+      });
+      if (error) throw error;
+      toast.success(`Portal login email sent to ${email}`);
+    } catch (error) {
+      console.error("Error sending login:", error);
+      toast.error("Failed to send login email");
+    } finally {
+      setSendingLoginTo(null);
+    }
+  };
+
+  // Get indirect agents (those under sub-managers)
+  const indirectAgents = agents.filter(a => {
+    if (a.id === adminAgentId) return false;
+    if (!a.managerId) return false;
+    return a.managerId !== adminAgentId;
+  });
+
   // Always show admin at top, then apply filter to remaining agents
   const filteredAgents = (() => {
     const adminAgent = agents.find(a => a.id === adminAgentId);
@@ -548,10 +578,53 @@ export function TeamHierarchyManager() {
               </div>
             )}
             {indirectReports > 0 && (
-              <div className="flex items-center gap-1.5 px-2 py-1 rounded bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-xs">
-                <Users className="h-3 w-3" />
-                <span>{indirectReports} under sub-managers</span>
-              </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="flex items-center gap-1.5 px-2 py-1 rounded bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-xs cursor-pointer hover:bg-blue-500/20 transition-colors">
+                    <Users className="h-3 w-3" />
+                    <span>{indirectReports} under sub-managers</span>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0" align="start">
+                  <div className="p-3 border-b">
+                    <h4 className="font-semibold text-sm">Agents Under Sub-Managers</h4>
+                    <p className="text-xs text-muted-foreground mt-1">Click to reassign to a different manager</p>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto">
+                    {indirectAgents.map((agent) => (
+                      <div key={agent.id} className="flex items-center justify-between p-2 border-b last:border-0 hover:bg-muted/50">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">{agent.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            Manager: {agent.managerName || "Unknown"}
+                          </p>
+                        </div>
+                        <Select
+                          value={agent.managerId || ""}
+                          onValueChange={(value) => handleReassign(agent.id, value || null)}
+                          disabled={updating === agent.id}
+                        >
+                          <SelectTrigger className="h-7 w-24 text-xs">
+                            {updating === agent.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <SelectValue placeholder="Reassign" />
+                            )}
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">No Manager</SelectItem>
+                            {managers.map((m) => (
+                              <SelectItem key={m.id} value={m.id} className="text-xs">
+                                {m.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
             )}
           </div>
         )}
@@ -736,6 +809,17 @@ export function TeamHierarchyManager() {
                             <DropdownMenuItem onClick={() => setSelectedAgent(agent)}>
                               <Pencil className="h-3 w-3 mr-2" />
                               Edit Profile
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleSendLogin(agent.id, agent.email)}
+                              disabled={sendingLoginTo === agent.id}
+                            >
+                              {sendingLoginTo === agent.id ? (
+                                <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                              ) : (
+                                <Mail className="h-3 w-3 mr-2" />
+                              )}
+                              Send Portal Login
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => {
                               // Pre-select this agent and open merge tool

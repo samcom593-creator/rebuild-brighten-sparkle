@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
   Filter,
@@ -12,12 +12,15 @@ import {
   Award,
   Clock,
   Download,
+  Loader2,
+  X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -85,6 +88,11 @@ export default function LeadCenter() {
   const [filterManager, setFilterManager] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterLicense, setFilterLicense] = useState<string>("all");
+
+  // Bulk selection state
+  const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
+  const [bulkAssigning, setBulkAssigning] = useState(false);
+  const [bulkManagerId, setBulkManagerId] = useState<string>("");
 
   const fetchLeads = async () => {
     setLoading(true);
@@ -242,6 +250,86 @@ export default function LeadCenter() {
     };
   }, [leads]);
 
+  // Selection helpers
+  const toggleSelectLead = useCallback((leadId: string) => {
+    setSelectedLeads((prev) => {
+      const next = new Set(prev);
+      if (next.has(leadId)) {
+        next.delete(leadId);
+      } else {
+        next.add(leadId);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    if (selectedLeads.size === filteredLeads.length) {
+      setSelectedLeads(new Set());
+    } else {
+      setSelectedLeads(new Set(filteredLeads.map((l) => `${l.source}-${l.id}`)));
+    }
+  }, [selectedLeads.size, filteredLeads]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedLeads(new Set());
+    setBulkManagerId("");
+  }, []);
+
+  // Bulk assign handler
+  const handleBulkAssign = async () => {
+    if (!bulkManagerId || selectedLeads.size === 0) {
+      toast.error("Please select a manager to assign");
+      return;
+    }
+
+    setBulkAssigning(true);
+    try {
+      // Separate leads by source
+      const applicationIds: string[] = [];
+      const agedLeadIds: string[] = [];
+
+      selectedLeads.forEach((key) => {
+        const [source, id] = key.split("-");
+        if (source === "applications") {
+          applicationIds.push(id);
+        } else if (source === "aged_leads") {
+          agedLeadIds.push(id);
+        }
+      });
+
+      const managerId = bulkManagerId === "unassigned" ? null : bulkManagerId;
+
+      // Update applications
+      if (applicationIds.length > 0) {
+        const { error: appError } = await supabase
+          .from("applications")
+          .update({ assigned_agent_id: managerId })
+          .in("id", applicationIds);
+        if (appError) throw appError;
+      }
+
+      // Update aged leads
+      if (agedLeadIds.length > 0) {
+        const { error: agedError } = await supabase
+          .from("aged_leads")
+          .update({ assigned_manager_id: managerId })
+          .in("id", agedLeadIds);
+        if (agedError) throw agedError;
+      }
+
+      const managerName = managers.find((m) => m.id === bulkManagerId)?.name || "Unassigned";
+      toast.success(`${selectedLeads.size} leads assigned to ${managerName}`);
+      clearSelection();
+      fetchLeads();
+    } catch (error) {
+      console.error("Error bulk assigning leads:", error);
+      toast.error("Failed to assign leads");
+    } finally {
+      setBulkAssigning(false);
+    }
+  };
+
   const handleExport = () => {
     const csvContent = [
       ["Name", "Email", "Phone", "Status", "License", "Assigned To", "Source", "Created"].join(","),
@@ -268,6 +356,27 @@ export default function LeadCenter() {
     URL.revokeObjectURL(url);
     toast.success("Leads exported successfully");
   };
+
+  const isAllSelected = filteredLeads.length > 0 && selectedLeads.size === filteredLeads.length;
+  const isPartiallySelected = selectedLeads.size > 0 && selectedLeads.size < filteredLeads.length;
+
+  // Get list of managers for bulk assign (not just those with leads)
+  const [allManagers, setAllManagers] = useState<{ id: string; name: string }[]>([]);
+  
+  useEffect(() => {
+    const fetchAllManagers = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("get-active-managers");
+        if (error) throw error;
+        if (data?.managers) {
+          setAllManagers(data.managers);
+        }
+      } catch (error) {
+        console.error("Error fetching managers:", error);
+      }
+    };
+    fetchAllManagers();
+  }, []);
 
   if (!isAdmin) {
     return (
@@ -442,6 +551,14 @@ export default function LeadCenter() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={isAllSelected}
+                      onCheckedChange={toggleSelectAll}
+                      aria-label="Select all"
+                      className={cn(isPartiallySelected && "data-[state=checked]:bg-primary/50")}
+                    />
+                  </TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Phone</TableHead>
                   <TableHead>Location</TableHead>
@@ -454,101 +571,108 @@ export default function LeadCenter() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredLeads.map((lead) => (
-                  <TableRow key={`${lead.source}-${lead.id}`}>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">
-                          {lead.firstName} {lead.lastName}
-                        </p>
-                        <p className="text-xs text-muted-foreground">{lead.email}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>{lead.phone || "-"}</TableCell>
-                    <TableCell>
-                      {lead.city && lead.state ? `${lead.city}, ${lead.state}` : "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          statusColors[lead.status] || "bg-muted text-muted-foreground"
-                        )}
-                      >
-                        {lead.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={
-                          lead.licenseStatus === "licensed"
-                            ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-                            : "bg-amber-500/20 text-amber-400 border-amber-500/30"
-                        }
-                      >
-                        {lead.licenseStatus}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <span
-                        className={cn(
-                          "text-sm",
-                          !lead.assignedAgentId && "text-amber-400 font-medium"
-                        )}
-                      >
-                        {lead.assignedAgentName || "Unassigned"}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={
-                          lead.source === "applications"
-                            ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
-                            : "bg-amber-500/20 text-amber-400 border-amber-500/30"
-                        }
-                      >
-                        {lead.source === "applications" ? "App" : "Aged"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">
-                      {format(new Date(lead.createdAt), "MMM d, yyyy")}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        {lead.source === "applications" && (
-                          <QuickAssignMenu
-                            applicationId={lead.id}
-                            currentAgentId={lead.assignedAgentId || null}
-                            onAssigned={fetchLeads}
-                          />
-                        )}
-                        <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                          <a href={`tel:${lead.phone}`}>
-                            <Phone className="h-4 w-4" />
-                          </a>
-                        </Button>
-                        {lead.source === "applications" && (
+                {filteredLeads.map((lead) => {
+                  const leadKey = `${lead.source}-${lead.id}`;
+                  const isSelected = selectedLeads.has(leadKey);
+                  
+                  return (
+                    <TableRow 
+                      key={leadKey}
+                      className={cn(isSelected && "bg-primary/5")}
+                    >
+                      <TableCell>
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => toggleSelectLead(leadKey)}
+                          aria-label={`Select ${lead.firstName} ${lead.lastName}`}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">
+                            {lead.firstName} {lead.lastName}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{lead.email}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>{lead.phone || "-"}</TableCell>
+                      <TableCell>
+                        {lead.city && lead.state ? `${lead.city}, ${lead.state}` : "-"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            statusColors[lead.status] || "bg-muted text-muted-foreground"
+                          )}
+                        >
+                          {lead.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={
+                            lead.licenseStatus === "licensed"
+                              ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                              : "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                          }
+                        >
+                          {lead.licenseStatus}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={cn(
+                            "text-sm",
+                            !lead.assignedAgentId && "text-amber-400 font-medium"
+                          )}
+                        >
+                          {lead.assignedAgentName || "Unassigned"}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={
+                            lead.source === "applications"
+                              ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
+                              : "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                          }
+                        >
+                          {lead.source === "applications" ? "App" : "Aged"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {format(new Date(lead.createdAt), "MMM d, yyyy")}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          {lead.source === "applications" && (
+                            <QuickAssignMenu
+                              applicationId={lead.id}
+                              currentAgentId={lead.assignedAgentId || null}
+                              onAssigned={fetchLeads}
+                            />
+                          )}
+                          <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                            <a href={`tel:${lead.phone}`}>
+                              <Phone className="h-4 w-4" />
+                            </a>
+                          </Button>
                           <QuickEmailMenu
                             applicationId={lead.id}
                             agentId={null}
                             licenseStatus={lead.licenseStatus as "licensed" | "unlicensed" | "pending"}
                             recipientEmail={lead.email}
                             recipientName={`${lead.firstName} ${lead.lastName}`}
+                            leadSource={lead.source}
                           />
-                        )}
-                        {lead.source !== "applications" && (
-                          <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                            <a href={`mailto:${lead.email}`}>
-                              <Mail className="h-4 w-4" />
-                            </a>
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
@@ -557,6 +681,58 @@ export default function LeadCenter() {
           Showing {filteredLeads.length} of {leads.length} leads
         </div>
       </GlassCard>
+
+      {/* Floating Bulk Action Bar */}
+      <AnimatePresence>
+        {selectedLeads.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50"
+          >
+            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-card border shadow-lg">
+              <span className="text-sm font-medium">
+                {selectedLeads.size} selected
+              </span>
+              <div className="h-4 w-px bg-border" />
+              <Select value={bulkManagerId} onValueChange={setBulkManagerId}>
+                <SelectTrigger className="w-48 h-9">
+                  <SelectValue placeholder="Select manager..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                  {allManagers.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                onClick={handleBulkAssign}
+                disabled={!bulkManagerId || bulkAssigning}
+                size="sm"
+              >
+                {bulkAssigning ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Users className="h-4 w-4 mr-2" />
+                )}
+                Assign
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={clearSelection}
+                className="h-9 w-9"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

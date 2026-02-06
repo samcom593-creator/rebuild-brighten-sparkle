@@ -5,7 +5,7 @@ import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -52,7 +52,7 @@ const handler = async (req: Request): Promise<Response> => {
     const data: ReferralRequest = parsed.data;
     const selected = data.selectedReferrer;
 
-    if (!(selected === "none" || selected === "other" || uuidRegex.test(selected))) {
+    if (!(selected === "" || selected === "none" || selected === "other" || uuidRegex.test(selected))) {
       return new Response(JSON.stringify({ error: "Invalid referrer" }), {
         status: 400,
         headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -96,7 +96,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Apply update
-    if (selected === "none") {
+    if (selected === "" || selected === "none") {
       // No update needed
       return new Response(JSON.stringify({ success: true }), {
         status: 200,

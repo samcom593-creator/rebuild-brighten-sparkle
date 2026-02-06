@@ -1,151 +1,227 @@
 
-# Plan: Add "Couldn't Reach You" Pre-Call Email Template
+
+# Plan: Simplify Call Center Actions + Contracted Modal Integration
 
 ## Summary
 
-Add a new email template for when you try to call a lead but their phone number doesn't work. This will be available in both the Call Center and Pipeline (QuickEmailMenu).
+Streamline the Call Center workflow by:
+1. **Remove "Contacted" button** - Merge its functionality into "Hired"
+2. **"Hired" marks as contacted** - Starts the 2-week timeline
+3. **"Contracted" opens modal** - Shows contracting link input (like Add Agent flow) and creates the agent record
+4. **Keep "Bad Applicant"** - For rejecting poor leads
+5. **Clean, efficient 3-button layout**
 
 ---
 
-## New Email Template Details
+## Current vs. New Flow
 
-### Template ID
-`couldnt_reach_you`
+| Current (4 buttons) | New (3 buttons) |
+|---------------------|-----------------|
+| Contacted → Hired → Contracted → Bad Applicant | Hired → Contracted → Bad Applicant |
 
-### Label
-"Couldn't Reach You"
-
-### Subject Line
-"We tried to call you! 📞"
-
-### Email Content
-- Friendly message explaining that you tried to reach them but the call didn't go through
-- Ask them to confirm/update their contact info
-- Provide Calendly link so they can schedule at their convenience
-- Keep the Apex branding consistent with other emails
+**New Flow:**
+```text
+┌─────────────────────────────────────────┐
+│                                         │
+│   ✓ Hired          📋 Contracted        │
+│   (Marks contacted, (Opens modal,       │
+│    starts 2-week    creates agent,      │
+│    countdown)       sends email)        │
+│                                         │
+│              ✕ Bad Applicant            │
+│              (Reject lead)              │
+│                                         │
+│           [ Skip to Next → ]            │
+└─────────────────────────────────────────┘
+```
 
 ---
 
 ## Files to Modify
 
-### 1. `src/components/dashboard/QuickEmailMenu.tsx`
+### 1. `src/components/callcenter/CallCenterActions.tsx`
 
 **Changes:**
-- Add `"couldnt_reach_you"` to the `EmailTemplate` type union
-- Add label: `"Couldn't Reach You"`
-- Add preview content for the template in `getEmailContent()`
-- Add to contextual templates (shown for both licensed and unlicensed leads)
+- Remove "contacted" action from the array
+- Update keyboard hints from `1-4` to `1-3`
+- Update key bindings: 1=Hired, 2=Contracted, 3=Bad Applicant
+- Add `onContracted` callback prop for opening the modal
+- Use a cleaner 3-column layout or 2+1 layout
 
-**Code Changes:**
+**New Action IDs:**
 ```typescript
-// Line 26-36: Add to EmailTemplate type
-type EmailTemplate = 
-  | "cold_licensed" 
-  | ...
-  | "couldnt_reach_you";  // NEW
-
-// Line 38-49: Add label
-const emailTemplateLabels: Record<EmailTemplate, string> = {
-  ...
-  couldnt_reach_you: "Couldn't Reach You",
-};
-
-// Line 52-99: Add preview content
-couldnt_reach_you: {
-  subject: `${firstName}, We Tried to Call You!`,
-  html: `...preview HTML...`,
-},
-
-// Lines 155-157: Add to contextual templates for BOTH license statuses
+export type ActionId = "hired" | "contracted" | "bad_applicant";
 ```
 
-### 2. `supabase/functions/send-outreach-email/index.ts`
+**New Actions Array:**
+```typescript
+const actions: ActionDef[] = [
+  {
+    id: "hired",
+    label: "Hired",
+    icon: CheckCircle2,
+    color: "text-green-400",
+    gradient: "from-green-500/20 to-emerald-500/20 ...",
+    key: "1",
+    description: "Contacted & interested",
+  },
+  {
+    id: "contracted",
+    label: "Contracted",
+    icon: FileText,
+    color: "text-blue-400",
+    gradient: "from-blue-500/20 to-indigo-500/20 ...",
+    key: "2",
+    description: "Ready to onboard",
+  },
+  {
+    id: "bad_applicant",
+    label: "Not a Fit",
+    icon: XCircle,
+    color: "text-red-400",
+    gradient: "from-red-500/10 to-rose-500/10 ...",
+    key: "3",
+    description: "Reject applicant",
+  },
+];
+```
+
+### 2. `src/pages/CallCenter.tsx`
 
 **Changes:**
-- Add `couldnt_reach_you` template to the `emailTemplates` object
-- Professional HTML email with:
-  - "We tried to reach you but couldn't get through"
-  - Request to update contact info or reply with best number
-  - Calendly link for scheduling a call
-  - Consistent Apex branding
+- Add `ContractedModal` import and state management
+- Remove "contacted" case from `handleAction`
+- When "contracted" is clicked, open the ContractedModal instead of immediate action
+- On modal success, remove lead from list and show success message
+- Update keyboard bindings (remove "1" for contacted, shift others)
 
-**Email Content:**
-```text
-Subject: We tried to call you! 📞
+**New State:**
+```typescript
+const [showContractedModal, setShowContractedModal] = useState(false);
+```
 
-Hey [Name]!
+**New Handler:**
+```typescript
+const handleAction = useCallback(async (actionId: ActionId) => {
+  if (actionId === "contracted") {
+    // Open the modal instead of immediate processing
+    setShowContractedModal(true);
+    return;
+  }
+  
+  // ... rest of existing logic for hired/bad_applicant
+}, [currentLead]);
+```
 
-We tried reaching out to you today about the opportunity at Apex Financial, 
-but we couldn't get through to your number.
+**Keyboard Shortcuts Update:**
+```typescript
+switch (e.key.toLowerCase()) {
+  case "1":
+    handleAction("hired");
+    break;
+  case "2":
+    handleAction("contracted");
+    break;
+  case "3":
+    handleAction("bad_applicant");
+    break;
+  // ...
+}
+```
 
-No worries—we still want to connect! Here's what you can do:
+### 3. `src/components/dashboard/ContractedModal.tsx`
 
-✓ Reply to this email with your best phone number
-✓ Or schedule a time that works for you: [Schedule a Call button]
+**Changes:**
+- Make it compatible with both `applications` and `aged_leads` sources
+- Add a `source` prop to determine which table to update
+- Ensure it works with the unified lead structure from Call Center
 
-We're excited to chat with you about how you can start building 
-a high-income career in financial services.
-
-Talk soon,
-Apex Financial Team
+**Updated Props:**
+```typescript
+interface ContractedModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  application: {
+    id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone: string;
+    license_status: "licensed" | "unlicensed" | "pending";
+    license_progress?: string | null;
+    source?: "applications" | "aged_leads"; // NEW
+  };
+  agentId: string;
+  onSuccess?: () => void;
+}
 ```
 
 ---
 
-## Visual Preview (Call Center / Pipeline)
-
-The new template will appear in the Email dropdown menu:
+## Visual Design (Clean 3-Button Layout)
 
 ```text
-┌────────────────────────────────────┐
-│ Quick Email Templates              │
-├────────────────────────────────────┤
-│ 👁️ Cold Outreach (Unlicensed)      │
-│ 👁️ Licensing Progress Check        │
-│ 👁️ Opportunity Reminder            │
-│ 👁️ Couldn't Reach You          ← NEW│
-│ 👁️ License Reminder                │
-│ 👁️ Check-in (Need Help?)           │
-├────────────────────────────────────┤
-│ ▼ Show all templates               │
-└────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                                                              │
+│  ┌─────────────────────────┐  ┌─────────────────────────┐   │
+│  │         ✓ HIRED         │  │       📋 CONTRACTED      │   │
+│  │    Contacted & Ready    │  │     Enter CRM Link       │   │
+│  │          [1]            │  │          [2]             │   │
+│  └─────────────────────────┘  └─────────────────────────┘   │
+│                                                              │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │                    ✕ NOT A FIT                         │  │
+│  │                   Reject Applicant [3]                 │  │
+│  └───────────────────────────────────────────────────────┘  │
+│                                                              │
+│                  [ Skip to Next → ] [N]                     │
+│                                                              │
+│      Press R to record • 1-3 for actions • N skip • ESC     │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Template Placement
+## Implementation Flow
 
-**For Unlicensed Leads:**
-- Cold Outreach (Unlicensed)
-- Licensing Progress Check
-- Opportunity Reminder
-- **Couldn't Reach You** ← New
-- License Reminder
-- Check-in (Need Help?)
+### When "Hired" is Clicked:
+1. Mark lead as contacted (`contacted_at = now()`)
+2. Update status to "reviewing" (applications) or "contacted" (aged_leads)
+3. Send follow-up email
+4. Remove from current queue
+5. Lead now appears in "Contacted" filter with 2-week countdown active
 
-**For Licensed Leads:**
-- Cold Outreach (Licensed)
-- Post-call Follow-up #1
-- Post-call Follow-up #2
-- **Couldn't Reach You** ← New
+### When "Contracted" is Clicked:
+1. Open ContractedModal
+2. User enters/selects contracting link
+3. On submit:
+   - Mark application as contracted
+   - Create new agent profile + record
+   - Send contracted email with CRM link
+   - Remove lead from queue
+4. Success toast: "Agent contracted and added to CRM!"
 
-This template is relevant for BOTH licensed and unlicensed leads since phone issues can happen regardless of license status.
-
----
-
-## Implementation Summary
-
-| File | Changes |
-|------|---------|
-| `src/components/dashboard/QuickEmailMenu.tsx` | Add template type, label, preview content, and add to contextual templates |
-| `supabase/functions/send-outreach-email/index.ts` | Add full HTML email template for backend sending |
+### When "Bad Applicant" is Clicked:
+1. Mark as rejected/bad_applicant
+2. Remove from queue
+3. No email sent
 
 ---
 
-## Expected Outcome
+## Summary of Changes
 
-After implementation:
-1. New "Couldn't Reach You" option appears in Email dropdown (Call Center + Pipeline)
-2. Clicking it opens preview modal with editable subject/body
-3. Email sent has consistent Apex branding
-4. Works for both licensed and unlicensed leads
+| File | Action |
+|------|--------|
+| `src/components/callcenter/CallCenterActions.tsx` | Remove "contacted", update to 3-button layout, update keyboard hints |
+| `src/pages/CallCenter.tsx` | Add modal state, handle "contracted" specially, update keyboard bindings |
+| `src/components/dashboard/ContractedModal.tsx` | Add source prop support for aged_leads |
+
+---
+
+## Expected Result
+
+- **Cleaner UI**: 3 clear action buttons instead of 4
+- **Better workflow**: "Hired" = contacted, "Contracted" = ready to onboard (opens modal)
+- **Full integration**: Contracted modal creates the agent record with CRM link
+- **Keyboard shortcuts**: 1-Hired, 2-Contracted, 3-Bad Applicant, N-Skip, ESC-Exit
+

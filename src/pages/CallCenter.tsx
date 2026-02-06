@@ -38,6 +38,7 @@ interface UnifiedLead {
   createdAt: string;
   status: string;
   contactedAt?: string;
+  lastContactedAt?: string;
 }
 
 export default function CallCenter() {
@@ -86,7 +87,7 @@ export default function CallCenter() {
       if (sourceFilter === "all" || sourceFilter === "aged_leads") {
         let query = supabase
           .from("aged_leads")
-          .select("id, first_name, last_name, email, phone, instagram_handle, notes, motivation, license_status, created_at, status, contacted_at")
+          .select("id, first_name, last_name, email, phone, instagram_handle, notes, motivation, license_status, created_at, status, contacted_at, last_contacted_at")
           .order("created_at", { ascending: true });
 
         // Status filter
@@ -126,6 +127,7 @@ export default function CallCenter() {
             createdAt: lead.created_at || new Date().toISOString(),
             status: lead.status || "new",
             contactedAt: lead.contacted_at || undefined,
+            lastContactedAt: lead.last_contacted_at || undefined,
           });
         });
       }
@@ -134,7 +136,7 @@ export default function CallCenter() {
       if (sourceFilter === "all" || sourceFilter === "applications") {
         let appQuery = supabase
           .from("applications")
-          .select("id, first_name, last_name, email, phone, instagram_handle, notes, license_status, license_progress, test_scheduled_date, created_at, status, contacted_at")
+          .select("id, first_name, last_name, email, phone, instagram_handle, notes, license_status, license_progress, test_scheduled_date, created_at, status, contacted_at, last_contacted_at")
           .is("terminated_at", null)
           .order("created_at", { ascending: true });
 
@@ -180,6 +182,7 @@ export default function CallCenter() {
             createdAt: app.created_at,
             status: app.status || "new",
             contactedAt: app.contacted_at || undefined,
+            lastContactedAt: app.last_contacted_at || undefined,
           });
         });
       }
@@ -268,20 +271,24 @@ export default function CallCenter() {
       }
 
       if (currentLead.source === "aged_leads") {
+        const nowIso = new Date().toISOString();
         const { error } = await supabase
           .from("aged_leads")
           .update({
             status: actionId === "hired" ? "contacted" : actionId,
-            processed_at: new Date().toISOString(),
-            contacted_at: new Date().toISOString(),
+            processed_at: nowIso,
+            contacted_at: currentLead.contactedAt || nowIso, // Set first contact if not already set
+            last_contacted_at: nowIso, // Always update last contact
           })
           .eq("id", currentLead.id);
 
         if (error) throw error;
       } else {
         // For applications, map status appropriately
+        const nowIso = new Date().toISOString();
         const updateData: Record<string, string> = {
-          contacted_at: new Date().toISOString(),
+          contacted_at: currentLead.contactedAt || nowIso, // Set first contact if not already set
+          last_contacted_at: nowIso, // Always update last contact
         };
 
         if (actionId === "hired") {

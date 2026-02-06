@@ -26,6 +26,7 @@ interface UnifiedLead {
   createdAt: string;
   status: string;
   contactedAt?: string;
+  lastContactedAt?: string;
 }
 
 interface CallCenterLeadCardProps {
@@ -192,17 +193,28 @@ export function CallCenterLeadCard({
               </motion.div>
             </motion.div>
 
-            {/* Time info */}
-            <motion.div variants={itemVariants} className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-              <span className="flex items-center gap-1.5">
+            {/* Time info - All three timestamps */}
+            <motion.div variants={itemVariants} className="flex flex-col gap-1 text-sm mt-2">
+              <div className="flex items-center gap-1.5 text-muted-foreground">
                 <Clock className="h-3.5 w-3.5" />
-                Added {formatDistanceToNow(new Date(lead.createdAt), { addSuffix: true })}
-              </span>
+                <span>Lead Added:</span>
+                <span className="text-foreground">{format(new Date(lead.createdAt), "MMM d, yyyy 'at' h:mm a")}</span>
+              </div>
+              
               {lead.contactedAt && (
-                <span className="flex items-center gap-1.5">
-                  <Calendar className="h-3.5 w-3.5" />
-                  Last contact: {format(new Date(lead.contactedAt), "MMM d")}
-                </span>
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <Phone className="h-3.5 w-3.5 text-green-500" />
+                  <span>First Contact:</span>
+                  <span className="text-foreground">{format(new Date(lead.contactedAt), "MMM d, yyyy 'at' h:mm a")}</span>
+                </div>
+              )}
+              
+              {lead.lastContactedAt && lead.lastContactedAt !== lead.contactedAt && (
+                <div className="flex items-center gap-1.5 text-muted-foreground">
+                  <Phone className="h-3.5 w-3.5 text-blue-500" />
+                  <span>Last Contact:</span>
+                  <span className="text-foreground">{format(new Date(lead.lastContactedAt), "MMM d, yyyy 'at' h:mm a")}</span>
+                </div>
               )}
             </motion.div>
           </div>
@@ -221,11 +233,12 @@ export function CallCenterLeadCard({
 
       {/* Contact Info & Countdown */}
       <div className="p-6 space-y-4">
-        {/* 2-Week Countdown */}
+        {/* 2-Week Countdown - starts from first contact */}
         <motion.div variants={itemVariants}>
           <LeadExpiryCountdown
             createdAt={lead.createdAt}
             contactedAt={lead.contactedAt}
+            lastContactedAt={lead.lastContactedAt}
           />
         </motion.div>
 
@@ -335,13 +348,14 @@ export function CallCenterLeadCard({
               />
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <QuickEmailMenu
-                applicationId={lead.id}
-                agentId={null}
-                licenseStatus={lead.licenseStatus as "licensed" | "unlicensed" | "pending"}
-                recipientEmail={lead.email}
-                recipientName={lead.firstName + (lead.lastName ? ` ${lead.lastName}` : "")}
-              />
+            <QuickEmailMenu
+              applicationId={lead.id}
+              agentId={null}
+              licenseStatus={lead.licenseStatus as "licensed" | "unlicensed" | "pending"}
+              recipientEmail={lead.email}
+              recipientName={lead.firstName + (lead.lastName ? ` ${lead.lastName}` : "")}
+              leadSource={lead.source}
+            />
               {lead.licenseStatus !== "licensed" && (
                 <ResendLicensingButton
                   recipientEmail={lead.email}

@@ -7,20 +7,40 @@ import { Clock, AlertTriangle, CheckCircle2 } from "lucide-react";
 interface LeadExpiryCountdownProps {
   createdAt: string;
   contactedAt?: string;
+  lastContactedAt?: string;
 }
 
-export function LeadExpiryCountdown({ createdAt, contactedAt }: LeadExpiryCountdownProps) {
+export function LeadExpiryCountdown({ createdAt, contactedAt, lastContactedAt }: LeadExpiryCountdownProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const created = new Date(createdAt);
+  // Only start countdown after first contact
+  if (!contactedAt) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+        className="flex items-center gap-3 p-3 rounded-xl border bg-muted/20 border-border/30"
+      >
+        <Clock className="h-4 w-4 text-muted-foreground" />
+        <div className="text-sm">
+          <span className="text-muted-foreground">Contact lead to start </span>
+          <span className="text-foreground font-medium">2-week reimbursement timer</span>
+        </div>
+      </motion.div>
+    );
+  }
+
+  // Calculate from first contact, not creation date
+  const firstContact = new Date(contactedAt);
   const now = new Date();
   const twoWeeksMs = 14 * 24 * 60 * 60 * 1000;
 
-  const elapsed = now.getTime() - created.getTime();
+  const elapsed = now.getTime() - firstContact.getTime();
   const remaining = Math.max(0, twoWeeksMs - elapsed);
   const daysRemaining = Math.ceil(remaining / (24 * 60 * 60 * 1000));
   const progress = Math.min(100, (elapsed / twoWeeksMs) * 100);
@@ -120,7 +140,7 @@ export function LeadExpiryCountdown({ createdAt, contactedAt }: LeadExpiryCountd
         transition={{ delay: 0.3 }}
         className="text-xs text-muted-foreground flex items-center justify-between"
       >
-        <span>2-week lead window</span>
+        <span>2-week reimbursement window (from first contact)</span>
         <motion.span
           key={Math.round(progress)}
           initial={{ scale: 1.1 }}

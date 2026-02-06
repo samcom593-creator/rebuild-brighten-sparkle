@@ -84,6 +84,7 @@ export type Database = {
           first_name: string
           id: string
           instagram_handle: string | null
+          last_contacted_at: string | null
           last_name: string | null
           lead_source: string | null
           license_status: string | null
@@ -103,6 +104,7 @@ export type Database = {
           first_name: string
           id?: string
           instagram_handle?: string | null
+          last_contacted_at?: string | null
           last_name?: string | null
           lead_source?: string | null
           license_status?: string | null
@@ -122,6 +124,7 @@ export type Database = {
           first_name?: string
           id?: string
           instagram_handle?: string | null
+          last_contacted_at?: string | null
           last_name?: string | null
           lead_source?: string | null
           license_status?: string | null
@@ -749,6 +752,7 @@ export type Database = {
           has_insurance_experience: boolean | null
           id: string
           instagram_handle: string | null
+          last_contacted_at: string | null
           last_name: string
           license_doc_url: string | null
           license_progress:
@@ -803,6 +807,7 @@ export type Database = {
           has_insurance_experience?: boolean | null
           id?: string
           instagram_handle?: string | null
+          last_contacted_at?: string | null
           last_name: string
           license_doc_url?: string | null
           license_progress?:
@@ -857,6 +862,7 @@ export type Database = {
           has_insurance_experience?: boolean | null
           id?: string
           instagram_handle?: string | null
+          last_contacted_at?: string | null
           last_name?: string
           license_doc_url?: string | null
           license_progress?:

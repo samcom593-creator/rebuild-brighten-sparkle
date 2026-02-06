@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { ContractedModal } from "@/components/dashboard/ContractedModal";
 import {
   CallCenterFilters,
   CallCenterLeadCard,
@@ -47,6 +48,7 @@ export default function CallCenter() {
   const [agentId, setAgentId] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [currentTranscription, setCurrentTranscription] = useState("");
+  const [showContractedModal, setShowContractedModal] = useState(false);
 
   // Filters
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
@@ -198,7 +200,7 @@ export default function CallCenter() {
   };
 
   // Send post-call follow-up email
-  const sendFollowUpEmail = async (lead: UnifiedLead, actionType: string = "contacted") => {
+  const sendFollowUpEmail = async (lead: UnifiedLead, actionType: string = "hired") => {
     try {
       const { error } = await supabase.functions.invoke("send-post-call-followup", {
         body: {
@@ -248,6 +250,12 @@ export default function CallCenter() {
   const handleAction = useCallback(async (actionId: ActionId) => {
     if (!currentLead || processing) return;
 
+    // For contracted action, open the modal instead
+    if (actionId === "contracted") {
+      setShowContractedModal(true);
+      return;
+    }
+
     setProcessing(true);
     try {
       // Save any transcription notes first
@@ -260,7 +268,7 @@ export default function CallCenter() {
         const { error } = await supabase
           .from("aged_leads")
           .update({
-            status: actionId,
+            status: actionId === "hired" ? "contacted" : actionId,
             processed_at: new Date().toISOString(),
             contacted_at: new Date().toISOString(),
           })
@@ -269,19 +277,14 @@ export default function CallCenter() {
         if (error) throw error;
       } else {
         // For applications, map status appropriately
-        const updateData: Record<string, string> = {};
+        const updateData: Record<string, string> = {
+          contacted_at: new Date().toISOString(),
+        };
 
-        if (actionId === "hired" || actionId === "contracted") {
-          updateData.status = "approved";
-          updateData.contracted_at = new Date().toISOString();
+        if (actionId === "hired") {
+          updateData.status = "reviewing";
         } else if (actionId === "bad_applicant") {
           updateData.status = "rejected";
-        } else if (actionId === "contacted") {
-          updateData.status = "reviewing";
-          updateData.contacted_at = new Date().toISOString();
-        } else {
-          updateData.status = "reviewing";
-          updateData.contacted_at = new Date().toISOString();
         }
 
         const { error } = await supabase
@@ -292,11 +295,10 @@ export default function CallCenter() {
         if (error) throw error;
       }
 
-      // Send follow-up email for applicable actions
-      const emailActions = ["contacted", "hired", "contracted"];
-      if (emailActions.includes(actionId)) {
-        await sendFollowUpEmail(currentLead, actionId);
-        toast.success(`Lead marked as ${actionId.replace("_", " ")} - follow-up email sent!`);
+      // Send follow-up email for hired action
+      if (actionId === "hired") {
+        await sendFollowUpEmail(currentLead, "hired");
+        toast.success("Lead marked as hired - follow-up email sent!");
       } else {
         toast.success(`Lead marked as ${actionId.replace("_", " ")}`);
       }
@@ -315,6 +317,18 @@ export default function CallCenter() {
       setProcessing(false);
     }
   }, [currentLead, processing, leads.length, currentTranscription]);
+
+  const handleContractedSuccess = useCallback(() => {
+    // Remove lead from list after successful contracting
+    if (currentLead) {
+      setLeads((prev) => prev.filter((l) => l.id !== currentLead.id));
+    }
+    setShowContractedModal(false);
+
+    if (leads.length <= 1) {
+      toast.info("All leads processed!");
+    }
+  }, [currentLead, leads.length]);
 
   const handleSkip = useCallback(() => {
     // Save any transcription notes before skipping
@@ -413,7 +427,7 @@ export default function CallCenter() {
     if (!started) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (processing) return;
+      if (processing || showContractedModal) return;
 
       // Ignore if typing in input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
@@ -422,15 +436,12 @@ export default function CallCenter() {
 
       switch (e.key.toLowerCase()) {
         case "1":
-          handleAction("contacted");
-          break;
-        case "2":
           handleAction("hired");
           break;
-        case "3":
+        case "2":
           handleAction("contracted");
           break;
-        case "4":
+        case "3":
           handleAction("bad_applicant");
           break;
         case "n":
@@ -444,7 +455,7 @@ export default function CallCenter() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [started, processing, handleAction, handleSkip]);
+  }, [started, processing, showContractedModal, handleAction, handleSkip]);
 
   // Filter selection UI
   if (!started) {
@@ -549,6 +560,26 @@ export default function CallCenter() {
             processing={processing}
           />
         </div>
+      )}
+
+      {/* Contracted Modal */}
+      {currentLead && agentId && (
+        <ContractedModal
+          open={showContractedModal}
+          onOpenChange={setShowContractedModal}
+          application={{
+            id: currentLead.id,
+            first_name: currentLead.firstName,
+            last_name: currentLead.lastName || "",
+            email: currentLead.email,
+            phone: currentLead.phone || "",
+            license_status: currentLead.licenseStatus as "licensed" | "unlicensed" | "pending",
+            license_progress: currentLead.licenseProgress as any,
+            source: currentLead.source,
+          }}
+          agentId={agentId}
+          onSuccess={handleContractedSuccess}
+        />
       )}
     </div>
   );

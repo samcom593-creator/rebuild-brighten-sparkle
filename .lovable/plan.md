@@ -1,205 +1,282 @@
 
-# Plan: Enhanced Call Center with Premium Animations
+
+# Plan: Fix Emails & Optimize Call Center Timeline
 
 ## Summary
 
-Transform the Call Center into a more polished, engaging experience with:
-1. **Staggered entry animations** for all components
-2. **Card flip/slide transitions** when switching leads
-3. **Pulsing call button** with ripple effect
-4. **Confetti celebration** on successful actions
-5. **Smoother progress indicators** with spring physics
-6. **Hover micro-interactions** throughout
-7. **Improved loading states** with skeleton loaders
+Fix three issues in the Call Center:
+
+1. **Emails not sending** - Edge function only checks `applications` table, but Call Center also has leads from `aged_leads`
+2. **2-week countdown logic** - Should only start from first contact, not from lead creation date
+3. **Missing time info** - Need to show: when lead came in, first contact, and last contact
 
 ---
 
-## Animation Enhancements
+## Issues Found
 
-### 1. Lead Card Transitions
+### 1. Email Sending Bug
 
-**Current**: Basic fade/scale animation  
-**New**: Smooth slide + scale with spring physics, staggered child elements
+**Root Cause:** The `send-outreach-email` edge function (line 667-674) only queries the `applications` table:
 
-- Card slides in from right, previous card slides out left
-- Name, badges, and contact info animate in sequence
-- Phone button has pulsing glow effect
+```typescript
+const { data: application, error: appError } = await supabase
+  .from("applications")
+  .select("*")
+  .eq("id", applicationId)
+  .single();
+```
 
-### 2. Action Buttons
+When `QuickEmailMenu` is used on an aged lead, the `applicationId` is actually an `aged_leads` ID, so the query fails with "Application not found".
 
-**Current**: Static buttons with basic hover  
-**New**: 
-- Buttons scale up slightly on hover with glow
-- Success action triggers confetti burst
-- Processing state shows animated gradient shimmer
-- Keyboard shortcut hints pulse subtly
+**Solution:** Update the edge function to:
+1. Accept a `leadSource` parameter ("applications" | "aged_leads")
+2. Query the correct table based on source
+3. Update `QuickEmailMenu` to pass the `leadSource` from the lead data
 
-### 3. Progress Ring
+### 2. Timeline Countdown Logic
 
-**Current**: Simple SVG circle animation  
-**New**:
-- Celebratory pulse when lead is processed
-- Counter animates with spring bounce
-- Checkmark appears with scale-in when complete
+**Current Logic (incorrect):** Countdown starts from `createdAt` (when lead was added to system)
 
-### 4. Filters Page
+**Correct Logic:** 
+- Countdown should only start after first contact (`contactedAt`)
+- If not yet contacted, show "Contact to start 2-week timer" instead of countdown
 
-**Current**: Basic staggered fade-in  
-**New**:
-- Phone icon has subtle float animation
-- Select dropdowns have refined focus states
-- Start button has animated gradient + hover glow
-- Filter cards lift on hover
+### 3. Missing Time Information
+
+**Current Display:**
+- Only shows "Added X ago"
+- Shows "Last contact: MMM d" if contacted
+
+**New Display:**
+- Lead Added: Full date/time
+- First Contact: Full date/time (if exists)
+- Last Contact: Full date/time (if exists, and different from first)
+
+**Database:** Need to add `last_contacted_at` column to both tables to track last contact separately from first contact.
 
 ---
 
 ## Files to Modify
 
-### 1. `src/pages/CallCenter.tsx`
+### 1. Database Migration
 
-**Changes:**
-- Add confetti celebration on successful action (hired/contracted)
-- Improve loading state with skeleton instead of spinner
-- Add slide direction state for card transitions
-- Smoother exit animation when processing
+Add `last_contacted_at` column to both tables:
 
-### 2. `src/components/callcenter/CallCenterLeadCard.tsx`
-
-**Changes:**
-- Staggered child animations (badges → name → contact info → notes → actions)
-- Pulsing phone call button with ripple effect on click
-- Improved hover states for all interactive elements
-- Recording indicator with smoother pulse
-- Card glow effect intensifies on hover
-
-**Animation Config:**
-```typescript
-const containerVariants = {
-  hidden: { opacity: 0, x: 50, scale: 0.98 },
-  visible: {
-    opacity: 1, x: 0, scale: 1,
-    transition: { staggerChildren: 0.05, delayChildren: 0.1 }
-  },
-  exit: { opacity: 0, x: -50, scale: 0.98 }
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0 }
-};
+```sql
+ALTER TABLE aged_leads ADD COLUMN IF NOT EXISTS last_contacted_at TIMESTAMPTZ;
+ALTER TABLE applications ADD COLUMN IF NOT EXISTS last_contacted_at TIMESTAMPTZ;
 ```
 
-### 3. `src/components/callcenter/CallCenterActions.tsx`
+### 2. `supabase/functions/send-outreach-email/index.ts`
 
 **Changes:**
-- Add success feedback animation (checkmark + pulse)
-- Button press animation (scale down → up)
-- Keyboard hint subtle glow when corresponding key is pressed
-- Skip button has arrow bounce on hover
-
-### 4. `src/components/callcenter/CallCenterProgressRing.tsx`
-
-**Changes:**
-- Add celebratory pulse animation when progress increases
-- Smoother spring-based number animation
-- Completion state shows checkmark with confetti
-
-### 5. `src/components/callcenter/CallCenterFilters.tsx`
-
-**Changes:**
-- Phone icon has floating animation
-- Filter dropdowns have refined focus ring
-- Start button gradient animates on hover
-- Add particle effects behind main card
-- Keyboard hints at bottom fade in with delay
-
-### 6. `src/components/callcenter/LeadExpiryCountdown.tsx`
-
-**Changes:**
-- Progress bar animates smoothly on load
-- Urgent state has pulsing glow
-- Days remaining counter has number animation
-
----
-
-## New Animation Components
-
-### Confetti Celebration Hook
-
-Reuse existing `ConfettiCelebration` component or create lightweight version:
+- Add `leadSource` parameter to the request body
+- Query the correct table based on source
+- Handle both `applications` and `aged_leads` tables
 
 ```typescript
-// Trigger on successful action
-const { triggerConfetti } = useConfetti();
+const { applicationId, agentId, templateType, customSubject, customBody, leadSource } = await req.json();
 
-if (actionId === "hired" || actionId === "contracted") {
-  triggerConfetti();
+// Determine which table to query
+const tableName = leadSource === "aged_leads" ? "aged_leads" : "applications";
+
+const { data: lead, error: leadError } = await supabase
+  .from(tableName)
+  .select("*")
+  .eq("id", applicationId)
+  .single();
+```
+
+### 3. `src/components/dashboard/QuickEmailMenu.tsx`
+
+**Changes:**
+- Add `leadSource` prop to component interface
+- Pass `leadSource` in the edge function call
+
+```typescript
+interface QuickEmailMenuProps {
+  applicationId: string;
+  agentId: string | null;
+  licenseStatus: "licensed" | "unlicensed" | "pending";
+  recipientEmail: string;
+  recipientName: string;
+  leadSource?: "aged_leads" | "applications";  // NEW
+  onEmailSent?: () => void;
+  className?: string;
 }
+
+// In handleSendEmail:
+const { error } = await supabase.functions.invoke("send-outreach-email", {
+  body: { 
+    applicationId, 
+    agentId, 
+    templateType: selectedTemplate,
+    customSubject,
+    customBody,
+    leadSource,  // NEW
+  },
+});
 ```
 
-### Ripple Effect for Phone Button
+### 4. `src/components/callcenter/CallCenterLeadCard.tsx`
 
-```typescript
-// On click, create expanding circle from click point
-<motion.div
-  className="absolute inset-0 bg-green-500/30 rounded-xl"
-  initial={{ scale: 0, opacity: 1 }}
-  animate={{ scale: 2, opacity: 0 }}
-  transition={{ duration: 0.6 }}
+**Changes:**
+- Pass `leadSource={lead.source}` to `QuickEmailMenu`
+- Update time display section to show all three timestamps
+
+```tsx
+<QuickEmailMenu
+  applicationId={lead.id}
+  agentId={null}
+  licenseStatus={...}
+  recipientEmail={lead.email}
+  recipientName={...}
+  leadSource={lead.source}  // NEW
 />
 ```
 
+**Update time info section:**
+```tsx
+{/* Time Info - All three timestamps */}
+<motion.div variants={itemVariants} className="space-y-1 text-sm">
+  <div className="flex items-center gap-1.5 text-muted-foreground">
+    <Clock className="h-3.5 w-3.5" />
+    <span>Lead Added:</span>
+    <span className="text-foreground">{format(new Date(lead.createdAt), "MMM d, yyyy 'at' h:mm a")}</span>
+  </div>
+  
+  {lead.contactedAt && (
+    <div className="flex items-center gap-1.5 text-muted-foreground">
+      <Phone className="h-3.5 w-3.5 text-green-500" />
+      <span>First Contact:</span>
+      <span className="text-foreground">{format(new Date(lead.contactedAt), "MMM d, yyyy 'at' h:mm a")}</span>
+    </div>
+  )}
+  
+  {lead.lastContactedAt && lead.lastContactedAt !== lead.contactedAt && (
+    <div className="flex items-center gap-1.5 text-muted-foreground">
+      <Phone className="h-3.5 w-3.5 text-blue-500" />
+      <span>Last Contact:</span>
+      <span className="text-foreground">{format(new Date(lead.lastContactedAt), "MMM d, yyyy 'at' h:mm a")}</span>
+    </div>
+  )}
+</motion.div>
+```
+
+### 5. `src/components/callcenter/LeadExpiryCountdown.tsx`
+
+**Changes:**
+- Only show countdown if `contactedAt` exists (first contact made)
+- Calculate countdown from `contactedAt`, not `createdAt`
+- Show "Contact to start timer" message if not yet contacted
+
+**Updated Props:**
+```typescript
+interface LeadExpiryCountdownProps {
+  createdAt: string;
+  contactedAt?: string;
+  lastContactedAt?: string;  // NEW
+}
+```
+
+**Updated Logic:**
+```typescript
+// Only start countdown after first contact
+if (!contactedAt) {
+  return (
+    <div className="...">
+      <Clock className="..." />
+      <span>Contact lead to start 2-week reimbursement timer</span>
+    </div>
+  );
+}
+
+// Calculate from first contact, not creation
+const firstContact = new Date(contactedAt);
+const now = new Date();
+const twoWeeksMs = 14 * 24 * 60 * 60 * 1000;
+
+const elapsed = now.getTime() - firstContact.getTime();
+const remaining = Math.max(0, twoWeeksMs - elapsed);
+```
+
+### 6. `src/pages/CallCenter.tsx`
+
+**Changes:**
+- Update `UnifiedLead` interface to include `lastContactedAt`
+- Update fetch queries to include `last_contacted_at`
+- Update action handlers to set `last_contacted_at` when processing
+
+**Interface update:**
+```typescript
+interface UnifiedLead {
+  // ... existing fields
+  contactedAt?: string;      // First contact
+  lastContactedAt?: string;  // Last contact (NEW)
+}
+```
+
+**Update action handler** - When marking as "hired", update both contacted timestamps:
+```typescript
+if (!currentLead.contactedAt) {
+  // First contact - set contacted_at
+  updates.contacted_at = new Date().toISOString();
+}
+// Always update last_contacted_at
+updates.last_contacted_at = new Date().toISOString();
+```
+
 ---
 
-## Visual Polish
+## Visual Mockup - Updated Time Display
 
-### Color Enhancements
+```text
+┌─────────────────────────────────────────────────────────────┐
+│  [Aged Lead]  [Unlicensed]                                 │
+│                                                             │
+│  John Smith  ✨                      [Stage: Course...]    │
+│                                                             │
+│  ⏱️ Lead Added: Jan 15, 2026 at 2:30 PM                    │
+│  📞 First Contact: Jan 18, 2026 at 10:15 AM               │
+│  📞 Last Contact: Jan 22, 2026 at 3:45 PM                 │
+│                                                             │
+│  ┌───────────────────────────────────────────────────────┐ │
+│  │ 🔔 10 days remaining                                  │ │
+│  │ ▓▓▓▓▓▓▓▓░░░░░░░░░░░░░░░░░░░░░░░░  28% elapsed        │ │
+│  │ 2-week reimbursement window (from first contact)      │ │
+│  └───────────────────────────────────────────────────────┘ │
+│                                                             │
+│  [📞 CALL NOW - (555) 123-4567]                            │
+└─────────────────────────────────────────────────────────────┘
+```
 
-- Hired button: Green gradient with emerald glow
-- Contracted button: Blue gradient with indigo glow  
-- Bad Applicant: Muted red (not aggressive)
-- Skip: Ghost style with subtle arrow animation
-
-### Spacing Improvements
-
-- Consistent 8px grid throughout
-- Better visual hierarchy with proper gaps
-- More breathing room around action buttons
-
-### Typography
-
-- Name uses display font
-- Time stamps use monospace for alignment
-- Action labels bold, descriptions subtle
+**If not yet contacted:**
+```text
+┌───────────────────────────────────────────────────────────┐
+│ ⏱️ Contact lead to start 2-week reimbursement timer      │
+│ (Timer begins after first call)                          │
+└───────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## Performance Considerations
+## Implementation Summary
 
-- Use `will-change: transform` for animated elements
-- Debounce rapid keyboard inputs
-- Cancel animations on unmount
-- Use `AnimatePresence` mode="wait" for clean transitions
-- Limit confetti particles for mobile
-
----
-
-## Implementation Order
-
-1. **CallCenterLeadCard** - Staggered animations + phone ripple
-2. **CallCenterActions** - Button press feedback + success animation
-3. **CallCenter.tsx** - Confetti integration + slide transitions
-4. **CallCenterProgressRing** - Celebratory animations
-5. **CallCenterFilters** - Entry animations + hover effects
-6. **LeadExpiryCountdown** - Progress animation polish
+| File | Changes |
+|------|---------|
+| Database | Add `last_contacted_at` column to both tables |
+| `send-outreach-email/index.ts` | Support both `applications` and `aged_leads` tables |
+| `QuickEmailMenu.tsx` | Add `leadSource` prop and pass to edge function |
+| `CallCenterLeadCard.tsx` | Pass `leadSource` prop, update time display UI |
+| `LeadExpiryCountdown.tsx` | Calculate from `contactedAt`, show "not started" state |
+| `CallCenter.tsx` | Update interface, fetch, and action handlers |
 
 ---
 
 ## Expected Result
 
-- Premium, polished feel matching Apex Financial brand standards
-- Satisfying feedback on every interaction
-- Smooth 60fps animations throughout
-- Clear visual hierarchy guiding attention
-- Celebratory moments that motivate continued use
-- Keyboard-first experience with visual feedback
+1. **Emails work for all leads** - Both aged leads and applications send emails successfully
+2. **2-week timer is accurate** - Only counts down from first contact date
+3. **Clear time visibility** - All three timestamps (added, first contact, last contact) clearly displayed
+4. **Better UX** - Shows "Contact to start timer" when lead hasn't been contacted yet
+

@@ -26,6 +26,7 @@ interface ContractedModalProps {
     phone: string;
     license_status: "licensed" | "unlicensed" | "pending";
     license_progress?: "unlicensed" | "course_purchased" | "passed_test" | "waiting_on_license" | "licensed" | null;
+    source?: "applications" | "aged_leads";
   };
   agentId: string;
   onSuccess?: () => void;
@@ -84,16 +85,28 @@ export function ContractedModal({
 
     setIsSubmitting(true);
     try {
-      // 1. Mark application as contracted
-      const { error: updateError } = await supabase
-        .from("applications")
-        .update({ 
-          contracted_at: new Date().toISOString(),
-          closed_at: new Date().toISOString(),
-        })
-        .eq("id", application.id);
-
-      if (updateError) throw updateError;
+      // 1. Mark as contracted based on source
+      const isAgedLead = application.source === "aged_leads";
+      
+      if (isAgedLead) {
+        const { error: updateError } = await supabase
+          .from("aged_leads")
+          .update({ 
+            status: "contracted",
+            processed_at: new Date().toISOString(),
+          })
+          .eq("id", application.id);
+        if (updateError) throw updateError;
+      } else {
+        const { error: updateError } = await supabase
+          .from("applications")
+          .update({ 
+            contracted_at: new Date().toISOString(),
+            closed_at: new Date().toISOString(),
+          })
+          .eq("id", application.id);
+        if (updateError) throw updateError;
+      }
 
       // 2. Save CRM link for future use if requested
       if (saveForNextTime && !useSavedLink) {

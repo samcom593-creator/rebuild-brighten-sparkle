@@ -16,7 +16,7 @@ async function sendEmail(to: string, subject: string, html: string) {
       Authorization: `Bearer ${RESEND_API_KEY}`,
     },
     body: JSON.stringify({
-      from: "Apex Financial <notifications@apexfinancialnetwork.com>",
+      from: "APEX Financial <noreply@apex-financial.org>",
       to: [to],
       subject,
       html,

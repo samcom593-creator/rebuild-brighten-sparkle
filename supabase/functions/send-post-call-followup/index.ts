@@ -190,7 +190,7 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     const emailResponse = await resend.emails.send({
-      from: "APEX Team <team@apexfinancialfirm.com>",
+      from: "APEX Financial <noreply@apex-financial.org>",
       to: [email],
       subject: emailSubject,
       html: emailHtml,

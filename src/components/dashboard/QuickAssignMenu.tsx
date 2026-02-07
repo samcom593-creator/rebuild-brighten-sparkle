@@ -38,49 +38,45 @@ export const QuickAssignMenu = forwardRef<HTMLDivElement, QuickAssignMenuProps>(
   const fetchManagers = async () => {
     setLoading(true);
     try {
-      // Get all users with manager role
-      const { data: managerRoles } = await supabase
-        .from("user_roles")
-        .select("user_id")
-        .eq("role", "manager");
+      // Use edge function for consistent manager fetching (bypasses RLS)
+      const { data, error } = await supabase.functions.invoke("get-active-managers");
 
-      if (!managerRoles || managerRoles.length === 0) {
+      if (error) {
+        console.error("Error fetching managers:", error);
         setManagers([]);
         return;
       }
 
-      const managerUserIds = managerRoles.map((r) => r.user_id);
+      if (data?.managers && Array.isArray(data.managers)) {
+        // Transform to expected format with email lookup
+        const managersWithEmail: Manager[] = await Promise.all(
+          data.managers.map(async (m: { id: string; name: string }) => {
+            // Get email from profiles via agent lookup
+            const { data: agent } = await supabase
+              .from("agents")
+              .select("user_id")
+              .eq("id", m.id)
+              .maybeSingle();
 
-      // Get agents for these managers
-      const { data: agents } = await supabase
-        .from("agents")
-        .select("id, user_id")
-        .in("user_id", managerUserIds)
-        .eq("status", "active");
+            if (agent?.user_id) {
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("email")
+                .eq("user_id", agent.user_id)
+                .maybeSingle();
 
-      if (!agents) {
+              return { id: m.id, name: m.name, email: profile?.email || "" };
+            }
+            return { id: m.id, name: m.name, email: "" };
+          })
+        );
+        setManagers(managersWithEmail);
+      } else {
         setManagers([]);
-        return;
       }
-
-      // Get profiles
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, full_name, email")
-        .in("user_id", managerUserIds);
-
-      const managersData: Manager[] = agents.map((agent) => {
-        const profile = profiles?.find((p) => p.user_id === agent.user_id);
-        return {
-          id: agent.id,
-          name: profile?.full_name || "Unknown Manager",
-          email: profile?.email || "",
-        };
-      });
-
-      setManagers(managersData);
     } catch (error) {
       console.error("Error fetching managers:", error);
+      setManagers([]);
     } finally {
       setLoading(false);
     }

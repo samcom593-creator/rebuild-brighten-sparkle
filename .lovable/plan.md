@@ -1,149 +1,214 @@
 
 
-# Plan: Enhanced Agent Management in Command Center + System Verification
+# Comprehensive System Optimization Plan
 
-## Summary
+## Summary of Issues Identified
 
-After thorough investigation, I found that **all core systems are working correctly**:
+Based on your feedback, here are the key areas that need attention:
 
-- **Applications**: New applications are being submitted successfully (Brian Hernandez, Christian Davis, etc. all from Feb 6)
-- **Manager Assignment**: The `get-active-managers` Edge Function is deployed and returns 3 active managers
-- **Email Systems**: All notification functions are operational
-
-This plan adds a dedicated **Agent Management section** to the Command Center for easier add/locate/edit/delete functionality.
-
----
-
-## Verified Systems Status
-
-| System | Status | Evidence |
-|--------|--------|----------|
-| Application Submission | Working | 10+ new applications in database |
-| `get-active-managers` Edge Function | Working | Returns 3 managers (Samuel James, KJ Vaughns, Obiajulu Ifediora) |
-| Lead Center Manager Assignment | Working | Uses edge function on line 510-522 |
-| `submit-application` Edge Function | Working | Applications being created |
-| Email Notifications | Working | Previous logs showed successful delivery |
+1. **Simplified Add Agent Flow** - Remove unnecessary fields, keep only essentials
+2. **Team Hierarchy Visibility** - See all agents clearly with manager badges and "active in field" indicators
+3. **License Confirmation Popup** - When hiring unlicensed leads, confirm they'll need to get licensed
+4. **Weekly Email Summary** - Send every Sunday with team status updates
+5. **Dashboard Cleanup** - Fix the "Recruiting Growth" section showing nameless entries, add remove/send invite buttons
+6. **Course Progress Notifications** - Notify managers when agents pass each module step
+7. **Lead Center Status Filter Fix** - Fix "30 people completed coursework" issue and add proper contact status filtering
+8. **Performance Optimization** - Reduce clunkiness across the platform
 
 ---
 
-## Enhancement: Add Agent Management Section
+## Changes Overview
 
-The Command Center already has the "Invite Team" button and TeamHierarchyManager. I'll enhance this with a more prominent "Add Agent" capability and search functionality.
+### 1. Simplified Add Agent Modal
 
-### Changes to `src/pages/DashboardCommandCenter.tsx`
+**File**: `src/components/dashboard/AddAgentModal.tsx`
 
-**1. Add Import for AddAgentModal**
-```typescript
-import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
+Remove unnecessary fields and keep only:
+- First Name (required)
+- Last Name (required)  
+- Email (required)
+- Phone (required)
+- Instagram Handle (optional)
+- Manager Assignment (auto-selects current user if manager)
+
+**Remove**: License status, notes, start date, city, state fields (can be edited later via profile editor)
+
+The modal will be compact, fast to use, and focused on the essentials.
+
+---
+
+### 2. Enhanced Team Hierarchy with Field Status Indicators
+
+**File**: `src/components/dashboard/TeamHierarchyManager.tsx`
+
+Add visual indicators:
+- Green checkmark badge for agents in "in_field_training" or "evaluated" stage (active in field)
+- Manager badge (teal "Manager" tag) already exists
+- Sub-manager popover showing which manager each agent reports to
+- Cleaner row design with less data clutter
+
+New columns/badges:
 ```
-
-**2. Update Header Actions** (Lines 427-446)
-
-Add "Add Agent" button alongside "Invite Team":
-```tsx
-<div className="flex flex-wrap items-center gap-2">
-  <LeadImporter />
-  <LeadExporter />
-  <AddAgentModal onAgentAdded={() => refetch()} />
-  <Button 
-    variant="default" 
-    onClick={() => setShowInviteModal(true)}
-    className="gap-2"
-  >
-    <UserPlus className="h-4 w-4" />
-    Invite Team
-  </Button>
-  <Button 
-    variant="outline" 
-    onClick={() => setShowDuplicateTool(true)}
-    className="gap-2"
-  >
-    <Users className="h-4 w-4" />
-    Find Duplicates
-  </Button>
-</div>
+[✓ In Field] [Manager] Agent Name | Manager: KJ | Weekly: $5,000 | Monthly: $12,000 | [Actions...]
 ```
 
 ---
 
-### Fix: QuickAssignMenu to Use Edge Function
+### 3. License Confirmation Modal for Hiring Unlicensed Leads
 
-The `QuickAssignMenu.tsx` component uses direct database queries instead of the edge function, which may cause RLS issues. Update it to use the edge function for consistency.
+**File**: `src/pages/CallCenter.tsx` (or create new component)
 
-**File**: `src/components/dashboard/QuickAssignMenu.tsx`
-
-**Current** (Lines 38-87): Direct queries to `user_roles`, `agents`, `profiles` tables
-
-**Change to**:
-```typescript
-const fetchManagers = async () => {
-  setLoading(true);
-  try {
-    const { data, error } = await supabase.functions.invoke("get-active-managers");
-    
-    if (error) {
-      console.error("Error fetching managers:", error);
-      setManagers([]);
-      return;
-    }
-    
-    if (data?.managers) {
-      // Transform to expected format with email
-      const managersWithEmail = await Promise.all(
-        data.managers.map(async (m: { id: string; name: string }) => {
-          // Get email from profiles via agent lookup
-          const { data: agent } = await supabase
-            .from("agents")
-            .select("user_id")
-            .eq("id", m.id)
-            .single();
-          
-          if (agent?.user_id) {
-            const { data: profile } = await supabase
-              .from("profiles")
-              .select("email")
-              .eq("user_id", agent.user_id)
-              .single();
-            
-            return { id: m.id, name: m.name, email: profile?.email || "" };
-          }
-          return { id: m.id, name: m.name, email: "" };
-        })
-      );
-      setManagers(managersWithEmail);
-    }
-  } catch (error) {
-    console.error("Error fetching managers:", error);
-  } finally {
-    setLoading(false);
-  }
-};
-```
+When clicking "Hired" on an unlicensed lead:
+- Show confirmation popup: "This applicant is unlicensed. By marking them as hired, they will need to complete the licensing process. Continue?"
+- Two buttons: "Cancel" and "Yes, Mark as Hired"
+- This ensures admins are aware of the licensing requirement
 
 ---
 
-## Files Summary
+### 4. Weekly Sunday Email Summary
+
+**File**: `supabase/functions/send-weekly-team-summary/index.ts` (new)
+
+Create a new Edge Function that runs every Sunday:
+- Summary of all team members and their status
+- List of agents who need attention (stale course progress, no production, etc.)
+- Reminder to update licensing status for unlicensed hires
+- Call-to-action to review the team
+
+Update `supabase/config.toml` to add the cron job:
+```toml
+[functions.send-weekly-team-summary]
+verify_jwt = false
+```
+
+Add cron schedule in database for Sunday 9:00 AM CST.
+
+---
+
+### 5. Dashboard Recruiting Growth Cleanup
+
+**File**: `src/components/dashboard/InvitationTracker.tsx`
+
+Improvements:
+- Filter out entries without names (show only valid invitations)
+- Add red X button to remove/dismiss entries
+- Add green "Send Invite" button to re-send portal login emails
+- Show "Pending" label for those without password set
+- Clean up display to show only actionable items
+
+**File**: `src/components/dashboard/OnboardingPipelineCard.tsx`
+
+- Remove entries with no names or invalid data
+- Add click-to-filter functionality
+
+---
+
+### 6. Course Module Progress Notifications
+
+**File**: `supabase/functions/notify-module-progress/index.ts` (new)
+
+Create a new Edge Function that sends notifications when agents complete each module:
+- Trigger when `onboarding_progress` record is updated with `passed = true`
+- Email to the agent's manager: "[Agent Name] completed Module 2/5"
+- Quick summary of progress
+
+**File**: `src/pages/OnboardingCourse.tsx`
+
+After each module completion, call the new notification function.
+
+---
+
+### 7. Lead Center Fixes
+
+**File**: `src/pages/LeadCenter.tsx`
+
+Fixes:
+1. Add "Not Contacted" status filter option
+2. Add "Hired" status filter option  
+3. Fix the display logic for contact status (show "Not Contacted" explicitly)
+4. Remove the incorrect "30 people completed coursework" display
+5. Add better grouping by license status
+
+New filter options:
+- Status: New, Contacted, Hired, Contracted, Not Qualified
+- License: Licensed, Unlicensed, Unknown
+- Contact: Contacted, Not Contacted
+
+---
+
+### 8. Performance Optimizations
+
+**Files**: Multiple
+
+- Increase `staleTime` to 180 seconds for heavy queries
+- Use `React.memo` on list item components
+- Add virtualization for long lists (if >50 items)
+- Remove redundant realtime subscriptions
+- Consolidate API calls where possible
+
+---
+
+## Technical Implementation
+
+### Files to Create
+
+| File | Purpose |
+|------|---------|
+| `supabase/functions/send-weekly-team-summary/index.ts` | Weekly Sunday email to admins |
+| `supabase/functions/notify-module-progress/index.ts` | Per-module completion notifications |
+| `src/components/dashboard/LicenseConfirmModal.tsx` | Confirmation popup for hiring unlicensed leads |
+
+### Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/pages/DashboardCommandCenter.tsx` | Add AddAgentModal import and button in header |
-| `src/components/dashboard/QuickAssignMenu.tsx` | Update to use `get-active-managers` edge function |
+| `src/components/dashboard/AddAgentModal.tsx` | Simplify to essential fields only |
+| `src/components/dashboard/TeamHierarchyManager.tsx` | Add "In Field" badges, cleaner layout |
+| `src/components/dashboard/InvitationTracker.tsx` | Add remove/send buttons, filter invalid entries |
+| `src/pages/LeadCenter.tsx` | Fix filters, add contact status |
+| `src/pages/CallCenter.tsx` | Add license confirmation popup |
+| `src/pages/OnboardingCourse.tsx` | Trigger module completion notifications |
+| `supabase/config.toml` | Add new function configurations |
 
 ---
 
 ## Expected Results
 
-1. **Add Agent Button**: Visible in Command Center header for quick agent creation
-2. **Consistent Manager Data**: Both Lead Center and QuickAssignMenu use the same edge function
-3. **Zero Managers Fixed**: The `QuickAssignMenu` will now show managers consistently with Lead Center
+After implementation:
+
+1. **Add Agent** - Quick 4-field form that takes 10 seconds to complete
+2. **Team View** - Clear visual of who's active in field vs still onboarding
+3. **Hiring Unlicensed** - Clear confirmation before proceeding
+4. **Weekly Email** - Every Sunday morning, summary of team to review
+5. **Dashboard** - Clean, only showing valid data with actionable buttons
+6. **Course Progress** - Manager notified at each milestone
+7. **Lead Center** - Proper filtering by contact status and hired status
+8. **Performance** - Faster navigation, less loading time
 
 ---
 
-## Testing Verification
+## Database Considerations
 
-After implementation:
-1. Click "Add Agent" in Command Center header - should open the add agent modal
-2. Select a manager from the dropdown - should show 3 managers (Samuel James, KJ Vaughns, Obiajulu Ifediora)
-3. Add a test agent and verify they appear in the Team Hierarchy Manager
-4. In Lead Center, verify bulk assign shows the same 3 managers
+No schema changes required. All enhancements use existing tables:
+- `agents` (onboarding_stage for field status)
+- `applications` (contacted_at for contact status)
+- `onboarding_progress` (passed field for module completion)
+
+---
+
+## Cron Job Setup
+
+Weekly email requires adding to the database:
+```sql
+SELECT cron.schedule(
+  'weekly-team-summary',
+  '0 15 * * 0',  -- Sunday 9:00 AM CST (15:00 UTC)
+  $$
+  SELECT net.http_post(
+    url := 'https://msydzhzolwourcdmqxvn.supabase.co/functions/v1/send-weekly-team-summary',
+    headers := '{"Content-Type": "application/json", "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."}'::jsonb
+  );
+  $$
+);
+```
 

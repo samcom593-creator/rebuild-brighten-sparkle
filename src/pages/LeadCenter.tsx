@@ -270,8 +270,15 @@ export default function LeadCenter() {
           ? !lead.assignedAgentId
           : lead.assignedAgentId === filterManager);
 
-      const matchesStatus =
-        filterStatus === "all" || lead.status === filterStatus;
+      // Handle special "not_contacted" status filter
+      let matchesStatus = true;
+      if (filterStatus === "all") {
+        matchesStatus = true;
+      } else if (filterStatus === "not_contacted") {
+        matchesStatus = !lead.contactedAt;
+      } else {
+        matchesStatus = lead.status === filterStatus;
+      }
 
       const matchesLicense =
         filterLicense === "all" || lead.licenseStatus === filterLicense;
@@ -652,18 +659,19 @@ export default function LeadCenter() {
             </SelectContent>
           </Select>
           <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-[160px]">
+            <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
               <SelectItem value="new">New</SelectItem>
-              <SelectItem value="reviewing">Reviewing</SelectItem>
+              <SelectItem value="not_contacted">Not Contacted</SelectItem>
+              <SelectItem value="reviewing">Reviewing / Hired</SelectItem>
               <SelectItem value="contacted">Contacted</SelectItem>
               <SelectItem value="interview">Interview</SelectItem>
               <SelectItem value="contracting">Contracting</SelectItem>
-              <SelectItem value="approved">Approved</SelectItem>
-              <SelectItem value="rejected">Rejected</SelectItem>
+              <SelectItem value="approved">Contracted</SelectItem>
+              <SelectItem value="rejected">Not Qualified</SelectItem>
             </SelectContent>
           </Select>
           <Select value={filterLicense} onValueChange={setFilterLicense}>

@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import { ContractedModal } from "@/components/dashboard/ContractedModal";
 import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration";
+import { LicenseConfirmModal } from "@/components/dashboard/LicenseConfirmModal";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   CallCenterFilters,
@@ -53,6 +54,7 @@ export default function CallCenter() {
   const [currentTranscription, setCurrentTranscription] = useState("");
   const [showContractedModal, setShowContractedModal] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
+  const [showLicenseConfirm, setShowLicenseConfirm] = useState(false);
 
   // Filters
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
@@ -262,6 +264,18 @@ export default function CallCenter() {
       return;
     }
 
+    // For hired action on unlicensed leads, show confirmation
+    if (actionId === "hired" && currentLead.licenseStatus !== "licensed") {
+      setShowLicenseConfirm(true);
+      return;
+    }
+
+    await executeAction(actionId);
+  }, [currentLead, processing]);
+
+  const executeAction = useCallback(async (actionId: ActionId) => {
+    if (!currentLead) return;
+    
     setProcessing(true);
     try {
       // Save any transcription notes first
@@ -277,18 +291,17 @@ export default function CallCenter() {
           .update({
             status: actionId === "hired" ? "contacted" : actionId,
             processed_at: nowIso,
-            contacted_at: currentLead.contactedAt || nowIso, // Set first contact if not already set
-            last_contacted_at: nowIso, // Always update last contact
+            contacted_at: currentLead.contactedAt || nowIso,
+            last_contacted_at: nowIso,
           })
           .eq("id", currentLead.id);
 
         if (error) throw error;
       } else {
-        // For applications, map status appropriately
         const nowIso = new Date().toISOString();
         const updateData: Record<string, string> = {
-          contacted_at: currentLead.contactedAt || nowIso, // Set first contact if not already set
-          last_contacted_at: nowIso, // Always update last contact
+          contacted_at: currentLead.contactedAt || nowIso,
+          last_contacted_at: nowIso,
         };
 
         if (actionId === "hired") {
@@ -305,7 +318,6 @@ export default function CallCenter() {
         if (error) throw error;
       }
 
-      // Send follow-up email and show celebration for hired action
       if (actionId === "hired") {
         await sendFollowUpEmail(currentLead, "hired");
         setShowConfetti(true);
@@ -315,10 +327,8 @@ export default function CallCenter() {
         toast.success(`Lead marked as ${actionId.replace("_", " ")}`);
       }
 
-      // Remove lead from list and move to next
       setLeads((prev) => prev.filter((l) => l.id !== currentLead.id));
 
-      // If no more leads after removal
       if (leads.length <= 1) {
         toast.info("All leads processed!");
       }
@@ -328,7 +338,12 @@ export default function CallCenter() {
     } finally {
       setProcessing(false);
     }
-  }, [currentLead, processing, leads.length, currentTranscription]);
+  }, [currentLead, leads.length, currentTranscription]);
+
+  const handleLicenseConfirm = useCallback(() => {
+    setShowLicenseConfirm(false);
+    executeAction("hired");
+  }, [executeAction]);
 
   const handleContractedSuccess = useCallback(() => {
     // Remove lead from list after successful contracting
@@ -610,6 +625,17 @@ export default function CallCenter() {
           onSuccess={handleContractedSuccess}
         />
       )}
+
+      {/* License Confirmation Modal */}
+      {currentLead && (
+        <LicenseConfirmModal
+          open={showLicenseConfirm}
+          onOpenChange={setShowLicenseConfirm}
+          onConfirm={handleLicenseConfirm}
+          applicantName={`${currentLead.firstName} ${currentLead.lastName || ""}`.trim()}
+        />
+      )}
+
       {/* Confetti Celebration */}
       <ConfettiCelebration trigger={showConfetti} />
     </div>

@@ -702,13 +702,27 @@ export function TeamHierarchyManager() {
                     
                     {/* Agent Name with Badges */}
                     <TableCell className="py-2">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-medium text-sm">{agent.name}</span>
+                        {/* In Field Badge - shown for in_field_training or evaluated */}
+                        {(agent.onboardingStage === "in_field_training" || agent.onboardingStage === "evaluated") && (
+                          <Badge className="text-[10px] px-1 py-0 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
+                            ✓ In Field
+                          </Badge>
+                        )}
                         {agent.isManager && (
-                          <Badge variant="secondary" className="text-[10px] px-1 py-0">MGR</Badge>
+                          <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-teal-500/20 text-teal-600 dark:text-teal-400 border-teal-500/30">
+                            Manager
+                          </Badge>
                         )}
                         {agent.id === adminAgentId && (
                           <Badge className="text-[10px] px-1 py-0 bg-primary/20 text-primary border-primary/30">You</Badge>
+                        )}
+                        {/* Show which manager for indirect reports */}
+                        {agent.managerId && agent.managerId !== adminAgentId && agent.id !== adminAgentId && (
+                          <span className="text-[10px] text-muted-foreground">
+                            → {agent.managerName?.split(" ")[0]}
+                          </span>
                         )}
                       </div>
                       <span className="text-[10px] text-muted-foreground">{agent.email}</span>

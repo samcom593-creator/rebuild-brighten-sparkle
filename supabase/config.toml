@@ -264,3 +264,9 @@ verify_jwt = false
 
 [functions.send-licensing-instructions]
 verify_jwt = false
+
+[functions.send-weekly-team-summary]
+verify_jwt = false
+
+[functions.notify-module-progress]
+verify_jwt = false

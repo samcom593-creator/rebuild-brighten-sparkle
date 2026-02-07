@@ -54,6 +54,7 @@ import { LeadReassignment } from "@/components/dashboard/LeadReassignment";
 import { LeadImporter } from "@/components/dashboard/LeadImporter";
 import { LeadExporter } from "@/components/dashboard/LeadExporter";
 import { TerminatedAgentLeadsPanel } from "@/components/dashboard/TerminatedAgentLeadsPanel";
+import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
 import { AbandonedLeadsPanel } from "@/components/dashboard/AbandonedLeadsPanel";
 import { AllLeadsPanel } from "@/components/dashboard/AllLeadsPanel";
 import { DateRangePicker, type DateRange } from "@/components/ui/date-range-picker";
@@ -427,6 +428,7 @@ export default function DashboardCommandCenter() {
           <div className="flex flex-wrap items-center gap-2">
             <LeadImporter />
             <LeadExporter />
+            <AddAgentModal onAgentAdded={() => refetch()} />
             <Button 
               variant="default" 
               onClick={() => setShowInviteModal(true)}

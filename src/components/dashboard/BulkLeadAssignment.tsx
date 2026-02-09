@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Users, UserPlus, Check, X, Loader2 } from "lucide-react";
+import { Users, UserPlus, Check, X, Loader2, EyeOff, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
@@ -41,11 +41,14 @@ interface Agent {
 export function BulkLeadAssignment() {
   const [unassignedLeads, setUnassignedLeads] = useState<UnassignedLead[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [hiddenAgents, setHiddenAgents] = useState<Set<string>>(new Set());
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
   const [selectedAgentId, setSelectedAgentId] = useState<string>("");
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  const visibleAgents = useMemo(() => agents.filter((a) => !hiddenAgents.has(a.id)), [agents, hiddenAgents]);
 
   useEffect(() => {
     fetchData();
@@ -219,14 +222,47 @@ export function BulkLeadAssignment() {
                     <SelectValue placeholder="Select agent to assign..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {agents.map((agent) => (
+                    {visibleAgents.map((agent) => (
                       <SelectItem key={agent.id} value={agent.id}>
-                        {agent.name} ({agent.email})
+                        <div className="flex items-center justify-between w-full gap-2">
+                          <span>{agent.name} ({agent.email})</span>
+                        </div>
                       </SelectItem>
                     ))}
+                    {hiddenAgents.size > 0 && (
+                      <div className="px-2 py-1.5 border-t border-border/50">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setHiddenAgents(new Set()); }}
+                          className="flex items-center gap-1 text-xs text-primary hover:underline w-full"
+                        >
+                          <RotateCcw className="h-3 w-3" />
+                          Show all ({hiddenAgents.size} hidden)
+                        </button>
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Hide agents button */}
+              {agents.length > 0 && (
+                <div className="flex items-center gap-1">
+                  {selectedAgentId && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setHiddenAgents((prev) => new Set([...prev, selectedAgentId]));
+                        setSelectedAgentId("");
+                      }}
+                      className="text-xs text-muted-foreground hover:text-destructive"
+                    >
+                      <EyeOff className="h-3 w-3 mr-1" />
+                      Hide
+                    </Button>
+                  )}
+                </div>
+              )}
 
               <Button
                 onClick={() => setIsConfirmOpen(true)}

@@ -1229,6 +1229,44 @@ export type Database = {
         }
         Relationships: []
       }
+      lead_payment_tracking: {
+        Row: {
+          agent_id: string
+          id: string
+          marked_at: string | null
+          marked_by: string | null
+          paid: boolean | null
+          tier: string
+          week_start: string
+        }
+        Insert: {
+          agent_id: string
+          id?: string
+          marked_at?: string | null
+          marked_by?: string | null
+          paid?: boolean | null
+          tier: string
+          week_start?: string
+        }
+        Update: {
+          agent_id?: string
+          id?: string
+          marked_at?: string | null
+          marked_by?: string | null
+          paid?: boolean | null
+          tier?: string
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_payment_tracking_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       magic_login_tokens: {
         Row: {
           agent_id: string

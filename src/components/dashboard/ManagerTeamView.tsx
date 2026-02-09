@@ -34,6 +34,8 @@ import {
 } from "@/components/ui/collapsible";
 import { OnboardingTracker } from "./OnboardingTracker";
 import { AgentQuickEditDialog } from "./AgentQuickEditDialog";
+import { AddToCourseButton } from "./AddToCourseButton";
+import { DeactivateAgentDialog } from "./DeactivateAgentDialog";
 import { cn } from "@/lib/utils";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 import { toast } from "sonner";
@@ -84,8 +86,9 @@ export function ManagerTeamView() {
   const [expandedMember, setExpandedMember] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>("production-desc");
   const [licensedOpen, setLicensedOpen] = useState(true);
-  const [unlicensedOpen, setUnlicensedOpen] = useState(false);
+  const [unlicensedOpen, setUnlicensedOpen] = useState(true);
   const [editAgent, setEditAgent] = useState<TeamMember | null>(null);
+  const [deactivateAgent, setDeactivateAgent] = useState<{ id: string; name: string } | null>(null);
 
   const handleSendPortalLogin = async (member: TeamMember) => {
     try {
@@ -239,7 +242,10 @@ export function ManagerTeamView() {
         .lte("production_date", monthEnd);
 
       // Build team member data
-      const members: TeamMember[] = teamAgents.map(agent => {
+      // Filter out the current user's own agent record
+      const filteredAgents = teamAgents.filter(a => a.user_id !== user.id);
+
+      const members: TeamMember[] = filteredAgents.map(agent => {
         const profile = profiles?.find(p => p.user_id === agent.user_id);
         const agentApps = applications?.filter(a => a.assigned_agent_id === agent.id) || [];
         const totalLeads = agentApps.length;
@@ -482,6 +488,21 @@ export function ManagerTeamView() {
                 Send Login
               </Button>
             )}
+            <AddToCourseButton
+              agentId={member.id}
+              agentName={member.name}
+              onSuccess={fetchTeamData}
+              size="sm"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-xs text-destructive hover:bg-destructive/10"
+              onClick={(e) => { e.stopPropagation(); setDeactivateAgent({ id: member.id, name: member.name }); }}
+            >
+              <Users className="h-3 w-3" />
+              Remove
+            </Button>
           </div>
           
           <OnboardingTracker
@@ -661,6 +682,17 @@ export function ManagerTeamView() {
           deals={editAgent.monthDeals}
           onUpdate={fetchTeamData}
           period="month"
+        />
+      )}
+
+      {/* Deactivate Agent Dialog */}
+      {deactivateAgent && (
+        <DeactivateAgentDialog
+          open={!!deactivateAgent}
+          onOpenChange={(open) => { if (!open) setDeactivateAgent(null); }}
+          agentId={deactivateAgent.id}
+          agentName={deactivateAgent.name}
+          onComplete={fetchTeamData}
         />
       )}
     </div>

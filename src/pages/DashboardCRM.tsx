@@ -669,7 +669,19 @@ export default function DashboardCRM() {
             hasTrainingCourse={agent.hasTrainingCourse}
             hasDialerLogin={agent.hasDialerLogin}
             hasDiscordAccess={agent.hasDiscordAccess}
-            onUpdate={fetchAgents}
+            onOptimisticToggle={(agentId, field, newValue) => {
+              setAgents(prev => prev.map(a => {
+                if (a.id !== agentId) return a;
+                const fieldMap: Record<string, keyof AgentCRM> = {
+                  has_training_course: "hasTrainingCourse",
+                  has_dialer_login: "hasDialerLogin",
+                  has_discord_access: "hasDiscordAccess",
+                };
+                const key = fieldMap[field];
+                if (!key) return a;
+                return { ...a, [key]: newValue };
+              }));
+            }}
           />
 
           {/* Onboarding Stage - Compact */}
@@ -745,14 +757,14 @@ export default function DashboardCRM() {
               />
             )}
 
-            {/* Send Portal Login for Live agents */}
-            {isInFieldActive && (
+            {/* Send Portal Login for any agent with an account */}
+            {agent.userId && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-5 px-1.5 text-[10px] gap-0.5"
                 onClick={() => handleSendPortalLogin(agent)}
-                title="Send Portal Login"
+                title="Send Portal Login (includes Discord link)"
               >
                 <Send className="h-2.5 w-2.5" />
                 Login

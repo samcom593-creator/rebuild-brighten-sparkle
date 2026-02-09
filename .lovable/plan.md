@@ -1,50 +1,74 @@
 
 
-# Fix Licensed View, Manager Assignment, and Verify Coursework
+# Fix Payment Tracker, Add Paid Badge + Total Deals, Verify Merge Tool
 
-## Issues Identified
+## Issues Found
 
-1. **"Licensed Agents" section tap may not respond** -- The Collapsible component works in code, but the user reports tapping "License" does nothing. This is likely because the button area is too small or click events are being swallowed. The section headers need better tap targets.
+1. **Payment Tracker shows agents who shouldn't be there**: The tracker filters on `status=active`, `onboarding_stage=evaluated`, `is_deactivated=false` -- but does NOT exclude `is_inactive=true`. Bryan Ross has `is_inactive=true` and would still appear. Fix: add `.eq("is_inactive", false)` to the query.
 
-2. **ManagerAssignMenu only shows some managers** -- The component queries `user_roles` for managers, then joins with `agents` table filtering `is_deactivated = false`. There are 5 manager roles but only 4 have agent records, so at most 4 appear. The real problem is the RLS policy on `user_roles`: non-admin users can only see their own role or manager roles if they're a manager. This works for admins but may fail for managers viewing the list. The fix is to use the `get-active-managers` edge function (which uses the service role key and bypasses RLS) instead of client-side queries.
+2. **No "Paid" badge visible in CRM, Command Center, or Dashboard**: The payment tracker marks agents as paid in the `lead_payment_tracking` table, but no other page reads that data to show a badge. This needs to be added as a visible badge on agent cards in all three views.
 
-3. **Cannot assign multiple managers at once** -- Currently the menu assigns ONE manager per click. The user wants to select an agent and assign it to multiple managers (or more likely: select multiple agents and bulk-assign them to a manager). This needs a bulk selection + assign flow.
+3. **Total Deals not displayed as a top-level stat**: The Command Center shows Total ALP, Active Agents, Producers, and Needs Attention -- but not Total Deals. The CRM and Dashboard also lack a total deals stat. This needs to be added.
 
-4. **Coursework / Add to Course** -- The `AddToCourseButton` is already present in the expanded agent card. It enrolls the agent, sets stage to `training_online`, creates progress, and sends a login email. This should work as-is. Will verify the module table exists and has data.
-
-5. **Mark as Licensed / Unlicensed** -- Already implemented via `handleToggleLicense` in ManagerTeamView. The button toggles between "Mark Licensed" and "Mark Unlicensed" in the expanded card actions.
+4. **Merge tool access**: The merge tool queries all agents without status filtering, so all agents (active, inactive, terminated) should already appear. If some agents are missing, it could be an RLS issue -- but since admins have an ALL policy, this should work. Will verify the edge function query works for all agents.
 
 ## Changes
 
-### 1. Fix ManagerAssignMenu to show ALL managers reliably
-**File: `src/components/dashboard/ManagerAssignMenu.tsx`**
+### 1. Fix Payment Tracker filtering
+**File: `src/components/dashboard/LeadPaymentTracker.tsx`**
 
-Replace the client-side `user_roles` + `agents` + `profiles` queries with a single call to the existing `get-active-managers` edge function. This function uses the service role key and already returns all active managers with names. This guarantees all managers appear regardless of RLS restrictions.
+Add `.eq("is_inactive", false)` to the agents query on line 45 so inactive agents (like Bryan Ross) are excluded from the payment tracker.
 
-### 2. Make ManagerAssignMenu a proper labeled button (not just an icon)
+### 2. Add "Paid" badge to CRM agent cards
+**File: `src/pages/DashboardCRM.tsx`**
+
+- Fetch current week's `lead_payment_tracking` data during `fetchAgents()`
+- Add `standardPaid` and `premiumPaid` boolean fields to the `AgentCRM` interface
+- Display a green "Paid" badge (or "$250 Paid" / "$1K Paid") next to the agent name in the CRM card for agents with active payments this week
+- Only show for agents in the "evaluated" (Live) stage
+
+### 3. Add "Paid" badge to Command Center agent cards
+**File: `src/pages/DashboardCommandCenter.tsx`**
+
+- Fetch current week's `lead_payment_tracking` data in the main query
+- Add payment status to the `AgentWithStats` interface
+- Display the same "Paid" badge on agent rows in the Command Center list
+
+### 4. Add "Paid" badge to Dashboard
+**File: `src/pages/Dashboard.tsx`**
+
+The Dashboard uses `ManagerTeamView` for team display. The payment badge will be added inside `ManagerTeamView` for evaluated agents.
+
 **File: `src/components/dashboard/ManagerTeamView.tsx`**
 
-Change the ManagerAssignMenu trigger from a tiny icon-only button to a labeled "Assign Manager" button matching the style of the other action buttons (Edit Agent, Send Login, etc.). This improves discoverability and tap targets.
+- Fetch `lead_payment_tracking` for the current week during team data load
+- Show "Paid" badge next to agent names who have an active payment record
 
-### 3. Pass `currentManagerId` correctly to ManagerAssignMenu
-**File: `src/components/dashboard/ManagerTeamView.tsx`**
+### 5. Add "Total Deals" stat card to Command Center
+**File: `src/pages/DashboardCommandCenter.tsx`**
 
-Currently `currentManagerId={null}` is hardcoded. Fix it to pass the actual `invited_by_manager_id` from the agent's data so the checkmark shows correctly next to the currently assigned manager.
+- Add `totalDeals` to `summaryStats` by summing `agent.totalDeals` across all agents
+- Add a 5th stat card (or replace one) showing "Total Deals" with a deal icon
+- Make it clickable like the other stat cards
 
-To do this, add `invitedByManagerId` to the `TeamMember` interface and populate it from `agent.invited_by_manager_id` during `fetchTeamData`.
+### 6. Add "Total Deals" stat to CRM top metrics
+**File: `src/pages/DashboardCRM.tsx`**
 
-### 4. Improve Licensed/Unlicensed section tap targets
-**File: `src/components/dashboard/ManagerTeamView.tsx`**
+- Calculate total deals from agent weekly/monthly stats
+- Display in the existing stats area at the top of the CRM
 
-The Collapsible trigger buttons are already full-width. Add `type="button"` explicitly and ensure `onClick` propagation is not blocked. Add a slight min-height for better mobile tapping.
+### 7. Add "Total Deals" to Dashboard stats
+**File: `src/pages/Dashboard.tsx`**
 
-### 5. Verify coursework modules exist
-Run a query to confirm `onboarding_modules` has active modules so the "Add to Course" button will find them.
+- The Dashboard already shows `stats.closed` (closed leads). Add a separate "Deals Submitted" stat from `daily_production` data to distinguish production deals from closed leads.
 
 ## Technical Details
 
 | File | Change |
 |------|--------|
-| `src/components/dashboard/ManagerAssignMenu.tsx` | Switch from client-side RLS queries to `get-active-managers` edge function; change trigger to labeled button |
-| `src/components/dashboard/ManagerTeamView.tsx` | Pass real `invitedByManagerId` to ManagerAssignMenu; add `invitedByManagerId` to TeamMember interface; improve tap targets on collapsible headers |
+| `src/components/dashboard/LeadPaymentTracker.tsx` | Add `.eq("is_inactive", false)` filter |
+| `src/pages/DashboardCRM.tsx` | Fetch payment data, add Paid badge to cards, add Total Deals stat |
+| `src/pages/DashboardCommandCenter.tsx` | Fetch payment data, add Paid badge to rows, add Total Deals stat card |
+| `src/components/dashboard/ManagerTeamView.tsx` | Fetch payment data, show Paid badge on team members |
+| `src/pages/Dashboard.tsx` | Add Total Deals stat from production data |
 

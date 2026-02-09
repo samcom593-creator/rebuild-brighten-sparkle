@@ -183,10 +183,9 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
       const relevantAgents = allAgents.filter(a => activeAgentIds.includes(a.id));
       const userIds = relevantAgents.map(a => a.user_id).filter(Boolean);
 
-      const { data: profilesByUserId } = await supabase
-        .from("profiles")
-        .select("user_id, full_name, avatar_url")
-        .in("user_id", userIds);
+      const userIdSet = new Set(userIds);
+      const { data: allLeaderboardProfiles } = await supabase.rpc("get_leaderboard_profiles");
+      const profilesByUserId = (allLeaderboardProfiles || []).filter((p: any) => userIdSet.has(p.user_id));
 
       const profileByUserIdMap = new Map(profilesByUserId?.map(p => [p.user_id, p]) || []);
 

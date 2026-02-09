@@ -1,117 +1,48 @@
 
+# Fix Invitation Tracker Removal, Account Linking, and Dashboard Agent Management
 
-# Dashboard Roster Alignment and Account Connection Fix
+## Issues to Fix
 
-## Problems Identified
+### 1. Invitation Tracker "X" button not actually removing people
+**Root cause**: The `handleRemove` function in `InvitationTracker.tsx` sets `is_deactivated = true` on the agent and shows "removed" toast, but the `fetchInvitations` query does NOT filter out deactivated agents. So the agent reappears immediately when the list refreshes.
 
-1. **Terminated agents hidden from dashboard**: The roster query filters `is_deactivated = false`, hiding terminated/deactivated agents entirely. The admin cannot see or reactivate them.
+**Fix**: Add `.eq("is_deactivated", false)` to the fetch query in `InvitationTracker.tsx` (line 92, before `.order()`).
 
-2. **Account connection (`link-account`) broken**: The edge function uses `supabaseClient.auth.getClaims(token)` which is not a standard Supabase JS client method. This likely throws an error silently, preventing agents from linking their accounts. Should use `supabase.auth.getUser(token)` instead.
+### 2. Account linking broken (`link-account` edge function)
+**Root cause**: The function uses `supabaseClient.auth.getClaims(token)` which is not a valid Supabase JS method. This silently fails, returning an error and preventing agents from linking their accounts.
 
-3. **No license status toggle**: The dashboard roster shows a license badge but provides no way to toggle between licensed/unlicensed.
+**Fix**: Replace the `getClaims` call with `supabaseAdmin.auth.getUser(token)` which properly verifies the JWT and returns the user ID and email. Remove the unnecessary `supabaseClient` instance entirely.
 
-4. **No reactivate button**: Once an agent is terminated or deactivated, there's no way to bring them back from the dashboard.
+### 3. Terminated agents hidden from dashboard roster
+**Root cause**: The admin query in `ManagerTeamView.tsx` filters `.eq("is_deactivated", false)`, hiding all terminated/inactive agents.
 
-5. **"Send Login" has no UX sound**: The `handleSendPortalLogin` function in `ManagerTeamView` does not play a sound effect on success.
+**Fix**: Remove the deactivation filter for admins, fetch ALL agents, and split them into three sections: Licensed, Unlicensed Pipeline, and Terminated/Inactive (collapsed by default). Add a "Reactivate" button for terminated agents.
 
-6. **"Add Agent" link could be more direct**: The AddAgentModal works but the user wants the invite link to be copy-able with one tap.
+### 4. No license status toggle
+**Fix**: Add a toggle button in each agent's expanded card to switch between "licensed" and "unlicensed" statuses.
 
----
-
-## Plan
-
-### 1. Fix `link-account` edge function (account connection)
-
-Replace `supabaseClient.auth.getClaims(token)` with `supabaseAdmin.auth.getUser(token)` which is the correct method to verify a JWT and extract the user ID.
-
-**File**: `supabase/functions/link-account/index.ts`
-
-### 2. Show terminated/deactivated agents in dashboard roster
-
-In `ManagerTeamView.tsx`:
-- Remove the `.eq("is_deactivated", false)` filter from the admin query so ALL agents are fetched
-- Add a third collapsible section: **"Terminated / Inactive"** for agents with `status = "terminated"` OR `is_deactivated = true` OR `is_inactive = true`
-- The existing Licensed and Unlicensed sections will only show active, non-deactivated agents
-
-### 3. Add "Reactivate" button for terminated/inactive agents
-
-In `ManagerTeamView.tsx`:
-- When an agent card is expanded and the agent is terminated/deactivated, show a **"Reactivate"** button instead of the "Remove" button
-- Reactivation sets `status = "active"`, `is_deactivated = false`, `is_inactive = false`
-- Play a success sound on reactivation
-
-### 4. Add license status toggle
-
-In `ManagerTeamView.tsx`:
-- Add a toggle button in each expanded agent card that allows switching between "Licensed" and "Unlicensed"
-- Updates the `license_status` column on the `agents` table
-- Plays a click sound on toggle
-
-### 5. Add UX sounds to Send Login and other actions
-
-In `ManagerTeamView.tsx`:
-- Import `useSoundEffects`
-- Play `success` sound on successful "Send Login"
-- Play `success` sound on reactivation
-- Play `click` sound on license toggle
-
-### 6. Add quick copy invite link
-
-In `ManagerTeamView.tsx` header (next to the "Agency Roster" title):
-- Add a "Copy Invite Link" button that copies the manager's invite URL to clipboard
-- Play a `success` sound and show a toast confirmation
+### 5. No UX sounds on actions
+**Fix**: Integrate the existing `useSoundEffects` hook to play sounds on Send Login, Reactivate, License Toggle, and Remove actions.
 
 ---
 
 ## Technical Details
 
-### Files Modified
+### File: `src/components/dashboard/InvitationTracker.tsx`
+- Add `.eq("is_deactivated", false)` to the query at line 92
 
-| File | Change |
-|------|--------|
-| `supabase/functions/link-account/index.ts` | Replace `getClaims` with `getUser` for JWT verification |
-| `src/components/dashboard/ManagerTeamView.tsx` | Remove `is_deactivated` filter for admin; add Terminated section; add Reactivate, License toggle, UX sounds, copy invite link |
+### File: `supabase/functions/link-account/index.ts`
+- Remove `supabaseClient` creation (lines 37-41)
+- Replace `supabaseClient.auth.getClaims(token)` (lines 44-56) with `supabaseAdmin.auth.getUser(token)` and extract `user.id` and `user.email`
 
-### `link-account` fix detail
-
-```text
-BEFORE: supabaseClient.auth.getClaims(token)
-AFTER:  supabaseAdmin.auth.getUser(token)  // then extract user.id and user.email
-```
-
-This also removes the need for the separate `supabaseClient` instance (the anon key client used only for getClaims).
-
-### Roster sections after fix
-
-```text
-Agency Roster (18)
-  [Copy Invite Link]  [Sort dropdown]
-
-  Licensed Agents (7)       -- expanded by default
-    [agent cards with: Edit, Send Login, Add Course, Toggle License, Remove]
-
-  Unlicensed Pipeline (8)   -- expanded by default  
-    [agent cards with: Edit, Send Login, Add Course, Toggle License, Remove]
-
-  Terminated / Inactive (3) -- collapsed by default
-    [agent cards with: Edit, Send Login, Reactivate]
-```
-
-### Reactivation logic
-
-```text
-UPDATE agents SET 
-  status = 'active',
-  is_deactivated = false,
-  is_inactive = false,
-  deactivation_reason = null
-WHERE id = agent_id
-```
-
-### License toggle logic
-
-```text
-UPDATE agents SET license_status = 'licensed' | 'unlicensed'
-WHERE id = agent_id
-```
-
+### File: `src/components/dashboard/ManagerTeamView.tsx`
+| Change | Detail |
+|--------|--------|
+| Remove `.eq("is_deactivated", false)` filter | Fetch all agents for admin view |
+| Add `is_deactivated` to SELECT | Need the field to categorize agents |
+| Add `terminatedOpen` state | Collapsed by default |
+| Split agents into 3 groups | Licensed active, Unlicensed active, Terminated/Inactive |
+| Add "Reactivate" button | Sets `is_deactivated=false`, `status=active`, `is_inactive=false` |
+| Add license toggle button | Updates `license_status` column |
+| Import and use `useSoundEffects` | Play success/click sounds on actions |
+| Add Terminated section to JSX | Red-themed collapsible with reactivate controls |

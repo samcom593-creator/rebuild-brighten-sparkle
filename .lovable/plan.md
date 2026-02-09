@@ -1,77 +1,37 @@
 
+# Fix Dashboard Agent Roster to Match Command Center
 
-# Fix Password Reset Emails and Align Auth Flows
+## Problem
+The dashboard's "Your Team" section shows agents split into two collapsible sections: **Licensed Agents (7)** expanded by default, and **Unlicensed Pipeline (11)** collapsed by default. This makes it look like only 7 agents exist. The Command Center shows all 18 agents in a single view. Additionally, the dashboard roster is missing key action buttons that exist in the Command Center (delete, add to course).
 
-## Problems Found
+## Changes
 
-1. **Missing `send-password-reset` edge function** -- The function is referenced in config and called from the Magic Login page's "Send Me a Fresh Link" feature, but the actual code file does not exist. This means the resend link button silently fails.
+### 1. Expand both sections by default
+In `ManagerTeamView.tsx`, change the initial state for `unlicensedOpen` from `false` to `true` so admins see all agents immediately without clicking.
 
-2. **Password reset redirect URL is wrong** -- When agents click "Forgot password?" on the Apex Daily Numbers login, it calls `resetPasswordForEmail` with `redirectTo: "https://apex-financial.org/agent-portal"`. This URL does not handle the recovery token. The redirect needs to go to a page that can process the token and let the user set a new password.
+### 2. Add missing action buttons to each agent's expanded view
+Currently the expanded agent card only shows **Edit Agent** and **Send Login**. Add:
+- **Add to Course** button (using the existing `AddToCourseButton` component)
+- **Deactivate/Delete** button (using the existing `DeactivateAgentDialog` component)
 
-3. **No "Forgot Password" on admin/manager login** -- The `/login` page (for admins and managers) has no forgot password option at all.
+These components already exist and work in other parts of the app -- they just need to be wired into the roster's expanded card view.
 
-4. **No password update handler for recovery tokens** -- When a user clicks the reset link in their email, they land on a page but there is no code to detect the recovery session and prompt for a new password.
-
----
-
-## Plan
-
-### 1. Create the missing `send-password-reset` edge function
-- Build `supabase/functions/send-password-reset/index.ts`
-- It will accept an email and a type ("reset" or "magic_link")
-- For "magic_link": look up the agent by email and call the existing `generateMagicToken` logic to send a new magic link email via Resend
-- For "reset": trigger `supabase.auth.admin.generateLink({ type: 'recovery', email })` and send the reset email via Resend with a proper redirect URL
-
-### 2. Fix password reset redirect URLs
-- In `AgentNumbersLogin.tsx`: change the `redirectTo` in `handleForgotPassword` from `"https://apex-financial.org/agent-portal"` to `"https://apex-financial.org/settings"` (which is the profile settings page that already has password update logic)
-- In `ProfileSettings.tsx`: same fix for consistency
-- In `DashboardAccounts.tsx`: same fix
-
-### 3. Add recovery token detection in the app
-- In `src/hooks/useAuth.ts` or `App.tsx`: detect when the URL contains a `type=recovery` hash parameter (set by the auth system after clicking the email link)
-- When detected, redirect the user to the Settings page with a prompt to enter their new password
-- The Settings page already has `supabase.auth.updateUser({ password })` logic -- just need to auto-show the password field
-
-### 4. Add "Forgot Password" to the admin/manager Login page
-- Add a "Forgot password?" link to `src/pages/Login.tsx`
-- It will call `resetPasswordForEmail` with `redirectTo` pointing to `/settings`
-
-### 5. Align all email flows
-- Verify that the `send-agent-portal-login` function (magic link emails) works end-to-end (already confirmed working from logs)
-- Ensure the `setup-agent-password` function properly handles the CRM-to-auth account linking (already working)
-- Make sure `reset-agent-password` (admin password reset) continues working (already confirmed)
+### 3. Filter out the admin's own record from the roster
+The admin (Samuel James) currently appears in their own roster list. Filter out the current user's agent record so they only see their team members.
 
 ---
 
 ## Technical Details
 
-### New file: `supabase/functions/send-password-reset/index.ts`
-- Uses Resend to send branded password reset emails matching the existing APEX email template style
-- For "magic_link" type: queries the agent by email, generates a magic token, sends the portal login email
-- For "reset" type: generates a recovery link via `supabase.auth.admin.generateLink` and sends it via Resend
+### File: `src/components/dashboard/ManagerTeamView.tsx`
 
-### Modified files
-| File | Change |
-|------|--------|
-| `src/pages/AgentNumbersLogin.tsx` | Fix `redirectTo` URL in `handleForgotPassword` |
-| `src/pages/Login.tsx` | Add "Forgot password?" button with `resetPasswordForEmail` call |
-| `src/components/dashboard/ProfileSettings.tsx` | Fix `redirectTo` URL, add recovery session detection to auto-show password change |
-| `src/pages/DashboardAccounts.tsx` | Fix `redirectTo` URL |
-| `src/pages/MagicLogin.tsx` | No change needed (will work once the edge function exists) |
-| `src/App.tsx` | Add `onAuthStateChange` listener for `PASSWORD_RECOVERY` event to redirect to settings |
+| Change | Detail |
+|--------|--------|
+| Default `unlicensedOpen` to `true` | Line 87: `useState(false)` becomes `useState(true)` |
+| Import `AddToCourseButton` | Add import for existing component |
+| Import `DeactivateAgentDialog` | Add import for existing component |
+| Add state for deactivate dialog | Track which agent is being deactivated |
+| Add buttons to expanded card (lines 463-485) | Add "Add to Course" and "Remove Agent" buttons alongside existing Edit/Send Login buttons |
+| Filter out current user from admin view | After fetching agents, exclude the agent whose `user_id` matches `user.id` |
 
-### Auth flow after fix
-
-```text
-Agent clicks "Forgot password?"
-  --> resetPasswordForEmail() called
-  --> Lovable Cloud email hook sends recovery email
-  --> Agent clicks link in email
-  --> Redirected to app with recovery token in URL hash
-  --> App detects PASSWORD_RECOVERY event via onAuthStateChange
-  --> Redirected to Settings page
-  --> Password change form shown automatically
-  --> Agent sets new password via updateUser({ password })
-  --> Done, agent can now log in
-```
-
+No new files, no database changes, no edge functions needed. This is purely a UI wiring fix using existing components.

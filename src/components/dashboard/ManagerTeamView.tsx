@@ -40,6 +40,7 @@ import { OnboardingTracker } from "./OnboardingTracker";
 import { AgentQuickEditDialog } from "./AgentQuickEditDialog";
 import { AddToCourseButton } from "./AddToCourseButton";
 import { DeactivateAgentDialog } from "./DeactivateAgentDialog";
+import { ManagerAssignMenu } from "./ManagerAssignMenu";
 import { cn } from "@/lib/utils";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 import { toast } from "sonner";
@@ -525,7 +526,6 @@ export function ManagerTeamView() {
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex flex-wrap items-center gap-2 mb-4">
             <Button
               variant="outline"
@@ -536,6 +536,11 @@ export function ManagerTeamView() {
               <Edit2 className="h-3 w-3" />
               Edit Agent
             </Button>
+            <ManagerAssignMenu
+              agentId={member.id}
+              currentManagerId={null}
+              onAssigned={fetchTeamData}
+            />
             {member.userId && (
               <Button
                 variant="outline"

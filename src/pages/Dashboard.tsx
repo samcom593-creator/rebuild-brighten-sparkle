@@ -22,8 +22,6 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { GrowthChart } from "@/components/dashboard/GrowthChart";
 import { AnalyticsPieChart } from "@/components/dashboard/AnalyticsPieChart";
 import { ManagerTeamView } from "@/components/dashboard/ManagerTeamView";
-import { InviteManagerCard } from "@/components/dashboard/InviteManagerCard";
-import { QuickInviteLink } from "@/components/dashboard/QuickInviteLink";
 
 import { LeaderboardTabs } from "@/components/dashboard/LeaderboardTabs";
 import { ClosingRateLeaderboard } from "@/components/dashboard/ClosingRateLeaderboard";
@@ -367,8 +365,6 @@ export default function Dashboard() {
             <ReferralLeaderboard />
           </div>
 
-          {/* Quick Invite Link for Managers/Admins */}
-          {(isManager || isAdmin) && <QuickInviteLink />}
         </div>
 
         {/* RIGHT COLUMN: Recruiting Stats + Quick Actions - 1/3 width */}
@@ -401,12 +397,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ====== 3. INVITE MANAGER (Admin only) ====== */}
-      {isAdmin && (
-        <div className="mb-6">
-          <InviteManagerCard />
-        </div>
-      )}
 
       {/* ====== 4. TEAM VIEW (Managers & Admins) ====== */}
       {(isManager || isAdmin) && (

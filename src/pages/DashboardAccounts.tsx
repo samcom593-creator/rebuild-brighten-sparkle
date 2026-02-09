@@ -257,8 +257,13 @@ export default function DashboardAccounts() {
       const { error } = await supabase
         .from("agents")
         .update({ 
-          status: newStatus,
-          ...(newStatus === "active" ? { verified_at: new Date().toISOString() } : {})
+          status: newStatus as any,
+          ...(newStatus === "active" ? { 
+            verified_at: new Date().toISOString(),
+            is_deactivated: false,
+            is_inactive: false,
+            deactivation_reason: null
+          } : {})
         })
         .eq("id", account.id);
 

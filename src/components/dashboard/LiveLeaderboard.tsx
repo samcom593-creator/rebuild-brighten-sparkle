@@ -95,11 +95,9 @@ export function LiveLeaderboard({ currentAgentId, showAISummary = true }: LiveLe
        // Filter out any production rows whose agent record isn't visible (or was deleted).
        const allowedAgentIds = new Set((agents || []).map(a => a.id));
 
-      const userIds = agents?.map(a => a.user_id).filter(Boolean) || [];
-      const { data: profilesByUserId } = await supabase
-        .from("profiles")
-        .select("user_id, full_name, avatar_url")
-        .in("user_id", userIds);
+      const userIds = new Set(agents?.map(a => a.user_id).filter(Boolean) || []);
+      const { data: allLeaderboardProfiles } = await supabase.rpc("get_leaderboard_profiles");
+      const profilesByUserId = (allLeaderboardProfiles || []).filter((p: any) => userIds.has(p.user_id));
 
       const profileByUserIdMap = new Map(profilesByUserId?.map(p => [p.user_id, p]) || []);
 

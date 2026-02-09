@@ -134,6 +134,14 @@ export default function AgentSignup() {
         throw new Error(response.error);
       }
 
+      // Delete the used invite link so it's one-time-use
+      if (refCode) {
+        await supabase
+          .from("manager_invite_links")
+          .update({ is_active: false })
+          .eq("invite_code", refCode);
+      }
+
       // Sign in the user after successful signup
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: data.email,

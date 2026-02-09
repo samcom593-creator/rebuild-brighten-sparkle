@@ -10,6 +10,7 @@ interface AgentChecklistProps {
   hasDialerLogin: boolean;
   hasDiscordAccess: boolean;
   onUpdate?: () => void;
+  onOptimisticToggle?: (agentId: string, field: string, newValue: boolean) => void;
   readOnly?: boolean;
 }
 
@@ -19,27 +20,33 @@ export function AgentChecklist({
   hasDialerLogin,
   hasDiscordAccess,
   onUpdate,
+  onOptimisticToggle,
   readOnly = false,
 }: AgentChecklistProps) {
   const [updating, setUpdating] = useState<string | null>(null);
 
   const handleToggle = async (field: string, currentValue: boolean) => {
     if (readOnly) return;
+    const newValue = !currentValue;
+    
+    // Optimistic update: immediately update parent state
+    onOptimisticToggle?.(agentId, field, newValue);
     setUpdating(field);
     
     try {
       const { error } = await supabase
         .from("agents")
-        .update({ [field]: !currentValue })
+        .update({ [field]: newValue })
         .eq("id", agentId);
 
       if (error) throw error;
       
       toast.success(`${field.replace(/_/g, " ")} updated`);
-      onUpdate?.();
     } catch (error) {
       console.error("Error updating checklist:", error);
       toast.error("Failed to update");
+      // Revert optimistic update on error
+      onOptimisticToggle?.(agentId, field, currentValue);
     } finally {
       setUpdating(null);
     }

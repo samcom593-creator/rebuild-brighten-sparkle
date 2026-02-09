@@ -12,6 +12,8 @@ import {
   ChevronRight,
   Award,
   Clock,
+  Edit2,
+  Send,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -31,8 +33,10 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { OnboardingTracker } from "./OnboardingTracker";
+import { AgentQuickEditDialog } from "./AgentQuickEditDialog";
 import { cn } from "@/lib/utils";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
+import { toast } from "sonner";
 
 type SortOption = "production-desc" | "production-asc" | "name" | "status";
 
@@ -81,6 +85,20 @@ export function ManagerTeamView() {
   const [sortBy, setSortBy] = useState<SortOption>("production-desc");
   const [licensedOpen, setLicensedOpen] = useState(true);
   const [unlicensedOpen, setUnlicensedOpen] = useState(false);
+  const [editAgent, setEditAgent] = useState<TeamMember | null>(null);
+
+  const handleSendPortalLogin = async (member: TeamMember) => {
+    try {
+      const { error } = await supabase.functions.invoke("send-agent-portal-login", {
+        body: { agentId: member.id },
+      });
+      if (error) throw error;
+      toast.success(`Portal login sent to ${member.email}`);
+    } catch (error) {
+      console.error("Error sending portal login:", error);
+      toast.error("Failed to send portal login");
+    }
+  };
 
   useEffect(() => {
     fetchTeamData();
@@ -441,6 +459,30 @@ export function ManagerTeamView() {
               <p className="text-xs text-muted-foreground">Rate</p>
             </div>
           </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 mb-4">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-xs"
+              onClick={(e) => { e.stopPropagation(); setEditAgent(member); }}
+            >
+              <Edit2 className="h-3 w-3" />
+              Edit Agent
+            </Button>
+            {member.userId && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs"
+                onClick={(e) => { e.stopPropagation(); handleSendPortalLogin(member); }}
+              >
+                <Send className="h-3 w-3" />
+                Send Login
+              </Button>
+            )}
+          </div>
           
           <OnboardingTracker
             agentId={member.id}
@@ -607,6 +649,20 @@ export function ManagerTeamView() {
           </Collapsible>
         </div>
       </GlassCard>
+
+      {/* Agent Edit Dialog */}
+      {editAgent && (
+        <AgentQuickEditDialog
+          open={!!editAgent}
+          onOpenChange={(open) => { if (!open) setEditAgent(null); }}
+          agentId={editAgent.id}
+          currentName={editAgent.name}
+          production={editAgent.monthALP}
+          deals={editAgent.monthDeals}
+          onUpdate={fetchTeamData}
+          period="month"
+        />
+      )}
     </div>
   );
 }

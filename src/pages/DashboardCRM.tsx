@@ -9,6 +9,7 @@ import {
   Clock,
   AlertTriangle,
   TrendingUp,
+  DollarSign,
   Calendar,
   Award,
   ChevronDown,
@@ -103,8 +104,12 @@ interface AgentCRM {
   weeklyClosingRate: number;
   // Monthly production stats
   monthlyALP: number;
+  monthlyDeals: number;
   // Last contact
   lastContactedAt: string | null;
+  // Payment status
+  standardPaid: boolean;
+  premiumPaid: boolean;
 }
 
 const attendanceColors: Record<AttendanceStatus, string> = {
@@ -327,6 +332,7 @@ export default function DashboardCRM() {
 
       let weeklyProductionMap = new Map<string, { aop: number; presentations: number; deals: number }>();
       let monthlyProductionMap = new Map<string, number>();
+      let monthlyDealsMap = new Map<string, number>();
 
       if (liveAgentIds.length > 0) {
         // Fetch all production for this month (which includes this week)
@@ -341,6 +347,8 @@ export default function DashboardCRM() {
           // Monthly aggregation
           const existingMonthly = monthlyProductionMap.get(prod.agent_id) || 0;
           monthlyProductionMap.set(prod.agent_id, existingMonthly + (Number(prod.aop) || 0));
+          const existingMonthlyDeals = monthlyDealsMap.get(prod.agent_id) || 0;
+          monthlyDealsMap.set(prod.agent_id, existingMonthlyDeals + (prod.deals_closed || 0));
 
           // Weekly aggregation (only if within this week)
           if (prod.production_date >= weekStartStr) {
@@ -370,6 +378,21 @@ export default function DashboardCRM() {
         }
       }
 
+      // Fetch payment tracking for this week
+      const { data: payments } = await supabase
+        .from("lead_payment_tracking")
+        .select("agent_id, tier, paid")
+        .eq("week_start", weekStartStr)
+        .eq("paid", true);
+
+      const paymentMap = new Map<string, { standard: boolean; premium: boolean }>();
+      payments?.forEach((p: any) => {
+        const existing = paymentMap.get(p.agent_id) || { standard: false, premium: false };
+        if (p.tier === "standard") existing.standard = true;
+        if (p.tier === "premium") existing.premium = true;
+        paymentMap.set(p.agent_id, existing);
+      });
+
       const crmAgents: AgentCRM[] = agentData.map((agent, index) => {
         const profile = profileMap.get(agent.user_id);
         const weeklyStats = weeklyProductionMap.get(agent.id) || { aop: 0, presentations: 0, deals: 0 };
@@ -377,6 +400,10 @@ export default function DashboardCRM() {
         const weeklyClosingRate = weeklyStats.presentations > 0 
           ? Math.round((weeklyStats.deals / weeklyStats.presentations) * 100) 
           : 0;
+
+        const monthlyDeals = monthlyDealsMap.get(agent.id) || 0;
+
+        const pay = paymentMap.get(agent.id) || { standard: false, premium: false };
 
         return {
           id: agent.id,
@@ -410,7 +437,10 @@ export default function DashboardCRM() {
           weeklyDeals: weeklyStats.deals,
           weeklyClosingRate,
           monthlyALP,
+          monthlyDeals,
           lastContactedAt: lastContactMap.get(agent.id) || null,
+          standardPaid: pay.standard,
+          premiumPaid: pay.premium,
         };
       });
 
@@ -558,6 +588,11 @@ export default function DashboardCRM() {
   const inField = activeAgents.filter(a => a.onboardingStage === "evaluated").length;
   const meetingEligible = inTraining + inField;
   const criticalAttendance = activeAgents.filter(a => a.attendanceStatus === "critical").length;
+  const totalDeals = activeAgents
+    .filter(a => a.onboardingStage === "evaluated")
+    .reduce((sum, a) => sum + a.monthlyDeals, 0);
+  const totalPaidAgents = activeAgents
+    .filter(a => a.onboardingStage === "evaluated" && (a.standardPaid || a.premiumPaid)).length;
 
   if (authLoading) {
     return (
@@ -623,6 +658,16 @@ export default function DashboardCRM() {
                   {agent.isDeactivated && (
                     <Badge variant="destructive" className="text-[9px] h-3.5 px-1">
                       Inactive
+                    </Badge>
+                  )}
+                  {agent.onboardingStage === "evaluated" && agent.premiumPaid && (
+                    <Badge className="text-[9px] h-3.5 px-1 bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+                      $1K Paid
+                    </Badge>
+                  )}
+                  {agent.onboardingStage === "evaluated" && agent.standardPaid && !agent.premiumPaid && (
+                    <Badge className="text-[9px] h-3.5 px-1 bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+                      $250 Paid
                     </Badge>
                   )}
                 </div>
@@ -983,7 +1028,7 @@ export default function DashboardCRM() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
-              className="grid grid-cols-2 md:grid-cols-5 gap-2"
+              className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2"
             >
               <GlassCard
                 className={cn(
@@ -1071,6 +1116,30 @@ export default function DashboardCRM() {
                   <div>
                     <p className="text-lg font-bold">{criticalAttendance}</p>
                     <p className="text-[10px] text-muted-foreground">Attendance Issues</p>
+                  </div>
+                </div>
+              </GlassCard>
+
+              <GlassCard className="p-2">
+                <div className="flex items-center gap-2">
+                  <div className="p-1 rounded-lg bg-emerald-500/10">
+                    <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold">{totalDeals}</p>
+                    <p className="text-[10px] text-muted-foreground">Total Deals</p>
+                  </div>
+                </div>
+              </GlassCard>
+
+              <GlassCard className="p-2">
+                <div className="flex items-center gap-2">
+                  <div className="p-1 rounded-lg bg-emerald-500/10">
+                    <DollarSign className="h-3.5 w-3.5 text-emerald-500" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold">{totalPaidAgents}</p>
+                    <p className="text-[10px] text-muted-foreground">Paid Agents</p>
                   </div>
                 </div>
               </GlassCard>

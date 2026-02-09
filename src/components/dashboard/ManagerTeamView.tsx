@@ -71,6 +71,8 @@ interface TeamMember {
   isInactive: boolean;
   lastContactedAt: string | null;
   invitedByManagerId: string | null;
+  standardPaid: boolean;
+  premiumPaid: boolean;
 }
 
 interface TeamStats {
@@ -332,6 +334,21 @@ export function ManagerTeamView() {
         .gte("production_date", monthStart)
         .lte("production_date", monthEnd);
 
+      // Fetch payment tracking for this week
+      const { data: payments } = await supabase
+        .from("lead_payment_tracking")
+        .select("agent_id, tier, paid")
+        .eq("week_start", weekStart)
+        .eq("paid", true);
+
+      const paymentMap = new Map<string, { standard: boolean; premium: boolean }>();
+      payments?.forEach((p: any) => {
+        const existing = paymentMap.get(p.agent_id) || { standard: false, premium: false };
+        if (p.tier === "standard") existing.standard = true;
+        if (p.tier === "premium") existing.premium = true;
+        paymentMap.set(p.agent_id, existing);
+      });
+
       // Build team member data
       // Filter out the current user's own agent record
       const filteredAgents = teamAgents.filter(a => a.user_id !== user.id);
@@ -343,7 +360,6 @@ export function ManagerTeamView() {
         const contacted = agentApps.filter(a => a.contacted_at).length;
         const closed = agentApps.filter(a => a.closed_at).length;
 
-        // Find most recent last_contacted_at across all applications
         const lastContactDates = agentApps
           .map(a => a.last_contacted_at)
           .filter(Boolean) as string[];
@@ -351,7 +367,6 @@ export function ManagerTeamView() {
           ? lastContactDates.sort().reverse()[0]
           : null;
 
-        // Calculate production
         const agentWeekProduction = weekProduction?.filter(p => p.agent_id === agent.id) || [];
         const agentMonthProduction = monthProduction?.filter(p => p.agent_id === agent.id) || [];
 
@@ -359,13 +374,12 @@ export function ManagerTeamView() {
         const monthALP = agentMonthProduction.reduce((sum, p) => sum + (Number(p.aop) || 0), 0);
         const monthDeals = agentMonthProduction.reduce((sum, p) => sum + (p.deals_closed || 0), 0);
 
-        // Determine if direct report
         const isDirectReport = agent.invited_by_manager_id === currentAgent.id;
-
-        // Get manager name
         const managerName = agent.invited_by_manager_id
           ? managerProfiles[agent.invited_by_manager_id] || null
           : null;
+
+        const pay = paymentMap.get(agent.id) || { standard: false, premium: false };
 
         return {
           id: agent.id,
@@ -389,6 +403,8 @@ export function ManagerTeamView() {
           isInactive: agent.is_inactive || false,
           lastContactedAt,
           invitedByManagerId: agent.invited_by_manager_id || null,
+          standardPaid: pay.standard,
+          premiumPaid: pay.premium,
         };
       });
 
@@ -510,6 +526,17 @@ export function ManagerTeamView() {
                 {member.userId && managerUserIds.has(member.userId) && (
                   <Badge className="text-[10px] px-1.5 py-0 bg-teal-500/20 text-teal-400 border-teal-500/30">
                     Manager
+                  </Badge>
+                )}
+                {/* Paid badge */}
+                {member.onboardingStage === "evaluated" && member.premiumPaid && (
+                  <Badge className="text-[10px] px-1.5 py-0 bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+                    $1K Paid
+                  </Badge>
+                )}
+                {member.onboardingStage === "evaluated" && member.standardPaid && !member.premiumPaid && (
+                  <Badge className="text-[10px] px-1.5 py-0 bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+                    $250 Paid
                   </Badge>
                 )}
                 {/* Show reporting manager for non-direct reports (admin view) */}

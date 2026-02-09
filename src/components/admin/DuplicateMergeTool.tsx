@@ -213,8 +213,17 @@ export function DuplicateMergeTool({ open, onClose, onMergeComplete }: Duplicate
         title: "Merge complete",
         description: data?.message || "Production records have been consolidated and duplicates archived.",
       });
+      // Invalidate ALL agent-related caches across every module
       queryClient.invalidateQueries({ queryKey: ["all-agents-for-merge"] });
       queryClient.invalidateQueries({ queryKey: ["command-center-agents"] });
+      queryClient.invalidateQueries({ queryKey: ["active-managers"] });
+      queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
+      queryClient.invalidateQueries({ queryKey: ["agents"] });
+      queryClient.invalidateQueries({ queryKey: ["team"] });
+      queryClient.invalidateQueries({ queryKey: ["production"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      // Broad invalidation to catch any remaining agent-related queries
+      queryClient.invalidateQueries();
       setManualSelectedAgents([]);
       setManualPrimaryAgent(null);
       onMergeComplete();

@@ -17,6 +17,7 @@ import {
   Copy,
   Crown,
   UserMinus,
+  RotateCcw,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -709,16 +710,45 @@ export default function DashboardCommandCenter() {
                                 Copy Login Link
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem 
-                                className="text-destructive focus:text-destructive"
-                                onClick={(e) => { 
-                                  e.stopPropagation(); 
-                                  setDeactivateAgent(agent); 
-                                }}
-                              >
-                                <UserX className="h-4 w-4 mr-2" />
-                                Remove from Pipeline
-                              </DropdownMenuItem>
+                              {(agent.isDeactivated || agent.isInactive || agent.status === "terminated") ? (
+                                <DropdownMenuItem 
+                                  className="text-emerald-500 focus:text-emerald-500"
+                                  onClick={async (e) => { 
+                                    e.stopPropagation();
+                                    try {
+                                      const { error } = await supabase
+                                        .from("agents")
+                                        .update({ 
+                                          status: "active" as any,
+                                          is_deactivated: false, 
+                                          is_inactive: false, 
+                                          deactivation_reason: null,
+                                          verified_at: new Date().toISOString()
+                                        })
+                                        .eq("id", agent.id);
+                                      if (error) throw error;
+                                      toast.success(`${agent.fullName} has been reactivated`);
+                                      refetch();
+                                    } catch (err: any) {
+                                      toast.error(err.message || "Failed to reactivate agent");
+                                    }
+                                  }}
+                                >
+                                  <RotateCcw className="h-4 w-4 mr-2" />
+                                  Reactivate Agent
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem 
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    setDeactivateAgent(agent); 
+                                  }}
+                                >
+                                  <UserX className="h-4 w-4 mr-2" />
+                                  Remove from Pipeline
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>

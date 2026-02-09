@@ -98,6 +98,8 @@ interface AgentWithStats {
   closingRate: number;
   hasCrmLink: boolean;
   lastActivity: string | null;
+  standardPaid: boolean;
+  premiumPaid: boolean;
 }
 
 export default function DashboardCommandCenter() {
@@ -214,6 +216,27 @@ export default function DashboardCommandCenter() {
 
       const managerUserIds = new Set(managerRoles?.map(r => r.user_id) || []);
 
+      // Fetch payment tracking for this week
+      const today = new Date();
+      const dayOfWeek = today.getDay();
+      const weekStart = new Date(today);
+      weekStart.setDate(today.getDate() - dayOfWeek);
+      const weekStartStr = weekStart.toISOString().split("T")[0];
+
+      const { data: payments } = await supabase
+        .from("lead_payment_tracking")
+        .select("agent_id, tier, paid")
+        .eq("week_start", weekStartStr)
+        .eq("paid", true);
+
+      const paymentMap = new Map<string, { standard: boolean; premium: boolean }>();
+      payments?.forEach((p: any) => {
+        const existing = paymentMap.get(p.agent_id) || { standard: false, premium: false };
+        if (p.tier === "standard") existing.standard = true;
+        if (p.tier === "premium") existing.premium = true;
+        paymentMap.set(p.agent_id, existing);
+      });
+
       // Build production map from pre-aggregated data (cheap operation)
       const productionMap = new Map<string, { alp: number; deals: number; presentations: number; lastDate: string }>();
       production?.forEach((p) => {
@@ -230,7 +253,6 @@ export default function DashboardCommandCenter() {
         .filter((a) => {
           const profile = a.profiles || (a.user_id ? fallbackProfileMap.get(a.user_id) : null);
           const name = profile?.full_name || "";
-          // HARD RULE: No anonymous, numeric-only, or "Unknown" entries
           return (
             name &&
             name.trim().length > 0 &&
@@ -244,6 +266,7 @@ export default function DashboardCommandCenter() {
           const closingRate = prod && prod.presentations > 0 
             ? Math.round((prod.deals / prod.presentations) * 100) 
             : 0;
+          const pay = paymentMap.get(a.id) || { standard: false, premium: false };
           
           return {
             id: a.id,
@@ -261,6 +284,8 @@ export default function DashboardCommandCenter() {
             closingRate,
             hasCrmLink: !!a.profile_id,
             lastActivity: prod?.lastDate || null,
+            standardPaid: pay.standard,
+            premiumPaid: pay.premium,
           };
         });
 
@@ -451,7 +476,7 @@ export default function DashboardCommandCenter() {
 
   // Summary stats - updated "Needs Attention" logic
   const summaryStats = useMemo(() => {
-    if (!agentsData) return { totalAlp: 0, activeAgents: 0, producers: 0, weakPerformers: 0 };
+    if (!agentsData) return { totalAlp: 0, activeAgents: 0, producers: 0, weakPerformers: 0, totalDeals: 0 };
     
     const activeAgents = agentsData.filter((a) => !a.isDeactivated && !a.isInactive);
     const producers = agentsData.filter((a) => a.totalAlp > 0);
@@ -470,6 +495,7 @@ export default function DashboardCommandCenter() {
       activeAgents: activeAgents.length,
       producers: producers.length,
       weakPerformers: weak.length,
+      totalDeals: agentsData.reduce((sum, a) => sum + a.totalDeals, 0),
     };
   }, [agentsData]);
 
@@ -520,7 +546,7 @@ export default function DashboardCommandCenter() {
         </div>
 
         {/* Summary Stats - Clickable */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <Card 
             className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
             onClick={() => setStatPopup({ type: "totalAlp", open: true })}
@@ -584,6 +610,22 @@ export default function DashboardCommandCenter() {
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wide">Needs Attention</p>
                   <p className="text-2xl font-bold text-destructive">{summaryStats.weakPerformers}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card 
+            className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+          >
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-emerald-500/10">
+                  <TrendingUp className="h-5 w-5 text-emerald-500" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Deals</p>
+                  <p className="text-2xl font-bold">{summaryStats.totalDeals}</p>
                 </div>
               </div>
             </CardContent>
@@ -703,6 +745,16 @@ export default function DashboardCommandCenter() {
                               )}
                               {agent.isInactive && !agent.isDeactivated && (
                                 <Badge variant="secondary" className="text-xs shrink-0">Inactive</Badge>
+                              )}
+                              {agent.premiumPaid && (
+                                <Badge className="text-xs shrink-0 bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+                                  $1K Paid
+                                </Badge>
+                              )}
+                              {agent.standardPaid && !agent.premiumPaid && (
+                                <Badge className="text-xs shrink-0 bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+                                  $250 Paid
+                                </Badge>
                               )}
                             </div>
                             <p className="text-xs text-muted-foreground truncate">

@@ -1,48 +1,29 @@
 
-# Fix Invitation Tracker Removal, Account Linking, and Dashboard Agent Management
+# Fix Course Notification Emails to Managers
 
-## Issues to Fix
+## Current State
+- **notify-course-complete**: Already sends emails to both admin and manager on course completion. However, it looks up agent profiles using `profile_id`, which 5 out of 20 agents don't have -- causing those agents' names/emails to silently fail. Should also use `user_id` as a fallback.
+- **notify-course-started**: Only notifies the admin (sam@apex-financial.org). Does NOT notify the agent's manager at all.
+- **notify-module-progress**: Already notifies managers per-module (working correctly via `user_id` lookup).
 
-### 1. Invitation Tracker "X" button not actually removing people
-**Root cause**: The `handleRemove` function in `InvitationTracker.tsx` sets `is_deactivated = true` on the agent and shows "removed" toast, but the `fetchInvitations` query does NOT filter out deactivated agents. So the agent reappears immediately when the list refreshes.
+## Changes
 
-**Fix**: Add `.eq("is_deactivated", false)` to the fetch query in `InvitationTracker.tsx` (line 92, before `.order()`).
+### 1. Fix `notify-course-complete` profile lookup
+Add a `user_id` fallback when `profile_id` is missing so that all agents' names and emails are correctly resolved. Currently 5 agents have no `profile_id` set, which means the function can't find their profile and defaults to "Agent" with no email.
 
-### 2. Account linking broken (`link-account` edge function)
-**Root cause**: The function uses `supabaseClient.auth.getClaims(token)` which is not a valid Supabase JS method. This silently fails, returning an error and preventing agents from linking their accounts.
-
-**Fix**: Replace the `getClaims` call with `supabaseAdmin.auth.getUser(token)` which properly verifies the JWT and returns the user ID and email. Remove the unnecessary `supabaseClient` instance entirely.
-
-### 3. Terminated agents hidden from dashboard roster
-**Root cause**: The admin query in `ManagerTeamView.tsx` filters `.eq("is_deactivated", false)`, hiding all terminated/inactive agents.
-
-**Fix**: Remove the deactivation filter for admins, fetch ALL agents, and split them into three sections: Licensed, Unlicensed Pipeline, and Terminated/Inactive (collapsed by default). Add a "Reactivate" button for terminated agents.
-
-### 4. No license status toggle
-**Fix**: Add a toggle button in each agent's expanded card to switch between "licensed" and "unlicensed" statuses.
-
-### 5. No UX sounds on actions
-**Fix**: Integrate the existing `useSoundEffects` hook to play sounds on Send Login, Reactivate, License Toggle, and Remove actions.
+### 2. Update `notify-course-started` to also notify the manager
+Currently this function only emails the admin. Add a manager lookup (same pattern as `notify-course-complete`) and include the manager in the recipients list so they know when their agent starts the course.
 
 ---
 
 ## Technical Details
 
-### File: `src/components/dashboard/InvitationTracker.tsx`
-- Add `.eq("is_deactivated", false)` to the query at line 92
+### File: `supabase/functions/notify-course-complete/index.ts`
+- After the `profile_id` lookup (lines 45-55), add a fallback: if no profile found via `profile_id`, try looking up by `user_id`
+- This ensures all 20 agents get properly identified
 
-### File: `supabase/functions/link-account/index.ts`
-- Remove `supabaseClient` creation (lines 37-41)
-- Replace `supabaseClient.auth.getClaims(token)` (lines 44-56) with `supabaseAdmin.auth.getUser(token)` and extract `user.id` and `user.email`
-
-### File: `src/components/dashboard/ManagerTeamView.tsx`
-| Change | Detail |
-|--------|--------|
-| Remove `.eq("is_deactivated", false)` filter | Fetch all agents for admin view |
-| Add `is_deactivated` to SELECT | Need the field to categorize agents |
-| Add `terminatedOpen` state | Collapsed by default |
-| Split agents into 3 groups | Licensed active, Unlicensed active, Terminated/Inactive |
-| Add "Reactivate" button | Sets `is_deactivated=false`, `status=active`, `is_inactive=false` |
-| Add license toggle button | Updates `license_status` column |
-| Import and use `useSoundEffects` | Play success/click sounds on actions |
-| Add Terminated section to JSX | Red-themed collapsible with reactivate controls |
+### File: `supabase/functions/notify-course-started/index.ts`
+- After fetching the agent, also fetch `invited_by_manager_id`
+- Look up the manager's profile email (same pattern used in `notify-course-complete`)
+- Add the manager to the email recipients list alongside the admin
+- No changes to the email template needed -- just add the manager as a recipient

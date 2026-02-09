@@ -482,9 +482,11 @@ export default function DashboardAccounts() {
                               Edit Account
                             </DropdownMenuItem>
                             <DropdownMenuItem 
-                              onClick={async () => {
+                            onClick={async () => {
                                 try {
-                                  const { error } = await supabase.auth.resetPasswordForEmail(account.email);
+                                  const { error } = await supabase.functions.invoke("send-password-reset", {
+                                    body: { email: account.email, type: "reset" },
+                                  });
                                   if (error) throw error;
                                   toast.success(`Password reset email sent to ${account.email}`);
                                 } catch (err: any) {

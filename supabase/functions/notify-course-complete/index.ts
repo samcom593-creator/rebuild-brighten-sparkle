@@ -39,9 +39,11 @@ const handler = async (req: Request): Promise<Response> => {
       .eq("id", agentId)
       .single();
 
-    // Get agent profile
+    // Get agent profile (try profile_id first, fallback to user_id)
     let finalAgentName = agentName || "Agent";
     let finalAgentEmail = agentEmail;
+    let profileFound = false;
+
     if (agent?.profile_id) {
       const { data: profile } = await supabase
         .from("profiles")
@@ -51,6 +53,29 @@ const handler = async (req: Request): Promise<Response> => {
       if (profile) {
         finalAgentName = agentName || profile.full_name || "Agent";
         finalAgentEmail = agentEmail || profile.email;
+        profileFound = true;
+      }
+    }
+
+    // Fallback: lookup by user_id if profile_id lookup failed
+    if (!profileFound) {
+      const { data: agentRecord } = await supabase
+        .from("agents")
+        .select("user_id")
+        .eq("id", agentId)
+        .single();
+      
+      if (agentRecord?.user_id) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name, email")
+          .eq("user_id", agentRecord.user_id)
+          .single();
+        if (profile) {
+          finalAgentName = agentName || profile.full_name || "Agent";
+          finalAgentEmail = agentEmail || profile.email;
+          console.log(`Resolved agent via user_id fallback: ${finalAgentName}`);
+        }
       }
     }
 

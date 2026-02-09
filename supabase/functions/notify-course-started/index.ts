@@ -33,7 +33,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Get agent details
     const { data: agent, error: agentError } = await supabaseClient
       .from("agents")
-      .select("user_id, onboarding_stage")
+      .select("user_id, onboarding_stage, invited_by_manager_id, manager_id")
       .eq("id", agentId)
       .single();
 
@@ -63,11 +63,41 @@ const handler = async (req: Request): Promise<Response> => {
     const agentName = profile.full_name || "Unknown Agent";
     const agentEmail = profile.email;
 
-    // Send notification email to admin
+    // Look up manager's email
+    let managerEmail: string | null = null;
+    const managerId = agent.invited_by_manager_id || agent.manager_id;
+    
+    if (managerId) {
+      const { data: managerAgent } = await supabaseClient
+        .from("agents")
+        .select("user_id")
+        .eq("id", managerId)
+        .single();
+
+      if (managerAgent?.user_id) {
+        const { data: managerProfile } = await supabaseClient
+          .from("profiles")
+          .select("full_name, email")
+          .eq("user_id", managerAgent.user_id)
+          .single();
+        if (managerProfile?.email) {
+          managerEmail = managerProfile.email;
+          console.log(`Manager found: ${managerProfile.full_name} (${managerEmail})`);
+        }
+      }
+    }
+
+    // Build recipient list
+    const recipients: string[] = [ADMIN_EMAIL];
+    if (managerEmail && managerEmail !== ADMIN_EMAIL) {
+      recipients.push(managerEmail);
+    }
+
+    // Send notification email to admin + manager
     try {
       await resend.emails.send({
         from: "APEX Financial <noreply@apex-financial.org>",
-        to: [ADMIN_EMAIL],
+        to: recipients,
         subject: `📚 ${agentName} Started the Training Course`,
         html: `
           <!DOCTYPE html>

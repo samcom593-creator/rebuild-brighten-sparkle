@@ -35,48 +35,26 @@ export function ManagerAssignMenu({ agentId, currentManagerId, onAssigned }: Man
   const fetchManagers = async () => {
     setLoading(true);
     try {
-      // Get all users with manager role
-      const { data: managerRoles } = await supabase
-        .from("user_roles")
-        .select("user_id")
-        .eq("role", "manager");
+      // Use edge function to bypass RLS and get ALL active managers
+      const { data, error } = await supabase.functions.invoke("get-active-managers");
 
-      if (!managerRoles || managerRoles.length === 0) {
+      if (error) {
+        console.error("Error fetching managers:", error);
         setManagers([]);
         return;
       }
 
-      const userIds = managerRoles.map(r => r.user_id);
-
-      // Get their agent records
-      const { data: agents } = await supabase
-        .from("agents")
-        .select("id, user_id")
-        .in("user_id", userIds)
-        .eq("is_deactivated", false);
-
-      if (!agents) {
+      if (data?.managers && Array.isArray(data.managers)) {
+        setManagers(data.managers.map((m: { id: string; name: string }) => ({
+          id: m.id,
+          name: m.name,
+        })));
+      } else {
         setManagers([]);
-        return;
       }
-
-      // Get their profiles
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, full_name")
-        .in("user_id", userIds);
-
-      const managerList: Manager[] = agents.map(agent => {
-        const profile = profiles?.find(p => p.user_id === agent.user_id);
-        return {
-          id: agent.id,
-          name: profile?.full_name || "Unknown Manager",
-        };
-      });
-
-      setManagers(managerList);
     } catch (error) {
       console.error("Error fetching managers:", error);
+      setManagers([]);
     } finally {
       setLoading(false);
     }
@@ -109,12 +87,13 @@ export function ManagerAssignMenu({ agentId, currentManagerId, onAssigned }: Man
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-7 w-7">
+        <Button variant="outline" size="sm" className="gap-1.5 text-xs">
           {assigning ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            <Loader2 className="h-3 w-3 animate-spin" />
           ) : (
-            <Users className="h-3.5 w-3.5" />
+            <Users className="h-3 w-3" />
           )}
+          Assign Manager
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">

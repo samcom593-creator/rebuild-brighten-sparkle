@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   User,
   Mail,
@@ -30,9 +30,12 @@ import { toast } from "@/hooks/use-toast";
 export function ProfileSettings() {
   const { user, profile, refreshProfile, isAdmin } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const passwordSectionRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
+  const isRecovery = searchParams.get("recovery") === "true";
   
   const [formData, setFormData] = useState({
     fullName: "",
@@ -74,6 +77,15 @@ export function ProfileSettings() {
       setAvatarUrl(profile.avatar_url || null);
     }
   }, [profile]);
+
+  // Auto-scroll to password section when arriving from recovery link
+  useEffect(() => {
+    if (isRecovery && passwordSectionRef.current) {
+      setTimeout(() => {
+        passwordSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 500);
+    }
+  }, [isRecovery]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -216,8 +228,9 @@ export function ProfileSettings() {
 
     setResetLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
-        redirectTo: "https://apex-financial.org/agent-portal",
+      // Use our custom edge function to send branded reset email via Resend
+      const { error } = await supabase.functions.invoke("send-password-reset", {
+        body: { email: formData.email, type: "reset" },
       });
 
       if (error) throw error;
@@ -403,7 +416,12 @@ export function ProfileSettings() {
           </Button>
 
           {/* Password Change Section */}
-          <div className="pt-4 border-t border-border space-y-4">
+          <div ref={passwordSectionRef} className="pt-4 border-t border-border space-y-4">
+            {isRecovery && (
+              <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 text-sm">
+                🔐 <strong>Password Recovery:</strong> Set your new password below.
+              </div>
+            )}
             <h4 className="font-medium flex items-center gap-2">
               <KeyRound className="h-4 w-4 text-primary" />
               Change Password

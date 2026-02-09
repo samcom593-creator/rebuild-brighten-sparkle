@@ -337,14 +337,38 @@ export default function Login() {
                 </GradientButton>
               </form>
 
-              <Button
-                variant="ghost"
-                className="w-full mt-4"
-                onClick={() => setShowPhoneLogin(true)}
-              >
-                <Phone className="h-4 w-4 mr-2" />
-                Sign in with phone number
-              </Button>
+              <div className="flex items-center justify-between mt-4">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={async () => {
+                    const email = (document.getElementById("email") as HTMLInputElement)?.value;
+                    if (!email) {
+                      toast.error("Please enter your email first");
+                      return;
+                    }
+                    try {
+                      const { error } = await supabase.functions.invoke("send-password-reset", {
+                        body: { email, type: "reset" },
+                      });
+                      if (error) throw error;
+                      toast.success("Password reset email sent! Check your inbox.");
+                    } catch (err: any) {
+                      toast.error(err.message || "Failed to send reset email");
+                    }
+                  }}
+                >
+                  Forgot password?
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowPhoneLogin(true)}
+                >
+                  <Phone className="h-4 w-4 mr-2" />
+                  Use phone
+                </Button>
+              </div>
             </>
           )}
 

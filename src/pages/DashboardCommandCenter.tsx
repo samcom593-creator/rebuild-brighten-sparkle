@@ -158,7 +158,7 @@ export default function DashboardCommandCenter() {
     staleTime: 120000, // 2 minutes - prevent unnecessary refetches
     gcTime: 600000, // 10 minutes cache
     queryFn: async () => {
-      // First get all agents with profiles
+      // First get all agents with profiles (with user_id fallback)
       const { data: agents, error: agentsError } = await supabase
         .from("agents")
         .select(`
@@ -176,6 +176,24 @@ export default function DashboardCommandCenter() {
           )
         `)
         .order("created_at", { ascending: false });
+
+      if (agentsError) throw agentsError;
+
+      // For agents missing profile_id, fetch profiles by user_id as fallback
+      const agentsMissingProfile = (agents || []).filter(a => !a.profiles && a.user_id);
+      let fallbackProfileMap = new Map<string, { full_name: string | null; email: string; phone: string | null }>();
+      
+      if (agentsMissingProfile.length > 0) {
+        const userIds = agentsMissingProfile.map(a => a.user_id!);
+        const { data: fallbackProfiles } = await supabase
+          .from("profiles")
+          .select("user_id, full_name, email, phone")
+          .in("user_id", userIds);
+        
+        fallbackProfiles?.forEach(p => {
+          if (p.user_id) fallbackProfileMap.set(p.user_id, p);
+        });
+      }
 
       if (agentsError) throw agentsError;
 
@@ -210,7 +228,7 @@ export default function DashboardCommandCenter() {
       // Map to AgentWithStats, filtering out invalid entries
       const agentStats: AgentWithStats[] = (agents || [])
         .filter((a) => {
-          const profile = a.profiles;
+          const profile = a.profiles || (a.user_id ? fallbackProfileMap.get(a.user_id) : null);
           const name = profile?.full_name || "";
           // HARD RULE: No anonymous, numeric-only, or "Unknown" entries
           return (
@@ -221,7 +239,7 @@ export default function DashboardCommandCenter() {
           );
         })
         .map((a) => {
-          const profile = a.profiles;
+          const profile = a.profiles || (a.user_id ? fallbackProfileMap.get(a.user_id) : null);
           const prod = productionMap.get(a.id);
           const closingRate = prod && prod.presentations > 0 
             ? Math.round((prod.deals / prod.presentations) * 100) 

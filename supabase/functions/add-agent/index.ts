@@ -160,8 +160,8 @@ const handler = async (req: Request): Promise<Response> => {
     await supabaseAdmin.from("user_roles").delete().eq("user_id", userId);
     await supabaseAdmin.from("agents").delete().eq("user_id", userId);
 
-    // Create profile record
-    const { error: profileError } = await supabaseAdmin
+    // Create profile record and get its id for profile_id link
+    const { data: newProfile, error: profileError } = await supabaseAdmin
       .from("profiles")
       .insert({
         user_id: userId,
@@ -171,9 +171,11 @@ const handler = async (req: Request): Promise<Response> => {
         city: city || null,
         state: state || null,
         instagram_handle: instagramHandle || null,
-      });
+      })
+      .select("id")
+      .single();
 
-    if (profileError) {
+    if (profileError || !newProfile) {
       console.error("Error creating profile:", profileError);
       return new Response(
         JSON.stringify({ error: "Failed to create profile" }),
@@ -181,7 +183,8 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    console.log(`Created profile for ${userId}`);
+    const profileId = newProfile.id;
+    console.log(`Created profile ${profileId} for ${userId}`);
 
     // Add agent role
     const { error: roleError } = await supabaseAdmin
@@ -195,6 +198,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Create agent record
     const agentInsert: Record<string, unknown> = {
       user_id: userId,
+      profile_id: profileId,
       invited_by_manager_id: managerId,
       status: "active",
       license_status: licenseStatus,

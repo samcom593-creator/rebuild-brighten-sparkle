@@ -23,7 +23,7 @@ import { GrowthChart } from "@/components/dashboard/GrowthChart";
 import { AnalyticsPieChart } from "@/components/dashboard/AnalyticsPieChart";
 import { ManagerTeamView } from "@/components/dashboard/ManagerTeamView";
 import { InviteManagerCard } from "@/components/dashboard/InviteManagerCard";
-import { InvitationTracker } from "@/components/dashboard/InvitationTracker";
+
 import { LeaderboardTabs } from "@/components/dashboard/LeaderboardTabs";
 import { ClosingRateLeaderboard } from "@/components/dashboard/ClosingRateLeaderboard";
 import { ReferralLeaderboard } from "@/components/dashboard/ReferralLeaderboard";
@@ -382,7 +382,7 @@ export default function Dashboard() {
           </motion.div>
 
           {/* Manager Leaderboard for Admin/Manager */}
-          {(isManager || isAdmin) && <InvitationTracker />}
+          
 
           {/* Onboarding Pipeline for Admin/Manager */}
           {(isManager || isAdmin) && <OnboardingPipelineCard />}

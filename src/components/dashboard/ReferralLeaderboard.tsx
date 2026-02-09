@@ -211,9 +211,10 @@ export function ReferralLeaderboard({ currentAgentId, period = "week" }: Referra
               <div key={i} className="animate-pulse h-10 bg-muted/30 rounded" />
             ))
           ) : entries.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-4">
-              No referral activity yet
-            </p>
+            <div className="flex items-center justify-center gap-1.5 py-2 text-xs text-muted-foreground">
+              <Handshake className="h-3 w-3" />
+              <span>No referral activity yet this period</span>
+            </div>
           ) : (
             entries.map((entry, index) => (
               <motion.div

@@ -186,9 +186,10 @@ export function ClosingRateLeaderboard({ currentAgentId, period = "week" }: Clos
             <div key={i} className="animate-pulse h-10 bg-muted/30 rounded" />
           ))
         ) : entries.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-4">
-            Min. 3 presentations required
-          </p>
+          <div className="flex items-center justify-center gap-1.5 py-2 text-xs text-muted-foreground">
+            <Percent className="h-3 w-3" />
+            <span>No qualifying data yet (min. 3 presentations)</span>
+          </div>
         ) : (
           entries.map((entry, index) => {
             const rateColors = getClosingRateColor(entry.closingRate);

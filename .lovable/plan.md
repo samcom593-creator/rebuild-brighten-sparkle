@@ -1,46 +1,43 @@
 
+# Add Inline Manager Reassignment and Stage Change to Dashboard and Command Center
 
-# Add Reactivate Button Across All Platforms
+## What Changes
 
-## Problem
-When agents are marked as "Terminated" or "Inactive", there is no quick reactivate button in the **Command Center**. The Dashboard roster already has one, but the Command Center's three-dot menu only shows "Remove from Pipeline" with no way to undo termination. The Accounts page has a toggle but it only updates `status` without clearing the `is_deactivated` and `is_inactive` flags, which means the agent still appears terminated in other views.
+### 1. Command Center -- Add "Reassign Manager" and "Change Stage" to Dropdown Menu
+The three-dot dropdown currently has Edit Profile, Promote/Demote, Email Login, Copy Login, and Reactivate/Remove. We will add two new menu items:
 
-## Changes
+- **"Reassign Manager"** -- opens a sub-menu listing all available managers (same pattern as `ManagerAssignMenu` component). Tapping a manager name instantly updates `invited_by_manager_id` and refreshes the list.
+- **"Change Stage"** -- opens a sub-menu with the four onboarding stages (Onboarding, Training Online, In Field Training, Evaluated). Tapping one instantly updates `onboarding_stage` and refreshes.
 
-### 1. Command Center (`DashboardCommandCenter.tsx`)
-- Add a **"Reactivate Agent"** menu item in the three-dot dropdown menu, shown conditionally when `agent.isDeactivated || agent.isInactive`
-- The reactivate handler will update the agent record: `status = "active"`, `is_deactivated = false`, `is_inactive = false`, `deactivation_reason = null`
-- Play a success sound and show a toast on completion
-- Refetch agent list after reactivation
-- Import `RotateCcw` icon from lucide-react for the menu item
+Both will use `DropdownMenuSub` / `DropdownMenuSubContent` for a clean nested menu experience, keeping everything one-tap accessible without opening the full profile editor.
 
-### 2. Accounts Page (`DashboardAccounts.tsx`)
-- Fix `handleToggleStatus` to also clear `is_deactivated` and `is_inactive` flags when reactivating (setting status back to "active")
-- Currently it only sets `status: "active"` but leaves the deactivation flags untouched, so agents still appear terminated elsewhere
+### 2. Dashboard Roster -- Add Inline Manager Reassignment
+The expanded agent card in `ManagerTeamView.tsx` already shows inline onboarding stage controls (`OnboardingTracker`), license toggle, and action buttons. We will add:
 
-### 3. Dashboard Roster (already done)
-- `ManagerTeamView.tsx` already has a working `handleReactivate` button -- no changes needed here.
+- A **Manager Reassign button** using the existing `ManagerAssignMenu` component, placed in the action buttons row alongside "Edit Agent", "Send Login", etc.
+- This component already fetches managers and handles the update -- it just needs to be imported and wired up with `onAssigned={fetchTeamData}`.
 
 ## Technical Details
 
 | File | Change |
 |------|--------|
-| `src/pages/DashboardCommandCenter.tsx` | Add `handleReactivate` function; add conditional "Reactivate Agent" menu item with green styling in the dropdown; import `RotateCcw` |
-| `src/pages/DashboardAccounts.tsx` | Update `handleToggleStatus` to also set `is_deactivated: false, is_inactive: false, deactivation_reason: null` when reactivating |
+| `src/pages/DashboardCommandCenter.tsx` | Add `DropdownMenuSub` imports; fetch managers list on mount; add "Reassign Manager" sub-menu and "Change Stage" sub-menu to the dropdown |
+| `src/components/dashboard/ManagerTeamView.tsx` | Import and add `ManagerAssignMenu` component in the expanded card action buttons row |
 
-### Reactivation query (both files)
+### Command Center dropdown additions
+The dropdown will gain two new sections between "Edit Profile" and "Promote/Demote":
+
 ```text
-UPDATE agents SET
-  status = 'active',
-  is_deactivated = false,
-  is_inactive = false,
-  deactivation_reason = null
-WHERE id = agent_id
+Edit Profile
+---
+Reassign Manager >  [Sub-menu: Unassigned, Manager A, Manager B, ...]
+Change Stage >      [Sub-menu: Onboarding, Training Online, In Field Training, Evaluated]
+---
+Promote to Manager / Remove Manager Role
+...
 ```
 
-### Command Center dropdown change
-The three-dot menu will conditionally show either:
-- **"Reactivate Agent"** (green, with RotateCcw icon) -- when agent is deactivated/inactive
-- **"Remove from Pipeline"** (red, with UserX icon) -- when agent is active
+Each sub-menu item will directly update the database and call `refetch()` with a success toast -- no extra dialogs or confirmation needed, keeping it one-tap as requested.
 
-This ensures terminated agents can be reactivated with one tap from any management screen.
+### Dashboard roster addition
+The expanded card action buttons row will include the `ManagerAssignMenu` dropdown button (Users icon) next to the existing Edit/Send Login/License/Reactivate buttons, giving managers and admins quick reassignment without opening the full edit dialog.

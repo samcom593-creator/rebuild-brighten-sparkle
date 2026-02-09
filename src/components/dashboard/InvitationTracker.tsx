@@ -10,7 +10,8 @@ import {
   RefreshCw,
   Loader2,
   UserCheck,
-  Send
+  Send,
+  X
 } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +37,8 @@ export function InvitationTracker() {
   const [invitations, setInvitations] = useState<InvitationStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [sendingTo, setSendingTo] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [confirmRemoveId, setConfirmRemoveId] = useState<string | null>(null);
   
 
   useEffect(() => {
@@ -119,6 +122,25 @@ export function InvitationTracker() {
       console.error("Error fetching invitations:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRemoveAgent = async (invitation: InvitationStatus) => {
+    setRemovingId(invitation.id);
+    try {
+      const { error } = await supabase
+        .from("agents")
+        .update({ is_deactivated: true, status: "terminated" as const })
+        .eq("id", invitation.id);
+      if (error) throw error;
+      toast.success(`${invitation.agentName} removed`);
+      setConfirmRemoveId(null);
+      fetchInvitations();
+    } catch (error) {
+      console.error("Error removing agent:", error);
+      toast.error("Failed to remove agent");
+    } finally {
+      setRemovingId(null);
     }
   };
 
@@ -220,6 +242,37 @@ export function InvitationTracker() {
                         ) : (
                           <Send className="h-3 w-3" />
                         )}
+                      </Button>
+                    )}
+                    {confirmRemoveId === invitation.id ? (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveAgent(invitation)}
+                          disabled={removingId === invitation.id}
+                          className="h-6 px-1.5 text-[10px] text-destructive hover:bg-destructive/10"
+                        >
+                          {removingId === invitation.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Yes"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setConfirmRemoveId(null)}
+                          className="h-6 px-1.5 text-[10px]"
+                        >
+                          No
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setConfirmRemoveId(invitation.id)}
+                        className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        title="Remove agent"
+                      >
+                        <X className="h-3 w-3" />
                       </Button>
                     )}
                   </div>

@@ -586,50 +586,63 @@ export default function LeadCenter() {
         transition={{ delay: 0.1 }}
         className="grid grid-cols-2 md:grid-cols-4 gap-4"
       >
-        <GlassCard className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <Users className="h-5 w-5 text-primary" />
+        {[
+          {
+            label: "Total Leads",
+            value: stats.total,
+            icon: Users,
+            iconColor: "text-primary",
+            bgColor: "bg-primary/10",
+            onClick: () => { setFilterManager("all"); setFilterStatus("all"); setFilterLicense("all"); },
+            active: filterManager === "all" && filterStatus === "all" && filterLicense === "all",
+          },
+          {
+            label: "Unassigned",
+            value: stats.unassigned,
+            icon: UserX,
+            iconColor: "text-amber-500",
+            bgColor: "bg-amber-500/10",
+            onClick: () => { setFilterManager("unassigned"); setFilterStatus("all"); setFilterLicense("all"); },
+            active: filterManager === "unassigned",
+          },
+          {
+            label: "Licensed",
+            value: stats.licensed,
+            icon: Award,
+            iconColor: "text-emerald-500",
+            bgColor: "bg-emerald-500/10",
+            onClick: () => { setFilterLicense("licensed"); setFilterManager("all"); setFilterStatus("all"); },
+            active: filterLicense === "licensed",
+          },
+          {
+            label: "New Leads",
+            value: stats.new,
+            icon: Clock,
+            iconColor: "text-blue-500",
+            bgColor: "bg-blue-500/10",
+            onClick: () => { setFilterStatus("new"); setFilterManager("all"); setFilterLicense("all"); },
+            active: filterStatus === "new",
+          },
+        ].map((card) => (
+          <GlassCard
+            key={card.label}
+            className={cn(
+              "p-4 cursor-pointer transition-all hover:ring-2 hover:ring-primary/40",
+              card.active && "ring-2 ring-primary shadow-lg shadow-primary/10"
+            )}
+            onClick={card.onClick}
+          >
+            <div className="flex items-center gap-3">
+              <div className={cn("p-2 rounded-lg", card.bgColor)}>
+                <card.icon className={cn("h-5 w-5", card.iconColor)} />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-foreground">{card.value}</p>
+                <p className="text-xs text-muted-foreground">{card.label}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{stats.total}</p>
-              <p className="text-xs text-muted-foreground">Total Leads</p>
-            </div>
-          </div>
-        </GlassCard>
-        <GlassCard className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-amber-500/10">
-              <UserX className="h-5 w-5 text-amber-500" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{stats.unassigned}</p>
-              <p className="text-xs text-muted-foreground">Unassigned</p>
-            </div>
-          </div>
-        </GlassCard>
-        <GlassCard className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-emerald-500/10">
-              <Award className="h-5 w-5 text-emerald-500" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{stats.licensed}</p>
-              <p className="text-xs text-muted-foreground">Licensed</p>
-            </div>
-          </div>
-        </GlassCard>
-        <GlassCard className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-blue-500/10">
-              <Clock className="h-5 w-5 text-blue-500" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{stats.new}</p>
-              <p className="text-xs text-muted-foreground">New Leads</p>
-            </div>
-          </div>
-        </GlassCard>
+          </GlassCard>
+        ))}
       </motion.div>
 
       {/* Filters */}

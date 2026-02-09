@@ -73,19 +73,25 @@ const handler = async (req: Request): Promise<Response> => {
     
     // Increasing urgency based on time
     const subjectByType: Record<string, string> = {
+      "10am": "☀️ Good morning! Log your numbers for yesterday",
       "4pm": "📊 Don't forget to log your numbers!",
+      "6pm": "⏰ Time is running out - log your numbers now!",
       "7pm": "⏰ Time is running out - log your numbers now!",
       "9pm": "🚨 FINAL REMINDER: Log your numbers before midnight!",
     };
 
     const urgencyByType: Record<string, string> = {
+      "10am": "Good morning! Start your day right by logging yesterday's production numbers.",
       "4pm": "End of day is approaching - take a moment to log your production.",
+      "6pm": "Only a few hours left! Don't miss today's numbers.",
       "7pm": "Only a few hours left! Don't miss today's numbers.",
       "9pm": "LAST CHANCE! Log your numbers now before the day ends.",
     };
 
     const urgencyColorByType: Record<string, string> = {
+      "10am": "#3b82f6", // blue
       "4pm": "#14b8a6", // teal
+      "6pm": "#f59e0b", // amber
       "7pm": "#f59e0b", // amber
       "9pm": "#ef4444", // red
     };

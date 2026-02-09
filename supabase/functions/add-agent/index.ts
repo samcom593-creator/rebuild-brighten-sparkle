@@ -19,6 +19,8 @@ interface AddAgentRequest {
   city?: string;
   state?: string;
   instagramHandle?: string;
+  crmSetupLink?: string;
+  licenseProgress?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -83,6 +85,8 @@ const handler = async (req: Request): Promise<Response> => {
       city,
       state,
       instagramHandle,
+      crmSetupLink,
+      licenseProgress,
     } = body;
 
     // Validate required fields
@@ -189,16 +193,22 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Create agent record
+    const agentInsert: Record<string, unknown> = {
+      user_id: userId,
+      invited_by_manager_id: managerId,
+      status: "active",
+      license_status: licenseStatus,
+      onboarding_stage: "onboarding",
+      start_date: startDate || null,
+    };
+
+    if (crmSetupLink) {
+      agentInsert.crm_setup_link = crmSetupLink;
+    }
+
     const { data: newAgent, error: agentError } = await supabaseAdmin
       .from("agents")
-      .insert({
-        user_id: userId,
-        invited_by_manager_id: managerId,
-        status: "active",
-        license_status: licenseStatus,
-        onboarding_stage: "onboarding",
-        start_date: startDate || null,
-      })
+      .insert(agentInsert)
       .select("id")
       .single();
 

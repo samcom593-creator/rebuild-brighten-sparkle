@@ -68,6 +68,7 @@ interface TeamMember {
   isDirectReport: boolean;
   isDeactivated: boolean;
   isInactive: boolean;
+  lastContactedAt: string | null;
 }
 
 interface TeamStats {
@@ -265,7 +266,7 @@ export function ManagerTeamView() {
       const agentIds = teamAgents.map(a => a.id);
       const { data: applications } = await supabase
         .from("applications")
-        .select("assigned_agent_id, status, contacted_at, closed_at")
+        .select("assigned_agent_id, status, contacted_at, closed_at, last_contacted_at")
         .in("assigned_agent_id", agentIds);
 
       // Get production data for week and month
@@ -299,6 +300,14 @@ export function ManagerTeamView() {
         const totalLeads = agentApps.length;
         const contacted = agentApps.filter(a => a.contacted_at).length;
         const closed = agentApps.filter(a => a.closed_at).length;
+
+        // Find most recent last_contacted_at across all applications
+        const lastContactDates = agentApps
+          .map(a => a.last_contacted_at)
+          .filter(Boolean) as string[];
+        const lastContactedAt = lastContactDates.length > 0
+          ? lastContactDates.sort().reverse()[0]
+          : null;
 
         // Calculate production
         const agentWeekProduction = weekProduction?.filter(p => p.agent_id === agent.id) || [];
@@ -336,6 +345,7 @@ export function ManagerTeamView() {
           isDirectReport,
           isDeactivated: agent.is_deactivated || false,
           isInactive: agent.is_inactive || false,
+          lastContactedAt,
         };
       });
 
@@ -404,6 +414,20 @@ export function ManagerTeamView() {
     setExpandedMember(expandedMember === memberId ? null : memberId);
   };
 
+  const getTimeAgo = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
@@ -446,7 +470,17 @@ export function ManagerTeamView() {
                   </Badge>
                 )}
               </div>
-              <p className="text-xs text-muted-foreground">{member.email}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-muted-foreground">{member.email}</p>
+                {member.lastContactedAt ? (
+                  <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">
+                    <Clock className="h-2.5 w-2.5" />
+                    {getTimeAgo(member.lastContactedAt)}
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-muted-foreground/50">No contact yet</span>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-3">

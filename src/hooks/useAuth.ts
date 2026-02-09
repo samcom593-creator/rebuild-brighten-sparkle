@@ -89,6 +89,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async (event, session) => {
         if (!isMounted) return;
         
+        // Handle password recovery event - redirect to settings
+        if (event === "PASSWORD_RECOVERY") {
+          console.log("PASSWORD_RECOVERY event detected, redirecting to settings");
+          window.location.href = "/dashboard/settings?recovery=true";
+          return;
+        }
+        
         setSession(session);
         setUser(session?.user ?? null);
 

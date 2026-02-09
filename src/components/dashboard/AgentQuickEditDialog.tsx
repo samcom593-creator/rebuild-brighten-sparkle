@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Edit2, Merge, User, Check, Loader2, Mail, Phone, Send, Instagram, UserPlus, Trash2, AlertTriangle, UserMinus } from "lucide-react";
+import { Edit2, Merge, User, Check, Loader2, Mail, Phone, Send, Instagram, UserPlus, Trash2, AlertTriangle, UserMinus, KeyRound, RefreshCw } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -54,6 +54,7 @@ interface LinkedProfile {
   full_name: string | null;
   email: string | null;
   phone: string | null;
+  instagram_handle: string | null;
 }
 
 interface AgentData {
@@ -92,6 +93,13 @@ export function AgentQuickEditDialog({
   const [linkedProfile, setLinkedProfile] = useState<LinkedProfile | null>(null);
   const [agentData, setAgentData] = useState<AgentData | null>(null);
 
+  // New state for account management
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [updatingEmail, setUpdatingEmail] = useState(false);
+  const [resettingPassword, setResettingPassword] = useState(false);
+  const [sendingLogin, setSendingLogin] = useState(false);
+
   useEffect(() => {
     if (open && agentId) {
       setDisplayName(currentName);
@@ -103,6 +111,8 @@ export function AgentQuickEditDialog({
       setEmail("");
       setPhone("");
       setInstagram("");
+      setNewEmail("");
+      setNewPassword("");
       fetchAgentData();
       fetchPossibleMatches();
     }
@@ -110,7 +120,6 @@ export function AgentQuickEditDialog({
 
   const fetchAgentData = async () => {
     try {
-      // Fetch agent with linked profile via profile_id
       const { data: agent } = await supabase
         .from("agents")
         .select(`
@@ -118,7 +127,7 @@ export function AgentQuickEditDialog({
           user_id,
           profile_id,
           display_name,
-          profile:profiles!agents_profile_id_fkey(full_name, email, phone)
+          profile:profiles!agents_profile_id_fkey(full_name, email, phone, instagram_handle)
         `)
         .eq("id", agentId)
         .maybeSingle();
@@ -131,13 +140,13 @@ export function AgentQuickEditDialog({
         });
 
         if (agent.profile) {
-          const profile = agent.profile as { full_name?: string; email?: string; phone?: string };
+          const profile = agent.profile as { full_name?: string; email?: string; phone?: string; instagram_handle?: string };
           setLinkedProfile({
             full_name: profile.full_name || null,
             email: profile.email || null,
             phone: profile.phone || null,
+            instagram_handle: profile.instagram_handle || null,
           });
-          // Pre-fill form fields from profile
           if (profile.full_name && currentName === "Unknown Agent") {
             setDisplayName(profile.full_name);
           }
@@ -146,6 +155,9 @@ export function AgentQuickEditDialog({
           }
           if (profile.phone) {
             setPhone(profile.phone);
+          }
+          if (profile.instagram_handle) {
+            setInstagram(profile.instagram_handle);
           }
         }
       }
@@ -157,14 +169,6 @@ export function AgentQuickEditDialog({
   const fetchPossibleMatches = async () => {
     setLoading(true);
     try {
-      // Get current agent's profile data if any
-      const { data: currentAgent } = await supabase
-        .from("agents")
-        .select("id, user_id, display_name")
-        .eq("id", agentId)
-        .single();
-
-      // Get all other agents with their production totals
       const { data: allAgents } = await supabase
         .from("agents")
         .select("id, user_id, display_name")
@@ -176,14 +180,12 @@ export function AgentQuickEditDialog({
         return;
       }
 
-      // Get profiles for agents with user_ids
       const userIds = allAgents.map(a => a.user_id).filter(Boolean);
       const { data: profiles } = await supabase
         .from("profiles")
         .select("user_id, full_name, email, phone")
         .in("user_id", userIds);
 
-      // Get production totals
       const { data: productionData } = await supabase
         .from("daily_production")
         .select("agent_id, aop, deals_closed");
@@ -197,7 +199,6 @@ export function AgentQuickEditDialog({
         productionByAgent[p.agent_id].deals += Number(p.deals_closed || 0);
       });
 
-      // Build matches list - agents with names that could be duplicates
       const matches: PossibleMatch[] = allAgents
         .map(agent => {
           const profile = profiles?.find(p => p.user_id === agent.user_id);
@@ -215,7 +216,7 @@ export function AgentQuickEditDialog({
         })
         .filter(m => m.name !== "Unknown")
         .sort((a, b) => a.name.localeCompare(b.name))
-        .slice(0, 50); // Allow more matches for easier finding
+        .slice(0, 50);
 
       setPossibleMatches(matches);
     } catch (error) {
@@ -245,35 +246,47 @@ export function AgentQuickEditDialog({
 
       if (error) throw error;
 
-      // If agent has a profile, update phone there
-      if (agentData?.profile_id) {
+      // Sync profiles via user_id (preferred) or profile_id fallback
+      if (agentData?.user_id) {
         const { error: profileError } = await supabase
           .from("profiles")
-          .update({ phone: phone.trim() || null })
+          .update({
+            full_name: displayName.trim(),
+            phone: phone.trim() || null,
+            instagram_handle: instagram.trim() || null,
+          })
+          .eq("user_id", agentData.user_id);
+
+        if (profileError) {
+          console.error("Error updating profile:", profileError);
+        }
+      } else if (agentData?.profile_id) {
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update({
+            full_name: displayName.trim(),
+            phone: phone.trim() || null,
+            instagram_handle: instagram.trim() || null,
+          })
           .eq("id", agentData.profile_id);
 
         if (profileError) {
-          console.error("Error updating profile phone:", profileError);
+          console.error("Error updating profile:", profileError);
         }
       }
 
       // If admin changed ALP or deals, update production record
       if (isAdmin && (editAlp !== production || editDeals !== deals)) {
-        // Determine target date based on period
-        let targetDate = new Date().toISOString().split('T')[0]; // Default: today
-        
-        // For non-day periods, calculate delta and apply to end date
+        let targetDate = new Date().toISOString().split('T')[0];
         const isRangeEdit = period && period !== "day";
         
         if (isRangeEdit && dateRange?.to) {
           targetDate = dateRange.to;
         }
         
-        // Calculate the delta (difference from displayed total)
         const alpDelta = editAlp - production;
         const dealsDelta = editDeals - deals;
         
-        // Fetch existing record for target date
         const { data: existingRecord } = await supabase
           .from("daily_production")
           .select("id, aop, deals_closed, presentations")
@@ -283,7 +296,6 @@ export function AgentQuickEditDialog({
 
         if (existingRecord) {
           if (isRangeEdit) {
-            // Add delta to existing values (adjusting the total)
             await supabase
               .from("daily_production")
               .update({ 
@@ -292,7 +304,6 @@ export function AgentQuickEditDialog({
               })
               .eq("id", existingRecord.id);
           } else {
-            // Direct overwrite for "day" period
             await supabase
               .from("daily_production")
               .update({ 
@@ -302,7 +313,6 @@ export function AgentQuickEditDialog({
               .eq("id", existingRecord.id);
           }
         } else {
-          // Create new record
           const newAlp = isRangeEdit ? Math.max(0, alpDelta) : editAlp;
           const newDeals = isRangeEdit ? Math.max(0, dealsDelta) : editDeals;
           
@@ -337,65 +347,127 @@ export function AgentQuickEditDialog({
     }
   };
 
-  const handleMerge = async () => {
-    if (!selectedMergeId) {
-      toast({
-        title: "Select an agent",
-        description: "Please select an agent to merge with.",
-        variant: "destructive",
-      });
+  const handleUpdateEmail = async () => {
+    if (!newEmail.trim() || !newEmail.includes("@")) {
+      toast({ title: "Valid email required", variant: "destructive" });
       return;
     }
+    if (!agentData?.user_id) return;
 
-    // Prevent self-merge
-    if (selectedMergeId === agentId) {
+    setUpdatingEmail(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const { data, error } = await supabase.functions.invoke("update-user-email", {
+        body: { newEmail: newEmail.trim(), targetUserId: agentData.user_id },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
       toast({
-        title: "Invalid selection",
-        description: "You can't merge an agent into itself. Please select a different agent.",
+        title: "Email updated ✅",
+        description: `Email changed to ${newEmail.trim()}. Notifications sent.`,
+      });
+      setEmail(newEmail.trim());
+      setNewEmail("");
+      onUpdate?.();
+    } catch (error: any) {
+      console.error("Error updating email:", error);
+      toast({
+        title: "Email update failed",
+        description: error.message || "Failed to update email.",
         variant: "destructive",
       });
+    } finally {
+      setUpdatingEmail(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!newPassword.trim() || newPassword.length < 6) {
+      toast({ title: "Password must be at least 6 characters", variant: "destructive" });
+      return;
+    }
+    if (!agentData?.user_id) return;
+
+    setResettingPassword(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("reset-agent-password", {
+        body: { targetUserId: agentData.user_id, newPassword: newPassword.trim() },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast({
+        title: "Password reset ✅",
+        description: "New password has been set for this agent.",
+      });
+      setNewPassword("");
+    } catch (error: any) {
+      console.error("Error resetting password:", error);
+      toast({
+        title: "Password reset failed",
+        description: error.message || "Failed to reset password.",
+        variant: "destructive",
+      });
+    } finally {
+      setResettingPassword(false);
+    }
+  };
+
+  const handleSendLogin = async () => {
+    if (!agentData?.user_id) return;
+
+    setSendingLogin(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-agent-portal-login", {
+        body: { agentId },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Login sent ✅",
+        description: "Portal login email sent to agent (includes Discord link).",
+      });
+    } catch (error: any) {
+      console.error("Error sending login:", error);
+      toast({
+        title: "Send failed",
+        description: error.message || "Failed to send login email.",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingLogin(false);
+    }
+  };
+
+  const handleMerge = async () => {
+    if (!selectedMergeId) {
+      toast({ title: "Select an agent", description: "Please select an agent to merge with.", variant: "destructive" });
+      return;
+    }
+    if (selectedMergeId === agentId) {
+      toast({ title: "Invalid selection", description: "You can't merge an agent into itself.", variant: "destructive" });
       return;
     }
 
     setMerging(true);
     try {
-      console.log("🔀 Starting merge:", {
-        primaryAgentId: selectedMergeId,
-        duplicateAgentIds: [agentId],
-      });
-
       const { data, error } = await supabase.functions.invoke("merge-agent-records", {
-        body: {
-          primaryAgentId: selectedMergeId,
-          duplicateAgentIds: [agentId],
-        },
+        body: { primaryAgentId: selectedMergeId, duplicateAgentIds: [agentId] },
       });
 
-      console.log("🔀 Merge response:", { data, error });
+      if (error) throw new Error(error.message || "Edge function error");
+      if (data?.error) throw new Error(data.error);
 
-      if (error) {
-        throw new Error(error.message || "Edge function error");
-      }
-
-      // Check if data contains an error field (edge function returned error response)
-      if (data?.error) {
-        throw new Error(data.error);
-      }
-
-      toast({
-        title: "Agents merged ✅",
-        description: data?.message || "Records have been combined successfully.",
-      });
-      
+      toast({ title: "Agents merged ✅", description: data?.message || "Records have been combined successfully." });
       onUpdate?.();
       onOpenChange(false);
     } catch (error: any) {
       console.error("Error merging agents:", error);
-      toast({
-        title: "Merge failed",
-        description: error?.message || "Failed to merge agent records. Please try again.",
-        variant: "destructive",
-      });
+      toast({ title: "Merge failed", description: error?.message || "Failed to merge agent records.", variant: "destructive" });
     } finally {
       setMerging(false);
     }
@@ -408,25 +480,15 @@ export function AgentQuickEditDialog({
         .from("agents")
         .update({ is_inactive: true, status: "inactive" })
         .eq("id", agentId);
-
       if (error) throw error;
-
-      toast({
-        title: "Agent marked as inactive",
-        description: `${currentName} is now hidden from leaderboards and active views.`,
-      });
-
+      toast({ title: "Agent marked as inactive", description: `${currentName} is now hidden from leaderboards.` });
       setShowDeleteConfirm(false);
       setDeleteStep("choice");
       onUpdate?.();
       onOpenChange(false);
     } catch (error) {
       console.error("Error inactivating agent:", error);
-      toast({
-        title: "Failed to inactivate",
-        description: "Could not mark agent as inactive. Please try again.",
-        variant: "destructive",
-      });
+      toast({ title: "Failed to inactivate", description: "Could not mark agent as inactive.", variant: "destructive" });
     } finally {
       setDeleting(false);
     }
@@ -435,36 +497,12 @@ export function AgentQuickEditDialog({
   const handleDelete = async () => {
     setDeleting(true);
     try {
-      // Delete all dependent records first (order matters due to FK constraints)
-      // Clear references from other agents pointing to this one
-      await supabase
-        .from("agents")
-        .update({ manager_id: null })
-        .eq("manager_id", agentId);
-      
-      await supabase
-        .from("agents")
-        .update({ invited_by_manager_id: null })
-        .eq("invited_by_manager_id", agentId);
-      
-      await supabase
-        .from("agents")
-        .update({ switched_to_manager_id: null })
-        .eq("switched_to_manager_id", agentId);
+      await supabase.from("agents").update({ manager_id: null }).eq("manager_id", agentId);
+      await supabase.from("agents").update({ invited_by_manager_id: null }).eq("invited_by_manager_id", agentId);
+      await supabase.from("agents").update({ switched_to_manager_id: null }).eq("switched_to_manager_id", agentId);
+      await supabase.from("applications").update({ assigned_agent_id: null }).eq("assigned_agent_id", agentId);
+      await supabase.from("aged_leads").update({ assigned_manager_id: null }).eq("assigned_manager_id", agentId);
 
-      // Clear application assignments
-      await supabase
-        .from("applications")
-        .update({ assigned_agent_id: null })
-        .eq("assigned_agent_id", agentId);
-
-      // Clear aged leads assignments
-      await supabase
-        .from("aged_leads")
-        .update({ assigned_manager_id: null })
-        .eq("assigned_manager_id", agentId);
-
-      // Delete all records from tables with agent_id FK
       await supabase.from("daily_production").delete().eq("agent_id", agentId);
       await supabase.from("agent_notes").delete().eq("agent_id", agentId);
       await supabase.from("agent_goals").delete().eq("agent_id", agentId);
@@ -479,42 +517,21 @@ export function AgentQuickEditDialog({
       await supabase.from("magic_login_tokens").delete().eq("agent_id", agentId);
       await supabase.from("plaque_awards").delete().eq("agent_id", agentId);
       await supabase.from("onboarding_progress").delete().eq("agent_id", agentId);
-
-      // Delete manager invite links
-      await supabase
-        .from("manager_invite_links")
-        .delete()
-        .eq("manager_agent_id", agentId);
-
-      // Delete contact history and interview recordings via applications
-      // (these reference agent_id directly too)
+      await supabase.from("manager_invite_links").delete().eq("manager_agent_id", agentId);
       await supabase.from("contact_history").delete().eq("agent_id", agentId);
       await supabase.from("interview_recordings").delete().eq("agent_id", agentId);
 
-      // Finally delete the agent record
-      const { error: agentError } = await supabase
-        .from("agents")
-        .delete()
-        .eq("id", agentId);
-
+      const { error: agentError } = await supabase.from("agents").delete().eq("id", agentId);
       if (agentError) throw agentError;
 
-      toast({
-        title: "Agent deleted",
-        description: `${currentName} and all associated records have been removed.`,
-      });
-
+      toast({ title: "Agent deleted", description: `${currentName} and all associated records have been removed.` });
       setShowDeleteConfirm(false);
       setDeleteStep("choice");
       onUpdate?.();
       onOpenChange(false);
     } catch (error) {
       console.error("Error deleting agent:", error);
-      toast({
-        title: "Delete failed",
-        description: "Failed to delete agent. Please try again.",
-        variant: "destructive",
-      });
+      toast({ title: "Delete failed", description: "Failed to delete agent. Please try again.", variant: "destructive" });
     } finally {
       setDeleting(false);
     }
@@ -522,20 +539,11 @@ export function AgentQuickEditDialog({
 
   const handleCreateAndSendLogin = async () => {
     if (!email.trim()) {
-      toast({
-        title: "Email required",
-        description: "Please enter an email address to send the login.",
-        variant: "destructive",
-      });
+      toast({ title: "Email required", description: "Please enter an email address.", variant: "destructive" });
       return;
     }
-
     if (!displayName.trim()) {
-      toast({
-        title: "Name required",
-        description: "Please enter a name for this agent.",
-        variant: "destructive",
-      });
+      toast({ title: "Name required", description: "Please enter a name.", variant: "destructive" });
       return;
     }
 
@@ -553,20 +561,12 @@ export function AgentQuickEditDialog({
 
       if (error) throw error;
 
-      toast({
-        title: "Login Sent! 🎉",
-        description: `Portal access sent to ${email}. Agent is now LIVE.`,
-      });
-      
+      toast({ title: "Login Sent! 🎉", description: `Portal access sent to ${email}. Agent is now LIVE.` });
       onUpdate?.();
       onOpenChange(false);
     } catch (error: any) {
       console.error("Error creating agent login:", error);
-      toast({
-        title: "Creation failed",
-        description: error.message || "Failed to create agent login. Please try again.",
-        variant: "destructive",
-      });
+      toast({ title: "Creation failed", description: error.message || "Failed to create agent login.", variant: "destructive" });
     } finally {
       setCreating(false);
     }
@@ -576,8 +576,8 @@ export function AgentQuickEditDialog({
     return amount >= 1000 ? `$${(amount / 1000).toFixed(1)}k` : `$${amount}`;
   };
 
-  // Check if agent already has login (has user_id)
   const hasExistingLogin = !!agentData?.user_id;
+  const isBusy = saving || merging || creating || deleting || updatingEmail || resettingPassword || sendingLogin;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -588,7 +588,7 @@ export function AgentQuickEditDialog({
             Edit Agent
           </DialogTitle>
           <DialogDescription>
-            Update the display name, merge with an existing record, or create login access.
+            Update profile info, manage account access, or merge records.
           </DialogDescription>
         </DialogHeader>
 
@@ -611,7 +611,6 @@ export function AgentQuickEditDialog({
                 </Badge>
               )}
             </div>
-            {/* Show linked profile name if available */}
             {linkedProfile?.full_name && (
               <div className="mt-2 p-2 rounded bg-accent/50 border border-border">
                 <p className="text-xs text-foreground">
@@ -627,7 +626,7 @@ export function AgentQuickEditDialog({
             </p>
           </div>
 
-          {/* Edit Name */}
+          {/* ═══ PROFILE INFO ═══ */}
           <div className="space-y-2">
             <Label htmlFor="displayName">Display Name</Label>
             <Input
@@ -638,7 +637,6 @@ export function AgentQuickEditDialog({
             />
           </div>
 
-          {/* Phone Number - Always visible */}
           <div className="space-y-2">
             <Label htmlFor="agentPhone" className="flex items-center gap-2">
               <Phone className="h-3.5 w-3.5" />
@@ -652,14 +650,91 @@ export function AgentQuickEditDialog({
               placeholder="Enter phone number"
               type="tel"
             />
-            {!agentData?.profile_id && (
-              <p className="text-[10px] text-muted-foreground">
-                Phone will be saved when profile is created below.
-              </p>
-            )}
           </div>
 
-          {/* Admin: Edit Production (ALP & Deals) */}
+          <div className="space-y-2">
+            <Label htmlFor="agentInstagram" className="flex items-center gap-2">
+              <Instagram className="h-3.5 w-3.5" />
+              Instagram Handle
+            </Label>
+            <Input
+              id="agentInstagram"
+              value={instagram}
+              onChange={(e) => setInstagram(e.target.value)}
+              placeholder="@handle"
+            />
+          </div>
+
+          {/* ═══ ACCOUNT MANAGEMENT (existing login) ═══ */}
+          {isAdmin && hasExistingLogin && (
+            <div className="space-y-3 p-3 rounded-lg bg-blue-500/5 border border-blue-500/20">
+              <Label className="flex items-center gap-2 text-blue-600 dark:text-blue-400">
+                <KeyRound className="h-4 w-4" />
+                Account Management
+              </Label>
+
+              {/* Current Email & Update */}
+              <div className="space-y-1.5">
+                <p className="text-xs text-muted-foreground">Current email: <span className="font-medium text-foreground">{email || "—"}</span></p>
+                <div className="flex gap-2">
+                  <Input
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    placeholder="New email address"
+                    type="email"
+                    className="text-sm"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleUpdateEmail}
+                    disabled={isBusy || !newEmail.trim()}
+                  >
+                    {updatingEmail ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Password Reset */}
+              <div className="space-y-1.5">
+                <p className="text-xs text-muted-foreground">Reset password:</p>
+                <div className="flex gap-2">
+                  <Input
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="New password (min 6 chars)"
+                    type="password"
+                    className="text-sm"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleResetPassword}
+                    disabled={isBusy || newPassword.length < 6}
+                  >
+                    {resettingPassword ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <KeyRound className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Send Login Button */}
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={handleSendLogin}
+                disabled={isBusy}
+                className="w-full"
+              >
+                {sendingLogin ? (
+                  <><Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />Sending...</>
+                ) : (
+                  <><Send className="h-3.5 w-3.5 mr-2" />Send Portal Login (+ Discord)</>
+                )}
+              </Button>
+            </div>
+          )}
+
+          {/* ═══ ADMIN: Edit Production ═══ */}
           {isAdmin && (
             <div className="space-y-3 p-3 rounded-lg bg-amber-500/5 border border-amber-500/20">
               <Label className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
@@ -700,7 +775,7 @@ export function AgentQuickEditDialog({
             </div>
           )}
 
-          {/* Admin: Create & Send Login Section */}
+          {/* ═══ CREATE & SEND LOGIN (no existing login) ═══ */}
           {isAdmin && !hasExistingLogin && (
             <div className="space-y-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
               <Label className="flex items-center gap-2 text-primary">
@@ -751,21 +826,15 @@ export function AgentQuickEditDialog({
                 size="sm"
               >
                 {creating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Creating & Sending...
-                  </>
+                  <><Loader2 className="h-4 w-4 animate-spin mr-2" />Creating & Sending...</>
                 ) : (
-                  <>
-                    <Send className="h-4 w-4 mr-2" />
-                    Create & Send Login
-                  </>
+                  <><Send className="h-4 w-4 mr-2" />Create & Send Login</>
                 )}
               </Button>
             </div>
           )}
 
-          {/* Possible Matches for Merge */}
+          {/* ═══ MERGE ═══ */}
           {possibleMatches.length > 0 && (
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
@@ -816,12 +885,11 @@ export function AgentQuickEditDialog({
         </div>
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
-          {/* Delete Button - Admin only */}
           {isAdmin && (
             <Button
               variant="destructive"
               onClick={() => setShowDeleteConfirm(true)}
-              disabled={saving || merging || creating || deleting}
+              disabled={isBusy}
               className="sm:mr-auto"
             >
               <Trash2 className="h-4 w-4 mr-2" />
@@ -829,43 +897,23 @@ export function AgentQuickEditDialog({
             </Button>
           )}
           
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={saving || merging || creating || deleting}
-          >
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isBusy}>
             Cancel
           </Button>
           {selectedMergeId ? (
-            <Button
-              onClick={handleMerge}
-              disabled={merging}
-              variant="secondary"
-            >
+            <Button onClick={handleMerge} disabled={merging} variant="secondary">
               {merging ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Merging...
-                </>
+                <><Loader2 className="h-4 w-4 animate-spin mr-2" />Merging...</>
               ) : (
-                <>
-                  <Merge className="h-4 w-4 mr-2" />
-                  Merge Records
-                </>
+                <><Merge className="h-4 w-4 mr-2" />Merge Records</>
               )}
             </Button>
           ) : (
             <Button onClick={handleSaveChanges} disabled={saving}>
               {saving ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Saving...
-                </>
+                <><Loader2 className="h-4 w-4 animate-spin mr-2" />Saving...</>
               ) : (
-                <>
-                  <Check className="h-4 w-4 mr-2" />
-                  Save Changes
-                </>
+                <><Check className="h-4 w-4 mr-2" />Save Changes</>
               )}
             </Button>
           )}
@@ -894,7 +942,6 @@ export function AgentQuickEditDialog({
               </AlertDialogHeader>
               
               <div className="space-y-3 py-4">
-                {/* Inactivate Option */}
                 <button
                   onClick={handleInactivate}
                   disabled={deleting}
@@ -906,12 +953,11 @@ export function AgentQuickEditDialog({
                   <div>
                     <p className="font-medium text-foreground">Mark as Inactive</p>
                     <p className="text-sm text-muted-foreground mt-0.5">
-                      Hide from leaderboards and active views. Agent record and all data is kept for reporting.
+                      Hide from leaderboards and active views. Agent record and all data is kept.
                     </p>
                   </div>
                 </button>
 
-                {/* Permanent Delete Option */}
                 <button
                   onClick={() => setDeleteStep("confirm_delete")}
                   disabled={deleting}
@@ -963,15 +1009,9 @@ export function AgentQuickEditDialog({
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
                   {deleting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      Deleting...
-                    </>
+                    <><Loader2 className="h-4 w-4 animate-spin mr-2" />Deleting...</>
                   ) : (
-                    <>
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete Forever
-                    </>
+                    <><Trash2 className="h-4 w-4 mr-2" />Delete Forever</>
                   )}
                 </AlertDialogAction>
               </AlertDialogFooter>

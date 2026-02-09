@@ -89,6 +89,7 @@ export function InvitationTracker() {
             instagram_handle
           )
         `)
+        .eq("is_deactivated", false)
         .order("created_at", { ascending: false })
         .limit(10);
 

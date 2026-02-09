@@ -1,51 +1,50 @@
 
-# Simple One-Tap Invite Link + Cleanup
 
-## What's Happening with "Recent Invitations"
-The InvitationTracker component was already deleted and removed from Dashboard.tsx in the last edit. You're likely seeing a cached version. The code change will force a fresh build, which should clear it.
+# Fix Licensed View, Manager Assignment, and Verify Coursework
 
-## New Feature: Quick Invite Link Generator
+## Issues Identified
 
-A compact card placed directly below the "Highest Closing Rate" and "Top Referrals" leaderboards. It works like this:
+1. **"Licensed Agents" section tap may not respond** -- The Collapsible component works in code, but the user reports tapping "License" does nothing. This is likely because the button area is too small or click events are being swallowed. The section headers need better tap targets.
 
-1. You tap "Generate Link" -- it creates a one-time code and shows the link
-2. You tap the link to copy it
-3. You send it to someone
-4. They open the link, land on the signup page, create their account (or if their email/phone matches an existing agent, they get routed to set/change their password)
-5. Once used, the link auto-deletes from the database
-6. You can generate a new one anytime
+2. **ManagerAssignMenu only shows some managers** -- The component queries `user_roles` for managers, then joins with `agents` table filtering `is_deactivated = false`. There are 5 manager roles but only 4 have agent records, so at most 4 appear. The real problem is the RLS policy on `user_roles`: non-admin users can only see their own role or manager roles if they're a manager. This works for admins but may fail for managers viewing the list. The fix is to use the `get-active-managers` edge function (which uses the service role key and bypasses RLS) instead of client-side queries.
 
-No dialogs, no forms to fill out. Just generate, copy, send.
+3. **Cannot assign multiple managers at once** -- Currently the menu assigns ONE manager per click. The user wants to select an agent and assign it to multiple managers (or more likely: select multiple agents and bulk-assign them to a manager). This needs a bulk selection + assign flow.
+
+4. **Coursework / Add to Course** -- The `AddToCourseButton` is already present in the expanded agent card. It enrolls the agent, sets stage to `training_online`, creates progress, and sends a login email. This should work as-is. Will verify the module table exists and has data.
+
+5. **Mark as Licensed / Unlicensed** -- Already implemented via `handleToggleLicense` in ManagerTeamView. The button toggles between "Mark Licensed" and "Mark Unlicensed" in the expanded card actions.
 
 ## Changes
 
-### 1. New Component: `QuickInviteLink.tsx`
-**File: `src/components/dashboard/QuickInviteLink.tsx`**
+### 1. Fix ManagerAssignMenu to show ALL managers reliably
+**File: `src/components/dashboard/ManagerAssignMenu.tsx`**
 
-A small card with:
-- "Generate Link" button -- creates a row in `manager_invite_links` with a random code and the current manager's agent ID
-- Shows the generated link with a copy button
-- "Delete" button to manually remove it
-- Displays status: Active / Used
+Replace the client-side `user_roles` + `agents` + `profiles` queries with a single call to the existing `get-active-managers` edge function. This function uses the service role key and already returns all active managers with names. This guarantees all managers appear regardless of RLS restrictions.
 
-### 2. Auto-Delete Used Links
-**File: `src/pages/AgentSignup.tsx`**
+### 2. Make ManagerAssignMenu a proper labeled button (not just an icon)
+**File: `src/components/dashboard/ManagerTeamView.tsx`**
 
-After a successful signup via a `ref` code, delete the invite link from `manager_invite_links` so it can only be used once. Currently the link stays active forever -- this change makes it one-time-use.
+Change the ManagerAssignMenu trigger from a tiny icon-only button to a labeled "Assign Manager" button matching the style of the other action buttons (Edit Agent, Send Login, etc.). This improves discoverability and tap targets.
 
-### 3. Place the Component in Dashboard
-**File: `src/pages/Dashboard.tsx`**
+### 3. Pass `currentManagerId` correctly to ManagerAssignMenu
+**File: `src/components/dashboard/ManagerTeamView.tsx`**
 
-Add `QuickInviteLink` right after the closing rate and referral leaderboard grid (line 367), inside the left column, visible to managers and admins only.
+Currently `currentManagerId={null}` is hardcoded. Fix it to pass the actual `invited_by_manager_id` from the agent's data so the checkmark shows correctly next to the currently assigned manager.
 
-### 4. Remove the old "Invite Links" section (lines 400-428)
-The existing "Invite Team Member" card at the bottom that just navigates to CRM is redundant. Remove it and replace the entire invite section with just the new QuickInviteLink.
+To do this, add `invitedByManagerId` to the `TeamMember` interface and populate it from `agent.invited_by_manager_id` during `fetchTeamData`.
+
+### 4. Improve Licensed/Unlicensed section tap targets
+**File: `src/components/dashboard/ManagerTeamView.tsx`**
+
+The Collapsible trigger buttons are already full-width. Add `type="button"` explicitly and ensure `onClick` propagation is not blocked. Add a slight min-height for better mobile tapping.
+
+### 5. Verify coursework modules exist
+Run a query to confirm `onboarding_modules` has active modules so the "Add to Course" button will find them.
 
 ## Technical Details
 
 | File | Change |
 |------|--------|
-| `src/components/dashboard/QuickInviteLink.tsx` | New component: generate, copy, delete one-time invite links |
-| `src/pages/Dashboard.tsx` | Add QuickInviteLink below leaderboards; remove old invite section |
-| `src/pages/AgentSignup.tsx` | After successful signup, delete the used invite link |
-| `manager_invite_links` table | No schema change needed -- already has `invite_code`, `manager_agent_id`, `is_active` |
+| `src/components/dashboard/ManagerAssignMenu.tsx` | Switch from client-side RLS queries to `get-active-managers` edge function; change trigger to labeled button |
+| `src/components/dashboard/ManagerTeamView.tsx` | Pass real `invitedByManagerId` to ManagerAssignMenu; add `invitedByManagerId` to TeamMember interface; improve tap targets on collapsible headers |
+

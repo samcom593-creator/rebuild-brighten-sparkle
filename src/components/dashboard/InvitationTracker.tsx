@@ -10,7 +10,6 @@ import {
   RefreshCw,
   Loader2,
   UserCheck,
-  X,
   Send
 } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -37,7 +36,7 @@ export function InvitationTracker() {
   const [invitations, setInvitations] = useState<InvitationStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [sendingTo, setSendingTo] = useState<string | null>(null);
-  const [removingId, setRemovingId] = useState<string | null>(null);
+  
 
   useEffect(() => {
     fetchInvitations();
@@ -139,26 +138,6 @@ export function InvitationTracker() {
     }
   };
 
-  const handleRemove = async (invitation: InvitationStatus) => {
-    setRemovingId(invitation.id);
-    try {
-      // Soft delete - mark as deactivated
-      const { error } = await supabase
-        .from("agents")
-        .update({ is_deactivated: true, deactivation_reason: "inactive" as const })
-        .eq("id", invitation.id);
-      
-      if (error) throw error;
-      
-      toast.success(`${invitation.agentName} removed`);
-      fetchInvitations();
-    } catch (error) {
-      console.error("Error removing invitation:", error);
-      toast.error("Failed to remove");
-    } finally {
-      setRemovingId(null);
-    }
-  };
 
   const acceptedCount = invitations.filter(i => i.hasPassword).length;
   const pendingCount = invitations.filter(i => !i.hasPassword).length;
@@ -243,20 +222,6 @@ export function InvitationTracker() {
                         )}
                       </Button>
                     )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemove(invitation)}
-                      disabled={removingId === invitation.id}
-                      className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                      title="Remove"
-                    >
-                      {removingId === invitation.id ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <X className="h-3 w-3" />
-                      )}
-                    </Button>
                   </div>
                 </div>
 

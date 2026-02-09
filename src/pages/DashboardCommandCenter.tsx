@@ -18,6 +18,8 @@ import {
   Crown,
   UserMinus,
   RotateCcw,
+  ArrowRightLeft,
+  GitBranch,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -33,6 +35,9 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
 import {
   Collapsible,
@@ -69,6 +74,13 @@ import { toast } from "sonner";
 
 type TimePeriod = "day" | "week" | "month" | "custom";
 type FilterType = "all" | "producers" | "weak" | "zero" | "inactive";
+
+const ONBOARDING_STAGES = [
+  { value: "onboarding", label: "Onboarding" },
+  { value: "training_online", label: "Training Online" },
+  { value: "in_field_training", label: "In Field Training" },
+  { value: "evaluated", label: "Evaluated" },
+] as const;
 
 interface AgentWithStats {
   id: string;
@@ -107,6 +119,18 @@ export default function DashboardCommandCenter() {
   
   // Stat card popup state
   const [statPopup, setStatPopup] = useState<{ type: StatType; open: boolean }>({ type: "totalAlp", open: false });
+
+  // Fetch managers list for reassignment sub-menu
+  const { data: managersList } = useQuery({
+    queryKey: ["command-center-managers"],
+    queryFn: async () => {
+      const { data, error } = await supabase.functions.invoke("get-active-managers");
+      if (error) return [];
+      return (data?.managers as { id: string; name: string }[]) || [];
+    },
+    staleTime: 300000,
+  });
+
 
   // Get date range based on time period - using PST utilities for consistency
   const dateRange = useMemo(() => {
@@ -232,7 +256,35 @@ export default function DashboardCommandCenter() {
   // Use singleton realtime hook (shared channel across app, 1s debounce)
   useProductionRealtime(() => guardedRefetch(), 1000);
 
-  // Login link handlers
+  // Handlers for inline reassign/stage change
+  const handleReassignManager = useCallback(async (agentId: string, managerId: string | null, managerName: string) => {
+    try {
+      const { error } = await supabase
+        .from("agents")
+        .update({ invited_by_manager_id: managerId })
+        .eq("id", agentId);
+      if (error) throw error;
+      toast.success(`Reassigned to ${managerName}`);
+      refetch();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to reassign manager");
+    }
+  }, [refetch]);
+
+  const handleChangeStage = useCallback(async (agentId: string, stage: string, label: string) => {
+    try {
+      const { error } = await supabase
+        .from("agents")
+        .update({ onboarding_stage: stage as any })
+        .eq("id", agentId);
+      if (error) throw error;
+      toast.success(`Stage changed to ${label}`);
+      refetch();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to change stage");
+    }
+  }, [refetch]);
+
   const handleEmailLoginLink = useCallback(async (agent: AgentWithStats) => {
     if (!agent.email) {
       toast.error("This agent has no email address");
@@ -674,6 +726,54 @@ export default function DashboardCommandCenter() {
                                 <Pencil className="h-4 w-4 mr-2" />
                                 Edit Profile
                               </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              {/* Reassign Manager Sub-menu */}
+                              <DropdownMenuSub>
+                                <DropdownMenuSubTrigger onClick={(e) => e.stopPropagation()}>
+                                  <ArrowRightLeft className="h-4 w-4 mr-2" />
+                                  Reassign Manager
+                                </DropdownMenuSubTrigger>
+                                <DropdownMenuSubContent className="bg-popover border-border">
+                                  <DropdownMenuItem onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleReassignManager(agent.id, null, "Unassigned");
+                                  }}>
+                                    Unassigned
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  {(managersList || []).map((m) => (
+                                    <DropdownMenuItem
+                                      key={m.id}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleReassignManager(agent.id, m.id, m.name);
+                                      }}
+                                    >
+                                      {m.name}
+                                    </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuSubContent>
+                              </DropdownMenuSub>
+                              {/* Change Stage Sub-menu */}
+                              <DropdownMenuSub>
+                                <DropdownMenuSubTrigger onClick={(e) => e.stopPropagation()}>
+                                  <GitBranch className="h-4 w-4 mr-2" />
+                                  Change Stage
+                                </DropdownMenuSubTrigger>
+                                <DropdownMenuSubContent className="bg-popover border-border">
+                                  {ONBOARDING_STAGES.map((s) => (
+                                    <DropdownMenuItem
+                                      key={s.value}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleChangeStage(agent.id, s.value, s.label);
+                                      }}
+                                    >
+                                      {s.label}
+                                    </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuSubContent>
+                              </DropdownMenuSub>
                               <DropdownMenuSeparator />
                               {agent.userId && (
                                 agent.isManager ? (

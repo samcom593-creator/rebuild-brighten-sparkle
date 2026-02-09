@@ -117,7 +117,7 @@ serve(async (req: Request) => {
     for (const duplicateId of duplicateAgentIds) {
       console.log(`📦 Processing duplicate ${duplicateId}`);
 
-      // Move production records to primary (handle date conflicts)
+      // ========== PRODUCTION RECORDS (with date conflict handling) ==========
       const { data: dupProduction } = await supabase
         .from("daily_production")
         .select("*")
@@ -125,7 +125,6 @@ serve(async (req: Request) => {
 
       if (dupProduction && dupProduction.length > 0) {
         for (const record of dupProduction) {
-          // Check if primary already has this date
           const { data: existingRecord } = await supabase
             .from("daily_production")
             .select("*")
@@ -153,12 +152,10 @@ serve(async (req: Request) => {
               console.error(`Failed to merge production for date ${record.production_date}:`, updateError);
               errors.push(`Production merge conflict on ${record.production_date}`);
             } else {
-              // Delete the duplicate record after merging
               await supabase.from("daily_production").delete().eq("id", record.id);
               mergedRecords++;
             }
           } else {
-            // No conflict - just reassign to primary
             const { error: reassignError } = await supabase
               .from("daily_production")
               .update({ agent_id: primaryAgentId })
@@ -174,70 +171,71 @@ serve(async (req: Request) => {
         console.log(`✅ Processed ${dupProduction.length} production records from ${duplicateId}`);
       }
 
-      // Move agent notes to primary
-      const { error: notesError } = await supabase
-        .from("agent_notes")
-        .update({ agent_id: primaryAgentId })
-        .eq("agent_id", duplicateId);
-      if (notesError) console.error(`Failed to move notes for ${duplicateId}:`, notesError);
+      // ========== SIMPLE REASSIGN TABLES ==========
+      // Each of these just needs agent_id updated to primaryAgentId
 
-      // Move agent goals to primary
-      const { error: goalsError } = await supabase
-        .from("agent_goals")
-        .update({ agent_id: primaryAgentId })
-        .eq("agent_id", duplicateId);
-      if (goalsError) console.error(`Failed to move goals for ${duplicateId}:`, goalsError);
+      const simpleReassignTables = [
+        { table: "agent_notes", column: "agent_id", label: "notes" },
+        { table: "agent_goals", column: "agent_id", label: "goals" },
+        { table: "agent_achievements", column: "agent_id", label: "achievements" },
+        { table: "plaque_awards", column: "agent_id", label: "plaques" },
+        { table: "onboarding_progress", column: "agent_id", label: "onboarding progress" },
+        { table: "agent_metrics", column: "agent_id", label: "metrics" },
+        { table: "agent_lead_stats", column: "agent_id", label: "lead stats" },
+        { table: "agent_attendance", column: "agent_id", label: "attendance" },
+        { table: "agent_ratings", column: "agent_id", label: "ratings" },
+        { table: "agent_onboarding", column: "agent_id", label: "onboarding history" },
+        { table: "email_tracking", column: "agent_id", label: "email tracking" },
+        { table: "lead_payment_tracking", column: "agent_id", label: "lead payments" },
+        { table: "invitation_seen", column: "agent_id", label: "invitation seen" },
+        { table: "magic_login_tokens", column: "agent_id", label: "magic tokens" },
+        { table: "agent_removal_requests", column: "agent_id", label: "removal requests" },
+        { table: "interview_recordings", column: "agent_id", label: "interview recordings" },
+      ];
 
-      // Move agent achievements to primary
-      const { error: achievementsError } = await supabase
-        .from("agent_achievements")
-        .update({ agent_id: primaryAgentId })
-        .eq("agent_id", duplicateId);
-      if (achievementsError) console.error(`Failed to move achievements for ${duplicateId}:`, achievementsError);
+      for (const { table, column, label } of simpleReassignTables) {
+        const { error } = await supabase
+          .from(table)
+          .update({ [column]: primaryAgentId })
+          .eq(column, duplicateId);
+        if (error) console.error(`Failed to move ${label} for ${duplicateId}:`, error);
+      }
 
-      // Move plaque awards to primary
-      const { error: plaquesError } = await supabase
-        .from("plaque_awards")
-        .update({ agent_id: primaryAgentId })
-        .eq("agent_id", duplicateId);
-      if (plaquesError) console.error(`Failed to move plaques for ${duplicateId}:`, plaquesError);
-
-      // Move onboarding progress to primary
-      const { error: progressError } = await supabase
-        .from("onboarding_progress")
-        .update({ agent_id: primaryAgentId })
-        .eq("agent_id", duplicateId);
-      if (progressError) console.error(`Failed to move progress for ${duplicateId}:`, progressError);
-
-      // Move agent metrics to primary
-      const { error: metricsError } = await supabase
-        .from("agent_metrics")
-        .update({ agent_id: primaryAgentId })
-        .eq("agent_id", duplicateId);
-      if (metricsError) console.error(`Failed to move metrics for ${duplicateId}:`, metricsError);
-
-      // Move lead stats to primary
-      const { error: leadStatsError } = await supabase
-        .from("agent_lead_stats")
-        .update({ agent_id: primaryAgentId })
-        .eq("agent_id", duplicateId);
-      if (leadStatsError) console.error(`Failed to move lead stats for ${duplicateId}:`, leadStatsError);
-
-      // Reassign applications from duplicate to primary
+      // ========== APPLICATION & LEAD REASSIGNMENT ==========
       const { error: appsError } = await supabase
         .from("applications")
         .update({ assigned_agent_id: primaryAgentId })
         .eq("assigned_agent_id", duplicateId);
       if (appsError) console.error(`Failed to reassign applications for ${duplicateId}:`, appsError);
 
-      // Reassign aged leads from duplicate to primary
       const { error: leadsError } = await supabase
         .from("aged_leads")
         .update({ assigned_manager_id: primaryAgentId })
         .eq("assigned_manager_id", duplicateId);
       if (leadsError) console.error(`Failed to reassign aged leads for ${duplicateId}:`, leadsError);
 
-      // Update agents that had this duplicate as manager
+      // ========== CONTACT HISTORY (agent_id column) ==========
+      const { error: contactError } = await supabase
+        .from("contact_history")
+        .update({ agent_id: primaryAgentId })
+        .eq("agent_id", duplicateId);
+      if (contactError) console.error(`Failed to move contact history for ${duplicateId}:`, contactError);
+
+      // ========== CONTRACTING LINKS ==========
+      const { error: contractingError } = await supabase
+        .from("contracting_links")
+        .update({ manager_id: primaryAgentId })
+        .eq("manager_id", duplicateId);
+      if (contractingError) console.error(`Failed to move contracting links for ${duplicateId}:`, contractingError);
+
+      // ========== MANAGER INVITE LINKS ==========
+      const { error: inviteLinksError } = await supabase
+        .from("manager_invite_links")
+        .update({ manager_agent_id: primaryAgentId })
+        .eq("manager_agent_id", duplicateId);
+      if (inviteLinksError) console.error(`Failed to move invite links for ${duplicateId}:`, inviteLinksError);
+
+      // ========== AGENT HIERARCHY REFERENCES ==========
       await supabase
         .from("agents")
         .update({ manager_id: primaryAgentId })
@@ -248,7 +246,12 @@ serve(async (req: Request) => {
         .update({ invited_by_manager_id: primaryAgentId })
         .eq("invited_by_manager_id", duplicateId);
 
-      // DELETE the duplicate agent completely
+      await supabase
+        .from("agents")
+        .update({ switched_to_manager_id: primaryAgentId })
+        .eq("switched_to_manager_id", duplicateId);
+
+      // ========== DELETE DUPLICATE AGENT ==========
       const { error: deleteError } = await supabase
         .from("agents")
         .delete()
@@ -256,7 +259,7 @@ serve(async (req: Request) => {
 
       if (deleteError) {
         console.error(`Failed to delete duplicate ${duplicateId}:`, deleteError);
-        // Fallback: archive if delete fails (e.g., remaining foreign key constraints)
+        // Fallback: archive if delete fails (remaining foreign key constraints)
         const { error: archiveError } = await supabase
           .from("agents")
           .update({

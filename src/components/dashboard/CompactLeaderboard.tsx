@@ -282,11 +282,9 @@ export function CompactLeaderboard({ currentAgentId, className }: CompactLeaderb
         return;
       }
 
-      const userIds = agents.map((a) => a.user_id).filter(Boolean);
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, full_name, avatar_url")
-        .in("user_id", userIds);
+      const userIdSet = new Set(agents.map((a) => a.user_id).filter(Boolean));
+      const { data: allLeaderboardProfiles } = await supabase.rpc("get_leaderboard_profiles");
+      const profiles = (allLeaderboardProfiles || []).filter((p: any) => userIdSet.has(p.user_id));
 
       // Only include agents we can actually load (handles inactive/deactivated + deleted + RLS visibility)
       const allowedAgentIds = new Set(agents.map((a) => a.id));

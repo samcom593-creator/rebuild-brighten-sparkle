@@ -1,62 +1,110 @@
 
 
-# CRM Speed Fixes, Login Button, and Dashboard Agent Edit
+# Full Agent Management: Edit, Email, Password, and Performance Fixes
 
-## Issues Identified
+## Problem Summary
 
-### 1. CRM Checklist Toggles Are Slow (Training Course, Discord, Dialer)
-**Root Cause**: Every toggle click in `AgentChecklist.tsx` calls `onUpdate()` which triggers a full `fetchAgents()` in `DashboardCRM.tsx`. This refetches ALL agents, their profiles, manager names, and production data -- a cascade of 5+ database queries just to toggle one checkbox.
+The `AgentQuickEditDialog` (used in both Dashboard Agency Roster and Command Center) is missing critical admin capabilities:
 
-**Fix**: Add optimistic local state updates in `DashboardCRM.tsx` so toggles update instantly in the UI without waiting for a full refetch.
+1. **Cannot update agent email** -- the `update-user-email` edge function exists but is never called from the edit dialog
+2. **Cannot reset agent password** -- no password reset option in the dialog (the `setup-agent-password` function only creates NEW accounts, not resets)
+3. **Only updates `agents.display_name`** -- does NOT update `profiles.full_name`, so name changes don't propagate
+4. **Sidebar navigation lag** -- still some sluggishness from heavy CRM/Dashboard queries
 
-### 2. Login Button Missing for Non-Live Agents
-**Current**: The "Send Login" button only appears for agents in the `evaluated` (Live) stage (line 749 of DashboardCRM.tsx).
+## Changes
 
-**Fix**: Show the Login button for ALL agents who have a `userId` (meaning they have an account). The portal login email already includes the Discord link, so this is already handled.
+### 1. `src/components/dashboard/AgentQuickEditDialog.tsx` -- Add Full Admin Controls
 
-### 3. Dashboard Agency Roster - Cannot Click to Edit Agents
-**Current**: The `ManagerTeamView` component (used in Dashboard under "Your Team") only expands to show stats and an onboarding tracker. There is no way to click on an agent to edit their info, update password, or change email.
+For agents who already have a login (`hasExistingLogin = true`), add:
 
-**Fix**: Add a full-featured edit button to each agent row in `ManagerTeamView` that opens the `AgentQuickEditDialog` with admin capabilities (name, email, phone, password update, production edits).
+- **Email field**: Show current email with an "Update Email" button that calls `update-user-email` edge function with `targetUserId`
+- **Password reset**: Add a "New Password" field with a "Set Password" button that calls `supabaseAdmin.auth.admin.updateUserById` via a new edge function (since `setup-agent-password` only creates new accounts)
+- **Full name sync**: When saving display name, also update `profiles.full_name` (not just `agents.display_name`) so the name change appears everywhere
 
-### 4. Performance - Optimistic Updates
-Replace full refetches with instant local state mutations for all toggle actions in the CRM.
+Current save logic only does:
+```
+agents.update({ display_name })
+profiles.update({ phone })  // only if profile_id exists
+```
 
----
+New save logic will do:
+```
+agents.update({ display_name })
+profiles.update({ full_name, phone, instagram_handle })  // via user_id
+```
 
-## File Changes
+- **Send Login button**: Add a "Send Login" button inside the dialog for agents with accounts (calls `send-agent-portal-login`)
 
-### `src/components/dashboard/AgentChecklist.tsx`
-- Add an `onOptimisticToggle` callback prop that passes `(agentId, field, newValue)` so the parent can update local state immediately
-- Keep the database update async in the background
+### 2. New Edge Function: `supabase/functions/reset-agent-password/index.ts`
 
-### `src/pages/DashboardCRM.tsx`
-- Add an `handleOptimisticChecklistToggle` function that updates `agents` state directly without refetching
-- Change `onUpdate={fetchAgents}` to use the optimistic handler for the checklist
-- Move the "Send Login" button to show for ALL agents with a userId (not just evaluated)
-- Add `AgentQuickEditDialog` import and state for opening it on agent name click
+Create a new edge function for admins to reset an existing agent's password:
+- Accepts `{ targetUserId, newPassword }`
+- Validates caller is admin via JWT
+- Calls `supabaseAdmin.auth.admin.updateUserById(targetUserId, { password: newPassword })`
+- Returns success/error
 
-### `src/components/dashboard/ManagerTeamView.tsx`
-- Add an "Edit" button to each expanded agent row
-- Import and integrate `AgentQuickEditDialog` so admins can click to edit name, email, phone, and production
-- Add a "Send Login" button in the expanded view
+### 3. `src/components/dashboard/AgentQuickEditDialog.tsx` -- UI Layout
+
+The edit dialog will be reorganized into clear sections:
+
+- **Profile Info** (name, phone, Instagram) -- always visible
+- **Account Management** (email update, password reset, send login) -- only for agents with existing login
+- **Create Account** (existing "Create & Send Login" section) -- only for agents WITHOUT login
+- **Production Edit** (ALP/deals) -- admin only
+- **Merge / Delete** -- existing functionality, unchanged
+
+### 4. `src/components/dashboard/ManagerTeamView.tsx` -- Profile Name Update
+
+When the `AgentQuickEditDialog` saves and calls `onUpdate` (which is `fetchTeamData`), the roster will refresh with updated names. No additional changes needed here since it already passes `onUpdate={fetchTeamData}`.
+
+### 5. Performance: Sidebar Navigation
+
+Add `React.memo` wrapper to the `ManagerTeamView` component's `renderMemberCard` function to prevent unnecessary re-renders during sidebar navigation. The `useInFlightGuard` hook is already correctly implemented.
 
 ---
 
 ## Technical Details
 
-### Optimistic Checklist Toggle (CRM Speed Fix)
+### Edge Function: `reset-agent-password`
 ```
-handleOptimisticToggle(agentId, field, newValue):
-  1. Immediately update local agents state (instant UI)
-  2. Database update runs in background
-  3. On error, revert the local state and show toast
+POST /reset-agent-password
+Body: { targetUserId: string, newPassword: string }
+Auth: Bearer token (admin only)
+Action: supabaseAdmin.auth.admin.updateUserById(targetUserId, { password })
 ```
 
-### Login Button Visibility Change
-Current condition: `isInFieldActive` (evaluated only)
-New condition: `agent.userId` (any agent with an account)
+### AgentQuickEditDialog Save Flow (Updated)
+```
+1. Update agents.display_name
+2. If agent has user_id:
+   a. Update profiles.full_name via user_id
+   b. Update profiles.phone via user_id
+   c. Update profiles.instagram_handle via user_id
+3. If admin changed production, update daily_production (existing logic)
+```
 
-### ManagerTeamView Agent Edit
-Add `AgentQuickEditDialog` state management and render it when an agent's edit button is clicked. Pass `onUpdate={fetchTeamData}` to refresh after changes.
+### Email Update Flow
+```
+1. Admin clicks "Update Email" in dialog
+2. Calls update-user-email edge function with { newEmail, targetUserId: agent.user_id }
+3. Edge function updates auth.users + profiles table
+4. Sends notification emails to old and new addresses
+```
+
+### Password Reset Flow
+```
+1. Admin enters new password in dialog
+2. Clicks "Set Password"
+3. Calls reset-agent-password edge function
+4. Edge function updates auth user password via admin API
+5. Toast confirms success
+```
+
+## Files Changed
+
+| File | Change |
+|------|--------|
+| `src/components/dashboard/AgentQuickEditDialog.tsx` | Add email update, password reset, full_name sync, Instagram edit, Send Login button |
+| `supabase/functions/reset-agent-password/index.ts` | New edge function for admin password reset |
+| `supabase/config.toml` | Add `verify_jwt = false` for new function |
 

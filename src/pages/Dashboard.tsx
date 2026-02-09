@@ -23,6 +23,7 @@ import { GrowthChart } from "@/components/dashboard/GrowthChart";
 import { AnalyticsPieChart } from "@/components/dashboard/AnalyticsPieChart";
 import { ManagerTeamView } from "@/components/dashboard/ManagerTeamView";
 import { InviteManagerCard } from "@/components/dashboard/InviteManagerCard";
+import { QuickInviteLink } from "@/components/dashboard/QuickInviteLink";
 
 import { LeaderboardTabs } from "@/components/dashboard/LeaderboardTabs";
 import { ClosingRateLeaderboard } from "@/components/dashboard/ClosingRateLeaderboard";
@@ -365,6 +366,9 @@ export default function Dashboard() {
             <ClosingRateLeaderboard />
             <ReferralLeaderboard />
           </div>
+
+          {/* Quick Invite Link for Managers/Admins */}
+          {(isManager || isAdmin) && <QuickInviteLink />}
         </div>
 
         {/* RIGHT COLUMN: Recruiting Stats + Quick Actions - 1/3 width */}
@@ -397,33 +401,10 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ====== 3. INVITE LINKS (Admin & Manager) ====== */}
-      {(isAdmin || isManager) && (
+      {/* ====== 3. INVITE MANAGER (Admin only) ====== */}
+      {isAdmin && (
         <div className="mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Invite Manager */}
-            {isAdmin && <InviteManagerCard />}
-            
-            {/* Invite Team - New component */}
-            <GlassCard className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center">
-                  <UserPlus className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Invite Team Member</h3>
-                  <p className="text-xs text-muted-foreground">Add new agents to your team</p>
-                </div>
-              </div>
-              <Button 
-                className="w-full"
-                onClick={() => navigate("/dashboard/crm")}
-              >
-                <UserPlus className="h-4 w-4 mr-2" />
-                Add New Agent
-              </Button>
-            </GlassCard>
-          </div>
+          <InviteManagerCard />
         </div>
       )}
 

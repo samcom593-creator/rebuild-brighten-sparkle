@@ -14,6 +14,10 @@ import {
   Clock,
   Edit2,
   Send,
+  RotateCcw,
+  Shield,
+  ShieldOff,
+  AlertTriangle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -39,6 +43,7 @@ import { DeactivateAgentDialog } from "./DeactivateAgentDialog";
 import { cn } from "@/lib/utils";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 import { toast } from "sonner";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 type SortOption = "production-desc" | "production-asc" | "name" | "status";
 
@@ -60,6 +65,8 @@ interface TeamMember {
   licenseStatus: "licensed" | "unlicensed" | "pending";
   managerName: string | null;
   isDirectReport: boolean;
+  isDeactivated: boolean;
+  isInactive: boolean;
 }
 
 interface TeamStats {
@@ -73,6 +80,7 @@ interface TeamStats {
 
 export function ManagerTeamView() {
   const { user, isManager, isAdmin } = useAuth();
+  const { playSound } = useSoundEffects();
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [teamStats, setTeamStats] = useState<TeamStats>({
     totalMembers: 0,
@@ -87,6 +95,7 @@ export function ManagerTeamView() {
   const [sortBy, setSortBy] = useState<SortOption>("production-desc");
   const [licensedOpen, setLicensedOpen] = useState(true);
   const [unlicensedOpen, setUnlicensedOpen] = useState(true);
+  const [terminatedOpen, setTerminatedOpen] = useState(false);
   const [editAgent, setEditAgent] = useState<TeamMember | null>(null);
   const [deactivateAgent, setDeactivateAgent] = useState<{ id: string; name: string } | null>(null);
 
@@ -96,10 +105,47 @@ export function ManagerTeamView() {
         body: { agentId: member.id },
       });
       if (error) throw error;
+      playSound("success");
       toast.success(`Portal login sent to ${member.email}`);
     } catch (error) {
       console.error("Error sending portal login:", error);
+      playSound("error");
       toast.error("Failed to send portal login");
+    }
+  };
+
+  const handleReactivate = async (member: TeamMember) => {
+    try {
+      const { error } = await supabase
+        .from("agents")
+        .update({ status: "active" as const, is_deactivated: false, is_inactive: false, deactivation_reason: null })
+        .eq("id", member.id);
+      if (error) throw error;
+      playSound("celebrate");
+      toast.success(`${member.name} has been reactivated!`);
+      fetchTeamData();
+    } catch (error) {
+      console.error("Error reactivating agent:", error);
+      playSound("error");
+      toast.error("Failed to reactivate agent");
+    }
+  };
+
+  const handleToggleLicense = async (member: TeamMember) => {
+    const newStatus = member.licenseStatus === "licensed" ? "unlicensed" : "licensed";
+    try {
+      const { error } = await supabase
+        .from("agents")
+        .update({ license_status: newStatus })
+        .eq("id", member.id);
+      if (error) throw error;
+      playSound("click");
+      toast.success(`${member.name} marked as ${newStatus}`);
+      fetchTeamData();
+    } catch (error) {
+      console.error("Error toggling license:", error);
+      playSound("error");
+      toast.error("Failed to update license status");
     }
   };
 
@@ -126,7 +172,7 @@ export function ManagerTeamView() {
       let teamAgents: any[] = [];
 
       if (isAdmin) {
-        // Admin: Fetch ALL agents in the agency (not deactivated)
+        // Admin: Fetch ALL agents in the agency (including deactivated/terminated)
         const { data: allAgents, error } = await supabase
           .from("agents")
           .select(`
@@ -136,9 +182,10 @@ export function ManagerTeamView() {
             onboarding_stage,
             created_at,
             license_status,
-            invited_by_manager_id
-          `)
-          .eq("is_deactivated", false);
+            invited_by_manager_id,
+            is_deactivated,
+            is_inactive
+          `);
 
         if (error) {
           console.error("Error fetching all agents:", error);
@@ -286,6 +333,8 @@ export function ManagerTeamView() {
           licenseStatus: agent.license_status as "licensed" | "unlicensed" | "pending",
           managerName,
           isDirectReport,
+          isDeactivated: agent.is_deactivated || false,
+          isInactive: agent.is_inactive || false,
         };
       });
 
@@ -329,15 +378,25 @@ export function ManagerTeamView() {
     }
   }, [teamMembers, sortBy]);
 
-  // Split into licensed and unlicensed
-  const licensedMembers = useMemo(() => 
-    sortedMembers.filter(m => m.licenseStatus === "licensed"),
+  // Split into licensed, unlicensed, and terminated
+  const terminatedMembers = useMemo(() =>
+    sortedMembers.filter(m => m.isDeactivated || m.isInactive || m.status === "terminated"),
     [sortedMembers]
   );
 
-  const unlicensedMembers = useMemo(() => 
-    sortedMembers.filter(m => m.licenseStatus !== "licensed"),
+  const activeMembers = useMemo(() =>
+    sortedMembers.filter(m => !m.isDeactivated && !m.isInactive && m.status !== "terminated"),
     [sortedMembers]
+  );
+
+  const licensedMembers = useMemo(() => 
+    activeMembers.filter(m => m.licenseStatus === "licensed"),
+    [activeMembers]
+  );
+
+  const unlicensedMembers = useMemo(() => 
+    activeMembers.filter(m => m.licenseStatus !== "licensed"),
+    [activeMembers]
   );
 
   const toggleExpand = (memberId: string) => {
@@ -467,7 +526,7 @@ export function ManagerTeamView() {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex flex-wrap items-center gap-2 mb-4">
             <Button
               variant="outline"
               size="sm"
@@ -488,21 +547,45 @@ export function ManagerTeamView() {
                 Send Login
               </Button>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-xs"
+              onClick={(e) => { e.stopPropagation(); handleToggleLicense(member); }}
+            >
+              {member.licenseStatus === "licensed" ? (
+                <><ShieldOff className="h-3 w-3" /> Mark Unlicensed</>
+              ) : (
+                <><Shield className="h-3 w-3" /> Mark Licensed</>
+              )}
+            </Button>
             <AddToCourseButton
               agentId={member.id}
               agentName={member.name}
               onSuccess={fetchTeamData}
               size="sm"
             />
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5 text-xs text-destructive hover:bg-destructive/10"
-              onClick={(e) => { e.stopPropagation(); setDeactivateAgent({ id: member.id, name: member.name }); }}
-            >
-              <Users className="h-3 w-3" />
-              Remove
-            </Button>
+            {member.isDeactivated || member.isInactive || member.status === "terminated" ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs text-emerald-500 hover:bg-emerald-500/10"
+                onClick={(e) => { e.stopPropagation(); handleReactivate(member); }}
+              >
+                <RotateCcw className="h-3 w-3" />
+                Reactivate
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs text-destructive hover:bg-destructive/10"
+                onClick={(e) => { e.stopPropagation(); setDeactivateAgent({ id: member.id, name: member.name }); }}
+              >
+                <Users className="h-3 w-3" />
+                Remove
+              </Button>
+            )}
           </div>
           
           <OnboardingTracker
@@ -668,6 +751,30 @@ export function ManagerTeamView() {
               )}
             </CollapsibleContent>
           </Collapsible>
+
+          {/* Terminated / Inactive Section */}
+          {terminatedMembers.length > 0 && (
+            <Collapsible open={terminatedOpen} onOpenChange={setTerminatedOpen}>
+              <CollapsibleTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="w-full flex items-center justify-between p-3 bg-destructive/10 hover:bg-destructive/20 rounded-lg"
+                >
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4 text-destructive" />
+                    <span className="font-medium">Terminated / Inactive ({terminatedMembers.length})</span>
+                  </div>
+                  <ChevronRight className={cn(
+                    "h-4 w-4 transition-transform duration-200",
+                    terminatedOpen && "rotate-90"
+                  )} />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-3 space-y-3">
+                {terminatedMembers.map((member, index) => renderMemberCard(member, index))}
+              </CollapsibleContent>
+            </Collapsible>
+          )}
         </div>
       </GlassCard>
 

@@ -33,27 +33,21 @@ const handler = async (req: Request): Promise<Response> => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // Verify calling user
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
+    // Verify calling user via JWT
     const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } =
-      await supabaseClient.auth.getClaims(token);
+    const { data: userData, error: userError } =
+      await supabaseAdmin.auth.getUser(token);
 
-    if (claimsError || !claimsData?.claims?.sub) {
-      console.error("Invalid token:", claimsError);
+    if (userError || !userData?.user) {
+      console.error("Invalid token:", userError);
       return new Response(JSON.stringify({ error: "Invalid token" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const userId = claimsData.claims.sub as string;
-    const userEmail = claimsData.claims.email as string | undefined;
+    const userId = userData.user.id;
+    const userEmail = userData.user.email;
 
     const { email, agentCode, phone }: LinkAccountRequest = await req.json();
 

@@ -18,6 +18,7 @@ import {
   Shield,
   ShieldOff,
   AlertTriangle,
+  Loader2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -100,6 +101,8 @@ export function ManagerTeamView() {
   const [terminatedOpen, setTerminatedOpen] = useState(false);
   const [editAgent, setEditAgent] = useState<TeamMember | null>(null);
   const [deactivateAgent, setDeactivateAgent] = useState<{ id: string; name: string } | null>(null);
+  const [managerUserIds, setManagerUserIds] = useState<Set<string>>(new Set());
+  const [togglingManager, setTogglingManager] = useState<string | null>(null);
 
   const handleSendPortalLogin = async (member: TeamMember) => {
     try {
@@ -153,7 +156,45 @@ export function ManagerTeamView() {
 
   useEffect(() => {
     fetchTeamData();
+    if (isAdmin) fetchManagerRoles();
   }, [user, isAdmin]);
+
+  const fetchManagerRoles = async () => {
+    const { data } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "manager");
+    setManagerUserIds(new Set((data || []).map(r => r.user_id)));
+  };
+
+  const handleToggleManager = async (member: TeamMember) => {
+    if (!member.userId) return;
+    setTogglingManager(member.id);
+    try {
+      const isCurrentlyManager = managerUserIds.has(member.userId);
+      if (isCurrentlyManager) {
+        const { error } = await supabase
+          .from("user_roles")
+          .delete()
+          .eq("user_id", member.userId)
+          .eq("role", "manager");
+        if (error) throw error;
+        toast.success(`${member.name} removed as manager`);
+      } else {
+        const { error } = await supabase
+          .from("user_roles")
+          .insert({ user_id: member.userId, role: "manager" });
+        if (error) throw error;
+        toast.success(`${member.name} promoted to manager!`);
+      }
+      fetchManagerRoles();
+    } catch (error: any) {
+      console.error("Error toggling manager:", error);
+      toast.error(error.message || "Failed to update role");
+    } finally {
+      setTogglingManager(null);
+    }
+  };
 
   const fetchTeamData = async () => {
     if (!user) return;
@@ -463,10 +504,16 @@ export function ManagerTeamView() {
             <div>
               <div className="flex items-center gap-2">
                 <p className="font-medium">{member.name}</p>
-                {/* Show manager badge for non-direct reports (admin view) */}
+                {/* Manager role badge */}
+                {member.userId && managerUserIds.has(member.userId) && (
+                  <Badge className="text-[10px] px-1.5 py-0 bg-teal-500/20 text-teal-400 border-teal-500/30">
+                    Manager
+                  </Badge>
+                )}
+                {/* Show reporting manager for non-direct reports (admin view) */}
                 {isAdmin && !member.isDirectReport && member.managerName && (
                   <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                    Manager: {member.managerName}
+                    Under: {member.managerName}
                   </Badge>
                 )}
               </div>
@@ -604,6 +651,28 @@ export function ManagerTeamView() {
               onSuccess={fetchTeamData}
               size="sm"
             />
+            {isAdmin && member.userId && (
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  "gap-1.5 text-xs",
+                  managerUserIds.has(member.userId)
+                    ? "text-amber-500 hover:bg-amber-500/10"
+                    : "text-teal-500 hover:bg-teal-500/10"
+                )}
+                disabled={togglingManager === member.id}
+                onClick={(e) => { e.stopPropagation(); handleToggleManager(member); }}
+              >
+                {togglingManager === member.id ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : managerUserIds.has(member.userId) ? (
+                  <><ShieldOff className="h-3 w-3" /> Remove Manager</>
+                ) : (
+                  <><Shield className="h-3 w-3" /> Make Manager</>
+                )}
+              </Button>
+            )}
             {member.isDeactivated || member.isInactive || member.status === "terminated" ? (
               <Button
                 variant="outline"

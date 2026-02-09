@@ -68,6 +68,8 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
   const [onboardingStage, setOnboardingStage] = useState("onboarding");
   const [managerId, setManagerId] = useState<string | null>(null);
   const [managers, setManagers] = useState<Manager[]>([]);
+  const [newPassword, setNewPassword] = useState("");
+  const [settingPassword, setSettingPassword] = useState(false);
 
   // Fetch managers list
   useEffect(() => {
@@ -267,6 +269,31 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
       });
     },
   });
+
+  const handleSetPassword = async () => {
+    if (!newPassword.trim() || newPassword.length < 6) {
+      toast({ title: "Password must be at least 6 characters", variant: "destructive" });
+      return;
+    }
+    if (!agentDetails?.user_id) {
+      toast({ title: "Agent has no auth account yet", variant: "destructive" });
+      return;
+    }
+    setSettingPassword(true);
+    try {
+      const { error } = await supabase.functions.invoke("reset-agent-password", {
+        body: { targetUserId: agentDetails.user_id, newPassword: newPassword.trim() },
+      });
+      if (error) throw error;
+      toast({ title: "Password updated ✅", description: `Password set for ${fullName}` });
+      setNewPassword("");
+    } catch (err: any) {
+      toast({ title: "Failed to set password", description: err.message, variant: "destructive" });
+    } finally {
+      setSettingPassword(false);
+    }
+  };
+
 
   if (!agent) return null;
 
@@ -505,6 +532,35 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
                 Reset Password
               </Button>
             </div>
+
+            {/* Direct Password Set */}
+            {agentDetails?.user_id && (
+              <div className="space-y-1.5">
+                <Label className="text-[10px] text-muted-foreground">Set New Password</Label>
+                <div className="flex gap-1.5">
+                  <Input
+                    type="password"
+                    placeholder="New password (min 6 chars)"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="h-7 text-xs"
+                  />
+                  <Button
+                    variant="outline"
+                    className="gap-1 h-7 text-[10px] shrink-0"
+                    onClick={handleSetPassword}
+                    disabled={settingPassword || !newPassword.trim()}
+                  >
+                    {settingPassword ? (
+                      <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                    ) : (
+                      <Key className="h-2.5 w-2.5" />
+                    )}
+                    Set
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {agent.lastActivity && (
               <p className="text-[10px] text-center text-muted-foreground">

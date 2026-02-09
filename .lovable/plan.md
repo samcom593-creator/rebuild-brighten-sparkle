@@ -1,56 +1,51 @@
 
+# Simple One-Tap Invite Link + Cleanup
 
-# Emergency: Restore All Agents + Remove Invitation Tracker
+## What's Happening with "Recent Invitations"
+The InvitationTracker component was already deleted and removed from Dashboard.tsx in the last edit. You're likely seeing a cached version. The code change will force a fresh build, which should clear it.
 
-## What Happened
-The "Recent Invitations" X button terminated **12 agents** in a 40-second window (21:39 UTC today). Each click set `is_deactivated: true` and `status: "terminated"`, which removed them from the Dashboard, CRM, Command Center, and destroyed their close rate visibility.
+## New Feature: Quick Invite Link Generator
 
-## Agents to Restore (12 total)
-Aisha Kebbeh, Samuel James, Brennan Barker, Chukwudi Ifediora, Bryan Ross, Moody Imran, Jacob Causer, Mitchell Urewuji, Ashton McPhaul, deondric williams, Wayne Price, KJ Vaughns
+A compact card placed directly below the "Highest Closing Rate" and "Top Referrals" leaderboards. It works like this:
+
+1. You tap "Generate Link" -- it creates a one-time code and shows the link
+2. You tap the link to copy it
+3. You send it to someone
+4. They open the link, land on the signup page, create their account (or if their email/phone matches an existing agent, they get routed to set/change their password)
+5. Once used, the link auto-deletes from the database
+6. You can generate a new one anytime
+
+No dialogs, no forms to fill out. Just generate, copy, send.
 
 ## Changes
 
-### 1. Database: Restore all 12 terminated agents
-Run a single UPDATE to reactivate all agents that were terminated during the 21:39 UTC window:
+### 1. New Component: `QuickInviteLink.tsx`
+**File: `src/components/dashboard/QuickInviteLink.tsx`**
 
-```sql
-UPDATE agents
-SET is_deactivated = false, status = 'active', deactivation_reason = NULL
-WHERE id IN (
-  'bc2216a9-e269-4202-bba0-5fc25b87da1c',
-  '11213154-5d01-4522-8019-fb3cc7c9672b',
-  '61c4e8ca-1895-45ba-856b-f5ad98a5400e',
-  'a60e70c5-f2d4-4a3d-bcdb-0002327f8e3f',
-  'e4babe59-9c35-41bf-b6ed-4d5cd3968e1f',
-  'af13f7f5-789e-4d92-81dc-1511efcc8fab',
-  '4fdb2e83-e66c-465e-8df4-076174e70b82',
-  'ca03724a-6a9a-41e6-8ee6-f3045134960c',
-  'f01e9127-0d0f-4881-9468-5fc933f59afa',
-  'a067eb8d-8df0-4319-befc-316bcdad03ff',
-  '414c1d1c-1a11-477c-ada4-0c30ac35a835',
-  '431dff0d-7c82-4134-a85e-457e5226fc7f'
-);
-```
+A small card with:
+- "Generate Link" button -- creates a row in `manager_invite_links` with a random code and the current manager's agent ID
+- Shows the generated link with a copy button
+- "Delete" button to manually remove it
+- Displays status: Active / Used
 
-This will immediately bring back all 12 agents across Dashboard, CRM, Command Center, and restore their close rates.
+### 2. Auto-Delete Used Links
+**File: `src/pages/AgentSignup.tsx`**
 
-### 2. Remove the InvitationTracker component entirely
+After a successful signup via a `ref` code, delete the invite link from `manager_invite_links` so it can only be used once. Currently the link stays active forever -- this change makes it one-time-use.
+
+### 3. Place the Component in Dashboard
 **File: `src/pages/Dashboard.tsx`**
-- Remove the import of `InvitationTracker`
-- Remove the line `{(isManager || isAdmin) && <InvitationTracker />}`
 
-**File: `src/components/dashboard/InvitationTracker.tsx`**
-- Delete this file entirely -- it is too dangerous to keep since its X button terminates real agents
+Add `QuickInviteLink` right after the closing rate and referral leaderboard grid (line 367), inside the left column, visible to managers and admins only.
 
-### 3. Verify merge tool works for all agents
-The `DuplicateMergeTool.tsx` already has the `user_id` fallback and includes all agents (active, inactive, terminated). No code change needed -- once the 12 agents are restored, they will appear in the merge list immediately.
+### 4. Remove the old "Invite Links" section (lines 400-428)
+The existing "Invite Team Member" card at the bottom that just navigates to CRM is redundant. Remove it and replace the entire invite section with just the new QuickInviteLink.
 
 ## Technical Details
 
-| Action | Detail |
-|--------|--------|
-| Database UPDATE | Restore 12 agents: set `is_deactivated = false`, `status = 'active'` |
-| `src/pages/Dashboard.tsx` | Remove InvitationTracker import and usage |
-| `src/components/dashboard/InvitationTracker.tsx` | Delete file |
-| Merge tool | No change needed -- already includes all agents with fallback |
-
+| File | Change |
+|------|--------|
+| `src/components/dashboard/QuickInviteLink.tsx` | New component: generate, copy, delete one-time invite links |
+| `src/pages/Dashboard.tsx` | Add QuickInviteLink below leaderboards; remove old invite section |
+| `src/pages/AgentSignup.tsx` | After successful signup, delete the used invite link |
+| `manager_invite_links` table | No schema change needed -- already has `invite_code`, `manager_agent_id`, `is_active` |

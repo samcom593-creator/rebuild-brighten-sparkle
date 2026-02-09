@@ -85,7 +85,35 @@ export function ContractedModal({
 
     setIsSubmitting(true);
     try {
-      // 1. Mark as contracted based on source
+      // Determine license status
+      const finalLicenseStatus = 
+        application.license_progress === "licensed" 
+          ? "licensed" 
+          : application.license_status;
+
+      // 1. Create agent via the add-agent edge function (handles auth user, profile, roles, agent record)
+      const { data: addAgentResult, error: addAgentError } = await supabase.functions.invoke("add-agent", {
+        body: {
+          firstName: application.first_name,
+          lastName: application.last_name,
+          email: application.email,
+          phone: application.phone,
+          managerId: agentId,
+          licenseStatus: finalLicenseStatus,
+          crmSetupLink: linkToUse,
+        },
+      });
+
+      if (addAgentError || !addAgentResult?.success) {
+        const errorMsg = addAgentResult?.error || addAgentError?.message || "Failed to create agent";
+        console.error("Add agent error:", errorMsg);
+        toast.error(errorMsg);
+        return;
+      }
+
+      const newAgentId = addAgentResult.agentId;
+
+      // 2. Mark application as contracted based on source
       const isAgedLead = application.source === "aged_leads";
       
       if (isAgedLead) {
@@ -108,56 +136,12 @@ export function ContractedModal({
         if (updateError) throw updateError;
       }
 
-      // 2. Save CRM link for future use if requested
+      // 3. Save CRM link for future use if requested
       if (saveForNextTime && !useSavedLink) {
         await supabase
           .from("agents")
           .update({ crm_setup_link: linkToUse })
           .eq("id", agentId);
-      }
-
-      // 3. Create a new agent record in the CRM
-      // First create a profile for the new agent
-      const newUserId = crypto.randomUUID();
-      const { data: newProfile, error: profileError } = await supabase
-        .from("profiles")
-        .insert({
-          user_id: newUserId,
-          email: application.email,
-          full_name: `${application.first_name} ${application.last_name}`,
-          phone: application.phone,
-        })
-        .select("id")
-        .single();
-
-      if (profileError || !newProfile) {
-        console.error("Profile creation error:", profileError);
-        toast.error("Failed to create agent profile. Please try again.");
-        return;
-      }
-
-      // Determine license status - use license_progress if it's "licensed", otherwise use application's license_status
-      const finalLicenseStatus = 
-        application.license_progress === "licensed" 
-          ? "licensed" 
-          : application.license_status;
-
-      // Create the agent record linked to the manager with proper profile_id
-      const { error: agentError } = await supabase
-        .from("agents")
-        .insert({
-          user_id: newUserId,
-          profile_id: newProfile.id,
-          invited_by_manager_id: agentId,
-          onboarding_stage: "onboarding",
-          license_status: finalLicenseStatus,
-          status: "active",
-        });
-
-      if (agentError) {
-        console.error("Agent creation error:", agentError);
-        toast.error("Failed to create agent record");
-        return;
       }
 
       // 4. Send contracted email with CRM link

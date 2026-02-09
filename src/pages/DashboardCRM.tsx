@@ -103,6 +103,8 @@ interface AgentCRM {
   weeklyClosingRate: number;
   // Monthly production stats
   monthlyALP: number;
+  // Last contact
+  lastContactedAt: string | null;
 }
 
 const attendanceColors: Record<AttendanceStatus, string> = {
@@ -352,6 +354,22 @@ export default function DashboardCRM() {
         }
       }
 
+      // Fetch last contact timestamps from applications
+      const allAgentIds = agentData.map(a => a.id);
+      const { data: appContacts } = await supabase
+        .from("applications")
+        .select("assigned_agent_id, last_contacted_at")
+        .in("assigned_agent_id", allAgentIds)
+        .not("last_contacted_at", "is", null)
+        .order("last_contacted_at", { ascending: false });
+
+      const lastContactMap = new Map<string, string>();
+      for (const app of appContacts || []) {
+        if (app.assigned_agent_id && app.last_contacted_at && !lastContactMap.has(app.assigned_agent_id)) {
+          lastContactMap.set(app.assigned_agent_id, app.last_contacted_at);
+        }
+      }
+
       const crmAgents: AgentCRM[] = agentData.map((agent, index) => {
         const profile = profileMap.get(agent.user_id);
         const weeklyStats = weeklyProductionMap.get(agent.id) || { aop: 0, presentations: 0, deals: 0 };
@@ -392,6 +410,7 @@ export default function DashboardCRM() {
           weeklyDeals: weeklyStats.deals,
           weeklyClosingRate,
           monthlyALP,
+          lastContactedAt: lastContactMap.get(agent.id) || null,
         };
       });
 
@@ -550,6 +569,20 @@ export default function DashboardCRM() {
     );
   }
 
+  const getTimeAgo = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
+
   const renderAgentCard = (agent: AgentCRM, index: number) => {
     const daysInTraining = agent.fieldTrainingStartedAt
       ? differenceInDays(new Date(), new Date(agent.fieldTrainingStartedAt))
@@ -601,6 +634,14 @@ export default function DashboardCRM() {
                   >
                     {agent.email}
                   </a>
+                  {agent.lastContactedAt ? (
+                    <span className="flex items-center gap-0.5 bg-muted/50 px-1 py-0.5 rounded text-[9px]">
+                      <Clock className="h-2 w-2" />
+                      {getTimeAgo(agent.lastContactedAt)}
+                    </span>
+                  ) : (
+                    <span className="text-[9px] text-muted-foreground/50">No contact</span>
+                  )}
                   <div className="flex items-center gap-1 ml-auto shrink-0">
                     {agent.phone && (
                       <a href={`tel:${agent.phone}`} className="hover:text-foreground transition-colors">

@@ -70,6 +70,7 @@ interface TeamMember {
   isDeactivated: boolean;
   isInactive: boolean;
   lastContactedAt: string | null;
+  invitedByManagerId: string | null;
 }
 
 interface TeamStats {
@@ -387,6 +388,7 @@ export function ManagerTeamView() {
           isDeactivated: agent.is_deactivated || false,
           isInactive: agent.is_inactive || false,
           lastContactedAt,
+          invitedByManagerId: agent.invited_by_manager_id || null,
         };
       });
 
@@ -619,7 +621,7 @@ export function ManagerTeamView() {
             </Button>
             <ManagerAssignMenu
               agentId={member.id}
-              currentManagerId={null}
+              currentManagerId={member.invitedByManagerId}
               onAssigned={fetchTeamData}
             />
             {member.userId && (
@@ -808,8 +810,9 @@ export function ManagerTeamView() {
           <Collapsible open={licensedOpen} onOpenChange={setLicensedOpen}>
             <CollapsibleTrigger asChild>
               <Button
+                type="button"
                 variant="ghost"
-                className="w-full flex items-center justify-between p-3 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-lg"
+                className="w-full flex items-center justify-between p-3 min-h-[48px] bg-emerald-500/10 hover:bg-emerald-500/20 rounded-lg"
               >
                 <div className="flex items-center gap-2">
                   <Award className="h-4 w-4 text-emerald-500" />
@@ -836,8 +839,9 @@ export function ManagerTeamView() {
           <Collapsible open={unlicensedOpen} onOpenChange={setUnlicensedOpen}>
             <CollapsibleTrigger asChild>
               <Button
+                type="button"
                 variant="ghost"
-                className="w-full flex items-center justify-between p-3 bg-amber-500/10 hover:bg-amber-500/20 rounded-lg"
+                className="w-full flex items-center justify-between p-3 min-h-[48px] bg-amber-500/10 hover:bg-amber-500/20 rounded-lg"
               >
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-amber-500" />
@@ -865,8 +869,9 @@ export function ManagerTeamView() {
             <Collapsible open={terminatedOpen} onOpenChange={setTerminatedOpen}>
               <CollapsibleTrigger asChild>
                 <Button
+                  type="button"
                   variant="ghost"
-                  className="w-full flex items-center justify-between p-3 bg-destructive/10 hover:bg-destructive/20 rounded-lg"
+                  className="w-full flex items-center justify-between p-3 min-h-[48px] bg-destructive/10 hover:bg-destructive/20 rounded-lg"
                 >
                   <div className="flex items-center gap-2">
                     <AlertTriangle className="h-4 w-4 text-destructive" />

@@ -53,7 +53,9 @@ export function DuplicateMergeTool({ open, onClose, onMergeComplete }: Duplicate
         .from("agents")
         .select(`
           id,
+          user_id,
           profile_id,
+          display_name,
           is_inactive,
           is_deactivated,
           profiles!agents_profile_id_fkey (
@@ -84,16 +86,38 @@ export function DuplicateMergeTool({ open, onClose, onMergeComplete }: Duplicate
         });
       });
 
-      return (agents || []).map((a) => ({
-        id: a.id,
-        profileId: a.profile_id,
-        fullName: a.profiles?.full_name || "Unknown",
-        email: a.profiles?.email || null,
-        phone: a.profiles?.phone || null,
-        totalAlp: productionMap.get(a.id)?.alp || 0,
-        totalDeals: productionMap.get(a.id)?.deals || 0,
-        isInactive: a.is_inactive || a.is_deactivated,
-      }));
+      // Identify agents missing profile_id for fallback lookup
+      const agentsWithoutProfile = (agents || []).filter(
+        (a: any) => !a.profiles?.full_name
+      );
+      const fallbackUserIds = agentsWithoutProfile
+        .map((a: any) => a.user_id)
+        .filter(Boolean) as string[];
+
+      let fallbackProfiles: Record<string, { full_name: string | null; email: string | null; phone: string | null }> = {};
+      if (fallbackUserIds.length > 0) {
+        const { data: fbProfiles } = await supabase
+          .from("profiles")
+          .select("user_id, full_name, email, phone")
+          .in("user_id", fallbackUserIds);
+        fbProfiles?.forEach((p) => {
+          if (p.user_id) fallbackProfiles[p.user_id] = p;
+        });
+      }
+
+      return (agents || []).map((a: any) => {
+        const fbProfile = a.user_id ? fallbackProfiles[a.user_id] : null;
+        return {
+          id: a.id,
+          profileId: a.profile_id,
+          fullName: a.profiles?.full_name || fbProfile?.full_name || a.display_name || `Agent ${a.id.slice(0, 6)}`,
+          email: a.profiles?.email || fbProfile?.email || null,
+          phone: a.profiles?.phone || fbProfile?.phone || null,
+          totalAlp: productionMap.get(a.id)?.alp || 0,
+          totalDeals: productionMap.get(a.id)?.deals || 0,
+          isInactive: a.is_inactive || a.is_deactivated,
+        };
+      });
     },
   });
 

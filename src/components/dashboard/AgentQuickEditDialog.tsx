@@ -214,7 +214,10 @@ export function AgentQuickEditDialog({
             deals: stats.deals,
           };
         })
-        .filter(m => m.name !== "Unknown")
+        .map(m => ({
+          ...m,
+          name: m.name === "Unknown" ? `Agent ${m.id.slice(0, 6)} (no profile)` : m.name,
+        }))
         .sort((a, b) => a.name.localeCompare(b.name))
         .slice(0, 50);
 

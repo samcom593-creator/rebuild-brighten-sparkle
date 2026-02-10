@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Save, Loader2, Target, DollarSign, Users, Clock, Home, Handshake, TrendingUp, Sparkles, Check, CalendarIcon, Plus, Link2, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,9 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
   const [showSuccess, setShowSuccess] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [loadingExisting, setLoadingExisting] = useState(true);
+  const [initialDeals, setInitialDeals] = useState<{ id: string; amount: string; frequency: "monthly" | "annual" }[] | undefined>(undefined);
+  const [dealEntryKey, setDealEntryKey] = useState(0);
   const { playSound } = useSoundEffects();
   const formRef = useRef<HTMLFormElement>(null);
   
@@ -41,15 +44,80 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
     aop: 0,
   });
 
+  // Fetch existing production data when component mounts or date changes
+  useEffect(() => {
+    const fetchExistingData = async () => {
+      setLoadingExisting(true);
+      try {
+        const productionDateStr = format(selectedDate, "yyyy-MM-dd");
+        const { data } = await supabase
+          .from("daily_production")
+          .select("*")
+          .eq("agent_id", agentId)
+          .eq("production_date", productionDateStr)
+          .maybeSingle();
+
+        if (data) {
+          setFormData({
+            presentations: data.presentations || 0,
+            passed_price: data.passed_price || 0,
+            hours_called: data.hours_called || 0,
+            referrals_caught: data.referrals_caught || 0,
+            booked_inhome_referrals: data.booked_inhome_referrals || 0,
+            referral_presentations: data.referral_presentations || 0,
+            deals_closed: data.deals_closed || 0,
+            aop: data.aop || 0,
+          });
+
+          // Reconstruct deal bubbles from existing AOP if there are deals
+          if (data.aop > 0 && data.deals_closed > 0) {
+            // Split AOP evenly across deals as best approximation
+            const perDeal = Math.round(Number(data.aop) / data.deals_closed);
+            const remainder = Number(data.aop) - (perDeal * (data.deals_closed - 1));
+            const deals = Array.from({ length: data.deals_closed }, (_, i) => ({
+              id: crypto.randomUUID(),
+              amount: String(i === data.deals_closed - 1 ? remainder : perDeal),
+              frequency: "annual" as const,
+            }));
+            setInitialDeals(deals);
+          } else {
+            setInitialDeals(undefined);
+          }
+          setDealEntryKey(prev => prev + 1);
+        } else {
+          // No existing data - reset form
+          setFormData({
+            presentations: 0,
+            passed_price: 0,
+            hours_called: 0,
+            referrals_caught: 0,
+            booked_inhome_referrals: 0,
+            referral_presentations: 0,
+            deals_closed: 0,
+            aop: 0,
+          });
+          setInitialDeals(undefined);
+          setDealEntryKey(prev => prev + 1);
+        }
+      } catch (err) {
+        console.error("Error fetching existing production:", err);
+      } finally {
+        setLoadingExisting(false);
+      }
+    };
+
+    fetchExistingData();
+  }, [agentId, selectedDate]);
+
   // Handle ALP from calculator
-  const handleALPChange = (alp: number) => {
+  const handleALPChange = useCallback((alp: number) => {
     setFormData(prev => ({ ...prev, aop: alp }));
-  };
+  }, []);
 
   // Handle deals count from calculator
-  const handleDealsChange = (deals: number) => {
+  const handleDealsChange = useCallback((deals: number) => {
     setFormData(prev => ({ ...prev, deals_closed: deals }));
-  };
+  }, []);
 
   const handleFieldChange = (key: string, value: number) => {
     setFormData(prev => ({ ...prev, [key]: value }));
@@ -270,151 +338,160 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
             </PopoverContent>
           </Popover>
           
-          <form 
-            ref={formRef} 
-            onSubmit={handleSubmit} 
-            onKeyDown={(e) => {
-              // Prevent Enter from submitting form unless on submit button
-              if (e.key === "Enter" && e.target instanceof HTMLInputElement) {
-                e.preventDefault();
-              }
-            }}
-            className="space-y-6"
-          >
-            {/* Deal Entry Section - Premium Bubble System */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-emerald-500/20 to-primary/20 flex items-center justify-center">
-                  <TrendingUp className="h-4 w-4 text-primary" />
-                </div>
-                <h3 className="text-sm font-bold">💰 Deals</h3>
-              </div>
-              
-              <BubbleDealEntry
-                onALPChange={handleALPChange}
-                onDealsChange={handleDealsChange}
-              />
+          {loadingExisting ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <span className="ml-2 text-sm text-muted-foreground">Loading existing data...</span>
             </div>
-
-            {/* Activity Stats - Bubble Format */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center">
-                  <Target className="h-4 w-4 text-blue-500" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold">📊 Activity Stats</h3>
-                  <p className="text-[10px] text-muted-foreground">Track your daily activity</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                {statFields.map((field, index) => (
-                  <BubbleStatInput
-                    key={field.key}
-                    label={field.label}
-                    emoji={field.emoji}
-                    value={formData[field.key as keyof typeof formData] as number}
-                    onChange={(value) => handleFieldChange(field.key, value)}
-                    step={field.step}
-                    delay={index * 0.05}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* Premium Submit Button */}
-            <motion.div
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.98 }}
+          ) : (
+            <form 
+              ref={formRef} 
+              onSubmit={handleSubmit} 
+              onKeyDown={(e) => {
+                // Prevent Enter from submitting form unless on submit button
+                if (e.key === "Enter" && e.target instanceof HTMLInputElement) {
+                  e.preventDefault();
+                }
+              }}
+              className="space-y-6"
             >
-              <Button 
-                type="submit" 
-                className={cn(
-                  "w-full gap-3 h-14 text-base font-bold rounded-xl transition-all duration-300",
-                  "bg-gradient-to-r from-primary via-primary to-emerald-500 hover:from-primary/90 hover:to-emerald-500/90",
-                  "shadow-lg hover:shadow-xl",
-                  hasData && "shadow-primary/30 hover:shadow-primary/40"
-                )} 
-                size="lg"
-                disabled={saving}
-              >
-                <AnimatePresence mode="popLayout">
-                  {saving ? (
-                    <motion.div
-                      key="saving"
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      className="flex items-center gap-2"
-                    >
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                      Saving...
-                    </motion.div>
-                  ) : showSuccess ? (
-                    <motion.div
-                      key="success"
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      className="flex items-center gap-2"
-                    >
-                      <Check className="h-5 w-5" />
-                      Saved!
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      key="default"
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      className="flex items-center gap-2"
-                    >
-                      <Save className="h-5 w-5" />
-                      Submit Numbers
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </Button>
-            </motion.div>
+              {/* Deal Entry Section - Premium Bubble System */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-emerald-500/20 to-primary/20 flex items-center justify-center">
+                    <TrendingUp className="h-4 w-4 text-primary" />
+                  </div>
+                  <h3 className="text-sm font-bold">💰 Deals</h3>
+                </div>
+                
+                <BubbleDealEntry
+                  key={dealEntryKey}
+                  onALPChange={handleALPChange}
+                  onDealsChange={handleDealsChange}
+                  initialDeals={initialDeals}
+                />
+              </div>
 
-            {/* Share Numbers Link */}
-            <div className="flex items-center justify-center gap-4 pt-4 border-t border-border/30 mt-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="text-xs text-muted-foreground hover:text-primary gap-2"
-                onClick={() => {
-                  const shareUrl = `${window.location.origin}/numbers`;
-                  navigator.clipboard.writeText(shareUrl);
-                  toast.success("Link copied! Share with your team");
-                }}
+              {/* Activity Stats - Bubble Format */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center">
+                    <Target className="h-4 w-4 text-blue-500" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold">📊 Activity Stats</h3>
+                    <p className="text-[10px] text-muted-foreground">Track your daily activity</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {statFields.map((field, index) => (
+                    <BubbleStatInput
+                      key={field.key}
+                      label={field.label}
+                      emoji={field.emoji}
+                      value={formData[field.key as keyof typeof formData] as number}
+                      onChange={(value) => handleFieldChange(field.key, value)}
+                      step={field.step}
+                      delay={index * 0.05}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Premium Submit Button */}
+              <motion.div
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
               >
-                <Link2 className="h-4 w-4" />
-                Copy Link
-              </Button>
-              
-              {typeof navigator !== 'undefined' && 'share' in navigator && (
+                <Button 
+                  type="submit" 
+                  className={cn(
+                    "w-full gap-3 h-14 text-base font-bold rounded-xl transition-all duration-300",
+                    "bg-gradient-to-r from-primary via-primary to-emerald-500 hover:from-primary/90 hover:to-emerald-500/90",
+                    "shadow-lg hover:shadow-xl",
+                    hasData && "shadow-primary/30 hover:shadow-primary/40"
+                  )} 
+                  size="lg"
+                  disabled={saving}
+                >
+                  <AnimatePresence mode="popLayout">
+                    {saving ? (
+                      <motion.div
+                        key="saving"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        className="flex items-center gap-2"
+                      >
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        Saving...
+                      </motion.div>
+                    ) : showSuccess ? (
+                      <motion.div
+                        key="success"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        className="flex items-center gap-2"
+                      >
+                        <Check className="h-5 w-5" />
+                        Saved!
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="default"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        className="flex items-center gap-2"
+                      >
+                        <Save className="h-5 w-5" />
+                        Submit Numbers
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </Button>
+              </motion.div>
+
+              {/* Share Numbers Link */}
+              <div className="flex items-center justify-center gap-4 pt-4 border-t border-border/30 mt-2">
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
                   className="text-xs text-muted-foreground hover:text-primary gap-2"
                   onClick={() => {
-                    navigator.share({
-                      title: "APEX Daily Numbers",
-                      text: "Log your numbers in under 30 seconds!",
-                      url: `${window.location.origin}/numbers`,
-                    });
+                    const shareUrl = `${window.location.origin}/numbers`;
+                    navigator.clipboard.writeText(shareUrl);
+                    toast.success("Link copied! Share with your team");
                   }}
                 >
-                  <Share2 className="h-4 w-4" />
-                  Share
+                  <Link2 className="h-4 w-4" />
+                  Copy Link
                 </Button>
-              )}
-            </div>
-          </form>
+                
+                {typeof navigator !== 'undefined' && 'share' in navigator && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs text-muted-foreground hover:text-primary gap-2"
+                    onClick={() => {
+                      navigator.share({
+                        title: "APEX Daily Numbers",
+                        text: "Log your numbers in under 30 seconds!",
+                        url: `${window.location.origin}/numbers`,
+                      });
+                    }}
+                  >
+                    <Share2 className="h-4 w-4" />
+                    Share
+                  </Button>
+                )}
+              </div>
+            </form>
+          )}
         </div>
       </motion.div>
     </>

@@ -80,10 +80,10 @@ const COLUMN_MAPPINGS: Record<string, string[]> = {
     "primary_email", "work_email", "personal_email"
   ],
   phone: [
-    "phone", "phone number", "phonenumber", "phone_number", "mobile", "cell", 
-    "telephone", "tel", "contact_phone", "lead_phone", "applicant_phone",
-    "mobile_phone", "cell_phone", "primary_phone", "work_phone", "home_phone",
-    "cellphone", "mobilephone"
+    "phone", "phone number", "phonenumber", "phone_number", "phone_10", "phone_e164",
+    "mobile", "cell", "telephone", "tel", "contact_phone", "lead_phone", 
+    "applicant_phone", "mobile_phone", "cell_phone", "primary_phone", "work_phone", 
+    "home_phone", "cellphone", "mobilephone"
   ],
   instagram_handle: [
     "instagram", "instagram_handle", "ig", "ig handle", "instagram handle",

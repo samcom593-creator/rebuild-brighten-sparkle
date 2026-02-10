@@ -117,7 +117,7 @@ export default function ScheduleCall() {
               <h3 className="font-semibold mb-4 text-center">What You'll Get at Apex:</h3>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 {[
-                  "Free leads daily",
+                  "Unlimited warm leads daily",
                   "$10K+ starting income",
                   "Full training program",
                   "Equity partnership",

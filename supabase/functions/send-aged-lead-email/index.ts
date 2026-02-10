@@ -23,7 +23,7 @@ const getEmailHtml = (firstName: string) => `
       <h2 style="font-size:24px;margin:0 0 16px 0;color:#14b8a6;">Hey ${firstName}!</h2>
       
       <p style="font-size:16px;line-height:1.7;color:#d1d5db;margin:0 0 20px 0;">
-        A new remote sales position just opened up at Apex Financial and we thought of you.
+        You applied to Apex Financial before, and we wanted to reach back out — we've got some exciting updates and new openings on the team.
       </p>
       
       <p style="font-size:16px;line-height:1.7;color:#ffffff;margin:0 0 12px 0;font-weight:600;">
@@ -41,7 +41,7 @@ const getEmailHtml = (firstName: string) => `
           <tr>
             <td style="padding:10px 0;color:#d1d5db;font-size:15px;">
               <span style="color:#14b8a6;font-weight:bold;margin-right:8px;">✓</span>
-              Free warm leads provided daily
+              Unlimited warm leads provided daily
             </td>
           </tr>
           <tr>

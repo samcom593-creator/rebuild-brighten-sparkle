@@ -84,7 +84,7 @@ const handler = async (req: Request): Promise<Response> => {
               </p>
               <ul style="color: #e0e0e0; font-size: 16px; line-height: 1.8; margin: 0 0 25px; padding-left: 20px;">
                 <li>✅ Agent portal access & training</li>
-                <li>✅ Free warm leads to start calling</li>
+                <li>✅ Unlimited warm leads to start calling</li>
                 <li>✅ Your personalized compensation structure</li>
                 <li>✅ Everything you need to close your first deal</li>
               </ul>

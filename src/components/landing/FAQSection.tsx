@@ -38,7 +38,7 @@ const faqs = [
   },
   {
     question: "Is there a cost to join?",
-    answer: "There's no upfront cost to join APEX. We invest in you—not the other way around. We cover your E&O insurance, provide free leads to get started, and offer reimbursement for licensing costs once you're producing.",
+    answer: "There's no upfront cost to join APEX. We invest in you—not the other way around. We cover your E&O insurance, provide unlimited warm leads to get started, and offer reimbursement for licensing costs once you're producing.",
   },
 ];
 

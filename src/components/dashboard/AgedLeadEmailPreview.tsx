@@ -29,7 +29,7 @@ function getEmailPreviewHtml(firstName: string) {
         <h2 style="font-size:22px;margin:0 0 16px 0;color:#14b8a6;">Hey ${firstName}!</h2>
         
         <p style="font-size:16px;line-height:1.7;color:#d1d5db;margin:0 0 16px 0;">
-          A new remote sales position just opened up at Apex Financial and we thought of you.
+          You applied to Apex Financial before, and we wanted to reach back out — we've got some exciting updates and new openings on the team.
         </p>
         
         <p style="font-size:16px;line-height:1.7;color:#ffffff;margin:0 0 12px 0;font-weight:600;">
@@ -44,7 +44,7 @@ function getEmailPreviewHtml(firstName: string) {
             </li>
             <li style="margin-bottom:12px;display:flex;align-items:center;gap:8px;">
               <span style="color:#14b8a6;font-weight:bold;">✓</span>
-              Free warm leads provided daily
+              Unlimited warm leads provided daily
             </li>
             <li style="margin-bottom:12px;display:flex;align-items:center;gap:8px;">
               <span style="color:#14b8a6;font-weight:bold;">✓</span>

@@ -356,7 +356,8 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
                   <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-emerald-500/20 to-primary/20 flex items-center justify-center">
                     <TrendingUp className="h-4 w-4 text-primary" />
                   </div>
-                  <h3 className="text-sm font-bold">💰 Deals</h3>
+                  <h3 className="text-sm font-bold">💰 Deal Amounts</h3>
+                  <p className="text-[10px] text-muted-foreground">Enter each deal amount below</p>
                 </div>
                 
                 <BubbleDealEntry

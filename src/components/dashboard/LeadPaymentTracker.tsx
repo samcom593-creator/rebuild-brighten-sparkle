@@ -21,9 +21,9 @@ interface AgentPayment {
 function getWeekStart(): string {
   const now = new Date();
   const day = now.getDay();
-  const diff = now.getDate() - day;
-  const sunday = new Date(now.setDate(diff));
-  return sunday.toISOString().split("T")[0];
+  const sunday = new Date(now);
+  sunday.setDate(now.getDate() - day);
+  return `${sunday.getFullYear()}-${String(sunday.getMonth() + 1).padStart(2, '0')}-${String(sunday.getDate()).padStart(2, '0')}`;
 }
 
 export function LeadPaymentTracker() {

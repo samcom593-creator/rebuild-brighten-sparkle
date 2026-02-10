@@ -22,13 +22,14 @@ const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
 
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
+const ADMIN_EMAIL = "info@apex-financial.org";
+
 interface NotifyLeadAssignedRequest {
   applicationId: string;
   newAgentId: string;
   previousAgentId?: string | null;
 }
 
-// Get agent info by agent ID - prioritizes auth.users email for accuracy
 async function getAgentInfo(agentId: string): Promise<{ email: string; name: string } | null> {
   try {
     const { data: agent, error: agentError } = await supabaseAdmin
@@ -37,42 +38,31 @@ async function getAgentInfo(agentId: string): Promise<{ email: string; name: str
       .eq("id", agentId)
       .single();
     
-    if (agentError || !agent?.user_id) {
-      console.log("Could not find agent:", agentError);
-      return null;
-    }
+    if (agentError || !agent?.user_id) return null;
     
-    // First try to get the canonical email from auth.users (most reliable source)
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.getUserById(agent.user_id);
     
     if (!authError && authData?.user?.email) {
-      // Get the name from profile
       const { data: profile } = await supabaseAdmin
         .from("profiles")
         .select("full_name")
         .eq("user_id", agent.user_id)
         .maybeSingle();
       
-      console.log(`Using auth.users email for agent ${agentId}: ${authData.user.email}`);
       return {
         email: authData.user.email,
         name: profile?.full_name || authData.user.email.split("@")[0],
       };
     }
     
-    // Fallback to profile email if auth lookup fails
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
       .select("email, full_name")
       .eq("user_id", agent.user_id)
       .single();
     
-    if (profileError || !profile?.email) {
-      console.log("Could not find profile:", profileError);
-      return null;
-    }
+    if (profileError || !profile?.email) return null;
     
-    console.log(`Using profile email for agent ${agentId} (auth lookup failed): ${profile.email}`);
     return {
       email: profile.email,
       name: profile.full_name || profile.email.split("@")[0],
@@ -83,7 +73,21 @@ async function getAgentInfo(agentId: string): Promise<{ email: string; name: str
   }
 }
 
-// Sanitize string for HTML
+async function getManagerEmail(agentId: string): Promise<string | null> {
+  try {
+    const { data: agent } = await supabaseAdmin.from("agents").select("user_id, invited_by_manager_id").eq("id", agentId).single();
+    if (!agent) return null;
+    const managerId = agent.invited_by_manager_id || agentId;
+    const { data: manager } = await supabaseAdmin.from("agents").select("user_id").eq("id", managerId).single();
+    if (!manager?.user_id) return null;
+    const { data: authData } = await supabaseAdmin.auth.admin.getUserById(manager.user_id);
+    return authData?.user?.email || null;
+  } catch (e) {
+    console.error("Error resolving manager email:", e);
+    return null;
+  }
+}
+
 function sanitizeHtml(str: string): string {
   return str
     .replace(/&/g, "&amp;")
@@ -112,7 +116,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Processing lead assignment notification for app ${applicationId}, agent ${newAgentId}`);
 
-    // Get application details
     const { data: app, error: appError } = await supabaseAdmin
       .from("applications")
       .select("first_name, last_name, email, phone, city, state, license_status, instagram_handle, contacted_at, qualified_at")
@@ -127,18 +130,15 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Get new agent info
     const newAgentInfo = await getAgentInfo(newAgentId);
     
     if (!newAgentInfo) {
-      console.log("No new agent info found, skipping notification");
       return new Response(
         JSON.stringify({ success: true, skipped: true, reason: "No agent email found" }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    // Get previous agent info (if any) for context
     let previousAgentName: string | null = null;
     if (previousAgentId) {
       const previousAgentInfo = await getAgentInfo(previousAgentId);
@@ -152,6 +152,10 @@ const handler = async (req: Request): Promise<Response> => {
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
+
+    // Build CC list: admin + manager
+    const managerEmail = await getManagerEmail(newAgentId);
+    const ccList = [ADMIN_EMAIL, managerEmail].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i) as string[];
 
     const sanitized = {
       firstName: sanitizeHtml(app.first_name),
@@ -170,26 +174,20 @@ const handler = async (req: Request): Promise<Response> => {
     };
     const licenseStatusDisplay = licenseStatusMap[app.license_status] || app.license_status;
 
-    // Determine lead status
     let leadStatus = "New";
-    let statusColor = "#3b82f6"; // blue
-    if (app.qualified_at) {
-      leadStatus = "Qualified";
-      statusColor = "#8b5cf6"; // purple
-    } else if (app.contacted_at) {
-      leadStatus = "Contacted";
-      statusColor = "#f59e0b"; // amber
-    }
+    let statusColor = "#3b82f6";
+    if (app.qualified_at) { leadStatus = "Qualified"; statusColor = "#8b5cf6"; }
+    else if (app.contacted_at) { leadStatus = "Contacted"; statusColor = "#f59e0b"; }
 
     const isReassignment = !!previousAgentId;
     const subject = isReassignment 
       ? `🔄 Lead Reassigned: ${sanitized.firstName} ${sanitized.lastName}`
       : `📥 New Lead Assigned: ${sanitized.firstName} ${sanitized.lastName}`;
 
-    // Send notification email to new agent
     const emailResponse = await resend.emails.send({
       from: "APEX Notifications <noreply@apex-financial.org>",
       to: [newAgentInfo.email],
+      cc: ccList.length > 0 ? ccList : undefined,
       subject,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -269,7 +267,7 @@ const handler = async (req: Request): Promise<Response> => {
       `,
     });
 
-    console.log("Lead assignment notification sent:", emailResponse);
+    console.log("Lead assignment notification sent:", emailResponse, "CC:", ccList.join(", "));
 
     return new Response(
       JSON.stringify({ success: true, emailId: (emailResponse as any).id || "sent" }),

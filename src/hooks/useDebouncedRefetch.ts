@@ -19,13 +19,18 @@ export function useDebouncedRefetch(refetchFn: () => void, delay = 1000) {
       timeoutRef.current = null;
     }
 
+    // Add random jitter (0-200ms) to prevent thundering herd
+    const jitter = Math.random() * 200;
+
     if (timeSinceLastRefetch >= delay) {
-      // Enough time has passed, refetch immediately
-      lastRefetchTime.current = now;
-      refetchFn();
+      // Enough time has passed, refetch with slight jitter to spread load
+      timeoutRef.current = setTimeout(() => {
+        lastRefetchTime.current = Date.now();
+        refetchFn();
+      }, jitter);
     } else {
       // Schedule refetch for later
-      const remainingDelay = delay - timeSinceLastRefetch;
+      const remainingDelay = delay - timeSinceLastRefetch + jitter;
       timeoutRef.current = setTimeout(() => {
         lastRefetchTime.current = Date.now();
         refetchFn();

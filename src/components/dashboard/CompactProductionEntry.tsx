@@ -114,10 +114,6 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
     setFormData(prev => ({ ...prev, aop: alp }));
   }, []);
 
-  // Handle deals count from calculator
-  const handleDealsChange = useCallback((deals: number) => {
-    setFormData(prev => ({ ...prev, deals_closed: deals }));
-  }, []);
 
   const handleFieldChange = (key: string, value: number) => {
     setFormData(prev => ({ ...prev, [key]: value }));
@@ -233,10 +229,10 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
   // Stat fields with bubble styling
   const statFields = [
     { key: "presentations", label: "Presentations", icon: Target, emoji: "🎯" },
-    { key: "passed_price", label: "Pitched Price", icon: DollarSign, emoji: "💰" },
     { key: "hours_called", label: "Hours Called", icon: Clock, step: 0.5, emoji: "⏱️" },
     { key: "referrals_caught", label: "Referrals", icon: Users, emoji: "👥" },
     { key: "referral_presentations", label: "Ref. Pres.", icon: Handshake, emoji: "🤝" },
+    { key: "deals_closed", label: "Closes", icon: TrendingUp, emoji: "🏆" },
   ];
 
   const totalALP = Number(formData.aop) || 0;
@@ -366,7 +362,6 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
                 <BubbleDealEntry
                   key={dealEntryKey}
                   onALPChange={handleALPChange}
-                  onDealsChange={handleDealsChange}
                   initialDeals={initialDeals}
                 />
               </div>

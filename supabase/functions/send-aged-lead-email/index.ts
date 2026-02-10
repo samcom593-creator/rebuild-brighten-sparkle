@@ -37,7 +37,7 @@ const getEmailHtml = (firstName: string, trackingClickUrl: string, trackingPixel
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
-<body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#0a0a0a;color:#ffffff;">
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#0a0a0a;color:#ffffff;word-break:break-word;">
   <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
     <div style="text-align:center;margin-bottom:32px;">
       <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">APEX FINANCIAL</h1>
@@ -56,13 +56,13 @@ const getEmailHtml = (firstName: string, trackingClickUrl: string, trackingPixel
           <tr>
             <td width="50%" style="padding:0 6px 0 0;">
               <div style="background:linear-gradient(135deg,rgba(20,184,166,0.15),rgba(20,184,166,0.05));border:1px solid rgba(20,184,166,0.3);border-radius:12px;padding:20px;text-align:center;">
-                <div style="font-size:28px;font-weight:bold;color:#14b8a6;margin-bottom:6px;">$20,000+</div>
+                <div style="font-size:22px;font-weight:bold;color:#14b8a6;margin-bottom:6px;">$20,000+</div>
                 <div style="font-size:13px;color:#d1d5db;line-height:1.4;">produced by every<br>agent last month</div>
               </div>
             </td>
             <td width="50%" style="padding:0 0 0 6px;">
               <div style="background:linear-gradient(135deg,rgba(14,165,233,0.15),rgba(14,165,233,0.05));border:1px solid rgba(14,165,233,0.3);border-radius:12px;padding:20px;text-align:center;">
-                <div style="font-size:28px;font-weight:bold;color:#0ea5e9;margin-bottom:6px;">$10,000+</div>
+                <div style="font-size:22px;font-weight:bold;color:#0ea5e9;margin-bottom:6px;">$10,000+</div>
                 <div style="font-size:13px;color:#d1d5db;line-height:1.4;">deposited by every<br>agent last month</div>
               </div>
             </td>
@@ -105,8 +105,8 @@ const getEmailHtml = (firstName: string, trackingClickUrl: string, trackingPixel
       
       <!-- Primary CTA -->
       <div style="text-align:center;margin:32px 0 20px 0;">
-        <a href="\${trackingClickUrl}" 
-           style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#ffffff;padding:18px 52px;text-decoration:none;border-radius:12px;font-weight:bold;font-size:18px;box-shadow:0 6px 24px rgba(20,184,166,0.35);letter-spacing:0.5px;">
+        <a href="${trackingClickUrl}" 
+           style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#ffffff;padding:16px 32px;text-decoration:none;border-radius:12px;font-weight:bold;font-size:16px;box-shadow:0 6px 24px rgba(20,184,166,0.35);letter-spacing:0.5px;max-width:100%;box-sizing:border-box;">
           REAPPLY NOW →
         </a>
       </div>
@@ -130,7 +130,7 @@ const getEmailHtml = (firstName: string, trackingClickUrl: string, trackingPixel
       <a href="https://apex-financial.org" style="color:#6b7280;font-size:12px;">Visit our website</a>
     </div>
   </div>
-  <img src="\${trackingPixelUrl}" width="1" height="1" style="display:none;" alt="" />
+  <img src="${trackingPixelUrl}" width="1" height="1" style="display:none;" alt="" />
 </body>
 </html>
 `;

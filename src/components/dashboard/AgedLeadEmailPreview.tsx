@@ -19,7 +19,7 @@ interface AgedLeadEmailPreviewProps {
 
 function getEmailPreviewHtml(firstName: string) {
   return `
-    <div style="max-width:600px;margin:0 auto;padding:32px 20px;font-family:Arial,sans-serif;background-color:#0a0a0a;color:#ffffff;border-radius:16px;">
+    <div style="max-width:600px;margin:0 auto;padding:32px 20px;font-family:Arial,sans-serif;background-color:#0a0a0a;color:#ffffff;border-radius:16px;word-break:break-word;">
       <div style="text-align:center;margin-bottom:24px;">
         <h1 style="font-size:24px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">APEX FINANCIAL</h1>
       </div>
@@ -34,11 +34,11 @@ function getEmailPreviewHtml(firstName: string) {
         <!-- Stats Block -->
         <div style="display:flex;gap:12px;margin:0 0 24px 0;">
           <div style="flex:1;background:linear-gradient(135deg,rgba(20,184,166,0.15),rgba(20,184,166,0.05));border:1px solid rgba(20,184,166,0.3);border-radius:12px;padding:16px;text-align:center;">
-            <div style="font-size:24px;font-weight:bold;color:#14b8a6;margin-bottom:4px;">$20,000+</div>
+            <div style="font-size:22px;font-weight:bold;color:#14b8a6;margin-bottom:4px;">$20,000+</div>
             <div style="font-size:12px;color:#d1d5db;line-height:1.4;">produced by every<br>agent last month</div>
           </div>
           <div style="flex:1;background:linear-gradient(135deg,rgba(14,165,233,0.15),rgba(14,165,233,0.05));border:1px solid rgba(14,165,233,0.3);border-radius:12px;padding:16px;text-align:center;">
-            <div style="font-size:24px;font-weight:bold;color:#0ea5e9;margin-bottom:4px;">$10,000+</div>
+            <div style="font-size:22px;font-weight:bold;color:#0ea5e9;margin-bottom:4px;">$10,000+</div>
             <div style="font-size:12px;color:#d1d5db;line-height:1.4;">deposited by every<br>agent last month</div>
           </div>
         </div>
@@ -70,7 +70,7 @@ function getEmailPreviewHtml(firstName: string) {
         
         <div style="text-align:center;margin:24px 0 16px 0;">
           <a href="https://apex-financial.org/apply" 
-             style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#ffffff;padding:16px 44px;text-decoration:none;border-radius:10px;font-weight:bold;font-size:16px;box-shadow:0 4px 20px rgba(20,184,166,0.3);letter-spacing:0.5px;">
+             style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#ffffff;padding:16px 32px;text-decoration:none;border-radius:10px;font-weight:bold;font-size:16px;box-shadow:0 4px 20px rgba(20,184,166,0.3);letter-spacing:0.5px;max-width:100%;box-sizing:border-box;">
             REAPPLY NOW →
           </a>
         </div>

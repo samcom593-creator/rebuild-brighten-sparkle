@@ -107,9 +107,9 @@ async function sendUnlicensedFollowup(app: {
             <div style="text-align: center; margin: 30px 0;">
               <a href="${UNLICENSED_CALENDLY}" 
                  style="display: inline-block; background: linear-gradient(135deg, #059669, #047857); color: white; 
-                        padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;
-                        box-shadow: 0 4px 14px rgba(5, 150, 105, 0.4);">
-                📞 Schedule a Licensing Help Call
+                         padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;
+                         box-shadow: 0 4px 14px rgba(5, 150, 105, 0.4); max-width:100%; box-sizing:border-box;">
+                 📞 Schedule a Licensing Help Call
               </a>
             </div>
 
@@ -183,9 +183,9 @@ async function sendUnlicensedFollowup2(app: {
             <div style="text-align: center; margin: 25px 0;">
               <a href="${LICENSED_CALENDLY}" 
                  style="display: inline-block; background: linear-gradient(135deg, #059669, #047857); color: white; 
-                        padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;
-                        box-shadow: 0 4px 14px rgba(5, 150, 105, 0.4);">
-                📅 I'm Licensed - Schedule My Call!
+                         padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;
+                         box-shadow: 0 4px 14px rgba(5, 150, 105, 0.4); max-width:100%; box-sizing:border-box;">
+                 📅 I'm Licensed - Schedule My Call!
               </a>
             </div>
 
@@ -210,8 +210,8 @@ async function sendUnlicensedFollowup2(app: {
             <div style="text-align: center; margin: 25px 0;">
               <a href="${UNLICENSED_CALENDLY}" 
                  style="display: inline-block; background: #f59e0b; color: white; 
-                        padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;">
-                📞 I Need Help Getting Licensed
+                         padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px; max-width:100%; box-sizing:border-box;">
+                 📞 I Need Help Getting Licensed
               </a>
             </div>
 
@@ -284,9 +284,9 @@ async function sendLicensedFollowup(app: {
             <div style="text-align: center; margin: 30px 0;">
               <a href="${LICENSED_CALENDLY}" 
                  style="display: inline-block; background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; 
-                        padding: 18px 36px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 18px;
-                        box-shadow: 0 4px 14px rgba(220, 38, 38, 0.4);">
-                📅 Schedule Your Call NOW
+                         padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;
+                         box-shadow: 0 4px 14px rgba(220, 38, 38, 0.4); max-width:100%; box-sizing:border-box;">
+                 📅 Schedule Your Call NOW
               </a>
             </div>
 

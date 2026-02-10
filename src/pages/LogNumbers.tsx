@@ -283,18 +283,20 @@ export default function LogNumbers() {
 
       if (error) throw error;
 
-      await supabase.functions.invoke("notify-production-submitted", {
+      // Show success INSTANTLY — don't wait for notifications or leaderboard
+      setShowConfetti(true);
+      setStep("leaderboard");
+
+      // Fire-and-forget: notifications + leaderboard load in background
+      supabase.functions.invoke("notify-production-submitted", {
         body: { 
           agentId: selectedAgent.id, 
           agentName: selectedAgent.name,
           productionData 
         }
-      });
+      }).catch(err => console.error("Notification error:", err));
 
-      await fetchLeaderboard();
-
-      setShowConfetti(true);
-      setStep("leaderboard");
+      fetchLeaderboard().catch(err => console.error("Leaderboard fetch error:", err));
     } catch (error) {
       console.error("Save error:", error);
       toast.error("Failed to save numbers");

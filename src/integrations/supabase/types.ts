@@ -80,7 +80,7 @@ export type Database = {
           assigned_manager_id: string | null
           contacted_at: string | null
           created_at: string | null
-          email: string
+          email: string | null
           first_name: string
           id: string
           instagram_handle: string | null
@@ -100,7 +100,7 @@ export type Database = {
           assigned_manager_id?: string | null
           contacted_at?: string | null
           created_at?: string | null
-          email: string
+          email?: string | null
           first_name: string
           id?: string
           instagram_handle?: string | null
@@ -120,7 +120,7 @@ export type Database = {
           assigned_manager_id?: string | null
           contacted_at?: string | null
           created_at?: string | null
-          email?: string
+          email?: string | null
           first_name?: string
           id?: string
           instagram_handle?: string | null

@@ -1,48 +1,45 @@
 
-# Eliminate Number Update Delays — Instant Feedback Everywhere
+# Interactive Filter Cards for Agency Roster
 
-## Root Cause
+## What Changes
 
-When numbers are submitted, there are two blocking delays:
+The 4 stat cards at the top of the "Your Team" / "Agency Roster" section currently just display numbers. They will become clickable filters that instantly filter the agent list below. A 5th card will be added for agents in training.
 
-1. **LogNumbers page (line 286-294)**: The submit handler `await`s the `notify-production-submitted` edge function AND `await`s `fetchLeaderboard()` before showing the confetti/success screen. Edge function calls take 1-3 seconds, making the user wait before seeing any feedback.
+### Filter Cards (clickable, with active highlight):
 
-2. **CompactProductionEntry (Agent Portal)**: After saving, it fires 4 edge function notifications in a `setTimeout` (non-blocking, which is good), but the realtime subscription (`useProductionRealtime`) triggers ALL 10+ subscribed components to refetch simultaneously at 300ms debounce. This causes a cascade of database queries that saturates the browser and creates jank/delay in the form itself.
+| Card | Filter Logic |
+|------|-------------|
+| **Team Members** | Shows ALL active agents (reset/default) |
+| **Licensed** | Shows only `licenseStatus === "licensed"` agents |
+| **Unlicensed** | Shows only `licenseStatus !== "licensed"` agents |
+| **In Training** | Shows agents with `onboardingStage` of `training_online` OR `in_field_training` |
+| **Avg Close Rate** | Stays as display-only (no filter) |
 
-3. **Realtime cascade**: The `useProductionRealtime` singleton fires a `CustomEvent` to every subscriber (leaderboards, stats cards, rank badges, year performance, etc.) — all within 300ms of each other. When an admin submits numbers, this triggers 10+ parallel database queries on a single browser tab.
+### Behavior
+- Clicking a card highlights it with a colored ring/border to show it's active
+- The collapsible sections (Licensed Agents, Unlicensed Pipeline) below are replaced with a single flat list when a filter is active
+- Clicking the same card again (or clicking "Team Members") resets to the default grouped view
+- The count on each card updates in real-time based on actual data
 
-## Fix Strategy
+## Technical Changes
 
-### File 1: `src/pages/LogNumbers.tsx`
+### File: `src/components/dashboard/ManagerTeamView.tsx`
 
-**Make edge function call non-blocking (fire-and-forget)**:
-- Remove the `await` on `supabase.functions.invoke("notify-production-submitted")` — fire it without waiting
-- Move `fetchLeaderboard()` to run in the background while showing confetti immediately
-- Show confetti and transition to leaderboard step **instantly** after the upsert succeeds
-- Fetch leaderboard data in parallel so it populates by the time the animation finishes
+1. **Add state**: `activeFilter` with type `"all" | "licensed" | "unlicensed" | "training"`
 
-### File 2: `src/components/dashboard/CompactProductionEntry.tsx`
+2. **Add `trainingMembers` memo**: Filter `activeMembers` where `onboardingStage` is `training_online` or `in_field_training`
 
-**Optimistic success + deferred notifications**:
-- The current flow is already decent (notifications in setTimeout), but ensure the success toast and confetti fire immediately after the upsert returns — no waiting on any secondary operations
-- No structural changes needed here, just verify the flow is clean
+3. **Add `trainingCount` to `teamStats`**: Count agents in training stages
 
-### File 3: `src/hooks/useProductionRealtime.ts`
+4. **Update stat cards grid** (lines 765-810):
+   - Change from `grid-cols-2 md:grid-cols-4` to `grid-cols-2 md:grid-cols-5` to fit the new card
+   - Wrap each card in a clickable div with `onClick` to set the filter
+   - Add active state styling: ring highlight + slightly elevated shadow when selected
+   - Add the "In Training" card with a violet/purple theme (matching the existing `in_field_training` badge color)
+   - Keep "Avg Close Rate" as non-clickable (no cursor-pointer, no filter action)
 
-**Stagger realtime callbacks to prevent cascade**:
-- Increase the default debounce from 300ms to 800ms for the global event dispatcher
-- This means when production is saved, the realtime update reaches all components over a longer window, preventing all 10+ queries from hitting the database in the same 300ms window
-- The submitting component already has the latest data (it just saved it), so the slight delay for OTHER components is invisible to the user
+5. **Update the roster list** (lines 835-918):
+   - When `activeFilter !== "all"`, render a single flat list of the filtered members instead of the collapsible Licensed/Unlicensed/Terminated sections
+   - When `activeFilter === "all"`, keep the current collapsible behavior (Licensed, Unlicensed Pipeline, Terminated sections)
 
-### File 4: `src/hooks/useDebouncedRefetch.ts`
-
-**Add jitter to prevent thundering herd**:
-- Add a small random jitter (0-200ms) to each debounced refetch so components don't all fire at exactly the same time
-- This spreads the database load and prevents main-thread saturation
-
-## Summary
-
-- LogNumbers submit becomes instant: confetti fires right after upsert, notifications are fire-and-forget, leaderboard loads in background
-- Realtime debounce increased from 300ms to 800ms to prevent query storms
-- Random jitter added to debounced refetch to spread out concurrent queries
-- No visible delay for the user submitting — they see success immediately
+6. **Add `filteredMembers` memo**: Based on `activeFilter`, return the appropriate subset from `sortedMembers` (excluding terminated unless filter is "all")

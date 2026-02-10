@@ -1,70 +1,65 @@
 
-# CC Manager + Admin on All Agent Emails + Fix Welcome Email
+# Fix Production Entry + Number Reminders
 
-## Problem
-Most outgoing emails to agents only go to the agent -- the manager and admin have no visibility. The welcome email also lacks a portal link and Discord link.
+## Problems Found
 
-## Changes
+### 1. CompactProductionEntry (used on /numbers page) doesn't load existing data
+When an agent opens the `/numbers` page, the form starts with ALL ZEROS. If they already submitted numbers today and come back to add more, the upsert **overwrites everything with zeros** except what they enter this time. This is the primary "showing as zero" bug.
 
-### 1. Fix `welcome-new-agent` to include portal link, Discord, and CC manager + admin
-**File: `supabase/functions/welcome-new-agent/index.ts`**
-- Add `cc` field to the Resend call with `sam@apex-financial.org` (admin) and the manager's email
-- Look up the manager's email using the `managerId` parameter (already accepted but not used for CC)
-- Add a portal link section: `https://apex-financial.org/agent-portal`
-- Add a Discord section: `https://discord.gg/GygkGEhb`
-- Remove the contracting/licensing link section (per user request -- no contract link, just portal)
+### 2. ProductionEntry date-change bug (used on Agent Portal)
+When an agent changes the date picker to a past date while viewing their own record, the code at line 185 checks `selectedAgentId === agentId && existingData` -- this resets the form to TODAY's data instead of fetching the selected date's data. This means backdated entries could overwrite with wrong values.
 
-### 2. Fix `add-agent` to pass `managerId` to welcome email
-**File: `supabase/functions/add-agent/index.ts`**
-- Pass `managerId` in the body when invoking `welcome-new-agent` so the function can look up the manager's email for CC
+### 3. notify-fill-numbers uses UTC dates instead of CST
+The reminder function calculates today's date using `now.toISOString().split("T")[0]` which is UTC. When the 9 PM CST cron runs, that's 3 AM UTC the NEXT day -- so it checks for tomorrow's production, finds none, and sends reminders to agents who already filled their numbers today.
 
-### 3. Add CC to `send-agent-portal-login`
-**File: `supabase/functions/send-agent-portal-login/index.ts`**
-- Look up the agent's manager (`invited_by_manager_id`) and their email
-- Add `cc: [adminEmail, managerEmail]` to the Resend call
+---
 
-### 4. Add CC to `send-licensing-instructions`
-**File: `supabase/functions/send-licensing-instructions/index.ts`**
-- Accept optional `managerId` or `managerEmail` parameter
-- Add `cc: [adminEmail, managerEmail]` to the Resend call
-- Update the frontend caller (`ResendLicensingButton.tsx`) to pass the manager info
+## Fix 1: CompactProductionEntry -- Load existing data on mount
 
-### 5. Add CC to `send-course-reminder`
-**File: `supabase/functions/send-course-reminder/index.ts`**
-- Look up the agent's manager email via `invited_by_manager_id`
-- Add `cc: [adminEmail, managerEmail]` to the Resend call
+**File: `src/components/dashboard/CompactProductionEntry.tsx`**
 
-### 6. Add CC to `notify-agent-contracted`
-**File: `supabase/functions/notify-agent-contracted/index.ts`**
-- Already fetches manager info but only sends to the applicant
-- Add `cc: [adminEmail, managerEmail]` to the Resend call
+- Add a `useEffect` that fetches existing production for the selected date when the component mounts or the date changes
+- Pre-populate the form AND the BubbleDealEntry with existing deals so agents see what they already entered
+- Pass `initialDeals` to `BubbleDealEntry` based on existing AOP/deals data
 
-### 7. Add CC to `notify-agent-login`
-**File: `supabase/functions/notify-agent-login/index.ts`**
-- This is a login notification -- add CC so admin/manager know when agents log in
-- Accept optional `managerId` parameter, look up manager email
-- Add `cc` to the Resend call
+Changes:
+- Add `useEffect` to fetch `daily_production` for `agentId` + `selectedDate`
+- When existing data is found, populate `formData` with it
+- When existing data has `aop > 0`, create initial deal bubbles from existing data so the total is preserved
+- This prevents the "overwrite with zeros" problem
 
-## Summary of CC pattern applied everywhere
+## Fix 2: ProductionEntry -- Fix date-change data loading
 
-| Function | Sends to | CC Added |
-|----------|----------|----------|
-| `welcome-new-agent` | Agent | Admin + Manager |
-| `send-agent-portal-login` | Agent | Admin + Manager |
-| `send-licensing-instructions` | Agent | Admin + Manager |
-| `send-course-reminder` | Agent | Admin + Manager |
-| `notify-agent-contracted` | Agent | Admin + Manager |
-| `notify-agent-login` | Agent | Admin + Manager |
-| `notify-course-complete` | Already done | No change |
-| `notify-course-started` | Already done | No change |
-| `notify-agent-live-field` | Already done | No change |
+**File: `src/components/dashboard/ProductionEntry.tsx`**
 
-## Technical Details
+- Fix the `useEffect` at line 183 so that when `selectedDate` changes and it's NOT today, it always fetches from the database regardless of whether `selectedAgentId === agentId`
+- The condition should only use `existingData` prop when it's the current agent AND the date is today
 
-- Admin email constant: `sam@apex-financial.org`
-- Manager email: resolved via `invited_by_manager_id` -> `agents.profile_id` -> `profiles.email`
-- CC uses the Resend `cc` field (array of emails), filtering out duplicates
-- Portal link: `https://apex-financial.org/agent-portal`
-- Discord link: `https://discord.gg/GygkGEhb`
-- The welcome email will be restructured to: (1) Portal link, (2) Discord link, (3) Coursework link, (4) Production standard -- removing the contracting/licensing step since there "shouldn't be a contract link"
-- Frontend change in `ResendLicensingButton.tsx`: pass `managerEmail` if available from the call center context
+Change the condition from:
+```
+if (selectedAgentId === agentId && existingData) { ... }
+```
+To:
+```
+const isToday = format(selectedDate, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
+if (selectedAgentId === agentId && existingData && isToday) { ... }
+```
+
+## Fix 3: notify-fill-numbers -- Use CST date
+
+**File: `supabase/functions/notify-fill-numbers/index.ts`**
+
+- Replace the UTC date calculation with a CST-aware one
+- Change from: `const targetDate = now.toISOString().split("T")[0]`
+- Change to: Calculate the date in America/Chicago timezone using `Intl.DateTimeFormat`
+
+For the 10 AM reminder which checks yesterday's production:
+- Add logic so that `reminderType === "10am"` checks the previous day's date instead of today
+
+## Summary
+
+| Issue | Root Cause | Fix |
+|-------|-----------|-----|
+| Numbers showing as zero | CompactProductionEntry starts at 0, overwrites on upsert | Load existing data on mount |
+| Backdated entries wrong | ProductionEntry uses today's data for all dates | Check date before using cached existingData |
+| Reminders sent incorrectly | UTC date used instead of CST | Use CST timezone for date calculation |

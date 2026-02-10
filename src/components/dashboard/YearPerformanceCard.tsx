@@ -36,59 +36,44 @@ export function YearPerformanceCard({ agentId, isAdmin = false, isManager = fals
 
   const fetchYearStats = useCallback(async () => {
     try {
-      setLoading(true);
       const yearStart = `${currentYear}-01-01`;
-      
-      let query = supabase
-        .from("daily_production")
-        .select("aop, deals_closed, presentations, agent_id")
-        .gte("production_date", yearStart);
+      const yearEnd = `${currentYear}-12-31`;
 
-      if (isAdmin) {
-        // Admin sees ALL agents' production
-        // No filter needed - fetch everything
-      } else if (isManager) {
+      // Use server-side RPC for accurate aggregation
+      const { data, error } = await supabase.rpc("get_agent_production_stats", {
+        start_date: yearStart,
+        end_date: yearEnd,
+      });
+
+      if (error) throw error;
+
+      let filtered = data || [];
+
+      if (!isAdmin && isManager) {
         // Manager sees their team + self
-        // Get team agent IDs first
         const { data: teamAgents } = await supabase
           .from("agents")
           .select("id")
           .or(`id.eq.${agentId},invited_by_manager_id.eq.${agentId}`)
           .eq("is_deactivated", false);
-        
-        const teamIds = teamAgents?.map(a => a.id) || [agentId];
-        query = query.in("agent_id", teamIds);
-      } else {
+
+        const teamIds = new Set(teamAgents?.map(a => a.id) || [agentId]);
+        filtered = filtered.filter((r: any) => teamIds.has(r.agent_id));
+      } else if (!isAdmin && !isManager) {
         // Agent sees only personal
-        query = query.eq("agent_id", agentId);
+        filtered = filtered.filter((r: any) => r.agent_id === agentId);
       }
 
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      if (data && data.length > 0) {
-        const ytdALP = data.reduce((sum, p) => sum + Number(p.aop || 0), 0);
-        const ytdDeals = data.reduce((sum, p) => sum + Number(p.deals_closed || 0), 0);
-        const ytdPresentations = data.reduce((sum, p) => sum + Number(p.presentations || 0), 0);
+      if (filtered.length > 0) {
+        const ytdALP = filtered.reduce((sum: number, r: any) => sum + Number(r.total_alp || 0), 0);
+        const ytdDeals = filtered.reduce((sum: number, r: any) => sum + Number(r.total_deals || 0), 0);
+        const ytdPresentations = filtered.reduce((sum: number, r: any) => sum + Number(r.total_presentations || 0), 0);
         const avgCloseRate = ytdPresentations > 0 ? (ytdDeals / ytdPresentations) * 100 : 0;
         const avgDealSize = ytdDeals > 0 ? ytdALP / ytdDeals : 0;
 
-        setStats({
-          ytdALP,
-          ytdDeals,
-          ytdPresentations,
-          avgCloseRate,
-          avgDealSize,
-        });
+        setStats({ ytdALP, ytdDeals, ytdPresentations, avgCloseRate, avgDealSize });
       } else {
-        setStats({
-          ytdALP: 0,
-          ytdDeals: 0,
-          ytdPresentations: 0,
-          avgCloseRate: 0,
-          avgDealSize: 0,
-        });
+        setStats({ ytdALP: 0, ytdDeals: 0, ytdPresentations: 0, avgCloseRate: 0, avgDealSize: 0 });
       }
     } catch (error) {
       console.error("Error fetching year stats:", error);

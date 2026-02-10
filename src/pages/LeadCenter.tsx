@@ -60,6 +60,7 @@ interface Lead {
   createdAt: string;
   referralSource?: string;
   contactedAt?: string;
+  notes?: string;
 }
 
 interface Manager {
@@ -188,6 +189,7 @@ export default function LeadCenter() {
         createdAt: app.created_at,
         referralSource: app.referral_source || undefined,
         contactedAt: app.contacted_at || undefined,
+        notes: app.notes || undefined,
       }));
 
       // Transform aged leads
@@ -209,6 +211,7 @@ export default function LeadCenter() {
         createdAt: lead.created_at || new Date().toISOString(),
         referralSource: undefined,
         contactedAt: lead.contacted_at || undefined,
+        notes: lead.notes || lead.motivation || undefined,
       }));
 
       const allLeads = [...appLeads, ...aged];
@@ -762,6 +765,11 @@ export default function LeadCenter() {
                             {lead.firstName} {lead.lastName}
                           </p>
                           <p className="text-xs text-muted-foreground">{lead.email}</p>
+                          {lead.notes && (
+                            <p className="text-xs text-muted-foreground mt-1 italic border-l-2 border-primary/30 pl-2 line-clamp-2 max-w-[250px]">
+                              {lead.notes}
+                            </p>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>{lead.phone || "-"}</TableCell>

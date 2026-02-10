@@ -1,0 +1,1 @@
+ALTER TABLE aged_leads ALTER COLUMN email DROP NOT NULL;

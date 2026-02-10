@@ -282,12 +282,11 @@ export const AgedLeadImporter = forwardRef<HTMLDivElement, AgedLeadImporterProps
 
         // Validation with helpful error messages
         if (!firstName) errors.push("Missing first name");
-        if (!email) {
-          errors.push("Missing email");
-        } else if (!isValidEmail(email)) {
+        if (!email && !phone) {
+          errors.push("Missing email and phone (need at least one)");
+        } else if (email && !isValidEmail(email)) {
           errors.push("Invalid email format");
         }
-        if (!phone) errors.push("Missing phone");
 
         // Determine license status from spreadsheet or use default
         let licenseStatus = getValue("license_status");
@@ -362,8 +361,8 @@ export const AgedLeadImporter = forwardRef<HTMLDivElement, AgedLeadImporterProps
         const leadsToInsert = validLeads.map((lead) => ({
           first_name: lead.first_name,
           last_name: lead.last_name || null,
-          email: lead.email,
-          phone: lead.phone,
+          email: lead.email || null,
+          phone: lead.phone || null,
           instagram_handle: lead.instagram_handle || null,
           notes: lead.motivation || null,
           motivation: lead.motivation || null,

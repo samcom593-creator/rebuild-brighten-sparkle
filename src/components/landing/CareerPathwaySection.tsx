@@ -129,7 +129,7 @@ const phases: Phase[] = [
     steps: [
       {
         icon: Target,
-        title: "Start Working Free Real-Time Leads",
+        title: "Start Working Unlimited Warm Leads",
         description: "Receive exclusive leads immediately. Our warm leads are pre-qualified and ready for your call.",
         benefit: "✓ Exclusive warm leads",
       },
@@ -210,7 +210,7 @@ const whyAgentsChoose = [
   },
   {
     icon: Target,
-    title: "Free Lead Program",
+    title: "Unlimited Warm Leads",
     description: "Access to 166,000+ warm leads ready to convert",
   },
   {

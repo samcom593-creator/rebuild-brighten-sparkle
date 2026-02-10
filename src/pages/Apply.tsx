@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useForm } from "react-hook-form";
@@ -15,6 +15,7 @@ import {
   Loader2,
   Instagram,
   Users,
+  Heart,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -92,6 +93,10 @@ export default function Apply() {
   const [selectedReferrer, setSelectedReferrer] = useState<string>("");
   const [customReferrer, setCustomReferrer] = useState("");
   const [savedLicenseStatus, setSavedLicenseStatus] = useState<string>("unlicensed");
+  const [showMotivationStep, setShowMotivationStep] = useState(false);
+  const [motivationText, setMotivationText] = useState("");
+  const [motivationError, setMotivationError] = useState("");
+  const isSubmittedRef = useRef(false);
   const [sessionId] = useState<string>(() => {
     // Generate a unique session ID for partial application tracking
     const stored = sessionStorage.getItem("apex_apply_session");
@@ -100,6 +105,10 @@ export default function Apply() {
     sessionStorage.setItem("apex_apply_session", newId);
     return newId;
   });
+
+  const STORAGE_KEY_FORM = "apex_apply_form";
+  const STORAGE_KEY_STEP = "apex_apply_step";
+  const STORAGE_KEY_STATES = "apex_apply_states";
 
   const {
     register,
@@ -119,6 +128,75 @@ export default function Apply() {
       emailConsent: false,
     },
   });
+
+  // Restore form data from sessionStorage on mount
+  useEffect(() => {
+    try {
+      const savedStep = sessionStorage.getItem(STORAGE_KEY_STEP);
+      if (savedStep) {
+        const step = parseInt(savedStep, 10);
+        if (step >= 1 && step <= 4) setCurrentStep(step);
+      }
+
+      const savedStates = sessionStorage.getItem(STORAGE_KEY_STATES);
+      if (savedStates) {
+        setSelectedStates(JSON.parse(savedStates));
+      }
+
+      const savedForm = sessionStorage.getItem(STORAGE_KEY_FORM);
+      if (savedForm) {
+        const parsed = JSON.parse(savedForm);
+        Object.entries(parsed).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            setValue(key as keyof ApplicationFormData, value as any);
+          }
+        });
+      }
+    } catch (e) {
+      console.error("Error restoring form data:", e);
+    }
+  }, [setValue]);
+
+  // Persist form data to sessionStorage (debounced)
+  useEffect(() => {
+    const subscription = watch((value) => {
+      if (isSubmittedRef.current) return;
+      const timeout = setTimeout(() => {
+        try {
+          sessionStorage.setItem(STORAGE_KEY_FORM, JSON.stringify(value));
+        } catch (e) { /* ignore */ }
+      }, 300);
+      return () => clearTimeout(timeout);
+    });
+    return () => subscription.unsubscribe();
+  }, [watch]);
+
+  // Persist currentStep
+  useEffect(() => {
+    if (!isSubmittedRef.current && currentStep <= 4) {
+      sessionStorage.setItem(STORAGE_KEY_STEP, String(currentStep));
+    }
+  }, [currentStep]);
+
+  // Persist selectedStates
+  useEffect(() => {
+    if (!isSubmittedRef.current) {
+      sessionStorage.setItem(STORAGE_KEY_STATES, JSON.stringify(selectedStates));
+    }
+  }, [selectedStates]);
+
+  // Warn on page unload if form has progress
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isSubmittedRef.current || currentStep >= 5) return;
+      const values = getValues();
+      if (values.firstName || values.email || values.phone) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [currentStep, getValues]);
 
   // Auto-save partial application after Step 1 is completed
   const savePartialApplication = async (stepCompleted: number) => {
@@ -174,8 +252,12 @@ export default function Apply() {
         .update({ converted_at: new Date().toISOString() })
         .eq("session_id", sessionId);
       
-      // Clear session storage
+      // Clear all session storage
+      isSubmittedRef.current = true;
       sessionStorage.removeItem("apex_apply_session");
+      sessionStorage.removeItem(STORAGE_KEY_FORM);
+      sessionStorage.removeItem(STORAGE_KEY_STEP);
+      sessionStorage.removeItem(STORAGE_KEY_STATES);
     } catch (err) {
       console.error("Error marking as converted:", err);
     }
@@ -371,7 +453,6 @@ export default function Apply() {
 
     setIsSubmitting(true);
     try {
-      // Update application with referrer if selected
       await supabase.functions.invoke("update-application-referral", {
         body: {
           applicationId,
@@ -380,22 +461,40 @@ export default function Apply() {
         },
       });
 
-      // Redirect based on license status
       if (savedLicenseStatus === "licensed") {
         navigate("/apply/success/licensed");
       } else {
-        navigate("/apply/success/unlicensed");
+        setShowMotivationStep(true);
       }
     } catch (error) {
       console.error("Error updating referral:", error);
-      // Still redirect even if update fails
       if (savedLicenseStatus === "licensed") {
         navigate("/apply/success/licensed");
       } else {
-        navigate("/apply/success/unlicensed");
+        setShowMotivationStep(true);
       }
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleMotivationSubmit = async () => {
+    if (motivationText.trim().length < 10) {
+      setMotivationError("Please share at least a few words about your motivation (minimum 10 characters).");
+      return;
+    }
+    setMotivationError("");
+    setIsSubmitting(true);
+    try {
+      await supabase
+        .from("applications")
+        .update({ notes: motivationText.trim() })
+        .eq("id", applicationId!);
+    } catch (err) {
+      console.error("Error saving motivation:", err);
+    } finally {
+      setIsSubmitting(false);
+      navigate("/apply/success/unlicensed");
     }
   };
 
@@ -841,8 +940,8 @@ export default function Apply() {
                     </div>
                   )}
 
-                  {/* Step 5: Referral Selection */}
-                  {currentStep === 5 && (
+                  {/* Step 5: Referral Selection OR Motivation */}
+                  {currentStep === 5 && !showMotivationStep && (
                     <div className="space-y-6">
                       <div className="text-center">
                         <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
@@ -902,6 +1001,48 @@ export default function Apply() {
                     </div>
                   )}
 
+                  {/* Motivation Step (unlicensed/pending only) */}
+                  {currentStep === 5 && showMotivationStep && (
+                    <div className="space-y-6">
+                      <div className="text-center">
+                        <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
+                          <Heart className="h-8 w-8 text-primary" />
+                        </div>
+                        <h2 className="text-2xl font-bold mb-2">Almost There!</h2>
+                        <p className="text-muted-foreground">
+                          What is your motivation for joining APEX Financial?
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="motivation">Your Motivation *</Label>
+                        <Textarea
+                          id="motivation"
+                          value={motivationText}
+                          onChange={(e) => {
+                            setMotivationText(e.target.value);
+                            if (e.target.value.trim().length >= 10) setMotivationError("");
+                          }}
+                          placeholder="Tell us why you want to join APEX and what drives you to succeed..."
+                          className="bg-input min-h-[120px]"
+                          maxLength={1000}
+                        />
+                        {motivationError && (
+                          <p className="text-sm text-destructive">{motivationError}</p>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          {motivationText.length}/1000 characters
+                        </p>
+                      </div>
+
+                      <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
+                        <p className="text-sm text-muted-foreground">
+                          We love to hear what drives our future agents. Your answer helps us tailor your onboarding experience.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Navigation Buttons */}
                   <div className="flex items-center justify-between mt-8 pt-6 border-t border-border">
                     {currentStep > 1 && currentStep < 5 ? (
@@ -933,6 +1074,24 @@ export default function Apply() {
                           <>
                             Continue
                             <ArrowRight className="h-4 w-4 ml-2" />
+                          </>
+                        )}
+                      </GradientButton>
+                    ) : showMotivationStep ? (
+                      <GradientButton 
+                        type="button" 
+                        onClick={handleMotivationSubmit}
+                        disabled={isSubmitting}
+                      >
+                        {isSubmitting ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Submitting...
+                          </>
+                        ) : (
+                          <>
+                            Submit & Continue
+                            <CheckCircle2 className="h-4 w-4 ml-2" />
                           </>
                         )}
                       </GradientButton>

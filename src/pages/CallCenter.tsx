@@ -177,7 +177,7 @@ export default function CallCenter() {
             phone: app.phone || undefined,
             instagramHandle: app.instagram_handle || undefined,
             notes: app.notes || undefined,
-            motivation: undefined,
+            motivation: app.notes || undefined,
             licenseStatus: app.license_status || "unknown",
             licenseProgress: app.license_progress || null,
             testScheduledDate: app.test_scheduled_date || null,

@@ -24,6 +24,7 @@ const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
 const APPLY_URL = "https://apex-financial.org/apply";
 const CALENDLY_URL = "https://calendly.com/sam-com593/licensed-prospect-call-clone";
+const ADMIN_EMAIL = "info@apex-financial.org";
 
 function sanitizeHtml(str: string | null | undefined): string {
   if (!str) return "";
@@ -84,10 +85,11 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Sending abandoned follow-up to ${lead.email}`);
 
-    // Send re-engagement email
+    // Send re-engagement email with admin CC
     await resend.emails.send({
       from: "APEX Financial <applications@apex-financial.org>",
       to: [lead.email],
+      cc: [ADMIN_EMAIL],
       subject: `${sanitizeHtml(firstName)}, Still Interested in Joining APEX? 🚀`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -143,7 +145,7 @@ const handler = async (req: Request): Promise<Response> => {
       `,
     });
 
-    console.log("Abandoned follow-up email sent successfully");
+    console.log("Abandoned follow-up email sent successfully, CC: " + ADMIN_EMAIL);
 
     // Update the partial application to track the follow-up
     await supabaseAdmin

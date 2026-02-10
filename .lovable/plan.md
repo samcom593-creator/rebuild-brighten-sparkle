@@ -1,38 +1,57 @@
 
 
-# Simplify Production Entry Fields + Update Closing Rate Thresholds
+# Fix Production Entry: Simplify Fields + Add Closes + Update Deal Placeholder
 
 ## Changes
 
-### 1. Remove "Booked In-Home" field from both production entry components
+### 1. Update BubbleDealEntry placeholder text
+**File: `src/components/dashboard/BubbleDealEntry.tsx`**
+- Change placeholder from "Enter ALP" to "Enter premium" (line 98)
+- This is the deal amount input field
 
-**CompactProductionEntry.tsx** (used on /numbers page):
-- Remove `booked_inhome_referrals` from the `statFields` array (line 239)
-- Keep it in `formData` state as `0` so the upsert doesn't break, but don't show it in the UI
-- Final fields shown: Presentations, Pitched Price, Hours Called, Referrals, Ref. Pres. (5 fields in a 2-column grid)
+### 2. Merge "Presentations" and "Pitched Price" into one field, add "Closes"
 
-**ProductionEntry.tsx** (used on Agent Portal / Dashboard):
-- Remove `booked_inhome_referrals` from the `activityFields` array (line 368)
-- Keep it in `formData` state as `0` for database compatibility
-- Final fields shown: Presentations, Pitched Price, Hours Called, Referrals Caught, Referral Pres. (5 fields in 2-col / 3-col grid)
+**CompactProductionEntry.tsx** -- Update `statFields` array (line 234):
+- Combine "Presentations" and "Pitched Price" into a single field called "Presentations" that maps to `presentations` (the number of times they presented/pitched price)
+- Remove `passed_price` as a separate field (keep it in formData as 0 for DB compatibility)
+- Add a new "Closes" field that maps to `deals_closed` so agents can type in the number of deals closed directly in the stats grid
+- Remove the automatic `deals_closed` count from BubbleDealEntry (the agent will type it manually in the Closes bubble)
 
-### 2. Update closing rate color thresholds
+New stat fields:
+1. Presentations (presentations count -- includes pitching price)
+2. Hours Called
+3. Referrals
+4. Ref. Pres.
+5. Closes (deals_closed -- typed manually)
 
-**`src/lib/closingRateColors.ts`**:
-- Change thresholds from `<40 red, 40-55 yellow, >55 green` to:
-  - 0-40 = Red (unchanged)
-  - 40-60 = Yellow (was 40-55)
-  - 60-100 = Green (was >55)
-- Update the boundary check from `rate <= 55` to `rate < 60`
+**ProductionEntry.tsx** -- Same changes to `activityFields` array (line 363):
+- Merge presentations/pitched price into one "Presentations" field
+- Remove `passed_price` as separate field
+- Add "Closes" field for `deals_closed`
 
-This single file change automatically updates all 7 components that use `getClosingRateColor`: LiveLeaderboard, ClosingRateLeaderboard, PersonalStatsCard, TeamPerformanceBreakdown, YearPerformanceCard, DashboardCommandCenter.
+### 3. Disconnect deals_closed from BubbleDealEntry count
 
-### 3. Verify deal entry flow is intact
+Currently `BubbleDealEntry` calls `onDealsChange(dealCount)` which auto-sets `deals_closed` based on how many deal bubbles are added. Since the user wants a manual "Closes" input, we need to:
+- Remove the `onDealsChange` callback from `BubbleDealEntry`
+- Remove the `handleDealsChange` callback from both `CompactProductionEntry` and `ProductionEntry`
+- The `deals_closed` value will now only come from the manual "Closes" bubble input
 
-The CompactProductionEntry already loads existing data on mount (added in prior fix). The BubbleDealEntry handles deal input with the ultra-simple type-first interface. No changes needed here -- the prior fix addressed the "zeros" bug.
+## Technical Details
 
-## Files to Modify
-- `src/components/dashboard/CompactProductionEntry.tsx` -- remove 1 stat field
-- `src/components/dashboard/ProductionEntry.tsx` -- remove 1 stat field
-- `src/lib/closingRateColors.ts` -- update yellow/green threshold from 55 to 60
+### BubbleDealEntry.tsx
+- Remove `onDealsChange` from props and internal `useEffect`
+- Change placeholder to "Enter premium"
 
+### CompactProductionEntry.tsx
+- Remove `handleDealsChange` callback
+- Remove `onDealsChange` prop from `BubbleDealEntry`
+- Update `statFields` to remove `passed_price`, add `deals_closed` as "Closes"
+
+### ProductionEntry.tsx
+- Same field changes as CompactProductionEntry
+- Remove any auto-setting of `deals_closed` from deal count
+
+### Files to modify
+- `src/components/dashboard/BubbleDealEntry.tsx`
+- `src/components/dashboard/CompactProductionEntry.tsx`
+- `src/components/dashboard/ProductionEntry.tsx`

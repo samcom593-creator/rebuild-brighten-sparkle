@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, forwardRef } from "react";
 import { motion } from "framer-motion";
 import { Users, UserPlus, Check, X, Loader2, EyeOff, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,7 +38,7 @@ interface Agent {
   email: string;
 }
 
-export function BulkLeadAssignment() {
+export const BulkLeadAssignment = forwardRef<HTMLDivElement>(function BulkLeadAssignment(_, ref) {
   const [unassignedLeads, setUnassignedLeads] = useState<UnassignedLead[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [hiddenAgents, setHiddenAgents] = useState<Set<string>>(new Set());
@@ -350,4 +350,4 @@ export function BulkLeadAssignment() {
       </Dialog>
     </>
   );
-}
+});

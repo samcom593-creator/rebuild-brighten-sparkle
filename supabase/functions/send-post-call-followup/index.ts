@@ -90,7 +90,7 @@ const handler = async (req: Request): Promise<Response> => {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Great Talking to You!</title>
 </head>
-<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0a0a0f; color: #ffffff;">
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0a0a0f; color: #ffffff; word-break: break-word;">
   <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
     
     <!-- Logo Header -->
@@ -121,17 +121,17 @@ const handler = async (req: Request): Promise<Response> => {
 
       <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 16px; padding: 24px; margin-bottom: 16px;">
         <h3 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 700; color: #10b981;">📺 Step 1: Watch the Overview Video</h3>
-        <a href="https://www.youtube.com/watch?v=i1e5p-GEfAU" style="display: inline-block; background: #ef4444; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600;">▶️ Watch Video</a>
+        <a href="https://www.youtube.com/watch?v=i1e5p-GEfAU" style="display: inline-block; background: #ef4444; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; max-width:100%; box-sizing:border-box;">▶️ Watch Video</a>
       </div>
 
       <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 16px; padding: 24px; margin-bottom: 16px;">
         <h3 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 700; color: #3b82f6;">📄 Step 2: Review the Licensing Guide</h3>
-        <a href="https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg/edit?usp=sharing" style="display: inline-block; background: #3b82f6; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600;">📖 View Guide</a>
+        <a href="https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg/edit?usp=sharing" style="display: inline-block; background: #3b82f6; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; max-width:100%; box-sizing:border-box;">📖 View Guide</a>
       </div>
 
       <div style="background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 16px; padding: 24px; margin-bottom: 24px;">
         <h3 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 700; color: #a855f7;">🎓 Step 3: Start Your Pre-Licensing Course</h3>
-        <a href="https://partners.xcelsolutions.com/afe" style="display: inline-block; background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%); color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600;">🚀 Start Course</a>
+        <a href="https://partners.xcelsolutions.com/afe" style="display: inline-block; background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%); color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; max-width:100%; box-sizing:border-box;">🚀 Start Course</a>
       </div>
 
       <div style="background: rgba(16, 185, 129, 0.05); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
@@ -146,7 +146,7 @@ const handler = async (req: Request): Promise<Response> => {
       `}
 
       <div style="text-align: center; margin: 32px 0;">
-        <a href="${finalCalendarLink}" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; text-decoration: none; padding: 16px 40px; border-radius: 12px; font-size: 16px; font-weight: 600; box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);">
+        <a href="${finalCalendarLink}" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-size: 16px; font-weight: 600; box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4); max-width:100%; box-sizing:border-box;">
           📅 Schedule Follow-Up Call
         </a>
       </div>

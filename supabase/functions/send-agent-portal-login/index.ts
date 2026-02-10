@@ -11,6 +11,7 @@ const corsHeaders = {
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const BASE_URL = "https://apex-financial.org";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const ADMIN_EMAIL = "sam@apex-financial.org";
 
 // Generate magic link token
 async function generateMagicToken(
@@ -49,10 +50,10 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Get agent details
+    // Get agent details including manager
     const { data: agent, error: agentError } = await supabaseClient
       .from("agents")
-      .select("user_id, onboarding_stage")
+      .select("user_id, onboarding_stage, invited_by_manager_id")
       .eq("id", agentId)
       .single();
 
@@ -77,13 +78,36 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // Look up manager email for CC
+    let managerEmail: string | null = null;
+    if (agent.invited_by_manager_id) {
+      const { data: managerAgent } = await supabaseClient
+        .from("agents")
+        .select("profile_id")
+        .eq("id", agent.invited_by_manager_id)
+        .single();
+
+      if (managerAgent?.profile_id) {
+        const { data: managerProfile } = await supabaseClient
+          .from("profiles")
+          .select("email")
+          .eq("id", managerAgent.profile_id)
+          .single();
+        managerEmail = managerProfile?.email || null;
+      }
+    }
+
+    const ccList = [ADMIN_EMAIL, managerEmail]
+      .filter(Boolean)
+      .filter((v, i, a) => a.indexOf(v) === i) as string[];
+
     const firstName = profile.full_name?.split(" ")[0] || "Agent";
 
     // Generate magic links
     const portalMagicLink = await generateMagicToken(supabaseClient, agentId, profile.email, "portal");
     const numbersMagicLink = await generateMagicToken(supabaseClient, agentId, profile.email, "numbers");
 
-    // Create tracking record first to get the ID for the tracking pixel
+    // Create tracking record
     const { data: trackingRecord, error: trackingError } = await supabaseClient
       .from("email_tracking")
       .insert({
@@ -103,7 +127,6 @@ const handler = async (req: Request): Promise<Response> => {
       console.error("Failed to create tracking record:", trackingError);
     }
 
-    // Generate tracking pixel URL
     const trackingPixelUrl = trackingRecord 
       ? `${SUPABASE_URL}/functions/v1/track-email-open?id=${trackingRecord.id}`
       : "";
@@ -112,6 +135,7 @@ const handler = async (req: Request): Promise<Response> => {
       await resend.emails.send({
         from: "APEX Financial <noreply@apex-financial.org>",
         to: [profile.email],
+        cc: ccList.length > 0 ? ccList : undefined,
         subject: "🎉 Welcome to the Agent Portal - One-Tap Access Inside!",
         html: `
           <!DOCTYPE html>
@@ -153,7 +177,6 @@ const handler = async (req: Request): Promise<Response> => {
                   </ul>
                 </div>
                 
-                <!-- Main CTA - Magic Link -->
                 <div style="text-align: center; margin: 32px 0;">
                   <a href="${portalMagicLink}" style="display: inline-block; background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); color: #0a0f1a; text-decoration: none; padding: 18px 48px; border-radius: 8px; font-weight: bold; font-size: 18px;">
                     🚀 Open My Portal →
@@ -164,7 +187,6 @@ const handler = async (req: Request): Promise<Response> => {
                   One-tap login • No password needed
                 </p>
 
-                <!-- Quick Log Numbers Link - Also Magic Link -->
                 <div style="background: rgba(245, 158, 11, 0.1); border-radius: 12px; padding: 20px; margin: 24px 0; text-align: center;">
                   <p style="color: #f59e0b; font-size: 14px; font-weight: bold; margin: 0 0 8px 0;">
                     ⚡ Quick Access
@@ -186,7 +208,6 @@ const handler = async (req: Request): Promise<Response> => {
                   </p>
                 </div>
 
-                <!-- Discord Link -->
                 <div style="background: rgba(88, 101, 242, 0.1); border-radius: 12px; padding: 20px; margin: 24px 0; text-align: center;">
                   <p style="color: #5865F2; font-size: 14px; font-weight: bold; margin: 0 0 8px 0;">
                     💬 Join Our Team Discord
@@ -199,7 +220,6 @@ const handler = async (req: Request): Promise<Response> => {
                   </a>
                 </div>
 
-                <!-- Fallback note -->
                 <div style="background: rgba(148, 163, 184, 0.1); border-radius: 8px; padding: 16px; margin: 24px 0;">
                   <p style="color: #94a3b8; font-size: 12px; margin: 0; text-align: center;">
                     Link not working? You can also sign in at <a href="${BASE_URL}/agent-login" style="color: #14b8a6;">apex-financial.org/agent-login</a><br>
@@ -222,13 +242,12 @@ const handler = async (req: Request): Promise<Response> => {
         `,
       });
 
-      // Mark portal password as not set (they need to set up)
       await supabaseClient
         .from("agents")
         .update({ portal_password_set: false })
         .eq("id", agentId);
 
-      console.log(`Magic link portal login email sent to ${profile.email}, tracking ID: ${trackingRecord?.id || 'none'}`);
+      console.log(`Magic link portal login email sent to ${profile.email}, CC: ${ccList.join(", ")}, tracking ID: ${trackingRecord?.id || 'none'}`);
 
       return new Response(
         JSON.stringify({ 

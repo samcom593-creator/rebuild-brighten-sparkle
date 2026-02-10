@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const ADMIN_EMAIL = "sam@apex-financial.org";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,12 +20,11 @@ interface WelcomeEmailRequest {
   courseLink?: string;
 }
 
-// Discord link removed from initial email - now sent after course completion
-// XcelSolutions licensing course for unlicensed agents to get their license
 const defaultCourseLink = "https://partners.xcelsolutions.com/afe";
+const PORTAL_LINK = "https://apex-financial.org/agent-portal";
+const DISCORD_LINK = "https://discord.gg/GygkGEhb";
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -38,19 +38,32 @@ const handler = async (req: Request): Promise<Response> => {
       auth: { persistSession: false },
     });
 
-    // Try to get the manager's contracting link if managerId is provided
-    let licensingLink = "https://apex-financial.org/get-licensed";
+    // Look up manager email for CC
+    let managerEmail: string | null = null;
     if (managerId) {
-      const { data: contractingLinks } = await supabase
-        .from("contracting_links")
-        .select("url, name")
-        .eq("manager_id", managerId)
-        .limit(1);
-      
-      if (contractingLinks && contractingLinks.length > 0) {
-        licensingLink = contractingLinks[0].url;
+      const { data: managerAgent } = await supabase
+        .from("agents")
+        .select("profile_id")
+        .eq("id", managerId)
+        .single();
+
+      if (managerAgent?.profile_id) {
+        const { data: managerProfile } = await supabase
+          .from("profiles")
+          .select("email")
+          .eq("id", managerAgent.profile_id)
+          .single();
+
+        if (managerProfile?.email) {
+          managerEmail = managerProfile.email;
+        }
       }
     }
+
+    // Build CC list (admin + manager, deduplicated)
+    const ccList = [ADMIN_EMAIL, managerEmail]
+      .filter(Boolean)
+      .filter((v, i, a) => a.indexOf(v) === i) as string[];
 
     const finalCourseLink = courseLink || defaultCourseLink;
 
@@ -68,9 +81,8 @@ const handler = async (req: Request): Promise<Response> => {
     .step { background: linear-gradient(145deg, #1a1a2e, #16213e); padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #14b8a6; }
     .step-number { display: inline-block; background: #14b8a6; color: white; width: 28px; height: 28px; border-radius: 50%; text-align: center; line-height: 28px; font-weight: bold; margin-right: 10px; }
     .button { display: inline-block; background: #14b8a6; color: white !important; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 12px 0; }
-    .warning { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); padding: 15px; border-radius: 8px; margin: 15px 0; }
-    .warning-icon { color: #f87171; font-weight: bold; }
     .highlight { background: linear-gradient(135deg, rgba(20, 184, 166, 0.2), rgba(14, 165, 233, 0.2)); padding: 20px; border-radius: 12px; margin: 20px 0; border: 1px solid rgba(20, 184, 166, 0.3); }
+    .discord-step { background: rgba(88, 101, 242, 0.1); border: 1px solid rgba(88, 101, 242, 0.3); padding: 20px; border-radius: 12px; margin: 20px 0; border-left: 4px solid #5865F2; }
     .footer { text-align: center; margin-top: 20px; color: #6b7280; font-size: 14px; }
     h3 { color: #14b8a6; margin: 0 0 12px 0; }
     p { color: #d1d5db; margin: 0 0 12px 0; }
@@ -88,22 +100,24 @@ const handler = async (req: Request): Promise<Response> => {
       
       <p>Welcome to the Apex Financial team! Follow these steps to get started:</p>
       
-      <!-- Step 1: Licensing -->
+      <!-- Step 1: Portal -->
       <div class="step">
-        <h3><span class="step-number">1</span> Complete Your Licensing</h3>
-        <p>If you're not already licensed, tap the link below to get started with your contracting:</p>
-        <a href="${licensingLink}" class="button">Complete Licensing →</a>
-        
-        <div class="warning">
-          <p style="margin:0;"><span class="warning-icon">⚠️ IMPORTANT:</span> Make sure to attach your <strong>E&O (Errors & Omissions) insurance</strong>.</p>
-          <p style="margin:8px 0 0 0;font-size:14px;">This is a critical step - without it, your application won't process correctly.</p>
-        </div>
+        <h3><span class="step-number">1</span> Access Your Agent Portal</h3>
+        <p>Your portal is where you'll log daily numbers, track performance, and see the leaderboard.</p>
+        <a href="${PORTAL_LINK}" class="button">Open My Portal →</a>
       </div>
       
-      <!-- Step 2: Coursework -->
+      <!-- Step 2: Discord -->
+      <div class="discord-step">
+        <h3 style="color:#5865F2;"><span class="step-number" style="background:#5865F2;">2</span> Join Our Team Discord</h3>
+        <p>Connect with the team for daily training, support, and announcements.</p>
+        <a href="${DISCORD_LINK}" class="button" style="background:#5865F2;">Join Discord →</a>
+      </div>
+      
+      <!-- Step 3: Coursework -->
       <div class="step">
-        <h3><span class="step-number">2</span> Complete Your Coursework</h3>
-        <p>Once you're set up, complete the onboarding course to learn our systems and processes.</p>
+        <h3><span class="step-number">3</span> Complete Your Coursework</h3>
+        <p>Complete the onboarding course to learn our systems and processes.</p>
         <p><strong style="color:#f59e0b;">Expectation: Complete this the same day you receive it.</strong></p>
         <a href="${finalCourseLink}" class="button">Start Coursework →</a>
       </div>
@@ -141,6 +155,7 @@ const handler = async (req: Request): Promise<Response> => {
       body: JSON.stringify({
         from: "APEX Financial <noreply@apex-financial.org>",
         to: [agentEmail],
+        cc: ccList.length > 0 ? ccList : undefined,
         subject: "Welcome to Apex Financial! 🎉 Your First Steps",
         html: emailHtml,
       }),
@@ -153,7 +168,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const data = await res.json();
-    console.log("Welcome email sent successfully:", data);
+    console.log("Welcome email sent successfully:", data, "CC:", ccList);
 
     return new Response(JSON.stringify({ success: true, data }), {
       status: 200,

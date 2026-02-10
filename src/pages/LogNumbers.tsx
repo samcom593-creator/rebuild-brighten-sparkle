@@ -34,6 +34,8 @@ import { cn } from "@/lib/utils";
 import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { BubbleDealEntry } from "@/components/dashboard/BubbleDealEntry";
+import { BubbleStatInput } from "@/components/dashboard/BubbleStatInput";
+import { GradientButton } from "@/components/ui/gradient-button";
 import apexIcon from "@/assets/apex-icon.png";
 
 interface MatchedAgent {
@@ -371,11 +373,11 @@ export default function LogNumbers() {
   };
 
   const productionFields = [
-    { key: "presentations", label: "Presentations", icon: Target },
-    { key: "hours_called", label: "Hours Called", icon: Phone, step: "0.5" },
-    { key: "referrals_caught", label: "Referrals", icon: UserPlus },
-    { key: "referral_presentations", label: "Ref. Pres.", icon: Target },
-    { key: "deals_closed", label: "Closes", icon: TrendingUp },
+    { key: "presentations", label: "Presentations", emoji: "🎯", step: 1 },
+    { key: "hours_called", label: "Hours Called", emoji: "📞", step: 0.5 },
+    { key: "referrals_caught", label: "Referrals", emoji: "🤝", step: 1 },
+    { key: "referral_presentations", label: "Ref. Pres.", emoji: "📋", step: 1 },
+    { key: "deals_closed", label: "Closes", emoji: "🏆", step: 1 },
   ];
 
   return (
@@ -630,10 +632,10 @@ export default function LogNumbers() {
                     </div>
 
                     {/* Activity Stats */}
-                    <div className="space-y-2 pt-2 border-t border-border/30">
-                      <div className="flex items-center gap-2">
-                        <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center">
-                          <Target className="h-4 w-4 text-blue-500" />
+                    <div className="space-y-3 mt-6 pt-4 border-t border-border/50">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
+                          <Target className="h-4 w-4 text-primary" />
                         </div>
                         <div>
                           <h3 className="text-sm font-bold">📊 Activity Stats</h3>
@@ -641,71 +643,35 @@ export default function LogNumbers() {
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
-                        {productionFields.map((field, index) => {
-                          const Icon = field.icon;
-                          const value = productionData[field.key as keyof typeof productionData];
-                          const hasValue = Number(value) > 0;
-
-                          return (
-                            <motion.div
-                              key={field.key}
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: index * 0.03 }}
-                              className="relative"
-                            >
-                              <Label 
-                                htmlFor={field.key} 
-                                className="text-xs text-muted-foreground flex items-center gap-1 mb-1"
-                              >
-                                <Icon className={cn(
-                                  "h-3 w-3",
-                                  hasValue && "text-primary"
-                                )} />
-                                {field.label}
-                              </Label>
-                              <Input
-                                id={field.key}
-                                type="number"
-                                step={field.step}
-                                min="0"
-                                value={value}
-                                onChange={(e) => setProductionData(prev => ({
-                                  ...prev,
-                                  [field.key]: field.step ? parseFloat(e.target.value) || 0 : parseInt(e.target.value) || 0
-                                }))}
-                                className={cn(
-                                  "h-12 text-lg font-bold text-center transition-all duration-200",
-                                  hasValue && "border-primary/50 bg-primary/5"
-                                )}
-                              />
-                              {hasValue && (
-                                <motion.div
-                                  initial={{ scale: 0 }}
-                                  animate={{ scale: 1 }}
-                                  className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary"
-                                />
-                              )}
-                            </motion.div>
-                          );
-                        })}
+                        {productionFields.map((field, index) => (
+                          <BubbleStatInput
+                            key={field.key}
+                            label={field.label}
+                            emoji={field.emoji}
+                            value={productionData[field.key as keyof typeof productionData]}
+                            onChange={(val) => setProductionData(prev => ({
+                              ...prev,
+                              [field.key]: val
+                            }))}
+                            step={field.step}
+                            delay={index * 0.03}
+                          />
+                        ))}
                       </div>
                     </div>
                   </>
                 )}
 
-                <Button 
+                <GradientButton
                   onClick={handleSubmitProduction}
-                  className="w-full mt-4 h-12 text-base font-semibold"
+                  className="w-full mt-6"
+                  size="lg"
                   disabled={saving || loadingExisting}
+                  loading={saving}
                 >
-                  {saving ? (
-                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                  ) : (
-                    <Sparkles className="h-5 w-5 mr-2" />
-                  )}
+                  {!saving && <Sparkles className="h-5 w-5 mr-2" />}
                   {saving ? "Submitting..." : "Submit Numbers"}
-                </Button>
+                </GradientButton>
               </GlassCard>
             </motion.div>
           )}

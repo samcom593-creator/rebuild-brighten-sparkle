@@ -6,7 +6,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const getEmailHtml = (firstName: string) => `
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+
+const getEmailHtml = (firstName: string, trackingClickUrl: string, trackingPixelUrl: string) => `
 <!DOCTYPE html>
 <html>
 <head>
@@ -20,17 +22,37 @@ const getEmailHtml = (firstName: string) => `
     </div>
     
     <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:16px;padding:32px;border:1px solid rgba(20,184,166,0.2);">
-      <h2 style="font-size:24px;margin:0 0 16px 0;color:#14b8a6;">Hey ${firstName}!</h2>
+      <h2 style="font-size:22px;margin:0 0 20px 0;color:#ffffff;">Hey ${firstName}, a lot has changed since you applied.</h2>
       
-      <p style="font-size:16px;line-height:1.7;color:#d1d5db;margin:0 0 20px 0;">
-        You applied to Apex Financial before, and we wanted to reach back out — we've got some exciting updates and new openings on the team.
+      <p style="font-size:16px;line-height:1.7;color:#d1d5db;margin:0 0 24px 0;">
+        You applied to Apex Financial before — and since then, our team has been on a tear. The results speak for themselves:
       </p>
+      
+      <!-- Stats Block -->
+      <div style="margin:0 0 28px 0;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+          <tr>
+            <td width="50%" style="padding:0 6px 0 0;">
+              <div style="background:linear-gradient(135deg,rgba(20,184,166,0.15),rgba(20,184,166,0.05));border:1px solid rgba(20,184,166,0.3);border-radius:12px;padding:20px;text-align:center;">
+                <div style="font-size:28px;font-weight:bold;color:#14b8a6;margin-bottom:6px;">$20,000+</div>
+                <div style="font-size:13px;color:#d1d5db;line-height:1.4;">produced by every<br>agent last month</div>
+              </div>
+            </td>
+            <td width="50%" style="padding:0 0 0 6px;">
+              <div style="background:linear-gradient(135deg,rgba(14,165,233,0.15),rgba(14,165,233,0.05));border:1px solid rgba(14,165,233,0.3);border-radius:12px;padding:20px;text-align:center;">
+                <div style="font-size:28px;font-weight:bold;color:#0ea5e9;margin-bottom:6px;">$10,000+</div>
+                <div style="font-size:13px;color:#d1d5db;line-height:1.4;">deposited by every<br>agent last month</div>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </div>
       
       <p style="font-size:16px;line-height:1.7;color:#ffffff;margin:0 0 12px 0;font-weight:600;">
-        Here's what's on the table:
+        Here's what you get when you join:
       </p>
       
-      <div style="background:rgba(20,184,166,0.1);border-radius:12px;padding:24px;margin:20px 0;">
+      <div style="background:rgba(20,184,166,0.08);border-radius:12px;padding:24px;margin:0 0 24px 0;">
         <table style="width:100%;border-collapse:collapse;">
           <tr>
             <td style="padding:10px 0;color:#d1d5db;font-size:15px;">
@@ -47,38 +69,28 @@ const getEmailHtml = (firstName: string) => `
           <tr>
             <td style="padding:10px 0;color:#d1d5db;font-size:15px;">
               <span style="color:#14b8a6;font-weight:bold;margin-right:8px;">✓</span>
-              Complete training program included
+              Complete training + mentorship included
             </td>
           </tr>
           <tr>
             <td style="padding:10px 0;color:#d1d5db;font-size:15px;">
               <span style="color:#14b8a6;font-weight:bold;margin-right:8px;">✓</span>
-              No cold calling required
-            </td>
-          </tr>
-          <tr>
-            <td style="padding:10px 0;color:#d1d5db;font-size:15px;">
-              <span style="color:#14b8a6;font-weight:bold;margin-right:8px;">✓</span>
-              Work from anywhere
+              No cold calling — work from anywhere
             </td>
           </tr>
         </table>
       </div>
       
-      <p style="font-size:16px;line-height:1.7;color:#d1d5db;margin:20px 0;">
-        Our top performers are earning <strong style="color:#14b8a6;">$10K-$50K+ per month</strong>, and we're looking for motivated individuals to join the team.
-      </p>
-      
       <!-- Primary CTA -->
-      <div style="text-align:center;margin:32px 0;">
-        <a href="https://apex-financial.org/apply" 
-           style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#ffffff;padding:18px 48px;text-decoration:none;border-radius:12px;font-weight:bold;font-size:18px;box-shadow:0 6px 24px rgba(20,184,166,0.35);">
-          🚀 CLAIM YOUR SPOT
+      <div style="text-align:center;margin:32px 0 20px 0;">
+        <a href="${trackingClickUrl}" 
+           style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#ffffff;padding:18px 52px;text-decoration:none;border-radius:12px;font-weight:bold;font-size:18px;box-shadow:0 6px 24px rgba(20,184,166,0.35);letter-spacing:0.5px;">
+          REAPPLY NOW →
         </a>
       </div>
       
-      <p style="font-size:15px;color:#9ca3af;text-align:center;margin:24px 0 0 0;font-style:italic;">
-        Spots are limited and filling fast.
+      <p style="font-size:14px;color:#f59e0b;text-align:center;margin:20px 0 0 0;font-weight:600;">
+        ⚡ We're only accepting a limited number of new agents this month.
       </p>
       
       <div style="border-top:1px solid rgba(255,255,255,0.1);margin-top:28px;padding-top:20px;">
@@ -91,17 +103,17 @@ const getEmailHtml = (firstName: string) => `
     <!-- Footer -->
     <div style="text-align:center;margin-top:32px;">
       <p style="font-size:12px;color:#6b7280;margin:0 0 8px 0;">
-        © ${new Date().getFullYear()} Apex Financial. All rights reserved.
+        Powered by Apex Financial · © ${new Date().getFullYear()}
       </p>
       <a href="https://apex-financial.org" style="color:#6b7280;font-size:12px;">Visit our website</a>
     </div>
   </div>
+  <img src="${trackingPixelUrl}" width="1" height="1" style="display:none;" alt="" />
 </body>
 </html>
 `;
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -124,12 +136,19 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const name = firstName || "there";
-    const html = getEmailHtml(name);
+
+    // Build tracking URLs
+    const encodedEmail = encodeURIComponent(email);
+    const encodedName = encodeURIComponent(name);
+    const trackingClickUrl = `${SUPABASE_URL}/functions/v1/track-email-click?email=${encodedEmail}&name=${encodedName}&source=aged_lead`;
+    const trackingPixelUrl = `${SUPABASE_URL}/functions/v1/track-email-open?id=${encodedEmail}`;
+
+    const html = getEmailHtml(name, trackingClickUrl, trackingPixelUrl);
 
     const { error: emailError } = await resend.emails.send({
-      from: "Apex Financial <team@apex-financial.org>",
+      from: "APEX Financial <noreply@apex-financial.org>",
       to: [email],
-      subject: "🔥 New Remote Sales Position Just Opened – Apply Now",
+      subject: "We've Grown Since You Applied — See What's Changed",
       html,
     });
 

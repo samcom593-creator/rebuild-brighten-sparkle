@@ -4,6 +4,7 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const resend = new Resend(RESEND_API_KEY);
+const ADMIN_EMAIL = "sam@apex-financial.org";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,6 +16,7 @@ interface LoginNotificationRequest {
   email: string;
   name: string;
   userAgent?: string;
+  agentId?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -23,7 +25,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { email, name, userAgent }: LoginNotificationRequest = await req.json();
+    const { email, name, userAgent, agentId }: LoginNotificationRequest = await req.json();
 
     if (!email || !name) {
       return new Response(
@@ -33,6 +35,42 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     console.log(`Sending login notification to ${name} at ${email}`);
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    // Look up manager email for CC
+    let managerEmail: string | null = null;
+    if (agentId) {
+      const { data: agent } = await supabase
+        .from("agents")
+        .select("invited_by_manager_id")
+        .eq("id", agentId)
+        .single();
+
+      if (agent?.invited_by_manager_id) {
+        const { data: managerAgent } = await supabase
+          .from("agents")
+          .select("profile_id")
+          .eq("id", agent.invited_by_manager_id)
+          .single();
+
+        if (managerAgent?.profile_id) {
+          const { data: managerProfile } = await supabase
+            .from("profiles")
+            .select("email")
+            .eq("id", managerAgent.profile_id)
+            .single();
+          managerEmail = managerProfile?.email || null;
+        }
+      }
+    }
+
+    const ccList = [ADMIN_EMAIL, managerEmail]
+      .filter(Boolean)
+      .filter((v, i, a) => a.indexOf(v) === i) as string[];
 
     // Format current time in CST
     const now = new Date();
@@ -141,6 +179,7 @@ const handler = async (req: Request): Promise<Response> => {
     const res = await resend.emails.send({
       from: "APEX Financial <noreply@apex-financial.org>",
       to: [email],
+      cc: ccList.length > 0 ? ccList : undefined,
       subject: "✅ Portal Login Confirmed",
       html: emailHtml,
     });
@@ -150,7 +189,7 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Failed to send email");
     }
 
-    console.log("Login notification sent successfully:", res.data.id);
+    console.log("Login notification sent successfully:", res.data.id, "CC:", ccList);
 
     return new Response(
       JSON.stringify({ success: true, emailId: res.data.id }),

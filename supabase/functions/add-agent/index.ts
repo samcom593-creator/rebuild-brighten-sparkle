@@ -236,9 +236,9 @@ const handler = async (req: Request): Promise<Response> => {
       console.log(`Added initial note for agent ${newAgent.id}`);
     }
 
-    // Trigger welcome email (don't wait for it)
+    // Trigger welcome email with managerId for CC (don't wait for it)
     supabaseAdmin.functions.invoke("welcome-new-agent", {
-      body: { agentName: `${firstName} ${lastName}`, agentEmail: normalizedEmail },
+      body: { agentName: `${firstName} ${lastName}`, agentEmail: normalizedEmail, managerId },
     }).catch((err) => console.log("Welcome email skipped:", err));
 
     return new Response(

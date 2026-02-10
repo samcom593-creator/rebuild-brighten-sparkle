@@ -14,12 +14,14 @@ interface ResendLicensingButtonProps {
   recipientEmail: string;
   recipientName: string;
   licenseStatus: "licensed" | "unlicensed" | "pending";
+  managerEmail?: string;
 }
 
 export function ResendLicensingButton({
   recipientEmail,
   recipientName,
   licenseStatus,
+  managerEmail,
 }: ResendLicensingButtonProps) {
   const [isSending, setIsSending] = useState(false);
   const [justSent, setJustSent] = useState(false);
@@ -34,6 +36,7 @@ export function ResendLicensingButton({
             email: recipientEmail,
             firstName: recipientName,
             licenseStatus: licenseStatus,
+            managerEmail: managerEmail,
           },
         }
       );

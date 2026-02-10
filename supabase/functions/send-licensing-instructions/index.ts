@@ -1,7 +1,9 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "npm:resend@2.0.0";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+const ADMIN_EMAIL = "sam@apex-financial.org";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,29 +15,32 @@ interface LicensingEmailRequest {
   email: string;
   firstName: string;
   licenseStatus: "licensed" | "unlicensed" | "pending";
+  managerEmail?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    const { email, firstName, licenseStatus }: LicensingEmailRequest = await req.json();
+    const { email, firstName, licenseStatus, managerEmail }: LicensingEmailRequest = await req.json();
 
     console.log(`[send-licensing-instructions] Sending to ${email}, status: ${licenseStatus}`);
 
-    // Validate required fields
     if (!email || !firstName) {
       throw new Error("Missing required fields: email and firstName");
     }
+
+    // Build CC list
+    const ccList = [ADMIN_EMAIL, managerEmail]
+      .filter(Boolean)
+      .filter((v, i, a) => a.indexOf(v) === i) as string[];
 
     let subject: string;
     let htmlContent: string;
 
     if (licenseStatus === "licensed") {
-      // Licensed applicant email - schedule call
       subject = "🎉 Welcome to Apex Financial – Let's Get Started!";
       htmlContent = `
 <!DOCTYPE html>
@@ -49,8 +54,6 @@ const handler = async (req: Request): Promise<Response> => {
     <tr>
       <td align="center" style="padding: 40px 20px;">
         <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 16px; overflow: hidden;">
-          
-          <!-- Header -->
           <tr>
             <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center;">
               <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">
@@ -58,8 +61,6 @@ const handler = async (req: Request): Promise<Response> => {
               </h1>
             </td>
           </tr>
-          
-          <!-- Body -->
           <tr>
             <td style="padding: 40px 30px;">
               <p style="color: #ffffff; font-size: 18px; line-height: 1.6; margin: 0 0 20px;">
@@ -68,8 +69,6 @@ const handler = async (req: Request): Promise<Response> => {
               <p style="color: #e0e0e0; font-size: 16px; line-height: 1.6; margin: 0 0 25px;">
                 Since you're already licensed, you're ready to hit the ground running! Here's your next step:
               </p>
-              
-              <!-- CTA Button -->
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
                   <td align="center" style="padding: 20px 0;">
@@ -80,19 +79,15 @@ const handler = async (req: Request): Promise<Response> => {
                   </td>
                 </tr>
               </table>
-              
               <p style="color: #e0e0e0; font-size: 16px; line-height: 1.6; margin: 25px 0;">
                 On your call, we'll get you set up with:
               </p>
-              
               <ul style="color: #e0e0e0; font-size: 16px; line-height: 1.8; margin: 0 0 25px; padding-left: 20px;">
                 <li>✅ Agent portal access & training</li>
                 <li>✅ Free warm leads to start calling</li>
                 <li>✅ Your personalized compensation structure</li>
                 <li>✅ Everything you need to close your first deal</li>
               </ul>
-              
-              <!-- Video Link -->
               <div style="background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 12px; padding: 20px; margin: 25px 0;">
                 <p style="color: #667eea; font-size: 14px; font-weight: 600; margin: 0 0 10px;">
                   🎬 While you wait, watch this:
@@ -103,8 +98,6 @@ const handler = async (req: Request): Promise<Response> => {
               </div>
             </td>
           </tr>
-          
-          <!-- Footer -->
           <tr>
             <td style="background: rgba(0,0,0,0.3); padding: 25px 30px; text-align: center; border-top: 1px solid rgba(255,255,255,0.1);">
               <p style="color: #888; font-size: 14px; margin: 0;">
@@ -112,7 +105,6 @@ const handler = async (req: Request): Promise<Response> => {
               </p>
             </td>
           </tr>
-          
         </table>
       </td>
     </tr>
@@ -121,7 +113,6 @@ const handler = async (req: Request): Promise<Response> => {
 </html>
       `;
     } else {
-      // Unlicensed/pending applicant email - licensing steps
       subject = "🚀 Your Licensing Resources – Let's Get You Started!";
       htmlContent = `
 <!DOCTYPE html>
@@ -135,8 +126,6 @@ const handler = async (req: Request): Promise<Response> => {
     <tr>
       <td align="center" style="padding: 40px 20px;">
         <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 16px; overflow: hidden;">
-          
-          <!-- Header -->
           <tr>
             <td style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 30px; text-align: center;">
               <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">
@@ -144,8 +133,6 @@ const handler = async (req: Request): Promise<Response> => {
               </h1>
             </td>
           </tr>
-          
-          <!-- Body -->
           <tr>
             <td style="padding: 40px 30px;">
               <p style="color: #ffffff; font-size: 18px; line-height: 1.6; margin: 0 0 20px;">
@@ -154,8 +141,6 @@ const handler = async (req: Request): Promise<Response> => {
               <p style="color: #e0e0e0; font-size: 16px; line-height: 1.6; margin: 0 0 25px;">
                 Here are the resources you need to get your life insurance license and start earning with Apex Financial:
               </p>
-              
-              <!-- Step 1 -->
               <div style="background: rgba(240, 147, 251, 0.1); border: 1px solid rgba(240, 147, 251, 0.3); border-radius: 12px; padding: 20px; margin: 0 0 15px;">
                 <div style="display: flex; align-items: center; margin-bottom: 10px;">
                   <span style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 12px;">1</span>
@@ -168,8 +153,6 @@ const handler = async (req: Request): Promise<Response> => {
                   🎬 Watch Licensing Overview →
                 </a>
               </div>
-              
-              <!-- Step 2 -->
               <div style="background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 12px; padding: 20px; margin: 0 0 15px;">
                 <div style="display: flex; align-items: center; margin-bottom: 10px;">
                   <span style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 12px;">2</span>
@@ -182,8 +165,6 @@ const handler = async (req: Request): Promise<Response> => {
                   📄 Open Licensing Guide →
                 </a>
               </div>
-              
-              <!-- Step 3 -->
               <div style="background: rgba(76, 175, 80, 0.1); border: 1px solid rgba(76, 175, 80, 0.3); border-radius: 12px; padding: 20px; margin: 0 0 25px;">
                 <div style="display: flex; align-items: center; margin-bottom: 10px;">
                   <span style="background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%); color: white; width: 28px; height: 28px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 12px;">3</span>
@@ -196,8 +177,6 @@ const handler = async (req: Request): Promise<Response> => {
                   📚 Start Course Now →
                 </a>
               </div>
-              
-              <!-- Benefits Box -->
               <div style="background: rgba(255,255,255,0.05); border-radius: 12px; padding: 25px; margin: 25px 0;">
                 <p style="color: #ffffff; font-size: 16px; font-weight: 600; margin: 0 0 15px;">
                   💡 Good to know:
@@ -209,8 +188,6 @@ const handler = async (req: Request): Promise<Response> => {
                   <li>✅ Start at <strong>70% commission</strong> (up to 145%)</li>
                 </ul>
               </div>
-              
-              <!-- CTA Button -->
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
                   <td align="center" style="padding: 20px 0;">
@@ -223,8 +200,6 @@ const handler = async (req: Request): Promise<Response> => {
               </table>
             </td>
           </tr>
-          
-          <!-- Footer -->
           <tr>
             <td style="background: rgba(0,0,0,0.3); padding: 25px 30px; text-align: center; border-top: 1px solid rgba(255,255,255,0.1);">
               <p style="color: #888; font-size: 14px; margin: 0;">
@@ -232,7 +207,6 @@ const handler = async (req: Request): Promise<Response> => {
               </p>
             </td>
           </tr>
-          
         </table>
       </td>
     </tr>
@@ -245,11 +219,12 @@ const handler = async (req: Request): Promise<Response> => {
     const emailResponse = await resend.emails.send({
       from: "APEX Financial <noreply@apex-financial.org>",
       to: [email],
+      cc: ccList.length > 0 ? ccList : undefined,
       subject: subject,
       html: htmlContent,
     });
 
-    console.log(`[send-licensing-instructions] Email sent successfully:`, emailResponse);
+    console.log(`[send-licensing-instructions] Email sent successfully, CC: ${ccList.join(", ")}:`, emailResponse);
 
     return new Response(JSON.stringify({ success: true, data: emailResponse }), {
       status: 200,

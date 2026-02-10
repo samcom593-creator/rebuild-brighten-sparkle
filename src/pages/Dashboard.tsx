@@ -35,6 +35,7 @@ import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration"
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { SkeletonLoader } from "@/components/ui/skeleton-loader";
+import { YearPerformanceCard } from "@/components/dashboard/YearPerformanceCard";
 import { useNavigate, Link } from "react-router-dom";
 
 interface DashboardStats {
@@ -319,6 +320,13 @@ export default function Dashboard() {
       <div className="mb-6">
         <TeamSnapshotCard />
       </div>
+
+      {/* ====== YTD Agency Performance (Admin) ====== */}
+      {isAdmin && currentAgentId && (
+        <div className="mb-6">
+          <YearPerformanceCard agentId={currentAgentId} isAdmin={isAdmin} isManager={isManager} />
+        </div>
+      )}
 
       {/* ====== 1.5. WEEKLY PERFORMANCE BREAKDOWN (Managers/Admins) ====== */}
       {(isManager || isAdmin) && (

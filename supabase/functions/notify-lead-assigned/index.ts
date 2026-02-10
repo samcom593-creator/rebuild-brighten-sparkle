@@ -190,7 +190,7 @@ const handler = async (req: Request): Promise<Response> => {
       cc: ccList.length > 0 ? ccList : undefined,
       subject,
       html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; word-break: break-word;">
           <div style="background: linear-gradient(135deg, #3b82f6, #2563eb); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
             <h1 style="color: white; margin: 0; font-size: 28px;">${isReassignment ? '🔄 Lead Reassigned' : '📥 New Lead!'}</h1>
             <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0; font-size: 16px;">You have a new lead to work on</p>
@@ -255,7 +255,7 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
 
             <div style="text-align: center; margin-top: 25px;">
-              <a href="https://apex-financial.org/dashboard/applicants?lead=${applicationId}" style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px; margin-bottom: 15px;">
+              <a href="https://apex-financial.org/dashboard/applicants?lead=${applicationId}" style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px; margin-bottom: 15px; max-width:100%; box-sizing:border-box;">
                 📞 View Lead & Call Now →
               </a>
               <p style="color: #6b7280; font-size: 14px; margin-top: 15px;">

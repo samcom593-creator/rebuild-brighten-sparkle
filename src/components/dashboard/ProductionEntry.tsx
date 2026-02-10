@@ -182,8 +182,9 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
   // When selected agent changes, fetch their existing data for today
   useEffect(() => {
     const fetchExistingData = async () => {
-      if (selectedAgentId === agentId && existingData) {
-        // Reset to original data if selecting self
+      const isToday = format(selectedDate, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
+      if (selectedAgentId === agentId && existingData && isToday) {
+        // Reset to original data if selecting self AND viewing today
         setFormData({
           presentations: existingData.presentations || 0,
           passed_price: existingData.passed_price || 0,

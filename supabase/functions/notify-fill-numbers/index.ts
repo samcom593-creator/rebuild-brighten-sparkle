@@ -40,9 +40,22 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Check today's date
+    // Calculate date in CST (America/Chicago) timezone
     const now = new Date();
-    const targetDate = now.toISOString().split("T")[0];
+    const cstFormatter = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Chicago",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+    const todayCST = cstFormatter.format(now); // YYYY-MM-DD format
+
+    // For 10am reminder, check yesterday's production; otherwise check today's
+    let targetDate = todayCST;
+    if (reminderType === "10am") {
+      const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      targetDate = cstFormatter.format(yesterday);
+    }
 
     // Get agents who haven't filled in their numbers
     const { data: filledAgents } = await supabaseClient

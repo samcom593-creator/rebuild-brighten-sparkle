@@ -188,27 +188,36 @@ export function GlobalSidebar({
     );
   };
 
+  // Check if item is the special "Log Numbers" link
+  const isLogNumbersItem = (href: string) => href === "/numbers";
+
   // Navigation item component with tap hardening
   const NavItem = ({ item, isActive }: { item: typeof navItems[0], isActive: boolean }) => {
+    const isSpecial = isLogNumbersItem(item.href);
     const linkContent = (
       <Link
         to={item.href}
         className={cn(
-          "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors duration-100",
+          "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
           "touch-action-manipulation select-none",
           isActive
             ? "bg-primary text-primary-foreground"
-            : "text-muted-foreground hover:bg-muted hover:text-foreground active:bg-muted/80",
+            : isSpecial
+              ? "bg-gradient-to-r from-primary/15 to-primary/5 text-primary border border-primary/25 hover:from-primary/25 hover:to-primary/10 hover:border-primary/40 shadow-sm"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground active:bg-muted/80",
           isCollapsed && "justify-center px-2"
         )}
         style={{ touchAction: "manipulation" }}
       >
-        <item.icon className="h-5 w-5 flex-shrink-0" />
+        <item.icon className={cn("h-5 w-5 flex-shrink-0", isSpecial && !isActive && "text-primary")} />
         {!isCollapsed && (
-          <span className="font-medium text-sm truncate">{item.label}</span>
+          <span className={cn("font-medium text-sm truncate", isSpecial && !isActive && "font-semibold")}>{item.label}</span>
         )}
         {isActive && !isCollapsed && (
           <ChevronRight className="h-4 w-4 ml-auto flex-shrink-0" />
+        )}
+        {isSpecial && !isActive && !isCollapsed && (
+          <span className="ml-auto h-2 w-2 rounded-full bg-primary animate-pulse flex-shrink-0" />
         )}
       </Link>
     );

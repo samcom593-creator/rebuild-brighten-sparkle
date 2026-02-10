@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
- import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
 import {
   Archive,
@@ -7,23 +7,22 @@ import {
   RefreshCw,
   Upload,
   UserPlus,
-  X,
   CheckCircle2,
   XCircle,
   GraduationCap,
   FileText,
   Mail,
   Phone,
-  ChevronDown,
-  AlertCircle,
-   PhoneCall,
-   Filter,
+  PhoneCall,
+  Instagram,
+  ExternalLink,
+  MoreHorizontal,
+  Shield,
 } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -32,19 +31,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
- import { CallModeInterface } from "@/components/dashboard/CallModeInterface";
- import { AgedLeadImporter } from "@/components/dashboard/AgedLeadImporter";
+import { CallModeInterface } from "@/components/dashboard/CallModeInterface";
+import { AgedLeadImporter } from "@/components/dashboard/AgedLeadImporter";
+import { AnimatedNumber } from "@/components/dashboard/AnimatedNumber";
 
 interface AgedLead {
   id: string;
@@ -69,13 +67,13 @@ interface Manager {
   name: string;
 }
 
-const statusColors: Record<string, string> = {
-   new: "bg-primary/20 text-primary",
-   contacted: "bg-secondary text-secondary-foreground",
-   hired: "bg-primary/20 text-primary",
-   not_qualified: "bg-destructive/20 text-destructive",
-   licensing: "bg-accent text-accent-foreground",
-  contracted: "bg-primary/20 text-primary",
+const statusConfig: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
+  new: { label: "New", color: "bg-primary/15 text-primary border-primary/20", icon: UserPlus },
+  contacted: { label: "Contacted", color: "bg-blue-500/15 text-blue-400 border-blue-500/20", icon: Phone },
+  hired: { label: "Hired", color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20", icon: CheckCircle2 },
+  not_qualified: { label: "Not Qualified", color: "bg-destructive/15 text-destructive border-destructive/20", icon: XCircle },
+  licensing: { label: "Licensing", color: "bg-amber-500/15 text-amber-400 border-amber-500/20", icon: GraduationCap },
+  contracted: { label: "Contracted", color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20", icon: FileText },
 };
 
 export default function DashboardAgedLeads() {
@@ -85,97 +83,57 @@ export default function DashboardAgedLeads() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-   const [licenseFilter, setLicenseFilter] = useState<"all" | "licensed" | "unlicensed">("all");
-   const [showImporter, setShowImporter] = useState(false);
-   const [sourceFilter, setSourceFilter] = useState<"all" | "aged" | "new_drip">("all");
-   const [callModeOpen, setCallModeOpen] = useState(false);
-   const [callModeLicense, setCallModeLicense] = useState<"licensed" | "unlicensed">("unlicensed");
-   const [callModeSelectOpen, setCallModeSelectOpen] = useState(false);
-   const [myAgentId, setMyAgentId] = useState<string | undefined>(undefined);
+  const [licenseFilter, setLicenseFilter] = useState<"all" | "licensed" | "unlicensed">("all");
+  const [showImporter, setShowImporter] = useState(false);
+  const [sourceFilter, setSourceFilter] = useState<"all" | "aged" | "new_drip">("all");
+  const [callModeOpen, setCallModeOpen] = useState(false);
+  const [callModeLicense, setCallModeLicense] = useState<"licensed" | "unlicensed">("unlicensed");
+  const [callModeSelectOpen, setCallModeSelectOpen] = useState(false);
+  const [myAgentId, setMyAgentId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (!authLoading && user) {
       fetchLeads();
-      if (isAdmin) {
-        fetchManagers();
-      }
-       // Get current user's agent ID for call mode filtering
-       fetchMyAgentId();
+      if (isAdmin) fetchManagers();
+      fetchMyAgentId();
     }
   }, [user, authLoading]);
- 
-   const fetchMyAgentId = async () => {
-     if (!user) return;
-     const { data } = await supabase
-       .from("agents")
-       .select("id")
-       .eq("user_id", user.id)
-       .single();
-     if (data) {
-       setMyAgentId(data.id);
-     }
-   };
+
+  const fetchMyAgentId = async () => {
+    if (!user) return;
+    const { data } = await supabase.from("agents").select("id").eq("user_id", user.id).single();
+    if (data) setMyAgentId(data.id);
+  };
 
   const fetchManagers = async () => {
     try {
-      const { data: managerRoles } = await supabase
-        .from("user_roles")
-        .select("user_id")
-        .eq("role", "manager");
-
+      const { data: managerRoles } = await supabase.from("user_roles").select("user_id").eq("role", "manager");
       if (!managerRoles?.length) return;
-
       const userIds = managerRoles.map(r => r.user_id);
-      
-      const { data: agents } = await supabase
-        .from("agents")
-        .select("id, user_id")
-        .in("user_id", userIds)
-        .eq("status", "active");
-
+      const { data: agents } = await supabase.from("agents").select("id, user_id").in("user_id", userIds).eq("status", "active");
       if (!agents?.length) return;
-
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, full_name")
-        .in("user_id", userIds);
-
+      const { data: profiles } = await supabase.from("profiles").select("user_id, full_name").in("user_id", userIds);
       const profileMap = new Map(profiles?.map(p => [p.user_id, p.full_name]) || []);
-
-      setManagers(
-        agents.map(a => ({
-          id: a.id,
-          name: profileMap.get(a.user_id) || "Unknown Manager",
-        }))
-      );
+      setManagers(agents.map(a => ({ id: a.id, name: profileMap.get(a.user_id) || "Unknown Manager" })));
     } catch (error) {
       console.error("Error fetching managers:", error);
     }
   };
 
-   const fetchLeads = async () => {
+  const fetchLeads = async () => {
     setLoading(true);
     try {
-       let query = supabase
-         .from("aged_leads")
-         .select("id, first_name, last_name, email, phone, about_me, original_date, assigned_manager_id, status, license_status, lead_source, created_at, notes, instagram_handle, motivation")
-         .order("created_at", { ascending: false });
+      let query = supabase
+        .from("aged_leads")
+        .select("id, first_name, last_name, email, phone, about_me, original_date, assigned_manager_id, status, license_status, lead_source, created_at, notes, instagram_handle, motivation")
+        .order("created_at", { ascending: false });
 
-      // If manager (not admin), only show their assigned leads
       if (isManager && !isAdmin) {
-        const { data: agent } = await supabase
-          .from("agents")
-          .select("id")
-          .eq("user_id", user!.id)
-          .single();
-
-        if (agent) {
-          query = query.eq("assigned_manager_id", agent.id);
-        }
+        const { data: agent } = await supabase.from("agents").select("id").eq("user_id", user!.id).single();
+        if (agent) query = query.eq("assigned_manager_id", agent.id);
       }
 
       const { data, error } = await query;
-
       if (error) throw error;
 
       setLeads(
@@ -183,7 +141,7 @@ export default function DashboardAgedLeads() {
           id: lead.id,
           firstName: lead.first_name,
           lastName: lead.last_name || undefined,
-          email: lead.email,
+          email: lead.email || "",
           phone: lead.phone || undefined,
           aboutMe: lead.about_me || undefined,
           originalDate: lead.original_date || undefined,
@@ -207,25 +165,13 @@ export default function DashboardAgedLeads() {
 
   const handleStatusChange = async (leadId: string, status: string) => {
     try {
-      const updateData: Record<string, any> = { 
-        status, 
-        processed_at: new Date().toISOString() 
-      };
-
       const { error } = await supabase
         .from("aged_leads")
-        .update(updateData)
+        .update({ status, processed_at: new Date().toISOString() })
         .eq("id", leadId);
-
       if (error) throw error;
-
-      setLeads(prev =>
-        prev.map(l => (l.id === leadId ? { ...l, status } : l))
-      );
-
+      setLeads(prev => prev.map(l => (l.id === leadId ? { ...l, status } : l)));
       toast.success(`Lead marked as ${status.replace("_", " ")}`);
-
-      // If hired or contracted, could trigger transfer to CRM here
       if (status === "hired" || status === "contracted") {
         toast.info("Lead ready to be added to your CRM");
       }
@@ -236,10 +182,13 @@ export default function DashboardAgedLeads() {
   };
 
   const filteredLeads = leads.filter(lead => {
+    const q = searchTerm.toLowerCase();
     const matchesSearch =
-      lead.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (lead.lastName?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
-      lead.email.toLowerCase().includes(searchTerm.toLowerCase());
+      lead.firstName.toLowerCase().includes(q) ||
+      (lead.lastName?.toLowerCase().includes(q) || false) ||
+      lead.email.toLowerCase().includes(q) ||
+      (lead.phone?.includes(q) || false) ||
+      (lead.instagramHandle?.toLowerCase().includes(q) || false);
 
     const matchesStatus = statusFilter === "all" || lead.status === statusFilter;
     const matchesLicense = licenseFilter === "all" || lead.licenseStatus === licenseFilter;
@@ -253,348 +202,366 @@ export default function DashboardAgedLeads() {
   const newLeads = leads.filter(l => l.status === "new").length;
   const processedLeads = leads.filter(l => l.status !== "new").length;
   const hiredLeads = leads.filter(l => l.status === "hired" || l.status === "contracted").length;
-  const agedCount = leads.filter(l => l.leadSource === "aged").length;
-  const newDripCount = leads.filter(l => l.leadSource === "new_drip").length;
   const licensedLeads = leads.filter(l => l.licenseStatus === "licensed" && ["new", "contacted", "no_pickup"].includes(l.status)).length;
   const unlicensedLeads = leads.filter(l => l.licenseStatus === "unlicensed" && ["new", "contacted", "no_pickup"].includes(l.status)).length;
- 
-   const handleOpenCallMode = (license: "licensed" | "unlicensed") => {
-     setCallModeLicense(license);
-     setCallModeSelectOpen(false);
-     setCallModeOpen(true);
-   };
+
+  const handleOpenCallMode = (license: "licensed" | "unlicensed") => {
+    setCallModeLicense(license);
+    setCallModeSelectOpen(false);
+    setCallModeOpen(true);
+  };
+
+  const getInitials = (first: string, last?: string) => {
+    return `${first.charAt(0)}${last ? last.charAt(0) : ""}`.toUpperCase();
+  };
 
   if (authLoading) {
     return (
-       <div className="flex items-center justify-center h-64">
-         <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
-       </div>
+      <div className="flex items-center justify-center h-64">
+        <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
     );
   }
 
   return (
-     <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold gradient-text">Aged Leads</h1>
-            <p className="text-muted-foreground mt-1">
-              Old applicants and first contact leads to follow up on
-            </p>
-          </div>
-          <div className="flex gap-2">
-             {/* Call Mode Button */}
-             {/* Call Mode Button */}
-             {(licensedLeads > 0 || unlicensedLeads > 0) && (
-               <div className="relative">
-                 <Button
-                   onClick={() => setCallModeSelectOpen(!callModeSelectOpen)}
-                   className="gap-2"
-                   variant="default"
-                 >
-                   <PhoneCall className="h-4 w-4" />
-                   Call Mode
-                 </Button>
-                 <AnimatePresence>
-                   {callModeSelectOpen && (
-                     <motion.div
-                       initial={{ opacity: 0, y: -10 }}
-                       animate={{ opacity: 1, y: 0 }}
-                       exit={{ opacity: 0, y: -10 }}
-                       className="absolute top-full right-0 mt-2 w-48 rounded-lg border border-border bg-background shadow-lg z-50"
-                     >
-                       {licensedLeads > 0 && (
-                         <button
-                           onClick={() => handleOpenCallMode("licensed")}
-                           className="w-full px-4 py-3 text-left hover:bg-muted transition-colors flex justify-between items-center"
-                         >
-                           <span>Licensed</span>
-                           <Badge variant="secondary">{licensedLeads}</Badge>
-                         </button>
-                       )}
-                       {unlicensedLeads > 0 && (
-                         <button
-                           onClick={() => handleOpenCallMode("unlicensed")}
-                           className="w-full px-4 py-3 text-left hover:bg-muted transition-colors flex justify-between items-center border-t border-border"
-                         >
-                           <span>Unlicensed</span>
-                           <Badge variant="secondary">{unlicensedLeads}</Badge>
-                         </button>
-                       )}
-                     </motion.div>
-                   )}
-                 </AnimatePresence>
-               </div>
-             )}
-            {isAdmin && (
-               <Button onClick={() => setShowImporter(true)} className="gap-2">
-                <Upload className="h-4 w-4" />
-                Bulk Import
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Aged Leads</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Follow up on past applicants &amp; first-contact leads
+          </p>
+        </div>
+        <div className="flex gap-2">
+          {(licensedLeads > 0 || unlicensedLeads > 0) && (
+            <div className="relative">
+              <Button onClick={() => setCallModeSelectOpen(!callModeSelectOpen)} size="sm" className="gap-1.5">
+                <PhoneCall className="h-3.5 w-3.5" />
+                Call Mode
               </Button>
-            )}
-            <Button onClick={fetchLeads} variant="outline" className="gap-2">
-              <RefreshCw className="h-4 w-4" />
-              Refresh
+              <AnimatePresence>
+                {callModeSelectOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute top-full right-0 mt-1.5 w-44 rounded-lg border border-border bg-card shadow-xl z-50 overflow-hidden"
+                  >
+                    {licensedLeads > 0 && (
+                      <button
+                        onClick={() => handleOpenCallMode("licensed")}
+                        className="w-full px-3 py-2.5 text-sm text-left hover:bg-muted/60 transition-colors flex justify-between items-center"
+                      >
+                        <span className="flex items-center gap-2"><Shield className="h-3.5 w-3.5 text-emerald-400" /> Licensed</span>
+                        <Badge variant="secondary" className="text-xs h-5">{licensedLeads}</Badge>
+                      </button>
+                    )}
+                    {unlicensedLeads > 0 && (
+                      <button
+                        onClick={() => handleOpenCallMode("unlicensed")}
+                        className="w-full px-3 py-2.5 text-sm text-left hover:bg-muted/60 transition-colors flex justify-between items-center border-t border-border/50"
+                      >
+                        <span className="flex items-center gap-2"><GraduationCap className="h-3.5 w-3.5 text-amber-400" /> Unlicensed</span>
+                        <Badge variant="secondary" className="text-xs h-5">{unlicensedLeads}</Badge>
+                      </button>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+          {isAdmin && (
+            <Button onClick={() => setShowImporter(true)} size="sm" variant="outline" className="gap-1.5">
+              <Upload className="h-3.5 w-3.5" />
+              Import
             </Button>
-          </div>
+          )}
+          <Button onClick={fetchLeads} variant="ghost" size="sm" className="gap-1.5">
+            <RefreshCw className="h-3.5 w-3.5" />
+          </Button>
         </div>
+      </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <GlassCard className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/20">
-                <Archive className="h-5 w-5 text-primary" />
+      {/* Stats Row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { icon: Archive, label: "Total", value: totalLeads, gradient: "from-primary/20 to-primary/5" },
+          { icon: UserPlus, label: "Unprocessed", value: newLeads, gradient: "from-blue-500/20 to-blue-500/5" },
+          { icon: Phone, label: "Processed", value: processedLeads, gradient: "from-secondary/40 to-secondary/10" },
+          { icon: CheckCircle2, label: "Hired", value: hiredLeads, gradient: "from-emerald-500/20 to-emerald-500/5" },
+        ].map((stat, i) => (
+          <motion.div
+            key={stat.label}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.05, duration: 0.3 }}
+          >
+            <GlassCard variant="subtle" className="p-3.5">
+              <div className="flex items-center gap-3">
+                <div className={cn("p-2 rounded-lg bg-gradient-to-br", stat.gradient)}>
+                  <stat.icon className="h-4 w-4 text-foreground/80" />
+                </div>
+                <div>
+                  <AnimatedNumber value={stat.value} className="text-xl font-bold" />
+                  <p className="text-xs text-muted-foreground">{stat.label}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold">{totalLeads}</p>
-                <p className="text-sm text-muted-foreground">Total Leads</p>
-              </div>
-            </div>
-          </GlassCard>
+            </GlassCard>
+          </motion.div>
+        ))}
+      </div>
 
-          <GlassCard className="p-4">
-            <div className="flex items-center gap-3">
-               <div className="p-2 rounded-lg bg-primary/20">
-                 <UserPlus className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{newLeads}</p>
-                <p className="text-sm text-muted-foreground">New / Unprocessed</p>
-              </div>
-            </div>
-          </GlassCard>
-
-          <GlassCard className="p-4">
-            <div className="flex items-center gap-3">
-               <div className="p-2 rounded-lg bg-secondary">
-                 <Phone className="h-5 w-5 text-secondary-foreground" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{processedLeads}</p>
-                <p className="text-sm text-muted-foreground">Processed</p>
-              </div>
-            </div>
-          </GlassCard>
-
-          <GlassCard className="p-4">
-            <div className="flex items-center gap-3">
-               <div className="p-2 rounded-lg bg-primary/20">
-                 <CheckCircle2 className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{hiredLeads}</p>
-                <p className="text-sm text-muted-foreground">Hired/Contracted</p>
-              </div>
-            </div>
-          </GlassCard>
+      {/* Filters Bar */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2 }}
+        className="flex flex-col sm:flex-row gap-3 items-start sm:items-center"
+      >
+        <div className="relative flex-1 w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            placeholder="Search name, phone, email, Instagram..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9 h-9 text-sm bg-card/50"
+          />
         </div>
-
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search leads..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-           {/* License Status Filter */}
-           <div className="flex gap-2">
-             <Button
-               variant={licenseFilter === "all" ? "default" : "outline"}
-               size="sm"
-               onClick={() => setLicenseFilter("all")}
-             >
-               All
-             </Button>
-             {leads.some(l => l.licenseStatus === "licensed") && (
-               <Button
-                 variant={licenseFilter === "licensed" ? "default" : "outline"}
-                 size="sm"
-                 onClick={() => setLicenseFilter("licensed")}
-                 className="gap-1"
-               >
-                 <CheckCircle2 className="h-3 w-3" />
-                 Licensed
-               </Button>
-             )}
-             {leads.some(l => l.licenseStatus === "unlicensed") && (
-               <Button
-                 variant={licenseFilter === "unlicensed" ? "default" : "outline"}
-                 size="sm"
-                 onClick={() => setLicenseFilter("unlicensed")}
-                 className="gap-1"
-               >
-                 <GraduationCap className="h-3 w-3" />
-                 Unlicensed
-               </Button>
-             )}
-           </div>
-          {/* Lead Source Filter */}
-          <Select value={sourceFilter} onValueChange={(v) => setSourceFilter(v as "all" | "aged" | "new_drip")}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Lead Source" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Sources</SelectItem>
-              <SelectItem value="aged">Aged ({agedCount})</SelectItem>
-              <SelectItem value="new_drip">New Drip ({newDripCount})</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="new">New</SelectItem>
-              <SelectItem value="contacted">Contacted</SelectItem>
-              <SelectItem value="hired">Hired</SelectItem>
-              <SelectItem value="not_qualified">Not Qualified</SelectItem>
-              <SelectItem value="licensing">Starting Licensing</SelectItem>
-              <SelectItem value="contracted">Contracted</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="flex gap-1.5 flex-wrap">
+          {(["all", "licensed", "unlicensed"] as const).map(f => (
+            <Button
+              key={f}
+              variant={licenseFilter === f ? "default" : "ghost"}
+              size="sm"
+              className={cn("h-8 text-xs px-3", licenseFilter === f && "shadow-sm")}
+              onClick={() => setLicenseFilter(f)}
+            >
+              {f === "all" ? "All" : f === "licensed" ? "Licensed" : "Unlicensed"}
+            </Button>
+          ))}
         </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[140px] h-8 text-xs">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="new">New</SelectItem>
+            <SelectItem value="contacted">Contacted</SelectItem>
+            <SelectItem value="hired">Hired</SelectItem>
+            <SelectItem value="not_qualified">Not Qualified</SelectItem>
+            <SelectItem value="licensing">Licensing</SelectItem>
+            <SelectItem value="contracted">Contracted</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={sourceFilter} onValueChange={(v) => setSourceFilter(v as "all" | "aged" | "new_drip")}>
+          <SelectTrigger className="w-[130px] h-8 text-xs">
+            <SelectValue placeholder="Source" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Sources</SelectItem>
+            <SelectItem value="aged">Aged</SelectItem>
+            <SelectItem value="new_drip">New Drip</SelectItem>
+          </SelectContent>
+        </Select>
+      </motion.div>
 
-        {/* Leads List */}
-        {loading ? (
-          <div className="flex items-center justify-center h-64">
-            <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        ) : filteredLeads.length === 0 ? (
-          <GlassCard className="p-12 text-center">
-            <Archive className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No Aged Leads Found</h3>
-            <p className="text-muted-foreground">
-              {isAdmin
-                ? "Import aged leads using the Bulk Import button above"
-                : "No aged leads have been assigned to you yet"}
-            </p>
-          </GlassCard>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredLeads.map((lead, index) => (
+      {/* Results Count */}
+      <p className="text-xs text-muted-foreground">
+        Showing {filteredLeads.length} of {totalLeads} leads
+      </p>
+
+      {/* Leads List */}
+      {loading ? (
+        <div className="flex items-center justify-center h-48">
+          <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : filteredLeads.length === 0 ? (
+        <GlassCard variant="subtle" className="p-10 text-center">
+          <Archive className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
+          <h3 className="text-sm font-medium mb-1">No Leads Found</h3>
+          <p className="text-xs text-muted-foreground">
+            {isAdmin ? "Import aged leads using the Import button" : "No aged leads assigned to you yet"}
+          </p>
+        </GlassCard>
+      ) : (
+        <div className="space-y-1.5">
+          {filteredLeads.map((lead, index) => {
+            const config = statusConfig[lead.status] || statusConfig.new;
+            return (
               <motion.div
                 key={lead.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.03 }}
+                initial={{ opacity: 0, x: -12 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: Math.min(index * 0.02, 0.5), duration: 0.25 }}
               >
-                <GlassCard className="p-5 h-full flex flex-col">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h3 className="font-semibold">
-                        {lead.firstName} {lead.lastName || ""}
-                      </h3>
-                      <p className="text-sm text-muted-foreground flex items-center gap-1">
-                        <Mail className="h-3 w-3" />
-                        {lead.email}
-                      </p>
-                      {lead.phone && (
-                        <p className="text-sm text-muted-foreground flex items-center gap-1">
-                          <Phone className="h-3 w-3" />
-                          {lead.phone}
+                <GlassCard
+                  variant="subtle"
+                  className="px-4 py-3 hover:bg-card/80 transition-all duration-200 hover:shadow-md hover:shadow-primary/5 group"
+                >
+                  <div className="flex items-center gap-3">
+                    {/* Avatar */}
+                    <div className="shrink-0">
+                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 border border-primary/20 flex items-center justify-center">
+                        <span className="text-xs font-semibold text-primary">
+                          {getInitials(lead.firstName, lead.lastName)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Name + Motivation */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium truncate">
+                          {lead.firstName} {lead.lastName || ""}
                         </p>
+                        {lead.leadSource === "new_drip" && (
+                          <Badge variant="outline" className="text-[10px] h-4 px-1.5 bg-cyan-500/10 text-cyan-400 border-cyan-500/20">
+                            Drip
+                          </Badge>
+                        )}
+                      </div>
+                      {lead.motivation && (
+                        <p className="text-[11px] text-muted-foreground/70 italic truncate mt-0.5">{lead.motivation}</p>
+                      )}
+                      {lead.aboutMe && !lead.motivation && (
+                        <p className="text-[11px] text-muted-foreground/70 italic truncate mt-0.5">{lead.aboutMe}</p>
                       )}
                     </div>
-                    <div className="flex gap-1">
-                      <Badge 
-                        variant="outline" 
+
+                    {/* Contact Chips */}
+                    <div className="hidden sm:flex items-center gap-1.5 shrink-0">
+                      {lead.phone && (
+                        <a href={`tel:${lead.phone}`} className="flex items-center gap-1 px-2 py-1 rounded-md bg-muted/50 hover:bg-muted text-[11px] text-muted-foreground transition-colors">
+                          <Phone className="h-3 w-3" />
+                          <span className="hidden lg:inline">{lead.phone}</span>
+                        </a>
+                      )}
+                      {lead.email && (
+                        <a href={`mailto:${lead.email}`} className="flex items-center gap-1 px-2 py-1 rounded-md bg-muted/50 hover:bg-muted text-[11px] text-muted-foreground transition-colors">
+                          <Mail className="h-3 w-3" />
+                          <span className="hidden lg:inline truncate max-w-[120px]">{lead.email}</span>
+                        </a>
+                      )}
+                      {lead.instagramHandle && (
+                        <a
+                          href={`https://instagram.com/${lead.instagramHandle.replace("@", "")}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 px-2 py-1 rounded-md bg-muted/50 hover:bg-muted text-[11px] text-muted-foreground transition-colors"
+                        >
+                          <Instagram className="h-3 w-3" />
+                          <span className="hidden lg:inline truncate max-w-[100px]">@{lead.instagramHandle.replace("@", "")}</span>
+                        </a>
+                      )}
+                    </div>
+
+                    {/* Badges */}
+                    <div className="hidden md:flex items-center gap-1.5 shrink-0">
+                      <Badge variant="outline" className={cn("text-[10px] h-5 px-2", config.color)}>
+                        {config.label}
+                      </Badge>
+                      <Badge
+                        variant="outline"
                         className={cn(
-                          "text-xs",
-                          lead.leadSource === "new_drip" 
-                            ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/30" 
-                            : "bg-amber-500/20 text-amber-400 border-amber-500/30"
+                          "text-[10px] h-5 px-2",
+                          lead.licenseStatus === "licensed"
+                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                            : "bg-muted/50 text-muted-foreground border-border/50"
                         )}
                       >
-                        {lead.leadSource === "new_drip" ? "New Drip" : "Aged"}
+                        {lead.licenseStatus === "licensed" ? "Licensed" : "Unlicensed"}
                       </Badge>
-                      <Badge className={cn("text-xs", statusColors[lead.status] || "bg-secondary text-secondary-foreground")}>
-                        {lead.status.replace("_", " ")}
-                      </Badge>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="shrink-0">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 opacity-50 group-hover:opacity-100 transition-opacity">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, "contacted")} className="text-xs gap-2">
+                            <Phone className="h-3 w-3" /> Mark Contacted
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, "hired")} className="text-xs gap-2">
+                            <CheckCircle2 className="h-3 w-3 text-emerald-400" /> Hired
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, "licensing")} className="text-xs gap-2">
+                            <GraduationCap className="h-3 w-3 text-amber-400" /> Start Licensing
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, "contracted")} className="text-xs gap-2">
+                            <FileText className="h-3 w-3 text-emerald-400" /> Contracted
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, "not_qualified")} className="text-xs gap-2 text-destructive">
+                            <XCircle className="h-3 w-3" /> Not Qualified
+                          </DropdownMenuItem>
+                          {lead.phone && (
+                            <DropdownMenuItem asChild className="text-xs gap-2">
+                              <a href={`tel:${lead.phone}`}><PhoneCall className="h-3 w-3" /> Call</a>
+                            </DropdownMenuItem>
+                          )}
+                          {lead.instagramHandle && (
+                            <DropdownMenuItem asChild className="text-xs gap-2">
+                              <a href={`https://instagram.com/${lead.instagramHandle.replace("@","")}`} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="h-3 w-3" /> Instagram
+                              </a>
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
 
-                  {lead.aboutMe && (
-                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
-                      {lead.aboutMe}
-                    </p>
-                  )}
-
-                  {lead.originalDate && (
-                    <p className="text-xs text-muted-foreground mb-3">
-                      Original date: {format(new Date(lead.originalDate), "MMM d, yyyy")}
-                    </p>
-                  )}
-
-                  <div className="mt-auto pt-3 border-t border-border">
-                    <p className="text-xs text-muted-foreground mb-2">Quick Actions:</p>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                         className="gap-1 text-primary border-primary/30 hover:bg-primary/10"
-                        onClick={() => handleStatusChange(lead.id, "hired")}
-                      >
-                        <CheckCircle2 className="h-3 w-3" />
-                        Hired
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                         className="gap-1 text-destructive border-destructive/30 hover:bg-destructive/10"
-                        onClick={() => handleStatusChange(lead.id, "not_qualified")}
-                      >
-                        <XCircle className="h-3 w-3" />
-                        Not Qualified
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                         className="gap-1 text-accent-foreground border-accent/30 hover:bg-accent/10"
-                        onClick={() => handleStatusChange(lead.id, "licensing")}
-                      >
-                        <GraduationCap className="h-3 w-3" />
-                        Licensing
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="gap-1 text-primary border-primary/30 hover:bg-primary/10"
-                        onClick={() => handleStatusChange(lead.id, "contracted")}
-                      >
-                        <FileText className="h-3 w-3" />
-                        Contracted
-                      </Button>
-                    </div>
+                  {/* Mobile contact row */}
+                  <div className="flex sm:hidden items-center gap-2 mt-2 flex-wrap">
+                    {lead.phone && (
+                      <a href={`tel:${lead.phone}`} className="flex items-center gap-1 px-2 py-0.5 rounded bg-muted/50 text-[10px] text-muted-foreground">
+                        <Phone className="h-2.5 w-2.5" /> {lead.phone}
+                      </a>
+                    )}
+                    {lead.email && (
+                      <a href={`mailto:${lead.email}`} className="flex items-center gap-1 px-2 py-0.5 rounded bg-muted/50 text-[10px] text-muted-foreground truncate">
+                        <Mail className="h-2.5 w-2.5" /> {lead.email}
+                      </a>
+                    )}
+                    {lead.instagramHandle && (
+                      <a href={`https://instagram.com/${lead.instagramHandle.replace("@","")}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 px-2 py-0.5 rounded bg-muted/50 text-[10px] text-muted-foreground">
+                        <Instagram className="h-2.5 w-2.5" /> @{lead.instagramHandle.replace("@","")}
+                      </a>
+                    )}
+                    <Badge variant="outline" className={cn("text-[9px] h-4 px-1.5", config.color)}>
+                      {config.label}
+                    </Badge>
                   </div>
                 </GlassCard>
               </motion.div>
-            ))}
-          </div>
-        )}
+            );
+          })}
+        </div>
+      )}
 
-         {/* Call Mode Interface */}
-         <CallModeInterface
-           isOpen={callModeOpen}
-           onClose={() => setCallModeOpen(false)}
-           licenseFilter={callModeLicense}
-           managerId={myAgentId}
-           isAdmin={isAdmin}
-           onLeadProcessed={fetchLeads}
-         />
- 
-         {/* Enhanced Importer Modal */}
-         <AgedLeadImporter
-           isOpen={showImporter}
-           onClose={() => setShowImporter(false)}
-           managers={managers}
-           onImportComplete={fetchLeads}
-         />
-     </div>
+      {/* Call Mode Interface */}
+      <CallModeInterface
+        isOpen={callModeOpen}
+        onClose={() => setCallModeOpen(false)}
+        licenseFilter={callModeLicense}
+        managerId={myAgentId}
+        isAdmin={isAdmin}
+        onLeadProcessed={fetchLeads}
+      />
+
+      {/* Importer Modal */}
+      <AgedLeadImporter
+        isOpen={showImporter}
+        onClose={() => setShowImporter(false)}
+        managers={managers}
+        onImportComplete={fetchLeads}
+      />
+    </div>
   );
 }

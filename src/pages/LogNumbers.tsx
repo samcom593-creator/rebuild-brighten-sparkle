@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getTodayPST, getWeekStartPST } from "@/lib/dateUtils";
 import { 
@@ -32,6 +32,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import { BubbleDealEntry } from "@/components/dashboard/BubbleDealEntry";
 import apexIcon from "@/assets/apex-icon.png";
 
 interface MatchedAgent {
@@ -72,6 +73,7 @@ export default function LogNumbers() {
 
   // Production form
   const [saving, setSaving] = useState(false);
+  const [loadingExisting, setLoadingExisting] = useState(false);
   const [productionData, setProductionData] = useState({
     presentations: 0,
     passed_price: 0,
@@ -96,6 +98,47 @@ export default function LogNumbers() {
     };
   }, []);
 
+  // Load existing production data when agent is selected
+  useEffect(() => {
+    if (!selectedAgent || step !== "production") return;
+
+    const loadExisting = async () => {
+      setLoadingExisting(true);
+      try {
+        const today = getTodayPST();
+        const { data } = await supabase
+          .from("daily_production")
+          .select("*")
+          .eq("agent_id", selectedAgent.id)
+          .eq("production_date", today)
+          .maybeSingle();
+
+        if (data) {
+          setProductionData({
+            presentations: data.presentations || 0,
+            passed_price: 0,
+            hours_called: data.hours_called || 0,
+            referrals_caught: data.referrals_caught || 0,
+            booked_inhome_referrals: 0,
+            referral_presentations: data.referral_presentations || 0,
+            deals_closed: data.deals_closed || 0,
+            aop: data.aop || 0,
+          });
+        }
+      } catch (err) {
+        console.error("Failed to load existing production:", err);
+      } finally {
+        setLoadingExisting(false);
+      }
+    };
+
+    loadExisting();
+  }, [selectedAgent, step]);
+
+  const handleALPChange = useCallback((alp: number) => {
+    setProductionData(prev => ({ ...prev, aop: alp }));
+  }, []);
+
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
       toast.error("Please enter a name or email");
@@ -104,7 +147,6 @@ export default function LogNumbers() {
 
     setSearching(true);
     try {
-      // Search for Live agents (evaluated stage) by name or email
       const { data: agents, error } = await supabase
         .from("agents")
         .select(`
@@ -120,7 +162,6 @@ export default function LogNumbers() {
 
       if (error) throw error;
 
-      // Filter by name or email match
       const query = searchQuery.toLowerCase().trim();
       const matches = (agents || [])
         .filter((a: any) => {
@@ -138,7 +179,6 @@ export default function LogNumbers() {
       setMatchedAgents(matches);
 
       if (matches.length === 0) {
-        // No match found, show new agent form
         setNewAgentForm(prev => ({
           ...prev,
           fullName: searchQuery.includes("@") ? "" : searchQuery,
@@ -146,11 +186,9 @@ export default function LogNumbers() {
         }));
         setStep("new-agent");
       } else if (matches.length === 1) {
-        // Exact match, go directly to production
         setSelectedAgent(matches[0]);
         setStep("production");
       } else {
-        // Multiple matches, let them select
         setStep("select");
       }
     } catch (error) {
@@ -174,7 +212,6 @@ export default function LogNumbers() {
 
     setCreatingAgent(true);
     try {
-      // Create a profile first
       const profileId = crypto.randomUUID();
       const agentId = crypto.randomUUID();
       const userId = crypto.randomUUID();
@@ -191,7 +228,6 @@ export default function LogNumbers() {
 
       if (profileError) throw profileError;
 
-      // Create the agent record
       const { error: agentError } = await supabase
         .from("agents")
         .insert({
@@ -206,7 +242,6 @@ export default function LogNumbers() {
 
       if (agentError) throw agentError;
 
-      // Set the newly created agent as selected
       setSelectedAgent({
         id: agentId,
         name: newAgentForm.fullName.trim(),
@@ -231,7 +266,6 @@ export default function LogNumbers() {
     try {
       const today = getTodayPST();
 
-      // Upsert production data
       const { error } = await supabase
         .from("daily_production")
         .upsert({
@@ -246,7 +280,6 @@ export default function LogNumbers() {
 
       if (error) throw error;
 
-      // Trigger admin notification
       await supabase.functions.invoke("notify-production-submitted", {
         body: { 
           agentId: selectedAgent.id, 
@@ -255,10 +288,8 @@ export default function LogNumbers() {
         }
       });
 
-      // Fetch leaderboard data
       await fetchLeaderboard();
 
-      // Show celebration
       setShowConfetti(true);
       setStep("leaderboard");
     } catch (error) {
@@ -273,10 +304,8 @@ export default function LogNumbers() {
     if (!selectedAgent) return;
 
     try {
-      // Get this week's start date (Sunday) in PST
       const weekStartStr = getWeekStartPST();
 
-      // Fetch all Live agents with their weekly production
       const { data: agents, error: agentsError } = await supabase
         .from("agents")
         .select(`
@@ -288,7 +317,6 @@ export default function LogNumbers() {
 
       if (agentsError) throw agentsError;
 
-      // Fetch weekly production for all agents
       const { data: production, error: prodError } = await supabase
         .from("daily_production")
         .select("agent_id, aop, deals_closed, presentations")
@@ -296,7 +324,6 @@ export default function LogNumbers() {
 
       if (prodError) throw prodError;
 
-      // Aggregate by agent
       const agentMap = new Map<string, LeaderboardEntry>();
       
       for (const agent of agents || []) {
@@ -320,7 +347,6 @@ export default function LogNumbers() {
         }
       }
 
-      // Calculate closing rates and sort by ALP
       const entries = Array.from(agentMap.values())
         .map(e => ({
           ...e,
@@ -333,7 +359,6 @@ export default function LogNumbers() {
 
       setLeaderboard(entries);
 
-      // Find current agent's stats
       const currentAgentEntry = entries.find(e => e.agentId === selectedAgent.id);
       if (currentAgentEntry) {
         setAgentRank(currentAgentEntry.rank);
@@ -346,13 +371,10 @@ export default function LogNumbers() {
 
   const productionFields = [
     { key: "presentations", label: "Presentations", icon: Target },
-    { key: "passed_price", label: "Pitched Price", icon: CheckCircle2 },
     { key: "hours_called", label: "Hours Called", icon: Phone, step: "0.5" },
-    { key: "referrals_caught", label: "Referrals Caught", icon: UserPlus },
-    { key: "booked_inhome_referrals", label: "Booked In-Home", icon: User },
-    { key: "referral_presentations", label: "Referral Pres.", icon: Target },
-    { key: "deals_closed", label: "Deals Closed", icon: TrendingUp },
-    { key: "aop", label: "ALP ($)", icon: Sparkles, step: "0.01", highlight: true },
+    { key: "referrals_caught", label: "Referrals", icon: UserPlus },
+    { key: "referral_presentations", label: "Ref. Pres.", icon: Target },
+    { key: "deals_closed", label: "Closes", icon: TrendingUp },
   ];
 
   return (
@@ -586,65 +608,82 @@ export default function LogNumbers() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  {productionFields.map((field, index) => {
-                    const Icon = field.icon;
-                    const value = productionData[field.key as keyof typeof productionData];
-                    const hasValue = Number(value) > 0;
+                {loadingExisting ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  </div>
+                ) : (
+                  <>
+                    {/* Stat Fields Grid */}
+                    <div className="grid grid-cols-2 gap-3">
+                      {productionFields.map((field, index) => {
+                        const Icon = field.icon;
+                        const value = productionData[field.key as keyof typeof productionData];
+                        const hasValue = Number(value) > 0;
 
-                    return (
-                      <motion.div
-                        key={field.key}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.03 }}
-                        className={cn(
-                          "relative",
-                          field.highlight && "col-span-2"
-                        )}
-                      >
-                        <Label 
-                          htmlFor={field.key} 
-                          className="text-xs text-muted-foreground flex items-center gap-1 mb-1"
-                        >
-                          <Icon className={cn(
-                            "h-3 w-3",
-                            hasValue && "text-primary"
-                          )} />
-                          {field.label}
-                        </Label>
-                        <Input
-                          id={field.key}
-                          type="number"
-                          step={field.step}
-                          min="0"
-                          value={value}
-                          onChange={(e) => setProductionData(prev => ({
-                            ...prev,
-                            [field.key]: field.step ? parseFloat(e.target.value) || 0 : parseInt(e.target.value) || 0
-                          }))}
-                          className={cn(
-                            "h-12 text-lg font-bold text-center transition-all duration-200",
-                            hasValue && "border-primary/50 bg-primary/5",
-                            field.highlight && hasValue && "text-xl text-primary"
-                          )}
-                        />
-                        {hasValue && (
+                        return (
                           <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary"
-                          />
-                        )}
-                      </motion.div>
-                    );
-                  })}
-                </div>
+                            key={field.key}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.03 }}
+                            className="relative"
+                          >
+                            <Label 
+                              htmlFor={field.key} 
+                              className="text-xs text-muted-foreground flex items-center gap-1 mb-1"
+                            >
+                              <Icon className={cn(
+                                "h-3 w-3",
+                                hasValue && "text-primary"
+                              )} />
+                              {field.label}
+                            </Label>
+                            <Input
+                              id={field.key}
+                              type="number"
+                              step={field.step}
+                              min="0"
+                              value={value}
+                              onChange={(e) => setProductionData(prev => ({
+                                ...prev,
+                                [field.key]: field.step ? parseFloat(e.target.value) || 0 : parseInt(e.target.value) || 0
+                              }))}
+                              className={cn(
+                                "h-12 text-lg font-bold text-center transition-all duration-200",
+                                hasValue && "border-primary/50 bg-primary/5"
+                              )}
+                            />
+                            {hasValue && (
+                              <motion.div
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary"
+                              />
+                            )}
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Deal Premium Entry (Bubble) */}
+                    <div className="mt-5">
+                      <Label className="text-xs text-muted-foreground flex items-center gap-1 mb-2">
+                        <Sparkles className={cn(
+                          "h-3 w-3",
+                          productionData.aop > 0 && "text-primary"
+                        )} />
+                        Deal Premiums (ALP)
+                      </Label>
+                      <BubbleDealEntry onALPChange={handleALPChange} />
+                    </div>
+                  </>
+                )}
 
                 <Button 
                   onClick={handleSubmitProduction}
                   className="w-full mt-4 h-12 text-base font-semibold"
-                  disabled={saving}
+                  disabled={saving || loadingExisting}
                 >
                   {saving ? (
                     <Loader2 className="h-5 w-5 animate-spin mr-2" />

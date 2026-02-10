@@ -1,53 +1,95 @@
 
 
-# Fix "Free Leads" Language and Allow Importing Leads Without Email/Phone
+# Revamp Aged Lead Email with Performance Stats and Click Tracking
 
-## Two Changes
+## Overview
 
-### 1. Replace All "Free Leads" References with "Unlimited Warm Leads"
+Three changes:
+1. Redesign the aged lead email to highlight real performance stats ($20K+ production, $10K+ deposits) as social proof
+2. Track CTA button clicks and notify the admin via email when a lead clicks "Reapply"
+3. Confirm abandoned application notifications are working
 
-Every instance of "free leads" across the codebase will be updated. The aged lead email also needs to acknowledge that these people previously applied.
+---
 
-| File | Current Text | New Text |
-|------|-------------|----------|
-| `supabase/functions/send-aged-lead-email/index.ts` | "Free warm leads provided daily" | "Unlimited warm leads provided daily" |
-| `supabase/functions/send-aged-lead-email/index.ts` | "A new remote sales position just opened up..." (generic opener) | "You applied to Apex Financial before, and we wanted to reach back out..." (personalized re-engagement) |
-| `supabase/functions/send-outreach-email/index.ts` | "Free leads provided daily" | "Unlimited warm leads provided daily" |
-| `supabase/functions/send-licensing-instructions/index.ts` | "Free warm leads to start calling" | "Unlimited warm leads to start calling" |
-| `src/components/dashboard/AgedLeadEmailPreview.tsx` | "Free warm leads provided daily" | "Unlimited warm leads provided daily" |
-| `src/components/landing/CareerPathwaySection.tsx` | "Start Working Free Real-Time Leads" | "Start Working Unlimited Warm Leads" |
-| `src/components/landing/FAQSection.tsx` | "provide free leads to get started" | "provide unlimited warm leads to get started" |
-| `src/pages/ScheduleCall.tsx` | "Free leads daily" | "Unlimited warm leads daily" |
+## 1. Redesign the Email (High-Converting with Stats)
 
-The aged lead email subject and body will also be updated to reference that they previously applied, making it a re-engagement email rather than a cold outreach.
+**Files: `supabase/functions/send-aged-lead-email/index.ts` and `src/components/dashboard/AgedLeadEmailPreview.tsx`**
 
-### 2. Allow Importing Leads Missing Email or Phone
+The email will be completely rewritten with:
 
-Currently, leads without BOTH email AND phone are marked invalid and skipped. Many aged leads only have one contact method.
+- **Subject line**: "We've Grown Since You Applied -- See What's Changed"
+- **Hero stat block**: Two bold stats side by side:
+  - "Every agent produced $20,000+ last month"
+  - "Every agent deposited $10,000+ last month"
+- **Personalized opener**: "Hey [Name], you applied to Apex Financial before. A lot has changed since then -- and the results speak for themselves."
+- **Bullet benefits** (kept but reordered for impact):
+  - Every active agent produced $20K+ last month
+  - Every agent deposited over $10K last month
+  - Start at 70% commission (up to 145%)
+  - Unlimited warm leads provided daily
+  - Complete training + mentorship included
+  - No cold calling, work from anywhere
+- **CTA button**: "REAPPLY NOW" -- links to a tracking URL (see section 2) that redirects to `/apply`
+- **Urgency line**: "We're only accepting a limited number of new agents this month."
+- **Footer**: "Powered by Apex Financial"
 
-**Change in `src/components/dashboard/AgedLeadImporter.tsx`**:
-- Relax validation: a lead is valid if it has a first name AND at least one of email or phone (instead of requiring both)
-- Leads with neither email nor phone remain invalid
-- The `aged_leads` table already allows nullable email/phone, but the current column `email` is `NOT NULL` -- we need a migration to make it nullable
+The `AgedLeadEmailPreview.tsx` component will be updated to match the new email design exactly, plus the updated subject line.
 
-**Database migration**:
-```sql
-ALTER TABLE aged_leads ALTER COLUMN email DROP NOT NULL;
+---
+
+## 2. Track CTA Clicks and Notify Admin
+
+**New edge function: `supabase/functions/track-email-click/index.ts`**
+
+This function handles the CTA redirect flow:
+1. Lead clicks "REAPPLY NOW" in the email
+2. The link points to the edge function URL with query params: `?email=lead@email.com&name=FirstName&source=aged_lead_email`
+3. The function:
+   - Logs the click in the `email_tracking` table (creates a record or updates existing)
+   - Sends an instant notification email to `info@apex-financial.org` with the lead's name, email, and phone (fetched from `aged_leads` table)
+   - Redirects the user to `https://apex-financial.org/apply` with a `302` response
+
+The notification email to the admin will include:
+- Lead name and contact info
+- "This lead clicked 'Reapply' from the aged lead outreach email"
+- Direct links to call/email the lead
+
+**Email link format in `send-aged-lead-email`**:
+```
+https://<project-id>.supabase.co/functions/v1/track-email-click?email={email}&name={firstName}&source=aged_lead
 ```
 
-This allows importing leads that only have a phone number. Emails will only be sent to leads that have an email address (the send logic already checks for email).
+**Config update**: Add to `supabase/config.toml`:
+```toml
+[functions.track-email-click]
+verify_jwt = false
+```
 
-## Files to Modify
+---
+
+## 3. Abandoned Application Notifications
+
+The `check-abandoned-applications` edge function is already fully implemented. It:
+- Finds partial applications older than 15 minutes that were not completed or already notified
+- Sends a detailed email to `info@apex-financial.org` with the lead's name, email, phone, location, and step progress
+- Marks them as notified to prevent duplicates
+
+This function needs to be invoked on a schedule (via cron or manual trigger). It is already deployed and functional -- no code changes needed here.
+
+---
+
+## Summary of Changes
 
 | File | Change |
 |------|--------|
-| `supabase/functions/send-aged-lead-email/index.ts` | Update copy: remove "free", add "you applied before" context |
-| `supabase/functions/send-outreach-email/index.ts` | Replace "Free leads" with "Unlimited warm leads" |
-| `supabase/functions/send-licensing-instructions/index.ts` | Replace "Free warm leads" with "Unlimited warm leads" |
-| `src/components/dashboard/AgedLeadEmailPreview.tsx` | Update preview copy to match edge function |
-| `src/components/landing/CareerPathwaySection.tsx` | Replace "Free Real-Time Leads" with "Unlimited Warm Leads" |
-| `src/components/landing/FAQSection.tsx` | Replace "free leads" with "unlimited warm leads" |
-| `src/pages/ScheduleCall.tsx` | Replace "Free leads daily" with "Unlimited warm leads daily" |
-| `src/components/dashboard/AgedLeadImporter.tsx` | Relax validation to require email OR phone (not both) |
-| Database migration | Make `aged_leads.email` nullable |
+| `supabase/functions/send-aged-lead-email/index.ts` | Complete email redesign with stats, new subject, tracking CTA link |
+| `supabase/functions/track-email-click/index.ts` | **New** -- handles click tracking, admin notification, and redirect |
+| `src/components/dashboard/AgedLeadEmailPreview.tsx` | Update preview to match redesigned email |
+| `supabase/config.toml` | Add `verify_jwt = false` for `track-email-click` |
 
+## Technical Details
+
+- The click tracking uses a redirect-based approach (no JavaScript required in email) -- the CTA href points to the edge function which logs the click and issues a 302 redirect to `/apply`
+- Admin notification emails are sent from `APEX Alerts <alerts@apex-financial.org>` for consistency
+- The `email_tracking` table already exists and will be reused for click tracking with `email_type = 'aged_lead_click'`
+- No database migration needed -- all existing tables support this flow

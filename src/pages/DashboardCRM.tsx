@@ -319,12 +319,12 @@ export default function DashboardCRM() {
         .filter(a => a.onboarding_stage === "evaluated")
         .map(a => a.id);
 
-      // Get this week's start date (Sunday)
+      // Get this week's start date (Sunday) - use local date to avoid UTC shift
       const today = new Date();
       const dayOfWeek = today.getDay();
       const weekStart = new Date(today);
       weekStart.setDate(today.getDate() - dayOfWeek);
-      const weekStartStr = weekStart.toISOString().split("T")[0];
+      const weekStartStr = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
 
       // Get this month's start date
       const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -1123,11 +1123,11 @@ export default function DashboardCRM() {
               <GlassCard className="p-2">
                 <div className="flex items-center gap-2">
                   <div className="p-1 rounded-lg bg-emerald-500/10">
-                    <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
+                    <DollarSign className="h-3.5 w-3.5 text-emerald-500" />
                   </div>
                   <div>
-                    <p className="text-lg font-bold">{totalDeals}</p>
-                    <p className="text-[10px] text-muted-foreground">Total Deals</p>
+                    <p className="text-lg font-bold">{totalPaidAgents}</p>
+                    <p className="text-[10px] text-muted-foreground">Paid Agents</p>
                   </div>
                 </div>
               </GlassCard>
@@ -1135,11 +1135,11 @@ export default function DashboardCRM() {
               <GlassCard className="p-2">
                 <div className="flex items-center gap-2">
                   <div className="p-1 rounded-lg bg-emerald-500/10">
-                    <DollarSign className="h-3.5 w-3.5 text-emerald-500" />
+                    <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
                   </div>
                   <div>
-                    <p className="text-lg font-bold">{totalPaidAgents}</p>
-                    <p className="text-[10px] text-muted-foreground">Paid Agents</p>
+                    <p className="text-lg font-bold">{totalDeals}</p>
+                    <p className="text-[10px] text-muted-foreground">Total Deals</p>
                   </div>
                 </div>
               </GlassCard>

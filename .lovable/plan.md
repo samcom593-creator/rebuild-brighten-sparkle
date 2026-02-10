@@ -1,87 +1,91 @@
 
-# Fix Importer Validation and Add CC to All Emails
 
-## Two Problems to Fix
+# Fix Aged Lead Importer Validation + Email Template Sync
 
-### 1. Importer Still Rejects Leads With Only Instagram (No Email/Phone)
+## Problem
 
-The current validation at line 285 of `AgedLeadImporter.tsx` requires at least an email OR phone. Leads with only an Instagram handle are rejected.
+Two issues are happening:
 
-**Fix**: Change validation so a lead is valid if it has a first name AND at least one contact method (email, phone, OR Instagram handle).
+1. **Validation errors rejecting valid leads**: Your CSV has leads with phone numbers and Instagram handles but no email, and they're being rejected with "Missing email, Missing phone" errors. The validation should accept any lead that has at least ONE contact method (email, phone, OR Instagram).
 
-**File: `src/components/dashboard/AgedLeadImporter.tsx`**
-- Update validation logic (line 285): accept leads that have any of email, phone, or instagram_handle
-- Error message updated to: "Missing email, phone, and Instagram (need at least one)"
+2. **Old email template still showing**: The email preview and outreach emails are displaying the old "A new remote sales position just opened up" template instead of the updated high-converting version with the $20K+ production and $10K+ deposit stats.
 
-### 2. CC Admin + Manager on ALL Outbound Emails
+## Root Cause
 
-Several edge functions send emails to applicants/agents WITHOUT CC'ing the admin (`info@apex-financial.org`) and the assigned manager. The following functions already have CC implemented correctly:
-- `welcome-new-agent` -- has CC
-- `notify-agent-contracted` -- has CC
-- `notify-agent-login` -- has CC
-- `send-agent-portal-login` -- has CC
-- `send-course-reminder` -- has CC
-- `send-licensing-instructions` -- has CC
+The previous code changes may not have fully compiled into the running preview. The fix will ensure the validation and email template are correctly applied and working.
 
-**Functions that need CC added:**
+## Your CSV Format
 
-| Function | What It Sends | Current CC | Fix |
-|----------|--------------|-----------|-----|
-| `send-aged-lead-email` | Outreach to aged leads | None | Add CC: admin + manager (pass `managerId` from importer) |
-| `send-outreach-email` | Cold/warm outreach templates | None | Add CC: admin + resolve manager from lead's `assigned_agent_id` or `assigned_manager_id` |
-| `send-followup-emails` | Automated follow-ups (3 types) | None | Add CC: admin + resolve manager from application's `assigned_agent_id` |
-| `send-manual-followup` | Manual follow-up emails | None | Add CC: admin + resolve manager from `agentId` param |
-| `send-post-call-followup` | Post-call follow-up | None | Add CC: admin + resolve manager from `agentId` param |
-| `notify-lead-assigned` | Lead assignment notification | None | Add CC: admin |
-| `send-abandoned-followup` | Abandoned application follow-up | None | Add CC: admin |
+Your CSV uses column names like `Full_Name`, `Phone_10`, `Phone_E164`, `Instagram`, and `Email`. The importer's column auto-detection already supports these mappings:
+- `Full_Name` maps to full name (split into first/last automatically)
+- `Phone_10` maps to phone
+- `Instagram` maps to instagram handle
+- `Email` maps to email
 
-**Shared pattern for resolving manager email** (already used in functions like `send-licensing-instructions`):
-1. Look up the agent/manager ID from the lead or function params
-2. Get the agent's `user_id` from `agents` table
-3. Get the email from `auth.admin.getUserById()` (or fallback to `profiles.email`)
-4. Build CC list: `[ADMIN_EMAIL, managerEmail].filter(Boolean).filter(unique)`
+With the fix, all 56 leads in your CSV should import successfully since every row has at least a first name plus one contact method (phone, Instagram, or email).
 
-### Files to Modify
+## Changes
+
+### 1. AgedLeadImporter.tsx -- Harden validation logic
+
+- Ensure the validation accepts leads with first name + any ONE of: email, phone, or Instagram handle
+- Add explicit phone column mapping for `phone_10` and `phone_e164` variations to the column detection
+- Clean up error messages to be clear: "Need at least one contact method (email, phone, or Instagram)"
+- Handle the `Full_Name` column properly when there's no space (single-word names like "Kero" become first name only)
+
+### 2. AgedLeadEmailPreview.tsx -- Confirm updated template
+
+- Ensure the preview component shows the redesigned email with the performance stats ($20K+ production, $10K+ deposits), updated subject line, and tracked CTA button
+- The preview must match exactly what `send-aged-lead-email` sends
+
+### 3. send-aged-lead-email Edge Function -- Confirm updated template
+
+- Verify the deployed function uses the new high-converting email template (not the old "remote sales position" template)
+- Re-deploy the function to ensure the latest version is live
+
+## Technical Details
+
+### Validation fix in AgedLeadImporter.tsx
+
+The validation block will be updated to:
+
+```typescript
+// Add phone_10, phone_e164 to phone column mappings
+phone: [
+  "phone", "phone number", "phone_10", "phone_e164", 
+  "phonenumber", "phone_number", "mobile", "cell", ...
+],
+
+// Validation: accept any single contact method
+const instagramHandle = getValue("instagram_handle") || "";
+if (!email && !phone && !instagramHandle) {
+  errors.push("Need at least one contact method (email, phone, or Instagram)");
+} else if (email && !isValidEmail(email)) {
+  errors.push("Invalid email format");
+}
+```
+
+### Column mapping additions
+
+Adding explicit support for common CRM export column names:
+- `phone_10` and `phone_e164` for phone columns
+- `prospect_name` and `contact_name` for full name columns
+- `contact_methods` will NOT be mapped to avoid conflicts
+
+### Expected result with your CSV
+
+After the fix, all 56 rows should import:
+- Row 2 (Kero): Instagram only -- valid
+- Row 3 (Nicky): Phone + Instagram -- valid
+- Row 32 (David Centrella): Instagram only -- valid
+- Row 50 (Clay Sumner): Email + Instagram -- valid
+- All other rows: Phone + Instagram (and some with email too) -- valid
+
+### Files to modify
 
 | File | Change |
 |------|--------|
-| `src/components/dashboard/AgedLeadImporter.tsx` | Accept Instagram-only leads; pass `managerId` to `send-aged-lead-email` |
-| `supabase/functions/send-aged-lead-email/index.ts` | Accept `managerId`, resolve manager email, add CC |
-| `supabase/functions/send-outreach-email/index.ts` | Resolve manager from lead data, add CC |
-| `supabase/functions/send-followup-emails/index.ts` | Resolve manager from application, add CC to all 3 email sends |
-| `supabase/functions/send-manual-followup/index.ts` | Resolve manager from agentId, add CC |
-| `supabase/functions/send-post-call-followup/index.ts` | Resolve manager from agentId, add CC |
-| `supabase/functions/notify-lead-assigned/index.ts` | Add admin CC |
-| `supabase/functions/send-abandoned-followup/index.ts` | Add admin CC |
+| `src/components/dashboard/AgedLeadImporter.tsx` | Add phone_10/phone_e164 to column mappings, harden validation |
+| `src/components/dashboard/AgedLeadEmailPreview.tsx` | Ensure updated template with stats is showing |
+| `supabase/functions/send-aged-lead-email/index.ts` | Re-deploy to ensure latest template is live |
 
-### Technical Pattern
-
-Every email send call will follow this pattern:
-
-```typescript
-const ADMIN_EMAIL = "info@apex-financial.org";
-
-// Resolve manager email from agent/manager ID
-async function getManagerEmail(supabase, agentOrManagerId) {
-  const { data: agent } = await supabase.from("agents").select("user_id, invited_by_manager_id").eq("id", agentOrManagerId).single();
-  if (!agent) return null;
-  
-  // If this agent has a manager, get the manager's email
-  const managerId = agent.invited_by_manager_id || agentOrManagerId;
-  const { data: manager } = await supabase.from("agents").select("user_id").eq("id", managerId).single();
-  if (!manager?.user_id) return null;
-  
-  const { data: authData } = await supabase.auth.admin.getUserById(manager.user_id);
-  return authData?.user?.email || null;
-}
-
-// Build CC list
-const ccList = [ADMIN_EMAIL, managerEmail]
-  .filter(Boolean)
-  .filter((v, i, a) => a.indexOf(v) === i);
-
-// Add to every resend.emails.send call
-cc: ccList.length > 0 ? ccList : undefined,
-```
-
-This ensures every single email going to an agent or applicant also notifies the admin and their direct manager.

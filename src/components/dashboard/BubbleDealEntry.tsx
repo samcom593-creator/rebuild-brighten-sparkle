@@ -10,11 +10,10 @@ interface Deal {
 
 interface BubbleDealEntryProps {
   onALPChange: (alp: number) => void;
-  onDealsChange: (deals: number) => void;
   initialDeals?: { id: string; amount: string; frequency: "monthly" | "annual" }[];
 }
 
-export function BubbleDealEntry({ onALPChange, onDealsChange, initialDeals }: BubbleDealEntryProps) {
+export function BubbleDealEntry({ onALPChange, initialDeals }: BubbleDealEntryProps) {
   const convertedInitialDeals: Deal[] = initialDeals?.map(d => ({
     id: d.id,
     premium: parseFloat(d.amount) || 0
@@ -25,12 +24,10 @@ export function BubbleDealEntry({ onALPChange, onDealsChange, initialDeals }: Bu
   const inputRef = useRef<HTMLInputElement>(null);
 
   const totalALP = deals.reduce((sum, deal) => sum + deal.premium, 0);
-  const dealCount = deals.length;
 
   useEffect(() => {
     onALPChange(totalALP);
-    onDealsChange(dealCount);
-  }, [totalALP, dealCount, onALPChange, onDealsChange]);
+  }, [totalALP, onALPChange]);
 
   const addDeal = useCallback(() => {
     const premium = parseFloat(inputValue);
@@ -95,7 +92,7 @@ export function BubbleDealEntry({ onALPChange, onDealsChange, initialDeals }: Bu
             type="text"
             inputMode="decimal"
             pattern="[0-9]*\.?[0-9]*"
-            placeholder="Enter ALP"
+            placeholder="Enter premium"
             value={inputValue}
             onChange={(e) => {
               // Only allow numeric input

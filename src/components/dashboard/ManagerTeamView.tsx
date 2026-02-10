@@ -19,6 +19,7 @@ import {
   ShieldOff,
   AlertTriangle,
   Loader2,
+  GraduationCap,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -48,6 +49,7 @@ import { toast } from "sonner";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 type SortOption = "production-desc" | "production-asc" | "name" | "status";
+type RosterFilter = "all" | "licensed" | "unlicensed" | "training";
 
 interface TeamMember {
   id: string;
@@ -82,6 +84,7 @@ interface TeamStats {
   avgCloseRate: number;
   licensedCount: number;
   unlicensedCount: number;
+  trainingCount: number;
 }
 
 export function ManagerTeamView() {
@@ -95,7 +98,9 @@ export function ManagerTeamView() {
     avgCloseRate: 0,
     licensedCount: 0,
     unlicensedCount: 0,
+    trainingCount: 0,
   });
+  const [activeFilter, setActiveFilter] = useState<RosterFilter>("all");
   const [loading, setLoading] = useState(true);
   const [expandedMember, setExpandedMember] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>("production-desc");
@@ -411,18 +416,21 @@ export function ManagerTeamView() {
       setTeamMembers(members);
 
       // Calculate team stats
+      const activeOnly = members.filter(m => !m.isDeactivated && !m.isInactive && m.status !== "terminated");
       const totalLeads = members.reduce((sum, m) => sum + m.totalLeads, 0);
       const totalClosed = members.reduce((sum, m) => sum + m.closed, 0);
-      const licensedCount = members.filter(m => m.licenseStatus === "licensed").length;
-      const unlicensedCount = members.filter(m => m.licenseStatus !== "licensed").length;
+      const licensedCount = activeOnly.filter(m => m.licenseStatus === "licensed").length;
+      const unlicensedCount = activeOnly.filter(m => m.licenseStatus !== "licensed").length;
+      const trainingCount = activeOnly.filter(m => m.onboardingStage === "training_online" || m.onboardingStage === "in_field_training").length;
 
       setTeamStats({
-        totalMembers: members.length,
+        totalMembers: activeOnly.length,
         totalLeads,
         totalClosed,
         avgCloseRate: totalLeads > 0 ? (totalClosed / totalLeads) * 100 : 0,
         licensedCount,
         unlicensedCount,
+        trainingCount,
       });
     } catch (err) {
       console.error("Error in fetchTeamData:", err);
@@ -468,6 +476,24 @@ export function ManagerTeamView() {
     activeMembers.filter(m => m.licenseStatus !== "licensed"),
     [activeMembers]
   );
+
+  const trainingMembers = useMemo(() =>
+    activeMembers.filter(m => m.onboardingStage === "training_online" || m.onboardingStage === "in_field_training"),
+    [activeMembers]
+  );
+
+  const filteredMembers = useMemo(() => {
+    switch (activeFilter) {
+      case "licensed": return licensedMembers;
+      case "unlicensed": return unlicensedMembers;
+      case "training": return trainingMembers;
+      default: return activeMembers;
+    }
+  }, [activeFilter, licensedMembers, unlicensedMembers, trainingMembers, activeMembers]);
+
+  const handleFilterClick = (filter: RosterFilter) => {
+    setActiveFilter(prev => prev === filter ? "all" : filter);
+  };
 
   const toggleExpand = (memberId: string) => {
     setExpandedMember(expandedMember === memberId ? null : memberId);
@@ -762,8 +788,16 @@ export function ManagerTeamView() {
   return (
     <div className="space-y-6">
       {/* Team Stats Overview */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <GlassCard className="p-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <GlassCard
+          className={cn(
+            "p-4 cursor-pointer transition-all",
+            activeFilter === "all"
+              ? "ring-2 ring-primary shadow-lg shadow-primary/10"
+              : "hover:bg-muted/50"
+          )}
+          onClick={() => handleFilterClick("all")}
+        >
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-primary/10">
               <Users className="h-5 w-5 text-primary" />
@@ -774,7 +808,15 @@ export function ManagerTeamView() {
             </div>
           </div>
         </GlassCard>
-        <GlassCard className="p-4">
+        <GlassCard
+          className={cn(
+            "p-4 cursor-pointer transition-all",
+            activeFilter === "licensed"
+              ? "ring-2 ring-emerald-500 shadow-lg shadow-emerald-500/10"
+              : "hover:bg-muted/50"
+          )}
+          onClick={() => handleFilterClick("licensed")}
+        >
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-emerald-500/10">
               <Award className="h-5 w-5 text-emerald-500" />
@@ -785,14 +827,41 @@ export function ManagerTeamView() {
             </div>
           </div>
         </GlassCard>
-        <GlassCard className="p-4">
+        <GlassCard
+          className={cn(
+            "p-4 cursor-pointer transition-all",
+            activeFilter === "unlicensed"
+              ? "ring-2 ring-amber-500 shadow-lg shadow-amber-500/10"
+              : "hover:bg-muted/50"
+          )}
+          onClick={() => handleFilterClick("unlicensed")}
+        >
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-amber-500/10">
               <Clock className="h-5 w-5 text-amber-500" />
             </div>
             <div>
               <p className="text-2xl font-bold">{teamStats.unlicensedCount}</p>
-              <p className="text-xs text-muted-foreground">Unlicensed Pipeline</p>
+              <p className="text-xs text-muted-foreground">Unlicensed</p>
+            </div>
+          </div>
+        </GlassCard>
+        <GlassCard
+          className={cn(
+            "p-4 cursor-pointer transition-all",
+            activeFilter === "training"
+              ? "ring-2 ring-violet-500 shadow-lg shadow-violet-500/10"
+              : "hover:bg-muted/50"
+          )}
+          onClick={() => handleFilterClick("training")}
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-violet-500/10">
+              <GraduationCap className="h-5 w-5 text-violet-500" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{teamStats.trainingCount}</p>
+              <p className="text-xs text-muted-foreground">In Training</p>
             </div>
           </div>
         </GlassCard>
@@ -833,87 +902,103 @@ export function ManagerTeamView() {
         </div>
 
         <div className="space-y-4">
-          {/* Licensed Agents Section */}
-          <Collapsible open={licensedOpen} onOpenChange={setLicensedOpen}>
-            <CollapsibleTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full flex items-center justify-between p-3 min-h-[48px] bg-emerald-500/10 hover:bg-emerald-500/20 rounded-lg"
-              >
-                <div className="flex items-center gap-2">
-                  <Award className="h-4 w-4 text-emerald-500" />
-                  <span className="font-medium">Licensed Agents ({licensedMembers.length})</span>
-                </div>
-                <ChevronRight className={cn(
-                  "h-4 w-4 transition-transform duration-200",
-                  licensedOpen && "rotate-90"
-                )} />
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-3 space-y-3">
-              {licensedMembers.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No licensed agents yet
+          {activeFilter !== "all" ? (
+            /* Filtered flat list */
+            <div className="space-y-3">
+              {filteredMembers.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  No agents match this filter
                 </p>
               ) : (
-                licensedMembers.map((member, index) => renderMemberCard(member, index))
+                filteredMembers.map((member, index) => renderMemberCard(member, index))
               )}
-            </CollapsibleContent>
-          </Collapsible>
+            </div>
+          ) : (
+            /* Default grouped view */
+            <>
+              {/* Licensed Agents Section */}
+              <Collapsible open={licensedOpen} onOpenChange={setLicensedOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full flex items-center justify-between p-3 min-h-[48px] bg-emerald-500/10 hover:bg-emerald-500/20 rounded-lg"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Award className="h-4 w-4 text-emerald-500" />
+                      <span className="font-medium">Licensed Agents ({licensedMembers.length})</span>
+                    </div>
+                    <ChevronRight className={cn(
+                      "h-4 w-4 transition-transform duration-200",
+                      licensedOpen && "rotate-90"
+                    )} />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-3 space-y-3">
+                  {licensedMembers.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No licensed agents yet
+                    </p>
+                  ) : (
+                    licensedMembers.map((member, index) => renderMemberCard(member, index))
+                  )}
+                </CollapsibleContent>
+              </Collapsible>
 
-          {/* Unlicensed Pipeline Section */}
-          <Collapsible open={unlicensedOpen} onOpenChange={setUnlicensedOpen}>
-            <CollapsibleTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full flex items-center justify-between p-3 min-h-[48px] bg-amber-500/10 hover:bg-amber-500/20 rounded-lg"
-              >
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-amber-500" />
-                  <span className="font-medium">Unlicensed Pipeline ({unlicensedMembers.length})</span>
-                </div>
-                <ChevronRight className={cn(
-                  "h-4 w-4 transition-transform duration-200",
-                  unlicensedOpen && "rotate-90"
-                )} />
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-3 space-y-3">
-              {unlicensedMembers.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No unlicensed agents in pipeline
-                </p>
-              ) : (
-                unlicensedMembers.map((member, index) => renderMemberCard(member, index))
+              {/* Unlicensed Pipeline Section */}
+              <Collapsible open={unlicensedOpen} onOpenChange={setUnlicensedOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full flex items-center justify-between p-3 min-h-[48px] bg-amber-500/10 hover:bg-amber-500/20 rounded-lg"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-amber-500" />
+                      <span className="font-medium">Unlicensed Pipeline ({unlicensedMembers.length})</span>
+                    </div>
+                    <ChevronRight className={cn(
+                      "h-4 w-4 transition-transform duration-200",
+                      unlicensedOpen && "rotate-90"
+                    )} />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-3 space-y-3">
+                  {unlicensedMembers.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No unlicensed agents in pipeline
+                    </p>
+                  ) : (
+                    unlicensedMembers.map((member, index) => renderMemberCard(member, index))
+                  )}
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* Terminated / Inactive Section */}
+              {terminatedMembers.length > 0 && (
+                <Collapsible open={terminatedOpen} onOpenChange={setTerminatedOpen}>
+                  <CollapsibleTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="w-full flex items-center justify-between p-3 min-h-[48px] bg-destructive/10 hover:bg-destructive/20 rounded-lg"
+                    >
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-destructive" />
+                        <span className="font-medium">Terminated / Inactive ({terminatedMembers.length})</span>
+                      </div>
+                      <ChevronRight className={cn(
+                        "h-4 w-4 transition-transform duration-200",
+                        terminatedOpen && "rotate-90"
+                      )} />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-3 space-y-3">
+                    {terminatedMembers.map((member, index) => renderMemberCard(member, index))}
+                  </CollapsibleContent>
+                </Collapsible>
               )}
-            </CollapsibleContent>
-          </Collapsible>
-
-          {/* Terminated / Inactive Section */}
-          {terminatedMembers.length > 0 && (
-            <Collapsible open={terminatedOpen} onOpenChange={setTerminatedOpen}>
-              <CollapsibleTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="w-full flex items-center justify-between p-3 min-h-[48px] bg-destructive/10 hover:bg-destructive/20 rounded-lg"
-                >
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4 text-destructive" />
-                    <span className="font-medium">Terminated / Inactive ({terminatedMembers.length})</span>
-                  </div>
-                  <ChevronRight className={cn(
-                    "h-4 w-4 transition-transform duration-200",
-                    terminatedOpen && "rotate-90"
-                  )} />
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-3 space-y-3">
-                {terminatedMembers.map((member, index) => renderMemberCard(member, index))}
-              </CollapsibleContent>
-            </Collapsible>
+            </>
           )}
         </div>
       </GlassCard>

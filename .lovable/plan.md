@@ -1,38 +1,48 @@
 
+# Eliminate Number Update Delays — Instant Feedback Everywhere
 
-# Fix 2026 Agency Performance Card — Accurate Data + No Flicker
+## Root Cause
 
-## Problem
+When numbers are submitted, there are two blocking delays:
 
-The `YearPerformanceCard` has two issues:
+1. **LogNumbers page (line 286-294)**: The submit handler `await`s the `notify-production-submitted` edge function AND `await`s `fetchLeaderboard()` before showing the confetti/success screen. Edge function calls take 1-3 seconds, making the user wait before seeing any feedback.
 
-1. **Loading flicker**: Every realtime production update calls `fetchYearStats` which sets `loading = true`, causing the skeleton loader to flash. This makes the card appear "not up to date" because it briefly blanks out the numbers on every update.
+2. **CompactProductionEntry (Agent Portal)**: After saving, it fires 4 edge function notifications in a `setTimeout` (non-blocking, which is good), but the realtime subscription (`useProductionRealtime`) triggers ALL 10+ subscribed components to refetch simultaneously at 300ms debounce. This causes a cascade of database queries that saturates the browser and creates jank/delay in the form itself.
 
-2. **Client-side aggregation**: The card fetches all raw `daily_production` rows and aggregates in JavaScript. There's already a server-side `get_agent_production_stats` RPC function that does this more reliably. Switching to it ensures accurate totals (currently: $298,687 ALP, 246 deals, 284 presentations for 2026).
+3. **Realtime cascade**: The `useProductionRealtime` singleton fires a `CustomEvent` to every subscriber (leaderboards, stats cards, rank badges, year performance, etc.) — all within 300ms of each other. When an admin submits numbers, this triggers 10+ parallel database queries on a single browser tab.
 
-3. **Not visible on main Dashboard**: The card only appears on the Agent Portal page (and is hidden on mobile). The main Dashboard at `/dashboard` doesn't include it at all — admins should see their YTD agency performance front and center.
+## Fix Strategy
 
-## Technical Changes
+### File 1: `src/pages/LogNumbers.tsx`
 
-### File 1: `src/components/dashboard/YearPerformanceCard.tsx`
+**Make edge function call non-blocking (fire-and-forget)**:
+- Remove the `await` on `supabase.functions.invoke("notify-production-submitted")` — fire it without waiting
+- Move `fetchLeaderboard()` to run in the background while showing confetti immediately
+- Show confetti and transition to leaderboard step **instantly** after the upsert succeeds
+- Fetch leaderboard data in parallel so it populates by the time the animation finishes
 
-**Fix loading flicker (line 39)**:
-- Remove `setLoading(true)` from inside `fetchYearStats`. Only set loading on initial mount via the `useState(true)` default.
-- This way realtime updates silently refresh the numbers without blanking the card.
+### File 2: `src/components/dashboard/CompactProductionEntry.tsx`
 
-**Switch to server-side RPC**:
-- Replace the raw `supabase.from("daily_production").select(...)` query with `supabase.rpc("get_agent_production_stats", { start_date: yearStart, end_date: yearEnd })`.
-- This returns pre-aggregated totals per agent, which we then sum — no risk of hitting the 1000-row client limit as the agency grows.
-- For managers, filter the RPC results to only their team agent IDs (same logic as now, just applied post-RPC).
+**Optimistic success + deferred notifications**:
+- The current flow is already decent (notifications in setTimeout), but ensure the success toast and confetti fire immediately after the upsert returns — no waiting on any secondary operations
+- No structural changes needed here, just verify the flow is clean
 
-### File 2: `src/pages/Dashboard.tsx`
+### File 3: `src/hooks/useProductionRealtime.ts`
 
-**Add YearPerformanceCard for admins**:
-- Import `YearPerformanceCard` and render it below the `TeamSnapshotCard` section when `isAdmin` is true.
-- This ensures the admin always sees their 2026 Agency Performance on the main dashboard.
+**Stagger realtime callbacks to prevent cascade**:
+- Increase the default debounce from 300ms to 800ms for the global event dispatcher
+- This means when production is saved, the realtime update reaches all components over a longer window, preventing all 10+ queries from hitting the database in the same 300ms window
+- The submitting component already has the latest data (it just saved it), so the slight delay for OTHER components is invisible to the user
+
+### File 4: `src/hooks/useDebouncedRefetch.ts`
+
+**Add jitter to prevent thundering herd**:
+- Add a small random jitter (0-200ms) to each debounced refetch so components don't all fire at exactly the same time
+- This spreads the database load and prevents main-thread saturation
 
 ## Summary
 
-- No more skeleton flashes on realtime updates
-- Server-side aggregation for guaranteed accuracy
-- Card visible on the main Dashboard for admins
+- LogNumbers submit becomes instant: confetti fires right after upsert, notifications are fire-and-forget, leaderboard loads in background
+- Realtime debounce increased from 300ms to 800ms to prevent query storms
+- Random jitter added to debounced refetch to spread out concurrent queries
+- No visible delay for the user submitting — they see success immediately

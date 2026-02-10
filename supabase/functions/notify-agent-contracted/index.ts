@@ -5,6 +5,7 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const ADMIN_EMAIL = "sam@apex-financial.org";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,7 +13,6 @@ const corsHeaders = {
 };
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -39,34 +39,43 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Application not found");
     }
 
-    // Fetch manager details
+    // Fetch manager details and email
     let managerName = "Apex Financial Team";
+    let managerEmail: string | null = null;
     if (agentId) {
       const { data: agent } = await supabase
         .from("agents")
-        .select("user_id")
+        .select("user_id, profile_id")
         .eq("id", agentId)
         .single();
 
       if (agent?.user_id) {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("full_name")
+          .select("full_name, email")
           .eq("user_id", agent.user_id)
           .single();
 
         if (profile?.full_name) {
           managerName = profile.full_name;
         }
+        if (profile?.email) {
+          managerEmail = profile.email;
+        }
       }
     }
 
+    // Build CC list
+    const ccList = [ADMIN_EMAIL, managerEmail]
+      .filter(Boolean)
+      .filter((v, i, a) => a.indexOf(v) === i) as string[];
+
     const firstName = application.first_name;
     
-    // Send email
     const { error: emailError } = await resend.emails.send({
       from: "APEX Financial <noreply@apex-financial.org>",
       to: [application.email],
+      cc: ccList.length > 0 ? ccList : undefined,
       subject: "🎉 Welcome to the Team! Set Up Your CRM Access",
       html: `
 <!DOCTYPE html>
@@ -80,22 +89,17 @@ const handler = async (req: Request): Promise<Response> => {
     <div style="text-align:center;margin-bottom:32px;">
       <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">APEX FINANCIAL</h1>
     </div>
-    
     <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:16px;padding:32px;border:1px solid rgba(20,184,166,0.2);">
       <div style="text-align:center;margin-bottom:24px;">
         <span style="font-size:48px;">🎉</span>
       </div>
-      
       <h2 style="font-size:24px;margin:0 0 16px 0;color:#14b8a6;text-align:center;">Congratulations, ${firstName}!</h2>
-      
       <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 16px 0;">
         Welcome to the Apex Financial family! We're thrilled to have you on board.
       </p>
-      
       <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 16px 0;">
         You've officially been contracted as a licensed agent. The next step is to set up your CRM access so you can start managing your leads and growing your business.
       </p>
-      
       <div style="background:rgba(20,184,166,0.1);border-radius:8px;padding:20px;margin:24px 0;text-align:center;">
         <p style="font-size:14px;color:#14b8a6;margin:0 0 12px 0;font-weight:bold;">YOUR NEXT STEP:</p>
         <a href="${crmSetupLink}" 
@@ -103,7 +107,6 @@ const handler = async (req: Request): Promise<Response> => {
           Set Up Your CRM Access
         </a>
       </div>
-      
       <div style="border-left:3px solid #14b8a6;padding-left:16px;margin:24px 0;">
         <p style="font-size:14px;color:#9ca3af;margin:0;">
           <strong style="color:#ffffff;">What to expect next:</strong><br>
@@ -113,7 +116,6 @@ const handler = async (req: Request): Promise<Response> => {
           • Schedule your first week of training sessions
         </p>
       </div>
-      
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         If you have any questions, don't hesitate to reach out. We're here to help you succeed!<br><br>
         Welcome aboard,<br>
@@ -121,7 +123,6 @@ const handler = async (req: Request): Promise<Response> => {
         Apex Financial
       </p>
     </div>
-    
     <p style="font-size:12px;color:#6b7280;text-align:center;margin-top:32px;">
       © ${new Date().getFullYear()} Apex Financial. All rights reserved.
     </p>
@@ -142,10 +143,10 @@ const handler = async (req: Request): Promise<Response> => {
       agent_id: agentId || null,
       contact_type: "contracted",
       subject: "Welcome to the Team! Set Up Your CRM Access",
-      notes: `Sent contracted welcome email with CRM setup link`,
+      notes: `Sent contracted welcome email with CRM setup link. CC: ${ccList.join(", ")}`,
     });
 
-    console.log(`Contracted email sent to ${application.email}`);
+    console.log(`Contracted email sent to ${application.email}, CC: ${ccList.join(", ")}`);
 
     return new Response(
       JSON.stringify({ success: true }),

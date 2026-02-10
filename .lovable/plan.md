@@ -1,69 +1,55 @@
 
-# Fix All Email Templates for Mobile
 
-## The Problem
+# CRM Improvements: Direct Stage Jump, Paid Agents Drill-Down, and Auto-Mark Sold
 
-Multiple email templates have content overflowing on mobile devices. The root causes are:
+## Changes
 
-1. **Fixed-width tables**: `send-manual-followup` and `send-followup-emails` use `width="600"` on inner tables -- these don't shrink on mobile screens
-2. **Oversized button padding**: CTA buttons with `padding: 18px 52px` overflow narrow screens
-3. **No word-break rules**: Long email addresses and URLs can force horizontal scrolling
-4. **Tracking URL bug in `send-aged-lead-email`**: The template uses `\${trackingClickUrl}` (escaped dollar sign) which outputs the literal text `${trackingClickUrl}` instead of the actual URL -- so tracking links and the CTA button are broken
+### 1. OnboardingTracker -- Allow jumping to ANY stage directly (not step-by-step)
 
-## Fixes Per File
+Currently, the `OnboardingTracker` component only allows clicking the adjacent stage (line 182: `if (Math.abs(targetIndex - currentIndex) !== 1) return;`). This forces you to click through each stage one by one.
 
-### 1. `supabase/functions/send-aged-lead-email/index.ts`
-- **Fix tracking URL bug**: Change `\${trackingClickUrl}` to `${trackingClickUrl}` and `\${trackingPixelUrl}` to `${trackingPixelUrl}` (remove backslash escapes)
-- **Mobile-safe CTA button**: Reduce padding from `18px 52px` to `16px 32px`, add `max-width: 100%; box-sizing: border-box;`
-- **Stats block**: Add `font-size: 22px` instead of `28px` for stat numbers on the mobile-friendly side
-- **Add word-break**: `word-break: break-word;` on the outer body/container
+**Fix**: Remove the adjacency restriction so clicking ANY stage circle jumps directly to it. The `handleStageClick` function will be updated to call the database with the target stage directly, skipping intermediate stages. Confetti and notifications will still fire for forward jumps.
 
-### 2. `supabase/functions/send-manual-followup/index.ts`
-- **Replace fixed `width="600"` tables** with `width="100%" style="max-width:600px;"` -- this is the main cause of overflow
-- Both licensed and unlicensed templates have this issue (lines 117-131 and 140-155)
+**File**: `src/components/dashboard/OnboardingTracker.tsx`
+- Remove the `Math.abs(...) !== 1` guard
+- Update `handleStageClick` to directly set any target stage (not route through `handleStageChange` which only does +1/-1)
+- All circles become clickable (not just adjacent ones)
+- Keep the confirmation celebrations for forward moves
 
-### 3. `supabase/functions/send-followup-emails/index.ts`
-- The `sendUnlicensedFollowup` and `sendUnlicensedFollowup2` and `sendLicensedFollowup` functions all use `max-width: 600px` divs which are fine
-- But the button padding `16px 32px` can still overflow on very narrow screens -- add `max-width: 100%; box-sizing: border-box;` to all CTA anchor tags
+### 2. LicenseProgressSelector -- Already allows direct jump (no change needed)
 
-### 4. `supabase/functions/send-post-call-followup/index.ts`
-- Uses `max-width: 600px` div which is good
-- CTA buttons need `max-width: 100%; box-sizing: border-box;` for safety
-- The inline resource cards (Watch Video, View Guide, Start Course) have fixed padding that could overflow -- make them stack-friendly
+The `LicenseProgressSelector` dropdown already lets you click any value from the menu and it updates directly (line 132: `onClick={() => handleUpdateProgress(step.value)}`). No restriction exists. This one is already working correctly.
 
-### 5. `supabase/functions/send-abandoned-followup/index.ts`
-- Uses `max-width: 600px` div which is good
-- Two CTA buttons side-by-side could overflow -- add `max-width: 100%; box-sizing: border-box;`
+### 3. Paid Agents stat card -- Make it clickable with drill-down
 
-### 6. `supabase/functions/send-outreach-email/index.ts`
-- All templates use `max-width: 600px` divs, which is good
-- Button padding `16px 32px` is safe but add `max-width: 100%; box-sizing: border-box;` for consistency
+Currently the "Paid Agents" card (lines 1123-1133) is a static display with no click handler. 
 
-### 7. `supabase/functions/notify-lead-assigned/index.ts`
-- Uses `max-width: 600px` div, which is good
-- The "View Lead & Call Now" button has `14px 28px` which is fine
-- Add word-break for long email/name values in the lead info table
+**Fix**: Make it clickable like the other stat cards. When tapped, expand to show a filtered list of exactly which agents have paid this week, showing their name, payment tier ($250 Standard or $1K Premium), and badge.
 
-### 8. `src/components/dashboard/AgedLeadEmailPreview.tsx`
-- Sync the preview template to match the fixed `send-aged-lead-email` template (with working CTA link, correct stats, mobile-safe padding)
+**File**: `src/pages/DashboardCRM.tsx`
+- Add `"paid"` to the expandedColumn options
+- Make the Paid Agents GlassCard clickable with `onClick={() => setExpandedColumn("paid")}`
+- Add a "paid" case to the expanded view renderer that shows only agents where `standardPaid` or `premiumPaid` is true
+- Each paid agent renders using the existing `renderAgentCard` function
 
-## Universal Mobile-Safe Pattern Applied to All Templates
+### 4. Auto-mark "Sold" when a deal is submitted
 
-Every email template will get these additions:
-- `word-break: break-word;` on the body or outer container
-- All CTA buttons: `max-width: 100%; box-sizing: border-box;` to prevent overflow
-- No fixed `width="600"` tables -- always `width="100%" style="max-width:600px;"`
-- Button padding capped at `16px 32px` maximum
+Currently, the "Sold" attendance row (`daily_sale` type) in the CRM is manual. When an agent submits production with `deals_closed > 0`, the system should automatically mark that day's `daily_sale` attendance as "present".
 
-## Files to Modify
+**Fix**: After the production upsert succeeds in both `CompactProductionEntry` and `ProductionEntry`, if `deals_closed > 0`, automatically upsert an `agent_attendance` record for that date with `attendance_type = 'daily_sale'` and `status = 'present'`.
 
-| File | Key Fix |
-|------|---------|
-| `supabase/functions/send-aged-lead-email/index.ts` | Fix broken tracking URLs (backslash escape bug), mobile-safe buttons |
-| `supabase/functions/send-manual-followup/index.ts` | Replace fixed `width="600"` tables with responsive `max-width:600px` |
-| `supabase/functions/send-followup-emails/index.ts` | Add `max-width:100%` to all CTA buttons |
-| `supabase/functions/send-post-call-followup/index.ts` | Mobile-safe resource cards and buttons |
-| `supabase/functions/send-abandoned-followup/index.ts` | Mobile-safe CTA buttons |
-| `supabase/functions/send-outreach-email/index.ts` | Add `max-width:100%` to all CTA buttons |
-| `supabase/functions/notify-lead-assigned/index.ts` | Add word-break for long values |
-| `src/components/dashboard/AgedLeadEmailPreview.tsx` | Sync preview with fixed template |
+**Files**: 
+- `src/components/dashboard/CompactProductionEntry.tsx` -- Add auto-mark after successful upsert
+- `src/components/dashboard/ProductionEntry.tsx` -- Add auto-mark after successful upsert
+
+The upsert will use `onConflict: "agent_id,attendance_date,attendance_type"` so it won't create duplicates if the admin already marked it manually.
+
+## Summary of Files to Modify
+
+| File | Change |
+|------|--------|
+| `src/components/dashboard/OnboardingTracker.tsx` | Remove adjacency restriction, allow direct jump to any stage |
+| `src/pages/DashboardCRM.tsx` | Make Paid Agents card clickable with drill-down list |
+| `src/components/dashboard/CompactProductionEntry.tsx` | Auto-mark daily_sale attendance when deals > 0 |
+| `src/components/dashboard/ProductionEntry.tsx` | Auto-mark daily_sale attendance when deals > 0 |
+

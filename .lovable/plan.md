@@ -1,43 +1,38 @@
 
-# Fix LogNumbers.tsx -- The Missing Production Entry Page
+# Fix Course Progress to Show All Agents (Including Completed)
 
-## The Real Problem
+## Problem
 
-There are THREE separate production entry forms in the app, but only two were updated in previous fixes. The third one -- `src/pages/LogNumbers.tsx` (served at `/apex-daily-numbers`) -- was completely missed. This is the page agents are using and complaining about because it still shows:
+Both `CourseProgressPanel.tsx` and `CourseProgress.tsx` filter agents with `.eq("onboarding_stage", "training_online")`, which excludes agents who completed the course and moved to later stages like `in_field_training` or `evaluated`. Current data shows:
 
-- "Presentations" and "Pitched Price" as separate fields
-- "Booked In-Home" (should be removed)
-- A raw "ALP ($)" text input instead of the bubble deal entry
-- No easy way to enter deal amounts
-- All fields start at 0 with no existing data loading
+- 2 agents in `training_online` (visible)
+- 3 agents in `in_field_training` (hidden -- completed course)
+- 5 agents in `evaluated` (hidden -- completed course)
+- 2 agents in `onboarding` (hidden -- enrolled but not started)
 
-## What Will Be Fixed
+That means 10 out of 12 enrolled agents are invisible.
 
-### 1. Update `productionFields` in LogNumbers.tsx (line 347)
+## Solution
 
-Remove "Pitched Price" (`passed_price`), remove "Booked In-Home" (`booked_inhome_referrals`), and remove the raw "ALP ($)" field. The final fields will be:
+Remove the `onboarding_stage` filter and instead query all agents where `has_training_course = true`. The existing filter badges (Not Started, In Progress, Stalled, Complete) will handle categorization.
 
-1. **Presentations** -- covers pitching price (maps to `presentations`)
-2. **Hours Called** -- decimal input (maps to `hours_called`)
-3. **Referrals** -- (maps to `referrals_caught`)
-4. **Ref. Pres.** -- (maps to `referral_presentations`)
-5. **Closes** -- manual deal count (maps to `deals_closed`)
+## Technical Changes
 
-### 2. Add BubbleDealEntry for premium/deal amounts
+### 1. `src/components/admin/CourseProgressPanel.tsx` (line 58)
 
-Replace the raw "ALP ($)" input with the existing `BubbleDealEntry` component (the same bubble system used on `/numbers`). This gives agents:
-- A simple "Enter premium" input with "+ Add" button
-- Deal bubbles showing each amount with delete
-- Auto-calculated total
+Remove `.eq("onboarding_stage", "training_online")` from the agents query. Keep all other filters (`has_training_course = true`, `is_deactivated = false`).
 
-### 3. Load existing production data
+### 2. `src/pages/CourseProgress.tsx` (line 127)
 
-Add a fetch when an agent is selected to load any existing production for today, preventing the "zeros overwrite" bug. Same pattern already working in `CompactProductionEntry.tsx`.
+Same change -- remove `.eq("onboarding_stage", "training_online")` from the agents query.
 
-### 4. Keep `passed_price` and `booked_inhome_referrals` in the data object as 0
+Also update the stage badge display (line 573) to show more meaningful labels for agents in later stages (e.g., "Field Training", "Evaluated") instead of just "Course" vs "Onboard".
 
-These fields still exist in the database, so they'll be sent as 0 to avoid breaking the upsert.
+### 3. Sorting improvement
+
+Currently sorted lowest-first. Add secondary sort so completed agents appear at the bottom (they need the least attention), and stalled/at-risk agents appear at the top.
 
 ## Files to Modify
 
-- **`src/pages/LogNumbers.tsx`** -- Update field list, add BubbleDealEntry import, add existing data loading, remove old fields from UI
+- `src/components/admin/CourseProgressPanel.tsx` -- Remove stage filter (1 line change)
+- `src/pages/CourseProgress.tsx` -- Remove stage filter, update stage badge labels, improve sort order

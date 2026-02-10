@@ -128,8 +128,6 @@ const App = () => (
                     <Route path="/purchase-leads" element={<PurchaseLeads />} />
                     <Route path="/dashboard/call-center" element={<CallCenter />} />
                     <Route path="/dashboard/leads" element={<LeadCenter />} />
-                    {/* Legacy redirect */}
-                    <Route path="/dashboard/leads" element={<DashboardApplicants />} />
                   </Route>
 
                   {/* Legacy redirect */}

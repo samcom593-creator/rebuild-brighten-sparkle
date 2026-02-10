@@ -22,10 +22,30 @@ const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
 
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
+const ADMIN_EMAIL = "info@apex-financial.org";
+
 // Calendly URLs
 const UNLICENSED_CALENDLY = "https://calendly.com/sam-com593/licensed-prospect-call-clone";
 const LICENSED_CALENDLY = "https://calendly.com/sam-com593/1on1-call-clone";
 const DASHBOARD_URL = "https://apex-financial.org/dashboard/applicants";
+
+async function getManagerEmailForApp(appId: string): Promise<string | null> {
+  try {
+    // Get the assigned agent for this application
+    const { data: app } = await supabaseAdmin.from("applications").select("assigned_agent_id").eq("id", appId).single();
+    if (!app?.assigned_agent_id) return null;
+    const { data: agent } = await supabaseAdmin.from("agents").select("user_id, invited_by_manager_id").eq("id", app.assigned_agent_id).single();
+    if (!agent) return null;
+    const managerId = agent.invited_by_manager_id || app.assigned_agent_id;
+    const { data: manager } = await supabaseAdmin.from("agents").select("user_id").eq("id", managerId).single();
+    if (!manager?.user_id) return null;
+    const { data: authData } = await supabaseAdmin.auth.admin.getUserById(manager.user_id);
+    return authData?.user?.email || null;
+  } catch (e) {
+    console.error("Error resolving manager email for app:", e);
+    return null;
+  }
+}
 
 // Send unlicensed follow-up (3 days after application)
 async function sendUnlicensedFollowup(app: {
@@ -39,9 +59,14 @@ async function sendUnlicensedFollowup(app: {
   }
 
   try {
+    // Resolve manager email for CC
+    const managerEmail = await getManagerEmailForApp(app.id);
+    const ccList = [ADMIN_EMAIL, managerEmail].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i) as string[];
+
     const response = await resend.emails.send({
       from: "APEX Financial <noreply@apex-financial.org>",
       to: [app.email],
+      cc: ccList.length > 0 ? ccList : undefined,
       subject: "Need Help Getting Licensed? We're Here For You! 📋",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -125,9 +150,12 @@ async function sendUnlicensedFollowup2(app: {
   }
 
   try {
+    const managerEmail2 = await getManagerEmailForApp(app.id);
+    const ccList2 = [ADMIN_EMAIL, managerEmail2].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i) as string[];
     const response = await resend.emails.send({
       from: "APEX Financial <noreply@apex-financial.org>",
       to: [app.email],
+      cc: ccList2.length > 0 ? ccList2 : undefined,
       subject: "Are You Licensed Yet? 🎓",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -215,9 +243,12 @@ async function sendLicensedFollowup(app: {
   }
 
   try {
+    const managerEmail3 = await getManagerEmailForApp(app.id);
+    const ccList3 = [ADMIN_EMAIL, managerEmail3].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i) as string[];
     const response = await resend.emails.send({
       from: "APEX Financial <noreply@apex-financial.org>",
       to: [app.email],
+      cc: ccList3.length > 0 ? ccList3 : undefined,
       subject: "Did We Get to You Yet? Let's Connect! 🚀",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

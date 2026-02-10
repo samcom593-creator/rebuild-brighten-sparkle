@@ -8,6 +8,23 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const ADMIN_EMAIL = "info@apex-financial.org";
+
+async function getManagerEmailFromAgent(supabase: any, agentId: string): Promise<string | null> {
+  try {
+    const { data: agent } = await supabase.from("agents").select("user_id, invited_by_manager_id").eq("id", agentId).single();
+    if (!agent) return null;
+    const managerId = agent.invited_by_manager_id || agentId;
+    const { data: manager } = await supabase.from("agents").select("user_id").eq("id", managerId).single();
+    if (!manager?.user_id) return null;
+    const { data: authData } = await supabase.auth.admin.getUserById(manager.user_id);
+    return authData?.user?.email || null;
+  } catch (e) {
+    console.error("Error resolving manager email:", e);
+    return null;
+  }
+}
+
 // Email templates
 const emailTemplates = {
   cold_licensed: {
@@ -709,10 +726,22 @@ const handler = async (req: Request): Promise<Response> => {
     const subject = customSubject || template.subject;
     const html = customBody || template.getHtml(firstName, agentName);
 
+    // Resolve manager email for CC
+    let managerEmail: string | null = null;
+    if (agentId) {
+      managerEmail = await getManagerEmailFromAgent(supabase, agentId);
+    } else if (leadSource === "aged_leads" && lead.assigned_manager_id) {
+      managerEmail = await getManagerEmailFromAgent(supabase, lead.assigned_manager_id);
+    } else if (lead.assigned_agent_id) {
+      managerEmail = await getManagerEmailFromAgent(supabase, lead.assigned_agent_id);
+    }
+    const ccList = [ADMIN_EMAIL, managerEmail].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i) as string[];
+
     // Send email
     const { error: emailError } = await resend.emails.send({
       from: "APEX Financial <noreply@apex-financial.org>",
       to: [lead.email],
+      cc: ccList.length > 0 ? ccList : undefined,
       subject,
       html,
     });

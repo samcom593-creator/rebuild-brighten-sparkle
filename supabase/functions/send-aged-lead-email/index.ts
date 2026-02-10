@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
@@ -7,6 +8,27 @@ const corsHeaders = {
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const ADMIN_EMAIL = "info@apex-financial.org";
+
+const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { persistSession: false },
+});
+
+async function getManagerEmail(managerId: string): Promise<string | null> {
+  try {
+    const { data: agent } = await supabaseAdmin.from("agents").select("user_id, invited_by_manager_id").eq("id", managerId).single();
+    if (!agent) return null;
+    const resolvedManagerId = agent.invited_by_manager_id || managerId;
+    const { data: manager } = await supabaseAdmin.from("agents").select("user_id").eq("id", resolvedManagerId).single();
+    if (!manager?.user_id) return null;
+    const { data: authData } = await supabaseAdmin.auth.admin.getUserById(manager.user_id);
+    return authData?.user?.email || null;
+  } catch (e) {
+    console.error("Error resolving manager email:", e);
+    return null;
+  }
+}
 
 const getEmailHtml = (firstName: string, trackingClickUrl: string, trackingPixelUrl: string) => `
 <!DOCTYPE html>
@@ -83,7 +105,7 @@ const getEmailHtml = (firstName: string, trackingClickUrl: string, trackingPixel
       
       <!-- Primary CTA -->
       <div style="text-align:center;margin:32px 0 20px 0;">
-        <a href="${trackingClickUrl}" 
+        <a href="\${trackingClickUrl}" 
            style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#ffffff;padding:18px 52px;text-decoration:none;border-radius:12px;font-weight:bold;font-size:18px;box-shadow:0 6px 24px rgba(20,184,166,0.35);letter-spacing:0.5px;">
           REAPPLY NOW →
         </a>
@@ -108,7 +130,7 @@ const getEmailHtml = (firstName: string, trackingClickUrl: string, trackingPixel
       <a href="https://apex-financial.org" style="color:#6b7280;font-size:12px;">Visit our website</a>
     </div>
   </div>
-  <img src="${trackingPixelUrl}" width="1" height="1" style="display:none;" alt="" />
+  <img src="\${trackingPixelUrl}" width="1" height="1" style="display:none;" alt="" />
 </body>
 </html>
 `;
@@ -126,9 +148,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     const resend = new Resend(resendApiKey);
 
-    const { email, firstName } = await req.json() as {
+    const { email, firstName, managerId } = await req.json() as {
       email: string;
       firstName: string;
+      managerId?: string;
     };
 
     if (!email) {
@@ -145,9 +168,17 @@ const handler = async (req: Request): Promise<Response> => {
 
     const html = getEmailHtml(name, trackingClickUrl, trackingPixelUrl);
 
+    // Resolve manager email for CC
+    let managerEmail: string | null = null;
+    if (managerId) {
+      managerEmail = await getManagerEmail(managerId);
+    }
+    const ccList = [ADMIN_EMAIL, managerEmail].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i) as string[];
+
     const { error: emailError } = await resend.emails.send({
       from: "APEX Financial <noreply@apex-financial.org>",
       to: [email],
+      cc: ccList.length > 0 ? ccList : undefined,
       subject: "We've Grown Since You Applied — See What's Changed",
       html,
     });
@@ -157,7 +188,7 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error(`Failed to send email: ${emailError.message}`);
     }
 
-    console.log(`Aged lead email sent successfully to ${email}`);
+    console.log(`Aged lead email sent successfully to ${email}, CC: ${ccList.join(", ")}`);
 
     return new Response(
       JSON.stringify({ success: true }),

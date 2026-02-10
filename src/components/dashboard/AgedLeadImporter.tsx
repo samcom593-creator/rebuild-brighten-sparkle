@@ -282,8 +282,9 @@ export const AgedLeadImporter = forwardRef<HTMLDivElement, AgedLeadImporterProps
 
         // Validation with helpful error messages
         if (!firstName) errors.push("Missing first name");
-        if (!email && !phone) {
-          errors.push("Missing email and phone (need at least one)");
+        const instagramHandle = getValue("instagram_handle") || "";
+        if (!email && !phone && !instagramHandle) {
+          errors.push("Missing email, phone, and Instagram (need at least one)");
         } else if (email && !isValidEmail(email)) {
           errors.push("Invalid email format");
         }
@@ -384,7 +385,7 @@ export const AgedLeadImporter = forwardRef<HTMLDivElement, AgedLeadImporterProps
           // Fire and forget - send emails asynchronously
           data.forEach((lead) => {
             supabase.functions.invoke("send-aged-lead-email", {
-              body: { email: lead.email, firstName: lead.first_name },
+              body: { email: lead.email, firstName: lead.first_name, managerId: selectedManager },
             }).catch((e) => {
               console.error("Error sending aged lead email:", e);
             });

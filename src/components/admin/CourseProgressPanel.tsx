@@ -55,7 +55,6 @@ export function CourseProgressPanel() {
             email
           )
         `)
-        .eq("onboarding_stage", "training_online")
         .eq("has_training_course", true)
         .eq("is_deactivated", false);
 
@@ -113,8 +112,20 @@ export function CourseProgressPanel() {
         };
       });
 
-      // Sort by progress (lowest first to highlight who needs attention)
-      return result.sort((a, b) => a.moduleProgress - b.moduleProgress);
+      // Sort: at-risk first, then stalled, then in-progress, then not started, then complete
+      return result.sort((a, b) => {
+        const priority = (agent: AgentCourseProgress) => {
+          if (agent.isAtRisk) return 0;
+          if (agent.isStalled) return 1;
+          if (agent.completedModules > 0 && !agent.allModulesPassed) return 2;
+          if (!agent.lastActivity && agent.completedModules === 0) return 3;
+          if (agent.allModulesPassed) return 4;
+          return 3;
+        };
+        const pa = priority(a), pb = priority(b);
+        if (pa !== pb) return pa - pb;
+        return a.moduleProgress - b.moduleProgress;
+      });
     },
   });
 

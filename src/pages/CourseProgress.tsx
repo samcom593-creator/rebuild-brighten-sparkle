@@ -124,7 +124,6 @@ export default function CourseProgress() {
             email
           )
         `)
-        .eq("onboarding_stage", "training_online")
         .eq("has_training_course", true)
         .eq("is_deactivated", false);
 
@@ -249,8 +248,20 @@ export default function CourseProgress() {
         };
       });
 
-      // Sort by progress (lowest first)
-      return result.sort((a, b) => a.percentComplete - b.percentComplete);
+      // Sort: at-risk first, then stalled, then in-progress, then not started, then complete
+      return result.sort((a, b) => {
+        const priority = (agent: AgentProgress) => {
+          if (agent.isAtRisk) return 0;
+          if (agent.isStalled) return 1;
+          if (agent.hasStarted && agent.percentComplete < 100) return 2;
+          if (!agent.hasStarted) return 3;
+          if (agent.percentComplete >= 100) return 4;
+          return 3;
+        };
+        const pa = priority(a), pb = priority(b);
+        if (pa !== pb) return pa - pb;
+        return a.percentComplete - b.percentComplete;
+      });
     },
   });
 
@@ -570,7 +581,11 @@ export default function CourseProgress() {
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-[10px]">
-                          {agent.onboardingStage === "training_online" ? "Course" : "Onboard"}
+                          {agent.onboardingStage === "training_online" ? "In Course" 
+                            : agent.onboardingStage === "in_field_training" ? "Field Training"
+                            : agent.onboardingStage === "evaluated" ? "Evaluated"
+                            : agent.onboardingStage === "onboarding" ? "Onboarding"
+                            : agent.onboardingStage || "Unknown"}
                         </Badge>
                       </TableCell>
                       {modules.map((module) => {

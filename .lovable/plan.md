@@ -1,57 +1,43 @@
 
+# Fix LogNumbers.tsx -- The Missing Production Entry Page
 
-# Fix Production Entry: Simplify Fields + Add Closes + Update Deal Placeholder
+## The Real Problem
 
-## Changes
+There are THREE separate production entry forms in the app, but only two were updated in previous fixes. The third one -- `src/pages/LogNumbers.tsx` (served at `/apex-daily-numbers`) -- was completely missed. This is the page agents are using and complaining about because it still shows:
 
-### 1. Update BubbleDealEntry placeholder text
-**File: `src/components/dashboard/BubbleDealEntry.tsx`**
-- Change placeholder from "Enter ALP" to "Enter premium" (line 98)
-- This is the deal amount input field
+- "Presentations" and "Pitched Price" as separate fields
+- "Booked In-Home" (should be removed)
+- A raw "ALP ($)" text input instead of the bubble deal entry
+- No easy way to enter deal amounts
+- All fields start at 0 with no existing data loading
 
-### 2. Merge "Presentations" and "Pitched Price" into one field, add "Closes"
+## What Will Be Fixed
 
-**CompactProductionEntry.tsx** -- Update `statFields` array (line 234):
-- Combine "Presentations" and "Pitched Price" into a single field called "Presentations" that maps to `presentations` (the number of times they presented/pitched price)
-- Remove `passed_price` as a separate field (keep it in formData as 0 for DB compatibility)
-- Add a new "Closes" field that maps to `deals_closed` so agents can type in the number of deals closed directly in the stats grid
-- Remove the automatic `deals_closed` count from BubbleDealEntry (the agent will type it manually in the Closes bubble)
+### 1. Update `productionFields` in LogNumbers.tsx (line 347)
 
-New stat fields:
-1. Presentations (presentations count -- includes pitching price)
-2. Hours Called
-3. Referrals
-4. Ref. Pres.
-5. Closes (deals_closed -- typed manually)
+Remove "Pitched Price" (`passed_price`), remove "Booked In-Home" (`booked_inhome_referrals`), and remove the raw "ALP ($)" field. The final fields will be:
 
-**ProductionEntry.tsx** -- Same changes to `activityFields` array (line 363):
-- Merge presentations/pitched price into one "Presentations" field
-- Remove `passed_price` as separate field
-- Add "Closes" field for `deals_closed`
+1. **Presentations** -- covers pitching price (maps to `presentations`)
+2. **Hours Called** -- decimal input (maps to `hours_called`)
+3. **Referrals** -- (maps to `referrals_caught`)
+4. **Ref. Pres.** -- (maps to `referral_presentations`)
+5. **Closes** -- manual deal count (maps to `deals_closed`)
 
-### 3. Disconnect deals_closed from BubbleDealEntry count
+### 2. Add BubbleDealEntry for premium/deal amounts
 
-Currently `BubbleDealEntry` calls `onDealsChange(dealCount)` which auto-sets `deals_closed` based on how many deal bubbles are added. Since the user wants a manual "Closes" input, we need to:
-- Remove the `onDealsChange` callback from `BubbleDealEntry`
-- Remove the `handleDealsChange` callback from both `CompactProductionEntry` and `ProductionEntry`
-- The `deals_closed` value will now only come from the manual "Closes" bubble input
+Replace the raw "ALP ($)" input with the existing `BubbleDealEntry` component (the same bubble system used on `/numbers`). This gives agents:
+- A simple "Enter premium" input with "+ Add" button
+- Deal bubbles showing each amount with delete
+- Auto-calculated total
 
-## Technical Details
+### 3. Load existing production data
 
-### BubbleDealEntry.tsx
-- Remove `onDealsChange` from props and internal `useEffect`
-- Change placeholder to "Enter premium"
+Add a fetch when an agent is selected to load any existing production for today, preventing the "zeros overwrite" bug. Same pattern already working in `CompactProductionEntry.tsx`.
 
-### CompactProductionEntry.tsx
-- Remove `handleDealsChange` callback
-- Remove `onDealsChange` prop from `BubbleDealEntry`
-- Update `statFields` to remove `passed_price`, add `deals_closed` as "Closes"
+### 4. Keep `passed_price` and `booked_inhome_referrals` in the data object as 0
 
-### ProductionEntry.tsx
-- Same field changes as CompactProductionEntry
-- Remove any auto-setting of `deals_closed` from deal count
+These fields still exist in the database, so they'll be sent as 0 to avoid breaking the upsert.
 
-### Files to modify
-- `src/components/dashboard/BubbleDealEntry.tsx`
-- `src/components/dashboard/CompactProductionEntry.tsx`
-- `src/components/dashboard/ProductionEntry.tsx`
+## Files to Modify
+
+- **`src/pages/LogNumbers.tsx`** -- Update field list, add BubbleDealEntry import, add existing data loading, remove old fields from UI

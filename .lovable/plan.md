@@ -1,91 +1,88 @@
 
+# Aged Leads Full Overhaul: Clean UI, Data Fixes, and Email Blast Confirmation
 
-# Fix Aged Lead Importer Validation + Email Template Sync
+## What's Changing
 
-## Problem
+### 1. Database Data Fixes (Immediate)
+- **Set all 56 imported leads to `licensed`** status (currently all showing as `unlicensed`)
+- **Remove duplicate leads** (e.g., Ashley Seborowski appears twice, Jacob Thompson appears twice)
+- **Confirm email blast status**: Only leads WITH an email address can be emailed. Most of your imported leads have no email (phone/Instagram only), so they cannot receive email outreach. Leads that DO have emails have already been blasted via the `send-aged-lead-email` function.
 
-Two issues are happening:
+### 2. Complete UI Redesign of DashboardAgedLeads.tsx
 
-1. **Validation errors rejecting valid leads**: Your CSV has leads with phone numbers and Instagram handles but no email, and they're being rejected with "Missing email, Missing phone" errors. The validation should accept any lead that has at least ONE contact method (email, phone, OR Instagram).
+The current card grid layout is bulky and wastes space. Replacing it with a **compact, high-tech table/list view** with premium styling:
 
-2. **Old email template still showing**: The email preview and outreach emails are displaying the old "A new remote sales position just opened up" template instead of the updated high-converting version with the $20K+ production and $10K+ deposit stats.
+- **Stats bar**: Animated count-up numbers with subtle glow effects, cleaner icon containers with gradient backgrounds
+- **Filters**: Inline pill-style filter bar (not stacked selects) with smooth transitions
+- **Lead list**: Switch from bulky 3-column card grid to a **sleek compact list** with:
+  - Avatar initials circle with gradient border
+  - Name, contact info (phone/email/Instagram) shown inline with icons
+  - License badge + status badge right-aligned
+  - Motivation/notes as a subtle italic line beneath
+  - Hover glow effect on each row
+  - Staggered fade-in animations on load
+- **Contact info display**: Show ALL available contact methods (email, phone, AND Instagram) -- currently Instagram is hidden from cards
+- **Quick actions**: Slide-out or inline compact buttons (not a full "Quick Actions:" label block)
+- **Empty states**: Cleaner with subtle gradient backgrounds
+- **Search**: Extend search to also match phone numbers and Instagram handles (currently only searches name/email)
 
-## Root Cause
+### 3. Remove Active Team Members from Aged Leads
 
-The previous code changes may not have fully compiled into the running preview. The fix will ensure the validation and email template are correctly applied and working.
-
-## Your CSV Format
-
-Your CSV uses column names like `Full_Name`, `Phone_10`, `Phone_E164`, `Instagram`, and `Email`. The importer's column auto-detection already supports these mappings:
-- `Full_Name` maps to full name (split into first/last automatically)
-- `Phone_10` maps to phone
-- `Instagram` maps to instagram handle
-- `Email` maps to email
-
-With the fix, all 56 leads in your CSV should import successfully since every row has at least a first name plus one contact method (phone, Instagram, or email).
-
-## Changes
-
-### 1. AgedLeadImporter.tsx -- Harden validation logic
-
-- Ensure the validation accepts leads with first name + any ONE of: email, phone, or Instagram handle
-- Add explicit phone column mapping for `phone_10` and `phone_e164` variations to the column detection
-- Clean up error messages to be clear: "Need at least one contact method (email, phone, or Instagram)"
-- Handle the `Full_Name` column properly when there's no space (single-word names like "Kero" become first name only)
-
-### 2. AgedLeadEmailPreview.tsx -- Confirm updated template
-
-- Ensure the preview component shows the redesigned email with the performance stats ($20K+ production, $10K+ deposits), updated subject line, and tracked CTA button
-- The preview must match exactly what `send-aged-lead-email` sends
-
-### 3. send-aged-lead-email Edge Function -- Confirm updated template
-
-- Verify the deployed function uses the new high-converting email template (not the old "remote sales position" template)
-- Re-deploy the function to ensure the latest version is live
+Cross-reference aged leads against the active agents roster. Any aged lead whose name closely matches an active agent who is already licensed and active will be flagged and removed. Based on the data check, no exact matches exist between current active agents and aged leads, but the system will be built to auto-detect this going forward.
 
 ## Technical Details
 
-### Validation fix in AgedLeadImporter.tsx
+### Database Operations (via data tool)
 
-The validation block will be updated to:
+```sql
+-- 1. Update all 56 imported leads to licensed
+UPDATE aged_leads SET license_status = 'licensed' WHERE license_status = 'unlicensed';
 
-```typescript
-// Add phone_10, phone_e164 to phone column mappings
-phone: [
-  "phone", "phone number", "phone_10", "phone_e164", 
-  "phonenumber", "phone_number", "mobile", "cell", ...
-],
-
-// Validation: accept any single contact method
-const instagramHandle = getValue("instagram_handle") || "";
-if (!email && !phone && !instagramHandle) {
-  errors.push("Need at least one contact method (email, phone, or Instagram)");
-} else if (email && !isValidEmail(email)) {
-  errors.push("Invalid email format");
-}
+-- 2. Remove duplicate Ashley Seborowski (keep most recent)
+-- Remove duplicate Jacob Thompson (keep most recent)
+-- IDs to delete determined from query results
 ```
 
-### Column mapping additions
+### File: `src/pages/DashboardAgedLeads.tsx` (Full rewrite of render)
 
-Adding explicit support for common CRM export column names:
-- `phone_10` and `phone_e164` for phone columns
-- `prospect_name` and `contact_name` for full name columns
-- `contact_methods` will NOT be mapped to avoid conflicts
+Key changes:
+- Replace card grid with compact list rows
+- Each lead row: initials avatar | name + contact stack | badges | hover actions
+- Add Instagram icon display (currently missing from UI even though data exists)
+- Animated counter components for stats
+- Smoother filter transitions with framer-motion
+- Search expanded to phone/Instagram
+- Premium hover effects: `hover:shadow-lg hover:shadow-primary/5 transition-all duration-200`
+- Staggered list entrance animations
 
-### Expected result with your CSV
+### Stats Section Upgrade
+- Use animated number counters (AnimatedNumber component already exists in the project)
+- Gradient icon backgrounds instead of flat colored circles
+- Add "Licensed" and "Emailed" counts to stats bar
 
-After the fix, all 56 rows should import:
-- Row 2 (Kero): Instagram only -- valid
-- Row 3 (Nicky): Phone + Instagram -- valid
-- Row 32 (David Centrella): Instagram only -- valid
-- Row 50 (Clay Sumner): Email + Instagram -- valid
-- All other rows: Phone + Instagram (and some with email too) -- valid
+### Lead Row Design (replacing cards)
+```text
++---+--------------------+------------------+-----------+----------+
+| AV| Name               | Contact          | Status    | Actions  |
+|   | + motivation line   | phone/email/ig   | badges    | icons    |
++---+--------------------+------------------+-----------+----------+
+```
 
-### Files to modify
+Each row will have:
+- Gradient-bordered initials avatar
+- Name (bold) with motivation text below in muted italic
+- Contact methods shown as clickable icon chips (phone, email, Instagram)
+- Status + license badges
+- Compact icon-only action buttons on hover
 
+### CSS/Styling
+- Uses existing glass morphism, gradient, and animation utilities from index.css
+- Adds hover glow via existing `glow-teal` class
+- Uses framer-motion for staggered list animations (already imported)
+- Leverages the project's AnimatedNumber component for stat counters
+
+### Files to Modify
 | File | Change |
 |------|--------|
-| `src/components/dashboard/AgedLeadImporter.tsx` | Add phone_10/phone_e164 to column mappings, harden validation |
-| `src/components/dashboard/AgedLeadEmailPreview.tsx` | Ensure updated template with stats is showing |
-| `supabase/functions/send-aged-lead-email/index.ts` | Re-deploy to ensure latest template is live |
-
+| `src/pages/DashboardAgedLeads.tsx` | Complete UI overhaul -- compact list, animations, Instagram display, search improvements |
+| Database (data operations) | Set all leads to licensed, remove duplicates |

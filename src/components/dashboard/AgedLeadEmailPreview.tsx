@@ -17,7 +17,6 @@ interface AgedLeadEmailPreviewProps {
   isLoading?: boolean;
 }
 
-// Generate the email HTML preview (matches send-aged-lead-email edge function)
 function getEmailPreviewHtml(firstName: string) {
   return `
     <div style="max-width:600px;margin:0 auto;padding:32px 20px;font-family:Arial,sans-serif;background-color:#0a0a0a;color:#ffffff;border-radius:16px;">
@@ -26,63 +25,69 @@ function getEmailPreviewHtml(firstName: string) {
       </div>
       
       <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:16px;padding:28px;border:1px solid rgba(20,184,166,0.2);">
-        <h2 style="font-size:22px;margin:0 0 16px 0;color:#14b8a6;">Hey ${firstName}!</h2>
+        <h2 style="font-size:20px;margin:0 0 16px 0;color:#ffffff;">Hey ${firstName}, a lot has changed since you applied.</h2>
         
-        <p style="font-size:16px;line-height:1.7;color:#d1d5db;margin:0 0 16px 0;">
-          You applied to Apex Financial before, and we wanted to reach back out — we've got some exciting updates and new openings on the team.
+        <p style="font-size:15px;line-height:1.7;color:#d1d5db;margin:0 0 20px 0;">
+          You applied to Apex Financial before — and since then, our team has been on a tear. The results speak for themselves:
         </p>
         
-        <p style="font-size:16px;line-height:1.7;color:#ffffff;margin:0 0 12px 0;font-weight:600;">
-          Here's what's on the table:
+        <!-- Stats Block -->
+        <div style="display:flex;gap:12px;margin:0 0 24px 0;">
+          <div style="flex:1;background:linear-gradient(135deg,rgba(20,184,166,0.15),rgba(20,184,166,0.05));border:1px solid rgba(20,184,166,0.3);border-radius:12px;padding:16px;text-align:center;">
+            <div style="font-size:24px;font-weight:bold;color:#14b8a6;margin-bottom:4px;">$20,000+</div>
+            <div style="font-size:12px;color:#d1d5db;line-height:1.4;">produced by every<br>agent last month</div>
+          </div>
+          <div style="flex:1;background:linear-gradient(135deg,rgba(14,165,233,0.15),rgba(14,165,233,0.05));border:1px solid rgba(14,165,233,0.3);border-radius:12px;padding:16px;text-align:center;">
+            <div style="font-size:24px;font-weight:bold;color:#0ea5e9;margin-bottom:4px;">$10,000+</div>
+            <div style="font-size:12px;color:#d1d5db;line-height:1.4;">deposited by every<br>agent last month</div>
+          </div>
+        </div>
+        
+        <p style="font-size:15px;line-height:1.7;color:#ffffff;margin:0 0 10px 0;font-weight:600;">
+          Here's what you get when you join:
         </p>
         
-        <div style="background:rgba(20,184,166,0.1);border-radius:12px;padding:20px;margin:16px 0;">
+        <div style="background:rgba(20,184,166,0.08);border-radius:12px;padding:20px;margin:0 0 20px 0;">
           <ul style="margin:0;padding-left:0;list-style:none;color:#d1d5db;">
-            <li style="margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+            <li style="margin-bottom:10px;display:flex;align-items:center;gap:8px;font-size:14px;">
               <span style="color:#14b8a6;font-weight:bold;">✓</span>
-              Start at <strong style="color:#ffffff;">70% commission</strong> (up to 145%)
+              Start at <strong style="color:#ffffff;margin-left:4px;">70% commission</strong>&nbsp;(up to 145%)
             </li>
-            <li style="margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+            <li style="margin-bottom:10px;display:flex;align-items:center;gap:8px;font-size:14px;">
               <span style="color:#14b8a6;font-weight:bold;">✓</span>
               Unlimited warm leads provided daily
             </li>
-            <li style="margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+            <li style="margin-bottom:10px;display:flex;align-items:center;gap:8px;font-size:14px;">
               <span style="color:#14b8a6;font-weight:bold;">✓</span>
-              Complete training program included
+              Complete training + mentorship included
             </li>
-            <li style="margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+            <li style="margin-bottom:0;display:flex;align-items:center;gap:8px;font-size:14px;">
               <span style="color:#14b8a6;font-weight:bold;">✓</span>
-              No cold calling required
-            </li>
-            <li style="margin-bottom:0;display:flex;align-items:center;gap:8px;">
-              <span style="color:#14b8a6;font-weight:bold;">✓</span>
-              Work from anywhere
+              No cold calling — work from anywhere
             </li>
           </ul>
         </div>
         
-        <p style="font-size:16px;line-height:1.7;color:#d1d5db;margin:16px 0;">
-          Our top performers are earning <strong style="color:#14b8a6;">$10K-$50K+ per month</strong>, and we're looking for motivated individuals to join the team.
-        </p>
-        
-        <div style="text-align:center;margin:28px 0 20px 0;">
+        <div style="text-align:center;margin:24px 0 16px 0;">
           <a href="https://apex-financial.org/apply" 
-             style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#ffffff;padding:16px 40px;text-decoration:none;border-radius:10px;font-weight:bold;font-size:16px;box-shadow:0 4px 20px rgba(20,184,166,0.3);">
-            🚀 CLAIM YOUR SPOT
+             style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#ffffff;padding:16px 44px;text-decoration:none;border-radius:10px;font-weight:bold;font-size:16px;box-shadow:0 4px 20px rgba(20,184,166,0.3);letter-spacing:0.5px;">
+            REAPPLY NOW →
           </a>
         </div>
         
-        <p style="font-size:14px;color:#9ca3af;text-align:center;margin:20px 0 0 0;">
-          Spots are limited and filling fast.
+        <p style="font-size:13px;color:#f59e0b;text-align:center;margin:16px 0 0 0;font-weight:600;">
+          ⚡ We're only accepting a limited number of new agents this month.
         </p>
         
-        <p style="font-size:14px;color:#9ca3af;margin:20px 0 0 0;">
-          – The Apex Financial Team
-        </p>
+        <div style="border-top:1px solid rgba(255,255,255,0.1);margin-top:24px;padding-top:16px;">
+          <p style="font-size:14px;color:#9ca3af;margin:0;">
+            – The Apex Financial Team
+          </p>
+        </div>
       </div>
       
       <p style="font-size:12px;color:#6b7280;text-align:center;margin-top:24px;">
-        © ${new Date().getFullYear()} Apex Financial. All rights reserved.
+        Powered by Apex Financial · © ${new Date().getFullYear()}
       </p>
     </div>
   `;
@@ -112,19 +117,17 @@ export function AgedLeadEmailPreview({
 
         <div className="flex-1 overflow-y-auto border rounded-xl bg-black/50">
           <div className="p-4">
-            {/* Email metadata preview */}
             <div className="mb-4 p-3 rounded-lg bg-muted/30 border border-border/50 space-y-1.5">
               <div className="flex items-center gap-2 text-sm">
                 <span className="text-muted-foreground">From:</span>
-                <span className="text-foreground">Apex Financial &lt;team@apex-financial.org&gt;</span>
+                <span className="text-foreground">APEX Financial &lt;noreply@apex-financial.org&gt;</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <span className="text-muted-foreground">Subject:</span>
-                <span className="text-foreground font-medium">🔥 New Remote Sales Position Just Opened – Apply Now</span>
+                <span className="text-foreground font-medium">We've Grown Since You Applied — See What's Changed</span>
               </div>
             </div>
             
-            {/* Email body preview */}
             <div 
               className="rounded-lg overflow-hidden"
               dangerouslySetInnerHTML={{ __html: previewHtml }}

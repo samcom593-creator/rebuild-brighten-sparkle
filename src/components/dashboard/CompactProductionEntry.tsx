@@ -140,6 +140,24 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
 
       if (error) throw error;
 
+      // Auto-mark daily_sale attendance if deals > 0
+      if (formData.deals_closed > 0) {
+        try {
+          await supabase
+            .from("agent_attendance")
+            .upsert({
+              agent_id: agentId,
+              attendance_date: productionDate,
+              attendance_type: "daily_sale" as any,
+              status: "present" as any,
+            }, {
+              onConflict: "agent_id,attendance_date,attendance_type",
+            });
+        } catch (attErr) {
+          console.error("Failed to auto-mark daily_sale:", attErr);
+        }
+      }
+
       // Success flash
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 500);

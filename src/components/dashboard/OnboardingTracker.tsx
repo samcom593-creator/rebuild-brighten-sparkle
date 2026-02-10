@@ -71,14 +71,14 @@ export function OnboardingTracker({
   const canGoBack = canNavigate && currentIndex > 0;
   const canAdvance = canNavigate && currentIndex < ONBOARDING_STAGES.length - 1;
 
-  const handleStageChange = async (direction: "forward" | "backward") => {
-    if (loading) return;
-    
-    const targetIndex = direction === "forward" ? currentIndex + 1 : currentIndex - 1;
-    if (targetIndex < 0 || targetIndex >= ONBOARDING_STAGES.length) return;
+  const handleStageClick = async (targetIndex: number) => {
+    if (loading || !canNavigate) return;
+    if (targetIndex === currentIndex) return;
 
     const targetStage = ONBOARDING_STAGES[targetIndex];
     if (!targetStage) return;
+
+    const isForward = targetIndex > currentIndex;
 
     // Play click sound immediately for feedback
     playSound("click");
@@ -106,12 +106,12 @@ export function OnboardingTracker({
         .insert({
           agent_id: agentId,
           stage: targetStage.key,
-          notes: direction === "backward" ? "Moved back to previous stage" : null,
+          notes: isForward ? null : "Moved back to previous stage",
           updated_by: user?.id,
         });
 
       // Celebration effects for forward progression
-      if (direction === "forward") {
+      if (isForward) {
         setShowConfetti(true);
         playSound("celebrate");
         
@@ -136,7 +136,6 @@ export function OnboardingTracker({
 
         // Special handling for going LIVE
         if (targetStage.key === "evaluated") {
-          // Send portal login email
           try {
             await supabase.functions.invoke("send-agent-portal-login", {
               body: { agentId }
@@ -150,7 +149,6 @@ export function OnboardingTracker({
             console.error("Error sending portal login:", err);
           }
 
-          // Trigger Instagram prompt callback
           onGoLive?.();
         }
       } else {
@@ -175,16 +173,6 @@ export function OnboardingTracker({
     }
   };
 
-  const handleStageClick = async (targetIndex: number) => {
-    if (loading || !canNavigate) return;
-    if (targetIndex === currentIndex) return;
-    // Only allow clicking adjacent stages
-    if (Math.abs(targetIndex - currentIndex) !== 1) return;
-    
-    const direction = targetIndex > currentIndex ? "forward" : "backward";
-    await handleStageChange(direction);
-  };
-
   return (
     <>
       <ConfettiCelebration 
@@ -198,7 +186,7 @@ export function OnboardingTracker({
           {ONBOARDING_STAGES.map((stage, index) => {
             const isCompleted = index < currentIndex;
             const isCurrent = index === currentIndex;
-            const isClickable = canNavigate && Math.abs(index - currentIndex) === 1;
+            const isClickable = canNavigate && index !== currentIndex;
             const Icon = stage.icon;
 
             return (

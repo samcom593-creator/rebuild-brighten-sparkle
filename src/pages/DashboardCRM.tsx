@@ -1120,7 +1120,13 @@ export default function DashboardCRM() {
                 </div>
               </GlassCard>
 
-              <GlassCard className="p-2">
+              <GlassCard 
+                className={cn(
+                  "p-2 cursor-pointer transition-all hover:ring-2 hover:ring-emerald-500/50 hover:scale-[1.02]",
+                  expandedColumn === "paid" && "ring-2 ring-emerald-500"
+                )}
+                onClick={() => setExpandedColumn("paid")}
+              >
                 <div className="flex items-center gap-2">
                   <div className="p-1 rounded-lg bg-emerald-500/10">
                     <DollarSign className="h-3.5 w-3.5 text-emerald-500" />
@@ -1256,6 +1262,13 @@ export default function DashboardCRM() {
                     color: "text-destructive",
                     bgColor: "bg-destructive/10"
                   },
+                  paid: { 
+                    label: "Paid Agents", 
+                    icon: DollarSign, 
+                    stages: [] as OnboardingStage[],
+                    color: "text-emerald-500",
+                    bgColor: "bg-emerald-500/10"
+                  },
                 };
 
                 const config = columnConfig[expandedColumn as keyof typeof columnConfig];
@@ -1264,6 +1277,8 @@ export default function DashboardCRM() {
                 const Icon = config.icon;
                 const expandedAgents = expandedColumn === "critical"
                   ? filteredAgents.filter(a => a.attendanceStatus === "critical")
+                  : expandedColumn === "paid"
+                  ? activeAgents.filter(a => a.onboardingStage === "evaluated" && (a.standardPaid || a.premiumPaid))
                   : filteredAgents.filter(a => config.stages.includes(a.onboardingStage));
 
                 return (

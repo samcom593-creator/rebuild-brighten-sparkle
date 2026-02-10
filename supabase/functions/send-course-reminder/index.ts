@@ -8,6 +8,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const ADMIN_EMAIL = "sam@apex-financial.org";
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -30,10 +32,10 @@ serve(async (req) => {
       );
     }
 
-    // Get agent details with profile
+    // Get agent details including manager
     const { data: agent, error: agentError } = await supabase
       .from("agents")
-      .select("id, onboarding_stage, user_id")
+      .select("id, onboarding_stage, user_id, invited_by_manager_id")
       .eq("id", agentId)
       .single();
 
@@ -59,6 +61,29 @@ serve(async (req) => {
       );
     }
 
+    // Look up manager email for CC
+    let managerEmail: string | null = null;
+    if (agent.invited_by_manager_id) {
+      const { data: managerAgent } = await supabase
+        .from("agents")
+        .select("profile_id")
+        .eq("id", agent.invited_by_manager_id)
+        .single();
+
+      if (managerAgent?.profile_id) {
+        const { data: managerProfile } = await supabase
+          .from("profiles")
+          .select("email")
+          .eq("id", managerAgent.profile_id)
+          .single();
+        managerEmail = managerProfile?.email || null;
+      }
+    }
+
+    const ccList = [ADMIN_EMAIL, managerEmail]
+      .filter(Boolean)
+      .filter((v, i, a) => a.indexOf(v) === i) as string[];
+
     // Get total modules
     const { data: modules } = await supabase
       .from("onboarding_modules")
@@ -78,7 +103,6 @@ serve(async (req) => {
     const firstName = profile.full_name?.split(" ")[0] || "Team Member";
     const courseUrl = `${Deno.env.get("SUPABASE_URL")?.replace(".supabase.co", ".lovable.app") || "https://rebuild-brighten-sparkle.lovable.app"}/onboarding-course`;
 
-    // Send reminder email
     const emailHtml = `
       <!DOCTYPE html>
       <html>
@@ -88,25 +112,18 @@ serve(async (req) => {
         </head>
         <body style="margin: 0; padding: 0; font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #0f0f23;">
           <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(180deg, #1a1a2e 0%, #0f0f23 100%); border-radius: 16px; overflow: hidden;">
-            
-            <!-- Header -->
             <div style="background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%); padding: 32px; text-align: center;">
               <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">
                 📚 Course Reminder
               </h1>
             </div>
-            
-            <!-- Body -->
             <div style="padding: 32px;">
               <p style="color: #e0e0e0; font-size: 18px; line-height: 1.6; margin: 0 0 24px;">
                 Hey ${firstName}! 👋
               </p>
-              
               <p style="color: #b0b0b0; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
                 We noticed you haven't been active in your training course lately. Don't worry - you're almost there!
               </p>
-              
-              <!-- Progress Box -->
               <div style="background: rgba(0, 212, 255, 0.1); border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 12px; padding: 20px; margin: 24px 0;">
                 <p style="color: #e0e0e0; font-size: 14px; margin: 0 0 8px;">Your Current Progress:</p>
                 <div style="display: flex; align-items: center; gap: 12px;">
@@ -119,24 +136,18 @@ serve(async (req) => {
                   ${completedModules} of ${totalModules} modules completed
                 </p>
               </div>
-              
               <p style="color: #b0b0b0; font-size: 16px; line-height: 1.6; margin: 0 0 32px;">
                 Every module you complete brings you closer to becoming a licensed producer. Your success story starts with completing this course!
               </p>
-              
-              <!-- CTA Button -->
               <div style="text-align: center; margin: 32px 0;">
                 <a href="${courseUrl}" style="display: inline-block; background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%); color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; padding: 16px 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);">
                   Continue My Course →
                 </a>
               </div>
-              
               <p style="color: #666; font-size: 14px; text-align: center; margin-top: 32px;">
                 Need help? Reply to this email or reach out to your manager.
               </p>
             </div>
-            
-            <!-- Footer -->
             <div style="padding: 24px; text-align: center; border-top: 1px solid rgba(255,255,255,0.1);">
               <p style="color: #666; font-size: 12px; margin: 0;">
                 Powered by <span style="color: #00d4ff; font-weight: 600;">Apex Financial</span>
@@ -150,6 +161,7 @@ serve(async (req) => {
     const { error: emailError } = await resend.emails.send({
       from: "APEX Financial <noreply@apex-financial.org>",
       to: [profile.email],
+      cc: ccList.length > 0 ? ccList : undefined,
       subject: `📚 ${firstName}, your course is waiting for you!`,
       html: emailHtml,
     });
@@ -159,7 +171,7 @@ serve(async (req) => {
       throw emailError;
     }
 
-    console.log(`Course reminder sent to ${profile.email}`);
+    console.log(`Course reminder sent to ${profile.email}, CC: ${ccList.join(", ")}`);
 
     return new Response(
       JSON.stringify({ success: true, email: profile.email }),

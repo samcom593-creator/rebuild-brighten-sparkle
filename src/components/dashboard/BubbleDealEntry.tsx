@@ -92,7 +92,7 @@ export function BubbleDealEntry({ onALPChange, initialDeals }: BubbleDealEntryPr
             type="text"
             inputMode="decimal"
             pattern="[0-9]*\.?[0-9]*"
-            placeholder="Enter premium"
+            placeholder="Enter deal amount"
             value={inputValue}
             onChange={(e) => {
               // Only allow numeric input

@@ -13,7 +13,8 @@ import {
   Sparkles,
   CheckCircle2,
   UserPlus,
-  ChevronRight
+  ChevronRight,
+  DollarSign
 } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
@@ -614,68 +615,81 @@ export default function LogNumbers() {
                   </div>
                 ) : (
                   <>
-                    {/* Stat Fields Grid */}
-                    <div className="grid grid-cols-2 gap-3">
-                      {productionFields.map((field, index) => {
-                        const Icon = field.icon;
-                        const value = productionData[field.key as keyof typeof productionData];
-                        const hasValue = Number(value) > 0;
-
-                        return (
-                          <motion.div
-                            key={field.key}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.03 }}
-                            className="relative"
-                          >
-                            <Label 
-                              htmlFor={field.key} 
-                              className="text-xs text-muted-foreground flex items-center gap-1 mb-1"
-                            >
-                              <Icon className={cn(
-                                "h-3 w-3",
-                                hasValue && "text-primary"
-                              )} />
-                              {field.label}
-                            </Label>
-                            <Input
-                              id={field.key}
-                              type="number"
-                              step={field.step}
-                              min="0"
-                              value={value}
-                              onChange={(e) => setProductionData(prev => ({
-                                ...prev,
-                                [field.key]: field.step ? parseFloat(e.target.value) || 0 : parseInt(e.target.value) || 0
-                              }))}
-                              className={cn(
-                                "h-12 text-lg font-bold text-center transition-all duration-200",
-                                hasValue && "border-primary/50 bg-primary/5"
-                              )}
-                            />
-                            {hasValue && (
-                              <motion.div
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary"
-                              />
-                            )}
-                          </motion.div>
-                        );
-                      })}
+                    {/* Deal Amounts - Primary Action */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-emerald-500/20 to-primary/20 flex items-center justify-center">
+                          <DollarSign className="h-4 w-4 text-primary" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold">💰 Deal Amounts</h3>
+                          <p className="text-[10px] text-muted-foreground">Type amount and tap + Add for each deal</p>
+                        </div>
+                      </div>
+                      <BubbleDealEntry onALPChange={handleALPChange} />
                     </div>
 
-                    {/* Deal Premium Entry (Bubble) */}
-                    <div className="mt-5">
-                      <Label className="text-xs text-muted-foreground flex items-center gap-1 mb-2">
-                        <Sparkles className={cn(
-                          "h-3 w-3",
-                          productionData.aop > 0 && "text-primary"
-                        )} />
-                        Deal Premiums (ALP)
-                      </Label>
-                      <BubbleDealEntry onALPChange={handleALPChange} />
+                    {/* Activity Stats */}
+                    <div className="space-y-2 pt-2 border-t border-border/30">
+                      <div className="flex items-center gap-2">
+                        <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-500/20 flex items-center justify-center">
+                          <Target className="h-4 w-4 text-blue-500" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold">📊 Activity Stats</h3>
+                          <p className="text-[10px] text-muted-foreground">Track your daily activity</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        {productionFields.map((field, index) => {
+                          const Icon = field.icon;
+                          const value = productionData[field.key as keyof typeof productionData];
+                          const hasValue = Number(value) > 0;
+
+                          return (
+                            <motion.div
+                              key={field.key}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: index * 0.03 }}
+                              className="relative"
+                            >
+                              <Label 
+                                htmlFor={field.key} 
+                                className="text-xs text-muted-foreground flex items-center gap-1 mb-1"
+                              >
+                                <Icon className={cn(
+                                  "h-3 w-3",
+                                  hasValue && "text-primary"
+                                )} />
+                                {field.label}
+                              </Label>
+                              <Input
+                                id={field.key}
+                                type="number"
+                                step={field.step}
+                                min="0"
+                                value={value}
+                                onChange={(e) => setProductionData(prev => ({
+                                  ...prev,
+                                  [field.key]: field.step ? parseFloat(e.target.value) || 0 : parseInt(e.target.value) || 0
+                                }))}
+                                className={cn(
+                                  "h-12 text-lg font-bold text-center transition-all duration-200",
+                                  hasValue && "border-primary/50 bg-primary/5"
+                                )}
+                              />
+                              {hasValue && (
+                                <motion.div
+                                  initial={{ scale: 0 }}
+                                  animate={{ scale: 1 }}
+                                  className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary"
+                                />
+                              )}
+                            </motion.div>
+                          );
+                        })}
+                      </div>
                     </div>
                   </>
                 )}

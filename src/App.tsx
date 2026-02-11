@@ -10,6 +10,7 @@ import { SidebarProvider } from "@/hooks/useSidebarState";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AuthenticatedShell } from "@/components/layout/AuthenticatedShell";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 // Eagerly loaded pages (critical path)
 import Index from "./pages/Index";
@@ -113,13 +114,13 @@ const App = () => (
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/dashboard/applicants" element={<DashboardApplicants />} />
                     <Route path="/dashboard/admin" element={<DashboardAdmin />} />
-                    <Route path="/dashboard/accounts" element={<DashboardAccounts />} />
+                    <Route path="/dashboard/accounts" element={<ProtectedRoute requireAdmin><DashboardAccounts /></ProtectedRoute>} />
                     <Route path="/dashboard/settings" element={<Settings />} />
-                    <Route path="/dashboard/settings/deleted-leads" element={<DeletedLeadsVault />} />
+                    <Route path="/dashboard/settings/deleted-leads" element={<ProtectedRoute requireAdmin><DeletedLeadsVault /></ProtectedRoute>} />
                     <Route path="/dashboard/team" element={<TeamDirectory />} />
                     <Route path="/dashboard/crm" element={<DashboardCRM />} />
-                    <Route path="/dashboard/aged-leads" element={<DashboardAgedLeads />} />
-                    <Route path="/dashboard/command" element={<DashboardCommandCenter />} />
+                    <Route path="/dashboard/aged-leads" element={<ProtectedRoute requireAdmin><DashboardAgedLeads /></ProtectedRoute>} />
+                    <Route path="/dashboard/command" element={<ProtectedRoute requireAdmin><DashboardCommandCenter /></ProtectedRoute>} />
                     <Route path="/agent-portal" element={<AgentPortal />} />
                     <Route path="/onboarding-course" element={<OnboardingCourse />} />
                     <Route path="/course-progress" element={<CourseProgress />} />
@@ -127,7 +128,7 @@ const App = () => (
                     <Route path="/numbers" element={<Numbers />} />
                     <Route path="/purchase-leads" element={<PurchaseLeads />} />
                     <Route path="/dashboard/call-center" element={<CallCenter />} />
-                    <Route path="/dashboard/leads" element={<LeadCenter />} />
+                    <Route path="/dashboard/leads" element={<ProtectedRoute requireAdmin><LeadCenter /></ProtectedRoute>} />
                   </Route>
 
                   {/* Legacy redirect */}

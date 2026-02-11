@@ -160,6 +160,15 @@ export function ContractedModal({
         toast.success(`${application.first_name} contracted and added to CRM!`);
       }
 
+      // Notify all managers about the contract
+      supabase.functions.invoke("notify-hire-announcement", {
+        body: {
+          hirerName: "Manager",
+          hireeName: `${application.first_name} ${application.last_name}`,
+          actionType: "contracted",
+        },
+      }).catch(err => console.error("Failed to send hire announcement:", err));
+
       onOpenChange(false);
       onSuccess?.();
     } catch (error) {

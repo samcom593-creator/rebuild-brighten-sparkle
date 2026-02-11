@@ -320,6 +320,27 @@ export default function CallCenter() {
 
       if (actionId === "hired") {
         await sendFollowUpEmail(currentLead, "hired");
+        
+        // Auto-send licensing instructions for unlicensed hires
+        if (currentLead.licenseStatus === "unlicensed" || currentLead.licenseStatus === "unknown") {
+          supabase.functions.invoke("send-licensing-instructions", {
+            body: {
+              email: currentLead.email,
+              firstName: currentLead.firstName,
+              licenseStatus: "unlicensed",
+            },
+          }).catch(err => console.error("Failed to send licensing instructions:", err));
+        }
+
+        // Notify all managers about the hire
+        supabase.functions.invoke("notify-hire-announcement", {
+          body: {
+            hirerName: "Manager",
+            hireeName: `${currentLead.firstName} ${currentLead.lastName || ""}`.trim(),
+            actionType: "hired",
+          },
+        }).catch(err => console.error("Failed to send hire announcement:", err));
+
         setShowConfetti(true);
         setTimeout(() => setShowConfetti(false), 3000);
         toast.success("Lead marked as hired - follow-up email sent!");

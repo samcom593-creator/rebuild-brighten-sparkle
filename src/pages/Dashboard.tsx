@@ -14,6 +14,7 @@ import {
   BarChart3,
   Sparkles,
   ChevronDown,
+  AlertTriangle,
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
@@ -33,6 +34,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration";
 import { GlassCard } from "@/components/ui/glass-card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SkeletonLoader } from "@/components/ui/skeleton-loader";
 import { YearPerformanceCard } from "@/components/dashboard/YearPerformanceCard";
@@ -394,6 +396,36 @@ export default function Dashboard() {
 
           {/* Onboarding Pipeline for Admin/Manager */}
           {(isManager || isAdmin) && <OnboardingPipelineCard />}
+
+          {/* Pipeline Alert Summary */}
+          {(isManager || isAdmin) && (stats.unlicensed > 0 || stats.staleLeads > 0) && (
+            <Link to="/dashboard/crm">
+              <GlassCard className="p-4 border-amber-500/30 hover:border-amber-500/50 cursor-pointer transition-all">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                  <h4 className="font-semibold text-sm">Pipeline Alerts</h4>
+                </div>
+                <div className="space-y-1.5">
+                  {stats.unlicensed > 0 && (
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">Unlicensed in pipeline</span>
+                      <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 text-[10px]">
+                        {stats.unlicensed}
+                      </Badge>
+                    </div>
+                  )}
+                  {stats.staleLeads > 0 && (
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">No contact 48h+</span>
+                      <Badge variant="outline" className="bg-red-500/10 text-red-400 border-red-500/30 text-[10px]">
+                        {stats.staleLeads}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              </GlassCard>
+            </Link>
+          )}
 
           {/* Lead Sources */}
           <AnalyticsPieChart

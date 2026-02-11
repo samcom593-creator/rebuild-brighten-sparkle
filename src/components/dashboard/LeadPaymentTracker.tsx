@@ -42,8 +42,7 @@ export function LeadPaymentTracker() {
         .select("id, user_id")
         .eq("status", "active")
         .eq("onboarding_stage", "evaluated")
-        .eq("is_deactivated", false)
-        .eq("is_inactive", false);
+        .eq("is_deactivated", false);
 
       if (!liveAgents?.length) {
         setAgents([]);

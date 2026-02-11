@@ -62,6 +62,7 @@ import { BulkStageActions, AgentSelectCheckbox } from "@/components/crm/BulkStag
 // AbandonedLeadsPanel removed from CRM - exists only in Admin Panel
 import { cn } from "@/lib/utils";
 import { Database } from "@/integrations/supabase/types";
+import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
 
 type AttendanceStatus = Database["public"]["Enums"]["attendance_status"];
 type PerformanceTier = Database["public"]["Enums"]["performance_tier"];
@@ -110,6 +111,9 @@ interface AgentCRM {
   // Payment status
   standardPaid: boolean;
   premiumPaid: boolean;
+  // License pipeline data
+  licenseProgress: string | null;
+  testScheduledDate: string | null;
 }
 
 const attendanceColors: Record<AttendanceStatus, string> = {
@@ -378,6 +382,23 @@ export default function DashboardCRM() {
         }
       }
 
+      // Fetch license progress from applications for pipeline data
+      const { data: appLicenseData } = await supabase
+        .from("applications")
+        .select("assigned_agent_id, license_progress, test_scheduled_date")
+        .in("assigned_agent_id", allAgentIds)
+        .is("terminated_at", null);
+
+      const licenseProgressMap = new Map<string, { progress: string | null; testDate: string | null }>();
+      for (const app of appLicenseData || []) {
+        if (app.assigned_agent_id && !licenseProgressMap.has(app.assigned_agent_id)) {
+          licenseProgressMap.set(app.assigned_agent_id, {
+            progress: app.license_progress,
+            testDate: app.test_scheduled_date,
+          });
+        }
+      }
+
       // Fetch payment tracking for this week
       const { data: payments } = await supabase
         .from("lead_payment_tracking")
@@ -441,6 +462,8 @@ export default function DashboardCRM() {
           lastContactedAt: lastContactMap.get(agent.id) || null,
           standardPaid: pay.standard,
           premiumPaid: pay.premium,
+          licenseProgress: licenseProgressMap.get(agent.id)?.progress || null,
+          testScheduledDate: licenseProgressMap.get(agent.id)?.testDate || null,
         };
       });
 
@@ -738,15 +761,36 @@ export default function DashboardCRM() {
 
           {/* Course Link for In Course agents */}
           {["onboarding", "training_online"].includes(agent.onboardingStage) && (
-            <a 
-              href="/onboarding-course" 
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors"
-            >
-              <GraduationCap className="h-3.5 w-3.5" />
-              View Training Course
-            </a>
+            <div className="flex items-center gap-1.5">
+              <a 
+                href="/onboarding-course" 
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors"
+              >
+                <GraduationCap className="h-3.5 w-3.5" />
+                View Training Course
+              </a>
+              <ResendLicensingButton
+                recipientEmail={agent.email}
+                recipientName={agent.name}
+                licenseStatus="unlicensed"
+              />
+            </div>
+          )}
+
+          {/* License Progress Badge for pipeline tracking */}
+          {agent.licenseProgress && agent.licenseProgress !== "unlicensed" && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-violet-500/10 text-violet-400 border-violet-500/30">
+                {agent.licenseProgress.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
+              </Badge>
+              {agent.testScheduledDate && (
+                <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-blue-500/10 text-blue-400 border-blue-500/30">
+                  📅 Exam: {new Date(agent.testScheduledDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                </Badge>
+              )}
+            </div>
           )}
 
           {/* Checklist - Compact */}

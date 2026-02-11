@@ -42,6 +42,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { QuickAssignMenu } from "@/components/dashboard/QuickAssignMenu";
 import { QuickEmailMenu } from "@/components/dashboard/QuickEmailMenu";
+import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
 import { useAuth } from "@/hooks/useAuth";
 
 interface Lead {
@@ -151,11 +152,10 @@ export default function LeadCenter() {
 
       if (agedError) throw agedError;
 
-      // Fetch all agents with profiles for name lookup
+      // Fetch all agents with profiles for name lookup (no status filter to resolve all names)
       const { data: agents } = await supabase
         .from("agents")
-        .select("id, user_id")
-        .eq("status", "active");
+        .select("id, user_id");
 
       const userIds = agents?.map((a) => a.user_id).filter(Boolean) || [];
       const { data: profiles } = await supabase
@@ -829,13 +829,11 @@ export default function LeadCenter() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
-                          {lead.source === "applications" && (
-                            <QuickAssignMenu
-                              applicationId={lead.id}
-                              currentAgentId={lead.assignedAgentId || null}
-                              onAssigned={fetchLeads}
-                            />
-                          )}
+                          <QuickAssignMenu
+                            applicationId={lead.id}
+                            currentAgentId={lead.assignedAgentId || null}
+                            onAssigned={fetchLeads}
+                          />
                           <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
                             <a href={`tel:${lead.phone}`}>
                               <Phone className="h-4 w-4" />
@@ -848,6 +846,11 @@ export default function LeadCenter() {
                             recipientEmail={lead.email}
                             recipientName={`${lead.firstName} ${lead.lastName}`}
                             leadSource={lead.source}
+                          />
+                          <ResendLicensingButton
+                            recipientEmail={lead.email}
+                            recipientName={`${lead.firstName} ${lead.lastName}`}
+                            licenseStatus={lead.licenseStatus as "licensed" | "unlicensed" | "pending"}
                           />
                         </div>
                       </TableCell>

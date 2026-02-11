@@ -604,8 +604,35 @@ export default function DashboardCRM() {
       .sort((a, b) => a.sortOrder - b.sortOrder);
   };
 
+  // Optimistic stage update: re-read single agent's stage from DB, update local state (no full reload)
+  const handleOptimisticStageUpdate = async (agentId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("agents")
+        .select("onboarding_stage, onboarding_completed_at, field_training_started_at")
+        .eq("id", agentId)
+        .single();
+
+      if (error) throw error;
+
+      setAgents(prev =>
+        prev.map(a =>
+          a.id === agentId
+            ? {
+                ...a,
+                onboardingStage: data.onboarding_stage || a.onboardingStage,
+                fieldTrainingStartedAt: data.field_training_started_at || a.fieldTrainingStartedAt,
+              }
+            : a
+        )
+      );
+    } catch (err) {
+      console.error("Error refreshing agent stage:", err);
+    }
+  };
+
   // Stats
-  const activeAgents = agents.filter(a => !a.isDeactivated);
+  const activeAgents = agents.filter(a => !a.isDeactivated && !a.isInactive);
   const inCourse = activeAgents.filter(a => ["onboarding", "training_online"].includes(a.onboardingStage)).length;
   const inTraining = activeAgents.filter(a => a.onboardingStage === "in_field_training").length;
   const inField = activeAgents.filter(a => a.onboardingStage === "evaluated").length;
@@ -819,7 +846,7 @@ export default function DashboardCRM() {
             agentId={agent.id}
             agentName={agent.name}
             currentStage={agent.onboardingStage}
-            onStageUpdate={fetchAgents}
+            onStageUpdate={() => handleOptimisticStageUpdate(agent.id)}
             onGoLive={() => setInstagramPromptAgent(agent)}
             readOnly={false}
           />

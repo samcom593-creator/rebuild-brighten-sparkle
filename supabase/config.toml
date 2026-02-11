@@ -273,3 +273,6 @@ verify_jwt = false
 
 [functions.track-email-click]
 verify_jwt = false
+
+[functions.notify-hire-announcement]
+verify_jwt = false

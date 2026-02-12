@@ -51,6 +51,22 @@ export default function Login() {
 
       if (error) throw error;
 
+      // Check if agent should go to course
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: agent } = await supabase
+          .from("agents")
+          .select("has_training_course, onboarding_stage")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        
+        if (agent?.has_training_course && agent?.onboarding_stage === "training_online") {
+          toast.success("Welcome! Taking you to your course 📚");
+          navigate("/onboarding-course");
+          return;
+        }
+      }
+
       toast.success("Welcome back!");
       navigate("/dashboard");
     } catch (error: any) {

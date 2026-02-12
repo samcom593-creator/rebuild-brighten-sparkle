@@ -54,7 +54,11 @@ export default function MagicLogin() {
         return;
       }
 
-      const dest = data.destination === "numbers" ? "apex-daily-numbers" : "agent-portal";
+      const dest = data.destination === "numbers" 
+        ? "apex-daily-numbers" 
+        : data.destination === "course" 
+          ? "onboarding-course" 
+          : "agent-portal";
       setDestination(dest);
       setState("signing-in");
 

@@ -95,9 +95,9 @@ export function AddToCourseButton({
         return;
       }
 
-      // 5. Send portal login with magic link
+      // 5. Send course enrollment email with magic link
       const { error: emailError } = await supabase.functions.invoke(
-        "send-agent-portal-login",
+        "send-course-enrollment-email",
         { body: { agentId } }
       );
 

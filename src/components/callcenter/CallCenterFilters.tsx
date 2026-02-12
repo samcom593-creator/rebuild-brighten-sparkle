@@ -15,16 +15,19 @@ export type SourceFilter = "all" | "aged_leads" | "applications";
 export type LicenseFilter = "all" | "licensed" | "unlicensed";
 export type StatusFilter = "new" | "no_pickup" | "contacted";
 export type ProgressFilter = "all" | "course_purchased" | "passed_test" | "waiting_on_license";
+export type SortOrder = "newest_first" | "oldest_first";
 
 interface CallCenterFiltersProps {
   sourceFilter: SourceFilter;
   licenseFilter: LicenseFilter;
   statusFilter: StatusFilter;
   progressFilter: ProgressFilter;
+  sortOrder: SortOrder;
   onSourceChange: (value: SourceFilter) => void;
   onLicenseChange: (value: LicenseFilter) => void;
   onStatusChange: (value: StatusFilter) => void;
   onProgressChange: (value: ProgressFilter) => void;
+  onSortOrderChange: (value: SortOrder) => void;
   onStart: () => void;
   className?: string;
 }
@@ -53,10 +56,12 @@ export function CallCenterFilters({
   licenseFilter,
   statusFilter,
   progressFilter,
+  sortOrder,
   onSourceChange,
   onLicenseChange,
   onStatusChange,
   onProgressChange,
+  onSortOrderChange,
   onStart,
   className,
 }: CallCenterFiltersProps) {
@@ -179,6 +184,15 @@ export function CallCenterFilters({
                   { value: "course_purchased", label: "Course Purchased" },
                   { value: "passed_test", label: "Passed Test" },
                   { value: "waiting_on_license", label: "Waiting on License" },
+                ],
+              },
+              {
+                label: "Sort Order",
+                value: sortOrder,
+                onChange: onSortOrderChange,
+                options: [
+                  { value: "oldest_first", label: "Late Opt-Ins First (Oldest)" },
+                  { value: "newest_first", label: "New Opt-Ins First (Newest)" },
                 ],
               },
             ].map((filter, index) => (

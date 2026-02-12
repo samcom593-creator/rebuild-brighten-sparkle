@@ -1,5 +1,5 @@
 export { CallCenterFilters } from "./CallCenterFilters";
-export type { SourceFilter, LicenseFilter, StatusFilter, ProgressFilter } from "./CallCenterFilters";
+export type { SourceFilter, LicenseFilter, StatusFilter, ProgressFilter, SortOrder } from "./CallCenterFilters";
 
 export { CallCenterLeadCard } from "./CallCenterLeadCard";
 

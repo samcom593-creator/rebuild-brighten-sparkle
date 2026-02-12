@@ -418,6 +418,22 @@ export default function Apply() {
     } catch (error: any) {
       console.error("Error submitting application:", error);
       
+      // Try to extract detailed validation errors from edge function response
+      try {
+        if (error?.context?.body) {
+          const body = await error.context.body.json?.() || error.context.json;
+          if (body?.details && Array.isArray(body.details)) {
+            const fields = body.details.map((d: any) => d.path?.join?.(".") || d.message).filter(Boolean);
+            toast.error(`Please fix these fields: ${fields.join(", ")}`, { duration: 6000 });
+            return;
+          }
+          if (body?.error) {
+            toast.error(body.error, { duration: 5000 });
+            return;
+          }
+        }
+      } catch (_) { /* fall through to generic handling */ }
+      
       // Handle specific error types for better user feedback
       const errorMessage = error?.message?.toLowerCase() || "";
       const errorStatus = error?.status || error?.code;

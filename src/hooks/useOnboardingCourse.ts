@@ -269,12 +269,49 @@ export function useOnboardingCourse(agentId: string | null) {
     init();
   }, [fetchModules, fetchProgress]);
 
+  // Auto-initialize progress record when viewing a module (ensures started_at is set)
+  const initializeProgress = useCallback(async (moduleId: string) => {
+    if (!agentId || progress[moduleId]) return;
+    
+    const { data, error } = await supabase
+      .from("onboarding_progress")
+      .insert({
+        agent_id: agentId,
+        module_id: moduleId,
+        video_watched_percent: 0
+      })
+      .select()
+      .single();
+
+    if (!error && data) {
+      setProgress(prev => ({
+        ...prev,
+        [moduleId]: {
+          ...data,
+          answers: data.answers as number[] | null
+        }
+      }));
+
+      // Notify if this is the first module they're viewing
+      if (Object.keys(progress).length === 0) {
+        try {
+          await supabase.functions.invoke("notify-course-started", {
+            body: { agentId }
+          });
+        } catch (e) {
+          console.error("Failed to send course started notification:", e);
+        }
+      }
+    }
+  }, [agentId, progress]);
+
   useEffect(() => {
     const current = modules[currentModuleIndex];
     if (current) {
       fetchQuestions(current.id);
+      initializeProgress(current.id);
     }
-  }, [currentModuleIndex, modules, fetchQuestions]);
+  }, [currentModuleIndex, modules, fetchQuestions, initializeProgress]);
 
   return {
     modules,

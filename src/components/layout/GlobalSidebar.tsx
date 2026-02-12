@@ -34,6 +34,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useIsTouchDevice } from "@/hooks/useIsTouchDevice";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 interface GlobalSidebarProps {
   isOpen: boolean;
@@ -53,6 +54,7 @@ export function GlobalSidebar({
   const { user, isAdmin, isManager, isAgent } = useAuth();
   const [showInviteModal, setShowInviteModal] = useState(false);
   const isTouch = useIsTouchDevice();
+  const { playSound } = useSoundEffects();
 
   const navItems = useMemo(() => {
     const items = [];
@@ -197,6 +199,7 @@ export function GlobalSidebar({
     const linkContent = (
       <Link
         to={item.href}
+        onClick={() => { if (!isActive) playSound("click"); }}
         className={cn(
           "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
           "touch-action-manipulation select-none",

@@ -63,6 +63,7 @@ import { BulkStageActions, AgentSelectCheckbox } from "@/components/crm/BulkStag
 import { cn } from "@/lib/utils";
 import { Database } from "@/integrations/supabase/types";
 import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 type AttendanceStatus = Database["public"]["Enums"]["attendance_status"];
 type PerformanceTier = Database["public"]["Enums"]["performance_tier"];
@@ -187,6 +188,7 @@ const getAvatarColor = (name: string) => {
 
 export default function DashboardCRM() {
   const { user, isAdmin, isManager, isLoading: authLoading } = useAuth();
+  const { playSound } = useSoundEffects();
   const [agents, setAgents] = useState<AgentCRM[]>([]);
   const [managers, setManagers] = useState<Manager[]>([]);
   const [loading, setLoading] = useState(true);
@@ -283,114 +285,117 @@ export default function DashboardCRM() {
       }
 
       const userIds = agentData.map(a => a.user_id).filter(Boolean);
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, full_name, email, phone, avatar_url, instagram_handle")
-        .in("user_id", userIds);
-
-      const profileMap = new Map(
-        profiles?.map(p => [p.user_id, p]) || []
-      );
-
-      // Get manager names
       const managerIds = [...new Set(agentData.map(a => a.invited_by_manager_id).filter(Boolean))];
-      let managerProfileMap = new Map<string, string>();
-
-      if (managerIds.length > 0) {
-        const { data: managerAgents } = await supabase
-          .from("agents")
-          .select("id, user_id")
-          .in("id", managerIds);
-
-        if (managerAgents?.length) {
-          const managerUserIds = managerAgents.map(a => a.user_id).filter(Boolean);
-          const { data: managerProfiles } = await supabase
-            .from("profiles")
-            .select("user_id, full_name")
-            .in("user_id", managerUserIds);
-
-          const userToName = new Map(managerProfiles?.map(p => [p.user_id, p.full_name]) || []);
-          managerAgents.forEach(ma => {
-            if (ma.user_id) {
-              managerProfileMap.set(ma.id, userToName.get(ma.user_id) || "Unknown");
-            }
-          });
-        }
-      }
-
-      // Fetch weekly and monthly production stats for Live agents (evaluated stage)
       const liveAgentIds = agentData
         .filter(a => a.onboarding_stage === "evaluated")
         .map(a => a.id);
+      const allAgentIds = agentData.map(a => a.id);
 
-      // Get this week's start date (Sunday) - use local date to avoid UTC shift
+      // Date calculations
       const today = new Date();
       const dayOfWeek = today.getDay();
       const weekStart = new Date(today);
       weekStart.setDate(today.getDate() - dayOfWeek);
       const weekStartStr = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
-
-      // Get this month's start date
       const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
       const monthStartStr = monthStart.toISOString().split("T")[0];
 
+      // Run ALL independent queries in parallel
+      const [
+        profilesResult,
+        managerAgentsResult,
+        monthlyProductionResult,
+        appContactsResult,
+        appLicenseResult,
+        paymentsResult,
+      ] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("user_id, full_name, email, phone, avatar_url, instagram_handle")
+          .in("user_id", userIds),
+        managerIds.length > 0
+          ? supabase.from("agents").select("id, user_id").in("id", managerIds)
+          : Promise.resolve({ data: [] as any[] }),
+        liveAgentIds.length > 0
+          ? supabase
+              .from("daily_production")
+              .select("agent_id, aop, presentations, deals_closed, production_date")
+              .in("agent_id", liveAgentIds)
+              .gte("production_date", monthStartStr)
+          : Promise.resolve({ data: [] as any[] }),
+        supabase
+          .from("applications")
+          .select("assigned_agent_id, last_contacted_at")
+          .in("assigned_agent_id", allAgentIds)
+          .not("last_contacted_at", "is", null)
+          .order("last_contacted_at", { ascending: false }),
+        supabase
+          .from("applications")
+          .select("assigned_agent_id, license_progress, test_scheduled_date")
+          .in("assigned_agent_id", allAgentIds)
+          .is("terminated_at", null),
+        supabase
+          .from("lead_payment_tracking")
+          .select("agent_id, tier, paid")
+          .eq("week_start", weekStartStr)
+          .eq("paid", true),
+      ]);
+
+      const profiles = profilesResult.data;
+      const profileMap = new Map(
+        profiles?.map(p => [p.user_id, p]) || []
+      );
+
+      // Manager names - only need one more query for manager profiles
+      let managerProfileMap = new Map<string, string>();
+      const managerAgents = managerAgentsResult.data;
+      if (managerAgents?.length) {
+        const managerUserIds = managerAgents.map((a: any) => a.user_id).filter(Boolean);
+        const { data: managerProfiles } = await supabase
+          .from("profiles")
+          .select("user_id, full_name")
+          .in("user_id", managerUserIds);
+
+        const userToName = new Map(managerProfiles?.map(p => [p.user_id, p.full_name]) || []);
+        managerAgents.forEach((ma: any) => {
+          if (ma.user_id) {
+            managerProfileMap.set(ma.id, userToName.get(ma.user_id) || "Unknown");
+          }
+        });
+      }
+
+      // Aggregate production stats
       let weeklyProductionMap = new Map<string, { aop: number; presentations: number; deals: number }>();
       let monthlyProductionMap = new Map<string, number>();
       let monthlyDealsMap = new Map<string, number>();
 
-      if (liveAgentIds.length > 0) {
-        // Fetch all production for this month (which includes this week)
-        const { data: monthlyProduction } = await supabase
-          .from("daily_production")
-          .select("agent_id, aop, presentations, deals_closed, production_date")
-          .in("agent_id", liveAgentIds)
-          .gte("production_date", monthStartStr);
+      for (const prod of monthlyProductionResult.data || []) {
+        const existingMonthly = monthlyProductionMap.get(prod.agent_id) || 0;
+        monthlyProductionMap.set(prod.agent_id, existingMonthly + (Number(prod.aop) || 0));
+        const existingMonthlyDeals = monthlyDealsMap.get(prod.agent_id) || 0;
+        monthlyDealsMap.set(prod.agent_id, existingMonthlyDeals + (prod.deals_closed || 0));
 
-        // Aggregate by agent for both weekly and monthly
-        for (const prod of monthlyProduction || []) {
-          // Monthly aggregation
-          const existingMonthly = monthlyProductionMap.get(prod.agent_id) || 0;
-          monthlyProductionMap.set(prod.agent_id, existingMonthly + (Number(prod.aop) || 0));
-          const existingMonthlyDeals = monthlyDealsMap.get(prod.agent_id) || 0;
-          monthlyDealsMap.set(prod.agent_id, existingMonthlyDeals + (prod.deals_closed || 0));
-
-          // Weekly aggregation (only if within this week)
-          if (prod.production_date >= weekStartStr) {
-            const existing = weeklyProductionMap.get(prod.agent_id) || { aop: 0, presentations: 0, deals: 0 };
-            weeklyProductionMap.set(prod.agent_id, {
-              aop: existing.aop + (Number(prod.aop) || 0),
-              presentations: existing.presentations + (prod.presentations || 0),
-              deals: existing.deals + (prod.deals_closed || 0),
-            });
-          }
+        if (prod.production_date >= weekStartStr) {
+          const existing = weeklyProductionMap.get(prod.agent_id) || { aop: 0, presentations: 0, deals: 0 };
+          weeklyProductionMap.set(prod.agent_id, {
+            aop: existing.aop + (Number(prod.aop) || 0),
+            presentations: existing.presentations + (prod.presentations || 0),
+            deals: existing.deals + (prod.deals_closed || 0),
+          });
         }
       }
 
-      // Fetch last contact timestamps from applications
-      const allAgentIds = agentData.map(a => a.id);
-      const { data: appContacts } = await supabase
-        .from("applications")
-        .select("assigned_agent_id, last_contacted_at")
-        .in("assigned_agent_id", allAgentIds)
-        .not("last_contacted_at", "is", null)
-        .order("last_contacted_at", { ascending: false });
-
+      // Build contact map
       const lastContactMap = new Map<string, string>();
-      for (const app of appContacts || []) {
+      for (const app of appContactsResult.data || []) {
         if (app.assigned_agent_id && app.last_contacted_at && !lastContactMap.has(app.assigned_agent_id)) {
           lastContactMap.set(app.assigned_agent_id, app.last_contacted_at);
         }
       }
 
-      // Fetch license progress from applications for pipeline data
-      const { data: appLicenseData } = await supabase
-        .from("applications")
-        .select("assigned_agent_id, license_progress, test_scheduled_date")
-        .in("assigned_agent_id", allAgentIds)
-        .is("terminated_at", null);
-
+      // Build license progress map
       const licenseProgressMap = new Map<string, { progress: string | null; testDate: string | null }>();
-      for (const app of appLicenseData || []) {
+      for (const app of appLicenseResult.data || []) {
         if (app.assigned_agent_id && !licenseProgressMap.has(app.assigned_agent_id)) {
           licenseProgressMap.set(app.assigned_agent_id, {
             progress: app.license_progress,
@@ -399,12 +404,8 @@ export default function DashboardCRM() {
         }
       }
 
-      // Fetch payment tracking for this week
-      const { data: payments } = await supabase
-        .from("lead_payment_tracking")
-        .select("agent_id, tier, paid")
-        .eq("week_start", weekStartStr)
-        .eq("paid", true);
+      // Build payment map
+      const payments = paymentsResult.data;
 
       const paymentMap = new Map<string, { standard: boolean; premium: boolean }>();
       payments?.forEach((p: any) => {
@@ -763,7 +764,11 @@ export default function DashboardCRM() {
               <StarRating
                 agentId={agent.id}
                 rating={agent.potentialRating}
-                onUpdate={fetchAgents}
+                onUpdate={(newRating?: number) => {
+                  if (newRating !== undefined) {
+                    setAgents(prev => prev.map(a => a.id === agent.id ? { ...a, potentialRating: newRating } : a));
+                  }
+                }}
                 size="sm"
               />
               <Button
@@ -1014,7 +1019,7 @@ export default function DashboardCRM() {
 
           <AgentNotes
             agentId={agent.id}
-            onNoteAdded={fetchAgents}
+            onNoteAdded={() => {}}
           />
         </div>
       </GlassCard>
@@ -1106,7 +1111,7 @@ export default function DashboardCRM() {
                   "p-2 cursor-pointer transition-all hover:ring-2 hover:ring-primary/50 hover:scale-[1.02]",
                   stageFilter === "in_course" && "ring-2 ring-primary"
                 )}
-                onClick={() => setExpandedColumn("in_course")}
+                onClick={() => { setExpandedColumn("in_course"); playSound("whoosh"); }}
               >
                 <div className="flex items-center gap-2">
                   <div className="p-1 rounded-lg bg-primary/10">
@@ -1124,7 +1129,7 @@ export default function DashboardCRM() {
                   "p-2 cursor-pointer transition-all hover:ring-2 hover:ring-accent/50 hover:scale-[1.02]",
                   stageFilter === "meeting_eligible" && "ring-2 ring-accent"
                 )}
-                onClick={() => setExpandedColumn("meeting_eligible")}
+                onClick={() => { setExpandedColumn("meeting_eligible"); playSound("whoosh"); }}
               >
                 <div className="flex items-center gap-2">
                   <div className="p-1 rounded-lg bg-accent/10">
@@ -1142,7 +1147,7 @@ export default function DashboardCRM() {
                   "p-2 cursor-pointer transition-all hover:ring-2 hover:ring-primary/50 hover:scale-[1.02]",
                   stageFilter === "in_training" && "ring-2 ring-primary"
                 )}
-                onClick={() => setExpandedColumn("in_training")}
+                onClick={() => { setExpandedColumn("in_training"); playSound("whoosh"); }}
               >
                 <div className="flex items-center gap-2">
                   <div className="p-1 rounded-lg bg-primary/10">
@@ -1160,7 +1165,7 @@ export default function DashboardCRM() {
                   "p-2 cursor-pointer transition-all hover:ring-2 hover:ring-primary/50 hover:scale-[1.02]",
                   stageFilter === "live" && "ring-2 ring-primary"
                 )}
-                onClick={() => setExpandedColumn("live")}
+                onClick={() => { setExpandedColumn("live"); playSound("whoosh"); }}
               >
                 <div className="flex items-center gap-2">
                   <div className="p-1 rounded-lg bg-primary/10">
@@ -1178,7 +1183,7 @@ export default function DashboardCRM() {
                   "p-2 cursor-pointer transition-all hover:ring-2 hover:ring-destructive/50 hover:scale-[1.02]",
                   stageFilter === "critical" && "ring-2 ring-destructive"
                 )}
-                onClick={() => setExpandedColumn("critical")}
+                onClick={() => { setExpandedColumn("critical"); playSound("whoosh"); }}
               >
                 <div className="flex items-center gap-2">
                   <div className="p-1 rounded-lg bg-destructive/10">
@@ -1196,7 +1201,7 @@ export default function DashboardCRM() {
                   "p-2 cursor-pointer transition-all hover:ring-2 hover:ring-emerald-500/50 hover:scale-[1.02]",
                   expandedColumn === "paid" && "ring-2 ring-emerald-500"
                 )}
-                onClick={() => setExpandedColumn("paid")}
+                onClick={() => { setExpandedColumn("paid"); playSound("whoosh"); }}
               >
                 <div className="flex items-center gap-2">
                   <div className="p-1 rounded-lg bg-emerald-500/10">

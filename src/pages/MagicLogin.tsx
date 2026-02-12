@@ -40,16 +40,24 @@ export default function MagicLogin() {
       setState("verifying");
 
       // Call verify edge function to get tokenHash
-      const { data, error: fnError } = await supabase.functions.invoke("verify-magic-link", {
+      const response = await supabase.functions.invoke("verify-magic-link", {
         body: { token },
       });
 
+      const data = response.data;
+      const fnError = response.error;
+
       if (fnError || !data?.success) {
-        const errorData = data || {};
-        setError({
-          message: errorData.error || fnError?.message || "Failed to verify link",
-          code: errorData.code || "UNKNOWN_ERROR",
-        });
+        // Extract real error from edge function response body
+        let errorMsg = "Failed to verify link";
+        let errorCode = "UNKNOWN_ERROR";
+        if (data?.error) {
+          errorMsg = data.error;
+          errorCode = data.code || "UNKNOWN_ERROR";
+        } else if (fnError?.message) {
+          errorMsg = fnError.message;
+        }
+        setError({ message: errorMsg, code: errorCode });
         setState("error");
         return;
       }

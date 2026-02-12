@@ -844,7 +844,7 @@ export default function Apply() {
 
                       <div className="space-y-2">
                         <Label>Availability *</Label>
-                        <Select onValueChange={(value) => setValue("availability", value, { shouldValidate: true })}>
+                        <Select value={watch("availability") || undefined} onValueChange={(value) => setValue("availability", value, { shouldValidate: true })}>
                           <SelectTrigger className="bg-input">
                             <SelectValue placeholder="Select availability" />
                           </SelectTrigger>
@@ -863,7 +863,7 @@ export default function Apply() {
 
                       <div className="space-y-2">
                         <Label>How did you hear about us?</Label>
-                        <Select onValueChange={(value) => setValue("referralSource", value, { shouldValidate: true })}>
+                        <Select value={watch("referralSource") || undefined} onValueChange={(value) => setValue("referralSource", value, { shouldValidate: true })}>
                           <SelectTrigger className="bg-input">
                             <SelectValue placeholder="Select source" />
                           </SelectTrigger>
@@ -1064,7 +1064,21 @@ export default function Apply() {
                         <ArrowRight className="h-4 w-4 ml-2" />
                       </GradientButton>
                     ) : currentStep === 4 ? (
-                      <GradientButton type="submit" disabled={isSubmitting}>
+                      <GradientButton
+                        type="button"
+                        disabled={isSubmitting}
+                        onClick={async () => {
+                          const step4Valid = await validateStep(4);
+                          if (!step4Valid) {
+                            toast.error("Please select your availability and agree to SMS consent.");
+                            return;
+                          }
+                          handleSubmit(onSubmit, (validationErrors) => {
+                            const fieldNames = Object.keys(validationErrors);
+                            toast.error(`Please go back and fix: ${fieldNames.join(", ")}`, { duration: 6000 });
+                          })();
+                        }}
+                      >
                         {isSubmitting ? (
                           <>
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />

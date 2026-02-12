@@ -18,8 +18,8 @@ import { useSoundEffects } from "@/hooks/useSoundEffects";
 const ONBOARDING_STAGES = [
   {
     key: "onboarding",
-    label: "Onboarding",
-    description: "Initial paperwork & contracting",
+    label: "Hired",
+    description: "Agent has been hired and onboarded",
     icon: ClipboardCheck,
   },
   {

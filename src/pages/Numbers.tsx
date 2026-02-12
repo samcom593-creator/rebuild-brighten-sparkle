@@ -11,6 +11,7 @@ import { CompactLeaderboard } from "@/components/dashboard/CompactLeaderboard";
 import { AgentRankBadge } from "@/components/dashboard/AgentRankBadge";
 import { SkeletonLoader } from "@/components/ui/skeleton-loader";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+import apexIcon from "@/assets/apex-icon.png";
 
 export default function Numbers() {
   const [loading, setLoading] = useState(true);
@@ -282,7 +283,7 @@ export default function Numbers() {
   if (isAuthenticated && agentId) {
     return (
       <div className="max-w-lg mx-auto space-y-4">
-        <div className="max-w-lg mx-auto space-y-4">
+        <div className="space-y-4">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -333,6 +334,7 @@ export default function Numbers() {
       >
         <div className="bg-card/50 backdrop-blur-sm rounded-xl border border-border/50 p-6">
           <div className="text-center mb-6">
+            <img src={apexIcon} alt="Apex" className="h-12 w-12 mx-auto mb-3 rounded-lg shadow" />
             <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-emerald-400 bg-clip-text text-transparent">
               APEX Daily Numbers
             </h1>

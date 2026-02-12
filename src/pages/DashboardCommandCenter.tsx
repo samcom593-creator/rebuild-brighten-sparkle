@@ -515,12 +515,17 @@ export default function DashboardCommandCenter() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 page-enter">
         {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Command Center</h1>
-            <p className="text-muted-foreground">Full agency control. Zero spreadsheets.</p>
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-primary/10">
+              <Crown className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Command Center</h1>
+              <p className="text-muted-foreground text-sm">Full agency control. Zero spreadsheets.</p>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <LeadImporter />
@@ -546,7 +551,7 @@ export default function DashboardCommandCenter() {
         </div>
 
         {/* Summary Stats - Clickable */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 card-hover-lift">
           <Card 
             className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
             onClick={() => setStatPopup({ type: "totalAlp", open: true })}

@@ -49,8 +49,8 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile Header - only visible on small screens */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 glass-strong border-b border-border">
-        <div className="flex items-center justify-between p-4">
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 glass-strong border-b border-border shadow-sm">
+        <div className="flex items-center justify-between p-4 pt-[max(1rem,env(safe-area-inset-top))]">
           <Link to="/dashboard" className="flex items-center gap-2">
             <Crown className="h-8 w-8 text-primary" />
             <span className="text-lg font-bold gradient-text">APEX</span>
@@ -92,11 +92,11 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
       {/* Mobile Sidebar Panel */}
       <div 
         className={cn(
-          "fixed top-0 left-0 z-40 h-full w-64 lg:hidden"
+          "fixed top-0 left-0 z-40 h-full w-64 lg:hidden pt-[env(safe-area-inset-top)]"
         )}
         style={{ 
-          transform: mobileOpen ? "translateX(0)" : "translateX(-100%)",
-          transition: "transform 150ms ease-out"
+          transform: mobileOpen ? "translateX(0) scale(1)" : "translateX(-100%) scale(0.98)",
+          transition: "transform 200ms ease-out"
         }}
       >
         <GlobalSidebar

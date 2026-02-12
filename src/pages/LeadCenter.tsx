@@ -696,7 +696,7 @@ export default function LeadCenter() {
   }
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
+    <div className="space-y-6 p-4 md:p-6 page-enter">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -805,7 +805,7 @@ export default function LeadCenter() {
       </motion.div>
 
       {/* Filters */}
-      <GlassCard className="p-4">
+      <GlassCard className="p-4 sticky-filter-bar">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

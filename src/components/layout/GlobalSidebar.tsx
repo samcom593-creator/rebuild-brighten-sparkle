@@ -43,6 +43,18 @@ interface GlobalSidebarProps {
   onFullscreenToggle: () => void;
 }
 
+interface NavSection {
+  label: string;
+  items: NavItem[];
+}
+
+interface NavItem {
+  icon: React.ElementType;
+  label: string;
+  href: string;
+  special?: boolean;
+}
+
 export function GlobalSidebar({
   isOpen,
   onToggle,
@@ -56,105 +68,59 @@ export function GlobalSidebar({
   const isTouch = useIsTouchDevice();
   const { playSound } = useSoundEffects();
 
-  const navItems = useMemo(() => {
-    const items = [];
+  const navSections = useMemo(() => {
+    const sections: NavSection[] = [];
 
-    items.push({ 
-      icon: LayoutDashboard, 
-      label: "Dashboard", 
-      href: "/dashboard",
-    });
-    items.push({
-      icon: Edit3,
-      label: "Log Numbers",
-      href: "/numbers",
-    });
+    // NAVIGATION section
+    const navItems: NavItem[] = [
+      { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
+      { icon: Edit3, label: "Log Numbers", href: "/numbers", special: true },
+    ];
 
     if (isAdmin) {
-      items.push({ 
-        icon: Crown, 
-        label: "Command Center", 
-        href: "/dashboard/command",
-      });
-      items.push({ 
-        icon: Target, 
-        label: "Lead Center", 
-        href: "/dashboard/leads",
-      });
+      navItems.push({ icon: Crown, label: "Command Center", href: "/dashboard/command" });
+      navItems.push({ icon: Target, label: "Lead Center", href: "/dashboard/leads" });
+    }
+
+    sections.push({ label: "NAVIGATION", items: navItems });
+
+    // TOOLS section
+    const toolItems: NavItem[] = [];
+
+    if (isAdmin || isManager) {
+      toolItems.push({ icon: BarChart3, label: "Course Progress", href: "/course-progress" });
+      toolItems.push({ icon: Users, label: "Pipeline", href: "/dashboard/applicants" });
+      toolItems.push({ icon: BarChart3, label: "Agent Portal", href: "/agent-portal" });
+      toolItems.push({ icon: Briefcase, label: "CRM", href: "/dashboard/crm" });
+    }
+
+    if (isAdmin) {
+      toolItems.push({ icon: UserCog, label: "Accounts", href: "/dashboard/accounts" });
     }
 
     if (isAdmin || isManager) {
-      items.push({
-        icon: BarChart3,
-        label: "Course Progress",
-        href: "/course-progress",
-      });
-      items.push({ 
-        icon: Users, 
-        label: "Pipeline", 
-        href: "/dashboard/applicants",
-      });
-      items.push({ 
-        icon: BarChart3, 
-        label: "Agent Portal", 
-        href: "/agent-portal",
-      });
-      items.push({ 
-        icon: Briefcase, 
-        label: "CRM", 
-        href: "/dashboard/crm",
-      });
+      toolItems.push({ icon: Archive, label: "Aged Leads", href: "/dashboard/aged-leads" });
+      toolItems.push({ icon: Headphones, label: "Call Center", href: "/dashboard/call-center" });
     }
-
-    if (isAdmin) {
-      items.push({ 
-        icon: UserCog, 
-        label: "Accounts", 
-        href: "/dashboard/accounts",
-      });
-    }
- 
-     // Aged Leads - visible to Admin and Managers
-     if (isAdmin || isManager) {
-       items.push({ 
-         icon: Archive, 
-         label: "Aged Leads", 
-         href: "/dashboard/aged-leads",
-       });
-       items.push({ 
-         icon: Headphones, 
-         label: "Call Center", 
-         href: "/dashboard/call-center",
-       });
-     }
 
     if (isAgent && !isAdmin && !isManager) {
-      items.push({ 
-        icon: BarChart3, 
-        label: "My Portal", 
-        href: "/agent-portal",
-      });
-      items.push({ 
-        icon: BarChart3, 
-        label: "My Course", 
-        href: "/onboarding-course",
-      });
+      toolItems.push({ icon: BarChart3, label: "My Portal", href: "/agent-portal" });
+      toolItems.push({ icon: BarChart3, label: "My Course", href: "/onboarding-course" });
     }
 
-    // Purchase Leads - available to all authenticated users
-    items.push({ 
-      icon: ShoppingCart, 
-      label: "Purchase Leads", 
-      href: "/purchase-leads",
+    toolItems.push({ icon: ShoppingCart, label: "Purchase Leads", href: "/purchase-leads" });
+
+    if (toolItems.length > 0) {
+      sections.push({ label: "TOOLS", items: toolItems });
+    }
+
+    // SETTINGS section
+    sections.push({
+      label: "SETTINGS",
+      items: [{ icon: Settings, label: "Settings", href: "/dashboard/settings" }],
     });
 
-    items.push({
-      icon: Settings, 
-      label: "Settings", 
-      href: "/dashboard/settings",
-    });
-
-    return items;
+    return sections;
   }, [isAdmin, isManager, isAgent]);
 
   const handleLogout = useCallback(async () => {
@@ -163,26 +129,19 @@ export function GlobalSidebar({
   }, [navigate]);
 
   const isCollapsed = !isOpen;
-
-  // Only show tooltips on desktop when sidebar is collapsed
   const showTooltips = isCollapsed && !isTouch;
 
-  // Wrapper for conditional tooltip
-  const ConditionalTooltip = ({ 
-    children, 
-    label 
-  }: { 
-    children: React.ReactNode; 
+  const ConditionalTooltip = ({
+    children,
+    label,
+  }: {
+    children: React.ReactNode;
     label: string;
   }) => {
-    if (!showTooltips) {
-      return <>{children}</>;
-    }
+    if (!showTooltips) return <>{children}</>;
     return (
       <Tooltip delayDuration={100}>
-        <TooltipTrigger asChild>
-          {children}
-        </TooltipTrigger>
+        <TooltipTrigger asChild>{children}</TooltipTrigger>
         <TooltipContent side="right" sideOffset={8} className="font-medium">
           {label}
         </TooltipContent>
@@ -190,54 +149,51 @@ export function GlobalSidebar({
     );
   };
 
-  // Check if item is the special "Log Numbers" link
-  const isLogNumbersItem = (href: string) => href === "/numbers";
-
-  // Navigation item component with tap hardening
-  const NavItem = ({ item, isActive }: { item: typeof navItems[0], isActive: boolean }) => {
-    const isSpecial = isLogNumbersItem(item.href);
+  const NavItemComponent = ({ item, isActive }: { item: NavItem; isActive: boolean }) => {
     const linkContent = (
       <Link
         to={item.href}
         onClick={() => { if (!isActive) playSound("click"); }}
         className={cn(
-          "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
-          "touch-action-manipulation select-none",
+          "flex items-center gap-3 px-3 py-2.5 rounded-r-lg transition-all duration-200 min-h-[44px] lg:min-h-[40px]",
+          "touch-action-manipulation select-none group/nav",
           isActive
-            ? "bg-primary text-primary-foreground"
-            : isSpecial
-              ? "bg-gradient-to-r from-primary/15 to-primary/5 text-primary border border-primary/25 hover:from-primary/25 hover:to-primary/10 hover:border-primary/40 shadow-sm"
-              : "text-muted-foreground hover:bg-muted hover:text-foreground active:bg-muted/80",
-          isCollapsed && "justify-center px-2"
+            ? "nav-item-active"
+            : item.special
+              ? "bg-gradient-to-r from-primary/15 to-primary/5 text-primary border border-primary/25 hover:from-primary/25 hover:to-primary/10 hover:border-primary/40 shadow-sm rounded-lg"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground active:bg-muted/80 rounded-lg",
+          isCollapsed && "justify-center px-2 rounded-lg"
         )}
         style={{ touchAction: "manipulation" }}
       >
-        <item.icon className={cn("h-5 w-5 flex-shrink-0", isSpecial && !isActive && "text-primary")} />
+        <item.icon
+          className={cn(
+            "h-5 w-5 flex-shrink-0 transition-transform duration-150",
+            item.special && !isActive && "text-primary",
+            isCollapsed && "group-hover/nav:scale-110"
+          )}
+        />
         {!isCollapsed && (
-          <span className={cn("font-medium text-sm truncate", isSpecial && !isActive && "font-semibold")}>{item.label}</span>
+          <span className={cn("font-medium text-sm truncate", item.special && !isActive && "font-semibold")}>
+            {item.label}
+          </span>
         )}
         {isActive && !isCollapsed && (
           <ChevronRight className="h-4 w-4 ml-auto flex-shrink-0" />
         )}
-        {isSpecial && !isActive && !isCollapsed && (
+        {item.special && !isActive && !isCollapsed && (
           <span className="ml-auto h-2 w-2 rounded-full bg-primary animate-pulse flex-shrink-0" />
         )}
       </Link>
     );
 
-    return (
-      <ConditionalTooltip label={item.label}>
-        {linkContent}
-      </ConditionalTooltip>
-    );
+    return <ConditionalTooltip label={item.label}>{linkContent}</ConditionalTooltip>;
   };
 
-  // Calculate width for CSS transition
   const sidebarWidth = isFullscreen ? 0 : isCollapsed ? 64 : 256;
 
   return (
     <>
-      {/* Sidebar with CSS transitions instead of Framer Motion */}
       <aside
         className={cn(
           "fixed top-0 left-0 z-40 h-full glass-strong border-r border-border overflow-hidden",
@@ -247,7 +203,7 @@ export function GlobalSidebar({
         style={{ width: sidebarWidth }}
       >
         <div className="flex flex-col h-full">
-          {/* Logo & Toggle */}
+          {/* Logo & Toggle - collapse toggle integrated into header */}
           <div className={cn(
             "flex items-center border-b border-border transition-all",
             isCollapsed ? "justify-center p-4" : "justify-between p-4"
@@ -270,19 +226,33 @@ export function GlobalSidebar({
                 <div className="absolute inset-0 bg-primary/20 blur-lg rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
               </Link>
             )}
-            {!isCollapsed && (isAdmin || isManager) && (
-              <ConditionalTooltip label="Add Team Member">
+            {/* Slim collapse toggle in header row */}
+            <div className="flex items-center gap-1">
+              {!isCollapsed && (isAdmin || isManager) && (
+                <ConditionalTooltip label="Add Team Member">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowInviteModal(true)}
+                    className="h-7 w-7 text-primary hover:bg-primary/10"
+                    style={{ touchAction: "manipulation" }}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </ConditionalTooltip>
+              )}
+              <ConditionalTooltip label={isCollapsed ? "Expand" : "Collapse"}>
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => setShowInviteModal(true)}
-                  className="h-8 w-8 text-primary hover:bg-primary/10"
+                  onClick={onToggle}
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
                   style={{ touchAction: "manipulation" }}
                 >
-                  <Plus className="h-5 w-5" />
+                  {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
                 </Button>
               </ConditionalTooltip>
-            )}
+            </div>
           </div>
 
           {/* Quick Add Button - Collapsed State */}
@@ -302,39 +272,28 @@ export function GlobalSidebar({
             </div>
           )}
 
-          {/* Collapse Toggle Button */}
-          <div className="px-2 py-2 border-b border-border">
-            <ConditionalTooltip label={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onToggle}
-                className={cn(
-                  "w-full transition-all",
-                  isCollapsed ? "justify-center" : "justify-start"
+          {/* Navigation with section groups */}
+          <nav className="flex-1 p-2 overflow-y-auto sidebar-nav-scroll relative">
+            {navSections.map((section, sIdx) => (
+              <div key={section.label}>
+                {/* Section label - only when expanded */}
+                {!isCollapsed && (
+                  <div className="nav-section-label">{section.label}</div>
                 )}
-                style={{ touchAction: "manipulation" }}
-              >
-                {isCollapsed ? (
-                  <ChevronRight className="h-4 w-4" />
-                ) : (
-                  <>
-                    <ChevronLeft className="h-4 w-4 mr-2" />
-                    <span className="text-sm">Collapse</span>
-                  </>
+                {/* Divider for collapsed state between sections */}
+                {isCollapsed && sIdx > 0 && (
+                  <div className="my-2 mx-2 border-t border-border/50" />
                 )}
-              </Button>
-            </ConditionalTooltip>
-          </div>
-
-          {/* Navigation */}
-          <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
-            {navItems.map((item) => {
-              const isActive = location.pathname === item.href;
-              return (
-                <NavItem key={item.href} item={item} isActive={isActive} />
-              );
-            })}
+                <div className="space-y-0.5">
+                  {section.items.map((item) => {
+                    const isActive = location.pathname === item.href;
+                    return <NavItemComponent key={item.href} item={item} isActive={isActive} />;
+                  })}
+                </div>
+              </div>
+            ))}
+            {/* Gradient fade at bottom when content overflows */}
+            <div className="pointer-events-none sticky bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-sidebar-background to-transparent" />
           </nav>
 
           {/* User & Actions */}
@@ -356,7 +315,6 @@ export function GlobalSidebar({
               <ThemeToggle />
             </div>
 
-            {/* Fullscreen toggle */}
             <ConditionalTooltip label={isFullscreen ? "Exit Fullscreen" : "Fullscreen Mode"}>
               <Button
                 variant="ghost"
@@ -382,7 +340,6 @@ export function GlobalSidebar({
               </Button>
             </ConditionalTooltip>
 
-            {/* Logout */}
             <ConditionalTooltip label="Sign Out">
               <Button
                 variant="ghost"

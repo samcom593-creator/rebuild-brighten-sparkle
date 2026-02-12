@@ -1,62 +1,85 @@
 
 
-# Fix Call Center: Reassignment Persistence, Lead Skipping, and Filtering
+# Ban List and Duplicate Detection for Aged Leads and Lead Center
 
-## Problems Identified
+## Overview
 
-1. **Reassigned leads come back after refresh** -- When you reassign a lead, it gets removed from your screen temporarily (local state), but when you refresh or restart the Call Center, it reappears. This happens because the reassignment updates the database correctly, but the lead-fetching query does not consistently filter out leads that belong to other managers. Specifically, if your agent ID lookup fails or is delayed, the filter is skipped entirely.
+Add a "banned_prospects" table that acts as a blocklist. When you ban a prospect from either Aged Leads or Lead Center, their name, email, and phone are stored. Any future application or aged lead import that matches a banned record is automatically rejected. Existing leads matching banned records are flagged in the UI.
 
-2. **Cannot skip through leads freely** -- The current "Skip" button only moves forward one lead at a time and stops at the end. There is no way to go backwards or freely navigate the queue.
+## Database Changes
 
-3. **Filter between new and old leads** -- The Sort Order filter exists (oldest first / newest first), but it only controls sort direction. There is no dedicated "New Leads" vs "Old Leads" split that lets you call only recent opt-ins or only aged/older leads.
+### New Table: `banned_prospects`
 
----
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid | Primary key |
+| email | text | Normalized, nullable |
+| phone | text | Last 10 digits, nullable |
+| first_name | text | Lowercase, nullable |
+| last_name | text | Lowercase, nullable |
+| reason | text | Optional note |
+| banned_by | uuid | Auth user who banned |
+| created_at | timestamptz | Default now() |
 
-## Fixes
+- RLS: Admin-only for all operations
+- Unique constraint on email (when not null) to prevent duplicate bans
 
-### 1. Reassignment Persistence (Critical Fix)
+### Duplicate Detection in Aged Leads
 
-**Root cause**: The `agentId` state starts as `null` and loads asynchronously. If the lead fetch runs before `agentId` resolves, no assignment filter is applied, returning ALL leads regardless of who they belong to.
+Add a database function `check_banned_prospect(email text, phone text, first_name text, last_name text)` that returns true if any banned record matches on email OR normalized phone OR (first_name + last_name combo). This function will be called:
 
-**Fix in `CallCenter.tsx`**:
-- Block the "Start Calling" button until `agentId` has loaded (show a loading state)
-- Require `agentId` to be non-null before executing the fetch query
-- If `agentId` is null when fetching, return empty results instead of unfiltered results
-- This ensures the database queries always include the `assigned_manager_id = agentId` / `assigned_agent_id = agentId` filter
+1. During aged lead import (AgedLeadImporter) -- skip/flag banned matches
+2. In the submit-application edge function -- reject with 403 if banned
+3. On the UI when rendering lead lists -- show a warning badge
 
-### 2. Lead Navigation (Skip Forward and Back)
+## UI Changes
 
-**Fix in `CallCenter.tsx`**:
-- Add a "Previous" button alongside the existing "Skip" (Next) button
-- Allow navigating backwards through already-viewed leads
-- Show current position indicator (e.g., "Lead 3 of 45")
+### Aged Leads Page (`DashboardAgedLeads.tsx`)
 
-**Fix in `CallCenterActions.tsx`**:
-- Add an `onPrevious` callback prop
-- Add a back/previous button to the action bar
+- Add a "Ban" option in the existing dropdown menu (the three-dot menu) for each lead row
+- Clicking "Ban" shows a confirmation dialog, then inserts into `banned_prospects` and deletes/archives the lead from `aged_leads`
+- Add duplicate detection: highlight leads that share email/phone with other leads in the list (client-side grouping)
 
-### 3. Ensure Filters Work Correctly
+### Lead Center Page (`LeadCenter.tsx`)
 
-The existing filters already handle source (aged leads vs applications), license status, lead status, and sort order. No structural changes needed -- the real issue was that the agentId race condition made it look like filters were broken.
+- Add a "Ban" option in the action area for each lead row
+- Same flow: confirm, insert into `banned_prospects`, mark lead as terminated/deleted
+- For applications, set `terminated_at` and `termination_reason = 'banned'`
+- For aged leads, delete or update status to "banned"
 
----
+### Submit Application Edge Function
+
+- Add a check against `banned_prospects` table before inserting
+- If match found, return 403 with message "This applicant has been blocked"
+
+### Aged Lead Importer
+
+- Cross-reference each imported row against `banned_prospects`
+- Skip banned matches and report them in the import summary
 
 ## Technical Details
 
-### File: `src/pages/CallCenter.tsx`
+### Ban Flow (both pages)
 
-1. Guard the fetch: if `agentId` is falsy, skip the fetch entirely and set leads to empty
-2. Disable the "Start Calling" button while `agentId` is loading
-3. Add `handlePrevious` function that decrements `currentIndex` (min 0)
-4. Pass `onPrevious` to `CallCenterActions`
-5. Add lead position display ("Lead X of Y")
+```text
+User clicks Ban -> Confirmation dialog -> 
+  INSERT into banned_prospects (email, phone, first_name, last_name) ->
+  For applications: UPDATE terminated_at, termination_reason = 'banned' ->
+  For aged_leads: DELETE or UPDATE status = 'banned' ->
+  Remove from local state -> Toast confirmation
+```
 
-### File: `src/components/callcenter/CallCenterActions.tsx`
+### Matching Logic
 
-1. Add `onPrevious` prop
-2. Add a "Previous" / back button to the UI
+- Email: exact match (case-insensitive, trimmed)
+- Phone: last 10 digits match (strip non-digits)
+- Name: exact match on lowercase first_name + last_name combo (supplementary check)
 
-### File: `src/components/callcenter/CallCenterFilters.tsx`
+### Files to Create/Modify
 
-No changes needed -- the filters already cover source, license, status, progress, and sort order.
+1. **New migration**: Create `banned_prospects` table with RLS policies and `check_banned_prospect` function
+2. **`src/pages/DashboardAgedLeads.tsx`**: Add Ban button in dropdown, confirmation dialog, ban handler
+3. **`src/pages/LeadCenter.tsx`**: Add Ban button in actions, confirmation dialog, ban handler
+4. **`supabase/functions/submit-application/index.ts`**: Add banned check before duplicate check
+5. **`src/components/dashboard/AgedLeadImporter.tsx`**: Add banned prospect filtering during import
 

@@ -864,8 +864,8 @@ const handler = async (req: Request): Promise<Response> => {
       referral_source: data.referralSource ?? null,
       notes: null,
       
-      // Assign to the selected referral agent if provided
-      assigned_agent_id: data.selectedReferralAgentId ?? null,
+      // Assign to the selected referral agent, or default to admin
+      assigned_agent_id: data.selectedReferralAgentId ?? "7c3c5581-3544-437f-bfe2-91391afb217d",
 
       status: "new",
       reviewed_at: null,

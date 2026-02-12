@@ -355,11 +355,36 @@ export const AgedLeadImporter = forwardRef<HTMLDivElement, AgedLeadImporterProps
 
       setImporting(true);
       let successCount = 0;
-      let errorCount = 0;
+      let bannedCount = 0;
 
       try {
+        // Check each lead against the ban list
+        const leadsToCheck = validLeads;
+        const unbannedLeads: ParsedLead[] = [];
+
+        for (const lead of leadsToCheck) {
+          const { data: isBanned } = await supabase.rpc("check_banned_prospect" as any, {
+            p_email: lead.email || null,
+            p_phone: lead.phone || null,
+            p_first_name: lead.first_name || null,
+            p_last_name: lead.last_name || null,
+          });
+
+          if (isBanned) {
+            bannedCount++;
+          } else {
+            unbannedLeads.push(lead);
+          }
+        }
+
+        if (unbannedLeads.length === 0) {
+          toast.error(`All ${bannedCount} leads are on the ban list`);
+          setImporting(false);
+          return;
+        }
+
         // Batch insert for performance
-        const leadsToInsert = validLeads.map((lead) => ({
+        const leadsToInsert = unbannedLeads.map((lead) => ({
           first_name: lead.first_name,
           last_name: lead.last_name || null,
           email: lead.email || null,
@@ -378,11 +403,12 @@ export const AgedLeadImporter = forwardRef<HTMLDivElement, AgedLeadImporterProps
         if (error) throw error;
 
         successCount = leadsToInsert.length;
-        toast.success(`Imported ${successCount} leads successfully!`);
+        const summaryParts = [`Imported ${successCount} leads successfully!`];
+        if (bannedCount > 0) summaryParts.push(`${bannedCount} banned prospects skipped.`);
+        toast.success(summaryParts.join(" "));
 
         // Send emails in background (don't await all of them)
         if (data && data.length > 0) {
-          // Fire and forget - send emails asynchronously
           data.forEach((lead) => {
             supabase.functions.invoke("send-aged-lead-email", {
               body: { email: lead.email, firstName: lead.first_name, managerId: selectedManager },

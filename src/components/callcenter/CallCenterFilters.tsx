@@ -29,6 +29,7 @@ interface CallCenterFiltersProps {
   onProgressChange: (value: ProgressFilter) => void;
   onSortOrderChange: (value: SortOrder) => void;
   onStart: () => void;
+  disabled?: boolean;
   className?: string;
 }
 
@@ -63,6 +64,7 @@ export function CallCenterFilters({
   onProgressChange,
   onSortOrderChange,
   onStart,
+  disabled,
   className,
 }: CallCenterFiltersProps) {
   return (
@@ -229,6 +231,7 @@ export function CallCenterFilters({
             >
               <Button
                 onClick={onStart}
+                disabled={disabled}
                 size="lg"
                 className="w-full relative overflow-hidden bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/20 group"
               >

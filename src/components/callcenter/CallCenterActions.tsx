@@ -5,6 +5,7 @@ import {
   XCircle,
   FileText,
   ChevronRight,
+  ChevronLeft,
   Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -59,14 +60,18 @@ const actions: ActionDef[] = [
 interface CallCenterActionsProps {
   onAction: (actionId: ActionId) => void;
   onSkip: () => void;
+  onPrevious?: () => void;
   processing: boolean;
+  canGoPrevious?: boolean;
   className?: string;
 }
 
 export function CallCenterActions({
   onAction,
   onSkip,
+  onPrevious,
   processing,
+  canGoPrevious,
   className,
 }: CallCenterActionsProps) {
   const [activeKey, setActiveKey] = useState<string | null>(null);
@@ -76,7 +81,7 @@ export function CallCenterActions({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
-      if (["1", "2", "3", "n"].includes(key)) {
+      if (["1", "2", "3", "n", "p"].includes(key)) {
         setActiveKey(key);
       }
     };
@@ -239,19 +244,36 @@ export function CallCenterActions({
         </motion.button>
       </motion.div>
 
-      {/* Skip Button */}
+      {/* Navigation Buttons */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.25 }}
+        className="flex gap-2"
       >
+        {onPrevious && (
+          <Button
+            variant="ghost"
+            size="lg"
+            onClick={onPrevious}
+            disabled={processing || !canGoPrevious}
+            className={cn(
+              "flex-1 group hover:bg-muted/50",
+              activeKey === "p" && "bg-muted/50"
+            )}
+          >
+            <ChevronLeft className="h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform" />
+            <span>Previous</span>
+            <span className="text-[10px] opacity-40 ml-4 hidden sm:inline">[P]</span>
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="lg"
           onClick={onSkip}
           disabled={processing}
           className={cn(
-            "w-full group hover:bg-muted/50",
+            "flex-1 group hover:bg-muted/50",
             activeKey === "n" && "bg-muted/50"
           )}
         >

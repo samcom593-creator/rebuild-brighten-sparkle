@@ -430,7 +430,7 @@ export default function DashboardCRM() {
         return {
           id: agent.id,
           userId: agent.user_id || "",
-          name: profile?.full_name || "Unknown Agent",
+          name: profile?.full_name || agent.display_name || "Unknown Agent",
           email: profile?.email || "",
           phone: profile?.phone || undefined,
           avatarUrl: profile?.avatar_url || undefined,

@@ -327,10 +327,10 @@ export default function LeadCenter() {
   // Stats
   const stats = useMemo(() => {
     return {
-      total: leads.length,
-      unassigned: leads.filter((l) => !l.assignedAgentId).length,
+      newDripIns: leads.filter((l) => l.source === "applications" && l.status === "new").length,
+      contacted: leads.filter((l) => !!l.contactedAt).length,
+      closed: leads.filter((l) => l.status === "hired" || l.status === "contracted").length,
       licensed: leads.filter((l) => l.licenseStatus === "licensed").length,
-      new: leads.filter((l) => l.source === "applications" && l.status === "new").length,
     };
   }, [leads]);
 
@@ -747,22 +747,31 @@ export default function LeadCenter() {
       >
         {[
           {
-            label: "Total Leads",
-            value: stats.total,
-            icon: Users,
-            iconColor: "text-primary",
-            bgColor: "bg-primary/10",
-            onClick: () => { setFilterManager("all"); setFilterStatus("all"); setFilterLicense("all"); setFilterSource("all"); },
-            active: filterManager === "all" && filterStatus === "all" && filterLicense === "all" && filterSource === "all",
+            label: "New Drip-Ins",
+            value: stats.newDripIns,
+            icon: Clock,
+            iconColor: "text-blue-500",
+            bgColor: "bg-blue-500/10",
+            onClick: () => { setFilterStatus("new"); setFilterManager("all"); setFilterLicense("all"); setFilterSource("applications"); },
+            active: filterStatus === "new" && filterSource === "applications",
           },
           {
-            label: "Unassigned",
-            value: stats.unassigned,
-            icon: UserX,
-            iconColor: "text-amber-500",
-            bgColor: "bg-amber-500/10",
-            onClick: () => { setFilterManager("unassigned"); setFilterStatus("all"); setFilterLicense("all"); setFilterSource("all"); },
-            active: filterManager === "unassigned",
+            label: "Contacted",
+            value: stats.contacted,
+            icon: Phone,
+            iconColor: "text-purple-500",
+            bgColor: "bg-purple-500/10",
+            onClick: () => { setFilterStatus("contacted"); setFilterManager("all"); setFilterLicense("all"); setFilterSource("all"); },
+            active: filterStatus === "contacted",
+          },
+          {
+            label: "Closed",
+            value: stats.closed,
+            icon: Users,
+            iconColor: "text-emerald-500",
+            bgColor: "bg-emerald-500/10",
+            onClick: () => { setFilterStatus("hired"); setFilterManager("all"); setFilterLicense("all"); setFilterSource("all"); },
+            active: filterStatus === "hired",
           },
           {
             label: "Licensed",
@@ -772,15 +781,6 @@ export default function LeadCenter() {
             bgColor: "bg-emerald-500/10",
             onClick: () => { setFilterLicense("licensed"); setFilterManager("all"); setFilterStatus("all"); setFilterSource("all"); },
             active: filterLicense === "licensed",
-          },
-          {
-            label: "New Leads",
-            value: stats.new,
-            icon: Clock,
-            iconColor: "text-blue-500",
-            bgColor: "bg-blue-500/10",
-            onClick: () => { setFilterStatus("new"); setFilterManager("all"); setFilterLicense("all"); setFilterSource("applications"); },
-            active: filterStatus === "new" && filterSource === "applications",
           },
         ].map((card) => (
           <GlassCard
@@ -838,12 +838,10 @@ export default function LeadCenter() {
               <SelectItem value="all">All Statuses</SelectItem>
               <SelectItem value="new">New</SelectItem>
               <SelectItem value="not_contacted">Not Contacted</SelectItem>
-              <SelectItem value="reviewing">Reviewing / Hired</SelectItem>
               <SelectItem value="contacted">Contacted</SelectItem>
-              <SelectItem value="interview">Interview</SelectItem>
-              <SelectItem value="contracting">Contracting</SelectItem>
-              <SelectItem value="approved">Contracted</SelectItem>
-              <SelectItem value="rejected">Not Qualified</SelectItem>
+              <SelectItem value="hired">Hired</SelectItem>
+              <SelectItem value="contracted">Contracted</SelectItem>
+              <SelectItem value="not_qualified">Not Qualified</SelectItem>
             </SelectContent>
           </Select>
           <Select value={filterLicense} onValueChange={setFilterLicense}>
@@ -949,7 +947,9 @@ export default function LeadCenter() {
                             statusColors[statusColorKey] || "bg-muted text-muted-foreground"
                           )}
                         >
-                          {displayStatus}
+                          {(lead.status === "hired" || lead.status === "contracted") && lead.assignedAgentName
+                            ? `Closed by ${lead.assignedAgentName}`
+                            : displayStatus}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -1013,11 +1013,13 @@ export default function LeadCenter() {
                             recipientName={`${lead.firstName} ${lead.lastName}`}
                             leadSource={lead.source}
                           />
-                          <ResendLicensingButton
-                            recipientEmail={lead.email}
-                            recipientName={`${lead.firstName} ${lead.lastName}`}
-                            licenseStatus={lead.licenseStatus as "licensed" | "unlicensed" | "pending"}
-                          />
+                          {lead.licenseStatus !== "licensed" && (
+                            <ResendLicensingButton
+                              recipientEmail={lead.email}
+                              recipientName={`${lead.firstName} ${lead.lastName}`}
+                              licenseStatus={lead.licenseStatus as "licensed" | "unlicensed" | "pending"}
+                            />
+                          )}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon" className="h-8 w-8">

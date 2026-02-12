@@ -382,6 +382,10 @@ export default function LogNumbers() {
     { key: "deals_closed", label: "Closes", emoji: "🏆", step: 1 },
   ];
 
+  const steps: Step[] = ["search", "select", "new-agent", "production", "leaderboard"];
+  const stepLabels = ["Search", "Select", "New Agent", "Production", "Leaderboard"];
+  const currentStepIndex = steps.indexOf(step);
+
   return (
     <DashboardLayout>
       <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
@@ -408,6 +412,19 @@ export default function LogNumbers() {
           <p className="text-muted-foreground mt-1">Daily production entry</p>
         </div>
 
+        {/* Step Progress Indicator */}
+        <div className="flex items-center justify-center gap-1.5 mb-5">
+          {steps.filter(s => s !== "new-agent" || step === "new-agent").map((s, i) => (
+            <div
+              key={s}
+              className={cn(
+                "h-1.5 rounded-full transition-all duration-300",
+                s === step ? "w-8 bg-primary" : i < currentStepIndex ? "w-4 bg-primary/50" : "w-4 bg-muted"
+              )}
+            />
+          ))}
+        </div>
+
         <AnimatePresence initial={false}>
           {/* Step 1: Search */}
           {step === "search" && (
@@ -417,7 +434,7 @@ export default function LogNumbers() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
             >
-              <GlassCard className="p-6">
+              <GlassCard className="p-4 sm:p-6">
                 <div className="space-y-4">
                   <div>
                     <Label htmlFor="search" className="text-sm text-muted-foreground">

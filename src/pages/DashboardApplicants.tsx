@@ -457,7 +457,7 @@ export default function DashboardApplicants() {
         className="opacity-100"
       >
         <GlassCard className={cn(
-          "p-4 hover:bg-muted/50 transition-all duration-300",
+          "p-4 hover:bg-muted/50 transition-all duration-300 card-hover-lift",
           isTerminated && "opacity-60",
           isHighlighted && "ring-2 ring-primary shadow-lg shadow-primary/20 animate-pulse"
         )}>
@@ -757,10 +757,17 @@ export default function DashboardApplicants() {
         animate={{ opacity: 1, y: 0 }}
         className="mb-8"
       >
-        <h1 className="text-3xl font-bold mb-2">Applicants</h1>
-        <p className="text-muted-foreground">
-          Manage and track your assigned applicants
-        </p>
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-primary/10">
+            <Users className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold">Applicants</h1>
+            <p className="text-muted-foreground text-sm">
+              Manage and track your assigned applicants
+            </p>
+          </div>
+        </div>
       </motion.div>
 
       {/* Stats - Clickable to filter */}

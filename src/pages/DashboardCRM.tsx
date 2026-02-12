@@ -708,7 +708,11 @@ export default function DashboardCRM() {
     const isInFieldActive = agent.onboardingStage === "evaluated";
 
     return (
-      <GlassCard className={cn("p-2", agent.isDeactivated && "opacity-60")}>
+      <div
+        className="animate-stagger-in"
+        style={{ animationDelay: `${index * 30}ms` }}
+      >
+      <GlassCard className={cn("p-2 card-hover-lift", agent.isDeactivated && "opacity-60")}>
         <div className="flex flex-col gap-1.5">
           {/* Top Row: Agent Info + Star Rating + Deactivate */}
           <div className="flex items-start justify-between gap-1.5">
@@ -1077,12 +1081,13 @@ export default function DashboardCRM() {
           />
         </div>
       </GlassCard>
+      </div>
     );
   };
 
   return (
     <DashboardLayout>
-      <div className="space-y-4">
+      <div className="space-y-4 page-enter">
         {/* AbandonedLeadsPanel removed - exists only in Admin Panel now */}
 
         {/* Header */}

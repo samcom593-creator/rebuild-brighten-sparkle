@@ -1,79 +1,127 @@
 
+# Add Animations and Sounds Site-Wide + Fix Pipeline Speed
 
-# Fix Course, Stop Auto-Reload, Ensure Emails Work
+## Problem Analysis
 
-## Current Situation
+### Pipeline Speed
+The CRM Pipeline page (`DashboardCRM.tsx`) runs 8+ sequential database queries on every load:
+1. Current agent lookup
+2. All agents query
+3. All profiles query
+4. Manager agents query
+5. Manager profiles query
+6. Monthly production query
+7. Application contacts query
+8. License progress query
+9. Payment tracking query
 
-14 agents are enrolled in the course. 3 have completed it. 7 are stuck at 0% video progress -- they may have logged in but video tracking isn't registering. 1 agent (Johnivan Bush) still has a duplicate record with a different email.
+These run one after another (not in parallel), causing multi-second load times. The page also calls `fetchAgents` (full reload) on every minor action like star rating or note update.
 
----
+### Missing Sounds
+Sound effects exist in only 5 components: AttendanceGrid, ManagerTeamView, OnboardingTracker, DeactivateAgentDialog, and LogNumbers. Major actions like assigning leads, deleting leads, adding agents, stage changes, and navigation have no audio feedback.
 
-## 1. Kill the Auto-Reload (Highest Priority)
-
-The PWA service worker in `main.tsx` reloads the page every time you switch back to the tab (if an update was detected). When you have multiple tabs open, this creates a reload loop because each tab triggers an update, and switching to any tab causes a reload.
-
-**Fix:** Remove the `visibilitychange` reload entirely. Instead, only flag that an update is available and let the user continue working. The update will apply naturally on the next full page load (closing and reopening the browser). This completely eliminates the mid-session reload problem.
-
-**File:** `src/main.tsx` -- Remove the `visibilitychange` event listener block entirely. Keep the `updatefound` listener to log that an update is available but never call `window.location.reload()`.
-
----
-
-## 2. Fix Video Progress Tracking
-
-7 agents have progress records with 0% video watched. The YouTube IFrame API may not be loading or firing events on mobile/restricted browsers. Two fixes:
-
-**Fix A -- Lower the fallback timer from 2 minutes to 30 seconds:** The "Mark as Watched" fallback button in `CourseVideoPlayer.tsx` currently shows after 2 minutes. Agents on mobile with restricted autoplay may never get the YouTube API to fire. Show the fallback button after 30 seconds instead.
-
-**Fix B -- Auto-create progress on page load, not just on video play:** Currently, progress is only created when `updateVideoProgress` is called (which requires the YouTube API to fire). Change `OnboardingCourse.tsx` to automatically create a progress record (0%) when the agent views a module, ensuring the "time-based safety net" in `canTakeQuiz` works (it checks `started_at` elapsed time).
-
-**Files:**
-- `src/components/course/CourseVideoPlayer.tsx` -- Change fallback timer from 120000ms to 30000ms
-- `src/pages/OnboardingCourse.tsx` -- Auto-initialize progress when viewing a module
+### Missing Animations
+Many components render statically without entrance animations or interaction feedback.
 
 ---
 
-## 3. Clean Up Duplicate Agent Record
+## Fix 1: Parallelize Pipeline Queries
 
-Johnivan Bush has two agent records:
-- `974f7934` with email `jbbush3736@gmail.com`
-- `c32f0e05` with email `jzbush3736@gmail.com`
+Change `fetchAgents` in `DashboardCRM.tsx` to run independent queries in parallel using `Promise.all` instead of sequentially. This cuts load time by ~60-70%.
 
-These are different emails so they may be intentional (typo in one). Delete the older duplicate that has no progress.
+**Current flow (sequential):**
+```text
+agents -> profiles -> managerAgents -> managerProfiles -> production -> contacts -> licenses -> payments
+```
 
-**Action:** Database cleanup -- delete the older record and its associated progress (if any).
+**New flow (parallel where possible):**
+```text
+agents -> parallel([profiles, managerAgents, production, contacts, licenses, payments])
+         managerAgents -> managerProfiles (only this is sequential)
+```
 
----
-
-## 4. Verify Email CC Chain
-
-The welcome email and course enrollment email both already CC the admin and the agent's manager. The manager lookup works correctly via `profile_id`. No code changes needed here -- just confirming the chain is intact.
-
-The `add-agent` function already:
-1. Creates the agent account
-2. Fetches the manager's contracting link
-3. Sends the welcome email with contracting link, portal link, Discord link, and coursework link
-4. CCs admin + manager
-
-The `AddToCourseButton` already:
-1. Sets `has_training_course = true` and stage to `training_online`
-2. Creates initial progress record
-3. Sends the course enrollment email with magic link
-4. CCs admin + manager
+Also: replace `fetchAgents` callbacks on minor actions (star rating, notes, attendance) with optimistic local state updates instead of full re-fetches.
 
 ---
 
-## 5. Re-send Course Emails to Stuck Agents
+## Fix 2: Add Sounds to Key Actions
 
-After the fixes are deployed, trigger a fresh course enrollment email to all 7 stuck agents so they get a new magic link and clear instructions.
+Add `useSoundEffects` to these components/pages:
+
+| Component | Action | Sound |
+|-----------|--------|-------|
+| `QuickAssignMenu` | Lead assigned | "success" |
+| `QuickAssignMenu` | Assignment failed | "error" |
+| `LeadReassignButton` | Lead reassigned | "success" |
+| `LeadReassignButton` | Reassign failed | "error" |
+| `ManagerAssignMenu` | Manager assigned | "success" |
+| `ManagerAssignMenu` | Assignment failed | "error" |
+| `AddAgentModal` | Agent added | "celebrate" |
+| `LeadCenter` | Lead deleted | "whoosh" |
+| `LeadCenter` | Delete failed | "error" |
+| `DashboardCRM` | Stage filter clicked | "click" |
+| `DashboardCRM` | Column expanded | "whoosh" |
+| `GlobalSidebar` | Navigation click | "click" |
 
 ---
 
-## Technical Summary
+## Fix 3: Add Entrance Animations
 
-| File | Change |
-|------|--------|
-| `src/main.tsx` | Remove `visibilitychange` reload listener entirely |
-| `src/components/course/CourseVideoPlayer.tsx` | Reduce fallback timer from 120s to 30s |
-| `src/pages/OnboardingCourse.tsx` | Auto-initialize progress record when viewing any module |
-| Database | Delete duplicate Johnivan Bush record |
+Add staggered fade-in animations to:
 
+| Location | Animation |
+|----------|-----------|
+| `DashboardCRM` stat cards | Staggered scale-in on mount |
+| `DashboardCRM` agent cards (overview) | Staggered fade-up |
+| `LeadCenter` table rows | Fade-in on mount |
+| `DashboardApplicants` cards | Staggered fade-in |
+| `GlobalSidebar` nav items | Subtle slide-in from left |
+
+Also add micro-interactions:
+- Buttons: `whileTap={{ scale: 0.97 }}` on all primary action buttons in the pipeline
+- Cards: subtle hover lift effect on agent cards in CRM overview
+
+---
+
+## Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/pages/DashboardCRM.tsx` | Parallelize queries, add optimistic updates, add sounds for filter/expand, add card animations |
+| `src/components/dashboard/QuickAssignMenu.tsx` | Add sound effects on assign success/error |
+| `src/components/callcenter/LeadReassignButton.tsx` | Add sound effects on reassign success/error |
+| `src/components/dashboard/ManagerAssignMenu.tsx` | Add sound effects on assign success/error |
+| `src/pages/LeadCenter.tsx` | Add sound on delete, add row entrance animations |
+| `src/components/dashboard/AddAgentModal.tsx` | Add celebrate sound on agent added |
+| `src/components/layout/GlobalSidebar.tsx` | Add click sound on nav, subtle nav item animations |
+
+---
+
+## Technical Details
+
+### Parallel Query Pattern
+```typescript
+// Instead of sequential:
+const { data: profiles } = await supabase...
+const { data: managerAgents } = await supabase...
+const { data: production } = await supabase...
+
+// Use parallel:
+const [profilesResult, managerAgentsResult, productionResult, ...] = await Promise.all([
+  supabase.from("profiles").select("...").in("user_id", userIds),
+  supabase.from("agents").select("...").in("id", managerIds),
+  supabase.from("daily_production").select("...").in("agent_id", liveAgentIds),
+  supabase.from("applications").select("...").in("assigned_agent_id", allAgentIds),
+  supabase.from("applications").select("...").in("assigned_agent_id", allAgentIds),
+  supabase.from("lead_payment_tracking").select("...").eq("week_start", weekStartStr),
+]);
+```
+
+### Optimistic Updates
+Replace `onUpdate={fetchAgents}` callbacks with local state patches:
+```typescript
+// Instead of: onUpdate={fetchAgents}
+// Use: onUpdate={(agentId, field, value) => setAgents(prev => prev.map(...))}
+```
+
+This eliminates full-page reloads on star ratings, notes, attendance changes, etc.

@@ -1,51 +1,50 @@
 
 
-# Pipeline Card Enhancements
+# Fix Magic Link Login for Course Access
 
-## What Changes
+## Root Cause
 
-### 1. Rename "Onboarding" stage to "Hired"
-The first stage in the OnboardingTracker (the clickable circle progression) currently says "Onboarding". This will be renamed to "Hired" with updated description "Agent has been hired and onboarded" since everyone in the CRM pipeline is already hired.
+The `verify-magic-link` edge function marks the token as `used_at` immediately after generating the Supabase OTP hash. If the client-side `verifyOtp` call then fails (which happens frequently on mobile Safari due to cookie/session restrictions), the token is permanently consumed. The agent clicks "Try Again" or re-opens the email link, but the token is already marked as used, so the edge function returns a 400 error -- which the Supabase client surfaces as "Edge Function returned a non-2xx status code."
 
-### 2. Always show licensing progress tag
-Currently the license progress badge only shows when it's something other than "unlicensed". It will now always show on every card:
-- **Unlicensed** (gray tag)
-- **Course Purchased** (violet tag)
-- **Finished Course** (violet tag)
-- **Test Scheduled** (blue tag with exam date)
-- **Passed Test** (green tag)
-- **Fingerprints Done** (green tag)
-- **Waiting On License** (amber tag)
-- **Licensed** (green tag)
+## The Fix
 
-### 3. Show manager badge for agents not directly under you
-When viewing as admin, any agent whose `invited_by_manager_id` is NOT your own agent ID will display a small badge like "Under KJ Vaughns" or "Under Obiajulu" so you can instantly see who manages them without tapping into the card.
+### 1. Allow token re-use within a 5-minute grace window
 
-### 4. Show last follow-up more prominently
-The "last contacted" timestamp already exists but is tiny and easy to miss. It will be moved to its own line below the email, with a clear "Last F/U:" label and relative time, using a slightly more visible style.
+Instead of permanently blocking a used token, allow re-verification if `used_at` was less than 5 minutes ago. This handles the common case where the OTP generation succeeded server-side but the client-side `verifyOtp` failed.
+
+**File:** `supabase/functions/verify-magic-link/index.ts`
+
+Change the "already used" check from a hard block to a grace period:
+- If `used_at` exists AND it was more than 5 minutes ago, return "ALREADY_USED" error
+- If `used_at` exists but it was less than 5 minutes ago, allow re-verification (generate a fresh OTP hash)
+
+This is safe because the OTP itself expires quickly, and the magic token still expires after 24 hours.
+
+### 2. Improve error handling in MagicLogin.tsx
+
+The current retry logic calls `verify-magic-link` again with the same token on OTP expiry, but that token is already marked used, so the retry always fails. With the grace window fix above, this retry will now work. Additionally:
+
+- Show the actual error message from the edge function instead of the generic "Edge Function returned a non-2xx status code"
+- Parse the response body on non-2xx to extract the real error code
+
+**File:** `src/pages/MagicLogin.tsx`
+
+Update the error extraction to handle `FunctionsHttpError` properly by reading the response body for the actual error details.
+
+### 3. No email template changes needed
+
+The course enrollment email already correctly:
+- Uses `destination: "course"` for the magic token
+- Links to the correct coursework page
+- Includes fallback instructions to sign in at `/agent-login`
+- CCs admin and manager
 
 ---
 
-## Technical Details
-
-### Files to modify
+## Technical Summary
 
 | File | Change |
 |------|--------|
-| `src/components/dashboard/OnboardingTracker.tsx` | Rename first stage from "Onboarding" to "Hired", update description |
-| `src/pages/DashboardCRM.tsx` | (1) Always show license progress badge even for "unlicensed". (2) Add manager name badge when agent is under a different manager. (3) Make last-contacted more prominent with "Last F/U:" label on its own line |
+| `supabase/functions/verify-magic-link/index.ts` | Allow re-verification within 5 min grace window instead of hard "already used" block |
+| `src/pages/MagicLogin.tsx` | Better error extraction from edge function responses |
 
-### License Progress Badge Colors
-```
-unlicensed     -> bg-slate-500/10, text-slate-400
-course_purchased -> bg-violet-500/10, text-violet-400
-finished_course  -> bg-violet-500/10, text-violet-400
-test_scheduled   -> bg-blue-500/10, text-blue-400
-passed_test      -> bg-emerald-500/10, text-emerald-400
-fingerprints_done -> bg-emerald-500/10, text-emerald-400
-waiting_on_license -> bg-amber-500/10, text-amber-400
-licensed         -> bg-green-500/10, text-green-400
-```
-
-### Manager Badge Logic
-The current user's agent ID is fetched at load time (already done in `fetchAgents`). For each agent card, if `agent.managerId` exists and differs from the current user's agent ID, show a small badge: "Under [managerName]" in a neutral style.

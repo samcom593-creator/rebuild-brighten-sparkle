@@ -1,23 +1,29 @@
 
 
-# Fix Page Reloading Issue
+# Stop Persistent Page Reloading (PWA Fix)
 
-## Root Cause
+## Problem
 
-The PWA (Progressive Web App) configuration in `vite.config.ts` has two conflicting settings:
+The previous fix removed `skipWaiting` and `clientsClaim` from the workbox config, but the root cause remains: `registerType: "autoUpdate"` in the VitePWA plugin injects a virtual module that automatically calls `registration.update()` and reloads the page when a new service worker activates. Every time a new build deploys, the app still forces a refresh mid-session.
 
-- `skipWaiting: true` -- tells new service workers to activate immediately
-- `clientsClaim: true` -- tells the new worker to take control of all open tabs right away
+## Solution
 
-Combined with `registerType: "autoUpdate"`, this causes the page to reload itself every time a new build is deployed, because the service worker immediately takes over and forces a refresh. The guard in `main.tsx` only logs a message but cannot prevent the reload since the workbox config overrides it.
+Change the PWA registration from automatic to manual (prompt-based). This means updates download silently in the background but never force a reload. The existing guard in `main.tsx` already logs when an update is available -- this change simply ensures nothing else overrides that behavior.
 
-## The Fix
+## Changes
 
-**File: `vite.config.ts`** -- Remove `skipWaiting` and `clientsClaim` from the workbox configuration. This lets the service worker update passively: it installs in the background and only activates on the next natural page load (tab close/reopen, manual refresh), which is exactly what the `main.tsx` guard intends.
+### File: `vite.config.ts`
+- Change `registerType: "autoUpdate"` to `registerType: "prompt"`
+- This tells vite-plugin-pwa to NOT auto-reload when a new service worker is found
+- The service worker still gets registered and cached assets still work
+- Updates will only apply on the next natural page load (closing and reopening the tab, or manual refresh)
 
-Changes:
-- Remove `skipWaiting: true` (line 51)
-- Remove `clientsClaim: true` (line 52)
+### File: `src/main.tsx`
+- No changes needed -- the existing service worker listener already handles update detection passively
 
-The rest of the PWA config (caching, manifest, icons) stays the same. Updates will still be downloaded in the background but won't force a mid-session reload.
+## What stays the same
+- All caching (offline support, API caching) works identically
+- The manifest, icons, and install prompt are unchanged
+- The app still works as a PWA on home screens
+- Updates are still downloaded in the background -- they just won't interrupt the user
 

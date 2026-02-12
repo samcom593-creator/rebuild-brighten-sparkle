@@ -337,17 +337,27 @@ export default function DashboardApplicants() {
     if (!terminateApp) return;
     
     setIsTerminating(true);
-    const { error } = await supabase
+    const terminatedId = terminateApp.id;
+    const { data, error } = await supabase
       .from("applications")
       .update({ 
         terminated_at: new Date().toISOString(),
         termination_reason: terminateReason.trim() || null
       })
-      .eq("id", terminateApp.id);
+      .eq("id", terminatedId)
+      .select("id");
 
     if (error) {
       toast.error("Failed to terminate lead");
+    } else if (!data || data.length === 0) {
+      toast.error("Could not terminate this lead — you may not have permission");
     } else {
+      // Optimistic UI: immediately remove from active list
+      setApplications(prev => prev.map(app => 
+        app.id === terminatedId 
+          ? { ...app, terminated_at: new Date().toISOString(), termination_reason: terminateReason.trim() || null }
+          : app
+      ));
       toast.success("Lead terminated");
       setTerminateApp(null);
       setTerminateReason("");

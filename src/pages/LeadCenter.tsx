@@ -432,10 +432,28 @@ export default function LeadCenter() {
           if (vaultError) throw vaultError;
 
           // Soft delete applications by setting terminated_at
-          await supabase
+          const { data: updatedApps, error: softDeleteError } = await supabase
             .from("applications")
             .update({ terminated_at: new Date().toISOString(), termination_reason: "Deleted via Lead Center" })
-            .in("id", applicationIds);
+            .in("id", applicationIds)
+            .select("id");
+
+          if (softDeleteError) {
+            // Roll back vault entries since soft-delete failed
+            await supabase.from("deleted_leads").delete().in("original_id", applicationIds);
+            throw new Error(`Failed to terminate applications: ${softDeleteError.message}`);
+          }
+
+          const updatedCount = updatedApps?.length ?? 0;
+          if (updatedCount < applicationIds.length) {
+            // Some rows were not updated (likely RLS blocked them) — roll back vault for those
+            const updatedSet = new Set(updatedApps?.map(a => a.id));
+            const failedIds = applicationIds.filter(id => !updatedSet.has(id));
+            if (failedIds.length > 0) {
+              await supabase.from("deleted_leads").delete().in("original_id", failedIds);
+            }
+            toast.warning(`${updatedCount} of ${applicationIds.length} leads deleted — you may not have permission to delete all selected leads`);
+          }
         }
       }
 
@@ -468,7 +486,11 @@ export default function LeadCenter() {
           if (vaultError) throw vaultError;
 
           // Hard delete aged leads
-          await supabase.from("aged_leads").delete().in("id", agedLeadIds);
+          const { error: hardDeleteError } = await supabase.from("aged_leads").delete().in("id", agedLeadIds);
+          if (hardDeleteError) {
+            await supabase.from("deleted_leads").delete().in("original_id", agedLeadIds);
+            throw new Error(`Failed to delete aged leads: ${hardDeleteError.message}`);
+          }
         }
       }
 

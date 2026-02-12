@@ -126,15 +126,20 @@ export default function AgentNumbersLogin() {
     }
   };
 
-  const redirectAfterLogin = async () => {
-    // Check if agent has training course - auto-redirect to course
+  const redirectAfterLogin = async (usedPassword?: string) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const { data: agent } = await supabase
         .from("agents")
-        .select("has_training_course, onboarding_stage")
+        .select("has_training_course, onboarding_stage, portal_password_set")
         .eq("user_id", user.id)
         .maybeSingle();
+
+      // Force password change if they used the default "123456"
+      if (usedPassword === "123456" && agent && !agent.portal_password_set) {
+        navigate("/dashboard/settings?force_password_change=true", { replace: true });
+        return;
+      }
       
       if (agent?.has_training_course && agent?.onboarding_stage === "training_online") {
         navigate("/onboarding-course", { replace: true });
@@ -157,7 +162,7 @@ export default function AgentNumbersLogin() {
       if (error) throw error;
 
       toast.success("Welcome! Let's go 🎯");
-      await redirectAfterLogin();
+      await redirectAfterLogin(data.password);
     } catch (error: any) {
       console.error("Login error:", error);
       if (error.message.includes("Invalid login")) {

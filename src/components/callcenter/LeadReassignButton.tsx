@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useRef } from "react";
+import { motion } from "framer-motion";
 import { Users, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,16 +8,12 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface Manager {
   id: string;
-  display_name: string;
-  profile?: {
-    full_name: string | null;
-  };
+  name: string;
 }
 
 interface LeadReassignButtonProps {
@@ -28,6 +24,30 @@ interface LeadReassignButtonProps {
   className?: string;
 }
 
+// Shared cache so all instances reuse the same data
+let cachedManagers: Manager[] | null = null;
+let cacheTimestamp = 0;
+const CACHE_TTL = 120_000; // 2 minutes
+
+async function getManagers(): Promise<Manager[]> {
+  const now = Date.now();
+  if (cachedManagers && now - cacheTimestamp < CACHE_TTL) {
+    return cachedManagers;
+  }
+
+  const { data, error } = await supabase.functions.invoke("get-active-managers");
+  if (error || !data?.managers || !Array.isArray(data.managers)) {
+    return cachedManagers || [];
+  }
+
+  cachedManagers = data.managers.map((m: { id: string; name: string }) => ({
+    id: m.id,
+    name: m.name,
+  }));
+  cacheTimestamp = now;
+  return cachedManagers!;
+}
+
 export function LeadReassignButton({
   leadId,
   leadSource,
@@ -36,52 +56,25 @@ export function LeadReassignButton({
   className,
 }: LeadReassignButtonProps) {
   const [open, setOpen] = useState(false);
+  const [managers, setManagers] = useState<Manager[]>([]);
+  const [loading, setLoading] = useState(false);
   const [reassigning, setReassigning] = useState(false);
   const [selectedManagerId, setSelectedManagerId] = useState<string | null>(null);
+  const hasFetched = useRef(false);
 
-  // Fetch managers
-  const { data: managers = [], isLoading: loadingManagers } = useQuery({
-    queryKey: ["managers-for-reassign"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("agents")
-        .select(`
-          id,
-          display_name,
-          profile:profiles!agents_profile_id_fkey(full_name)
-        `)
-        .eq("is_deactivated", false)
-        .order("display_name");
-
-      if (error) {
-        console.error("Error fetching managers:", error);
-        return [];
+  const handleOpenChange = async (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (isOpen && !hasFetched.current) {
+      setLoading(true);
+      try {
+        const result = await getManagers();
+        setManagers(result);
+        hasFetched.current = true;
+      } finally {
+        setLoading(false);
       }
-
-      // Filter to managers by checking user_roles
-      const { data: managerRoles } = await supabase
-        .from("user_roles")
-        .select("user_id")
-        .eq("role", "manager");
-
-      const managerUserIds = new Set(managerRoles?.map((r) => r.user_id) || []);
-
-      // Get user_ids for agents
-      const agentUserIds = await Promise.all(
-        (data || []).map(async (agent) => {
-          const { data: agentData } = await supabase
-            .from("agents")
-            .select("user_id")
-            .eq("id", agent.id)
-            .single();
-          return { ...agent, user_id: agentData?.user_id };
-        })
-      );
-
-      return agentUserIds.filter((a) => a.user_id && managerUserIds.has(a.user_id)) as Manager[];
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
+    }
+  };
 
   const handleReassign = async (managerId: string) => {
     if (!managerId || reassigning) return;
@@ -95,21 +88,16 @@ export function LeadReassignButton({
           .from("aged_leads")
           .update({ assigned_manager_id: managerId })
           .eq("id", leadId);
-
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from("applications")
           .update({ assigned_agent_id: managerId })
           .eq("id", leadId);
-
         if (error) throw error;
       }
 
-      const managerName = managers.find((m) => m.id === managerId)?.display_name ||
-        managers.find((m) => m.id === managerId)?.profile?.full_name ||
-        "Manager";
-
+      const managerName = managers.find((m) => m.id === managerId)?.name || "Manager";
       toast.success(`Lead reassigned to ${managerName}`);
       onReassigned?.(managerId);
       setOpen(false);
@@ -123,7 +111,7 @@ export function LeadReassignButton({
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -143,7 +131,7 @@ export function LeadReassignButton({
             Assign to Manager
           </div>
           
-          {loadingManagers ? (
+          {loading ? (
             <div className="flex items-center justify-center py-4">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
@@ -154,7 +142,6 @@ export function LeadReassignButton({
           ) : (
             <div className="max-h-60 overflow-y-auto">
               {managers.map((manager) => {
-                const name = manager.display_name || manager.profile?.full_name || "Unknown Manager";
                 const isSelected = manager.id === currentManagerId;
                 const isSelecting = manager.id === selectedManagerId && reassigning;
 
@@ -180,7 +167,7 @@ export function LeadReassignButton({
                     ) : (
                       <div className="w-4" />
                     )}
-                    <span className="truncate">{name}</span>
+                    <span className="truncate">{manager.name}</span>
                     {isSelected && (
                       <span className="ml-auto text-xs text-muted-foreground">Current</span>
                     )}

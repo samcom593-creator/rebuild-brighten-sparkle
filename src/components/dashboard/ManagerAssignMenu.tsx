@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Users, Check, Loader2 } from "lucide-react";
 import {
   DropdownMenu,
@@ -23,40 +23,46 @@ interface ManagerAssignMenuProps {
   onAssigned?: () => void;
 }
 
+// Shared cache so all instances reuse the same data
+let cachedManagers: Manager[] | null = null;
+let cacheTimestamp = 0;
+const CACHE_TTL = 120_000; // 2 minutes
+
+async function getManagers(): Promise<Manager[]> {
+  const now = Date.now();
+  if (cachedManagers && now - cacheTimestamp < CACHE_TTL) {
+    return cachedManagers;
+  }
+
+  const { data, error } = await supabase.functions.invoke("get-active-managers");
+  if (error || !data?.managers || !Array.isArray(data.managers)) {
+    return cachedManagers || [];
+  }
+
+  cachedManagers = data.managers.map((m: { id: string; name: string }) => ({
+    id: m.id,
+    name: m.name,
+  }));
+  cacheTimestamp = now;
+  return cachedManagers!;
+}
+
 export function ManagerAssignMenu({ agentId, currentManagerId, onAssigned }: ManagerAssignMenuProps) {
   const [managers, setManagers] = useState<Manager[]>([]);
   const [loading, setLoading] = useState(false);
   const [assigning, setAssigning] = useState(false);
+  const hasFetched = useRef(false);
 
-  useEffect(() => {
-    fetchManagers();
-  }, []);
-
-  const fetchManagers = async () => {
-    setLoading(true);
-    try {
-      // Use edge function to bypass RLS and get ALL active managers
-      const { data, error } = await supabase.functions.invoke("get-active-managers");
-
-      if (error) {
-        console.error("Error fetching managers:", error);
-        setManagers([]);
-        return;
+  const handleOpenChange = async (open: boolean) => {
+    if (open && !hasFetched.current) {
+      setLoading(true);
+      try {
+        const result = await getManagers();
+        setManagers(result);
+        hasFetched.current = true;
+      } finally {
+        setLoading(false);
       }
-
-      if (data?.managers && Array.isArray(data.managers)) {
-        setManagers(data.managers.map((m: { id: string; name: string }) => ({
-          id: m.id,
-          name: m.name,
-        })));
-      } else {
-        setManagers([]);
-      }
-    } catch (error) {
-      console.error("Error fetching managers:", error);
-      setManagers([]);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -85,7 +91,7 @@ export function ManagerAssignMenu({ agentId, currentManagerId, onAssigned }: Man
   };
 
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={handleOpenChange}>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className="gap-1.5 text-xs">
           {assigning ? (

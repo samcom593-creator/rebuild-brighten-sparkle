@@ -236,9 +236,31 @@ const handler = async (req: Request): Promise<Response> => {
       console.log(`Added initial note for agent ${newAgent.id}`);
     }
 
-    // Trigger welcome email with managerId for CC (don't wait for it)
+    // Fetch contracting link from manager's saved links
+    let contractingLink: string | undefined;
+    if (managerId) {
+      const { data: links } = await supabaseAdmin
+        .from("contracting_links")
+        .select("url")
+        .eq("manager_id", managerId)
+        .limit(1);
+      if (links?.length) {
+        contractingLink = links[0].url;
+      }
+    }
+    // Fall back to agent's own crm_setup_link
+    if (!contractingLink && crmSetupLink) {
+      contractingLink = crmSetupLink;
+    }
+
+    // Trigger welcome email with managerId for CC and contracting link
     supabaseAdmin.functions.invoke("welcome-new-agent", {
-      body: { agentName: `${firstName} ${lastName}`, agentEmail: normalizedEmail, managerId },
+      body: {
+        agentName: `${firstName} ${lastName}`,
+        agentEmail: normalizedEmail,
+        managerId,
+        contractingLink,
+      },
     }).catch((err) => console.log("Welcome email skipped:", err));
 
     return new Response(

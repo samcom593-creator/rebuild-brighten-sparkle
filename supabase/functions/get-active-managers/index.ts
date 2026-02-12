@@ -18,21 +18,15 @@ const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false },
 });
 
-interface ManagerInfo {
-  id: string;
-  name: string;
-  instagramHandle?: string;
-}
-
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log("Fetching active managers for referral dropdown...");
+    console.log("Fetching active managers (batch mode)...");
 
-    // Get all active agents who have the manager role
+    // 1. Get all active agents with user_ids in ONE query
     const { data: agents, error: agentsError } = await supabaseAdmin
       .from("agents")
       .select("id, user_id")
@@ -47,56 +41,71 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     if (!agents || agents.length === 0) {
-      console.log("No active agents found");
       return new Response(
         JSON.stringify({ managers: [] }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    const managers: ManagerInfo[] = [];
+    const userIds = agents.filter(a => a.user_id).map(a => a.user_id!);
 
-    for (const agent of agents) {
-      if (!agent.user_id) continue;
+    // 2. Batch fetch ALL manager roles in ONE query
+    const { data: managerRoles, error: rolesError } = await supabaseAdmin
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "manager")
+      .in("user_id", userIds);
 
-      // Check if this user has the manager role
-      const { data: roleData, error: roleError } = await supabaseAdmin
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", agent.user_id)
-        .eq("role", "manager")
-        .maybeSingle();
-
-      if (roleError) {
-        console.error(`Error checking role for user ${agent.user_id}:`, roleError);
-        continue;
-      }
-
-      if (roleData) {
-        // Get their profile name and Instagram handle
-        const { data: profile, error: profileError } = await supabaseAdmin
-          .from("profiles")
-          .select("full_name, instagram_handle")
-          .eq("user_id", agent.user_id)
-          .maybeSingle();
-
-        if (profileError) {
-          console.error(`Error fetching profile for user ${agent.user_id}:`, profileError);
-          continue;
-        }
-
-        if (profile?.full_name) {
-          managers.push({
-            id: agent.id,
-            name: profile.full_name,
-            instagramHandle: profile.instagram_handle || undefined,
-          });
-          console.log(`Found manager: ${profile.full_name} (@${profile.instagram_handle || 'no handle'})`);
-        }
-      }
+    if (rolesError) {
+      console.error("Error fetching roles:", rolesError);
+      return new Response(
+        JSON.stringify({ error: "Failed to fetch roles", managers: [] }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
     }
 
-    console.log(`Total managers found: ${managers.length}`);
+    const managerUserIds = new Set((managerRoles || []).map(r => r.user_id));
+
+    if (managerUserIds.size === 0) {
+      return new Response(
+        JSON.stringify({ managers: [] }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // 3. Batch fetch ALL profiles for managers in ONE query
+    const { data: profiles, error: profilesError } = await supabaseAdmin
+      .from("profiles")
+      .select("user_id, full_name, instagram_handle")
+      .in("user_id", Array.from(managerUserIds));
+
+    if (profilesError) {
+      console.error("Error fetching profiles:", profilesError);
+      return new Response(
+        JSON.stringify({ error: "Failed to fetch profiles", managers: [] }),
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
+    // Build lookup maps
+    const profileMap = new Map(
+      (profiles || []).map(p => [p.user_id, p])
+    );
+
+    // Assemble managers list
+    const managers = agents
+      .filter(a => a.user_id && managerUserIds.has(a.user_id))
+      .map(a => {
+        const profile = profileMap.get(a.user_id!);
+        return {
+          id: a.id,
+          name: profile?.full_name || "Unknown",
+          instagramHandle: profile?.instagram_handle || undefined,
+        };
+      })
+      .filter(m => m.name !== "Unknown");
+
+    console.log(`Total managers found: ${managers.length} (3 queries total)`);
 
     return new Response(
       JSON.stringify({ managers }),

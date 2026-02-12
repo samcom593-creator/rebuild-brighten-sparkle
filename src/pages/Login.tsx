@@ -51,14 +51,20 @@ export default function Login() {
 
       if (error) throw error;
 
-      // Check if agent should go to course
+      // Check if agent should go to course or force password change
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data: agent } = await supabase
           .from("agents")
-          .select("has_training_course, onboarding_stage")
+          .select("has_training_course, onboarding_stage, portal_password_set")
           .eq("user_id", user.id)
           .maybeSingle();
+
+        // Force password change if they used the default "123456"
+        if (data.password === "123456" && agent && !agent.portal_password_set) {
+          navigate("/dashboard/settings?force_password_change=true");
+          return;
+        }
         
         if (agent?.has_training_course && agent?.onboarding_stage === "training_online") {
           toast.success("Welcome! Taking you to your course 📚");

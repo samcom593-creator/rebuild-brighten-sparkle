@@ -135,7 +135,7 @@ const handler = async (req: Request): Promise<Response> => {
         user_id: userId,
         profile_id: profileId,
         display_name: fullName,
-        onboarding_stage: "evaluated", // LIVE status
+        onboarding_stage: "onboarding", // Start at Step 1
         is_deactivated: false,
         is_inactive: false,
         status: "active",

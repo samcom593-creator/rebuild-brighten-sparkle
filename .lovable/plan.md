@@ -1,50 +1,75 @@
 
 
-# Fix Magic Link Login for Course Access
+# Fix Magic Link Course Access + Application Flow Audit
 
-## Root Cause
+## Issues Found
 
-The `verify-magic-link` edge function marks the token as `used_at` immediately after generating the Supabase OTP hash. If the client-side `verifyOtp` call then fails (which happens frequently on mobile Safari due to cookie/session restrictions), the token is permanently consumed. The agent clicks "Try Again" or re-opens the email link, but the token is already marked as used, so the edge function returns a 400 error -- which the Supabase client surfaces as "Edge Function returned a non-2xx status code."
+### 1. Magic Link Edge Function Not Deployed
+The grace window code is in the source file but the **deployed version is still the old code**. The logs from just minutes ago show `"Token already used: 3d0666f4..."` (without "beyond grace window"), confirming the fix from the previous message was never deployed. This is why agents clicking the course email link still see "Edge Function returned a non-2xx status code."
 
-## The Fix
+**Fix:** Redeploy the `verify-magic-link` edge function. No code changes needed -- the source is already correct.
 
-### 1. Allow token re-use within a 5-minute grace window
+### 2. Application Name Validation Mismatch (Root Cause of Apply Failures)
+The frontend Zod schema allows any characters in names (`z.string().min(2).max(50)`) but the **edge function** requires names to match `/^[a-zA-Z\s'-]+$/`. Anyone with an accent, period, or special character in their name (e.g., "Jose", "O'Brien Jr.", "Mary-Ann") will pass frontend validation, submit, and then get a silent server-side rejection with a generic error.
 
-Instead of permanently blocking a used token, allow re-verification if `used_at` was less than 5 minutes ago. This handles the common case where the OTP generation succeeded server-side but the client-side `verifyOtp` failed.
+**Fix:** Relax the edge function regex to allow common name characters: accents, periods, commas, and Unicode letters.
 
-**File:** `supabase/functions/verify-magic-link/index.ts`
+**File:** `supabase/functions/submit-application/index.ts` (lines 78-79)
 
-Change the "already used" check from a hard block to a grace period:
-- If `used_at` exists AND it was more than 5 minutes ago, return "ALREADY_USED" error
-- If `used_at` exists but it was less than 5 minutes ago, allow re-verification (generate a fresh OTP hash)
+Change:
+```
+firstName: z.string().min(1).max(100).regex(/^[a-zA-Z\s'-]+$/, "Invalid name format"),
+lastName: z.string().min(1).max(100).regex(/^[a-zA-Z\s'-]+$/, "Invalid name format"),
+```
+To:
+```
+firstName: z.string().min(1).max(100).regex(/^[\p{L}\s'.\-,]+$/u, "Invalid name format"),
+lastName: z.string().min(1).max(100).regex(/^[\p{L}\s'.\-,]+$/u, "Invalid name format"),
+```
 
-This is safe because the OTP itself expires quickly, and the magic token still expires after 24 hours.
+This allows Unicode letters (accents, non-Latin), periods (Jr.), commas, hyphens, and apostrophes.
 
-### 2. Improve error handling in MagicLogin.tsx
+### 3. Application Error Messages Not Specific Enough
+When the edge function returns a validation error (400), the frontend catches it but shows a generic "Failed to submit application" toast. The actual validation error details from the server are lost.
 
-The current retry logic calls `verify-magic-link` again with the same token on OTP expiry, but that token is already marked used, so the retry always fails. With the grace window fix above, this retry will now work. Additionally:
+**Fix:** In `src/pages/Apply.tsx`, extract the `details` array from the error response to show which field failed validation.
 
-- Show the actual error message from the edge function instead of the generic "Edge Function returned a non-2xx status code"
-- Parse the response body on non-2xx to extract the real error code
+**File:** `src/pages/Apply.tsx` (lines 418-445)
 
-**File:** `src/pages/MagicLogin.tsx`
+Add handling for Zod validation errors from the edge function response:
+```typescript
+} catch (error: any) {
+  const errorMessage = error?.message?.toLowerCase() || "";
+  const errorStatus = error?.status || error?.code;
+  
+  // Also check if there's a response body with details
+  if (error?.context?.json) {
+    const body = error.context.json;
+    if (body.details) {
+      const fields = body.details.map((d: any) => d.path?.join(".")).filter(Boolean);
+      toast.error(`Please fix: ${fields.join(", ")}`, { duration: 6000 });
+      return;
+    }
+  }
+  // ... rest of error handling
+}
+```
 
-Update the error extraction to handle `FunctionsHttpError` properly by reading the response body for the actual error details.
-
-### 3. No email template changes needed
-
-The course enrollment email already correctly:
-- Uses `destination: "course"` for the magic token
-- Links to the correct coursework page
-- Includes fallback instructions to sign in at `/agent-login`
-- CCs admin and manager
+### 4. Motivation Step Visibility
+The motivation step already exists in the code and works correctly for unlicensed/pending applicants. It appears after the referral step (Step 5). No changes needed here -- it is functioning as designed.
 
 ---
 
-## Technical Summary
+## Summary of Changes
 
 | File | Change |
 |------|--------|
-| `supabase/functions/verify-magic-link/index.ts` | Allow re-verification within 5 min grace window instead of hard "already used" block |
-| `src/pages/MagicLogin.tsx` | Better error extraction from edge function responses |
+| `supabase/functions/verify-magic-link/index.ts` | Redeploy only (no code changes) |
+| `supabase/functions/submit-application/index.ts` | Relax name regex to support Unicode/accented names and common punctuation |
+| `src/pages/Apply.tsx` | Improve error handling to surface specific validation failures from edge function |
+
+## Deployment Steps
+1. Deploy `verify-magic-link` edge function (fixes course access immediately)
+2. Deploy `submit-application` edge function (fixes name validation blocking)
+3. Update `Apply.tsx` error handling
 

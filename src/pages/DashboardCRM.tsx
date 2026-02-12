@@ -203,6 +203,8 @@ export default function DashboardCRM() {
   const [sendingBulkLogins, setSendingBulkLogins] = useState(false);
   const [bulkMode, setBulkMode] = useState(false);
   const [selectedAgents, setSelectedAgents] = useState<Set<string>>(new Set());
+  const [sendingCourseLogin, setSendingCourseLogin] = useState<string | null>(null);
+  const currentAgentIdRef = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -262,6 +264,11 @@ export default function DashboardCRM() {
       if (!currentAgent && !isAdmin) {
         setLoading(false);
         return;
+      }
+      
+      // Track current user's agent ID for manager badge filtering
+      if (currentAgent) {
+        currentAgentIdRef[1](currentAgent.id);
       }
 
       // Show all active agents (both licensed and unlicensed) for full pipeline visibility
@@ -711,8 +718,8 @@ export default function DashboardCRM() {
                       Inactive
                     </Badge>
                   )}
-                  {agent.managerId && agent.managerName && (
-                    <Badge variant="outline" className="text-[9px] h-3.5 px-1 bg-muted/50 text-muted-foreground border-border">
+                  {agent.managerId && agent.managerName && agent.managerId !== currentAgentIdRef[0] && (
+                    <Badge variant="outline" className="text-[9px] h-3.5 px-1 bg-sky-500/10 text-sky-400 border-sky-500/30">
                       Under {agent.managerName.split(" ")[0]}
                     </Badge>
                   )}
@@ -805,21 +812,52 @@ export default function DashboardCRM() {
 
           {/* Course Link for In Course agents */}
           {["onboarding", "training_online"].includes(agent.onboardingStage) && (
-            <div className="flex items-center gap-1.5">
-              <a 
-                href="/onboarding-course" 
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors"
+            <div className="space-y-1">
+              <div className="flex items-center gap-1.5">
+                <a 
+                  href="/onboarding-course" 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors"
+                >
+                  <GraduationCap className="h-3.5 w-3.5" />
+                  View Training Course
+                </a>
+                <ResendLicensingButton
+                  recipientEmail={agent.email}
+                  recipientName={agent.name}
+                  licenseStatus="unlicensed"
+                />
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full h-7 text-[10px] gap-1 bg-sky-500/10 text-sky-400 border-sky-500/30 hover:bg-sky-500/20"
+                disabled={sendingCourseLogin === agent.id}
+                onClick={async () => {
+                  setSendingCourseLogin(agent.id);
+                  try {
+                    const { data, error } = await supabase.functions.invoke("send-course-enrollment-email", {
+                      body: { agentId: agent.id },
+                    });
+                    if (error) throw error;
+                    toast.success(`Course login email sent to ${agent.name}`);
+                    playSound("success");
+                  } catch (err: any) {
+                    console.error("Failed to send course login:", err);
+                    toast.error("Failed to send course login email");
+                  } finally {
+                    setSendingCourseLogin(null);
+                  }
+                }}
               >
-                <GraduationCap className="h-3.5 w-3.5" />
-                View Training Course
-              </a>
-              <ResendLicensingButton
-                recipientEmail={agent.email}
-                recipientName={agent.name}
-                licenseStatus="unlicensed"
-              />
+                {sendingCourseLogin === agent.id ? (
+                  <RefreshCw className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Send className="h-3 w-3" />
+                )}
+                Resend Course Login
+              </Button>
             </div>
           )}
 

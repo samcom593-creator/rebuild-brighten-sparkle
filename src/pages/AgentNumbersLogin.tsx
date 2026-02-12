@@ -126,6 +126,25 @@ export default function AgentNumbersLogin() {
     }
   };
 
+  const redirectAfterLogin = async () => {
+    // Check if agent has training course - auto-redirect to course
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: agent } = await supabase
+        .from("agents")
+        .select("has_training_course, onboarding_stage")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      
+      if (agent?.has_training_course && agent?.onboarding_stage === "training_online") {
+        navigate("/onboarding-course", { replace: true });
+        return;
+      }
+    }
+    const from = (location.state as any)?.from?.pathname || "/agent-portal";
+    navigate(from, { replace: true });
+  };
+
   const handlePasswordSubmit = async (data: PasswordFormData) => {
     setIsLoading(true);
     
@@ -137,13 +156,12 @@ export default function AgentNumbersLogin() {
 
       if (error) throw error;
 
-      toast.success("Welcome! Let's log your numbers 🎯");
-      const from = (location.state as any)?.from?.pathname || "/agent-portal";
-      navigate(from, { replace: true });
+      toast.success("Welcome! Let's go 🎯");
+      await redirectAfterLogin();
     } catch (error: any) {
       console.error("Login error:", error);
       if (error.message.includes("Invalid login")) {
-        toast.error("Invalid password. Please try again or reset your password.");
+        toast.error("Wrong password. Try 123456 if this is your first time, or tap 'Forgot password?'");
       } else {
         toast.error(error.message || "Failed to sign in");
       }
@@ -173,8 +191,7 @@ export default function AgentNumbersLogin() {
 
       if (signInError) throw signInError;
 
-      const from = (location.state as any)?.from?.pathname || "/agent-portal";
-      navigate(from, { replace: true });
+      await redirectAfterLogin();
     } catch (error: any) {
       console.error("Setup error:", error);
       toast.error(error.message || "Failed to set password");
@@ -208,8 +225,7 @@ export default function AgentNumbersLogin() {
 
       if (signInError) throw signInError;
 
-      const from = (location.state as any)?.from?.pathname || "/agent-portal";
-      navigate(from, { replace: true });
+      await redirectAfterLogin();
     } catch (error: any) {
       console.error("Create account error:", error);
       toast.error(error.message || "Failed to create account");
@@ -413,9 +429,12 @@ export default function AgentNumbersLogin() {
             >
               <GlassCard className="p-8">
                 <form onSubmit={passwordForm.handleSubmit(handlePasswordSubmit)} className="space-y-5">
-                  <div className="p-3 rounded-lg bg-primary/10 text-sm text-center mb-4">
+                  <div className="p-3 rounded-lg bg-primary/10 text-sm text-center mb-2">
                     <Mail className="h-4 w-4 inline mr-2" />
                     {email}
+                  </div>
+                  <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-center text-amber-600 dark:text-amber-400">
+                    💡 First time? Your default password is <strong>123456</strong>
                   </div>
 
                   <div className="space-y-2">

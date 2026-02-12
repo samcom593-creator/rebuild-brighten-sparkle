@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
 import {
@@ -18,6 +18,8 @@ import {
   ExternalLink,
   MoreHorizontal,
   Shield,
+  Ban,
+  AlertTriangle,
 } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
@@ -34,8 +36,19 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
@@ -90,6 +103,10 @@ export default function DashboardAgedLeads() {
   const [callModeLicense, setCallModeLicense] = useState<"licensed" | "unlicensed">("unlicensed");
   const [callModeSelectOpen, setCallModeSelectOpen] = useState(false);
   const [myAgentId, setMyAgentId] = useState<string | undefined>(undefined);
+
+  // Ban state
+  const [banTarget, setBanTarget] = useState<AgedLead | null>(null);
+  const [banning, setBanning] = useState(false);
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -180,6 +197,77 @@ export default function DashboardAgedLeads() {
       toast.error("Failed to update status");
     }
   };
+
+  // Ban a prospect
+  const handleBanProspect = async () => {
+    if (!banTarget || !user) return;
+    setBanning(true);
+    try {
+      // Normalize phone to last 10 digits
+      const normalizedPhone = banTarget.phone
+        ? banTarget.phone.replace(/\D/g, "").slice(-10)
+        : null;
+
+      // Insert into banned_prospects
+      const { error: banError } = await supabase.from("banned_prospects" as any).insert({
+        email: banTarget.email?.toLowerCase().trim() || null,
+        phone: normalizedPhone || null,
+        first_name: banTarget.firstName?.toLowerCase().trim() || null,
+        last_name: banTarget.lastName?.toLowerCase().trim() || null,
+        reason: "Banned from Aged Leads",
+        banned_by: user.id,
+      });
+
+      if (banError) {
+        // If duplicate email, still proceed to delete the lead
+        if (!banError.message?.includes("duplicate")) throw banError;
+      }
+
+      // Delete the aged lead
+      const { error: deleteError } = await supabase
+        .from("aged_leads")
+        .delete()
+        .eq("id", banTarget.id);
+
+      if (deleteError) throw deleteError;
+
+      // Remove from local state
+      setLeads(prev => prev.filter(l => l.id !== banTarget.id));
+      toast.success(`${banTarget.firstName} ${banTarget.lastName || ""} has been banned`);
+      setBanTarget(null);
+    } catch (error: any) {
+      console.error("Error banning prospect:", error);
+      toast.error("Failed to ban prospect: " + (error.message || "Unknown error"));
+    } finally {
+      setBanning(false);
+    }
+  };
+
+  // Detect duplicates within the lead list (client-side)
+  const duplicateMap = useMemo(() => {
+    const emailCount = new Map<string, number>();
+    const phoneCount = new Map<string, number>();
+    leads.forEach(lead => {
+      if (lead.email) {
+        const key = lead.email.toLowerCase().trim();
+        emailCount.set(key, (emailCount.get(key) || 0) + 1);
+      }
+      if (lead.phone) {
+        const key = lead.phone.replace(/\D/g, "").slice(-10);
+        if (key.length === 10) phoneCount.set(key, (phoneCount.get(key) || 0) + 1);
+      }
+    });
+    const dupeIds = new Set<string>();
+    leads.forEach(lead => {
+      const emailKey = lead.email?.toLowerCase().trim();
+      const phoneKey = lead.phone?.replace(/\D/g, "").slice(-10);
+      if ((emailKey && (emailCount.get(emailKey) || 0) > 1) ||
+          (phoneKey && phoneKey.length === 10 && (phoneCount.get(phoneKey) || 0) > 1)) {
+        dupeIds.add(lead.id);
+      }
+    });
+    return dupeIds;
+  }, [leads]);
 
   const filteredLeads = leads.filter(lead => {
     const q = searchTerm.toLowerCase();
@@ -371,6 +459,11 @@ export default function DashboardAgedLeads() {
       {/* Results Count */}
       <p className="text-xs text-muted-foreground">
         Showing {filteredLeads.length} of {totalLeads} leads
+        {duplicateMap.size > 0 && (
+          <span className="ml-2 text-amber-500">
+            • {duplicateMap.size} potential duplicates detected
+          </span>
+        )}
       </p>
 
       {/* Leads List */}
@@ -390,6 +483,7 @@ export default function DashboardAgedLeads() {
         <div className="space-y-1.5">
           {filteredLeads.map((lead, index) => {
             const config = statusConfig[lead.status] || statusConfig.new;
+            const isDuplicate = duplicateMap.has(lead.id);
             return (
               <motion.div
                 key={lead.id}
@@ -399,7 +493,10 @@ export default function DashboardAgedLeads() {
               >
                 <GlassCard
                   variant="subtle"
-                  className="px-4 py-3 hover:bg-card/80 transition-all duration-200 hover:shadow-md hover:shadow-primary/5 group"
+                  className={cn(
+                    "px-4 py-3 hover:bg-card/80 transition-all duration-200 hover:shadow-md hover:shadow-primary/5 group",
+                    isDuplicate && "ring-1 ring-amber-500/30 bg-amber-500/5"
+                  )}
                 >
                   <div className="flex items-center gap-3">
                     {/* Avatar */}
@@ -420,6 +517,11 @@ export default function DashboardAgedLeads() {
                         {lead.leadSource === "new_drip" && (
                           <Badge variant="outline" className="text-[10px] h-4 px-1.5 bg-cyan-500/10 text-cyan-400 border-cyan-500/20">
                             Drip
+                          </Badge>
+                        )}
+                        {isDuplicate && (
+                          <Badge variant="outline" className="text-[10px] h-4 px-1.5 bg-amber-500/10 text-amber-500 border-amber-500/20 gap-0.5">
+                            <AlertTriangle className="h-2.5 w-2.5" /> Dupe
                           </Badge>
                         )}
                       </div>
@@ -512,6 +614,13 @@ export default function DashboardAgedLeads() {
                               </a>
                             </DropdownMenuItem>
                           )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => setBanTarget(lead)}
+                            className="text-xs gap-2 text-destructive focus:text-destructive"
+                          >
+                            <Ban className="h-3 w-3" /> Ban Prospect
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -544,6 +653,33 @@ export default function DashboardAgedLeads() {
           })}
         </div>
       )}
+
+      {/* Ban Confirmation Dialog */}
+      <AlertDialog open={!!banTarget} onOpenChange={(open) => !open && setBanTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Ban className="h-5 w-5 text-destructive" />
+              Ban Prospect
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to ban <strong>{banTarget?.firstName} {banTarget?.lastName || ""}</strong>?
+              This will permanently block their email, phone, and name from the system.
+              Any future application or import matching this person will be automatically rejected.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={banning}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBanProspect}
+              disabled={banning}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {banning ? "Banning..." : "Ban Prospect"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Call Mode Interface */}
       <CallModeInterface

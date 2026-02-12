@@ -903,6 +903,39 @@ export type Database = {
           },
         ]
       }
+      banned_prospects: {
+        Row: {
+          banned_by: string | null
+          created_at: string
+          email: string | null
+          first_name: string | null
+          id: string
+          last_name: string | null
+          phone: string | null
+          reason: string | null
+        }
+        Insert: {
+          banned_by?: string | null
+          created_at?: string
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          phone?: string | null
+          reason?: string | null
+        }
+        Update: {
+          banned_by?: string | null
+          created_at?: string
+          email?: string | null
+          first_name?: string | null
+          id?: string
+          last_name?: string | null
+          phone?: string | null
+          reason?: string | null
+        }
+        Relationships: []
+      }
       contact_history: {
         Row: {
           agent_id: string | null
@@ -1705,6 +1738,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_banned_prospect: {
+        Args: {
+          p_email?: string
+          p_first_name?: string
+          p_last_name?: string
+          p_phone?: string
+        }
+        Returns: boolean
+      }
       current_agent_id: { Args: never; Returns: string }
       current_manager_agent_id: { Args: never; Returns: string }
       get_agent_id: { Args: { _user_id: string }; Returns: string }

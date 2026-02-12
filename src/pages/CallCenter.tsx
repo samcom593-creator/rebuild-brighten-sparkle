@@ -18,6 +18,7 @@ import {
   type LicenseFilter,
   type StatusFilter,
   type ProgressFilter,
+  type SortOrder,
   type ActionId,
   type LicensingStage,
 } from "@/components/callcenter";
@@ -61,6 +62,7 @@ export default function CallCenter() {
   const [licenseFilter, setLicenseFilter] = useState<LicenseFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("new");
   const [progressFilter, setProgressFilter] = useState<ProgressFilter>("all");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("oldest_first");
 
   const currentLead = leads[currentIndex];
   const totalLeads = leads.length;
@@ -90,7 +92,7 @@ export default function CallCenter() {
         let query = supabase
           .from("aged_leads")
           .select("id, first_name, last_name, email, phone, instagram_handle, notes, motivation, license_status, created_at, status, contacted_at, last_contacted_at")
-          .order("created_at", { ascending: true });
+          .order("created_at", { ascending: sortOrder === "oldest_first" });
 
         // Status filter
         if (statusFilter === "new") {
@@ -106,8 +108,8 @@ export default function CallCenter() {
           query = query.eq("license_status", licenseFilter);
         }
 
-        // Role-based filtering for managers
-        if (!isAdmin && isManager && agentId) {
+        // Role-based filtering — always filter by current user's agent ID
+        if (agentId) {
           query = query.eq("assigned_manager_id", agentId);
         }
 
@@ -140,7 +142,7 @@ export default function CallCenter() {
           .from("applications")
           .select("id, first_name, last_name, email, phone, instagram_handle, notes, license_status, license_progress, test_scheduled_date, created_at, status, contacted_at, last_contacted_at")
           .is("terminated_at", null)
-          .order("created_at", { ascending: true });
+          .order("created_at", { ascending: sortOrder === "oldest_first" });
 
         // Status filter for applications
         if (statusFilter === "new") {
@@ -159,8 +161,8 @@ export default function CallCenter() {
           appQuery = appQuery.eq("license_progress", progressFilter);
         }
 
-        // Role-based filtering for managers
-        if (!isAdmin && isManager && agentId) {
+        // Role-based filtering — always filter by current user's agent ID
+        if (agentId) {
           appQuery = appQuery.eq("assigned_agent_id", agentId);
         }
 
@@ -189,8 +191,12 @@ export default function CallCenter() {
         });
       }
 
-      // Sort by created date
-      allLeads.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      // Sort by created date based on sort order preference
+      allLeads.sort((a, b) => {
+        const timeA = new Date(a.createdAt).getTime();
+        const timeB = new Date(b.createdAt).getTime();
+        return sortOrder === "oldest_first" ? timeA - timeB : timeB - timeA;
+      });
 
       setLeads(allLeads);
       setCurrentIndex(0);
@@ -200,7 +206,7 @@ export default function CallCenter() {
     } finally {
       setLoading(false);
     }
-  }, [sourceFilter, licenseFilter, statusFilter, progressFilter, isAdmin, isManager, agentId]);
+  }, [sourceFilter, licenseFilter, statusFilter, progressFilter, sortOrder, isAdmin, isManager, agentId]);
 
   const handleStartCalling = () => {
     setStarted(true);
@@ -517,10 +523,12 @@ export default function CallCenter() {
         licenseFilter={licenseFilter}
         statusFilter={statusFilter}
         progressFilter={progressFilter}
+        sortOrder={sortOrder}
         onSourceChange={setSourceFilter}
         onLicenseChange={setLicenseFilter}
         onStatusChange={setStatusFilter}
         onProgressChange={setProgressFilter}
+        onSortOrderChange={setSortOrder}
         onStart={handleStartCalling}
       />
     );

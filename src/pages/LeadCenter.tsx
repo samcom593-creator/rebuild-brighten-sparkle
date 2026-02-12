@@ -16,6 +16,7 @@ import {
   X,
   Trash2,
   Ban,
+  MoreHorizontal,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -48,6 +49,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -147,6 +155,10 @@ export default function LeadCenter() {
   // Ban state
   const [banTarget, setBanTarget] = useState<Lead | null>(null);
   const [banningLead, setBanningLead] = useState(false);
+
+  // Single delete state
+  const [deleteTarget, setDeleteTarget] = useState<Lead | null>(null);
+  const [deletingLead, setDeletingLead] = useState(false);
 
   const fetchLeads = async () => {
     // Only show loading spinner on first load, not refetches
@@ -447,7 +459,8 @@ export default function LeadCenter() {
               }))
             );
 
-          if (vaultError) throw vaultError;
+          // Ignore duplicate vault errors - lead was already vaulted before
+          if (vaultError && !vaultError.message?.includes("duplicate")) throw vaultError;
 
           // Soft delete applications by setting terminated_at
           const { data: updatedApps, error: softDeleteError } = await supabase
@@ -501,7 +514,8 @@ export default function LeadCenter() {
               }))
             );
 
-          if (vaultError) throw vaultError;
+          // Ignore duplicate vault errors
+          if (vaultError && !vaultError.message?.includes("duplicate")) throw vaultError;
 
           // Hard delete aged leads
           const { error: hardDeleteError } = await supabase.from("aged_leads").delete().in("id", agedLeadIds);
@@ -523,6 +537,53 @@ export default function LeadCenter() {
       toast.error("Failed to delete leads");
     } finally {
       setBulkDeleting(false);
+    }
+  };
+
+  // Single delete handler
+  const handleSingleDelete = async () => {
+    if (!deleteTarget || !user) return;
+    setDeletingLead(true);
+    try {
+      // Insert into vault (ignore duplicates)
+      const { error: vaultError } = await supabase.from("deleted_leads").insert({
+        original_id: deleteTarget.id,
+        source: deleteTarget.source,
+        first_name: deleteTarget.firstName,
+        last_name: deleteTarget.lastName,
+        email: deleteTarget.email,
+        phone: deleteTarget.phone,
+        city: deleteTarget.city,
+        state: deleteTarget.state,
+        license_status: deleteTarget.licenseStatus,
+        assigned_agent_id: deleteTarget.assignedAgentId,
+        deleted_by: user.id,
+        reason: "Deleted via Lead Center",
+      });
+      if (vaultError && !vaultError.message?.includes("duplicate")) throw vaultError;
+
+      if (deleteTarget.source === "applications") {
+        const { data: updated, error } = await supabase
+          .from("applications")
+          .update({ terminated_at: new Date().toISOString(), termination_reason: "Deleted via Lead Center" })
+          .eq("id", deleteTarget.id)
+          .select("id");
+        if (error) throw error;
+        if (!updated?.length) throw new Error("Failed to terminate application — access denied");
+      } else {
+        const { error } = await supabase.from("aged_leads").delete().eq("id", deleteTarget.id);
+        if (error) throw error;
+      }
+
+      setLeads(prev => prev.filter(l => l.id !== deleteTarget.id));
+      setSelectedLeads(prev => { const next = new Set(prev); next.delete(`${deleteTarget.source}-${deleteTarget.id}`); return next; });
+      toast.success(`${deleteTarget.firstName} ${deleteTarget.lastName} deleted`);
+      setDeleteTarget(null);
+    } catch (error: any) {
+      console.error("Error deleting lead:", error);
+      toast.error("Failed to delete lead: " + (error.message || "Unknown error"));
+    } finally {
+      setDeletingLead(false);
     }
   };
 
@@ -943,15 +1004,27 @@ export default function LeadCenter() {
                             recipientName={`${lead.firstName} ${lead.lastName}`}
                             licenseStatus={lead.licenseStatus as "licensed" | "unlicensed" | "pending"}
                           />
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => setBanTarget(lead)}
-                            title="Ban Prospect"
-                          >
-                            <Ban className="h-4 w-4" />
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-44">
+                              <DropdownMenuItem
+                                onClick={() => setDeleteTarget(lead)}
+                                className="text-xs gap-2 text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="h-3 w-3" /> Delete Lead
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => setBanTarget(lead)}
+                                className="text-xs gap-2 text-destructive focus:text-destructive"
+                              >
+                                <Ban className="h-3 w-3" /> Ban Prospect
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -1030,6 +1103,32 @@ export default function LeadCenter() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-destructive" />
+              Delete Lead
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{deleteTarget?.firstName} {deleteTarget?.lastName}</strong>?
+              The lead will be moved to the vault and can be restored from Settings.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingLead}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleSingleDelete}
+              disabled={deletingLead}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletingLead ? "Deleting..." : "Delete Lead"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Ban Confirmation Dialog */}
       <AlertDialog open={!!banTarget} onOpenChange={(open) => !open && setBanTarget(null)}>

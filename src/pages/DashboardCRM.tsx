@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, differenceInDays } from "date-fns";
 import {
@@ -197,7 +197,7 @@ export default function DashboardCRM() {
   const [showDeactivated, setShowDeactivated] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
   const [deactivateAgent, setDeactivateAgent] = useState<AgentCRM | null>(null);
-  const [stageFilter, setStageFilter] = useState<"all" | "in_course" | "in_training" | "live" | "meeting_eligible" | "critical">("all");
+  const [stageFilter, setStageFilter] = useState<"all" | "in_course" | "in_training" | "live" | "meeting_eligible">("all");
   const [instagramPromptAgent, setInstagramPromptAgent] = useState<AgentCRM | null>(null);
   const [expandedColumn, setExpandedColumn] = useState<string | null>(null);
   const [sendingBulkLogins, setSendingBulkLogins] = useState(false);
@@ -598,8 +598,6 @@ export default function DashboardCRM() {
         return agent.onboardingStage === "evaluated";
       case "meeting_eligible":
         return ["in_field_training", "evaluated"].includes(agent.onboardingStage);
-      case "critical":
-        return agent.attendanceStatus === "critical";
       default:
         return true;
     }
@@ -645,12 +643,38 @@ export default function DashboardCRM() {
   const inTraining = activeAgents.filter(a => a.onboardingStage === "in_field_training").length;
   const inField = activeAgents.filter(a => a.onboardingStage === "evaluated").length;
   const meetingEligible = inTraining + inField;
-  const criticalAttendance = activeAgents.filter(a => a.attendanceStatus === "critical").length;
+  const unlicensedAgents = activeAgents.filter(a => !a.licenseProgress || a.licenseProgress === "unlicensed").length;
   const totalDeals = activeAgents
     .filter(a => a.onboardingStage === "evaluated")
     .reduce((sum, a) => sum + a.monthlyDeals, 0);
   const totalPaidAgents = activeAgents
     .filter(a => a.onboardingStage === "evaluated" && (a.standardPaid || a.premiumPaid)).length;
+
+  // Duplicate detection
+  const duplicateAgentIds = useMemo(() => {
+    const emailCount = new Map<string, number>();
+    const phoneCount = new Map<string, number>();
+    activeAgents.forEach(agent => {
+      if (agent.email) {
+        const key = agent.email.toLowerCase().trim();
+        emailCount.set(key, (emailCount.get(key) || 0) + 1);
+      }
+      if (agent.phone) {
+        const key = agent.phone.replace(/\D/g, "").slice(-10);
+        if (key.length === 10) phoneCount.set(key, (phoneCount.get(key) || 0) + 1);
+      }
+    });
+    const dupeIds = new Set<string>();
+    activeAgents.forEach(agent => {
+      const emailKey = agent.email?.toLowerCase().trim();
+      const phoneKey = agent.phone?.replace(/\D/g, "").slice(-10);
+      if ((emailKey && (emailCount.get(emailKey) || 0) > 1) ||
+          (phoneKey && phoneKey.length === 10 && (phoneCount.get(phoneKey) || 0) > 1)) {
+        dupeIds.add(agent.id);
+      }
+    });
+    return dupeIds;
+  }, [activeAgents]);
 
   if (authLoading) {
     return (
@@ -718,6 +742,11 @@ export default function DashboardCRM() {
                       Inactive
                     </Badge>
                   )}
+                  {duplicateAgentIds.has(agent.id) && (
+                    <Badge variant="outline" className="text-[9px] h-3.5 px-1 bg-amber-500/10 text-amber-400 border-amber-500/30">
+                      ⚠ Duplicate
+                    </Badge>
+                  )}
                   {agent.managerId && agent.managerName && agent.managerId !== currentAgentIdRef[0] && (
                     <Badge variant="outline" className="text-[9px] h-3.5 px-1 bg-sky-500/10 text-sky-400 border-sky-500/30">
                       Under {agent.managerName.split(" ")[0]}
@@ -761,21 +790,6 @@ export default function DashboardCRM() {
                       </a>
                     )}
                   </div>
-                </div>
-                {/* Last Follow-Up - prominent line */}
-                <div className="flex items-center gap-1 text-[10px] mt-0.5">
-                  {agent.lastContactedAt ? (
-                    <span className="flex items-center gap-1 text-muted-foreground">
-                      <Clock className="h-2.5 w-2.5" />
-                      <span className="font-medium">Last F/U:</span>
-                      <span>{getTimeAgo(agent.lastContactedAt)}</span>
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1 text-amber-400/70">
-                      <Clock className="h-2.5 w-2.5" />
-                      <span className="font-medium">No follow-up yet</span>
-                    </span>
-                  )}
                 </div>
               </div>
             </div>
@@ -823,11 +837,13 @@ export default function DashboardCRM() {
                   <GraduationCap className="h-3.5 w-3.5" />
                   View Training Course
                 </a>
-                <ResendLicensingButton
-                  recipientEmail={agent.email}
-                  recipientName={agent.name}
-                  licenseStatus="unlicensed"
-                />
+                {(agent.licenseProgress !== "licensed") && (
+                  <ResendLicensingButton
+                    recipientEmail={agent.email}
+                    recipientName={agent.name}
+                    licenseStatus="unlicensed"
+                  />
+                )}
               </div>
               <Button
                 variant="outline"
@@ -1027,32 +1043,6 @@ export default function DashboardCRM() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Performance Tier Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className={cn("gap-0.5 text-[10px] h-5 px-1.5", performanceColors[agent.performanceTier])}
-                >
-                  {performanceLabels[agent.performanceTier]}
-                  <ChevronDown className="h-2.5 w-2.5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => handlePerformanceChange(agent.id, "below_10k")}>
-                  Below $10K
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handlePerformanceChange(agent.id, "standard")}>
-                  <TrendingUp className="h-4 w-4 mr-2 text-primary" />
-                  Standard
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handlePerformanceChange(agent.id, "top_producer")}>
-                  <Award className="h-4 w-4 mr-2 text-amber-500" />
-                  Top Producer
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
 
           {/* Week + Month AOP Stats - Prominent Display for Live Agents */}
@@ -1244,18 +1234,36 @@ export default function DashboardCRM() {
 
               <GlassCard 
                 className={cn(
-                  "p-2 cursor-pointer transition-all hover:ring-2 hover:ring-destructive/50 hover:scale-[1.02]",
-                  stageFilter === "critical" && "ring-2 ring-destructive"
+                  "p-2 cursor-pointer transition-all hover:ring-2 hover:ring-primary/50 hover:scale-[1.02]",
+                  expandedColumn === "all" && "ring-2 ring-primary"
                 )}
-                onClick={() => { setExpandedColumn("critical"); playSound("whoosh"); }}
+                onClick={() => { setExpandedColumn("all"); playSound("whoosh"); }}
               >
                 <div className="flex items-center gap-2">
-                  <div className="p-1 rounded-lg bg-destructive/10">
-                    <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+                  <div className="p-1 rounded-lg bg-primary/10">
+                    <Users className="h-3.5 w-3.5 text-primary" />
                   </div>
                   <div>
-                    <p className="text-lg font-bold">{criticalAttendance}</p>
-                    <p className="text-[10px] text-muted-foreground">Attendance Issues</p>
+                    <p className="text-lg font-bold">{activeAgents.length}</p>
+                    <p className="text-[10px] text-muted-foreground">All Agents</p>
+                  </div>
+                </div>
+              </GlassCard>
+
+              <GlassCard 
+                className={cn(
+                  "p-2 cursor-pointer transition-all hover:ring-2 hover:ring-amber-500/50 hover:scale-[1.02]",
+                  expandedColumn === "unlicensed" && "ring-2 ring-amber-500"
+                )}
+                onClick={() => { setExpandedColumn("unlicensed"); playSound("whoosh"); }}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="p-1 rounded-lg bg-amber-500/10">
+                    <GraduationCap className="h-3.5 w-3.5 text-amber-500" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold">{unlicensedAgents}</p>
+                    <p className="text-[10px] text-muted-foreground">Unlicensed</p>
                   </div>
                 </div>
               </GlassCard>
@@ -1395,12 +1403,19 @@ export default function DashboardCRM() {
                     color: "text-accent-foreground",
                     bgColor: "bg-accent/10"
                   },
-                  critical: { 
-                    label: "Attendance Issues", 
-                    icon: AlertTriangle, 
+                  all: { 
+                    label: "All Agents", 
+                    icon: Users, 
                     stages: [] as OnboardingStage[],
-                    color: "text-destructive",
-                    bgColor: "bg-destructive/10"
+                    color: "text-primary",
+                    bgColor: "bg-primary/10"
+                  },
+                  unlicensed: { 
+                    label: "Unlicensed", 
+                    icon: GraduationCap, 
+                    stages: [] as OnboardingStage[],
+                    color: "text-amber-500",
+                    bgColor: "bg-amber-500/10"
                   },
                   paid: { 
                     label: "Paid Agents", 
@@ -1415,8 +1430,10 @@ export default function DashboardCRM() {
                 if (!config) return null;
 
                 const Icon = config.icon;
-                const expandedAgents = expandedColumn === "critical"
-                  ? filteredAgents.filter(a => a.attendanceStatus === "critical")
+                const expandedAgents = expandedColumn === "all"
+                  ? filteredAgents
+                  : expandedColumn === "unlicensed"
+                  ? filteredAgents.filter(a => !a.licenseProgress || a.licenseProgress === "unlicensed")
                   : expandedColumn === "paid"
                   ? activeAgents.filter(a => a.onboardingStage === "evaluated" && (a.standardPaid || a.premiumPaid))
                   : filteredAgents.filter(a => config.stages.includes(a.onboardingStage));

@@ -1,77 +1,53 @@
 
 
-# Fix Delete/Ban Persistence and Add Per-Row Delete Option
+# Differentiate New Drip-Ins from Aged Leads + Fix Filters
 
-## Problems Found
+## Problem
 
-1. **No per-row Delete button** -- In both Lead Center and Aged Leads, there is only a "Ban" button per row. The "Delete" action only exists in the bulk floating bar. Users expect a choice between Delete and Ban on each individual lead.
+1. **Lead Center "New Leads" stat card** shows ALL leads with status "new" -- including aged leads. It should only show new drip-in applications (from the `applications` table), not aged leads.
 
-2. **Deletes not persisting** -- Two root causes:
-   - In the bulk delete flow, if the vault insert fails (e.g., duplicate `original_id` from a previous delete attempt), the entire operation throws before the actual delete/terminate happens, so the lead stays in the database.
-   - The `banned_prospects` table is cast as `as any` in the code because the TypeScript types haven't been regenerated. While this works at runtime, it makes error handling fragile.
+2. **Lead Center table** shows "Aged Lead" in the Source column but has no way to filter by source type (applications vs aged leads). Users need a source filter dropdown.
 
-3. **No individual delete handler** -- The per-row action only has Ban. A single-lead delete handler (vault + terminate/delete) is missing entirely.
-
-4. **Test users lingering** -- 1 test application is still active (not terminated). The rest (9) are terminated but still in the database.
+3. **Call Center** has a "Lead Source" filter with options "All Sources", "Aged Leads Only", and "New Applicants Only" -- but the labels don't clearly say "New Drip-Ins". This needs clearer labeling to match the user's mental model.
 
 ## Changes
 
-### 1. Lead Center (`src/pages/LeadCenter.tsx`)
+### 1. Lead Center -- Fix "New Leads" stat card
 
-- Add a per-row dropdown menu (three-dot icon) replacing the standalone Ban button in the Actions column
-- The dropdown will have two destructive options: "Delete" (moves to vault) and "Ban" (blocks permanently)
-- Add a `handleSingleDelete` function that:
-  - Inserts the lead into the `deleted_leads` vault
-  - For applications: sets `terminated_at` and `termination_reason`
-  - For aged leads: hard deletes the row
-  - If the vault insert fails with a duplicate, still proceeds with the delete (the lead was already vaulted before)
-  - Removes from local state on success
-- Add a confirmation dialog that lets the user pick between "Delete" (soft, recoverable from vault) or "Ban" (permanent block)
-- Fix the bulk delete handler to not abort if vault insert fails due to duplicates
+- Change the "New Leads" stat card count to only count leads where `source === "applications"` AND `status === "new"`. Aged leads are excluded from this count.
+- When clicked, it will set a new `filterSource` state to `"applications"` in addition to `filterStatus = "new"`, so only new drip-in applications are shown.
 
-### 2. Aged Leads (`src/pages/DashboardAgedLeads.tsx`)
+### 2. Lead Center -- Add Source filter dropdown
 
-- Add a "Delete" option in the existing dropdown menu alongside the existing "Ban" option
-- Add a `handleDeleteLead` function that:
-  - Inserts into `deleted_leads` vault
-  - Hard deletes the aged lead row
-  - Handles duplicate vault entries gracefully
-  - Removes from local state
-- Add a delete confirmation dialog
+- Add a new `filterSource` state with values: `"all"`, `"applications"`, `"aged_leads"`
+- Add a new Select dropdown in the filters bar labeled "Lead Source" with options: "All Sources", "New Drip-Ins", "Aged Leads"
+- Apply the filter in the `filteredLeads` memo: `lead.source === filterSource` when not "all"
 
-### 3. Clean Up Test Users
+### 3. Lead Center -- Better source badge labels
 
-- Terminate the 1 remaining active test application via a data operation
-- Permanently delete all 10 test application records from the database so they stop appearing
+- Change the Source column badge text from `"Aged Lead"` to `"Aged Lead"` (keep) and from the referral source format to `"New Drip-In"` (instead of showing "Direct Apply", "Social Media", etc. which is confusing). The referral source detail can stay as a subtitle or tooltip.
 
-### 4. Fix Type Cast Issue
+### 4. Call Center -- Clearer source filter labels
 
-- Update the `banned_prospects` references to work without `as any` by ensuring the types are properly recognized (the types file auto-regenerates, so this will resolve after the migration runs)
+- Change the "Lead Source" filter options from:
+  - "All Sources" -> "All Sources"
+  - "Aged Leads Only" -> "Aged Leads"  
+  - "New Applicants Only" -> "New Drip-Ins"
+- This makes it crystal clear what each option does
 
 ## Technical Details
 
-### Delete Flow (per-row)
+### File: `src/pages/LeadCenter.tsx`
 
-```
-User clicks three-dot menu -> "Delete" or "Ban"
-  If Delete:
-    -> Confirmation dialog
-    -> INSERT into deleted_leads (ignore duplicate errors)
-    -> For applications: UPDATE terminated_at
-    -> For aged_leads: DELETE row
-    -> Remove from local state
-    -> Toast: "Lead deleted"
-  If Ban:
-    -> Existing ban confirmation dialog
-    -> INSERT into banned_prospects
-    -> DELETE/terminate the lead
-    -> Remove from local state
-    -> Toast: "Prospect banned"
-```
+1. Add `filterSource` state: `useState<"all" | "applications" | "aged_leads">("all")`
+2. Update `stats.new` calculation: `leads.filter(l => l.source === "applications" && l.status === "new").length`
+3. Update "New Leads" card onClick to also set `setFilterSource("applications")`
+4. Add source filter to `filteredLeads` memo: check `filterSource`
+5. Add a new Select dropdown for source filtering in the filters bar
+6. Update the Source column badge to show "New Drip-In" for applications and "Aged Lead" for aged_leads
 
-### Files to Modify
+### File: `src/components/callcenter/CallCenterFilters.tsx`
 
-1. `src/pages/LeadCenter.tsx` -- Add per-row delete/ban dropdown, single-delete handler, fix bulk delete error handling
-2. `src/pages/DashboardAgedLeads.tsx` -- Add delete option in dropdown, delete handler with confirmation
-3. Database cleanup -- Remove test user records
+1. Change label for "Aged Leads Only" to "Aged Leads"
+2. Change label for "New Applicants Only" to "New Drip-Ins"
 

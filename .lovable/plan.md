@@ -1,108 +1,49 @@
 
+# Fix Coursework Login and Access -- Root Cause Analysis and Fixes
 
-# Comprehensive Site Optimization and Agent Experience Overhaul
+## Problems Found
 
-This plan addresses all the issues raised: slow loading, assign button delays, forced password changes, smoother lead deletion, email automation, and overall performance and UI polish.
+### 1. Duplicate Agent Records Breaking Login
+Johnivan Bush (jbbush3736@gmail.com) has TWO separate agent records pointing to the same user_id. When the course page queries for the agent with `.maybeSingle()`, this can cause unpredictable behavior -- sometimes returning one record, sometimes the other, or erroring out entirely. This is the biggest blocker.
 
----
+**Fix:** Clean up duplicate agent records in the database. Merge or delete the duplicate, keeping the one with the most recent activity. Add a unique constraint on `agents.user_id` to prevent future duplicates.
 
-## 1. Force Password Change on First Login
+### 2. Onboarding Stage Not Set Correctly
+5 agents have `has_training_course = true` but their `onboarding_stage` is still `onboarding` instead of `training_online`. This means:
+- The auto-redirect after login (which checks for `training_online`) never fires
+- These agents land on the generic portal instead of the course
 
-When an agent logs in with the default password "123456", automatically redirect them to change it before they can access anything else.
+**Fix:** 
+- Update all agents with `has_training_course = true` and `onboarding_stage = 'onboarding'` to `training_online`
+- Change the redirect logic in `AgentNumbersLogin.tsx` to check `has_training_course` as the primary condition (not rely on exact stage matching)
 
-**How it works:**
-- After successful login, check if the password used was "123456"
-- If so, redirect to Settings page with a `force_password_change=true` parameter
-- Settings page shows a locked-down "Change Your Password" screen -- no navigation allowed until password is updated
-- Once changed, mark the agent record with `portal_password_set = true` so they are never prompted again
+### 3. Magic Link OTP Expiring Too Fast  
+The auth logs show `otp_expired` errors. The flow is: verify-magic-link generates an OTP hash via `admin.generateLink()`, returns it to the browser, then the browser calls `verifyOtp()`. If there's any delay (slow network, user not clicking immediately), the OTP expires.
 
----
+**Fix:** In `MagicLogin.tsx`, add retry logic -- if `verifyOtp` fails with `otp_expired`, automatically call the edge function again to get a fresh OTP hash and retry once.
 
-## 2. Fix Assign Button Speed (All 3 Components)
+### 4. Course Page Agent Lookup Too Fragile
+The OnboardingCourse page uses `.maybeSingle()` to find the agent, which fails silently with duplicates. It also shows "Course Access Required" immediately if no agent is found, with no fallback.
 
-There are THREE separate assign/reassign components, and two of them are extremely slow due to N+1 database queries. Each one fetches managers differently -- some call an edge function that loops through every agent individually, others do N+1 queries client-side.
-
-**Fix:**
-- **ManagerAssignMenu**: Currently calls `get-active-managers` on mount (every instance). Change to lazy-load on dropdown open with shared cache (same pattern as QuickAssignMenu)
-- **LeadReassignButton**: Currently does N+1 queries (one per agent to get `user_id`). Replace with a single query joining agents + user_roles + profiles, and use the shared edge function cache
-- **get-active-managers edge function**: Replace the N+1 loop (one query per agent for role check + one for profile) with batch queries using `.in()` filters -- reducing from ~50 database round-trips to 3
-
----
-
-## 3. Optimize Lead Deletion
-
-Make lead deletion instant with optimistic UI updates instead of waiting for the database round-trip and full refetch.
-
-**How it works:**
-- Remove the deleted lead from the UI immediately on click
-- Run the database delete in the background
-- If it fails, restore the lead and show an error
-- No full-page reload needed
+**Fix:** Change to `.limit(1).order('created_at', { ascending: false })` to always get the most recent agent record, and add a brief retry/loading state instead of immediately showing the error.
 
 ---
 
-## 4. Eliminate Unnecessary Page Reloads
+## Technical Changes
 
-The site reloads when it should not. Two causes:
-- **PWA service worker** in `main.tsx` calls `window.location.reload()` when a new version activates -- this triggers during development/hot-reload cycles
-- **HMR (Hot Module Replacement)** can trigger during Vite dev mode
-
-**Fix:**
-- Guard the service worker reload to only fire on user-initiated navigation, not during active sessions
-- Increase query cache stale times to prevent refetch storms on window focus (already set but verify all components honor it)
-
----
-
-## 5. Reduce Loading Screens Across the Site
-
-Current loading states show skeleton loaders even for cached data. Fix by:
-- Only showing loading state on initial mount (first load), not on refetches
-- Using `placeholderData` in React Query to show stale data while refreshing
-- Removing unnecessary `setLoading(true)` calls that trigger full loading states on subsequent visits
-
----
-
-## 6. Welcome Email with Contracting Link
-
-The current welcome email already sends Portal, Discord, and Coursework links. Update it to also include:
-- A prominent "Start Contracting" step with the contracting link
-- The contracting link is pulled from the manager's saved contracting links or from the `crm_setup_link` field on the agent
-
----
-
-## 7. Optimize get-active-managers Edge Function
-
-Replace the current N+1 loop with batch operations:
-
-```text
-Current: 1 query for agents + N queries for roles + N queries for profiles = ~100 queries
-Optimized: 1 query for agents + 1 query for roles + 1 query for profiles = 3 queries
-```
-
----
-
-## Technical Details
+### Database Cleanup (Migration)
+- Delete duplicate agent records (keep newest per user_id)  
+- Fix `onboarding_stage` for agents stuck at `onboarding` but with `has_training_course = true`
 
 ### Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/pages/AgentNumbersLogin.tsx` | After login with "123456", redirect to settings with `force_password_change=true` |
-| `src/pages/Login.tsx` | Same forced password change redirect |
-| `src/components/dashboard/ProfileSettings.tsx` | Add forced password change mode that blocks navigation |
-| `src/components/dashboard/ManagerAssignMenu.tsx` | Lazy-load managers on open, use shared cache |
-| `src/components/callcenter/LeadReassignButton.tsx` | Replace N+1 queries with single batch query using edge function |
-| `src/pages/LeadCenter.tsx` | Add optimistic delete, reduce loading states |
-| `src/main.tsx` | Guard PWA reload to prevent mid-session refreshes |
-| `supabase/functions/get-active-managers/index.ts` | Batch queries instead of N+1 loop |
-| `supabase/functions/welcome-new-agent/index.ts` | Add contracting link step to welcome email |
-| `supabase/functions/add-agent/index.ts` | Pass contracting link to welcome email |
+| `src/pages/AgentNumbersLogin.tsx` | Fix redirect logic: check `has_training_course` instead of requiring exact `training_online` stage |
+| `src/pages/Login.tsx` | Same redirect fix |
+| `src/pages/MagicLogin.tsx` | Add OTP retry logic on `otp_expired` error; fix destination display text for course |
+| `src/pages/OnboardingCourse.tsx` | Use `.limit(1)` instead of `.maybeSingle()` for agent lookup; add retry on failure |
+| `src/hooks/useOnboardingCourse.ts` | No changes needed -- works correctly once agent_id is passed |
 
-### Database Changes
-- None required -- uses existing `portal_password_set` column on agents table
-
-### Edge Functions to Deploy
-- `get-active-managers` (performance fix)
-- `welcome-new-agent` (add contracting link)
-- `add-agent` (pass contracting link through)
-
+### Edge Function Changes
+None needed -- the `verify-magic-link` function works correctly. The issue is on the client side consuming the OTP hash.

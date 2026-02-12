@@ -18,6 +18,7 @@ export default function OnboardingCourse() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [agentId, setAgentId] = useState<string | null>(null);
+  const [agentNotFound, setAgentNotFound] = useState(false);
   const [activeTab, setActiveTab] = useState<"video" | "quiz">("video");
 
   // Fetch agent ID for current user
@@ -33,6 +34,8 @@ export default function OnboardingCourse() {
       
       if (data) {
         setAgentId(data.id);
+      } else {
+        setAgentNotFound(true);
       }
     };
     fetchAgentId();
@@ -80,6 +83,20 @@ export default function OnboardingCourse() {
 
   if (loading) {
     return <SkeletonLoader variant="page" />;
+  }
+
+  if (agentNotFound) {
+    return (
+      <DashboardLayout>
+        <div className="max-w-4xl mx-auto text-center py-20">
+          <BookOpen className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+          <h1 className="text-2xl font-bold mb-2">Course Access Required</h1>
+          <p className="text-muted-foreground mb-6">
+            Your account isn't linked to an agent profile yet. Please contact your manager or admin to get enrolled in the course.
+          </p>
+        </div>
+      </DashboardLayout>
+    );
   }
 
   if (modules.length === 0) {

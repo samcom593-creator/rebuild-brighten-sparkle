@@ -647,7 +647,7 @@ export default function Apply() {
 
                         <div className="space-y-2">
                           <Label htmlFor="state">State *</Label>
-                          <Select onValueChange={(value) => setValue("state", value, { shouldValidate: true })}>
+                          <Select value={watch("state") || undefined} onValueChange={(value) => setValue("state", value, { shouldValidate: true })}>
                             <SelectTrigger className="bg-input">
                               <SelectValue placeholder="Select state" />
                             </SelectTrigger>

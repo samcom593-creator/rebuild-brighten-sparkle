@@ -222,8 +222,10 @@ export function InviteTeamModal({ open, onClose }: InviteTeamModalProps) {
       const magicLink = linkData?.magicLink || `${window.location.origin}/agent-portal`;
       setGeneratedLink(magicLink);
 
+      // Fetch contracting link for the welcome email
+      const contractingLink = savedLinks.length > 0 ? savedLinks[0].url : undefined;
+
       // Send welcome email with onboarding flow (Contracting + Course)
-      // Discord link will be sent after course completion
       await supabase.functions.invoke("welcome-new-agent", {
         body: {
           agentName: fullName.trim(),
@@ -231,6 +233,7 @@ export function InviteTeamModal({ open, onClose }: InviteTeamModalProps) {
           agentId: newAgent.id,
           managerId: currentAgent.id,
           courseLink: magicLink,
+          contractingLink,
         },
       });
 

@@ -87,8 +87,8 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Create new auth user with random password (they'll use magic links)
-    const randomPassword = crypto.randomUUID() + crypto.randomUUID();
+    // Create new auth user with default password (agents change on first login)
+    const randomPassword = "123456";
     
     const { data: newAuthUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email: normalizedEmail,

@@ -141,7 +141,7 @@ export default function AgentNumbersLogin() {
         return;
       }
       
-      if (agent?.has_training_course && agent?.onboarding_stage === "training_online") {
+      if (agent?.has_training_course) {
         navigate("/onboarding-course", { replace: true });
         return;
       }

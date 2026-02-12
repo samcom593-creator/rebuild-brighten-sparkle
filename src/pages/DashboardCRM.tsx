@@ -711,6 +711,11 @@ export default function DashboardCRM() {
                       Inactive
                     </Badge>
                   )}
+                  {agent.managerId && agent.managerName && (
+                    <Badge variant="outline" className="text-[9px] h-3.5 px-1 bg-muted/50 text-muted-foreground border-border">
+                      Under {agent.managerName.split(" ")[0]}
+                    </Badge>
+                  )}
                   {agent.onboardingStage === "evaluated" && agent.premiumPaid && (
                     <Badge className="text-[9px] h-3.5 px-1 bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
                       $1K Paid
@@ -730,14 +735,6 @@ export default function DashboardCRM() {
                   >
                     {agent.email}
                   </a>
-                  {agent.lastContactedAt ? (
-                    <span className="flex items-center gap-0.5 bg-muted/50 px-1 py-0.5 rounded text-[9px]">
-                      <Clock className="h-2 w-2" />
-                      {getTimeAgo(agent.lastContactedAt)}
-                    </span>
-                  ) : (
-                    <span className="text-[9px] text-muted-foreground/50">No contact</span>
-                  )}
                   <div className="flex items-center gap-1 ml-auto shrink-0">
                     {agent.phone && (
                       <a href={`tel:${agent.phone}`} className="hover:text-foreground transition-colors">
@@ -757,6 +754,21 @@ export default function DashboardCRM() {
                       </a>
                     )}
                   </div>
+                </div>
+                {/* Last Follow-Up - prominent line */}
+                <div className="flex items-center gap-1 text-[10px] mt-0.5">
+                  {agent.lastContactedAt ? (
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <Clock className="h-2.5 w-2.5" />
+                      <span className="font-medium">Last F/U:</span>
+                      <span>{getTimeAgo(agent.lastContactedAt)}</span>
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-amber-400/70">
+                      <Clock className="h-2.5 w-2.5" />
+                      <span className="font-medium">No follow-up yet</span>
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -811,19 +823,33 @@ export default function DashboardCRM() {
             </div>
           )}
 
-          {/* License Progress Badge for pipeline tracking */}
-          {agent.licenseProgress && agent.licenseProgress !== "unlicensed" && (
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-violet-500/10 text-violet-400 border-violet-500/30">
-                {agent.licenseProgress.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
-              </Badge>
-              {agent.testScheduledDate && (
-                <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-blue-500/10 text-blue-400 border-blue-500/30">
-                  📅 Exam: {new Date(agent.testScheduledDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+          {/* License Progress Badge - always visible */}
+          {(() => {
+            const lp = agent.licenseProgress || "unlicensed";
+            const lpColors: Record<string, string> = {
+              unlicensed: "bg-slate-500/10 text-slate-400 border-slate-500/30",
+              course_purchased: "bg-violet-500/10 text-violet-400 border-violet-500/30",
+              finished_course: "bg-violet-500/10 text-violet-400 border-violet-500/30",
+              test_scheduled: "bg-blue-500/10 text-blue-400 border-blue-500/30",
+              passed_test: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+              fingerprints_done: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+              waiting_on_license: "bg-amber-500/10 text-amber-400 border-amber-500/30",
+              licensed: "bg-green-500/10 text-green-400 border-green-500/30",
+            };
+            const colorClass = lpColors[lp] || lpColors.unlicensed;
+            return (
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <Badge variant="outline" className={cn("text-[9px] h-4 px-1.5", colorClass)}>
+                  {lp.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
                 </Badge>
-              )}
-            </div>
-          )}
+                {agent.testScheduledDate && (
+                  <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-blue-500/10 text-blue-400 border-blue-500/30">
+                    📅 Exam: {new Date(agent.testScheduledDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                  </Badge>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Checklist - Compact */}
           <AgentChecklist

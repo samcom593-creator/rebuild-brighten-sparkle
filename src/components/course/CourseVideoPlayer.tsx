@@ -127,7 +127,7 @@ function YouTubePlayer({
       if (mountedRef.current && localProgress < 90) {
         setShowFallback(true);
       }
-    }, 120_000);
+    }, 30_000);
     return () => clearTimeout(timer);
   }, [localProgress]);
 

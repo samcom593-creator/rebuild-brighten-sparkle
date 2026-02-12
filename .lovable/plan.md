@@ -1,36 +1,47 @@
 
-# Fix CRM Stage Click Reload and Dashboard Metric Accuracy
+# URGENT FIX: Application Form Blocked on Step 4
 
-## Problem 1: Stage Click Causes Page Reload
+## The Bug
 
-When you click a stage bubble in the CRM to move an agent (e.g., to "Live"), the entire page reloads because the `onStageUpdate` callback calls `fetchAgents`, which sets `loading = true` and re-fetches all data from the database. This forces you to scroll back, find the agent again, and click the next stage.
+When applicants reach Step 4 ("Your Goals"), check the SMS consent checkbox, and click "Continue," nothing happens. The form silently fails.
 
-### Fix
+**Root cause**: The "Continue" button on Step 4 has `type="submit"`, which triggers validation on ALL form fields across all 4 steps. If any field from a previous step is in an invalid state (common after sessionStorage restore or browser autofill), the form silently refuses to submit -- no error is shown because those fields are on hidden steps.
 
-Replace the full `fetchAgents` refetch with an **optimistic local state update**. When a stage is clicked:
-- Immediately update the agent's stage in the local `agents` array (no loading spinner, no scroll reset)
-- The page stays exactly where it is
-- The database is already updated by the OnboardingTracker itself
+Additionally, the `availability` and `referralSource` Select components are **uncontrolled** -- they have no `value` prop. This means:
+- When form data is restored from sessionStorage, the Select visually shows "Select availability" even though the form value might be set (or vice versa)
+- The user sees a filled-looking form but the internal state is empty, causing validation to fail silently
 
-**File**: `src/pages/DashboardCRM.tsx`
-- Create a new `handleOptimisticStageUpdate` function that takes `agentId` and updates the agent's `onboardingStage` in the local state using `setAgents(prev => prev.map(...))`
-- Replace `onStageUpdate={fetchAgents}` with `onStageUpdate={() => handleOptimisticStageUpdate(agent.id)}`
-- The function will re-read the agent's current stage from the database (a single lightweight query) and update just that one agent in state -- no full reload
+## The Fix
 
-## Problem 2: Dashboard Metrics Show Wrong Numbers
+**File**: `src/pages/Apply.tsx`
 
-The CRM stat cards (In Course, In Training, Live, etc.) count agents using `agents.filter(a => !a.isDeactivated)`, but this still includes agents marked as `isInactive`. Inactive agents should not count toward any active metric.
+### Change 1: Make Step 4 button validate-then-submit (not raw submit)
+- Change the Step 4 button from `type="submit"` to `type="button"`
+- Add an `onClick` handler that first validates only Step 4 fields (`availability`, `smsConsent`)
+- If valid, manually trigger form submission via `handleSubmit(onSubmit)()`
+- If invalid, show a toast error so users see clear feedback
 
-### Fix
+### Change 2: Add controlled `value` props to Select components
+- Add `value={watch("availability")}` to the Availability Select (line 847)
+- Add `value={watch("referralSource") || ""}` to the Referral Source Select (line 866)
+- This ensures sessionStorage restoration and the visual Select state stay in sync
 
-Update the `activeAgents` calculation to also exclude inactive agents:
+### Change 3: Add fallback error feedback
+- If `handleSubmit` still fails due to hidden step errors, catch the validation errors and show a toast listing which fields need attention, so the user is never silently stuck
 
-**File**: `src/pages/DashboardCRM.tsx`
-- Change `const activeAgents = agents.filter(a => !a.isDeactivated);` to `const activeAgents = agents.filter(a => !a.isDeactivated && !a.isInactive);`
-- This ensures all stat cards (In Course, In Training, Live, Meeting Eligible, Paid Agents) only count truly active agents
+## Technical Details
+
+```text
+Step 4 "Continue" button flow (BEFORE fix):
+  Click -> type="submit" -> handleSubmit(onSubmit) -> validates ALL fields -> silent fail
+
+Step 4 "Continue" button flow (AFTER fix):
+  Click -> type="button" -> validate step 4 only -> if OK -> handleSubmit(onSubmit)()
+       -> if full validation fails -> toast("Please go back and check [field]")
+```
 
 ## Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/pages/DashboardCRM.tsx` | Replace full refetch with optimistic update on stage change; fix activeAgents filter to exclude inactive |
+| `src/pages/Apply.tsx` | Fix Step 4 button to validate-then-submit; add controlled value props to Selects; add error feedback |

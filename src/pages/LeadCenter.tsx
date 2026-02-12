@@ -120,7 +120,8 @@ export default function LeadCenter() {
   const { isAdmin, user } = useAuth();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [managers, setManagers] = useState<Manager[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [initialLoaded, setInitialLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterManager, setFilterManager] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -133,7 +134,8 @@ export default function LeadCenter() {
   const [bulkManagerId, setBulkManagerId] = useState<string>("");
 
   const fetchLeads = async () => {
-    setLoading(true);
+    // Only show loading spinner on first load, not refetches
+    if (!initialLoaded) setLoading(true);
     try {
       // Fetch all applications
       const { data: applications, error: appError } = await supabase
@@ -250,6 +252,7 @@ export default function LeadCenter() {
       toast.error("Failed to load leads");
     } finally {
       setLoading(false);
+      setInitialLoaded(true);
     }
   };
 
@@ -494,9 +497,12 @@ export default function LeadCenter() {
         }
       }
 
-      toast.success(`${selectedLeads.size} leads moved to vault`);
+      const deletedCount = selectedLeads.size;
+      // Optimistic: remove deleted leads from local state immediately
+      const deletedKeys = new Set(selectedLeads);
+      setLeads(prev => prev.filter(lead => !deletedKeys.has(`${lead.source}-${lead.id}`)));
       clearSelection();
-      fetchLeads();
+      toast.success(`${deletedCount} leads moved to vault`);
     } catch (error) {
       console.error("Error deleting leads:", error);
       toast.error("Failed to delete leads");

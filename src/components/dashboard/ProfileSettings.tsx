@@ -36,6 +36,7 @@ export function ProfileSettings() {
   const [saved, setSaved] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const isRecovery = searchParams.get("recovery") === "true";
+  const forcePasswordChange = searchParams.get("force_password_change") === "true";
   
   const [formData, setFormData] = useState({
     fullName: "",
@@ -78,14 +79,14 @@ export function ProfileSettings() {
     }
   }, [profile]);
 
-  // Auto-scroll to password section when arriving from recovery link
+  // Auto-scroll to password section when arriving from recovery link or forced change
   useEffect(() => {
-    if (isRecovery && passwordSectionRef.current) {
+    if ((isRecovery || forcePasswordChange) && passwordSectionRef.current) {
       setTimeout(() => {
         passwordSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       }, 500);
     }
-  }, [isRecovery]);
+  }, [isRecovery, forcePasswordChange]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -195,6 +196,14 @@ export function ProfileSettings() {
 
       if (error) throw error;
 
+      // Mark portal_password_set = true in the agents table
+      if (user) {
+        await supabase
+          .from("agents")
+          .update({ portal_password_set: true })
+          .eq("user_id", user.id);
+      }
+
       setNewPassword("");
       setConfirmPassword("");
       setPasswordSaved(true);
@@ -202,6 +211,12 @@ export function ProfileSettings() {
         title: "Password Updated! 🔐",
         description: "Your password has been changed successfully.",
       });
+
+      // If this was a forced password change, redirect to dashboard
+      if (forcePasswordChange) {
+        setTimeout(() => navigate("/dashboard", { replace: true }), 1000);
+        return;
+      }
 
       setTimeout(() => setPasswordSaved(false), 3000);
     } catch (err: any) {
@@ -253,6 +268,20 @@ export function ProfileSettings() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
+      {forcePasswordChange && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 mb-4"
+        >
+          <h3 className="font-bold text-amber-400 flex items-center gap-2 mb-1">
+            🔐 Change Your Password
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            For security, you must change your default password before continuing. Scroll down to the password section below.
+          </p>
+        </motion.div>
+      )}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -261,12 +290,13 @@ export function ProfileSettings() {
         <p className="text-muted-foreground mb-4">
           Update your contact information and preferences
         </p>
-        {/* Optional fields banner */}
-        <div className="p-3 rounded-lg bg-muted/50 border border-border">
-          <p className="text-sm text-muted-foreground">
-            💡 <strong>Quick tip:</strong> Only your name and email are required. All other fields (phone, Instagram, bio, photo) are optional and can be completed at any time.
-          </p>
-        </div>
+        {!forcePasswordChange && (
+          <div className="p-3 rounded-lg bg-muted/50 border border-border">
+            <p className="text-sm text-muted-foreground">
+              💡 <strong>Quick tip:</strong> Only your name and email are required. All other fields (phone, Instagram, bio, photo) are optional and can be completed at any time.
+            </p>
+          </div>
+        )}
       </motion.div>
 
       {/* Profile Form */}

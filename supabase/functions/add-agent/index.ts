@@ -131,8 +131,8 @@ const handler = async (req: Request): Promise<Response> => {
       console.log(`Auth user already exists for ${normalizedEmail}, using existing`);
       userId = existingAuthUser.id;
     } else {
-      // Create new auth user with random password (they'll use magic links)
-      const randomPassword = crypto.randomUUID() + crypto.randomUUID();
+      // Create new auth user with default password (agents change on first login)
+      const randomPassword = "123456";
 
       const { data: newAuthUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
         email: normalizedEmail,

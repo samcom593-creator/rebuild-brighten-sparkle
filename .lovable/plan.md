@@ -1,75 +1,54 @@
 
+# Fix Course Login, Manager Password Reset, and Pipeline Manager Badges
 
-# Fix Magic Link Course Access + Application Flow Audit
+## Issues Identified
 
-## Issues Found
+### 1. No "Resend Course Login" button for already-enrolled agents
+The "Add to Course" button only works for unenrolled agents. Once enrolled, there's no way to resend the course login email. Agents who miss or lose their initial email are stuck. A dedicated "Resend Course Login" button will be added to CRM cards for agents in the course stage.
 
-### 1. Magic Link Edge Function Not Deployed
-The grace window code is in the source file but the **deployed version is still the old code**. The logs from just minutes ago show `"Token already used: 3d0666f4..."` (without "beyond grace window"), confirming the fix from the previous message was never deployed. This is why agents clicking the course email link still see "Edge Function returned a non-2xx status code."
+### 2. Managers cannot reset passwords for their downline
+The `reset-agent-password` edge function currently only allows admins (line 45-51: `if (!isAdmin)`). Managers need the same ability for their direct reports. The edge function will be updated to also allow managers, but only for agents in their downline.
 
-**Fix:** Redeploy the `verify-magic-link` edge function. No code changes needed -- the source is already correct.
-
-### 2. Application Name Validation Mismatch (Root Cause of Apply Failures)
-The frontend Zod schema allows any characters in names (`z.string().min(2).max(50)`) but the **edge function** requires names to match `/^[a-zA-Z\s'-]+$/`. Anyone with an accent, period, or special character in their name (e.g., "Jose", "O'Brien Jr.", "Mary-Ann") will pass frontend validation, submit, and then get a silent server-side rejection with a generic error.
-
-**Fix:** Relax the edge function regex to allow common name characters: accents, periods, commas, and Unicode letters.
-
-**File:** `supabase/functions/submit-application/index.ts` (lines 78-79)
-
-Change:
-```
-firstName: z.string().min(1).max(100).regex(/^[a-zA-Z\s'-]+$/, "Invalid name format"),
-lastName: z.string().min(1).max(100).regex(/^[a-zA-Z\s'-]+$/, "Invalid name format"),
-```
-To:
-```
-firstName: z.string().min(1).max(100).regex(/^[\p{L}\s'.\-,]+$/u, "Invalid name format"),
-lastName: z.string().min(1).max(100).regex(/^[\p{L}\s'.\-,]+$/u, "Invalid name format"),
-```
-
-This allows Unicode letters (accents, non-Latin), periods (Jr.), commas, hyphens, and apostrophes.
-
-### 3. Application Error Messages Not Specific Enough
-When the edge function returns a validation error (400), the frontend catches it but shows a generic "Failed to submit application" toast. The actual validation error details from the server are lost.
-
-**Fix:** In `src/pages/Apply.tsx`, extract the `details` array from the error response to show which field failed validation.
-
-**File:** `src/pages/Apply.tsx` (lines 418-445)
-
-Add handling for Zod validation errors from the edge function response:
-```typescript
-} catch (error: any) {
-  const errorMessage = error?.message?.toLowerCase() || "";
-  const errorStatus = error?.status || error?.code;
-  
-  // Also check if there's a response body with details
-  if (error?.context?.json) {
-    const body = error.context.json;
-    if (body.details) {
-      const fields = body.details.map((d: any) => d.path?.join(".")).filter(Boolean);
-      toast.error(`Please fix: ${fields.join(", ")}`, { duration: 6000 });
-      return;
-    }
-  }
-  // ... rest of error handling
-}
-```
-
-### 4. Motivation Step Visibility
-The motivation step already exists in the code and works correctly for unlicensed/pending applicants. It appears after the referral step (Step 5). No changes needed here -- it is functioning as designed.
+### 3. Manager name badges too subtle / not showing for all agents
+The badge code exists (line 714-718) but uses `bg-muted/50 text-muted-foreground` which is nearly invisible on the dark theme. The styling will be made more prominent with a teal/cyan color scheme so it stands out.
 
 ---
 
-## Summary of Changes
+## Changes
 
-| File | Change |
-|------|--------|
-| `supabase/functions/verify-magic-link/index.ts` | Redeploy only (no code changes) |
-| `supabase/functions/submit-application/index.ts` | Relax name regex to support Unicode/accented names and common punctuation |
-| `src/pages/Apply.tsx` | Improve error handling to surface specific validation failures from edge function |
+### File 1: `src/pages/DashboardCRM.tsx`
+- Add a "Resend Course Login" button next to the existing "View Training Course" link for agents in the `onboarding` or `training_online` stage. This button calls `send-course-enrollment-email` to send a fresh magic link.
+- Make the manager badge more visible: change from `bg-muted/50 text-muted-foreground` to `bg-sky-500/10 text-sky-400 border-sky-500/30` so it clearly stands out.
+- Only show the manager badge when the agent's manager is different from the current user's agent (to avoid showing "Under Sam" for Sam's own direct reports).
 
-## Deployment Steps
-1. Deploy `verify-magic-link` edge function (fixes course access immediately)
-2. Deploy `submit-application` edge function (fixes name validation blocking)
-3. Update `Apply.tsx` error handling
+### File 2: `supabase/functions/reset-agent-password/index.ts`
+- Allow managers (not just admins) to reset passwords, but only for agents where `invited_by_manager_id` matches the manager's agent ID.
+- Logic: check if user has admin OR manager role. If manager, verify the target user's agent record has `invited_by_manager_id` matching the caller's agent ID.
 
+### File 3: `src/components/dashboard/AgentQuickEditDialog.tsx`
+- No code changes needed here -- the UI for password reset already exists. Once the edge function accepts managers, this will work automatically.
+
+---
+
+## Technical Details
+
+### Resend Course Login Button
+A small button will be added in the CRM card's "In Course" section that:
+1. Calls `send-course-enrollment-email` with the agent's ID
+2. Shows a loading spinner while sending
+3. Toasts success/failure
+
+### Manager Password Reset (Edge Function)
+```
+Current: Only admin role allowed
+New:     Admin OR (manager role + target agent is in their downline)
+```
+
+The edge function will:
+1. Check if caller has admin or manager role
+2. If manager, query `agents` table to verify `targetUserId`'s agent record has `invited_by_manager_id` matching the caller's agent ID
+3. If neither condition met, return 403
+
+### Manager Badge Visibility Fix
+- Change color from muted gray to sky blue for contrast
+- Add the current user's agent ID tracking (already fetched at line 256-260) and filter out badges for agents directly under the current user

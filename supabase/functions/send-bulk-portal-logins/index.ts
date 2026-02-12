@@ -11,6 +11,7 @@ const corsHeaders = {
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const BASE_URL = "https://apex-financial.org";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const ADMIN_EMAIL = "info@apex-financial.org";
 
 // Generate magic link token
 async function generateMagicToken(
@@ -47,7 +48,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Get all active agents with valid profiles by joining via user_id
     const { data: agents, error: agentsError } = await supabaseAdmin
       .from("agents")
-      .select("id, user_id, onboarding_stage")
+      .select("id, user_id, onboarding_stage, invited_by_manager_id")
       .eq("is_deactivated", false)
       .not("user_id", "is", null);
 
@@ -135,10 +136,24 @@ const handler = async (req: Request): Promise<Response> => {
           ? `${SUPABASE_URL}/functions/v1/track-email-open?id=${trackingRecord.id}`
           : "";
 
+        // Build CC list (admin + manager)
+        let managerEmail: string | null = null;
+        if (agent.invited_by_manager_id) {
+          const managerProfile = profileMap.get(
+            (agents || []).find(a => a.id === agent.invited_by_manager_id)?.user_id
+          );
+          managerEmail = managerProfile?.email || null;
+        }
+        const ccList = [ADMIN_EMAIL, managerEmail]
+          .filter(Boolean)
+          .filter((v, i, a) => a.indexOf(v) === i)
+          .filter(e => e !== profile.email) as string[];
+
         // Send email with magic links
         await resend.emails.send({
           from: "APEX Financial <noreply@apex-financial.org>",
           to: [profile.email],
+          cc: ccList.length > 0 ? ccList : undefined,
           subject: "🎯 Your APEX Portal Access - One-Tap Login Inside!",
           html: `
             <!DOCTYPE html>

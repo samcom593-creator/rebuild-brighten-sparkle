@@ -36,16 +36,18 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Verify admin role
+    // Verify admin or manager role
     const { data: roles } = await supabaseAdmin
       .from("user_roles")
       .select("role")
       .eq("user_id", authUser.id);
 
     const isAdmin = roles?.some((r) => r.role === "admin");
-    if (!isAdmin) {
+    const isManager = roles?.some((r) => r.role === "manager");
+
+    if (!isAdmin && !isManager) {
       return new Response(
-        JSON.stringify({ error: "Only admins can reset passwords" }),
+        JSON.stringify({ error: "Only admins and managers can reset passwords" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -64,6 +66,28 @@ const handler = async (req: Request): Promise<Response> => {
         JSON.stringify({ error: "Password must be at least 6 characters" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // If manager (not admin), verify target is in their downline
+    if (!isAdmin && isManager) {
+      const { data: callerAgent } = await supabaseAdmin
+        .from("agents")
+        .select("id")
+        .eq("user_id", authUser.id)
+        .single();
+
+      const { data: targetAgent } = await supabaseAdmin
+        .from("agents")
+        .select("invited_by_manager_id")
+        .eq("user_id", targetUserId)
+        .single();
+
+      if (!callerAgent || !targetAgent || targetAgent.invited_by_manager_id !== callerAgent.id) {
+        return new Response(
+          JSON.stringify({ error: "You can only reset passwords for your direct downline" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(

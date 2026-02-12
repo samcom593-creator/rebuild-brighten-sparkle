@@ -1,127 +1,51 @@
 
-# Add Animations and Sounds Site-Wide + Fix Pipeline Speed
 
-## Problem Analysis
+# Pipeline Card Enhancements
 
-### Pipeline Speed
-The CRM Pipeline page (`DashboardCRM.tsx`) runs 8+ sequential database queries on every load:
-1. Current agent lookup
-2. All agents query
-3. All profiles query
-4. Manager agents query
-5. Manager profiles query
-6. Monthly production query
-7. Application contacts query
-8. License progress query
-9. Payment tracking query
+## What Changes
 
-These run one after another (not in parallel), causing multi-second load times. The page also calls `fetchAgents` (full reload) on every minor action like star rating or note update.
+### 1. Rename "Onboarding" stage to "Hired"
+The first stage in the OnboardingTracker (the clickable circle progression) currently says "Onboarding". This will be renamed to "Hired" with updated description "Agent has been hired and onboarded" since everyone in the CRM pipeline is already hired.
 
-### Missing Sounds
-Sound effects exist in only 5 components: AttendanceGrid, ManagerTeamView, OnboardingTracker, DeactivateAgentDialog, and LogNumbers. Major actions like assigning leads, deleting leads, adding agents, stage changes, and navigation have no audio feedback.
+### 2. Always show licensing progress tag
+Currently the license progress badge only shows when it's something other than "unlicensed". It will now always show on every card:
+- **Unlicensed** (gray tag)
+- **Course Purchased** (violet tag)
+- **Finished Course** (violet tag)
+- **Test Scheduled** (blue tag with exam date)
+- **Passed Test** (green tag)
+- **Fingerprints Done** (green tag)
+- **Waiting On License** (amber tag)
+- **Licensed** (green tag)
 
-### Missing Animations
-Many components render statically without entrance animations or interaction feedback.
+### 3. Show manager badge for agents not directly under you
+When viewing as admin, any agent whose `invited_by_manager_id` is NOT your own agent ID will display a small badge like "Under KJ Vaughns" or "Under Obiajulu" so you can instantly see who manages them without tapping into the card.
 
----
-
-## Fix 1: Parallelize Pipeline Queries
-
-Change `fetchAgents` in `DashboardCRM.tsx` to run independent queries in parallel using `Promise.all` instead of sequentially. This cuts load time by ~60-70%.
-
-**Current flow (sequential):**
-```text
-agents -> profiles -> managerAgents -> managerProfiles -> production -> contacts -> licenses -> payments
-```
-
-**New flow (parallel where possible):**
-```text
-agents -> parallel([profiles, managerAgents, production, contacts, licenses, payments])
-         managerAgents -> managerProfiles (only this is sequential)
-```
-
-Also: replace `fetchAgents` callbacks on minor actions (star rating, notes, attendance) with optimistic local state updates instead of full re-fetches.
-
----
-
-## Fix 2: Add Sounds to Key Actions
-
-Add `useSoundEffects` to these components/pages:
-
-| Component | Action | Sound |
-|-----------|--------|-------|
-| `QuickAssignMenu` | Lead assigned | "success" |
-| `QuickAssignMenu` | Assignment failed | "error" |
-| `LeadReassignButton` | Lead reassigned | "success" |
-| `LeadReassignButton` | Reassign failed | "error" |
-| `ManagerAssignMenu` | Manager assigned | "success" |
-| `ManagerAssignMenu` | Assignment failed | "error" |
-| `AddAgentModal` | Agent added | "celebrate" |
-| `LeadCenter` | Lead deleted | "whoosh" |
-| `LeadCenter` | Delete failed | "error" |
-| `DashboardCRM` | Stage filter clicked | "click" |
-| `DashboardCRM` | Column expanded | "whoosh" |
-| `GlobalSidebar` | Navigation click | "click" |
-
----
-
-## Fix 3: Add Entrance Animations
-
-Add staggered fade-in animations to:
-
-| Location | Animation |
-|----------|-----------|
-| `DashboardCRM` stat cards | Staggered scale-in on mount |
-| `DashboardCRM` agent cards (overview) | Staggered fade-up |
-| `LeadCenter` table rows | Fade-in on mount |
-| `DashboardApplicants` cards | Staggered fade-in |
-| `GlobalSidebar` nav items | Subtle slide-in from left |
-
-Also add micro-interactions:
-- Buttons: `whileTap={{ scale: 0.97 }}` on all primary action buttons in the pipeline
-- Cards: subtle hover lift effect on agent cards in CRM overview
-
----
-
-## Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/pages/DashboardCRM.tsx` | Parallelize queries, add optimistic updates, add sounds for filter/expand, add card animations |
-| `src/components/dashboard/QuickAssignMenu.tsx` | Add sound effects on assign success/error |
-| `src/components/callcenter/LeadReassignButton.tsx` | Add sound effects on reassign success/error |
-| `src/components/dashboard/ManagerAssignMenu.tsx` | Add sound effects on assign success/error |
-| `src/pages/LeadCenter.tsx` | Add sound on delete, add row entrance animations |
-| `src/components/dashboard/AddAgentModal.tsx` | Add celebrate sound on agent added |
-| `src/components/layout/GlobalSidebar.tsx` | Add click sound on nav, subtle nav item animations |
+### 4. Show last follow-up more prominently
+The "last contacted" timestamp already exists but is tiny and easy to miss. It will be moved to its own line below the email, with a clear "Last F/U:" label and relative time, using a slightly more visible style.
 
 ---
 
 ## Technical Details
 
-### Parallel Query Pattern
-```typescript
-// Instead of sequential:
-const { data: profiles } = await supabase...
-const { data: managerAgents } = await supabase...
-const { data: production } = await supabase...
+### Files to modify
 
-// Use parallel:
-const [profilesResult, managerAgentsResult, productionResult, ...] = await Promise.all([
-  supabase.from("profiles").select("...").in("user_id", userIds),
-  supabase.from("agents").select("...").in("id", managerIds),
-  supabase.from("daily_production").select("...").in("agent_id", liveAgentIds),
-  supabase.from("applications").select("...").in("assigned_agent_id", allAgentIds),
-  supabase.from("applications").select("...").in("assigned_agent_id", allAgentIds),
-  supabase.from("lead_payment_tracking").select("...").eq("week_start", weekStartStr),
-]);
+| File | Change |
+|------|--------|
+| `src/components/dashboard/OnboardingTracker.tsx` | Rename first stage from "Onboarding" to "Hired", update description |
+| `src/pages/DashboardCRM.tsx` | (1) Always show license progress badge even for "unlicensed". (2) Add manager name badge when agent is under a different manager. (3) Make last-contacted more prominent with "Last F/U:" label on its own line |
+
+### License Progress Badge Colors
+```
+unlicensed     -> bg-slate-500/10, text-slate-400
+course_purchased -> bg-violet-500/10, text-violet-400
+finished_course  -> bg-violet-500/10, text-violet-400
+test_scheduled   -> bg-blue-500/10, text-blue-400
+passed_test      -> bg-emerald-500/10, text-emerald-400
+fingerprints_done -> bg-emerald-500/10, text-emerald-400
+waiting_on_license -> bg-amber-500/10, text-amber-400
+licensed         -> bg-green-500/10, text-green-400
 ```
 
-### Optimistic Updates
-Replace `onUpdate={fetchAgents}` callbacks with local state patches:
-```typescript
-// Instead of: onUpdate={fetchAgents}
-// Use: onUpdate={(agentId, field, value) => setAgents(prev => prev.map(...))}
-```
-
-This eliminates full-page reloads on star ratings, notes, attendance changes, etc.
+### Manager Badge Logic
+The current user's agent ID is fetched at load time (already done in `fetchAgents`). For each agent card, if `agent.managerId` exists and differs from the current user's agent ID, show a small badge: "Under [managerName]" in a neutral style.

@@ -1,4 +1,4 @@
-import { useState, useEffect, forwardRef } from "react";
+import { useState, useRef, forwardRef } from "react";
 import { UserPlus, Loader2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,60 +25,69 @@ interface QuickAssignMenuProps {
   className?: string;
 }
 
+// Shared cache so all instances reuse the same data
+let cachedManagers: Manager[] | null = null;
+let cacheTimestamp = 0;
+const CACHE_TTL = 120_000; // 2 minutes
+
+async function getManagers(): Promise<Manager[]> {
+  const now = Date.now();
+  if (cachedManagers && now - cacheTimestamp < CACHE_TTL) {
+    return cachedManagers;
+  }
+
+  const { data, error } = await supabase.functions.invoke("get-active-managers");
+  if (error || !data?.managers || !Array.isArray(data.managers)) {
+    return cachedManagers || [];
+  }
+
+  // Batch-fetch emails in one go instead of N+1
+  const agentIds = data.managers.map((m: { id: string }) => m.id);
+  const { data: agents } = await supabase
+    .from("agents")
+    .select("id, user_id")
+    .in("id", agentIds);
+
+  const userIds = (agents || []).filter(a => a.user_id).map(a => a.user_id!);
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("user_id, email")
+    .in("user_id", userIds);
+
+  const emailMap = new Map<string, string>();
+  for (const a of agents || []) {
+    if (a.user_id) {
+      const p = profiles?.find(pr => pr.user_id === a.user_id);
+      if (p) emailMap.set(a.id, p.email);
+    }
+  }
+
+  cachedManagers = data.managers.map((m: { id: string; name: string }) => ({
+    id: m.id,
+    name: m.name,
+    email: emailMap.get(m.id) || "",
+  }));
+  cacheTimestamp = now;
+  return cachedManagers!;
+}
+
 export const QuickAssignMenu = forwardRef<HTMLDivElement, QuickAssignMenuProps>(
   ({ applicationId, currentAgentId, onAssigned, className }, ref) => {
   const [managers, setManagers] = useState<Manager[]>([]);
   const [loading, setLoading] = useState(false);
   const [assigning, setAssigning] = useState<string | null>(null);
+  const hasFetched = useRef(false);
 
-  useEffect(() => {
-    fetchManagers();
-  }, []);
-
-  const fetchManagers = async () => {
-    setLoading(true);
-    try {
-      // Use edge function for consistent manager fetching (bypasses RLS)
-      const { data, error } = await supabase.functions.invoke("get-active-managers");
-
-      if (error) {
-        console.error("Error fetching managers:", error);
-        setManagers([]);
-        return;
+  const handleOpenChange = async (open: boolean) => {
+    if (open && !hasFetched.current) {
+      setLoading(true);
+      try {
+        const result = await getManagers();
+        setManagers(result);
+        hasFetched.current = true;
+      } finally {
+        setLoading(false);
       }
-
-      if (data?.managers && Array.isArray(data.managers)) {
-        // Transform to expected format with email lookup
-        const managersWithEmail: Manager[] = await Promise.all(
-          data.managers.map(async (m: { id: string; name: string }) => {
-            // Get email from profiles via agent lookup
-            const { data: agent } = await supabase
-              .from("agents")
-              .select("user_id")
-              .eq("id", m.id)
-              .maybeSingle();
-
-            if (agent?.user_id) {
-              const { data: profile } = await supabase
-                .from("profiles")
-                .select("email")
-                .eq("user_id", agent.user_id)
-                .maybeSingle();
-
-              return { id: m.id, name: m.name, email: profile?.email || "" };
-            }
-            return { id: m.id, name: m.name, email: "" };
-          })
-        );
-        setManagers(managersWithEmail);
-      } else {
-        setManagers([]);
-      }
-    } catch (error) {
-      console.error("Error fetching managers:", error);
-      setManagers([]);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -97,8 +106,8 @@ export const QuickAssignMenu = forwardRef<HTMLDivElement, QuickAssignMenuProps>(
 
       if (error) throw error;
 
-      // Notify the new manager
-      await supabase.functions.invoke("notify-lead-assigned", {
+      // Notify the new manager (fire and forget)
+      supabase.functions.invoke("notify-lead-assigned", {
         body: { applicationId, agentId: managerId },
       });
 
@@ -114,19 +123,14 @@ export const QuickAssignMenu = forwardRef<HTMLDivElement, QuickAssignMenuProps>(
 
     return (
       <div ref={ref}>
-        <DropdownMenu>
+        <DropdownMenu onOpenChange={handleOpenChange}>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               size="sm"
               className={className}
-              disabled={loading}
             >
-              {loading ? (
-                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-              ) : (
-                <UserPlus className="h-4 w-4 mr-1" />
-              )}
+              <UserPlus className="h-4 w-4 mr-1" />
               Assign
             </Button>
           </DropdownMenuTrigger>
@@ -136,7 +140,12 @@ export const QuickAssignMenu = forwardRef<HTMLDivElement, QuickAssignMenuProps>(
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             
-            {managers.length === 0 ? (
+            {loading ? (
+              <DropdownMenuItem disabled>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Loading managers...
+              </DropdownMenuItem>
+            ) : managers.length === 0 ? (
               <DropdownMenuItem disabled>
                 No managers available
               </DropdownMenuItem>

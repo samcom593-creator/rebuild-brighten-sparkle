@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 interface Manager {
   id: string;
@@ -73,6 +74,7 @@ async function getManagers(): Promise<Manager[]> {
 
 export const QuickAssignMenu = forwardRef<HTMLDivElement, QuickAssignMenuProps>(
   ({ applicationId, currentAgentId, onAssigned, className }, ref) => {
+  const { playSound } = useSoundEffects();
   const [managers, setManagers] = useState<Manager[]>([]);
   const [loading, setLoading] = useState(false);
   const [assigning, setAssigning] = useState<string | null>(null);
@@ -111,10 +113,12 @@ export const QuickAssignMenu = forwardRef<HTMLDivElement, QuickAssignMenuProps>(
         body: { applicationId, agentId: managerId },
       });
 
+      playSound("success");
       toast.success("Lead reassigned successfully");
       onAssigned?.();
     } catch (err) {
       console.error("Failed to assign lead:", err);
+      playSound("error");
       toast.error("Failed to reassign lead");
     } finally {
       setAssigning(null);

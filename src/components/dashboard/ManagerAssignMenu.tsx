@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 interface Manager {
   id: string;
@@ -48,6 +49,7 @@ async function getManagers(): Promise<Manager[]> {
 }
 
 export function ManagerAssignMenu({ agentId, currentManagerId, onAssigned }: ManagerAssignMenuProps) {
+  const { playSound } = useSoundEffects();
   const [managers, setManagers] = useState<Manager[]>([]);
   const [loading, setLoading] = useState(false);
   const [assigning, setAssigning] = useState(false);
@@ -80,10 +82,12 @@ export function ManagerAssignMenu({ agentId, currentManagerId, onAssigned }: Man
         ? managers.find(m => m.id === managerId)?.name || "Manager"
         : "No manager";
       
+      playSound("success");
       toast.success(`Assigned to ${managerName}`);
       onAssigned?.();
     } catch (error) {
       console.error("Error assigning manager:", error);
+      playSound("error");
       toast.error("Failed to assign manager");
     } finally {
       setAssigning(false);

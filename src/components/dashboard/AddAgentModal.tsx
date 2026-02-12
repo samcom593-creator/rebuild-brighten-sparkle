@@ -20,6 +20,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 interface Manager {
   id: string;
@@ -32,6 +33,7 @@ interface AddAgentModalProps {
 
 export function AddAgentModal({ onAgentAdded }: AddAgentModalProps) {
   const { user } = useAuth();
+  const { playSound } = useSoundEffects();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingManagers, setLoadingManagers] = useState(false);
@@ -144,6 +146,7 @@ export function AddAgentModal({ onAgentAdded }: AddAgentModalProps) {
         return;
       }
 
+      playSound("celebrate");
       toast.success(data?.message || "Agent added successfully!");
       setOpen(false);
       resetForm();

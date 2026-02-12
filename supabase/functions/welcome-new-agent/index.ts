@@ -18,6 +18,7 @@ interface WelcomeEmailRequest {
   agentId?: string;
   managerId?: string;
   courseLink?: string;
+  contractingLink?: string;
 }
 
 const defaultCourseLink = "https://partners.xcelsolutions.com/afe";
@@ -30,7 +31,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { agentName, agentEmail, agentId, managerId, courseLink }: WelcomeEmailRequest = await req.json();
+    const { agentName, agentEmail, agentId, managerId, courseLink, contractingLink }: WelcomeEmailRequest = await req.json();
 
     console.log(`Sending welcome email to ${agentName} at ${agentEmail}`);
 
@@ -100,23 +101,32 @@ const handler = async (req: Request): Promise<Response> => {
       
       <p>Welcome to the Apex Financial team! Follow these steps to get started:</p>
       
-      <!-- Step 1: Portal -->
+      <!-- Step 1: Start Contracting -->
+      ${contractingLink ? `
+      <div class="step" style="border-left-color: #f59e0b;">
+        <h3 style="color: #f59e0b;"><span class="step-number" style="background:#f59e0b;">1</span> Start Your Contracting</h3>
+        <p><strong style="color:#f59e0b;">⚡ FIRST PRIORITY:</strong> Click below to begin your contracting process. This is the most important step to get started.</p>
+        <a href="${contractingLink}" class="button" style="background:#f59e0b;">Start Contracting →</a>
+      </div>
+      ` : ''}
+      
+      <!-- Step ${contractingLink ? '2' : '1'}: Portal -->
       <div class="step">
-        <h3><span class="step-number">1</span> Access Your Agent Portal</h3>
+        <h3><span class="step-number">${contractingLink ? '2' : '1'}</span> Access Your Agent Portal</h3>
         <p>Your portal is where you'll log daily numbers, track performance, and see the leaderboard.</p>
         <a href="${PORTAL_LINK}" class="button">Open My Portal →</a>
       </div>
       
-      <!-- Step 2: Discord -->
+      <!-- Step ${contractingLink ? '3' : '2'}: Discord -->
       <div class="discord-step">
-        <h3 style="color:#5865F2;"><span class="step-number" style="background:#5865F2;">2</span> Join Our Team Discord</h3>
+        <h3 style="color:#5865F2;"><span class="step-number" style="background:#5865F2;">${contractingLink ? '3' : '2'}</span> Join Our Team Discord</h3>
         <p>Connect with the team for daily training, support, and announcements.</p>
         <a href="${DISCORD_LINK}" class="button" style="background:#5865F2;">Join Discord →</a>
       </div>
       
-      <!-- Step 3: Coursework -->
+      <!-- Step ${contractingLink ? '4' : '3'}: Coursework -->
       <div class="step">
-        <h3><span class="step-number">3</span> Complete Your Coursework</h3>
+        <h3><span class="step-number">${contractingLink ? '4' : '3'}</span> Complete Your Coursework</h3>
         <p>Complete the onboarding course to learn our systems and processes.</p>
         <p><strong style="color:#f59e0b;">Expectation: Complete this the same day you receive it.</strong></p>
         <a href="${finalCourseLink}" class="button">Start Coursework →</a>

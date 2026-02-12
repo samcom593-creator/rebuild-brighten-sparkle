@@ -401,7 +401,7 @@ export default function AgentPortal() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 page-enter">
       <div className="space-y-6">
         {/* Hero Section with Quick Stats */}
         <section className="space-y-4">

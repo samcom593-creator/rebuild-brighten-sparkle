@@ -402,17 +402,21 @@ export default function CourseProgress() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-4">
+      <div className="space-y-4 page-enter">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold gradient-text flex items-center gap-2">
-              <GraduationCap className="h-6 w-6" />
-              Course Progress Monitor
-            </h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Track agent coursework completion and send reminders
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-primary/10">
+              <GraduationCap className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold gradient-text">
+                Course Progress Monitor
+              </h1>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Track agent coursework completion and send reminders
+              </p>
+            </div>
           </div>
           <div className="flex gap-2 flex-wrap">
             <AddAgentToCourseDialog onSuccess={() => refetch()} />

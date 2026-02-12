@@ -276,47 +276,36 @@ export default function Dashboard() {
         >
           Welcome back, <span className="text-primary">{userName}</span>! 👋
         </motion.h2>
-        <p className="text-sm text-muted-foreground mt-1">
+        <div className="h-0.5 w-24 mt-1 bg-gradient-to-r from-primary to-emerald-400 rounded-full" />
+        <p className="text-sm text-muted-foreground mt-2">
           {isAdmin ? "Here's your agency overview" : isManager ? "Here's your team performance" : "Track your progress"}
         </p>
       </motion.div>
 
       {/* ====== QUICK ACTIONS ROW ====== */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15 }}
-        className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6"
-      >
-        <Link to="/numbers">
-          <GlassCard className="p-4 hover:border-primary/50 hover:bg-primary/5 cursor-pointer transition-all group">
-            <Edit3 className="h-5 w-5 text-primary mb-2 group-hover:scale-110 transition-transform" />
-            <p className="font-semibold text-sm">Log Numbers</p>
-            <p className="text-xs text-muted-foreground">Enter today's stats</p>
-          </GlassCard>
-        </Link>
-        <Link to="/agent-portal">
-          <GlassCard className="p-4 hover:border-violet-500/50 hover:bg-violet-500/5 cursor-pointer transition-all group">
-            <BarChart3 className="h-5 w-5 text-violet-500 mb-2 group-hover:scale-110 transition-transform" />
-            <p className="font-semibold text-sm">Agent Portal</p>
-            <p className="text-xs text-muted-foreground">View performance</p>
-          </GlassCard>
-        </Link>
-        <Link to="/dashboard/crm">
-          <GlassCard className="p-4 hover:border-emerald-500/50 hover:bg-emerald-500/5 cursor-pointer transition-all group">
-            <Users className="h-5 w-5 text-emerald-500 mb-2 group-hover:scale-110 transition-transform" />
-            <p className="font-semibold text-sm">CRM</p>
-            <p className="text-xs text-muted-foreground">Manage agents</p>
-          </GlassCard>
-        </Link>
-        <Link to="/dashboard/applicants">
-          <GlassCard className="p-4 hover:border-amber-500/50 hover:bg-amber-500/5 cursor-pointer transition-all group">
-            <Sparkles className="h-5 w-5 text-amber-500 mb-2 group-hover:scale-110 transition-transform" />
-            <p className="font-semibold text-sm">Pipeline</p>
-            <p className="text-xs text-muted-foreground">View applicants</p>
-          </GlassCard>
-        </Link>
-      </motion.div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        {[
+          { to: "/numbers", icon: Edit3, color: "primary", title: "Log Numbers", sub: "Enter today's stats", delay: 0 },
+          { to: "/agent-portal", icon: BarChart3, color: "violet-500", title: "Agent Portal", sub: "View performance", delay: 0.05 },
+          { to: "/dashboard/crm", icon: Users, color: "emerald-500", title: "CRM", sub: "Manage agents", delay: 0.1 },
+          { to: "/dashboard/applicants", icon: Sparkles, color: "amber-500", title: "Pipeline", sub: "View applicants", delay: 0.15 },
+        ].map((card) => (
+          <motion.div
+            key={card.to}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: card.delay, duration: 0.3 }}
+          >
+            <Link to={card.to}>
+              <GlassCard className={`p-4 hover:border-${card.color}/50 hover:bg-${card.color}/5 cursor-pointer transition-all card-hover-lift group`}>
+                <card.icon className={`h-5 w-5 text-${card.color} mb-2 group-hover:scale-110 transition-transform`} />
+                <p className="font-semibold text-sm">{card.title}</p>
+                <p className="text-xs text-muted-foreground">{card.sub}</p>
+              </GlassCard>
+            </Link>
+          </motion.div>
+        ))}
+      </div>
 
       {/* ====== 1. PRODUCTION SNAPSHOT (Top Priority - Role-based) ====== */}
       <div className="mb-6">

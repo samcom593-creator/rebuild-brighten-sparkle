@@ -558,7 +558,7 @@ export default function CallCenter() {
 
   // Active calling UI
   return (
-    <div className="flex flex-col h-full w-full max-w-6xl mx-auto p-4 md:p-8">
+    <div className="flex flex-col h-full w-full max-w-6xl mx-auto p-4 md:p-8 page-enter">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}

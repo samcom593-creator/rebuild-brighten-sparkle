@@ -153,8 +153,8 @@ export function CallCenterFilters({
                 onChange: onSourceChange,
                 options: [
                   { value: "all", label: "All Sources" },
-                  { value: "aged_leads", label: "Aged Leads Only" },
-                  { value: "applications", label: "New Applicants Only" },
+                  { value: "aged_leads", label: "Aged Leads" },
+                  { value: "applications", label: "New Drip-Ins" },
                 ],
               },
               {

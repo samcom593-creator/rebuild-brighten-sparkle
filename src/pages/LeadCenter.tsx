@@ -145,6 +145,7 @@ export default function LeadCenter() {
   const [filterManager, setFilterManager] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterLicense, setFilterLicense] = useState<string>("all");
+  const [filterSource, setFilterSource] = useState<"all" | "applications" | "aged_leads">("all");
 
   // Bulk selection state
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
@@ -316,9 +317,12 @@ export default function LeadCenter() {
       const matchesLicense =
         filterLicense === "all" || lead.licenseStatus === filterLicense;
 
-      return matchesSearch && matchesManager && matchesStatus && matchesLicense;
+      const matchesSource =
+        filterSource === "all" || lead.source === filterSource;
+
+      return matchesSearch && matchesManager && matchesStatus && matchesLicense && matchesSource;
     });
-  }, [leads, searchQuery, filterManager, filterStatus, filterLicense]);
+  }, [leads, searchQuery, filterManager, filterStatus, filterLicense, filterSource]);
 
   // Stats
   const stats = useMemo(() => {
@@ -326,7 +330,7 @@ export default function LeadCenter() {
       total: leads.length,
       unassigned: leads.filter((l) => !l.assignedAgentId).length,
       licensed: leads.filter((l) => l.licenseStatus === "licensed").length,
-      new: leads.filter((l) => l.status === "new").length,
+      new: leads.filter((l) => l.source === "applications" && l.status === "new").length,
     };
   }, [leads]);
 
@@ -748,8 +752,8 @@ export default function LeadCenter() {
             icon: Users,
             iconColor: "text-primary",
             bgColor: "bg-primary/10",
-            onClick: () => { setFilterManager("all"); setFilterStatus("all"); setFilterLicense("all"); },
-            active: filterManager === "all" && filterStatus === "all" && filterLicense === "all",
+            onClick: () => { setFilterManager("all"); setFilterStatus("all"); setFilterLicense("all"); setFilterSource("all"); },
+            active: filterManager === "all" && filterStatus === "all" && filterLicense === "all" && filterSource === "all",
           },
           {
             label: "Unassigned",
@@ -757,7 +761,7 @@ export default function LeadCenter() {
             icon: UserX,
             iconColor: "text-amber-500",
             bgColor: "bg-amber-500/10",
-            onClick: () => { setFilterManager("unassigned"); setFilterStatus("all"); setFilterLicense("all"); },
+            onClick: () => { setFilterManager("unassigned"); setFilterStatus("all"); setFilterLicense("all"); setFilterSource("all"); },
             active: filterManager === "unassigned",
           },
           {
@@ -766,7 +770,7 @@ export default function LeadCenter() {
             icon: Award,
             iconColor: "text-emerald-500",
             bgColor: "bg-emerald-500/10",
-            onClick: () => { setFilterLicense("licensed"); setFilterManager("all"); setFilterStatus("all"); },
+            onClick: () => { setFilterLicense("licensed"); setFilterManager("all"); setFilterStatus("all"); setFilterSource("all"); },
             active: filterLicense === "licensed",
           },
           {
@@ -775,8 +779,8 @@ export default function LeadCenter() {
             icon: Clock,
             iconColor: "text-blue-500",
             bgColor: "bg-blue-500/10",
-            onClick: () => { setFilterStatus("new"); setFilterManager("all"); setFilterLicense("all"); },
-            active: filterStatus === "new",
+            onClick: () => { setFilterStatus("new"); setFilterManager("all"); setFilterLicense("all"); setFilterSource("applications"); },
+            active: filterStatus === "new" && filterSource === "applications",
           },
         ].map((card) => (
           <GlassCard
@@ -851,6 +855,16 @@ export default function LeadCenter() {
               <SelectItem value="licensed">Licensed</SelectItem>
               <SelectItem value="unlicensed">Unlicensed</SelectItem>
               <SelectItem value="unknown">Unknown</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={filterSource} onValueChange={(v) => setFilterSource(v as "all" | "applications" | "aged_leads")}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Lead Source" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sources</SelectItem>
+              <SelectItem value="applications">New Drip-Ins</SelectItem>
+              <SelectItem value="aged_leads">Aged Leads</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -972,7 +986,7 @@ export default function LeadCenter() {
                           }
                         >
                           {lead.source === "applications"
-                            ? formatReferralSource(lead.referralSource)
+                            ? "New Drip-In"
                             : "Aged Lead"}
                         </Badge>
                       </TableCell>

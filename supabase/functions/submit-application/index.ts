@@ -75,8 +75,8 @@ const ConsentSchema = z.object({
 });
 
 const SubmitApplicationSchema = z.object({
-  firstName: z.string().min(1).max(100).regex(/^[a-zA-Z\s'-]+$/, "Invalid name format"),
-  lastName: z.string().min(1).max(100).regex(/^[a-zA-Z\s'-]+$/, "Invalid name format"),
+  firstName: z.string().min(1).max(100).regex(/^[\p{L}\s'.\-,]+$/u, "Invalid name format"),
+  lastName: z.string().min(1).max(100).regex(/^[\p{L}\s'.\-,]+$/u, "Invalid name format"),
   email: z.string().email().max(254),
   phone: z.string().min(10).max(20).regex(/^[\d\s\-\+\(\)]+$/, "Invalid phone format"),
   city: z.string().min(1).max(100),

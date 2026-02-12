@@ -83,6 +83,12 @@ export default function CallCenter() {
   }, [user]);
 
   const fetchLeads = useCallback(async () => {
+    // CRITICAL: Never fetch without agentId — unfiltered queries return all leads
+    if (!agentId && !isAdmin) {
+      setLeads([]);
+      return;
+    }
+
     setLoading(true);
     try {
       const allLeads: UnifiedLead[] = [];
@@ -208,7 +214,13 @@ export default function CallCenter() {
     }
   }, [sourceFilter, licenseFilter, statusFilter, progressFilter, sortOrder, isAdmin, isManager, agentId]);
 
+  const agentIdLoading = !agentId && !isAdmin && !!user;
+
   const handleStartCalling = () => {
+    if (agentIdLoading) {
+      toast.error("Still loading your profile, please wait...");
+      return;
+    }
     setStarted(true);
     fetchLeads();
   };
@@ -402,6 +414,12 @@ export default function CallCenter() {
     }
   }, [currentIndex, leads.length, currentLead, currentTranscription]);
 
+  const handlePrevious = useCallback(() => {
+    if (currentIndex > 0) {
+      setCurrentIndex((prev) => prev - 1);
+    }
+  }, [currentIndex]);
+
   const handleCall = useCallback(() => {
     if (currentLead?.phone) {
       window.open(`tel:${currentLead.phone}`, "_self");
@@ -505,6 +523,9 @@ export default function CallCenter() {
         case "n":
           handleSkip();
           break;
+        case "p":
+          handlePrevious();
+          break;
         case "escape":
           setStarted(false);
           break;
@@ -513,12 +534,12 @@ export default function CallCenter() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [started, processing, showContractedModal, handleAction, handleSkip]);
+  }, [started, processing, showContractedModal, handleAction, handleSkip, handlePrevious]);
 
   // Filter selection UI
   if (!started) {
     return (
-      <CallCenterFilters
+        <CallCenterFilters
         sourceFilter={sourceFilter}
         licenseFilter={licenseFilter}
         statusFilter={statusFilter}
@@ -530,6 +551,7 @@ export default function CallCenter() {
         onProgressChange={setProgressFilter}
         onSortOrderChange={setSortOrder}
         onStart={handleStartCalling}
+        disabled={agentIdLoading}
       />
     );
   }
@@ -626,11 +648,18 @@ export default function CallCenter() {
             />
           </AnimatePresence>
 
+          {/* Position indicator */}
+          <div className="text-center text-sm text-muted-foreground">
+            Lead {currentIndex + 1} of {totalLeads}
+          </div>
+
           {/* Action Buttons */}
           <CallCenterActions
             onAction={handleAction}
             onSkip={handleSkip}
+            onPrevious={handlePrevious}
             processing={processing}
+            canGoPrevious={currentIndex > 0}
           />
         </div>
       )}

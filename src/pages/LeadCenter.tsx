@@ -15,6 +15,7 @@ import {
   Loader2,
   X,
   Trash2,
+  Ban,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -37,6 +38,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -132,6 +143,10 @@ export default function LeadCenter() {
   const [bulkAssigning, setBulkAssigning] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [bulkManagerId, setBulkManagerId] = useState<string>("");
+
+  // Ban state
+  const [banTarget, setBanTarget] = useState<Lead | null>(null);
+  const [banningLead, setBanningLead] = useState(false);
 
   const fetchLeads = async () => {
     // Only show loading spinner on first load, not refetches
@@ -511,6 +526,54 @@ export default function LeadCenter() {
     }
   };
 
+  // Ban a prospect from Lead Center
+  const handleBanLead = async () => {
+    if (!banTarget || !user) return;
+    setBanningLead(true);
+    try {
+      const normalizedPhone = banTarget.phone
+        ? banTarget.phone.replace(/\D/g, "").slice(-10)
+        : null;
+
+      // Insert into banned_prospects
+      const { error: banError } = await supabase.from("banned_prospects" as any).insert({
+        email: banTarget.email?.toLowerCase().trim() || null,
+        phone: normalizedPhone || null,
+        first_name: banTarget.firstName?.toLowerCase().trim() || null,
+        last_name: banTarget.lastName?.toLowerCase().trim() || null,
+        reason: "Banned from Lead Center",
+        banned_by: user.id,
+      });
+
+      if (banError && !banError.message?.includes("duplicate")) throw banError;
+
+      // For applications: soft delete
+      if (banTarget.source === "applications") {
+        const { error } = await supabase
+          .from("applications")
+          .update({ terminated_at: new Date().toISOString(), termination_reason: "banned" })
+          .eq("id", banTarget.id);
+        if (error) throw error;
+      } else {
+        // For aged leads: hard delete
+        const { error } = await supabase
+          .from("aged_leads")
+          .delete()
+          .eq("id", banTarget.id);
+        if (error) throw error;
+      }
+
+      setLeads(prev => prev.filter(l => l.id !== banTarget.id));
+      toast.success(`${banTarget.firstName} ${banTarget.lastName} has been banned`);
+      setBanTarget(null);
+    } catch (error: any) {
+      console.error("Error banning lead:", error);
+      toast.error("Failed to ban prospect: " + (error.message || "Unknown error"));
+    } finally {
+      setBanningLead(false);
+    }
+  };
+
   const handleExport = () => {
     const csvContent = [
       ["Name", "Email", "Phone", "Status", "License", "Assigned To", "Source", "Created"].join(","),
@@ -880,6 +943,15 @@ export default function LeadCenter() {
                             recipientName={`${lead.firstName} ${lead.lastName}`}
                             licenseStatus={lead.licenseStatus as "licensed" | "unlicensed" | "pending"}
                           />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive"
+                            onClick={() => setBanTarget(lead)}
+                            title="Ban Prospect"
+                          >
+                            <Ban className="h-4 w-4" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -958,6 +1030,33 @@ export default function LeadCenter() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Ban Confirmation Dialog */}
+      <AlertDialog open={!!banTarget} onOpenChange={(open) => !open && setBanTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Ban className="h-5 w-5 text-destructive" />
+              Ban Prospect
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to ban <strong>{banTarget?.firstName} {banTarget?.lastName}</strong>?
+              This will permanently block their email, phone, and name from the system.
+              Any future application or import matching this person will be automatically rejected.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={banningLead}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBanLead}
+              disabled={banningLead}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {banningLead ? "Banning..." : "Ban Prospect"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

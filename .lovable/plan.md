@@ -1,59 +1,28 @@
 
 
-# Fix Lead Visibility and Agent Onboarding Defaults
+# Assign All Existing Unassigned Leads to You
 
-## Problem 1: Everyone Can See All Leads
+## What's Already Done
 
-Currently, the database access rule for the applications (leads) table includes a clause that lets ALL managers see unassigned leads (`assigned_agent_id IS NULL`). This means every manager on your team can view leads they shouldn't have access to.
+The previous changes already ensure:
+- All **new** leads are auto-assigned to you (admin agent ID) when submitted
+- The RLS policy no longer shows unassigned leads to other managers
+- New agents created from the leaderboard start at Step 1 ("Onboarding")
 
-**Fix:** 
-- Remove the `OR (assigned_agent_id IS NULL)` clause from the manager viewing policy, so managers only see leads assigned to them or their downline
-- Update the application submission flow to automatically assign all new leads to you (the admin) by default, so they never sit in an "unassigned" state visible to everyone
-- This means you'll own every lead by default, and only leads you explicitly reassign will be visible to other managers
+## What's Left
 
-## Problem 2: New Agents Start as "Live" Instead of Step 1
+There are **6 existing leads** in the database that were created before the auto-assignment change. They still have no `assigned_agent_id`, meaning they're invisible to everyone (since the new RLS policy no longer shows unassigned leads to managers).
 
-When agents are created from the leaderboard (the "Create Agent from Leaderboard" function), they're being set to `onboarding_stage: "evaluated"` (which is the final "Live" stage) and `status: "active"`. They should start at the first step ("Onboarding") like every other agent.
+## The Fix
 
-**Fix:**
-- Change the leaderboard agent creation function to set `onboarding_stage: "onboarding"` instead of `"evaluated"`
-- This ensures every new agent starts at Step 1 regardless of how they're added, and you can manually advance them through Onboarding, In Course, Field Training, and Live
+Run a one-time data update to assign those 6 orphaned leads to your admin agent ID (`7c3c5581-...`).
 
 ## Technical Details
 
-### Database Migration (RLS Policy Update)
+| Action | Detail |
+|--------|--------|
+| Data update (not a migration) | `UPDATE applications SET assigned_agent_id = '7c3c5581-3544-437f-bfe2-91391afb217d' WHERE assigned_agent_id IS NULL AND terminated_at IS NULL` |
 
-Update the "Managers can view their team applications" policy to remove the unassigned leads clause:
+This is a data operation, not a schema change -- it simply fills in the missing assignment on the 6 existing leads so they show up under your account.
 
-```sql
--- Drop and recreate the manager view policy without the NULL clause
-DROP POLICY "Managers can view their team applications" ON applications;
-CREATE POLICY "Managers can view their team applications"
-ON applications FOR SELECT
-USING (
-  has_role(auth.uid(), 'manager') AND (
-    assigned_agent_id = get_agent_id(auth.uid()) 
-    OR assigned_agent_id IN (
-      SELECT id FROM agents WHERE invited_by_manager_id = get_agent_id(auth.uid())
-    )
-  )
-);
-```
-
-### Edge Function: submit-application
-
-Auto-assign the admin's agent_id to new applications so leads are always owned by you.
-
-### Edge Function: create-agent-from-leaderboard
-
-Change line 138 from:
-- `onboarding_stage: "evaluated"` to `onboarding_stage: "onboarding"`
-
-### Files to Modify
-
-| File | Change |
-|------|--------|
-| Database migration | Remove `assigned_agent_id IS NULL` from manager SELECT policy on applications |
-| `supabase/functions/create-agent-from-leaderboard/index.ts` | Change onboarding_stage from "evaluated" to "onboarding" |
-| `supabase/functions/submit-application/index.ts` | Auto-assign admin agent_id to new applications |
-
+No code files need to change. Everything else (auto-assignment for new leads, RLS lockdown, onboarding stage fix) is already deployed from the previous plan.

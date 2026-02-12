@@ -782,9 +782,29 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Check for duplicate applications by email or phone
+    // Check if prospect is banned
     const normalizedEmail = data.email.toLowerCase().trim();
-    const normalizedPhone = data.phone.replace(/\D/g, '').slice(-10); // Last 10 digits
+    const normalizedPhone = data.phone.replace(/\D/g, '').slice(-10);
+
+    const { data: isBanned } = await supabaseAdmin.rpc("check_banned_prospect", {
+      p_email: normalizedEmail,
+      p_phone: normalizedPhone,
+      p_first_name: data.firstName,
+      p_last_name: data.lastName,
+    });
+
+    if (isBanned) {
+      console.log(`Banned prospect detected: ${normalizedEmail}`);
+      return new Response(
+        JSON.stringify({ error: "This applicant has been blocked." }),
+        {
+          status: 403,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        },
+      );
+    }
+
+    // Check for duplicate applications by email or phone
     
     const { data: existingByEmail } = await supabaseAdmin
       .from("applications")

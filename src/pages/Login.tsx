@@ -66,7 +66,7 @@ export default function Login() {
           return;
         }
         
-        if (agent?.has_training_course && agent?.onboarding_stage === "training_online") {
+        if (agent?.has_training_course) {
           toast.success("Welcome! Taking you to your course 📚");
           navigate("/onboarding-course");
           return;

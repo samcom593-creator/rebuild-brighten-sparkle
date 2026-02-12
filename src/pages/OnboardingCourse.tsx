@@ -21,7 +21,7 @@ export default function OnboardingCourse() {
   const [agentNotFound, setAgentNotFound] = useState(false);
   const [activeTab, setActiveTab] = useState<"video" | "quiz">("video");
 
-  // Fetch agent ID for current user
+  // Fetch agent ID for current user - use limit(1) to handle legacy duplicates
   useEffect(() => {
     const fetchAgentId = async () => {
       if (!user?.id) return;
@@ -30,12 +30,27 @@ export default function OnboardingCourse() {
         .from("agents")
         .select("id")
         .eq("user_id", user.id)
-        .maybeSingle();
+        .order("created_at", { ascending: false })
+        .limit(1);
       
-      if (data) {
-        setAgentId(data.id);
+      if (data && data.length > 0) {
+        setAgentId(data[0].id);
       } else {
-        setAgentNotFound(true);
+        // Retry once after a brief delay (handles race conditions on first login)
+        setTimeout(async () => {
+          const { data: retryData } = await supabase
+            .from("agents")
+            .select("id")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false })
+            .limit(1);
+          
+          if (retryData && retryData.length > 0) {
+            setAgentId(retryData[0].id);
+          } else {
+            setAgentNotFound(true);
+          }
+        }, 2000);
       }
     };
     fetchAgentId();

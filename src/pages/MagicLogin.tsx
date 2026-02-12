@@ -72,6 +72,30 @@ export default function MagicLogin() {
 
         if (verifyError) {
           console.error("verifyOtp error:", verifyError);
+          
+          // Auto-retry once on OTP expiry - get a fresh token
+          if (verifyError.message?.includes("otp_expired") || verifyError.message?.includes("expired")) {
+            console.log("OTP expired, retrying with fresh token...");
+            const { data: retryData, error: retryFnError } = await supabase.functions.invoke("verify-magic-link", {
+              body: { token },
+            });
+            
+            if (!retryFnError && retryData?.success && retryData.tokenHash) {
+              const { error: retryVerifyError } = await supabase.auth.verifyOtp({
+                email: retryData.email,
+                token: retryData.tokenHash,
+                type: "magiclink",
+              });
+              
+              if (!retryVerifyError) {
+                // Retry succeeded
+                setState("success");
+                setTimeout(() => navigate(`/${dest}`, { replace: true }), 500);
+                return;
+              }
+            }
+          }
+          
           setError({
             message: "Session creation failed. Please try signing in manually.",
             code: "VERIFY_OTP_ERROR",
@@ -274,7 +298,7 @@ export default function MagicLogin() {
           {state === "success" && (
             <div className="text-center">
               <p className="text-sm text-muted-foreground">
-                Taking you to your {destination === "apex-daily-numbers" ? "Daily Numbers" : "Agent Portal"}...
+                Taking you to your {destination === "apex-daily-numbers" ? "Daily Numbers" : destination === "onboarding-course" ? "Training Course" : "Agent Portal"}...
               </p>
             </div>
           )}

@@ -58,13 +58,18 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Check if already used
+    // Check if already used — allow re-verification within 5-minute grace window
     if (tokenRecord.used_at) {
-      console.log(`Token already used: ${token.substring(0, 8)}...`);
-      return new Response(
-        JSON.stringify({ error: "This link has already been used", code: "ALREADY_USED" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      const usedAt = new Date(tokenRecord.used_at).getTime();
+      const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+      if (usedAt < fiveMinutesAgo) {
+        console.log(`Token already used (beyond grace window): ${token.substring(0, 8)}...`);
+        return new Response(
+          JSON.stringify({ error: "This link has already been used", code: "ALREADY_USED" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      console.log(`Token re-use within grace window: ${token.substring(0, 8)}...`);
     }
 
     // Check if expired

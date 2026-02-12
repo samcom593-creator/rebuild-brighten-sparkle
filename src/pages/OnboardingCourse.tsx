@@ -76,22 +76,14 @@ export default function OnboardingCourse() {
   const currentProgress = currentModule ? progress[currentModule.id] : null;
 
   const handleVideoComplete = () => {
-    if (currentQuestions.length > 0) {
-      setActiveTab("quiz");
-    }
+    // No auto-switch — agent decides when to take the quiz
   };
 
   const handleQuizSubmit = async (answers: number[], score: number, passed: boolean) => {
     if (!currentModule) return false;
     const success = await submitQuiz(currentModule.id, answers, score, passed);
     
-    if (success && passed && currentModuleIndex < modules.length - 1) {
-      // Auto-advance to next module after passing
-      setTimeout(() => {
-        setCurrentModuleIndex(currentModuleIndex + 1);
-        setActiveTab("video");
-      }, 2000);
-    }
+    // No auto-advance — agent uses "Continue to Next Module" button
     
     return success;
   };

@@ -329,8 +329,8 @@ export default function DashboardAgedLeads() {
   const newLeads = leads.filter(l => l.status === "new").length;
   const processedLeads = leads.filter(l => l.status !== "new").length;
   const hiredLeads = leads.filter(l => l.status === "hired" || l.status === "contracted").length;
-  const licensedLeads = leads.filter(l => l.licenseStatus === "licensed" && ["new", "contacted", "no_pickup"].includes(l.status)).length;
-  const unlicensedLeads = leads.filter(l => l.licenseStatus === "unlicensed" && ["new", "contacted", "no_pickup"].includes(l.status)).length;
+  const licensedLeads = leads.filter(l => l.licenseStatus === "licensed").length;
+  const unlicensedLeads = leads.filter(l => l.licenseStatus === "unlicensed").length;
 
   const handleOpenCallMode = (license: "licensed" | "unlicensed") => {
     setCallModeLicense(license);

@@ -372,7 +372,18 @@ export default function Login() {
             </>
           )}
 
-          <p className="mt-6 text-center text-sm text-muted-foreground">
+          <div className="mt-6 p-4 rounded-lg bg-primary/5 border border-primary/20 text-center">
+            <p className="text-sm font-medium mb-2">Are you an agent?</p>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => navigate("/agent-login")}
+            >
+              Agent Login →
+            </Button>
+          </div>
+
+          <p className="mt-4 text-center text-sm text-muted-foreground">
             Contact your administrator for account access.
           </p>
         </GlassCard>

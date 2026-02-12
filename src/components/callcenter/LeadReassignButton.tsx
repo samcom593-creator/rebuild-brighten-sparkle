@@ -10,6 +10,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 interface Manager {
   id: string;
@@ -55,6 +56,7 @@ export function LeadReassignButton({
   onReassigned,
   className,
 }: LeadReassignButtonProps) {
+  const { playSound } = useSoundEffects();
   const [open, setOpen] = useState(false);
   const [managers, setManagers] = useState<Manager[]>([]);
   const [loading, setLoading] = useState(false);
@@ -98,11 +100,13 @@ export function LeadReassignButton({
       }
 
       const managerName = managers.find((m) => m.id === managerId)?.name || "Manager";
+      playSound("success");
       toast.success(`Lead reassigned to ${managerName}`);
       onReassigned?.(managerId);
       setOpen(false);
     } catch (error) {
       console.error("Error reassigning lead:", error);
+      playSound("error");
       toast.error("Failed to reassign lead");
     } finally {
       setReassigning(false);

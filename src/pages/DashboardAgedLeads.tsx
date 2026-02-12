@@ -20,6 +20,7 @@ import {
   Shield,
   Ban,
   AlertTriangle,
+  Trash2,
 } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
@@ -107,6 +108,10 @@ export default function DashboardAgedLeads() {
   // Ban state
   const [banTarget, setBanTarget] = useState<AgedLead | null>(null);
   const [banning, setBanning] = useState(false);
+
+  // Delete state
+  const [deleteTarget, setDeleteTarget] = useState<AgedLead | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -240,6 +245,40 @@ export default function DashboardAgedLeads() {
       toast.error("Failed to ban prospect: " + (error.message || "Unknown error"));
     } finally {
       setBanning(false);
+    }
+  };
+
+  // Delete a lead (move to vault + hard delete)
+  const handleDeleteLead = async () => {
+    if (!deleteTarget || !user) return;
+    setDeleting(true);
+    try {
+      // Insert into vault (ignore duplicates)
+      const { error: vaultError } = await supabase.from("deleted_leads").insert({
+        original_id: deleteTarget.id,
+        source: "aged_leads",
+        first_name: deleteTarget.firstName,
+        last_name: deleteTarget.lastName || null,
+        email: deleteTarget.email,
+        phone: deleteTarget.phone || null,
+        license_status: deleteTarget.licenseStatus,
+        deleted_by: user.id,
+        reason: "Deleted via Aged Leads",
+      });
+      if (vaultError && !vaultError.message?.includes("duplicate")) throw vaultError;
+
+      // Hard delete
+      const { error: deleteError } = await supabase.from("aged_leads").delete().eq("id", deleteTarget.id);
+      if (deleteError) throw deleteError;
+
+      setLeads(prev => prev.filter(l => l.id !== deleteTarget.id));
+      toast.success(`${deleteTarget.firstName} ${deleteTarget.lastName || ""} deleted`);
+      setDeleteTarget(null);
+    } catch (error: any) {
+      console.error("Error deleting lead:", error);
+      toast.error("Failed to delete lead: " + (error.message || "Unknown error"));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -616,6 +655,12 @@ export default function DashboardAgedLeads() {
                           )}
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
+                            onClick={() => setDeleteTarget(lead)}
+                            className="text-xs gap-2 text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="h-3 w-3" /> Delete Lead
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
                             onClick={() => setBanTarget(lead)}
                             className="text-xs gap-2 text-destructive focus:text-destructive"
                           >
@@ -653,6 +698,32 @@ export default function DashboardAgedLeads() {
           })}
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-destructive" />
+              Delete Lead
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{deleteTarget?.firstName} {deleteTarget?.lastName || ""}</strong>?
+              The lead will be moved to the vault and can be restored from Settings.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteLead}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Deleting..." : "Delete Lead"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Ban Confirmation Dialog */}
       <AlertDialog open={!!banTarget} onOpenChange={(open) => !open && setBanTarget(null)}>

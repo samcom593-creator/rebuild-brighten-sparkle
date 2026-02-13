@@ -92,8 +92,8 @@ interface Application {
 const statusColors: Record<string, string> = {
   new: "bg-blue-500/20 text-blue-400 border-blue-500/30",
   contacted: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-  qualified: "bg-purple-500/20 text-purple-400 border-purple-500/30",
-  closed: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+  hired: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+  contracted: "bg-violet-500/20 text-violet-400 border-violet-500/30",
   terminated: "bg-red-500/20 text-red-400 border-red-500/30",
 };
 
@@ -253,8 +253,8 @@ export default function DashboardApplicants() {
 
   const getApplicationStatus = (app: Application): string => {
     if (app.terminated_at) return "terminated";
-    if (app.closed_at) return "closed";
-    if (app.qualified_at) return "qualified";
+    if (app.contracted_at) return "contracted";
+    if (app.closed_at) return "hired";
     if (app.contacted_at) return "contacted";
     return "new";
   };
@@ -273,64 +273,46 @@ export default function DashboardApplicants() {
     return `${Math.floor(diffDays / 7)} week(s) ago`;
   };
 
-  const handleMarkAsContacted = async (id: string) => {
-    const { error } = await supabase
-      .from("applications")
-      .update({ contacted_at: new Date().toISOString() })
-      .eq("id", id);
-
-    if (error) {
-      toast.error("Failed to update status");
-    } else {
-      toast.success("Marked as contacted");
-      fetchApplications();
-    }
-  };
-
-  const handleMarkAsQualified = async (id: string) => {
-    const { error } = await supabase
-      .from("applications")
-      .update({ 
-        qualified_at: new Date().toISOString(),
-        contacted_at: applications.find(a => a.id === id)?.contacted_at || new Date().toISOString()
-      })
-      .eq("id", id);
-
-    if (error) {
-      toast.error("Failed to update status");
-    } else {
-      toast.success("Marked as qualified");
-      fetchApplications();
-    }
-  };
-
-  const handleMarkAsClosed = async (id: string) => {
+  const handleMarkAsHired = async (id: string) => {
     const app = applications.find(a => a.id === id);
+    if (!app) return;
+
     const { error } = await supabase
       .from("applications")
       .update({ 
         closed_at: new Date().toISOString(),
-        qualified_at: app?.qualified_at || new Date().toISOString(),
-        contacted_at: app?.contacted_at || new Date().toISOString()
+        contacted_at: app.contacted_at || new Date().toISOString(),
       })
       .eq("id", id);
 
     if (error) {
-      toast.error("Failed to update status");
-    } else {
-      toast.success("Marked as closed");
-      fetchApplications();
-      
-      // Send notification email to the agent (fire and forget)
-      if (agentId) {
-        supabase.functions.invoke("notify-lead-closed", {
-          body: { applicationId: id, agentId }
-        }).then(({ error: notifyError }) => {
-          if (notifyError) console.error("Failed to send closed notification:", notifyError);
-          else console.log("Lead closed notification sent");
-        });
-      }
+      toast.error("Failed to mark as hired");
+      return;
     }
+    
+    toast.success("Marked as hired!");
+    fetchApplications();
+    
+    // Send hire email to recruit (fire and forget)
+    supabase.functions.invoke("send-post-call-followup", {
+      body: {
+        firstName: app.first_name,
+        email: app.email,
+        licenseStatus: app.license_status,
+        actionType: "hired",
+        agentId: agentId,
+      }
+    }).then(({ error: emailErr }) => {
+      if (emailErr) console.error("Failed to send hire email:", emailErr);
+      else console.log("Hire email sent to", app.email);
+    });
+
+    // Broadcast hire announcement to all managers
+    supabase.functions.invoke("notify-hire-announcement", {
+      body: { applicationId: id, agentId }
+    }).then(({ error: announceErr }) => {
+      if (announceErr) console.error("Failed to send hire announcement:", announceErr);
+    });
   };
 
   const handleTerminate = async () => {
@@ -442,9 +424,8 @@ export default function DashboardApplicants() {
 
   // Stats - exclude terminated from active stats
   const totalLeads = activeApplications.length;
-  const contacted = activeApplications.filter(a => a.contacted_at).length;
-  const qualified = activeApplications.filter(a => a.qualified_at).length;
-  const closed = activeApplications.filter(a => a.closed_at).length;
+  const hired = activeApplications.filter(a => a.closed_at && !a.contracted_at).length;
+  const contracted = activeApplications.filter(a => a.contracted_at).length;
   const terminated = terminatedApplications.length;
 
   const renderApplicationCard = (app: Application, index: number, isTerminated = false) => {
@@ -657,79 +638,32 @@ export default function DashboardApplicants() {
                 </Button>
               ) : (
                 <>
-                  {status === "new" && (
+                  {/* Hired button - available for any non-hired, non-contracted lead */}
+                  {status !== "hired" && status !== "contracted" && (
                     <Button
-                      variant="outline"
+                      variant="default"
                       size="sm"
-                      onClick={() => handleMarkAsContacted(app.id)}
+                      onClick={() => handleMarkAsHired(app.id)}
                     >
-                      <MessageCircle className="h-4 w-4 mr-1" />
-                      Contacted
+                      <UserCheck className="h-4 w-4 mr-1" />
+                      Hired
                     </Button>
                   )}
-                  
-                  {status === "contacted" && (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleMarkAsQualified(app.id)}
-                      >
-                        <UserCheck className="h-4 w-4 mr-1" />
-                        Qualified
-                      </Button>
-                      {/* Show Contracted button for licensed leads OR unlicensed who completed licensing */}
-                      {(app.license_status === "licensed" || app.license_progress === "licensed") && !app.contracted_at && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setContractedApp(app)}
-                          className="text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
-                        >
-                          <FileCheck className="h-4 w-4 mr-1" />
-                          Contracted
-                        </Button>
-                      )}
-                    </>
-                  )}
-                  
-                  {status === "qualified" && (
-                    <>
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => handleMarkAsClosed(app.id)}
-                      >
-                        <CheckCircle className="h-4 w-4 mr-1" />
-                        Close
-                      </Button>
-                      {(app.license_status === "licensed" || app.license_progress === "licensed") && !app.contracted_at && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setContractedApp(app)}
-                          className="text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
-                        >
-                          <FileCheck className="h-4 w-4 mr-1" />
-                          Contracted
-                        </Button>
-                      )}
-                    </>
-                  )}
 
-                  {status === "closed" && (app.license_status === "licensed" || app.license_progress === "licensed") && !app.contracted_at && (
+                  {/* Contracted button - available for any non-contracted lead */}
+                  {!app.contracted_at && (
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => setContractedApp(app)}
-                      className="text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
+                      className="text-violet-400 border-violet-500/30 hover:bg-violet-500/10"
                     >
                       <FileCheck className="h-4 w-4 mr-1" />
                       Contracted
                     </Button>
                   )}
 
-                  {status !== "closed" && (
+                  {status !== "hired" && status !== "contracted" && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -779,8 +713,8 @@ export default function DashboardApplicants() {
       >
         {[
           { label: "Total Leads", value: totalLeads, icon: Users, color: "text-primary", filter: "all" },
-          { label: "Contacted", value: contacted, icon: Phone, color: "text-yellow-400", filter: "contacted" },
-          { label: "Closed", value: closed, icon: CheckCircle, color: "text-emerald-400", filter: "closed" },
+          { label: "Hired", value: hired, icon: UserCheck, color: "text-emerald-400", filter: "hired" },
+          { label: "Contracted", value: contracted, icon: FileCheck, color: "text-violet-400", filter: "contracted" },
           { label: "Terminated", value: terminated, icon: XCircle, color: "text-red-400", filter: "terminated" },
         ].map((stat) => (
           <GlassCard 
@@ -829,8 +763,8 @@ export default function DashboardApplicants() {
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="new">New</SelectItem>
             <SelectItem value="contacted">Contacted</SelectItem>
-            <SelectItem value="qualified">Qualified</SelectItem>
-            <SelectItem value="closed">Closed</SelectItem>
+            <SelectItem value="hired">Hired</SelectItem>
+            <SelectItem value="contracted">Contracted</SelectItem>
             <SelectItem value="terminated">Terminated</SelectItem>
           </SelectContent>
         </Select>

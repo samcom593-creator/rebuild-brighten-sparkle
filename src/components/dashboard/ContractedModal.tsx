@@ -169,6 +169,24 @@ export function ContractedModal({
         },
       }).catch(err => console.error("Failed to send hire announcement:", err));
 
+      // Set has_training_course and send course enrollment email
+      if (newAgentId) {
+        supabase
+          .from("agents")
+          .update({ has_training_course: true })
+          .eq("id", newAgentId)
+          .then(({ error: courseErr }) => {
+            if (courseErr) console.error("Failed to set has_training_course:", courseErr);
+          });
+
+        supabase.functions.invoke("send-course-enrollment-email", {
+          body: { agentId: newAgentId },
+        }).then(({ error: enrollErr }) => {
+          if (enrollErr) console.error("Failed to send course enrollment email:", enrollErr);
+          else console.log("Course enrollment email sent for agent", newAgentId);
+        });
+      }
+
       onOpenChange(false);
       onSuccess?.();
     } catch (error) {

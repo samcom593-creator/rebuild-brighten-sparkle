@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Users, BookOpen, Briefcase, Award } from "lucide-react";
+import { Users, BookOpen, Briefcase, Award, GraduationCap } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -43,7 +43,7 @@ export function OnboardingPipelineCard() {
       // Build query based on role
       let query = supabase
         .from("agents")
-        .select("onboarding_stage")
+        .select("onboarding_stage, license_status")
         .eq("is_deactivated", false);
 
       if (!isAdmin) {
@@ -60,15 +60,26 @@ export function OnboardingPipelineCard() {
           in_field_training: 0,
           evaluated: 0,
         };
+        let unlicensedCount = 0;
 
         agents.forEach(agent => {
           const stage = agent.onboarding_stage || "onboarding";
           if (stageCounts[stage] !== undefined) {
             stageCounts[stage]++;
           }
+          if (agent.license_status === "unlicensed") {
+            unlicensedCount++;
+          }
         });
 
         setStages([
+          {
+            stage: "unlicensed",
+            label: "Unlicensed",
+            count: unlicensedCount,
+            icon: <GraduationCap className="h-4 w-4" />,
+            color: "text-amber-500 bg-amber-500/10",
+          },
           {
             stage: "onboarding",
             label: "Onboarding",
@@ -81,7 +92,7 @@ export function OnboardingPipelineCard() {
             label: "Training Online",
             count: stageCounts.training_online,
             icon: <BookOpen className="h-4 w-4" />,
-            color: "text-amber-500 bg-amber-500/10",
+            color: "text-cyan-500 bg-cyan-500/10",
           },
           {
             stage: "in_field_training",
@@ -142,7 +153,7 @@ export function OnboardingPipelineCard() {
           <span className="text-xs text-muted-foreground">{totalAgents} total</span>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {stages.map((stage, index) => (
             <motion.div
               key={stage.stage}

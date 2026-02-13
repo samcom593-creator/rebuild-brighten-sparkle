@@ -1,65 +1,46 @@
 
 
-# Auto-Send "We Tried Calling You" Email on No Pickup + Mobile UX Improvements
+# Fix Broken Email Links + Bulk Resend to All Unlicensed Applicants
 
-## Overview
-Two changes: (1) Automatically send a "we tried to call you" email when a lead is marked as "No Pickup", and (2) Improve the Call Center mobile experience for hands-free/driving use.
+## Problem
+The licensing instructions email uses CSS `display: flex` and `display: inline-flex` -- these are **not supported** by most mobile email clients (Gmail app, Apple Mail, Outlook). This makes the numbered step headers and links unclickable or invisible on phones.
 
----
+There are currently **63 unlicensed/pending applicants** who need this email resent with working links.
 
-## Part 1: Auto-Send Email on No Pickup
+## Part 1: Fix the Email Template
 
-### Edge Function: `send-post-call-followup/index.ts`
-Add a new `actionType: "no_pickup"` template to the existing edge function. This email will:
-- Let the lead know "We tried to reach you"
-- Include a Calendly link so they can call back at their convenience
-- Follow the existing Apex branding and mobile-responsive email standards
-- CC admin + manager per the system-wide CC policy
+**File: `supabase/functions/send-licensing-instructions/index.ts`**
 
-Add to the existing `subjectLines` and `greetingLines` maps:
+Replace all `display: flex` and `display: inline-flex` layouts with **table-based layouts** (the only universally supported email layout method). Specific changes:
+
+- Replace the 3 step header `<div style="display: flex">` blocks with `<table>` rows containing numbered circles and step titles
+- Convert all 3 text links ("Watch Licensing Overview", "Open Licensing Guide", "Start Course Now") into **large, full-width CTA buttons** using `<table>` with `<a>` tags -- big tap targets that are impossible to miss on mobile
+- Add `text-decoration: underline` as a fallback on all link text
+- Ensure the Calendly "Need Help?" button also uses the table-based button pattern
+- Keep the same colors, branding, and content -- just fix the HTML structure
+
+Each step card will look like:
 ```
-no_pickup: "We Tried Reaching You, {firstName}! 📞"
+[Numbered circle] [Step Title]        <-- table row, not flexbox
+Description text                      <-- paragraph
+[====== BIG CTA BUTTON ======]        <-- table-based button, full width
 ```
 
-Add a new email body section for `no_pickup` that says something like:
-- "Hey {firstName}, we just tried giving you a call but couldn't get through!"
-- "We'd love to connect with you about the opportunity at Apex Financial."
-- "Book a time that works for you" with Calendly CTA button
+## Part 2: Bulk Resend Edge Function
 
-### Frontend: `src/pages/CallCenter.tsx`
-In the `executeAction` function (around line 401), where it currently handles `no_pickup`:
-- Add a call to `sendFollowUpEmail(currentLead, "no_pickup")` so the email fires automatically
-- Update the toast message to: "Marked as no pickup - follow-up email sent!"
+**New file: `supabase/functions/bulk-send-licensing/index.ts`**
 
----
+Create a new edge function that:
+1. Queries all applications where `license_status` is `unlicensed` or `pending`
+2. For each one, calls the existing `send-licensing-instructions` function logic (sends the email with proper CC to admin + manager)
+3. Returns a summary of how many were sent and any failures
+4. Requires admin authentication to prevent abuse
 
-## Part 2: Mobile UX Improvements for Call Center
+## Part 3: Trigger the Bulk Send
 
-### Goal
-Make the Call Center usable while driving -- bigger tap targets, less scrolling, key info visible at a glance.
+After deploying the fixed template and bulk send function, invoke it once to send the corrected email to all 63 unlicensed/pending applicants immediately.
 
-### File: `src/pages/CallCenter.tsx` (active calling layout)
-- Reduce padding on mobile: `p-2 md:p-8` instead of `p-4 md:p-8`
-- Tighten the header spacing on mobile
-
-### File: `src/components/callcenter/CallCenterLeadCard.tsx`
-- Reduce inner padding on mobile: `p-4 md:p-6` on header and body sections
-- Make the phone "CALL NOW" button larger on mobile (min-height 60px) for easy tapping while driving
-- Hide the Stage Selector on small screens (it's a detailed control not needed while driving) -- show it only on `md:` and above
-- Collapse the applicant details section on mobile (keep it but make it a collapsible/accordion)
-- Make the name text size responsive: `text-xl md:text-2xl`
-
-### File: `src/components/callcenter/CallCenterActions.tsx`
-- Increase button heights on mobile: primary actions `h-24 md:h-20`, secondary actions `h-20 md:h-16` -- bigger tap targets for driving
-- Increase icon sizes on mobile for better visibility
-- Hide keyboard hint section on mobile (already hidden via `hidden sm:block`)
-
----
-
-## Files to Modify
-
-1. **`supabase/functions/send-post-call-followup/index.ts`** -- Add `no_pickup` email template
-2. **`src/pages/CallCenter.tsx`** -- Trigger email on no_pickup action + mobile padding
-3. **`src/components/callcenter/CallCenterLeadCard.tsx`** -- Mobile-optimized layout with bigger call button
-4. **`src/components/callcenter/CallCenterActions.tsx`** -- Bigger tap targets on mobile
+## Files to Modify/Create
+1. **`supabase/functions/send-licensing-instructions/index.ts`** -- Fix email HTML (flexbox to tables, links to buttons)
+2. **`supabase/functions/bulk-send-licensing/index.ts`** -- New edge function to blast to all unlicensed applicants
 

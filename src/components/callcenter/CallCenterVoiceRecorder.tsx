@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, Loader2, ChevronDown, ChevronUp, Sparkles, AlertCircle } from "lucide-react";
+import { Mic, MicOff, Loader2, ChevronDown, ChevronUp, Sparkles, AlertCircle, Mail, Check, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -17,6 +18,7 @@ interface CallCenterVoiceRecorderProps {
   onTranscriptionUpdate: (text: string) => void;
   onRecordingStateChange?: (isRecording: boolean) => void;
   onSummaryComplete?: (summary: CallSummary) => void;
+  onSendFollowUp?: (calendarLink?: string) => Promise<void>;
   className?: string;
 }
 
@@ -24,6 +26,7 @@ export function CallCenterVoiceRecorder({
   onTranscriptionUpdate,
   onRecordingStateChange,
   onSummaryComplete,
+  onSendFollowUp,
   className,
 }: CallCenterVoiceRecorderProps) {
   const [isRecording, setIsRecording] = useState(false);
@@ -34,6 +37,10 @@ export function CallCenterVoiceRecorder({
   const [callSummary, setCallSummary] = useState<CallSummary | null>(null);
   const [showFullTranscript, setShowFullTranscript] = useState(false);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
+  const [sendingFollowUp, setSendingFollowUp] = useState(false);
+  const [followUpSent, setFollowUpSent] = useState(false);
+  const [showCalendarInput, setShowCalendarInput] = useState(false);
+  const [calendarLink, setCalendarLink] = useState("");
   
   const recognitionRef = useRef<any>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -439,6 +446,69 @@ export function CallCenterVoiceRecorder({
               <div className="text-sm text-muted-foreground italic">
                 "{callSummary.briefSummary}"
               </div>
+
+              {/* Send Follow-Up Email */}
+              {onSendFollowUp && (
+                <div className="space-y-2 pt-2 border-t border-border/30">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      disabled={sendingFollowUp || followUpSent}
+                      onClick={async () => {
+                        setSendingFollowUp(true);
+                        try {
+                          await onSendFollowUp(calendarLink || undefined);
+                          setFollowUpSent(true);
+                        } catch {
+                          // error handled by parent
+                        } finally {
+                          setSendingFollowUp(false);
+                        }
+                      }}
+                      className={cn(
+                        "transition-all",
+                        followUpSent && "bg-green-600 hover:bg-green-600"
+                      )}
+                    >
+                      {sendingFollowUp ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : followUpSent ? (
+                        <Check className="h-4 w-4" />
+                      ) : (
+                        <Mail className="h-4 w-4" />
+                      )}
+                      <span className="ml-1.5">
+                        {followUpSent ? "Email Sent!" : "Send Follow-Up Email"}
+                      </span>
+                    </Button>
+                    <button
+                      type="button"
+                      onClick={() => setShowCalendarInput(!showCalendarInput)}
+                      className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+                    >
+                      <CalendarDays className="h-3.5 w-3.5" />
+                      {showCalendarInput ? "Hide" : "Add calendar link"}
+                    </button>
+                  </div>
+                  <AnimatePresence>
+                    {showCalendarInput && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <Input
+                          placeholder="Paste your Calendly or scheduling link..."
+                          value={calendarLink}
+                          onChange={(e) => setCalendarLink(e.target.value)}
+                          className="text-sm h-9"
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
             </div>
 
             {/* View Full Transcript Toggle */}

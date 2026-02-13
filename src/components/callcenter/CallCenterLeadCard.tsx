@@ -45,6 +45,7 @@ interface CallCenterLeadCardProps {
   onRecordingStateChange: (recording: boolean) => void;
   isAdmin?: boolean;
   onReassigned?: (newManagerId: string) => void;
+  onSendFollowUp?: (calendarLink?: string) => Promise<void>;
   className?: string;
 }
 
@@ -104,6 +105,7 @@ export function CallCenterLeadCard({
   onRecordingStateChange,
   isAdmin = false,
   onReassigned,
+  onSendFollowUp,
   className,
 }: CallCenterLeadCardProps) {
   const currentStage = progressToStage(lead.licenseProgress, lead.licenseStatus);
@@ -399,6 +401,7 @@ export function CallCenterLeadCard({
               <CallCenterVoiceRecorder
                 onTranscriptionUpdate={onTranscriptionUpdate}
                 onRecordingStateChange={onRecordingStateChange}
+                onSendFollowUp={onSendFollowUp}
               />
             </div>
             <div className="flex items-center gap-2 shrink-0">

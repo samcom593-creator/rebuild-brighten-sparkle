@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Phone, Mail, Instagram, Clock, User, Calendar, Sparkles } from "lucide-react";
+import { Phone, Mail, Instagram, Clock, User, Calendar, Sparkles, Building2, FileText, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, format } from "date-fns";
 import { CallCenterVoiceRecorder } from "./CallCenterVoiceRecorder";
@@ -27,6 +27,12 @@ interface UnifiedLead {
   status: string;
   contactedAt?: string;
   lastContactedAt?: string;
+  previousCompany?: string;
+  niprNumber?: string;
+  licensedStates?: string[];
+  city?: string;
+  state?: string;
+  availability?: string;
 }
 
 interface CallCenterLeadCardProps {
@@ -335,6 +341,54 @@ export function CallCenterLeadCard({
             <p className="text-sm text-muted-foreground leading-relaxed">
               {lead.motivation || lead.notes}
             </p>
+          </motion.div>
+        )}
+
+        {/* Applicant Details */}
+        {(lead.previousCompany || lead.niprNumber || lead.licensedStates?.length || (lead.city || lead.state) || lead.availability) && (
+          <motion.div
+            variants={itemVariants}
+            className="p-4 rounded-xl bg-muted/20 border border-border/30 space-y-2"
+          >
+            <div className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-2">
+              <FileText className="h-3.5 w-3.5" />
+              Applicant Details
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              {lead.previousCompany && (
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-muted-foreground">Previous Agency:</span>
+                  <span className="text-foreground font-medium truncate">{lead.previousCompany}</span>
+                </div>
+              )}
+              {lead.niprNumber && (
+                <div className="flex items-center gap-2">
+                  <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-muted-foreground">NIPR #:</span>
+                  <span className="text-foreground font-medium">{lead.niprNumber}</span>
+                </div>
+              )}
+              {(lead.city || lead.state) && (
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-foreground">{[lead.city, lead.state].filter(Boolean).join(", ")}</span>
+                </div>
+              )}
+              {lead.licensedStates && lead.licensedStates.length > 0 && (
+                <div className="flex items-center gap-2 col-span-2">
+                  <span className="text-muted-foreground">Licensed States:</span>
+                  <span className="text-foreground font-medium">{lead.licensedStates.join(", ")}</span>
+                </div>
+              )}
+              {lead.availability && (
+                <div className="flex items-center gap-2">
+                  <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-muted-foreground">Availability:</span>
+                  <span className="text-foreground">{lead.availability}</span>
+                </div>
+              )}
+            </div>
           </motion.div>
         )}
 

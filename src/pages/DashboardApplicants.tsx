@@ -314,6 +314,21 @@ export default function DashboardApplicants() {
     }).then(({ error: announceErr }) => {
       if (announceErr) console.error("Failed to send hire announcement:", announceErr);
     });
+
+    // Send licensing instructions for unlicensed/unknown applicants
+    if (app.license_status !== "licensed") {
+      supabase.functions.invoke("send-licensing-instructions", {
+        body: {
+          email: app.email,
+          firstName: app.first_name,
+          licenseStatus: app.license_status,
+          state: app.state,
+        }
+      }).then(({ error: licenseErr }) => {
+        if (licenseErr) console.error("Failed to send licensing instructions:", licenseErr);
+        else console.log("Licensing instructions sent to", app.email);
+      });
+    }
   };
 
   const handleTerminate = async () => {

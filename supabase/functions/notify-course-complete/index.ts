@@ -11,7 +11,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const discordLink = "https://discord.gg/GygkGEhb";
+const discordLink = "https://discord.gg/JpUWA73UZX";
 const portalLink = "https://apex-financial.org/agent-portal";
 
 const handler = async (req: Request): Promise<Response> => {

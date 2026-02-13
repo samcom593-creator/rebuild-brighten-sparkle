@@ -215,7 +215,7 @@ const handler = async (req: Request): Promise<Response> => {
                   <p style="color: #94a3b8; font-size: 13px; margin: 0 0 12px 0;">
                     Get daily training, support, and connect with the team:
                   </p>
-                  <a href="https://discord.gg/GygkGEhb" style="display: inline-block; background: #5865F2; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 6px; font-weight: bold; font-size: 14px;">
+                  <a href="https://discord.gg/JpUWA73UZX" style="display: inline-block; background: #5865F2; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 6px; font-weight: bold; font-size: 14px;">
                     Join Discord →
                   </a>
                 </div>

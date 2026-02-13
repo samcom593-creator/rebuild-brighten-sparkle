@@ -71,6 +71,7 @@ const handler = async (req: Request): Promise<Response> => {
       hired: `You've Been Selected, ${firstName}! 🎉`,
       contracted: `Congratulations on Getting Contracted, ${firstName}! 🏆`,
       licensing: `Your Licensing Journey Starts Now, ${firstName}! 🚀`,
+      no_pickup: `We Tried Reaching You, ${firstName}! 📞`,
     };
     const emailSubject = subjectLines[actionType] || subjectLines.contacted;
 
@@ -79,6 +80,7 @@ const handler = async (req: Request): Promise<Response> => {
       hired: `Congratulations, ${firstName}! 🎉`,
       contracted: `Congratulations, ${firstName}! 🏆`,
       licensing: `Let's Get You Licensed, ${firstName}! 🚀`,
+      no_pickup: `Hey ${firstName}! 📞`,
     };
     const greeting = greetingLines[actionType] || greetingLines.contacted;
 
@@ -143,7 +145,55 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    const emailHtml = actionType === "hired" ? `
+    // Build no_pickup email body
+    let noPickupHtml = "";
+    if (actionType === "no_pickup") {
+      noPickupHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>We Tried Reaching You</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0a0a0f; color: #ffffff; word-break: break-word;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+    <div style="text-align: center; margin-bottom: 40px;">
+      <div style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #14b8a6 100%); padding: 16px 32px; border-radius: 12px;">
+        <span style="font-size: 28px; font-weight: 800; color: white; letter-spacing: -0.5px;">APEX</span>
+      </div>
+    </div>
+    <div style="background: linear-gradient(145deg, rgba(20, 20, 30, 0.9) 0%, rgba(15, 15, 25, 0.95) 100%); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 20px; padding: 40px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);">
+      <h1 style="margin: 0 0 24px 0; font-size: 28px; font-weight: 700; background: linear-gradient(135deg, #f59e0b, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+        ${greeting}
+      </h1>
+      <p style="margin: 0 0 20px 0; font-size: 16px; line-height: 1.7; color: #e5e7eb;">
+        We just tried giving you a call but couldn't get through! No worries at all — we know life gets busy. 😊
+      </p>
+      <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.7; color: #e5e7eb;">
+        We'd love to connect with you about the opportunity at <strong style="color: #10b981;">Apex Financial</strong>. When you have a moment, feel free to book a time that works best for you:
+      </p>
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="${finalCalendarLink}" style="display: inline-block; background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%); color: white; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-size: 16px; font-weight: 600; box-shadow: 0 8px 24px rgba(245, 158, 11, 0.4); max-width:100%; box-sizing:border-box;">
+          📅 Book a Time That Works for You
+        </a>
+      </div>
+      <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.7; color: #9ca3af;">
+        Or simply call us back at your convenience — we're here to help!
+      </p>
+      <div style="height: 1px; background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.3), transparent); margin: 32px 0;"></div>
+      <p style="margin: 0 0 8px 0; font-size: 16px; color: #e5e7eb;">Talk soon! 🤙</p>
+      <p style="margin: 0; font-size: 16px; font-weight: 600; color: #10b981;">– The APEX Team</p>
+    </div>
+    <div style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+      <p style="margin: 0; font-size: 12px; color: #6b7280;">Powered by <span style="color: #10b981; font-weight: 600;">Apex Financial</span></p>
+    </div>
+  </div>
+</body>
+</html>`;
+    }
+
+    const emailHtml = actionType === "no_pickup" ? noPickupHtml : actionType === "hired" ? `
 <!DOCTYPE html>
 <html>
 <head>

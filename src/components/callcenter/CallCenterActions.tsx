@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   XCircle,
   FileText,
+  PhoneOff,
   ChevronRight,
   ChevronLeft,
   Check,
@@ -11,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export type ActionId = "hired" | "contracted" | "bad_applicant";
+export type ActionId = "hired" | "contracted" | "bad_applicant" | "no_pickup";
 
 interface ActionDef {
   id: ActionId;
@@ -55,6 +56,16 @@ const actions: ActionDef[] = [
     glowColor: "rgba(239, 68, 68, 0.3)",
     key: "3",
   },
+  {
+    id: "no_pickup",
+    label: "No Pickup",
+    description: "Didn't answer",
+    icon: PhoneOff,
+    color: "text-amber-400",
+    gradient: "from-amber-500/15 to-orange-500/15 hover:from-amber-500/25 hover:to-orange-500/25 border-amber-500/25 hover:border-amber-500/45",
+    glowColor: "rgba(245, 158, 11, 0.35)",
+    key: "4",
+  },
 ];
 
 interface CallCenterActionsProps {
@@ -81,7 +92,7 @@ export function CallCenterActions({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const key = e.key.toLowerCase();
-      if (["1", "2", "3", "n", "p"].includes(key)) {
+      if (["1", "2", "3", "4", "n", "p"].includes(key)) {
         setActiveKey(key);
       }
     };
@@ -191,58 +202,61 @@ export function CallCenterActions({
         ))}
       </div>
 
-      {/* Bad Applicant - Full width */}
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2, type: "spring", stiffness: 400, damping: 25 }}
-      >
-        <motion.button
-          disabled={processing}
-          onClick={() => handleAction("bad_applicant")}
-          whileHover={{ scale: 1.01, y: -1 }}
-          whileTap={{ scale: 0.99 }}
-          style={{
-            boxShadow: activeKey === "3" ? `0 0 15px ${actions[2].glowColor}` : "none",
-          }}
-          className={cn(
-            "w-full h-14 relative overflow-hidden rounded-xl transition-all duration-200",
-            "bg-gradient-to-br border",
-            actions[2].gradient,
-            actions[2].color,
-            "disabled:opacity-50 disabled:cursor-not-allowed",
-            activeKey === "3" && "ring-2 ring-white/20"
-          )}
-        >
-          {/* Success overlay */}
-          <AnimatePresence>
-            {successAction === "bad_applicant" && (
-              <motion.div
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 1.5, opacity: 0 }}
-                className="absolute inset-0 flex items-center justify-center bg-red-500/30 z-20"
-              >
-                <Check className="h-8 w-8 text-white" />
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <div className="flex items-center justify-center gap-2 relative z-10">
-            <XCircle className="h-5 w-5" />
-            <span className="font-medium">{actions[2].label}</span>
-            <span className="text-xs opacity-60">({actions[2].description})</span>
-          </div>
-          <motion.span
-            className={cn(
-              "absolute bottom-1 right-2 text-[10px] px-1.5 py-0.5 rounded transition-all",
-              activeKey === "3" ? "bg-white/20 opacity-100" : "opacity-40"
-            )}
+      {/* No Pickup & Bad Applicant - 2 columns */}
+      <div className="grid grid-cols-2 gap-3">
+        {actions.slice(2, 4).map((action, index) => (
+          <motion.div
+            key={action.id}
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 + index * 0.05, type: "spring", stiffness: 400, damping: 25 }}
           >
-            [{actions[2].key}]
-          </motion.span>
-        </motion.button>
-      </motion.div>
+            <motion.button
+              disabled={processing}
+              onClick={() => handleAction(action.id)}
+              whileHover={{ scale: 1.02, y: -1 }}
+              whileTap={{ scale: 0.98 }}
+              style={{
+                boxShadow: activeKey === action.key ? `0 0 15px ${action.glowColor}` : "none",
+              }}
+              className={cn(
+                "w-full h-16 relative overflow-hidden rounded-xl transition-all duration-200",
+                "bg-gradient-to-br border",
+                action.gradient,
+                action.color,
+                "disabled:opacity-50 disabled:cursor-not-allowed",
+                activeKey === action.key && "ring-2 ring-white/20"
+              )}
+            >
+              <AnimatePresence>
+                {successAction === action.id && (
+                  <motion.div
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 1.5, opacity: 0 }}
+                    className="absolute inset-0 flex items-center justify-center bg-black/30 z-20"
+                  >
+                    <Check className="h-8 w-8 text-white" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <div className="flex items-center justify-center gap-2 relative z-10">
+                <action.icon className="h-5 w-5" />
+                <span className="font-medium">{action.label}</span>
+              </div>
+              <motion.span
+                className={cn(
+                  "absolute bottom-1 right-2 text-[10px] px-1.5 py-0.5 rounded transition-all",
+                  activeKey === action.key ? "bg-white/20 opacity-100" : "opacity-40"
+                )}
+              >
+                [{action.key}]
+              </motion.span>
+            </motion.button>
+          </motion.div>
+        ))}
+      </div>
 
       {/* Navigation Buttons */}
       <motion.div
@@ -304,8 +318,8 @@ export function CallCenterActions({
           to record •{" "}
           <kbd className={cn(
             "px-1.5 py-0.5 rounded bg-muted/50 text-foreground transition-all",
-            ["1", "2", "3"].includes(activeKey || "") && "bg-primary/30 ring-1 ring-primary/50"
-          )}>1-3</kbd>{" "}
+            ["1", "2", "3", "4"].includes(activeKey || "") && "bg-primary/30 ring-1 ring-primary/50"
+          )}>1-4</kbd>{" "}
           for actions •{" "}
           <kbd className={cn(
             "px-1.5 py-0.5 rounded bg-muted/50 text-foreground transition-all",

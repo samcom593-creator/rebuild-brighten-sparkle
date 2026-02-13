@@ -91,7 +91,6 @@ interface Application {
 
 const statusColors: Record<string, string> = {
   new: "bg-blue-500/20 text-blue-400 border-blue-500/30",
-  contacted: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
   hired: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
   contracted: "bg-violet-500/20 text-violet-400 border-violet-500/30",
   terminated: "bg-red-500/20 text-red-400 border-red-500/30",
@@ -110,6 +109,7 @@ export default function DashboardApplicants() {
   const managerFilter = searchParams.get("manager");
   
   const [applications, setApplications] = useState<Application[]>([]);
+  const [managerNames, setManagerNames] = useState<Map<string, string>>(new Map());
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [licenseFilter, setLicenseFilter] = useState<string>("all");
@@ -196,6 +196,8 @@ export default function DashboardApplicants() {
       setAgentId(agentData.id);
     }
 
+    let fetchedApps: Application[] = [];
+
     // If admin/manager with manager filter, filter by that manager
     if (managerFilter && (isAdmin || isManager)) {
       const { data: filteredApps, error } = await supabase
@@ -205,36 +207,21 @@ export default function DashboardApplicants() {
         .order("created_at", { ascending: false });
       
       if (!error && filteredApps) {
-        setApplications(filteredApps as Application[]);
+        fetchedApps = filteredApps as Application[];
       }
-      setIsLoading(false);
-      return;
-    }
-    
-    // ADMINS: Always see ALL applications
-    if (isAdmin) {
+    } else if (isAdmin) {
       const { data: adminApps } = await supabase
         .from("applications")
         .select("*")
         .order("created_at", { ascending: false });
-      setApplications((adminApps || []) as Application[]);
-      setIsLoading(false);
-      return;
-    }
-
-    // MANAGERS: See all applications (RLS filters to their team + unassigned)
-    if (isManager) {
+      fetchedApps = (adminApps || []) as Application[];
+    } else if (isManager) {
       const { data: managerApps } = await supabase
         .from("applications")
         .select("*")
         .order("created_at", { ascending: false });
-      setApplications((managerApps || []) as Application[]);
-      setIsLoading(false);
-      return;
-    }
-
-    // AGENTS: Only see their assigned applications
-    if (agentData) {
+      fetchedApps = (managerApps || []) as Application[];
+    } else if (agentData) {
       const { data, error } = await supabase
         .from("applications")
         .select("*")
@@ -242,10 +229,24 @@ export default function DashboardApplicants() {
         .order("created_at", { ascending: false });
 
       if (!error && data) {
-        setApplications(data as Application[]);
+        fetchedApps = data as Application[];
       }
-    } else {
-      setApplications([]);
+    }
+
+    setApplications(fetchedApps);
+
+    // Batch fetch manager names for all assigned agents
+    const assignedIds = [...new Set(fetchedApps.map(a => a.assigned_agent_id).filter(Boolean))] as string[];
+    if (assignedIds.length > 0) {
+      const { data: assignedAgents } = await supabase
+        .from("agents")
+        .select("id, profiles!agents_profile_id_fkey(full_name)")
+        .in("id", assignedIds);
+      const nameMap = new Map<string, string>();
+      assignedAgents?.forEach((a: any) => {
+        nameMap.set(a.id, a.profiles?.full_name || "Unknown");
+      });
+      setManagerNames(nameMap);
     }
     
     setIsLoading(false);
@@ -506,6 +507,18 @@ export default function DashboardApplicants() {
                     Started Training
                   </Badge>
                 )}
+
+                {/* Manager Assignment Badge */}
+                {app.assigned_agent_id ? (
+                  <Badge variant="outline" className="bg-violet-500/10 text-violet-400 border-violet-500/30 text-[10px]">
+                    <Users className="h-3 w-3 mr-1" />
+                    Under {managerNames.get(app.assigned_agent_id) || "Manager"}
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-muted-foreground border-border text-[10px]">
+                    Unassigned
+                  </Badge>
+                )}
               </div>
             </div>
 
@@ -762,7 +775,6 @@ export default function DashboardApplicants() {
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="new">New</SelectItem>
-            <SelectItem value="contacted">Contacted</SelectItem>
             <SelectItem value="hired">Hired</SelectItem>
             <SelectItem value="contracted">Contracted</SelectItem>
             <SelectItem value="terminated">Terminated</SelectItem>

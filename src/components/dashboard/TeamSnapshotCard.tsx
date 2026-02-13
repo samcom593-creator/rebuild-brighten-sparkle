@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { DollarSign, Target, Users, TrendingUp, Presentation, X } from "lucide-react";
+import { DollarSign, Target, Users, TrendingUp, Presentation, X, BarChart3, PhoneCall } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,6 +24,8 @@ interface SnapshotStats {
   agentCount: number;
   avgCloseRate: number;
   totalPresentations: number;
+  avgDealSize: number;
+  avgHoursCalled: number;
 }
 
 interface AgentBreakdown {
@@ -35,7 +37,7 @@ interface AgentBreakdown {
   closeRate: number;
 }
 
-type DrilldownType = "alp" | "deals" | "agents" | "closeRate" | null;
+type DrilldownType = "alp" | "deals" | "agents" | "closeRate" | "avgDeal" | "avgHours" | null;
 
 export function TeamSnapshotCard() {
   const { user, isAdmin, isManager, isAgent, isLoading: authLoading } = useAuth();
@@ -46,6 +48,8 @@ export function TeamSnapshotCard() {
     agentCount: 0,
     avgCloseRate: 0,
     totalPresentations: 0,
+    avgDealSize: 0,
+    avgHoursCalled: 0,
   });
   const [loading, setLoading] = useState(true);
   const [dataFetched, setDataFetched] = useState(false);
@@ -106,6 +110,8 @@ export function TeamSnapshotCard() {
           agentCount: 0,
           avgCloseRate: 0,
           totalPresentations: 0,
+          avgDealSize: 0,
+          avgHoursCalled: 0,
         });
         setLoading(false);
         setDataFetched(true);
@@ -114,7 +120,7 @@ export function TeamSnapshotCard() {
 
       const { data: productionData } = await supabase
         .from("daily_production")
-        .select("aop, deals_closed, presentations, agent_id")
+        .select("aop, deals_closed, presentations, agent_id, hours_called")
         .in("agent_id", agentIds)
         .gte("production_date", startDate)
         .lte("production_date", endDate);
@@ -123,17 +129,23 @@ export function TeamSnapshotCard() {
         const totalALP = productionData.reduce((sum, p) => sum + (Number(p.aop) || 0), 0);
         const totalDeals = productionData.reduce((sum, p) => sum + (p.deals_closed || 0), 0);
         const totalPresentations = productionData.reduce((sum, p) => sum + (p.presentations || 0), 0);
+        const totalHours = productionData.reduce((sum, p) => sum + (Number(p.hours_called) || 0), 0);
         const uniqueAgents = new Set(productionData.map(p => p.agent_id));
+        const agentCount = uniqueAgents.size || agentIds.length;
         const avgCloseRate = totalPresentations > 0 
           ? Math.round((totalDeals / totalPresentations) * 100) 
           : 0;
+        const avgDealSize = totalDeals > 0 ? Math.round(totalALP / totalDeals) : 0;
+        const avgHoursCalled = agentCount > 0 ? Math.round((totalHours / agentCount) * 10) / 10 : 0;
 
         setStats({
           totalALP,
           totalDeals,
-          agentCount: uniqueAgents.size || agentIds.length,
+          agentCount,
           avgCloseRate,
           totalPresentations,
+          avgDealSize,
+          avgHoursCalled,
         });
       } else {
         setStats({
@@ -142,6 +154,8 @@ export function TeamSnapshotCard() {
           agentCount: agentIds.length,
           avgCloseRate: 0,
           totalPresentations: 0,
+          avgDealSize: 0,
+          avgHoursCalled: 0,
         });
       }
       
@@ -319,13 +333,13 @@ export function TeamSnapshotCard() {
           </div>
 
           {showSkeleton ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[1, 2, 3, 4].map(i => (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              {[1, 2, 3, 4, 5, 6].map(i => (
                 <Skeleton key={i} className="h-24 rounded-xl" />
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
               {/* Total ALP - Clickable */}
               <button
                 onClick={() => handleStatClick("alp")}
@@ -407,6 +421,33 @@ export function TeamSnapshotCard() {
                   className="text-3xl font-bold"
                 />
               </button>
+
+              {/* Avg Deal Size */}
+              <div className="bg-background/50 rounded-xl p-4 border border-border/50">
+                <div className="flex items-center gap-2 text-cyan-500 mb-2">
+                  <BarChart3 className="h-5 w-5" />
+                  <span className="text-xs font-medium uppercase tracking-wide">Avg Deal</span>
+                </div>
+                <AnimatedCounter
+                  value={stats.avgDealSize}
+                  prefix="$"
+                  className="text-3xl font-bold"
+                  formatOptions={{ maximumFractionDigits: 0 }}
+                />
+              </div>
+
+              {/* Avg Hours Called */}
+              <div className="bg-background/50 rounded-xl p-4 border border-border/50">
+                <div className="flex items-center gap-2 text-pink-500 mb-2">
+                  <PhoneCall className="h-5 w-5" />
+                  <span className="text-xs font-medium uppercase tracking-wide">Avg Hours</span>
+                </div>
+                <AnimatedCounter
+                  value={stats.avgHoursCalled}
+                  className="text-3xl font-bold"
+                  formatOptions={{ maximumFractionDigits: 1 }}
+                />
+              </div>
 
               {/* Presentations - for agents only */}
               {isAgent && !isManager && !isAdmin && (

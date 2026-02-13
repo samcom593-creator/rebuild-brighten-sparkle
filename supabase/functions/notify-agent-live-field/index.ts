@@ -13,7 +13,7 @@ const corsHeaders = {
 
 const releaseVideoUrl = "https://youtu.be/fZSm3T1jBJ8";
 const portalLink = "https://apex-financial.org/agent-portal";
-const discordLink = "https://discord.gg/GygkGEhb";
+const discordLink = "https://discord.gg/JpUWA73UZX";
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {

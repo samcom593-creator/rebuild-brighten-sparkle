@@ -1,4 +1,11 @@
 import { useState } from "react";
+
+function formatPhoneDisplay(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  const d = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+  if (d.length === 10) return `${d.slice(0,3)}-${d.slice(3,6)}-${d.slice(6)}`;
+  return phone;
+}
 import { motion } from "framer-motion";
 import { Phone, Mail, Instagram, Clock, User, Calendar, Sparkles, Building2, FileText, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -289,7 +296,7 @@ export function CallCenterLeadCard({
                 />
               </motion.div>
               <div className="flex-1 relative z-10">
-                <div className="text-lg font-semibold text-foreground">{lead.phone}</div>
+                <div className="text-lg font-semibold text-foreground">{formatPhoneDisplay(lead.phone)}</div>
                 <div className="text-xs text-green-400">Tap to call</div>
               </div>
               <motion.div

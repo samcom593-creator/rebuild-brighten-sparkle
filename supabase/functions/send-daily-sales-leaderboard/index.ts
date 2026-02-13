@@ -16,6 +16,7 @@ interface LeaderboardEntry {
   deals: number;
   alp: number;
   rank: number;
+  managerId?: string | null;
 }
 
 serve(async (req) => {
@@ -35,7 +36,6 @@ serve(async (req) => {
     const pstDate = new Date(now.toLocaleString("en-US", { timeZone: "America/Los_Angeles" }));
     const today = pstDate.toISOString().split("T")[0];
     
-    // Format date for display
     const displayDate = pstDate.toLocaleDateString("en-US", {
       weekday: "long",
       month: "long",
@@ -53,10 +53,7 @@ serve(async (req) => {
       .eq("production_date", today)
       .gt("deals_closed", 0);
 
-    if (prodError) {
-      console.error("Error fetching production:", prodError);
-      throw prodError;
-    }
+    if (prodError) throw prodError;
 
     if (!production || production.length === 0) {
       console.log("📭 No deals closed today - skipping leaderboard email");
@@ -68,17 +65,12 @@ serve(async (req) => {
 
     console.log(`📊 Found ${production.length} agents with deals today`);
 
-    // Get all active agents with emails
-    const { data: agents, error: agentsError } = await supabase
+    // Get all active agents with manager info
+    const { data: agents } = await supabase
       .from("agents")
-      .select("id, user_id, is_deactivated, is_inactive")
+      .select("id, user_id, is_deactivated, is_inactive, invited_by_manager_id")
       .eq("is_deactivated", false)
       .eq("is_inactive", false);
-
-    if (agentsError) {
-      console.error("Error fetching agents:", agentsError);
-      throw agentsError;
-    }
 
     // Get profiles for all agents
     const userIds = agents?.map(a => a.user_id).filter(Boolean) || [];
@@ -88,12 +80,21 @@ serve(async (req) => {
       .in("user_id", userIds);
 
     const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
-    const agentToProfile = new Map(agents?.map(a => [a.id, profileMap.get(a.user_id)]) || []);
+    const agentMap = new Map(agents?.map(a => [a.id, a]) || []);
 
-    // Build leaderboard entries - sorted by ALP
+    // Get manager roles
+    const { data: managerRoles } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "manager");
+
+    const managerUserIds = new Set(managerRoles?.map(r => r.user_id) || []);
+
+    // Build leaderboard entries sorted by ALP
     const leaderboardEntries: LeaderboardEntry[] = production
       .map(p => {
-        const profile = agentToProfile.get(p.agent_id);
+        const agent = agentMap.get(p.agent_id);
+        const profile = agent ? profileMap.get(agent.user_id) : null;
         return {
           agentId: p.agent_id,
           agentName: profile?.full_name || "Unknown Agent",
@@ -101,23 +102,51 @@ serve(async (req) => {
           deals: p.deals_closed,
           alp: Number(p.aop),
           rank: 0,
+          managerId: agent?.invited_by_manager_id || null,
         };
       })
-      .filter(e => e.email) // Only include agents with valid emails
+      .filter(e => e.email)
       .sort((a, b) => b.alp - a.alp);
 
-    // Assign ranks
     leaderboardEntries.forEach((entry, idx) => {
       entry.rank = idx + 1;
     });
 
-    // Calculate team total
     const teamTotal = leaderboardEntries.reduce((sum, e) => sum + e.alp, 0);
     const totalDeals = leaderboardEntries.reduce((sum, e) => sum + e.deals, 0);
 
     console.log(`🏆 Leaderboard: ${leaderboardEntries.length} ranked agents, $${teamTotal.toLocaleString()} total ALP`);
 
-    // Get all active agent emails to send personalized leaderboard
+    // Identify managers and build their team stats
+    const managerAgents = agents?.filter(a => a.user_id && managerUserIds.has(a.user_id)) || [];
+    const managerAgentIds = new Set(managerAgents.map(m => m.id));
+
+    // Build per-manager team stats
+    const managerTeamStats = new Map<string, { managerId: string; managerName: string; teamAlp: number; teamDeals: number; members: LeaderboardEntry[] }>();
+    
+    for (const mgr of managerAgents) {
+      const mgrProfile = profileMap.get(mgr.user_id);
+      if (!mgrProfile) continue;
+      
+      const teamMembers = leaderboardEntries.filter(e => e.managerId === mgr.id);
+      const teamAlp = teamMembers.reduce((sum, m) => sum + m.alp, 0);
+      const teamDeals = teamMembers.reduce((sum, m) => sum + m.deals, 0);
+      
+      managerTeamStats.set(mgr.id, {
+        managerId: mgr.id,
+        managerName: mgrProfile.full_name || "Manager",
+        teamAlp,
+        teamDeals,
+        members: teamMembers,
+      });
+    }
+
+    // Rank teams by ALP
+    const rankedTeams = Array.from(managerTeamStats.values())
+      .filter(t => t.teamAlp > 0)
+      .sort((a, b) => b.teamAlp - a.teamAlp);
+
+    // Get all recipients
     const allRecipients = agents
       ?.filter(a => {
         const profile = profileMap.get(a.user_id);
@@ -127,10 +156,11 @@ serve(async (req) => {
         agentId: a.id,
         email: profileMap.get(a.user_id)?.email || "",
         name: profileMap.get(a.user_id)?.full_name || "Agent",
+        isManager: managerAgentIds.has(a.id),
       }))
       .filter(r => r.email) || [];
 
-    console.log(`📧 Sending personalized leaderboard to ${allRecipients.length} agents`);
+    console.log(`📧 Sending personalized leaderboard to ${allRecipients.length} agents (${managerAgents.length} managers)`);
 
     // Generate leaderboard rows HTML
     const generateLeaderboardRows = (recipientAgentId: string) => {
@@ -158,7 +188,90 @@ serve(async (req) => {
       }).join("");
     };
 
-    // Generate motivational message for recipient
+    // Generate manager team section
+    const generateManagerTeamSection = (managerAgentId: string) => {
+      const teamStats = managerTeamStats.get(managerAgentId);
+      if (!teamStats || teamStats.members.length === 0) return "";
+
+      const teamRank = rankedTeams.findIndex(t => t.managerId === managerAgentId) + 1;
+      const teamRankLabel = teamRank === 1 ? "🥇 #1" : teamRank === 2 ? "🥈 #2" : teamRank === 3 ? "🥉 #3" : `#${teamRank}`;
+
+      const memberRows = teamStats.members
+        .sort((a, b) => b.alp - a.alp)
+        .map((m, idx) => {
+          const formattedAlp = Number(m.alp).toLocaleString("en-US", { maximumFractionDigits: 0 });
+          return `
+            <tr>
+              <td style="padding: 10px 16px; border-bottom: 1px solid rgba(0,212,255,0.1); color: white; font-size: 14px;">
+                ${idx + 1}. ${m.agentName}
+              </td>
+              <td style="padding: 10px 16px; border-bottom: 1px solid rgba(0,212,255,0.1); text-align: center; color: white; font-size: 14px;">
+                ${m.deals}
+              </td>
+              <td style="padding: 10px 16px; border-bottom: 1px solid rgba(0,212,255,0.1); text-align: right; color: #00d4ff; font-weight: 600; font-size: 14px;">
+                $${formattedAlp}
+              </td>
+            </tr>
+          `;
+        }).join("");
+
+      return `
+        <!-- Manager Team Section -->
+        <tr>
+          <td style="padding: 24px 24px 0 24px;">
+            <table width="100%" cellpadding="0" cellspacing="0" style="background: linear-gradient(135deg, rgba(0, 212, 255, 0.08) 0%, rgba(0, 153, 204, 0.04) 100%); border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 16px; overflow: hidden;">
+              <tr>
+                <td style="padding: 20px 20px 12px 20px;">
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="color: #00d4ff; font-size: 16px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">
+                        🚀 YOUR TEAM'S PRODUCTION
+                      </td>
+                      <td style="text-align: right; color: #d4af37; font-size: 14px; font-weight: 700;">
+                        Team Rank: ${teamRankLabel} of ${rankedTeams.length}
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 0 20px 12px 20px;">
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td width="50%" style="padding: 8px 0;">
+                        <p style="color: rgba(255,255,255,0.6); font-size: 12px; margin: 0 0 2px 0;">TEAM ALP</p>
+                        <p style="color: #4ade80; font-size: 24px; font-weight: 900; margin: 0;">$${teamStats.teamAlp.toLocaleString("en-US", { maximumFractionDigits: 0 })}</p>
+                      </td>
+                      <td width="50%" style="padding: 8px 0; text-align: right;">
+                        <p style="color: rgba(255,255,255,0.6); font-size: 12px; margin: 0 0 2px 0;">TEAM DEALS</p>
+                        <p style="color: #4ade80; font-size: 24px; font-weight: 900; margin: 0;">${teamStats.teamDeals}</p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 0 20px 16px 20px;">
+                  <table width="100%" cellpadding="0" cellspacing="0" style="border-radius: 8px; overflow: hidden;">
+                    <thead>
+                      <tr style="background: rgba(0, 212, 255, 0.1);">
+                        <th style="padding: 10px 16px; color: #00d4ff; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; text-align: left; border-bottom: 1px solid rgba(0,212,255,0.2);">Agent</th>
+                        <th style="padding: 10px 16px; color: #00d4ff; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; text-align: center; border-bottom: 1px solid rgba(0,212,255,0.2);">Deals</th>
+                        <th style="padding: 10px 16px; color: #00d4ff; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; text-align: right; border-bottom: 1px solid rgba(0,212,255,0.2);">ALP</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${memberRows}
+                    </tbody>
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      `;
+    };
+
     const generateMotivationalMessage = (recipientAgentId: string, recipientName: string) => {
       const recipientEntry = leaderboardEntries.find(e => e.agentId === recipientAgentId);
       
@@ -174,7 +287,6 @@ serve(async (req) => {
         return `<p style="color: #4ade80; font-size: 16px; margin: 0;">🔥 Podium finish! You're on fire!</p>`;
       }
 
-      // Show gap to next rank
       const nextRankEntry = leaderboardEntries.find(e => e.rank === recipientEntry.rank - 1);
       if (nextRankEntry) {
         const gap = nextRankEntry.alp - recipientEntry.alp;
@@ -185,8 +297,9 @@ serve(async (req) => {
     };
 
     // Build personalized email HTML
-    const buildEmailHtml = (recipientAgentId: string, recipientName: string) => {
+    const buildEmailHtml = (recipientAgentId: string, recipientName: string, isManager: boolean) => {
       const firstName = recipientName.split(" ")[0];
+      const managerSection = isManager ? generateManagerTeamSection(recipientAgentId) : "";
       
       return `
 <!DOCTYPE html>
@@ -222,9 +335,12 @@ serve(async (req) => {
             </td>
           </tr>
           
+          ${managerSection}
+          
           <!-- Leaderboard Table -->
           <tr>
-            <td style="padding: 0 24px;">
+            <td style="padding: ${isManager ? '16px' : '0'} 24px 0 24px;">
+              ${isManager ? '<p style="color: #d4af37; font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 12px 0;">📋 FULL TEAM LEADERBOARD</p>' : ''}
               <table width="100%" cellpadding="0" cellspacing="0" style="background: rgba(255,255,255,0.03); border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1);">
                 <thead>
                   <tr style="background: rgba(212, 175, 55, 0.1);">
@@ -244,13 +360,17 @@ serve(async (req) => {
           <!-- Team Total -->
           <tr>
             <td style="padding: 24px;">
-              <div style="background: linear-gradient(135deg, rgba(74, 222, 128, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%); border: 1px solid rgba(74, 222, 128, 0.3); border-radius: 16px; padding: 20px; text-align: center;">
-                <p style="color: rgba(255,255,255,0.7); font-size: 14px; margin: 0 0 4px 0;">📊 TEAM TOTAL</p>
-                <p style="color: #4ade80; font-size: 32px; font-weight: 900; margin: 0;">
-                  $${teamTotal.toLocaleString("en-US", { maximumFractionDigits: 0 })}
-                </p>
-                <p style="color: rgba(255,255,255,0.5); font-size: 13px; margin: 4px 0 0 0;">${totalDeals} deals closed</p>
-              </div>
+              <table width="100%" cellpadding="0" cellspacing="0" style="background: linear-gradient(135deg, rgba(74, 222, 128, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%); border: 1px solid rgba(74, 222, 128, 0.3); border-radius: 16px;">
+                <tr>
+                  <td style="padding: 20px; text-align: center;">
+                    <p style="color: rgba(255,255,255,0.7); font-size: 14px; margin: 0 0 4px 0;">📊 TEAM TOTAL</p>
+                    <p style="color: #4ade80; font-size: 32px; font-weight: 900; margin: 0;">
+                      $${teamTotal.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                    </p>
+                    <p style="color: rgba(255,255,255,0.5); font-size: 13px; margin: 4px 0 0 0;">${totalDeals} deals closed</p>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
           
@@ -265,7 +385,7 @@ serve(async (req) => {
           <tr>
             <td style="padding: 0 24px 32px 24px; text-align: center;">
               <a href="https://rebuild-brighten-sparkle.lovable.app/numbers" 
-                 style="display: inline-block; background: linear-gradient(135deg, #d4af37 0%, #b8941d 100%); color: #0a0a0a; font-size: 14px; font-weight: 800; text-decoration: none; padding: 16px 40px; border-radius: 12px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 8px 20px rgba(212, 175, 55, 0.3);">
+                 style="display: inline-block; background: linear-gradient(135deg, #d4af37 0%, #b8941d 100%); color: #0a0a0a; font-size: 14px; font-weight: 800; text-decoration: none; padding: 16px 40px; border-radius: 12px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 8px 20px rgba(212, 175, 55, 0.3); max-width: 100%; box-sizing: border-box;">
                 🎯 LOG TOMORROW'S NUMBERS
               </a>
             </td>
@@ -302,7 +422,7 @@ serve(async (req) => {
             from: "APEX Financial <noreply@apex-financial.org>",
             to: [recipient.email],
             subject: `🏆 Daily Sales Leaderboard - ${displayDate}`,
-            html: buildEmailHtml(recipient.agentId, recipient.name),
+            html: buildEmailHtml(recipient.agentId, recipient.name, recipient.isManager),
           })
         )
       );

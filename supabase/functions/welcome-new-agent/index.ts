@@ -23,7 +23,7 @@ interface WelcomeEmailRequest {
 
 const defaultCourseLink = "https://partners.xcelsolutions.com/afe";
 const PORTAL_LINK = "https://apex-financial.org/agent-portal";
-const DISCORD_LINK = "https://discord.gg/GygkGEhb";
+const DISCORD_LINK = "https://discord.gg/JpUWA73UZX";
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {

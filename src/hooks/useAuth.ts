@@ -138,7 +138,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // On token refresh, just update the session object — no refetches needed
         if (event === "TOKEN_REFRESHED") {
           setSession(session);
-          setUser(session?.user ?? null);
           return;
         }
         

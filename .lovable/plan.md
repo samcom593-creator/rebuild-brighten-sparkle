@@ -1,42 +1,56 @@
 
-
-# Make the "Merge Duplicates" Button Prominent and Always Visible
+# Automate Licensing + Course Emails on Hire & Contract Actions
 
 ## Problem
-The "Merge All Duplicates" button exists in the Aged Leads page but is hidden when there are no detected duplicates (`duplicateMap.size === 0`) and blends in with other small header buttons when visible. The user wants a clear, easy-to-tap button that's always accessible.
+When clicking "Hired" in the Pipeline (DashboardApplicants), the system only sends a generic follow-up email. It does NOT send licensing instructions or course enrollment emails. The Call Center already does this correctly -- the Pipeline needs to match that behavior.
+
+When clicking "Contract" (via ContractedModal), the contracted email is sent but course enrollment is not triggered automatically.
 
 ## Changes
 
-### File: `src/pages/DashboardAgedLeads.tsx`
+### 1. Pipeline "Hired" Button (`src/pages/DashboardApplicants.tsx`)
 
-1. **Move the Merge Duplicates button out of the header row** -- Place it as a prominent standalone element below the stats row (or as a highlighted banner) so it stands out visually.
+Add to `handleMarkAsHired` (after the existing hire email logic, around line 309):
 
-2. **Always show the button** -- Remove the `duplicateMap.size > 0` conditional. When there are no duplicates, show it in a disabled/muted state with "No Duplicates" text. When duplicates exist, show it with a pulsing badge and bold styling.
+- **Send licensing instructions** for unlicensed/unknown applicants (same pattern as CallCenter lines 342-351):
+  ```
+  supabase.functions.invoke("send-licensing-instructions", { body: { email, firstName, licenseStatus } })
+  ```
 
-3. **Make it visually distinct:**
-   - Full-width banner-style button below the stats cards
-   - Gradient background (amber/orange) when duplicates exist
-   - Animated badge showing the count
-   - Larger text and icon size so it's immediately noticeable
-   - When no duplicates: show a green checkmark with "No Duplicates Found" in a subtle card
+- **Send course enrollment email** -- since the applicant isn't an agent yet at hire time, we can't call `send-course-enrollment-email` (it needs an agentId). Instead, we send licensing info which is the appropriate action at hire stage. The course enrollment happens later when they're formally added to the course.
 
-4. **Remove the admin-only restriction** -- Allow managers to also see and use the merge button (since managers can manage their assigned aged leads).
+### 2. Contract Action (`src/components/dashboard/ContractedModal.tsx`)
 
-## Technical Details
+Add after the contracted email is sent (around line 143), a call to automatically send course enrollment:
 
-**Current code (line 447-452):**
 ```
-{isAdmin && duplicateMap.size > 0 && (
-  <Button onClick={handleAutoMergeDuplicates} size="sm" variant="outline" className="gap-1.5 text-amber-500 ...">
-    <AlertTriangle className="h-3.5 w-3.5" />
-    Merge {duplicateMap.size} Duplicates
-  </Button>
-)}
+supabase.functions.invoke("send-course-enrollment-email", { body: { agentId: newAgentId } })
 ```
 
-**New approach:** Remove the button from the header `div` (line 447-452). Add a new section between the stats row and the filters bar (between lines 492 and 494) showing a full-width merge card:
+This uses the `newAgentId` already returned from the `add-agent` edge function. It sends the agent their training course magic link immediately upon contracting.
 
-- When `duplicateMap.size > 0`: A prominent amber/orange gradient card with a large "Merge All Duplicates" button, showing the count in a pulsing badge, with a brief description like "X duplicate leads detected -- merge to keep only the newest records"
-- When `duplicateMap.size === 0`: A subtle green card saying "No duplicates detected"
-- Both states use `motion.div` for smooth entry animation
+Also automatically set `has_training_course: true` on the new agent record so they show up in the Course Progress monitor. This can be done by adding it to the `add-agent` call body or updating the agent record after creation.
 
+### 3. Update `add-agent` Edge Function (`supabase/functions/add-agent/index.ts`)
+
+Check if the edge function already accepts and sets `has_training_course`. If not, add support for an `enrollInCourse` flag that sets `has_training_course = true` on the new agent record during creation.
+
+## Summary of Automated Flows
+
+**On "Hired" click:**
+1. Mark application as hired (already works)
+2. Send follow-up email (already works)
+3. Send hire announcement (already works)
+4. **NEW: Send licensing instructions** (for unlicensed applicants)
+
+**On "Contract" click:**
+1. Create agent record via add-agent (already works)
+2. Mark application as contracted (already works)
+3. Send contracted email with CRM link (already works)
+4. Send hire announcement (already works)
+5. **NEW: Send course enrollment email** with magic link
+6. **NEW: Set has_training_course = true** on agent
+
+## Files to Modify
+- `src/pages/DashboardApplicants.tsx` -- add licensing instructions call in `handleMarkAsHired`
+- `src/components/dashboard/ContractedModal.tsx` -- add course enrollment email + update has_training_course after contracting

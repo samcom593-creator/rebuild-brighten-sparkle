@@ -1,168 +1,73 @@
 
 
-# Sidebar Navigation & Page UX Overhaul
+# Fix Building Leaderboard & Add Agency Growth Stats
 
-## Overview
-A comprehensive polish pass across the GlobalSidebar, mobile header, and every page accessible from the sidebar. The goal: cleaner visuals, smoother transitions, better mobile ergonomics, and a more premium feel throughout.
+## Problems Identified
 
----
+1. **Building Leaderboard not working well** -- It filters applications by `created_at >= startDate`, so apps created before the current period but contracted/hired during it don't appear. For example, an app created Jan 25 but contracted Feb 6 won't show in the "week" view. The fix: also include applications where `contracted_at` falls within the period, regardless of when they were created.
 
-## 1. GlobalSidebar Visual Upgrade
-
-**Current issues:**
-- Nav items are flat with minimal visual hierarchy
-- No grouped sections (navigation, tools, admin) -- everything runs together
-- Active state is a plain solid fill with no depth
-- Collapsed state icons lack any hover feedback beyond color
-- The "Collapse" toggle section takes up visual space with a full-width button + border
-
-**Changes:**
-- Add subtle section dividers with tiny uppercase labels ("NAVIGATION", "TOOLS", "ADMIN") when the sidebar is expanded, giving visual grouping to related items
-- Upgrade active nav item style: add a subtle left accent bar (3px primary-colored border-left) plus a softer background highlight instead of the current solid primary fill -- easier on the eyes
-- Add a smooth icon scale micro-animation on hover for collapsed-state icons (transform scale 1.1 on hover, 150ms ease)
-- Replace the standalone "Collapse" button section with a slim toggle icon pinned to the bottom of the logo header row, reducing vertical clutter
-- Add a subtle gradient fade at the bottom of the nav scroll area when content overflows, hinting at more items below
-
-**File:** `src/components/layout/GlobalSidebar.tsx`
+2. **Dashboard is too sales-focused** -- The admin dashboard shows a "2026 Agency Performance" card (YearPerformanceCard) that duplicates the Agency Production snapshot above it. The user wants **building/recruiting stats** instead: licensed producers hired, total team growth, onboarding pipeline velocity, etc.
 
 ---
 
-## 2. Mobile Header & Sidebar Panel
+## Changes
 
-**Current issues:**
-- Mobile header is functional but basic -- no breathing room
-- Mobile sidebar slides in but has no backdrop blur transition
-- No swipe-to-close gesture (lower priority, CSS only approach)
+### 1. Fix Building Leaderboard (`src/components/dashboard/BuildingLeaderboard.tsx`)
 
-**Changes:**
-- Add a subtle bottom shadow to the mobile header for depth separation
-- Smooth the mobile sidebar panel entry with a slight scale effect (0.98 to 1) alongside the translateX
-- Improve mobile nav item tap targets to minimum 48px height (currently 40px with py-2.5)
-- Add a "safe area" padding at the top of the mobile sidebar to avoid notch overlap on newer phones
+**Problem:** Line 128 filters `currentQuery.gte("created_at", currentStartDate)` which misses apps created earlier but hired/contracted in the current period.
 
-**Files:** `src/components/layout/SidebarLayout.tsx`, `src/components/layout/GlobalSidebar.tsx`
+**Fix:** Change the query to use an OR filter -- include applications where EITHER `created_at >= startDate` OR `contracted_at >= startDate`. This ensures all recruiting activity for the period is captured.
 
----
+Also fix the previous period query similarly (use `contracted_at` range for growth comparison instead of `created_at`).
 
-## 3. Dashboard Page Polish
+### 2. Replace YearPerformanceCard with AgencyGrowthCard (`src/pages/Dashboard.tsx`)
 
-**Current issues:**
-- Quick action cards lack consistent hover feedback
-- Stat cards and section headers appear without staggered timing
-- Welcome section could use more personality
+Remove the `YearPerformanceCard` component from the admin dashboard section (lines 316-319).
 
-**Changes:**
-- Add staggered entrance animations to the quick action grid (each card delays by 50ms)
-- Add a subtle gradient underline to the "Welcome back" text
-- Ensure all GlassCard hover states have consistent lift + shadow (currently inconsistent between sections)
-- Add a "last updated" timestamp or subtle pulse indicator to the Team Snapshot card
+Replace it with a new **AgencyGrowthCard** component that shows:
 
-**File:** `src/pages/Dashboard.tsx`
+- **Licensed Producers** -- Count of active agents where `license_status = 'licensed'`
+- **New Hires (period)** -- Agents created/contracted within the selected period (day/week/month toggle)
+- **In Onboarding** -- Agents currently in onboarding stages (not yet evaluated)
+- **Growth Rate** -- Percentage change in total active agents vs previous period
+- **Avg Time to Licensed** -- Average days from agent creation to licensed status (aspirational metric)
 
----
+The card will have day/week/month toggles matching the existing pattern, with a live indicator and realtime updates.
 
-## 4. Log Numbers Page
+### 3. Create AgencyGrowthCard Component (`src/components/dashboard/AgencyGrowthCard.tsx`)
 
-**Current issues:**
-- The multi-step wizard transitions are fine but the step indicator is missing -- users don't know where they are in the flow
-- Production entry form could use tighter spacing on mobile
-
-**Changes:**
-- Add a minimal step progress indicator (dots or a thin progress bar) at the top of the card showing current step (search -> select/new -> production -> leaderboard)
-- Tighten mobile padding (p-6 to p-4 on small screens) for the GlassCard
-- Add a subtle checkmark animation when production is saved successfully (before confetti)
-
-**File:** `src/pages/LogNumbers.tsx`
+New component with the following layout:
+- Header: "Agency Growth" with a Building2 icon
+- Period selector (day/week/month)
+- Stat grid (2x2 or 4-col):
+  - Licensed Producers (total active licensed)
+  - New Hires This [Period] (agents with `created_at` in range or `contracted_at` in range)
+  - In Pipeline (agents in onboarding/training stages)
+  - Growth % (change vs previous period)
+- Data source: `agents` table + `applications` table with `contracted_at`
 
 ---
 
-## 5. Numbers Page (Agent Self-Entry)
+## Technical Details
 
-**Current issues:**
-- Authenticated view has double-nested `max-w-lg` divs (redundant)
-- Login card could use a more branded feel
+### File: `src/components/dashboard/BuildingLeaderboard.tsx`
 
-**Changes:**
-- Remove the redundant nested `max-w-lg` wrapper
-- Add the Apex icon to the login card header for brand consistency
-- Add focus ring animations to the identifier input
+- Lines 123-131: Change the current period query to use an OR condition: fetch applications where `created_at >= startDate` OR `contracted_at >= startDate`
+- Lines 134-140: Similarly fix previous period query to use `contracted_at` range for accurate growth comparison
+- The counting logic (lines 159-167) for `status === "approved" || contracted_at` remains correct
 
-**File:** `src/pages/Numbers.tsx`
+### File: `src/components/dashboard/AgencyGrowthCard.tsx` (NEW)
 
----
+- Queries `agents` table for licensed count, onboarding pipeline counts, and total active count
+- Queries `applications` table for new hires (contracted_at within period)
+- Subscribes to realtime updates on both tables
+- Shows day/week/month toggle for period filtering
+- Displays growth percentage comparing current vs previous period
 
-## 6. Agent Portal Page
+### File: `src/pages/Dashboard.tsx`
 
-**Changes:**
-- Ensure consistent section header styling with icon + label pattern matching Dashboard
-- Add smooth scroll-to-section when clicking internal section links
-- Add staggered card entrance animations matching Dashboard pattern
-
-**File:** `src/pages/AgentPortal.tsx`
-
----
-
-## 7. Pipeline (Applicants) Page
-
-**Changes:**
-- Add subtle row hover highlighting in the applicant list
-- Ensure filter bar is sticky on scroll for long lists
-- Add transition animations when filter changes cause list re-renders
-
-**File:** `src/pages/DashboardApplicants.tsx`
-
----
-
-## 8. CRM Page
-
-**Changes:**
-- Add smooth card entrance animations (staggered by 30ms per card)
-- Ensure stat cards at top have consistent hover lift effects
-- Add subtle border-left color coding by agent stage (like a Kanban hint)
-
-**File:** `src/pages/DashboardCRM.tsx`
-
----
-
-## 9. Command Center, Lead Center, Call Center, Aged Leads, Course Progress, Settings
-
-**Changes (consistent across all):**
-- Ensure every page has a consistent page header pattern: icon + title + subtitle
-- Add `animate-fade-in` entrance to page wrapper divs
-- Ensure all filter bars are sticky (`sticky top-0 z-10 bg-background/80 backdrop-blur-sm`) for long scrollable content
-- Settings page: no changes needed (already clean, wraps ProfileSettings)
-
-**Files:** `src/pages/DashboardCommandCenter.tsx`, `src/pages/LeadCenter.tsx`, `src/pages/CallCenter.tsx`, `src/pages/DashboardAgedLeads.tsx`, `src/pages/CourseProgress.tsx`
-
----
-
-## 10. Global CSS Enhancements
-
-**Changes:**
-- Add a `.nav-item-active` utility class for the new active sidebar style (left border accent + soft bg)
-- Add a `.sticky-filter-bar` utility for reusable sticky filter rows
-- Add a subtle scrollbar styling for the sidebar nav overflow area (thin, teal-tinted track)
-
-**File:** `src/index.css`
-
----
-
-## Technical Summary
-
-| File | Type of Change |
-|------|---------------|
-| `src/components/layout/GlobalSidebar.tsx` | Section grouping, active style upgrade, collapse toggle relocation, hover micro-animations |
-| `src/components/layout/SidebarLayout.tsx` | Mobile header shadow, sidebar panel animation, tap target sizing |
-| `src/pages/Dashboard.tsx` | Staggered animations, hover consistency, welcome polish |
-| `src/pages/LogNumbers.tsx` | Step indicator, mobile padding, save animation |
-| `src/pages/Numbers.tsx` | Remove duplicate wrapper, brand login card |
-| `src/pages/AgentPortal.tsx` | Section headers, staggered animations |
-| `src/pages/DashboardApplicants.tsx` | Row hover, sticky filters, transition animations |
-| `src/pages/DashboardCRM.tsx` | Card animations, hover effects, stage color coding |
-| `src/pages/DashboardCommandCenter.tsx` | Page header, fade-in, sticky filters |
-| `src/pages/LeadCenter.tsx` | Page header, fade-in, sticky filters |
-| `src/pages/CallCenter.tsx` | Page header, fade-in, sticky filters |
-| `src/pages/DashboardAgedLeads.tsx` | Page header, fade-in, sticky filters |
-| `src/pages/CourseProgress.tsx` | Page header, fade-in |
-| `src/index.css` | New utility classes for nav active state, sticky filter bar, scrollbar styling |
-
+- Line 40: Remove `YearPerformanceCard` import
+- Lines 316-319: Remove the YearPerformanceCard section
+- Add import for new `AgencyGrowthCard`
+- Insert AgencyGrowthCard in the same location (after TeamSnapshotCard, before TeamPerformanceBreakdown)
+- Show for admin AND manager roles (both benefit from building stats)

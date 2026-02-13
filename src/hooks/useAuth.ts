@@ -47,6 +47,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Ref to track the last user ID we fetched data for — prevents duplicate fetches
   const lastFetchedUserId = useRef<string | null>(null);
+  // Ref to track current user ID — prevents creating new user object references on token refresh
+  const currentUserIdRef = useRef<string | null>(null);
 
   const fetchProfile = useCallback(async (userId: string, authEmail?: string) => {
     const { data } = await supabase
@@ -96,7 +98,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const newUserId = newSession?.user?.id ?? null;
 
     setSession(newSession);
-    setUser(newSession?.user ?? null);
+
+    // Only update user state if the identity actually changed —
+    // prevents cascading re-renders across 20+ components on token refresh / tab switch
+    if (newUserId !== currentUserIdRef.current) {
+      currentUserIdRef.current = newUserId;
+      setUser(newSession?.user ?? null);
+    }
 
     if (newUserId) {
       // Skip if we already fetched for this user (dedup between getSession + onAuthStateChange)

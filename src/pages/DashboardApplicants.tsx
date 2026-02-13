@@ -178,7 +178,7 @@ export default function DashboardApplicants() {
 
   useEffect(() => {
     fetchApplications();
-  }, [user, highlightedLeadId, isAdmin, isManager, managerFilter]);
+  }, [user?.id, highlightedLeadId, isAdmin, isManager, managerFilter]);
 
   const fetchApplications = async () => {
     if (!user) return;

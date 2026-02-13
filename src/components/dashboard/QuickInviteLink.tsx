@@ -15,7 +15,7 @@ export function QuickInviteLink() {
 
   useEffect(() => {
     if (user) loadExisting();
-  }, [user]);
+  }, [user?.id]);
 
   const loadExisting = async () => {
     setIsLoading(true);

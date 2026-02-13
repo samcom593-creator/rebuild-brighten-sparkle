@@ -34,7 +34,7 @@ export function MiniLeaderboard() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user?.id]);
 
   const fetchLeaderboard = async () => {
     try {

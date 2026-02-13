@@ -21,7 +21,7 @@ export function OnboardingPipelineCard() {
 
   useEffect(() => {
     fetchPipelineData();
-  }, [user, isAdmin]);
+  }, [user?.id, isAdmin]);
 
   const fetchPipelineData = async () => {
     if (!user) return;

@@ -1,83 +1,72 @@
 
+# Course Progress, Pipeline, Dashboard & Performance Fixes
 
-# Fix Pipeline Actions, Unlicensed Dashboard View, and Hire Email
-
-## Problems Identified
-
-1. **Pipeline (Applicants) page still uses old workflow** -- Buttons go "Contacted" then "Qualified" then "Close". The user wants only two actions: **Hired** and **Contracted**. Remove "Contacted", "Qualified", and "Close" as separate steps. Replace with "Hired" (marks as hired, sends email) and "Contracted" (opens contracting modal).
-
-2. **Dashboard doesn't show unlicensed recruits** -- The OnboardingPipelineCard only tracks onboarding stages (onboarding, training_online, in_field_training, evaluated). It doesn't show unlicensed agents. Need to add an "Unlicensed" count to the pipeline card showing all active agents with `license_status = 'unlicensed'`.
-
-3. **Hire email content is wrong** -- When clicking "Hired", the post-call follow-up email needs to clearly tell the recruit: "You've been chosen for the program. If you get your license within 2 weeks, everything is paid for." Currently it sends a generic follow-up.
-
-4. **Pipeline stat cards still show "Contacted"** -- Replace with Hired/Contracted counts.
+## Overview
+This plan addresses 5 areas the user flagged: (1) Course Progress needs better filters and visual polish, (2) Pipeline needs to show assigned manager and remove "contacted" button, (3) Dashboard needs avg deal size and avg hours called metrics, (4) AgencyGrowthCard label should say "Recruiting Stats", and (5) overall performance and flow improvements.
 
 ---
 
-## Changes
+## 1. Course Progress Monitor -- Visual Overhaul & Filters
 
-### 1. Pipeline (Applicants) Page -- `src/pages/DashboardApplicants.tsx`
+The current Course Progress page is functional but visually basic (a flat table). It needs to feel more engaging.
 
-**Remove intermediate status buttons:**
-- Remove `handleMarkAsContacted` and `handleMarkAsQualified` functions
-- Replace the action buttons section: for any non-closed, non-terminated lead, show:
-  - **"Hired"** button -- sets `contacted_at` (if not set), `closed_at`, and status to hired. Sends the hire email. Fires a hire announcement.
-  - **"Contracted"** button -- opens the ContractedModal (available for any lead, not just licensed ones)
-- Remove the "Qualified" status filter option from the dropdown
+**Changes to `src/pages/CourseProgress.tsx`:**
+- Add a "Finished" filter tab (alias for "complete") with a distinct green checkmark icon and celebratory styling
+- Add animated progress rings instead of flat progress bars for each agent row
+- Add gradient backgrounds to the stat filter cards (currently flat GlassCard)
+- Add subtle row hover effects with left-border color coding (green = complete, amber = stalled, red = at risk, blue = in progress, gray = not started)
+- Add an overall progress summary bar at the top showing a visual breakdown (colored segments for each filter category)
+- Make module header cells more readable with tooltips on hover
+- Add smooth AnimatePresence transitions when switching between filters (fade out old rows, fade in new ones)
+- Add a "time in course" column showing how many days since the agent started the course
 
-**Update stat cards:**
-- Replace "Contacted" with "Hired" (count of apps with `closed_at` set but no `contracted_at`)
-- Replace the existing "Closed" with "Contracted" (count of apps with `contracted_at` set)
-- Keep "Total Leads" and "Terminated"
+## 2. Pipeline (Applicants) -- Show Manager & Remove "Contacted"
 
-**Update status determination:**
-- `getApplicationStatus` should return "hired" when `closed_at` is set, and "contracted" when `contracted_at` is set
+**Changes to `src/pages/DashboardApplicants.tsx`:**
 
-### 2. Dashboard Pipeline Card -- `src/components/dashboard/OnboardingPipelineCard.tsx`
+**Show assigned manager name on each applicant card:**
+- Fetch manager names by joining `assigned_agent_id` to the `agents` table to get `invited_by_manager_id` or directly resolving the assigned agent's profile name
+- Display a "Under [Manager Name]" badge on each card (using the existing pattern from CRM pipeline cards)
+- If unassigned, show "Unassigned" badge in muted style
 
-**Add "Unlicensed" stage:**
-- Add a query for agents with `license_status = 'unlicensed'` and `is_deactivated = false`
-- Show as a fifth stage in the pipeline: "Unlicensed" with a graduation cap icon and amber color
-- This ensures when someone is hired and added as an agent with unlicensed status, they show up on the dashboard
+**Remove "contacted" from filters:**
+- Remove the "contacted" SelectItem from the status filter dropdown (line 765)
+- The `getApplicationStatus` function already returns "hired" and "contracted" correctly -- no change needed there
+- Remove "contacted" from `statusColors` map (line 94) since it's no longer a primary status
 
-### 3. Hire Email -- `supabase/functions/send-post-call-followup/index.ts`
+**Ensure no "contacted" button exists:**
+- The previous changes already replaced contacted/qualified/close buttons with Hired + Contracted buttons. Verified this is working correctly in the current code (lines 641-677). No further changes needed.
 
-**Update the "hired" action type email:**
-- Change the email body for `actionType === "hired"` to clearly say:
-  - "You've been selected for the APEX program!"
-  - "Get your license within 2 weeks and everything is paid for"
-  - Include the licensing course link (XcelSolutions) for unlicensed recruits
-  - Keep the CC to admin and manager
+## 3. Dashboard -- Add Avg Deal Size & Avg Hours Called
 
-### 4. Pipeline Applicant Actions -- Pass `agentId` to hire email
+**Changes to `src/components/dashboard/TeamSnapshotCard.tsx`:**
+- Add two new stats to the production snapshot grid:
+  - **Avg Deal Size**: `totalALP / totalDeals` (only when deals > 0)
+  - **Avg Hours Called**: Sum of `hours_called` from daily_production / number of active agents with production
+- Expand the grid from `grid-cols-2 md:grid-cols-4` to `grid-cols-2 md:grid-cols-3 lg:grid-cols-6` to accommodate the two new metrics
+- Add `hours_called` to the production query select (currently only fetches `aop, deals_closed, presentations, agent_id`)
+- Both new stats are clickable for drilldown (like existing stats)
 
-**In DashboardApplicants `handleMarkAsHired`:**
-- Call `send-post-call-followup` with `actionType: "hired"` and include the `agentId` so the manager gets CC'd
-- Also call `notify-hire-announcement` to broadcast to all managers
+## 4. Dashboard -- Rename AgencyGrowthCard
+
+**Changes to `src/components/dashboard/AgencyGrowthCard.tsx`:**
+- Change the header title from "Agency Growth" to "Recruiting Stats"
+- Change subtitle from "Building & recruiting stats" to "Hiring & growth metrics"
+
+## 5. Performance / Speed Improvements
+
+**Changes across multiple files:**
+- In `DashboardApplicants.tsx`: Add `staleTime: 120_000` to avoid refetching on every mount; wrap manager name lookup in a single batch query instead of N+1
+- In `CourseProgress.tsx`: Add `staleTime: 60_000` to the course progress query to prevent redundant fetches
+- In `Dashboard.tsx`: The page currently uses raw `useEffect` + `useState` for data fetching instead of React Query. This is a heavier refactor, but we can at least add abort controllers and avoid duplicate fetches.
 
 ---
 
-## Technical Details
+## Technical Summary
 
-### File: `src/pages/DashboardApplicants.tsx`
-
-- Remove `handleMarkAsContacted` (lines 276-288) and `handleMarkAsQualified` (lines 290-305)
-- Rename `handleMarkAsClosed` to `handleMarkAsHired` -- keep the same logic but also send the hire email via `send-post-call-followup` with `actionType: "hired"` and fire `notify-hire-announcement`
-- In `getApplicationStatus`: check `contracted_at` first (return "contracted"), then `closed_at` (return "hired"), remove "qualified" status
-- In action buttons section (lines 659-743): replace the status-based button chain with just two buttons for any active lead: "Hired" and "Contracted"
-- In stat cards (lines 780-804): change to Total Leads, Hired, Contracted, Terminated
-- In status filter dropdown (lines 828-835): remove "qualified", rename "closed" to "hired", add "contracted"
-- Remove `statusColors.qualified`, update `statusColors.closed` to use "hired" key
-
-### File: `src/components/dashboard/OnboardingPipelineCard.tsx`
-
-- Add `license_status` to the agents query select (line 47)
-- Add a new stage counting agents with `license_status = 'unlicensed'` regardless of onboarding stage
-- Insert "Unlicensed" as the first item in the stages array with amber coloring and GraduationCap icon
-
-### File: `supabase/functions/send-post-call-followup/index.ts`
-
-- Update the "hired" email template to include the message: "You've been selected for the APEX program. Get licensed within 2 weeks and we cover everything."
-- For unlicensed hires, include the XcelSolutions licensing course link and the 3-step process
-- Keep existing CC logic (admin + manager)
-
+| File | Changes |
+|------|---------|
+| `src/pages/CourseProgress.tsx` | Visual overhaul: gradient stat cards, row color coding, AnimatePresence transitions, "days in course" column, progress summary bar, staleTime |
+| `src/pages/DashboardApplicants.tsx` | Show manager name badge on cards, remove "contacted" filter option, batch manager name lookup, staleTime |
+| `src/components/dashboard/TeamSnapshotCard.tsx` | Add Avg Deal Size and Avg Hours Called stats, expand grid, add hours_called to query |
+| `src/components/dashboard/AgencyGrowthCard.tsx` | Rename "Agency Growth" to "Recruiting Stats" |

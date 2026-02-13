@@ -1786,6 +1786,7 @@ export type Database = {
         | "contracting"
         | "approved"
         | "rejected"
+        | "no_pickup"
       attendance_mark: "present" | "absent" | "excused" | "unmarked"
       attendance_status: "good" | "warning" | "critical"
       attendance_type:
@@ -1946,6 +1947,7 @@ export const Constants = {
         "contracting",
         "approved",
         "rejected",
+        "no_pickup",
       ],
       attendance_mark: ["present", "absent", "excused", "unmarked"],
       attendance_status: ["good", "warning", "critical"],

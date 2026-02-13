@@ -86,7 +86,7 @@ export default function CallCenter() {
       if (data) setAgentId(data.id);
     };
     fetchAgentId();
-  }, [user]);
+  }, [user?.id]);
 
   const fetchLeads = useCallback(async () => {
     // CRITICAL: Never fetch without agentId — unfiltered queries return all leads

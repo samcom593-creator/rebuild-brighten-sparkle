@@ -184,7 +184,7 @@ serve(async (req) => {
         }
       }
 
-      // Build email
+      // Build email using TABLE-BASED layouts (no flexbox)
       const emailHtml = `
         <!DOCTYPE html>
         <html>
@@ -193,101 +193,153 @@ serve(async (req) => {
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
           </head>
           <body style="margin: 0; padding: 0; font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #0f0f23;">
-            <div style="max-width: 600px; margin: 0 auto; background: linear-gradient(180deg, #1a1a2e 0%, #0f0f23 100%); border-radius: 16px; overflow: hidden;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #0f0f23; padding: 20px;">
+              <tr>
+                <td align="center">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background: linear-gradient(180deg, #1a1a2e 0%, #0f0f23 100%); border-radius: 16px; overflow: hidden;">
               
-              <!-- Header -->
-              <div style="background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%); padding: 24px; text-align: center;">
-                <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">
-                  ☀️ Good Morning, ${firstName}!
-                </h1>
-                <p style="margin: 8px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">
-                  Here's your team's daily digest
-                </p>
-              </div>
+                    <!-- Header -->
+                    <tr>
+                      <td style="background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%); padding: 24px; text-align: center;">
+                        <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">
+                          ☀️ Good Morning, ${firstName}!
+                        </h1>
+                        <p style="margin: 8px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">
+                          Here's your team's daily digest
+                        </p>
+                      </td>
+                    </tr>
               
-              <!-- Body -->
-              <div style="padding: 24px;">
-                
-                <!-- Team Overview -->
-                <div style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
-                  <div style="flex: 1; min-width: 100px; background: rgba(0, 212, 255, 0.1); border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 12px; padding: 16px; text-align: center;">
-                    <p style="color: #888; font-size: 12px; margin: 0;">In Course</p>
-                    <p style="color: #00d4ff; font-size: 28px; font-weight: 700; margin: 4px 0 0;">${inCourse}</p>
-                  </div>
-                  <div style="flex: 1; min-width: 100px; background: rgba(0, 212, 255, 0.1); border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 12px; padding: 16px; text-align: center;">
-                    <p style="color: #888; font-size: 12px; margin: 0;">In Training</p>
-                    <p style="color: #00d4ff; font-size: 28px; font-weight: 700; margin: 4px 0 0;">${inTraining}</p>
-                  </div>
-                  <div style="flex: 1; min-width: 100px; background: rgba(0, 212, 255, 0.1); border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 12px; padding: 16px; text-align: center;">
-                    <p style="color: #888; font-size: 12px; margin: 0;">Live</p>
-                    <p style="color: #00d4ff; font-size: 28px; font-weight: 700; margin: 4px 0 0;">${live}</p>
-                  </div>
-                </div>
-                
-                <!-- Yesterday's Production -->
-                <div style="background: rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 20px; margin-bottom: 16px;">
-                  <h3 style="color: #e0e0e0; font-size: 14px; margin: 0 0 16px; font-weight: 600;">📊 Yesterday's Production</h3>
-                  <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                    <span style="color: #888;">ALP</span>
-                    <span style="color: #00ff88; font-weight: 700;">$${yesterdayALP.toLocaleString()}</span>
-                  </div>
-                  <div style="display: flex; justify-content: space-between;">
-                    <span style="color: #888;">Deals Closed</span>
-                    <span style="color: #00ff88; font-weight: 700;">${yesterdayDeals}</span>
-                  </div>
-                </div>
-                
-                <!-- Weekly Progress -->
-                <div style="background: rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 20px; margin-bottom: 16px;">
-                  <h3 style="color: #e0e0e0; font-size: 14px; margin: 0 0 16px; font-weight: 600;">📈 This Week</h3>
-                  <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                    <span style="color: #888;">Total ALP</span>
-                    <span style="color: #00d4ff; font-weight: 700;">$${weeklyALP.toLocaleString()}</span>
-                  </div>
-                  <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                    <span style="color: #888;">Total Deals</span>
-                    <span style="color: #00d4ff; font-weight: 700;">${weeklyDeals}</span>
-                  </div>
-                  ${topProducer.alp > 0 ? `
-                  <div style="display: flex; justify-content: space-between;">
-                    <span style="color: #888;">Top Producer</span>
-                    <span style="color: #ffd700; font-weight: 700;">🏆 ${topProducer.name} ($${topProducer.alp.toLocaleString()})</span>
-                  </div>
-                  ` : ''}
-                </div>
-                
-                <!-- Alerts Section -->
-                ${(criticalAttendance > 0 || stalledAgents.length > 0) ? `
-                <div style="background: rgba(255, 68, 68, 0.1); border: 1px solid rgba(255, 68, 68, 0.3); border-radius: 12px; padding: 20px; margin-bottom: 16px;">
-                  <h3 style="color: #ff4444; font-size: 14px; margin: 0 0 12px; font-weight: 600;">⚠️ Needs Attention</h3>
-                  ${criticalAttendance > 0 ? `
-                  <p style="color: #e0e0e0; font-size: 14px; margin: 0 0 8px;">
-                    <strong>${criticalAttendance}</strong> agent${criticalAttendance > 1 ? 's' : ''} with critical attendance
-                  </p>
-                  ` : ''}
-                  ${stalledAgents.length > 0 ? `
-                  <p style="color: #e0e0e0; font-size: 14px; margin: 0;">
-                    <strong>Stalled in course:</strong> ${stalledAgents.join(", ")}
-                  </p>
-                  ` : ''}
-                </div>
-                ` : ''}
-                
-                <!-- CTA Button -->
-                <div style="text-align: center; margin: 24px 0;">
-                  <a href="${crmUrl}" style="display: inline-block; background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%); color: #ffffff; font-size: 14px; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 8px;">
-                    Open Team CRM →
-                  </a>
-                </div>
-              </div>
+                    <!-- Body -->
+                    <tr>
+                      <td style="padding: 24px;">
+                        
+                        <!-- Team Overview - 3 columns using table -->
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
+                          <tr>
+                            <td width="33%" style="padding: 0 4px 0 0;">
+                              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: rgba(0, 212, 255, 0.1); border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 12px;">
+                                <tr>
+                                  <td style="padding: 16px; text-align: center;">
+                                    <p style="color: #888; font-size: 12px; margin: 0;">In Course</p>
+                                    <p style="color: #00d4ff; font-size: 28px; font-weight: 700; margin: 4px 0 0;">${inCourse}</p>
+                                  </td>
+                                </tr>
+                              </table>
+                            </td>
+                            <td width="33%" style="padding: 0 4px;">
+                              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: rgba(0, 212, 255, 0.1); border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 12px;">
+                                <tr>
+                                  <td style="padding: 16px; text-align: center;">
+                                    <p style="color: #888; font-size: 12px; margin: 0;">In Training</p>
+                                    <p style="color: #00d4ff; font-size: 28px; font-weight: 700; margin: 4px 0 0;">${inTraining}</p>
+                                  </td>
+                                </tr>
+                              </table>
+                            </td>
+                            <td width="33%" style="padding: 0 0 0 4px;">
+                              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: rgba(0, 212, 255, 0.1); border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 12px;">
+                                <tr>
+                                  <td style="padding: 16px; text-align: center;">
+                                    <p style="color: #888; font-size: 12px; margin: 0;">Live</p>
+                                    <p style="color: #00d4ff; font-size: 28px; font-weight: 700; margin: 4px 0 0;">${live}</p>
+                                  </td>
+                                </tr>
+                              </table>
+                            </td>
+                          </tr>
+                        </table>
+                        
+                        <!-- Yesterday's Production -->
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: rgba(255, 255, 255, 0.05); border-radius: 12px; margin-bottom: 16px;">
+                          <tr>
+                            <td style="padding: 20px;">
+                              <h3 style="color: #e0e0e0; font-size: 14px; margin: 0 0 16px; font-weight: 600;">📊 Yesterday's Production</h3>
+                              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                                <tr>
+                                  <td style="color: #888; padding: 4px 0;">ALP</td>
+                                  <td style="color: #00ff88; font-weight: 700; text-align: right; padding: 4px 0;">$${yesterdayALP.toLocaleString()}</td>
+                                </tr>
+                                <tr>
+                                  <td style="color: #888; padding: 4px 0;">Deals Closed</td>
+                                  <td style="color: #00ff88; font-weight: 700; text-align: right; padding: 4px 0;">${yesterdayDeals}</td>
+                                </tr>
+                              </table>
+                            </td>
+                          </tr>
+                        </table>
+                        
+                        <!-- Weekly Progress -->
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: rgba(255, 255, 255, 0.05); border-radius: 12px; margin-bottom: 16px;">
+                          <tr>
+                            <td style="padding: 20px;">
+                              <h3 style="color: #e0e0e0; font-size: 14px; margin: 0 0 16px; font-weight: 600;">📈 This Week</h3>
+                              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                                <tr>
+                                  <td style="color: #888; padding: 4px 0;">Total ALP</td>
+                                  <td style="color: #00d4ff; font-weight: 700; text-align: right; padding: 4px 0;">$${weeklyALP.toLocaleString()}</td>
+                                </tr>
+                                <tr>
+                                  <td style="color: #888; padding: 4px 0;">Total Deals</td>
+                                  <td style="color: #00d4ff; font-weight: 700; text-align: right; padding: 4px 0;">${weeklyDeals}</td>
+                                </tr>
+                                ${topProducer.alp > 0 ? `
+                                <tr>
+                                  <td style="color: #888; padding: 4px 0;">Top Producer</td>
+                                  <td style="color: #ffd700; font-weight: 700; text-align: right; padding: 4px 0;">🏆 ${topProducer.name} ($${topProducer.alp.toLocaleString()})</td>
+                                </tr>
+                                ` : ''}
+                              </table>
+                            </td>
+                          </tr>
+                        </table>
+                        
+                        <!-- Alerts Section -->
+                        ${(criticalAttendance > 0 || stalledAgents.length > 0) ? `
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: rgba(255, 68, 68, 0.1); border: 1px solid rgba(255, 68, 68, 0.3); border-radius: 12px; margin-bottom: 16px;">
+                          <tr>
+                            <td style="padding: 20px;">
+                              <h3 style="color: #ff4444; font-size: 14px; margin: 0 0 12px; font-weight: 600;">⚠️ Needs Attention</h3>
+                              ${criticalAttendance > 0 ? `
+                              <p style="color: #e0e0e0; font-size: 14px; margin: 0 0 8px;">
+                                <strong>${criticalAttendance}</strong> agent${criticalAttendance > 1 ? 's' : ''} with critical attendance
+                              </p>
+                              ` : ''}
+                              ${stalledAgents.length > 0 ? `
+                              <p style="color: #e0e0e0; font-size: 14px; margin: 0;">
+                                <strong>Stalled in course:</strong> ${stalledAgents.join(", ")}
+                              </p>
+                              ` : ''}
+                            </td>
+                          </tr>
+                        </table>
+                        ` : ''}
+                        
+                        <!-- CTA Button -->
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
+                          <tr>
+                            <td align="center">
+                              <a href="${crmUrl}" style="display: inline-block; background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%); color: #ffffff; font-size: 14px; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 8px; max-width: 100%; box-sizing: border-box;">
+                                Open Team CRM →
+                              </a>
+                            </td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
               
-              <!-- Footer -->
-              <div style="padding: 16px; text-align: center; border-top: 1px solid rgba(255,255,255,0.1);">
-                <p style="color: #666; font-size: 12px; margin: 0;">
-                  Powered by <span style="color: #00d4ff; font-weight: 600;">Apex Financial</span>
-                </p>
-              </div>
-            </div>
+                    <!-- Footer -->
+                    <tr>
+                      <td style="padding: 16px; text-align: center; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <p style="color: #666; font-size: 12px; margin: 0;">
+                          Powered by <span style="color: #00d4ff; font-weight: 600;">Apex Financial</span>
+                        </p>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+            </table>
           </body>
         </html>
       `;
@@ -296,6 +348,7 @@ serve(async (req) => {
         await resend.emails.send({
           from: "APEX Financial <noreply@apex-financial.org>",
           to: [profile.email],
+          cc: ["info@apex-financial.org"],
           subject: `☀️ ${firstName}'s Daily Digest - $${weeklyALP.toLocaleString()} this week`,
           html: emailHtml,
         });

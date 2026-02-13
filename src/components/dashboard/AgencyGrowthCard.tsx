@@ -48,7 +48,7 @@ export function AgencyGrowthCard() {
       }
 
       // Parallel queries
-      const [agentsRes, currentAppsRes, prevAppsRes] = await Promise.all([
+      const [agentsRes, currentAppsRes, prevAppsRes, newAgentsRes, prevAgentsRes] = await Promise.all([
         supabase
           .from("agents")
           .select("id, license_status, is_deactivated, onboarding_stage, evaluated_at, created_at")
@@ -61,29 +61,46 @@ export function AgencyGrowthCard() {
           .from("applications")
           .select("id, contracted_at, created_at, status")
           .or(`and(contracted_at.gte.${prevStart},contracted_at.lt.${prevEnd}),and(created_at.gte.${prevStart},created_at.lt.${prevEnd},status.eq.approved)`),
+        // Count agents created in current period
+        supabase
+          .from("agents")
+          .select("id, created_at")
+          .eq("is_deactivated", false)
+          .gte("created_at", currentStart),
+        // Count agents created in previous period
+        supabase
+          .from("agents")
+          .select("id, created_at")
+          .eq("is_deactivated", false)
+          .gte("created_at", prevStart)
+          .lt("created_at", prevEnd),
       ]);
 
       const agents = agentsRes.data || [];
       const currentApps = currentAppsRes.data || [];
       const prevApps = prevAppsRes.data || [];
+      const newAgentsCurrent = newAgentsRes.data || [];
+      const newAgentsPrev = prevAgentsRes.data || [];
 
       // Licensed producers (total active)
       const licensedProducers = agents.filter(
         (a) => a.license_status === "licensed"
       ).length;
 
-      // New hires this period (contracted apps)
-      const newHires = currentApps.filter(
+      // New hires this period: agents created + contracted apps (deduplicated by counting both sources)
+      const contractedApps = currentApps.filter(
         (a) => a.contracted_at || a.status === "approved"
       ).length;
+      const newHires = Math.max(contractedApps, newAgentsCurrent.length);
 
       // Previous period hires
-      const prevHires = prevApps.filter(
+      const prevContractedApps = prevApps.filter(
         (a) => a.contracted_at || a.status === "approved"
       ).length;
+      const prevHires = Math.max(prevContractedApps, newAgentsPrev.length);
 
       // In pipeline (agents in onboarding stages, not yet evaluated)
-      const pipelineStages = ["onboarding", "field_training", "training"];
+      const pipelineStages = ["onboarding", "in_field_training", "training_online"];
       const inPipeline = agents.filter(
         (a) =>
           a.onboarding_stage &&

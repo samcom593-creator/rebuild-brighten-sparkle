@@ -223,7 +223,6 @@ export function ManagerTeamView() {
       let teamAgents: any[] = [];
 
       if (isAdmin) {
-        // Admin: Fetch ALL agents in the agency (including deactivated/terminated)
         const { data: allAgents, error } = await supabase
           .from("agents")
           .select(`
@@ -246,7 +245,6 @@ export function ManagerTeamView() {
 
         teamAgents = allAgents || [];
       } else {
-        // Manager: Fetch only direct reports
         const { data: directReports, error } = await supabase
           .from("agents")
           .select(`
@@ -269,7 +267,31 @@ export function ManagerTeamView() {
         teamAgents = directReports || [];
       }
 
-      if (teamAgents.length === 0) {
+      // Also fetch unlicensed applicants from the applications table
+      // These are people who applied but haven't been converted to agent records yet
+      let pipelineApplicants: any[] = [];
+      if (isAdmin) {
+        const { data: apps } = await supabase
+          .from("applications")
+          .select("id, first_name, last_name, email, phone, license_status, status, created_at, assigned_agent_id")
+          .is("terminated_at", null)
+          .eq("license_status", "unlicensed");
+        pipelineApplicants = apps || [];
+      } else {
+        const { data: apps } = await supabase
+          .from("applications")
+          .select("id, first_name, last_name, email, phone, license_status, status, created_at, assigned_agent_id")
+          .is("terminated_at", null)
+          .eq("license_status", "unlicensed");
+        pipelineApplicants = apps || [];
+      }
+
+      // Deduplicate: remove applicants who already have agent records (match by email)
+      const agentEmails = new Set<string>();
+      // We'll get emails from profiles later, for now collect user_ids
+      const agentUserIds = teamAgents.map(a => a.user_id).filter(Boolean);
+
+      if (teamAgents.length === 0 && pipelineApplicants.length === 0) {
         setLoading(false);
         return;
       }
@@ -413,12 +435,47 @@ export function ManagerTeamView() {
         };
       });
 
-      setTeamMembers(members);
+      // Deduplicate pipeline applicants: exclude those whose email matches an existing agent profile
+      const memberEmails = new Set(members.map(m => m.email.toLowerCase()).filter(Boolean));
+      const uniqueApplicants = pipelineApplicants.filter(app => {
+        const appEmail = (app.email || "").toLowerCase();
+        return appEmail && !memberEmails.has(appEmail);
+      });
 
-      // Calculate team stats
-      const activeOnly = members.filter(m => !m.isDeactivated && !m.isInactive && m.status !== "terminated");
-      const totalLeads = members.reduce((sum, m) => sum + m.totalLeads, 0);
-      const totalClosed = members.reduce((sum, m) => sum + m.closed, 0);
+      // Create pipeline member entries from applications
+      const pipelineMembers: TeamMember[] = uniqueApplicants.map(app => ({
+        id: `app-${app.id}`,
+        userId: "",
+        name: `${app.first_name} ${app.last_name || ""}`.trim(),
+        email: app.email || "",
+        status: app.status || "new",
+        onboardingStage: "onboarding",
+        totalLeads: 0,
+        contacted: 0,
+        closed: 0,
+        closeRate: 0,
+        joinedAt: app.created_at,
+        weekALP: 0,
+        monthALP: 0,
+        monthDeals: 0,
+        licenseStatus: "unlicensed" as const,
+        managerName: null,
+        isDirectReport: true,
+        isDeactivated: false,
+        isInactive: false,
+        lastContactedAt: null,
+        invitedByManagerId: null,
+        standardPaid: false,
+        premiumPaid: false,
+      }));
+
+      const allMembers = [...members, ...pipelineMembers];
+      setTeamMembers(allMembers);
+
+      // Calculate team stats including pipeline applicants
+      const activeOnly = allMembers.filter(m => !m.isDeactivated && !m.isInactive && m.status !== "terminated");
+      const totalLeads = allMembers.reduce((sum, m) => sum + m.totalLeads, 0);
+      const totalClosed = allMembers.reduce((sum, m) => sum + m.closed, 0);
       const licensedCount = activeOnly.filter(m => m.licenseStatus === "licensed").length;
       const unlicensedCount = activeOnly.filter(m => m.licenseStatus !== "licensed").length;
       const trainingCount = activeOnly.filter(m => m.onboardingStage === "training_online" || m.onboardingStage === "in_field_training").length;

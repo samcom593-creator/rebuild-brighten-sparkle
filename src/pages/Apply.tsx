@@ -96,6 +96,7 @@ export default function Apply() {
   const [showMotivationStep, setShowMotivationStep] = useState(false);
   const [motivationText, setMotivationText] = useState("");
   const [motivationError, setMotivationError] = useState("");
+  const [duplicateError, setDuplicateError] = useState(false);
   const isSubmittedRef = useRef(false);
   const [sessionId] = useState<string>(() => {
     // Generate a unique session ID for partial application tracking
@@ -439,8 +440,9 @@ export default function Apply() {
       const errorStatus = error?.status || error?.code;
       
       if (errorMessage.includes("duplicate") || errorStatus === 409) {
-        toast.error("An application with this email or phone already exists. Please contact support if you need to update it.", {
-          duration: 6000,
+        setDuplicateError(true);
+        toast.error("An application with this email or phone already exists. Contact info@apex-financial.org if you need help.", {
+          duration: 10000,
         });
       } else if (errorStatus === 404) {
         toast.error("Service temporarily unavailable. Please try again in a moment.", {
@@ -583,6 +585,13 @@ export default function Apply() {
                 transition={{ duration: 0.2 }}
               >
                 <GlassCard className="p-8">
+                  {/* Duplicate Application Error Banner */}
+                  {duplicateError && (
+                    <div className="mb-6 p-4 rounded-xl border border-destructive/30 bg-destructive/10 text-destructive">
+                      <p className="font-semibold text-sm">⚠️ Application Already Exists</p>
+                      <p className="text-xs mt-1">An application with this email or phone number is already on file. If you need to update your application, please email <a href="mailto:info@apex-financial.org" className="underline font-medium">info@apex-financial.org</a>.</p>
+                    </div>
+                  )}
                   {/* Step 1: Personal Info */}
                   {currentStep === 1 && (
                     <div className="space-y-6">

@@ -53,14 +53,19 @@ export function AgencyGrowthCard() {
           .from("agents")
           .select("id, license_status, is_deactivated, onboarding_stage, evaluated_at, created_at")
           .eq("is_deactivated", false),
+        // Count ALL non-terminated applications created in the current period
         supabase
           .from("applications")
-          .select("id, contracted_at, created_at, status")
-          .or(`contracted_at.gte.${currentStart},and(created_at.gte.${currentStart},status.eq.approved)`),
+          .select("id, created_at, status")
+          .is("terminated_at", null)
+          .gte("created_at", currentStart),
+        // Count ALL non-terminated applications created in the previous period
         supabase
           .from("applications")
-          .select("id, contracted_at, created_at, status")
-          .or(`and(contracted_at.gte.${prevStart},contracted_at.lt.${prevEnd}),and(created_at.gte.${prevStart},created_at.lt.${prevEnd},status.eq.approved)`),
+          .select("id, created_at, status")
+          .is("terminated_at", null)
+          .gte("created_at", prevStart)
+          .lt("created_at", prevEnd),
         // Count agents created in current period
         supabase
           .from("agents")
@@ -87,17 +92,11 @@ export function AgencyGrowthCard() {
         (a) => a.license_status === "licensed"
       ).length;
 
-      // New hires this period: agents created + contracted apps (deduplicated by counting both sources)
-      const contractedApps = currentApps.filter(
-        (a) => a.contracted_at || a.status === "approved"
-      ).length;
-      const newHires = Math.max(contractedApps, newAgentsCurrent.length);
+      // New hires: all non-terminated apps in period OR new agents, whichever is higher
+      const newHires = Math.max(currentApps.length, newAgentsCurrent.length);
 
       // Previous period hires
-      const prevContractedApps = prevApps.filter(
-        (a) => a.contracted_at || a.status === "approved"
-      ).length;
-      const prevHires = Math.max(prevContractedApps, newAgentsPrev.length);
+      const prevHires = Math.max(prevApps.length, newAgentsPrev.length);
 
       // In pipeline (agents in onboarding stages, not yet evaluated)
       const pipelineStages = ["onboarding", "in_field_training", "training_online"];

@@ -242,7 +242,7 @@ export default function CallCenter() {
   };
 
   // Send post-call follow-up email
-  const sendFollowUpEmail = async (lead: UnifiedLead, actionType: string = "hired") => {
+  const sendFollowUpEmail = async (lead: UnifiedLead, actionType: string = "hired", calendarLink?: string) => {
     try {
       const { error } = await supabase.functions.invoke("send-post-call-followup", {
         body: {
@@ -250,6 +250,7 @@ export default function CallCenter() {
           email: lead.email,
           licenseStatus: lead.licenseStatus,
           actionType,
+          ...(calendarLink ? { calendarLink } : {}),
         },
       });
 
@@ -262,6 +263,18 @@ export default function CallCenter() {
       console.error("Error sending follow-up email:", err);
     }
   };
+
+  // Manual follow-up email from summary panel
+  const handleSendFollowUp = useCallback(async (calendarLink?: string) => {
+    if (!currentLead) return;
+    try {
+      await sendFollowUpEmail(currentLead, "contacted", calendarLink);
+      toast.success("Follow-up email sent!");
+    } catch {
+      toast.error("Failed to send follow-up email");
+      throw new Error("Failed");
+    }
+  }, [currentLead]);
 
   // Save transcription notes
   const saveNotes = async (lead: UnifiedLead, notes: string) => {
@@ -684,6 +697,7 @@ export default function CallCenter() {
                 // Remove lead from list after reassignment
                 setLeads((prev) => prev.filter((l) => l.id !== currentLead.id));
               }}
+              onSendFollowUp={handleSendFollowUp}
               className="flex-1 overflow-y-auto"
             />
           </AnimatePresence>

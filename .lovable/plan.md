@@ -1,51 +1,49 @@
 
 
-# Fix Dashboard Accuracy + Daily Manager Leaderboard Email
+# Fix Dashboard Accuracy, Website Submission, and Goals
 
 ## Problems Found
 
-### 1. Recruiting Stats "In Pipeline" Always Shows 0
-The AgencyGrowthCard uses incorrect onboarding stage enum values: `["onboarding", "field_training", "training"]`. The actual database enum values are `["onboarding", "in_field_training", "training_online"]`. This means 19 agents currently in training/field training are being missed entirely.
+### 1. Unlicensed People Not Showing on Dashboard
+The "Your Team" section (ManagerTeamView) only pulls data from the `agents` table. There is **only 1 active unlicensed agent** in that table, but there are **54 unlicensed applicants** in the `applications` table (21 new, 21 reviewing, 8 no-pickup, 2 approved, 2 rejected). When you mark someone as "Hired" in the Call Center, it changes the application status to "reviewing" but does NOT create an agent record. These people are invisible to the dashboard.
 
-### 2. Recruiting Stats "New Hires" Undercounting
-The card only counts applications with `contracted_at` or `status = approved` within the selected period. But most new team members are created directly as agent records (15 new agents since Feb 9th). The card needs to also count newly created agents, not just contracted applications.
+**Fix:** Update the ManagerTeamView to also query the `applications` table for unlicensed applicants and merge them into the team roster as "Pipeline" members. The stat cards (Team Members, Licensed, Unlicensed, In Training) will include application counts so the numbers match what you see in the Call Center.
 
-### 3. Manager Daily Digest Email Uses Broken CSS
-The existing `manager-daily-digest` edge function uses `display: flex` for layout -- the same issue we just fixed in the licensing emails. These won't render properly on mobile email clients.
+### 2. Recruiting Stats Still Undercounting
+The AgencyGrowthCard counts "New Hires" using contracted/approved applications only. Most hired people have status "reviewing" (not "contracted" or "approved"), so they are missed. 
 
-### 4. No Daily Sales Leaderboard for Managers
-The existing `send-daily-sales-leaderboard` function sends to all active agents, but managers want a personalized version showing their team's rankings and production numbers specifically.
+**Fix:** Count all non-terminated applications created in the period (regardless of status) as new hires, combined with new agent records. This captures everyone who applied or was added.
 
----
+### 3. Website Submission "Failing"
+The person trying to apply (wyattearp07@outlook.com) already has an existing application from Feb 11. The duplicate check is correctly blocking a double submission. The error toast says "An application with this email or phone already exists" but may not be prominent enough.
 
-## Fix 1: AgencyGrowthCard Pipeline Stages + New Hires
+**Fix:** Make the duplicate error message more prominent and user-friendly with a longer-duration toast that explains what to do. Also add a visible inline error banner so the user doesn't miss it on mobile.
 
-**File: `src/components/dashboard/AgencyGrowthCard.tsx`**
-
-- Change pipeline stages from `["onboarding", "field_training", "training"]` to `["onboarding", "in_field_training", "training_online"]`
-- Add a parallel query to the `agents` table to count agents created within the selected period (in addition to contracted applications)
-- Combine both counts for a more accurate "New Hires" metric: agents created in period + contracted applications in period (deduplicated)
-
-## Fix 2: Manager Daily Digest Email - Fix Layout
-
-**File: `supabase/functions/manager-daily-digest/index.ts`**
-
-- Replace all `display: flex` layouts with table-based layouts for mobile email compatibility (same pattern used in the licensing email fix)
-
-## Fix 3: Daily Leaderboard Email to Managers
-
-**File: `supabase/functions/send-daily-sales-leaderboard/index.ts`**
-
-- After sending the standard leaderboard to all agents, also identify all managers
-- For each manager, build a personalized "Your Team's Production" section showing only their direct reports' rankings
-- Include team total ALP, team total deals, and the manager's team rank vs other teams
-- Ensures managers see their numbers flexed in a dedicated section
+### 4. Goals Failing to Save
+The Income Goal Tracker queries the `agent_goals` table. The RLS policies look correct, but will add better error logging to surface exactly what fails. Will also ensure the admin's deactivated agent record doesn't cause issues.
 
 ---
 
-## Files to Modify
+## Technical Changes
 
-1. `src/components/dashboard/AgencyGrowthCard.tsx` -- Fix pipeline enum values + new hires counting
-2. `supabase/functions/manager-daily-digest/index.ts` -- Fix email layout (flex to tables)
-3. `supabase/functions/send-daily-sales-leaderboard/index.ts` -- Add manager-specific team leaderboard section
+### File 1: `src/components/dashboard/ManagerTeamView.tsx`
+- After fetching agents, also query `applications` table for non-terminated applicants
+- Merge unlicensed applications into the team member list as "pipeline" entries with license status "unlicensed"
+- Update the stat card counts: `unlicensedCount` = unlicensed agents + unlicensed applications not yet in agents table
+- Deduplicate by email to avoid counting someone who exists in both tables
+
+### File 2: `src/components/dashboard/AgencyGrowthCard.tsx`
+- Change the "New Hires" query to count ALL non-terminated applications created in the period (not just contracted/approved)
+- Keep the `Math.max(apps, agents)` logic but with the broader application filter
+- This should show the true number of people who came in during each period
+
+### File 3: `src/pages/Apply.tsx`
+- Improve the duplicate error handling: show a larger, more visible inline error banner (not just a toast) when a 409 duplicate response is received
+- Add "Contact us at info@apex-financial.org" to the duplicate message so the person knows what to do
+- Increase toast duration to 8 seconds for duplicate errors
+
+### File 4: `src/components/dashboard/IncomeGoalTracker.tsx`
+- Add detailed console logging for the save operation to capture exactly what error occurs
+- Add a fallback: if `current_agent_id()` returns null (no agent record), show an informative message instead of silently failing
+- Ensure the error toast shows the actual error message for debugging
 

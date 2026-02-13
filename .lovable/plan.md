@@ -1,46 +1,51 @@
 
 
-# Fix Broken Email Links + Bulk Resend to All Unlicensed Applicants
+# Fix Dashboard Accuracy + Daily Manager Leaderboard Email
 
-## Problem
-The licensing instructions email uses CSS `display: flex` and `display: inline-flex` -- these are **not supported** by most mobile email clients (Gmail app, Apple Mail, Outlook). This makes the numbered step headers and links unclickable or invisible on phones.
+## Problems Found
 
-There are currently **63 unlicensed/pending applicants** who need this email resent with working links.
+### 1. Recruiting Stats "In Pipeline" Always Shows 0
+The AgencyGrowthCard uses incorrect onboarding stage enum values: `["onboarding", "field_training", "training"]`. The actual database enum values are `["onboarding", "in_field_training", "training_online"]`. This means 19 agents currently in training/field training are being missed entirely.
 
-## Part 1: Fix the Email Template
+### 2. Recruiting Stats "New Hires" Undercounting
+The card only counts applications with `contracted_at` or `status = approved` within the selected period. But most new team members are created directly as agent records (15 new agents since Feb 9th). The card needs to also count newly created agents, not just contracted applications.
 
-**File: `supabase/functions/send-licensing-instructions/index.ts`**
+### 3. Manager Daily Digest Email Uses Broken CSS
+The existing `manager-daily-digest` edge function uses `display: flex` for layout -- the same issue we just fixed in the licensing emails. These won't render properly on mobile email clients.
 
-Replace all `display: flex` and `display: inline-flex` layouts with **table-based layouts** (the only universally supported email layout method). Specific changes:
+### 4. No Daily Sales Leaderboard for Managers
+The existing `send-daily-sales-leaderboard` function sends to all active agents, but managers want a personalized version showing their team's rankings and production numbers specifically.
 
-- Replace the 3 step header `<div style="display: flex">` blocks with `<table>` rows containing numbered circles and step titles
-- Convert all 3 text links ("Watch Licensing Overview", "Open Licensing Guide", "Start Course Now") into **large, full-width CTA buttons** using `<table>` with `<a>` tags -- big tap targets that are impossible to miss on mobile
-- Add `text-decoration: underline` as a fallback on all link text
-- Ensure the Calendly "Need Help?" button also uses the table-based button pattern
-- Keep the same colors, branding, and content -- just fix the HTML structure
+---
 
-Each step card will look like:
-```
-[Numbered circle] [Step Title]        <-- table row, not flexbox
-Description text                      <-- paragraph
-[====== BIG CTA BUTTON ======]        <-- table-based button, full width
-```
+## Fix 1: AgencyGrowthCard Pipeline Stages + New Hires
 
-## Part 2: Bulk Resend Edge Function
+**File: `src/components/dashboard/AgencyGrowthCard.tsx`**
 
-**New file: `supabase/functions/bulk-send-licensing/index.ts`**
+- Change pipeline stages from `["onboarding", "field_training", "training"]` to `["onboarding", "in_field_training", "training_online"]`
+- Add a parallel query to the `agents` table to count agents created within the selected period (in addition to contracted applications)
+- Combine both counts for a more accurate "New Hires" metric: agents created in period + contracted applications in period (deduplicated)
 
-Create a new edge function that:
-1. Queries all applications where `license_status` is `unlicensed` or `pending`
-2. For each one, calls the existing `send-licensing-instructions` function logic (sends the email with proper CC to admin + manager)
-3. Returns a summary of how many were sent and any failures
-4. Requires admin authentication to prevent abuse
+## Fix 2: Manager Daily Digest Email - Fix Layout
 
-## Part 3: Trigger the Bulk Send
+**File: `supabase/functions/manager-daily-digest/index.ts`**
 
-After deploying the fixed template and bulk send function, invoke it once to send the corrected email to all 63 unlicensed/pending applicants immediately.
+- Replace all `display: flex` layouts with table-based layouts for mobile email compatibility (same pattern used in the licensing email fix)
 
-## Files to Modify/Create
-1. **`supabase/functions/send-licensing-instructions/index.ts`** -- Fix email HTML (flexbox to tables, links to buttons)
-2. **`supabase/functions/bulk-send-licensing/index.ts`** -- New edge function to blast to all unlicensed applicants
+## Fix 3: Daily Leaderboard Email to Managers
+
+**File: `supabase/functions/send-daily-sales-leaderboard/index.ts`**
+
+- After sending the standard leaderboard to all agents, also identify all managers
+- For each manager, build a personalized "Your Team's Production" section showing only their direct reports' rankings
+- Include team total ALP, team total deals, and the manager's team rank vs other teams
+- Ensures managers see their numbers flexed in a dedicated section
+
+---
+
+## Files to Modify
+
+1. `src/components/dashboard/AgencyGrowthCard.tsx` -- Fix pipeline enum values + new hires counting
+2. `supabase/functions/manager-daily-digest/index.ts` -- Fix email layout (flex to tables)
+3. `supabase/functions/send-daily-sales-leaderboard/index.ts` -- Add manager-specific team leaderboard section
 

@@ -37,7 +37,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SkeletonLoader } from "@/components/ui/skeleton-loader";
-import { YearPerformanceCard } from "@/components/dashboard/YearPerformanceCard";
+import { AgencyGrowthCard } from "@/components/dashboard/AgencyGrowthCard";
 import { useNavigate, Link } from "react-router-dom";
 
 interface DashboardStats {
@@ -312,10 +312,10 @@ export default function Dashboard() {
         <TeamSnapshotCard />
       </div>
 
-      {/* ====== YTD Agency Performance (Admin) ====== */}
-      {isAdmin && currentAgentId && (
+      {/* ====== Agency Growth Stats (Admin/Manager) ====== */}
+      {(isAdmin || isManager) && (
         <div className="mb-6">
-          <YearPerformanceCard agentId={currentAgentId} isAdmin={isAdmin} isManager={isManager} />
+          <AgencyGrowthCard />
         </div>
       )}
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, createContext, useContext, ReactNode } from "react";
+import React, { useState, useEffect, useCallback, useRef, createContext, useContext, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 
@@ -45,6 +45,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [rolesLoading, setRolesLoading] = useState(true);
 
+  // Ref to track the last user ID we fetched data for — prevents duplicate fetches
+  const lastFetchedUserId = useRef<string | null>(null);
+
   const fetchProfile = useCallback(async (userId: string, authEmail?: string) => {
     const { data } = await supabase
       .from("profiles")
@@ -82,8 +85,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRolesLoading(false);
   }, []);
 
+  // Consolidated handler: fetches profile+roles only if userId changed
+  const handleSession = useCallback(async (
+    newSession: Session | null,
+    isMounted: () => boolean,
+    source: string
+  ) => {
+    if (!isMounted()) return;
+
+    const newUserId = newSession?.user?.id ?? null;
+
+    setSession(newSession);
+    setUser(newSession?.user ?? null);
+
+    if (newUserId) {
+      // Skip if we already fetched for this user (dedup between getSession + onAuthStateChange)
+      if (lastFetchedUserId.current === newUserId) {
+        if (isMounted()) setIsLoading(false);
+        return;
+      }
+      lastFetchedUserId.current = newUserId;
+
+      await Promise.all([
+        fetchProfile(newUserId, newSession!.user.email),
+        fetchRoles(newUserId)
+      ]);
+      if (isMounted()) setIsLoading(false);
+    } else {
+      lastFetchedUserId.current = null;
+      setProfile(null);
+      setRoles([]);
+      setRolesLoading(false);
+      setIsLoading(false);
+    }
+  }, [fetchProfile, fetchRoles]);
+
   useEffect(() => {
     let isMounted = true;
+    const mounted = () => isMounted;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
@@ -96,55 +135,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        // Skip redundant updates on token refresh when user hasn't changed
-        if (event === "TOKEN_REFRESHED" && session?.user?.id === user?.id) {
+        // On token refresh, just update the session object — no refetches needed
+        if (event === "TOKEN_REFRESHED") {
           setSession(session);
+          setUser(session?.user ?? null);
           return;
         }
         
-        setSession(session);
-        setUser(session?.user ?? null);
-
-        if (session?.user) {
-          setTimeout(async () => {
-            if (!isMounted) return;
-            await Promise.all([
-              fetchProfile(session.user.id, session.user.email),
-              fetchRoles(session.user.id)
-            ]);
-            if (isMounted) setIsLoading(false);
-          }, 0);
-        } else {
-          setProfile(null);
-          setRoles([]);
-          setRolesLoading(false);
-          setIsLoading(false);
-        }
+        // Use setTimeout(0) to avoid Supabase deadlock warning
+        setTimeout(() => handleSession(session, mounted, "onAuthStateChange"), 0);
       }
     );
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!isMounted) return;
-      
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        await Promise.all([
-          fetchProfile(session.user.id, session.user.email),
-          fetchRoles(session.user.id)
-        ]);
-      } else {
-        setRolesLoading(false);
-      }
-      if (isMounted) setIsLoading(false);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      handleSession(session, mounted, "getSession");
     });
 
     return () => {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [fetchProfile, fetchRoles]);
+  }, [handleSession]);
 
   const signUp = async (email: string, password: string, fullName?: string) => {
     const { data, error } = await supabase.auth.signUp({

@@ -21,6 +21,7 @@ import {
   Ban,
   AlertTriangle,
   Trash2,
+  ChevronRight,
 } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
@@ -444,12 +445,6 @@ export default function DashboardAgedLeads() {
               </AnimatePresence>
             </div>
           )}
-          {isAdmin && duplicateMap.size > 0 && (
-            <Button onClick={handleAutoMergeDuplicates} size="sm" variant="outline" className="gap-1.5 text-amber-500 border-amber-500/30 hover:bg-amber-500/10">
-              <AlertTriangle className="h-3.5 w-3.5" />
-              Merge {duplicateMap.size} Duplicates
-            </Button>
-          )}
           {isAdmin && (
             <Button onClick={() => setShowImporter(true)} size="sm" variant="outline" className="gap-1.5">
               <Upload className="h-3.5 w-3.5" />
@@ -490,6 +485,43 @@ export default function DashboardAgedLeads() {
           </motion.div>
         ))}
       </div>
+
+      {/* Merge Duplicates Banner */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+      >
+        {duplicateMap.size > 0 ? (
+          <button
+            onClick={handleAutoMergeDuplicates}
+            className="w-full flex items-center justify-between gap-4 p-4 rounded-xl border border-amber-500/30 bg-gradient-to-r from-amber-500/15 to-orange-500/10 hover:from-amber-500/25 hover:to-orange-500/20 transition-all duration-200 group cursor-pointer"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-lg bg-amber-500/20">
+                <AlertTriangle className="h-5 w-5 text-amber-500" />
+              </div>
+              <div className="text-left">
+                <p className="font-semibold text-foreground">Merge All Duplicates</p>
+                <p className="text-sm text-muted-foreground">{duplicateMap.size} duplicate group{duplicateMap.size !== 1 ? 's' : ''} detected — keeps newest records</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full bg-amber-500 text-amber-950 text-sm font-bold animate-pulse">
+                {duplicateMap.size}
+              </span>
+              <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+            </div>
+          </button>
+        ) : (
+          <div className="w-full flex items-center gap-3 p-3.5 rounded-xl border border-border/50 bg-card/30">
+            <div className="p-2 rounded-lg bg-emerald-500/15">
+              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+            </div>
+            <p className="text-sm text-muted-foreground">No duplicates detected</p>
+          </div>
+        )}
+      </motion.div>
 
       {/* Filters Bar */}
       <motion.div

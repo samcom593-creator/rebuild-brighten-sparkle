@@ -95,6 +95,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           window.location.href = "/dashboard/settings?recovery=true";
           return;
         }
+
+        // Skip redundant updates on token refresh when user hasn't changed
+        if (event === "TOKEN_REFRESHED" && session?.user?.id === user?.id) {
+          setSession(session);
+          return;
+        }
         
         setSession(session);
         setUser(session?.user ?? null);

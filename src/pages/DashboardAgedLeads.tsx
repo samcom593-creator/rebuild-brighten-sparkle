@@ -332,6 +332,46 @@ export default function DashboardAgedLeads() {
   const licensedLeads = leads.filter(l => l.licenseStatus === "licensed").length;
   const unlicensedLeads = leads.filter(l => l.licenseStatus === "unlicensed").length;
 
+  // Auto-merge all duplicates: keep newest per email/phone group, delete the rest
+  const handleAutoMergeDuplicates = async () => {
+    const groups = new Map<string, AgedLead[]>();
+    leads.forEach(lead => {
+      const emailKey = lead.email?.toLowerCase().trim();
+      const phoneKey = lead.phone?.replace(/\D/g, "").slice(-10);
+      const key = emailKey || (phoneKey && phoneKey.length === 10 ? phoneKey : null);
+      if (!key) return;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(lead);
+    });
+
+    const idsToDelete: string[] = [];
+    groups.forEach(group => {
+      if (group.length <= 1) return;
+      // Sort newest first
+      group.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      // Delete all except first (newest)
+      group.slice(1).forEach(lead => idsToDelete.push(lead.id));
+    });
+
+    if (idsToDelete.length === 0) {
+      toast.info("No duplicates to merge");
+      return;
+    }
+
+    const confirmed = window.confirm(`Merge duplicates? This will delete ${idsToDelete.length} older duplicate records, keeping the newest entry for each group.`);
+    if (!confirmed) return;
+
+    try {
+      const { error } = await supabase.from("aged_leads").delete().in("id", idsToDelete);
+      if (error) throw error;
+      toast.success(`Merged ${idsToDelete.length} duplicate leads`);
+      fetchLeads();
+    } catch (error: any) {
+      console.error("Error merging duplicates:", error);
+      toast.error("Failed to merge duplicates: " + (error.message || "Unknown error"));
+    }
+  };
+
   const handleOpenCallMode = (license: "licensed" | "unlicensed") => {
     setCallModeLicense(license);
     setCallModeSelectOpen(false);
@@ -404,6 +444,12 @@ export default function DashboardAgedLeads() {
               </AnimatePresence>
             </div>
           )}
+          {isAdmin && duplicateMap.size > 0 && (
+            <Button onClick={handleAutoMergeDuplicates} size="sm" variant="outline" className="gap-1.5 text-amber-500 border-amber-500/30 hover:bg-amber-500/10">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              Merge {duplicateMap.size} Duplicates
+            </Button>
+          )}
           {isAdmin && (
             <Button onClick={() => setShowImporter(true)} size="sm" variant="outline" className="gap-1.5">
               <Upload className="h-3.5 w-3.5" />
@@ -421,8 +467,8 @@ export default function DashboardAgedLeads() {
         {[
           { icon: Archive, label: "Total", value: totalLeads, gradient: "from-primary/20 to-primary/5" },
           { icon: UserPlus, label: "Unprocessed", value: newLeads, gradient: "from-blue-500/20 to-blue-500/5" },
-          { icon: Phone, label: "Processed", value: processedLeads, gradient: "from-secondary/40 to-secondary/10" },
           { icon: CheckCircle2, label: "Hired", value: hiredLeads, gradient: "from-emerald-500/20 to-emerald-500/5" },
+          { icon: AlertTriangle, label: "Duplicates", value: duplicateMap.size, gradient: "from-amber-500/20 to-amber-500/5" },
         ].map((stat, i) => (
           <motion.div
             key={stat.label}

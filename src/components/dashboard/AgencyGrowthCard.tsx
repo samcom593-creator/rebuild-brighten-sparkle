@@ -207,8 +207,8 @@ export function AgencyGrowthCard() {
             <Building2 className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h3 className="font-bold text-lg">Agency Growth</h3>
-            <p className="text-xs text-muted-foreground">Building & recruiting stats</p>
+            <h3 className="font-bold text-lg">Recruiting Stats</h3>
+            <p className="text-xs text-muted-foreground">Hiring & growth metrics</p>
           </div>
         </div>
 

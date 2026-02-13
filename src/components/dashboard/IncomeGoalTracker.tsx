@@ -99,8 +99,16 @@ export function IncomeGoalTracker({ agentId }: IncomeGoalTrackerProps) {
       return;
     }
 
+    // Check if agent has a valid agent record
+    if (!agentId) {
+      toast.error("No agent profile found. Please contact your manager.");
+      return;
+    }
+
     setSaving(true);
     try {
+      console.log("[IncomeGoalTracker] Saving goal:", { agentId, month: currentMonth, income, comp });
+      
       const { error } = await supabase
         .from("agent_goals")
         .upsert({
@@ -113,14 +121,18 @@ export function IncomeGoalTracker({ agentId }: IncomeGoalTrackerProps) {
           onConflict: "agent_id,month_year",
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error("[IncomeGoalTracker] Save error details:", JSON.stringify(error));
+        throw error;
+      }
 
       setGoal({ income_goal: income, comp_percentage: comp });
       setIsEditing(false);
       toast.success("Income goal saved!");
     } catch (error: any) {
-      console.error("Error saving goal:", error);
-      toast.error("Failed to save goal");
+      console.error("[IncomeGoalTracker] Error saving goal:", error);
+      const msg = error?.message || error?.details || "Failed to save goal";
+      toast.error(`Goal save failed: ${msg}`, { duration: 6000 });
     } finally {
       setSaving(false);
     }

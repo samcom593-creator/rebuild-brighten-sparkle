@@ -304,12 +304,16 @@ export default function LeadCenter() {
           ? !lead.assignedAgentId
           : lead.assignedAgentId === filterManager);
 
-      // Handle special "not_contacted" status filter
+      // Handle special status filters
       let matchesStatus = true;
       if (filterStatus === "all") {
         matchesStatus = true;
       } else if (filterStatus === "not_contacted") {
         matchesStatus = !lead.contactedAt;
+      } else if (filterStatus === "has_contacted") {
+        matchesStatus = !!lead.contactedAt;
+      } else if (filterStatus === "closed_all") {
+        matchesStatus = lead.status === "hired" || lead.status === "contracted";
       } else {
         matchesStatus = lead.status === filterStatus;
       }
@@ -761,8 +765,8 @@ export default function LeadCenter() {
             icon: Phone,
             iconColor: "text-purple-500",
             bgColor: "bg-purple-500/10",
-            onClick: () => { setFilterStatus("contacted"); setFilterManager("all"); setFilterLicense("all"); setFilterSource("all"); },
-            active: filterStatus === "contacted",
+            onClick: () => { setFilterStatus("has_contacted"); setFilterManager("all"); setFilterLicense("all"); setFilterSource("all"); },
+            active: filterStatus === "has_contacted",
           },
           {
             label: "Closed",
@@ -770,8 +774,8 @@ export default function LeadCenter() {
             icon: Users,
             iconColor: "text-emerald-500",
             bgColor: "bg-emerald-500/10",
-            onClick: () => { setFilterStatus("hired"); setFilterManager("all"); setFilterLicense("all"); setFilterSource("all"); },
-            active: filterStatus === "hired",
+            onClick: () => { setFilterStatus("closed_all"); setFilterManager("all"); setFilterLicense("all"); setFilterSource("all"); },
+            active: filterStatus === "closed_all",
           },
           {
             label: "Licensed",

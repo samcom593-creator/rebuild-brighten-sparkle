@@ -274,16 +274,16 @@ export default function CourseProgress() {
 
       return result.sort((a, b) => {
         const priority = (agent: AgentProgress) => {
-          if (agent.isAtRisk) return 0;
-          if (agent.isStalled) return 1;
-          if (agent.hasStarted && agent.percentComplete < 100) return 2;
-          if (!agent.hasStarted) return 3;
-          if (agent.percentComplete >= 100) return 4;
-          return 3;
+          if (agent.percentComplete >= 100) return 0;
+          if (agent.hasStarted && agent.percentComplete < 100 && !agent.isStalled && !agent.isAtRisk) return 1;
+          if (agent.isStalled && !agent.isAtRisk) return 2;
+          if (agent.isAtRisk) return 3;
+          if (!agent.hasStarted) return 4;
+          return 4;
         };
         const pa = priority(a), pb = priority(b);
         if (pa !== pb) return pa - pb;
-        return a.percentComplete - b.percentComplete;
+        return b.percentComplete - a.percentComplete;
       });
     },
   });

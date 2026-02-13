@@ -119,25 +119,24 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
         return;
       }
 
-      // Get current period applications
+      // Get current period applications - include apps created OR contracted in the period
       let currentQuery = supabase
         .from("applications")
         .select("assigned_agent_id, status, contracted_at, created_at");
       
       if (period !== "custom") {
-        currentQuery = currentQuery.gte("created_at", currentStartDate);
+        // OR filter: created_at in period OR contracted_at in period
+        currentQuery = currentQuery.or(`created_at.gte.${currentStartDate},contracted_at.gte.${currentStartDate}`);
       }
       
       const { data: currentApplications } = await currentQuery;
 
       // Get previous period applications for growth calculation
-      let previousQuery = supabase
+      // Also use OR to capture apps contracted in the previous period
+      const { data: previousApplications } = await supabase
         .from("applications")
         .select("assigned_agent_id, status, contracted_at, created_at")
-        .gte("created_at", previousStartDate)
-        .lt("created_at", previousEndDate);
-      
-      const { data: previousApplications } = await previousQuery;
+        .or(`and(created_at.gte.${previousStartDate},created_at.lt.${previousEndDate}),and(contracted_at.gte.${previousStartDate},contracted_at.lt.${previousEndDate})`);
 
       // Calculate stats per agent
       const agentStats: Record<string, {

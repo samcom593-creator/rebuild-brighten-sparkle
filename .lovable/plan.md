@@ -1,73 +1,38 @@
 
 
-# Fix: Stop All Reloading on Tab Switch
+# Format Phone Numbers with Dashes in Call Center
 
-## Root Cause Found
+## What Changes
+Add a `formatPhoneDisplay` helper function that converts raw phone numbers (e.g., `5551234567` or `15551234567`) into a dash-separated format (e.g., `555-123-4567`) for easier reading and typing.
 
-There are **two problems** working together:
-
-### Problem 1: `handleSession` always creates a new `user` reference
-When you switch tabs, the authentication system can fire multiple events. Even though `TOKEN_REFRESHED` is now handled correctly, other events (like `SIGNED_IN`) still go through the `handleSession` function which **always** calls `setUser()` at line 99 -- creating a brand new object reference even when nothing changed.
-
-The deduplication logic on line 103 only prevents re-fetching profile/roles. It does NOT prevent the `user` object from changing, which is what triggers all the reloads.
-
-### Problem 2: 17 components use `user` in effect dependencies
-Components across the app (Dashboard, CallCenter, TeamDirectory, Applicants, CRM, etc.) all watch `user` in their `useEffect` dependency arrays. When the `user` object reference changes, every single one re-runs its data fetching.
-
-## The Fix (two parts)
-
-### Part 1: Stabilize `user` reference in `useAuth.ts`
-- Store the current user ID in a ref
-- In `handleSession`, only call `setUser()` if the user ID actually changed (not just a new object)
-- This single change prevents the cascade to all 17 components
-
-### Part 2: Harden component dependencies (safety net)
-Change `user` to `user?.id` in the dependency arrays of all affected components so even if something slips through, they only re-run when the actual user identity changes:
-
-- `src/pages/Dashboard.tsx`
-- `src/pages/DashboardApplicants.tsx`
-- `src/pages/DashboardAgedLeads.tsx`
-- `src/pages/DashboardCRM.tsx`
-- `src/pages/AgentPortal.tsx`
-- `src/pages/TeamDirectory.tsx`
-- `src/components/dashboard/DownlineStatsCard.tsx`
-- `src/components/dashboard/OnboardingPipelineCard.tsx`
-- `src/components/dashboard/QuickInviteLink.tsx`
-- `src/components/dashboard/ManagerTeamView.tsx`
-- `src/components/dashboard/TeamHierarchyManager.tsx`
-- `src/components/dashboard/TeamSnapshotCard.tsx`
-- `src/components/dashboard/MiniLeaderboard.tsx`
-- `src/components/dashboard/TeamPerformanceBreakdown.tsx`
+Apply this formatting in two places:
+1. **CallCenterLeadCard.tsx** (line 292) -- the main lead card phone display
+2. **CallModeInterface.tsx** (line 229) -- the call mode phone display
 
 ## Technical Details
 
-### `useAuth.ts` change:
+### New helper function (added to each file, or a shared utility)
+A simple inline formatter that extracts digits and formats as `XXX-XXX-XXXX`:
+
 ```typescript
-// Add a ref to track current user ID
-const currentUserIdRef = useRef<string | null>(null);
-
-// In handleSession, only setUser if ID actually changed:
-const newUserId = newSession?.user?.id ?? null;
-
-setSession(newSession);
-
-// Only update user state if the identity actually changed
-if (newUserId !== currentUserIdRef.current) {
-  currentUserIdRef.current = newUserId;
-  setUser(newSession?.user ?? null);
+function formatPhoneDisplay(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  // Handle 11-digit (1XXXXXXXXXX) or 10-digit numbers
+  const d = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+  if (d.length === 10) return `${d.slice(0,3)}-${d.slice(3,6)}-${d.slice(6)}`;
+  return phone; // fallback: return as-is
 }
 ```
 
-### Component dependency changes (example):
-```typescript
-// Before (triggers on every user object change):
-}, [user, isAdmin]);
+### File: `src/components/callcenter/CallCenterLeadCard.tsx`
+- Add the `formatPhoneDisplay` function
+- Line 292: Change `{lead.phone}` to `{formatPhoneDisplay(lead.phone)}`
 
-// After (only triggers when actual user identity changes):
-}, [user?.id, isAdmin]);
-```
+### File: `src/components/dashboard/CallModeInterface.tsx`
+- Add the same `formatPhoneDisplay` function
+- Line 229 area: Change `{currentLead.phone}` to `{formatPhoneDisplay(currentLead.phone)}`
+- Also format the phone in the "Tap to Call" button display
 
 ## Files to Modify
-- `src/hooks/useAuth.ts` -- Stabilize user reference
-- 14 component/page files -- Change `user` to `user?.id` in effect dependencies
-
+- `src/components/callcenter/CallCenterLeadCard.tsx`
+- `src/components/dashboard/CallModeInterface.tsx`

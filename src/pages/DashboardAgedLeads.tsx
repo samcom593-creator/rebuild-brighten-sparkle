@@ -120,7 +120,7 @@ export default function DashboardAgedLeads() {
       if (isAdmin) fetchManagers();
       fetchMyAgentId();
     }
-  }, [user, authLoading]);
+  }, [user?.id, authLoading]);
 
   const fetchMyAgentId = async () => {
     if (!user) return;

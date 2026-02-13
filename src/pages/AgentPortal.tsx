@@ -138,7 +138,7 @@ export default function AgentPortal() {
     } else if (!authLoading && !user) {
       setLoading(false);
     }
-  }, [user, authLoading, isAdmin, isManager]);
+  }, [user?.id, authLoading, isAdmin, isManager]);
 
   // Helper to get date range based on selection
   const getDateRange = (range: "week" | "month" | "custom") => {

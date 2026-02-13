@@ -131,7 +131,7 @@ export function DownlineStatsCard() {
     };
 
     fetchDownlineStats();
-  }, [user, isAdmin, period, customRange]);
+  }, [user?.id, isAdmin, period, customRange]);
 
   if (loading && stats.agentCount === 0) {
     return null;

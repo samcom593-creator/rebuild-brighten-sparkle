@@ -165,7 +165,7 @@ export function ManagerTeamView() {
   useEffect(() => {
     fetchTeamData();
     if (isAdmin) fetchManagerRoles();
-  }, [user, isAdmin]);
+  }, [user?.id, isAdmin]);
 
   const fetchManagerRoles = async () => {
     const { data } = await supabase

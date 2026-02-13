@@ -399,7 +399,11 @@ export default function CallCenter() {
         setTimeout(() => setShowConfetti(false), 3000);
         toast.success("Lead marked as hired - follow-up email sent!");
       } else if (actionId === "no_pickup") {
-        toast.info("Marked as no pickup - will show in No Pickup filter");
+        // Auto-send "we tried calling you" email
+        sendFollowUpEmail(currentLead, "no_pickup").catch(err => 
+          console.error("Failed to send no-pickup follow-up:", err)
+        );
+        toast.info("Marked as no pickup - follow-up email sent!");
       } else {
         toast.success(`Lead marked as ${actionId.replace("_", " ")}`);
       }
@@ -611,7 +615,7 @@ export default function CallCenter() {
 
   // Active calling UI
   return (
-    <div className="flex flex-col h-full w-full max-w-6xl mx-auto p-4 md:p-8 page-enter">
+    <div className="flex flex-col h-full w-full max-w-6xl mx-auto p-2 md:p-8 page-enter">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}

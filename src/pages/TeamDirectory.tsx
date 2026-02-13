@@ -78,7 +78,7 @@ export default function TeamDirectory() {
     };
 
     fetchData();
-  }, [user, isAdmin, isManager]);
+  }, [user?.id, isAdmin, isManager]);
 
   const fetchHierarchy = async () => {
     // Get current user's agent ID

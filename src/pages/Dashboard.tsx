@@ -245,7 +245,7 @@ export default function Dashboard() {
     };
     
     fetchData();
-  }, [user, profile]);
+  }, [user?.id, profile]);
 
   // Determine what to show based on role
   const showAgencyStats = isAdmin;

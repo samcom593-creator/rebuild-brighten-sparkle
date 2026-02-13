@@ -110,7 +110,7 @@ export function TeamHierarchyManager() {
 
   useEffect(() => {
     fetchHierarchy();
-  }, [user]);
+  }, [user?.id]);
 
   const fetchHierarchy = async () => {
     if (!user) return;

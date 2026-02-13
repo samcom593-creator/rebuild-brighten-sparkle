@@ -213,7 +213,7 @@ export default function DashboardCRM() {
         fetchManagers();
       }
     }
-  }, [user, authLoading, isAdmin]);
+  }, [user?.id, authLoading, isAdmin]);
 
   const fetchManagers = async () => {
     try {

@@ -1,58 +1,47 @@
 
+# Fix: No Pickup Error, Tab Reloading, and Fill Numbers Emails
 
-# Add "Send Follow-Up Email" Button to Call Summary
+## Issues Found
 
-## Overview
-After a call is transcribed and the AI summary is displayed, add a "Send Follow-Up Email" button directly in the summary panel. This lets you send a personalized follow-up email (with a calendar/scheduling link) to the lead with one click -- right from the AI summary results.
+### 1. "No Pickup" Database Error
+The `application_status` enum in the database only allows: `new`, `reviewing`, `interview`, `contracting`, `approved`, `rejected`. When you click "No Pickup" on an application lead, the code tries to set `status = "no_pickup"` which the database rejects because that value isn't in the enum. Aged leads work fine because their `status` column is plain text.
 
-## What Changes
+**Fix:** Add `no_pickup` to the `application_status` database enum via a migration.
 
-### 1. Add Follow-Up Email Button to Voice Recorder Summary (`src/components/callcenter/CallCenterVoiceRecorder.tsx`)
+### 2. Page Reloading on Tab Switch / Instagram Return
+When you leave the app (e.g., tap an Instagram link, switch tabs) and come back, the authentication system detects a token refresh event. This triggers `setUser()` with a new object reference, which cascades re-renders through the entire app -- re-fetching the agent ID, profile, roles, and in the Call Center, potentially re-triggering data loads.
 
-After the AI summary's "Recommendation" and "Brief Summary" sections (around line 441), add a new section:
+**Fix:** In `useAuth.ts`, skip redundant state updates on `TOKEN_REFRESHED` events when the user ID hasn't changed. In `CallCenter.tsx`, stabilize the `agentId` effect so it doesn't re-run on every user object change (use `user?.id` instead of `user`).
 
-- A "Send Follow-Up Email" button (Mail icon, primary color)
-- When clicked, it calls a new `onSendFollowUp` callback prop
-- The button shows a loading state while sending and a success checkmark after
-- Optionally include a small text input for a custom calendar link (pre-filled with the default Calendly URL)
+### 3. Fill Numbers Reminder Emails Not Sending
+The `notify-fill-numbers` edge function exists and is properly coded, but it's never triggered -- there's no cron job, no scheduled task, and no frontend code that calls it. It needs to be invoked on a schedule (10am, 4pm, 6pm, 9pm CST).
 
-### 2. Wire Up the Callback in Lead Card (`src/components/callcenter/CallCenterLeadCard.tsx`)
+**Fix:** Create a lightweight cron-dispatcher edge function that the platform's cron can call, or document that these need to be triggered externally. Since Lovable Cloud doesn't support native cron, the best approach is to create a single `cron-dispatcher` edge function that checks the current CST time and calls `notify-fill-numbers` with the appropriate reminder type, then set up an external cron service (or add a manual "Send Reminders" button in the admin dashboard for now).
 
-- Pass a new `onSendFollowUp` prop through the `CallCenterVoiceRecorder`
-- The lead card already has access to the lead's email, name, and license status -- it will pass these to the callback
-
-### 3. Handle Follow-Up Email Sending in CallCenter.tsx (`src/pages/CallCenter.tsx`)
-
-- Add a `handleSendFollowUp` function that calls the existing `send-post-call-followup` edge function with `actionType: "contacted"` and the optional calendar link
-- Pass it down through `CallCenterLeadCard` to `CallCenterVoiceRecorder`
-- Show a toast on success ("Follow-up email sent!")
+---
 
 ## Technical Details
 
-**CallCenterVoiceRecorder.tsx** -- New prop + UI:
-- Add `onSendFollowUp?: (calendarLink?: string) => Promise<void>` to props
-- Add `sendingFollowUp` and `followUpSent` state booleans
-- Add a button after the recommendation section that triggers the callback
-- Include a collapsible input for custom calendar link
+### Database Migration
+```sql
+ALTER TYPE application_status ADD VALUE 'no_pickup';
+```
 
-**CallCenterLeadCard.tsx** -- Pass-through prop:
-- Add `onSendFollowUp?: () => Promise<void>` to `CallCenterLeadCardProps`
-- Forward it to `CallCenterVoiceRecorder`
+### File: `src/hooks/useAuth.ts`
+- In the `onAuthStateChange` callback (line 88-118), add a guard: if the event is `TOKEN_REFRESHED` and the user ID hasn't changed, skip calling `fetchProfile` and `fetchRoles` again. Just update the session silently.
 
-**CallCenter.tsx** -- Handler:
-- Create `handleSendFollowUp` using existing `sendFollowUpEmail` with `actionType: "contacted"`
-- Pass to `CallCenterLeadCard`
+### File: `src/pages/CallCenter.tsx`
+- Line 78-89 (`fetchAgentId` effect): Change dependency from `[user]` to `[user?.id]` so it only re-runs when the actual user identity changes, not on every token refresh.
 
-## Existing Infrastructure Used
-The `send-post-call-followup` edge function already supports:
-- `actionType: "contacted"` for follow-up emails
-- `calendarLink` parameter for custom scheduling URLs
-- Automatic CC to admin and manager
-- License-status-aware email content (different templates for licensed vs unlicensed)
+### Fill Numbers Emails
+- Add a "Send Fill Numbers Reminder" button to the admin dashboard (or a dedicated admin action) that manually invokes the `notify-fill-numbers` edge function with the appropriate reminder type.
+- This gives immediate control without needing external cron infrastructure.
 
-No edge function changes needed -- this is purely a UI addition.
+### File: `src/components/callcenter/CallCenterLeadCard.tsx`
+- No changes needed -- the Instagram link already uses `target="_blank"` correctly.
 
 ## Files to Modify
-- `src/components/callcenter/CallCenterVoiceRecorder.tsx` -- Add button UI after summary
-- `src/components/callcenter/CallCenterLeadCard.tsx` -- Pass through callback prop
-- `src/pages/CallCenter.tsx` -- Create handler and wire it up
+- Database migration (add `no_pickup` to `application_status` enum)
+- `src/hooks/useAuth.ts` -- prevent redundant fetches on token refresh
+- `src/pages/CallCenter.tsx` -- stabilize `user` dependency to `user?.id`
+- `src/pages/DashboardAdmin.tsx` (or similar) -- add manual "Send Fill Numbers Reminder" button

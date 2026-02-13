@@ -1,49 +1,41 @@
 
 
-# Fix Dashboard Accuracy, Website Submission, and Goals
+# Update Expired Discord Link + Resend to Course Completers
 
-## Problems Found
+## What's Wrong
+Every email that includes a Discord invite link uses an **expired link** (`https://discord.gg/GygkGEhb`). This affects course completion emails, portal login emails, welcome emails, and more.
 
-### 1. Unlicensed People Not Showing on Dashboard
-The "Your Team" section (ManagerTeamView) only pulls data from the `agents` table. There is **only 1 active unlicensed agent** in that table, but there are **54 unlicensed applicants** in the `applications` table (21 new, 21 reviewing, 8 no-pickup, 2 approved, 2 rejected). When you mark someone as "Hired" in the Call Center, it changes the application status to "reviewing" but does NOT create an agent record. These people are invisible to the dashboard.
+## Part 1: Update the Discord Link in All 6 Files
 
-**Fix:** Update the ManagerTeamView to also query the `applications` table for unlicensed applicants and merge them into the team roster as "Pipeline" members. The stat cards (Team Members, Licensed, Unlicensed, In Training) will include application counts so the numbers match what you see in the Call Center.
+Replace `https://discord.gg/GygkGEhb` with `https://discord.gg/JpUWA73UZX` in:
 
-### 2. Recruiting Stats Still Undercounting
-The AgencyGrowthCard counts "New Hires" using contracted/approved applications only. Most hired people have status "reviewing" (not "contracted" or "approved"), so they are missed. 
+1. `supabase/functions/notify-course-complete/index.ts` -- sent when agent finishes the course
+2. `supabase/functions/welcome-new-agent/index.ts` -- sent when a new agent is added
+3. `supabase/functions/notify-agent-live-field/index.ts` -- sent when agent moves to field training
+4. `supabase/functions/send-course-enrollment-email/index.ts` -- sent when agent is enrolled in course
+5. `supabase/functions/send-agent-portal-login/index.ts` -- sent with portal login credentials
+6. `supabase/functions/send-bulk-portal-logins/index.ts` -- sent during bulk portal login blasts
 
-**Fix:** Count all non-terminated applications created in the period (regardless of status) as new hires, combined with new agent records. This captures everyone who applied or was added.
+## Part 2: Resend Course Completion Email to Recent Graduates
 
-### 3. Website Submission "Failing"
-The person trying to apply (wyattearp07@outlook.com) already has an existing application from Feb 11. The duplicate check is correctly blocking a double submission. The error toast says "An application with this email or phone already exists" but may not be prominent enough.
+After deploying the fixed functions, trigger the `notify-course-complete` function for these 6 agents who recently passed the course (last 5 days):
 
-**Fix:** Make the duplicate error message more prominent and user-friendly with a longer-duration toast that explains what to do. Also add a visible inline error banner so the user doesn't miss it on mobile.
+| Name | Email |
+|------|-------|
+| Trae Edmond | traeyvon713@outlook.com |
+| Johnivan Bush | jbbush3736@gmail.com |
+| Lev Hills | levhills24@gmail.com |
+| Jacob Causer | jcauser06@gmail.com |
+| Brian Hernandez | bam2sleeze@outlook.com |
+| Wayne Price | waynepricenew@gmail.com |
 
-### 4. Goals Failing to Save
-The Income Goal Tracker queries the `agent_goals` table. The RLS policies look correct, but will add better error logging to surface exactly what fails. Will also ensure the admin's deactivated agent record doesn't cause issues.
+Each will receive the corrected course-complete email with the working Discord link, portal access info, and next steps.
 
----
-
-## Technical Changes
-
-### File 1: `src/components/dashboard/ManagerTeamView.tsx`
-- After fetching agents, also query `applications` table for non-terminated applicants
-- Merge unlicensed applications into the team member list as "pipeline" entries with license status "unlicensed"
-- Update the stat card counts: `unlicensedCount` = unlicensed agents + unlicensed applications not yet in agents table
-- Deduplicate by email to avoid counting someone who exists in both tables
-
-### File 2: `src/components/dashboard/AgencyGrowthCard.tsx`
-- Change the "New Hires" query to count ALL non-terminated applications created in the period (not just contracted/approved)
-- Keep the `Math.max(apps, agents)` logic but with the broader application filter
-- This should show the true number of people who came in during each period
-
-### File 3: `src/pages/Apply.tsx`
-- Improve the duplicate error handling: show a larger, more visible inline error banner (not just a toast) when a 409 duplicate response is received
-- Add "Contact us at info@apex-financial.org" to the duplicate message so the person knows what to do
-- Increase toast duration to 8 seconds for duplicate errors
-
-### File 4: `src/components/dashboard/IncomeGoalTracker.tsx`
-- Add detailed console logging for the save operation to capture exactly what error occurs
-- Add a fallback: if `current_agent_id()` returns null (no agent record), show an informative message instead of silently failing
-- Ensure the error toast shows the actual error message for debugging
+## Files to Modify
+- `supabase/functions/notify-course-complete/index.ts`
+- `supabase/functions/welcome-new-agent/index.ts`
+- `supabase/functions/notify-agent-live-field/index.ts`
+- `supabase/functions/send-course-enrollment-email/index.ts`
+- `supabase/functions/send-agent-portal-login/index.ts`
+- `supabase/functions/send-bulk-portal-logins/index.ts`
 

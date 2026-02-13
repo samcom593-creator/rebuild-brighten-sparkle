@@ -140,7 +140,7 @@ export function CallCenterActions({
                 boxShadow: activeKey === action.key ? `0 0 20px ${action.glowColor}` : "none",
               }}
               className={cn(
-                "w-full h-20 relative overflow-hidden rounded-xl transition-all duration-200",
+                "w-full h-24 md:h-20 relative overflow-hidden rounded-xl transition-all duration-200",
                 "bg-gradient-to-br border",
                 action.gradient,
                 action.color,
@@ -180,7 +180,7 @@ export function CallCenterActions({
                   animate={activeKey === action.key ? { scale: [1, 1.1, 1] } : {}}
                   transition={{ duration: 0.2 }}
                 >
-                  <action.icon className="h-6 w-6" />
+                  <action.icon className="h-7 w-7 md:h-6 md:w-6" />
                 </motion.div>
                 <span className="text-sm font-semibold">{action.label}</span>
                 <span className="text-[10px] opacity-60">{action.description}</span>
@@ -220,7 +220,7 @@ export function CallCenterActions({
                 boxShadow: activeKey === action.key ? `0 0 15px ${action.glowColor}` : "none",
               }}
               className={cn(
-                "w-full h-16 relative overflow-hidden rounded-xl transition-all duration-200",
+                "w-full h-20 md:h-16 relative overflow-hidden rounded-xl transition-all duration-200",
                 "bg-gradient-to-br border",
                 action.gradient,
                 action.color,
@@ -242,7 +242,7 @@ export function CallCenterActions({
               </AnimatePresence>
 
               <div className="flex items-center justify-center gap-2 relative z-10">
-                <action.icon className="h-5 w-5" />
+                <action.icon className="h-6 w-6 md:h-5 md:w-5" />
                 <span className="font-medium">{action.label}</span>
               </div>
               <motion.span

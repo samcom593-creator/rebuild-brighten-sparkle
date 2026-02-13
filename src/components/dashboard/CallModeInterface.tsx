@@ -1,4 +1,11 @@
- import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
+
+function formatPhoneDisplay(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  const d = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+  if (d.length === 10) return `${d.slice(0,3)}-${d.slice(3,6)}-${d.slice(6)}`;
+  return phone;
+}
  import { motion, AnimatePresence } from "framer-motion";
  import {
    X,
@@ -266,7 +273,7 @@
                          className="flex items-center gap-3 text-muted-foreground hover:text-foreground transition-colors w-full text-left"
                        >
                          <Phone className="h-5 w-5 text-green-500" />
-                         <span className="font-medium">{currentLead.phone}</span>
+                         <span className="font-medium">{formatPhoneDisplay(currentLead.phone)}</span>
                          <span className="ml-auto text-xs bg-green-500/20 text-green-500 px-2 py-1 rounded">
                            Tap to Call
                          </span>

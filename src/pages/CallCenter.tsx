@@ -41,6 +41,12 @@ interface UnifiedLead {
   status: string;
   contactedAt?: string;
   lastContactedAt?: string;
+  previousCompany?: string;
+  niprNumber?: string;
+  licensedStates?: string[];
+  city?: string;
+  state?: string;
+  availability?: string;
 }
 
 export default function CallCenter() {
@@ -109,6 +115,9 @@ export default function CallCenter() {
           query = query.eq("status", "contacted");
         }
 
+        // Always exclude already-processed leads
+        query = query.not("status", "in", '("contracted","hired")');
+
         // License filter
         if (licenseFilter !== "all") {
           query = query.eq("license_status", licenseFilter);
@@ -146,8 +155,9 @@ export default function CallCenter() {
       if (sourceFilter === "all" || sourceFilter === "applications") {
         let appQuery = supabase
           .from("applications")
-          .select("id, first_name, last_name, email, phone, instagram_handle, notes, license_status, license_progress, test_scheduled_date, created_at, status, contacted_at, last_contacted_at")
+          .select("id, first_name, last_name, email, phone, instagram_handle, notes, license_status, license_progress, test_scheduled_date, created_at, status, contacted_at, last_contacted_at, previous_company, nipr_number, licensed_states, city, state, availability")
           .is("terminated_at", null)
+          .is("contracted_at", null)
           .order("created_at", { ascending: sortOrder === "oldest_first" });
 
         // Status filter for applications
@@ -193,6 +203,12 @@ export default function CallCenter() {
             status: app.status || "new",
             contactedAt: app.contacted_at || undefined,
             lastContactedAt: app.last_contacted_at || undefined,
+            previousCompany: app.previous_company || undefined,
+            niprNumber: app.nipr_number || undefined,
+            licensedStates: app.licensed_states || undefined,
+            city: app.city || undefined,
+            state: app.state || undefined,
+            availability: app.availability || undefined,
           });
         });
       }
@@ -304,10 +320,15 @@ export default function CallCenter() {
 
       if (currentLead.source === "aged_leads") {
         const nowIso = new Date().toISOString();
+        const statusMap: Record<string, string> = {
+          hired: "contacted",
+          no_pickup: "no_pickup",
+          bad_applicant: "bad_applicant",
+        };
         const { error } = await supabase
           .from("aged_leads")
           .update({
-            status: actionId === "hired" ? "contacted" : actionId,
+            status: statusMap[actionId] || actionId,
             processed_at: nowIso,
             contacted_at: currentLead.contactedAt || nowIso,
             last_contacted_at: nowIso,
@@ -326,6 +347,8 @@ export default function CallCenter() {
           updateData.status = "reviewing";
         } else if (actionId === "bad_applicant") {
           updateData.status = "rejected";
+        } else if (actionId === "no_pickup") {
+          updateData.status = "no_pickup";
         }
 
         const { error } = await supabase
@@ -362,11 +385,25 @@ export default function CallCenter() {
         setShowConfetti(true);
         setTimeout(() => setShowConfetti(false), 3000);
         toast.success("Lead marked as hired - follow-up email sent!");
+      } else if (actionId === "no_pickup") {
+        toast.info("Marked as no pickup - will show in No Pickup filter");
       } else {
         toast.success(`Lead marked as ${actionId.replace("_", " ")}`);
       }
 
-      setLeads((prev) => prev.filter((l) => l.id !== currentLead.id));
+      // For no_pickup, don't remove from list - just move to next
+      if (actionId === "no_pickup") {
+        setLeads((prev) =>
+          prev.map((l) => l.id === currentLead.id ? { ...l, status: "no_pickup" } : l)
+        );
+        if (currentIndex < leads.length - 1) {
+          setCurrentIndex((prev) => prev + 1);
+        } else {
+          toast.info("You've reached the last lead");
+        }
+      } else {
+        setLeads((prev) => prev.filter((l) => l.id !== currentLead.id));
+      }
 
       if (leads.length <= 1) {
         toast.info("All leads processed!");
@@ -519,6 +556,9 @@ export default function CallCenter() {
           break;
         case "3":
           handleAction("bad_applicant");
+          break;
+        case "4":
+          handleAction("no_pickup");
           break;
         case "n":
           handleSkip();

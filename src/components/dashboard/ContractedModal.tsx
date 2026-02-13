@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -45,6 +46,7 @@ export function ContractedModal({
   const [saveForNextTime, setSaveForNextTime] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [alreadyContracted, setAlreadyContracted] = useState(false);
 
   // Fetch manager's saved CRM link on mount
   useEffect(() => {
@@ -78,40 +80,55 @@ export function ContractedModal({
   const handleSubmit = async () => {
     const linkToUse = useSavedLink && savedLink ? savedLink : crmLink;
     
-    if (!linkToUse.trim()) {
+    if (!alreadyContracted && !linkToUse.trim()) {
       toast.error("Please enter a CRM setup link");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      // Determine license status
-      const finalLicenseStatus = 
-        application.license_progress === "licensed" 
-          ? "licensed" 
-          : application.license_status;
+      let newAgentId: string | null = null;
 
-      // 1. Create agent via the add-agent edge function (handles auth user, profile, roles, agent record)
-      const { data: addAgentResult, error: addAgentError } = await supabase.functions.invoke("add-agent", {
-        body: {
-          firstName: application.first_name,
-          lastName: application.last_name,
-          email: application.email,
-          phone: application.phone,
-          managerId: agentId,
-          licenseStatus: finalLicenseStatus,
-          crmSetupLink: linkToUse,
-        },
-      });
+      if (alreadyContracted) {
+        // Skip agent creation — just look up existing agent by email
+        const { data: existingAgent } = await supabase
+          .from("agents")
+          .select("id")
+          .eq("user_id", (
+            await supabase.from("profiles").select("user_id").eq("email", application.email).maybeSingle()
+          ).data?.user_id || "")
+          .maybeSingle();
 
-      if (addAgentError || !addAgentResult?.success) {
-        const errorMsg = addAgentResult?.error || addAgentError?.message || "Failed to create agent";
-        console.error("Add agent error:", errorMsg);
-        toast.error(errorMsg);
-        return;
+        newAgentId = existingAgent?.id || null;
+      } else {
+        // Determine license status
+        const finalLicenseStatus = 
+          application.license_progress === "licensed" 
+            ? "licensed" 
+            : application.license_status;
+
+        // 1. Create agent via the add-agent edge function
+        const { data: addAgentResult, error: addAgentError } = await supabase.functions.invoke("add-agent", {
+          body: {
+            firstName: application.first_name,
+            lastName: application.last_name,
+            email: application.email,
+            phone: application.phone,
+            managerId: agentId,
+            licenseStatus: finalLicenseStatus,
+            crmSetupLink: linkToUse,
+          },
+        });
+
+        if (addAgentError || !addAgentResult?.success) {
+          const errorMsg = addAgentResult?.error || addAgentError?.message || "Failed to create agent";
+          console.error("Add agent error:", errorMsg);
+          toast.error(errorMsg);
+          return;
+        }
+
+        newAgentId = addAgentResult.agentId;
       }
-
-      const newAgentId = addAgentResult.agentId;
 
       // 2. Mark application as contracted based on source
       const isAgedLead = application.source === "aged_leads";
@@ -137,37 +154,41 @@ export function ContractedModal({
       }
 
       // 3. Save CRM link for future use if requested
-      if (saveForNextTime && !useSavedLink) {
+      if (!alreadyContracted && saveForNextTime && !useSavedLink) {
         await supabase
           .from("agents")
           .update({ crm_setup_link: linkToUse })
           .eq("id", agentId);
       }
 
-      // 4. Send contracted email with CRM link
-      const { error: emailError } = await supabase.functions.invoke("notify-agent-contracted", {
-        body: {
-          applicationId: application.id,
-          agentId,
-          crmSetupLink: linkToUse,
-        },
-      });
+      // 4. Send contracted email with CRM link (skip for already contracted)
+      if (!alreadyContracted) {
+        const { error: emailError } = await supabase.functions.invoke("notify-agent-contracted", {
+          body: {
+            applicationId: application.id,
+            agentId,
+            crmSetupLink: linkToUse,
+          },
+        });
 
-      if (emailError) {
-        console.error("Email send error:", emailError);
-        toast.warning("Agent contracted but email notification failed");
+        if (emailError) {
+          console.error("Email send error:", emailError);
+          toast.warning("Agent contracted but email notification failed");
+        } else {
+          toast.success(`${application.first_name} contracted and added to CRM!`);
+        }
+
+        // Notify all managers about the contract
+        supabase.functions.invoke("notify-hire-announcement", {
+          body: {
+            hirerName: "Manager",
+            hireeName: `${application.first_name} ${application.last_name}`,
+            actionType: "contracted",
+          },
+        }).catch(err => console.error("Failed to send hire announcement:", err));
       } else {
-        toast.success(`${application.first_name} contracted and added to CRM!`);
+        toast.success(`${application.first_name} enrolled in coursework!`);
       }
-
-      // Notify all managers about the contract
-      supabase.functions.invoke("notify-hire-announcement", {
-        body: {
-          hirerName: "Manager",
-          hireeName: `${application.first_name} ${application.last_name}`,
-          actionType: "contracted",
-        },
-      }).catch(err => console.error("Failed to send hire announcement:", err));
 
       // Set has_training_course and send course enrollment email
       if (newAgentId) {
@@ -225,6 +246,25 @@ export function ContractedModal({
           </div>
         ) : (
           <div className="space-y-4 py-4">
+            {/* Already Contracted Toggle */}
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/50">
+              <div className="space-y-0.5">
+                <Label htmlFor="already-contracted" className="text-sm font-medium cursor-pointer">
+                  Already contracted
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Skip agent creation — just enroll in coursework
+                </p>
+              </div>
+              <Switch
+                id="already-contracted"
+                checked={alreadyContracted}
+                onCheckedChange={setAlreadyContracted}
+              />
+            </div>
+
+            {!alreadyContracted && (
+              <>
             {/* Saved link option */}
             {savedLink && (
               <div className="space-y-3">
@@ -293,6 +333,8 @@ export function ContractedModal({
                   Save this link for next time
                 </Label>
               </div>
+            )}
+            </>
             )}
           </div>
         )}

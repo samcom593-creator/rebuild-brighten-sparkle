@@ -1,72 +1,97 @@
 
-# Course Progress, Pipeline, Dashboard & Performance Fixes
 
-## Overview
-This plan addresses 5 areas the user flagged: (1) Course Progress needs better filters and visual polish, (2) Pipeline needs to show assigned manager and remove "contacted" button, (3) Dashboard needs avg deal size and avg hours called metrics, (4) AgencyGrowthCard label should say "Recruiting Stats", and (5) overall performance and flow improvements.
+# Lead Center Fixes, Auto-Merge Duplicates, Pipeline Label, and Course Progress Sort
 
----
+## Issues Found
 
-## 1. Course Progress Monitor -- Visual Overhaul & Filters
+1. **Lead Center "Closed" stat card** -- When clicked, it sets `filterStatus = "hired"` but the filter logic only matches `lead.status === "hired"`. It misses leads with `status === "contracted"`. Need to filter for both hired AND contracted when "Closed" card is clicked.
 
-The current Course Progress page is functional but visually basic (a flat table). It needs to feel more engaging.
+2. **Lead Center "Contacted" stat card** -- The stat counts leads with `contactedAt` set, but clicking it sets `filterStatus = "contacted"`. The filter then checks `lead.status === "contacted"`, which won't match most leads because `status` stays "new" even after contact. Fix: use the same `contactedAt`-based logic as "not_contacted" does.
 
-**Changes to `src/pages/CourseProgress.tsx`:**
-- Add a "Finished" filter tab (alias for "complete") with a distinct green checkmark icon and celebratory styling
-- Add animated progress rings instead of flat progress bars for each agent row
-- Add gradient backgrounds to the stat filter cards (currently flat GlassCard)
-- Add subtle row hover effects with left-border color coding (green = complete, amber = stalled, red = at risk, blue = in progress, gray = not started)
-- Add an overall progress summary bar at the top showing a visual breakdown (colored segments for each filter category)
-- Make module header cells more readable with tooltips on hover
-- Add smooth AnimatePresence transitions when switching between filters (fade out old rows, fade in new ones)
-- Add a "time in course" column showing how many days since the agent started the course
+3. **Aged Leads duplicates** -- Duplicates are detected client-side but there's no "Auto-Merge All" button. Add a button that groups duplicates by email/phone and automatically keeps the newest record (deleting older ones) without manual selection.
 
-## 2. Pipeline (Applicants) -- Show Manager & Remove "Contacted"
+4. **Aged Leads "Processed" stat card** -- User says remove "Process" but keep "Hired". The stats show "Unprocessed" and "Processed" -- rename "Processed" to something clearer or remove in favor of more useful stat.
 
-**Changes to `src/pages/DashboardApplicants.tsx`:**
+5. **Dashboard Pipeline "Unlicensed" label** -- User wants it renamed to "In Pre-Licensing Course" to reflect agents who have been hired and are working on getting licensed. Also should count agents with `has_training_course = true` and `license_status = 'unlicensed'`.
 
-**Show assigned manager name on each applicant card:**
-- Fetch manager names by joining `assigned_agent_id` to the `agents` table to get `invited_by_manager_id` or directly resolving the assigned agent's profile name
-- Display a "Under [Manager Name]" badge on each card (using the existing pattern from CRM pipeline cards)
-- If unassigned, show "Unassigned" badge in muted style
-
-**Remove "contacted" from filters:**
-- Remove the "contacted" SelectItem from the status filter dropdown (line 765)
-- The `getApplicationStatus` function already returns "hired" and "contracted" correctly -- no change needed there
-- Remove "contacted" from `statusColors` map (line 94) since it's no longer a primary status
-
-**Ensure no "contacted" button exists:**
-- The previous changes already replaced contacted/qualified/close buttons with Hired + Contracted buttons. Verified this is working correctly in the current code (lines 641-677). No further changes needed.
-
-## 3. Dashboard -- Add Avg Deal Size & Avg Hours Called
-
-**Changes to `src/components/dashboard/TeamSnapshotCard.tsx`:**
-- Add two new stats to the production snapshot grid:
-  - **Avg Deal Size**: `totalALP / totalDeals` (only when deals > 0)
-  - **Avg Hours Called**: Sum of `hours_called` from daily_production / number of active agents with production
-- Expand the grid from `grid-cols-2 md:grid-cols-4` to `grid-cols-2 md:grid-cols-3 lg:grid-cols-6` to accommodate the two new metrics
-- Add `hours_called` to the production query select (currently only fetches `aop, deals_closed, presentations, agent_id`)
-- Both new stats are clickable for drilldown (like existing stats)
-
-## 4. Dashboard -- Rename AgencyGrowthCard
-
-**Changes to `src/components/dashboard/AgencyGrowthCard.tsx`:**
-- Change the header title from "Agency Growth" to "Recruiting Stats"
-- Change subtitle from "Building & recruiting stats" to "Hiring & growth metrics"
-
-## 5. Performance / Speed Improvements
-
-**Changes across multiple files:**
-- In `DashboardApplicants.tsx`: Add `staleTime: 120_000` to avoid refetching on every mount; wrap manager name lookup in a single batch query instead of N+1
-- In `CourseProgress.tsx`: Add `staleTime: 60_000` to the course progress query to prevent redundant fetches
-- In `Dashboard.tsx`: The page currently uses raw `useEffect` + `useState` for data fetching instead of React Query. This is a heavier refactor, but we can at least add abort controllers and avoid duplicate fetches.
+6. **Course Progress sort order** -- Currently sorts at-risk first, complete last. User wants finished agents at the top, not-started at the bottom. Reverse the priority order.
 
 ---
 
-## Technical Summary
+## Changes
 
-| File | Changes |
-|------|---------|
-| `src/pages/CourseProgress.tsx` | Visual overhaul: gradient stat cards, row color coding, AnimatePresence transitions, "days in course" column, progress summary bar, staleTime |
-| `src/pages/DashboardApplicants.tsx` | Show manager name badge on cards, remove "contacted" filter option, batch manager name lookup, staleTime |
-| `src/components/dashboard/TeamSnapshotCard.tsx` | Add Avg Deal Size and Avg Hours Called stats, expand grid, add hours_called to query |
-| `src/components/dashboard/AgencyGrowthCard.tsx` | Rename "Agency Growth" to "Recruiting Stats" |
+### 1. Lead Center Stat Card Filters (`src/pages/LeadCenter.tsx`)
+
+**Fix "Closed" card click:**
+- Change the onClick to set a custom filter value like `"closed_all"` instead of `"hired"`
+- In the filter logic, when `filterStatus === "closed_all"`, match leads where `status === "hired" || status === "contracted"`
+- Mark the card as active when `filterStatus === "closed_all"`
+
+**Fix "Contacted" card click:**
+- Change the onClick to set `filterStatus = "has_contacted"` (a custom value)
+- In the filter logic, when `filterStatus === "has_contacted"`, match leads where `!!lead.contactedAt`
+- This ensures clicking "Contacted" actually shows all leads that have been contacted regardless of their status field
+
+### 2. Auto-Merge Duplicates Button (`src/pages/DashboardAgedLeads.tsx`)
+
+Add a "Merge All Duplicates" button in the header area (visible when duplicates exist):
+- Groups leads by normalized email or phone (last 10 digits)
+- For each group, keeps the newest lead (by `created_at`) and deletes the older ones (hard delete from `aged_leads`)
+- Shows a confirmation dialog with count before proceeding
+- After merge, refreshes the lead list
+
+### 3. Rename Stats in Aged Leads (`src/pages/DashboardAgedLeads.tsx`)
+
+Remove "Processed" stat card. Replace with duplicate count or keep only: Total, Unprocessed, Hired, Duplicates (showing `duplicateMap.size` count).
+
+### 4. Rename Pipeline Label (`src/components/dashboard/OnboardingPipelineCard.tsx`)
+
+- Change "Unlicensed" label to "Pre-Licensing"
+- Update the count logic to specifically count agents where `license_status = 'unlicensed'` AND `has_training_course = true` (agents actively in the licensing course process)
+- Add `has_training_course` to the query select
+
+### 5. Course Progress Sort Order (`src/pages/CourseProgress.tsx`)
+
+Reverse the sort priority so finished agents appear first:
+- Priority 0: Complete (100%)
+- Priority 1: In Progress (started, not stalled)
+- Priority 2: Stalled
+- Priority 3: At Risk
+- Priority 4: Not Started
+
+Within each group, sort by percent descending (highest progress first).
+
+---
+
+## Technical Details
+
+### File: `src/pages/LeadCenter.tsx`
+
+**Lines 306-315 (filter logic):** Add two new special cases:
+- `"closed_all"`: matches `lead.status === "hired" || lead.status === "contracted"`
+- `"has_contacted"`: matches `!!lead.contactedAt`
+
+**Lines 764-774 (Contacted card onClick):** Change `setFilterStatus("contacted")` to `setFilterStatus("has_contacted")`
+
+**Lines 772-773 (Closed card onClick):** Change `setFilterStatus("hired")` to `setFilterStatus("closed_all")`
+
+**Lines 765, 774 (active checks):** Update to match new filter values
+
+### File: `src/pages/DashboardAgedLeads.tsx`
+
+**Header area (around line 407):** Add "Merge Duplicates" button with duplicate count badge, visible only when `duplicateMap.size > 0`
+
+**New function `handleAutoMergeDuplicates`:** Groups leads by email, keeps newest per group, deletes the rest via `supabase.from("aged_leads").delete().in("id", idsToDelete)`, then calls `fetchLeads()`
+
+**Stats row (lines 420-446):** Replace "Processed" with "Duplicates" showing `duplicateMap.size`
+
+### File: `src/components/dashboard/OnboardingPipelineCard.tsx`
+
+**Line 46:** Add `has_training_course` to select
+**Lines 63-73:** Change unlicensed count to only count agents where `license_status === 'unlicensed'` AND `has_training_course === true`
+**Line 79:** Change label from "Unlicensed" to "Pre-Licensing"
+
+### File: `src/pages/CourseProgress.tsx`
+
+**Lines 275-287 (sort function):** Reverse priority order: complete = 0, in_progress = 1, stalled = 2, at_risk = 3, not_started = 4. Change secondary sort to `b.percentComplete - a.percentComplete` (descending).
+

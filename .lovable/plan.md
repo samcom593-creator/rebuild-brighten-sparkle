@@ -1,73 +1,83 @@
 
 
-# Fix Building Leaderboard & Add Agency Growth Stats
+# Fix Pipeline Actions, Unlicensed Dashboard View, and Hire Email
 
 ## Problems Identified
 
-1. **Building Leaderboard not working well** -- It filters applications by `created_at >= startDate`, so apps created before the current period but contracted/hired during it don't appear. For example, an app created Jan 25 but contracted Feb 6 won't show in the "week" view. The fix: also include applications where `contracted_at` falls within the period, regardless of when they were created.
+1. **Pipeline (Applicants) page still uses old workflow** -- Buttons go "Contacted" then "Qualified" then "Close". The user wants only two actions: **Hired** and **Contracted**. Remove "Contacted", "Qualified", and "Close" as separate steps. Replace with "Hired" (marks as hired, sends email) and "Contracted" (opens contracting modal).
 
-2. **Dashboard is too sales-focused** -- The admin dashboard shows a "2026 Agency Performance" card (YearPerformanceCard) that duplicates the Agency Production snapshot above it. The user wants **building/recruiting stats** instead: licensed producers hired, total team growth, onboarding pipeline velocity, etc.
+2. **Dashboard doesn't show unlicensed recruits** -- The OnboardingPipelineCard only tracks onboarding stages (onboarding, training_online, in_field_training, evaluated). It doesn't show unlicensed agents. Need to add an "Unlicensed" count to the pipeline card showing all active agents with `license_status = 'unlicensed'`.
+
+3. **Hire email content is wrong** -- When clicking "Hired", the post-call follow-up email needs to clearly tell the recruit: "You've been chosen for the program. If you get your license within 2 weeks, everything is paid for." Currently it sends a generic follow-up.
+
+4. **Pipeline stat cards still show "Contacted"** -- Replace with Hired/Contracted counts.
 
 ---
 
 ## Changes
 
-### 1. Fix Building Leaderboard (`src/components/dashboard/BuildingLeaderboard.tsx`)
+### 1. Pipeline (Applicants) Page -- `src/pages/DashboardApplicants.tsx`
 
-**Problem:** Line 128 filters `currentQuery.gte("created_at", currentStartDate)` which misses apps created earlier but hired/contracted in the current period.
+**Remove intermediate status buttons:**
+- Remove `handleMarkAsContacted` and `handleMarkAsQualified` functions
+- Replace the action buttons section: for any non-closed, non-terminated lead, show:
+  - **"Hired"** button -- sets `contacted_at` (if not set), `closed_at`, and status to hired. Sends the hire email. Fires a hire announcement.
+  - **"Contracted"** button -- opens the ContractedModal (available for any lead, not just licensed ones)
+- Remove the "Qualified" status filter option from the dropdown
 
-**Fix:** Change the query to use an OR filter -- include applications where EITHER `created_at >= startDate` OR `contracted_at >= startDate`. This ensures all recruiting activity for the period is captured.
+**Update stat cards:**
+- Replace "Contacted" with "Hired" (count of apps with `closed_at` set but no `contracted_at`)
+- Replace the existing "Closed" with "Contracted" (count of apps with `contracted_at` set)
+- Keep "Total Leads" and "Terminated"
 
-Also fix the previous period query similarly (use `contracted_at` range for growth comparison instead of `created_at`).
+**Update status determination:**
+- `getApplicationStatus` should return "hired" when `closed_at` is set, and "contracted" when `contracted_at` is set
 
-### 2. Replace YearPerformanceCard with AgencyGrowthCard (`src/pages/Dashboard.tsx`)
+### 2. Dashboard Pipeline Card -- `src/components/dashboard/OnboardingPipelineCard.tsx`
 
-Remove the `YearPerformanceCard` component from the admin dashboard section (lines 316-319).
+**Add "Unlicensed" stage:**
+- Add a query for agents with `license_status = 'unlicensed'` and `is_deactivated = false`
+- Show as a fifth stage in the pipeline: "Unlicensed" with a graduation cap icon and amber color
+- This ensures when someone is hired and added as an agent with unlicensed status, they show up on the dashboard
 
-Replace it with a new **AgencyGrowthCard** component that shows:
+### 3. Hire Email -- `supabase/functions/send-post-call-followup/index.ts`
 
-- **Licensed Producers** -- Count of active agents where `license_status = 'licensed'`
-- **New Hires (period)** -- Agents created/contracted within the selected period (day/week/month toggle)
-- **In Onboarding** -- Agents currently in onboarding stages (not yet evaluated)
-- **Growth Rate** -- Percentage change in total active agents vs previous period
-- **Avg Time to Licensed** -- Average days from agent creation to licensed status (aspirational metric)
+**Update the "hired" action type email:**
+- Change the email body for `actionType === "hired"` to clearly say:
+  - "You've been selected for the APEX program!"
+  - "Get your license within 2 weeks and everything is paid for"
+  - Include the licensing course link (XcelSolutions) for unlicensed recruits
+  - Keep the CC to admin and manager
 
-The card will have day/week/month toggles matching the existing pattern, with a live indicator and realtime updates.
+### 4. Pipeline Applicant Actions -- Pass `agentId` to hire email
 
-### 3. Create AgencyGrowthCard Component (`src/components/dashboard/AgencyGrowthCard.tsx`)
-
-New component with the following layout:
-- Header: "Agency Growth" with a Building2 icon
-- Period selector (day/week/month)
-- Stat grid (2x2 or 4-col):
-  - Licensed Producers (total active licensed)
-  - New Hires This [Period] (agents with `created_at` in range or `contracted_at` in range)
-  - In Pipeline (agents in onboarding/training stages)
-  - Growth % (change vs previous period)
-- Data source: `agents` table + `applications` table with `contracted_at`
+**In DashboardApplicants `handleMarkAsHired`:**
+- Call `send-post-call-followup` with `actionType: "hired"` and include the `agentId` so the manager gets CC'd
+- Also call `notify-hire-announcement` to broadcast to all managers
 
 ---
 
 ## Technical Details
 
-### File: `src/components/dashboard/BuildingLeaderboard.tsx`
+### File: `src/pages/DashboardApplicants.tsx`
 
-- Lines 123-131: Change the current period query to use an OR condition: fetch applications where `created_at >= startDate` OR `contracted_at >= startDate`
-- Lines 134-140: Similarly fix previous period query to use `contracted_at` range for accurate growth comparison
-- The counting logic (lines 159-167) for `status === "approved" || contracted_at` remains correct
+- Remove `handleMarkAsContacted` (lines 276-288) and `handleMarkAsQualified` (lines 290-305)
+- Rename `handleMarkAsClosed` to `handleMarkAsHired` -- keep the same logic but also send the hire email via `send-post-call-followup` with `actionType: "hired"` and fire `notify-hire-announcement`
+- In `getApplicationStatus`: check `contracted_at` first (return "contracted"), then `closed_at` (return "hired"), remove "qualified" status
+- In action buttons section (lines 659-743): replace the status-based button chain with just two buttons for any active lead: "Hired" and "Contracted"
+- In stat cards (lines 780-804): change to Total Leads, Hired, Contracted, Terminated
+- In status filter dropdown (lines 828-835): remove "qualified", rename "closed" to "hired", add "contracted"
+- Remove `statusColors.qualified`, update `statusColors.closed` to use "hired" key
 
-### File: `src/components/dashboard/AgencyGrowthCard.tsx` (NEW)
+### File: `src/components/dashboard/OnboardingPipelineCard.tsx`
 
-- Queries `agents` table for licensed count, onboarding pipeline counts, and total active count
-- Queries `applications` table for new hires (contracted_at within period)
-- Subscribes to realtime updates on both tables
-- Shows day/week/month toggle for period filtering
-- Displays growth percentage comparing current vs previous period
+- Add `license_status` to the agents query select (line 47)
+- Add a new stage counting agents with `license_status = 'unlicensed'` regardless of onboarding stage
+- Insert "Unlicensed" as the first item in the stages array with amber coloring and GraduationCap icon
 
-### File: `src/pages/Dashboard.tsx`
+### File: `supabase/functions/send-post-call-followup/index.ts`
 
-- Line 40: Remove `YearPerformanceCard` import
-- Lines 316-319: Remove the YearPerformanceCard section
-- Add import for new `AgencyGrowthCard`
-- Insert AgencyGrowthCard in the same location (after TeamSnapshotCard, before TeamPerformanceBreakdown)
-- Show for admin AND manager roles (both benefit from building stats)
+- Update the "hired" email template to include the message: "You've been selected for the APEX program. Get licensed within 2 weeks and we cover everything."
+- For unlicensed hires, include the XcelSolutions licensing course link and the 3-step process
+- Keep existing CC logic (admin + manager)
+

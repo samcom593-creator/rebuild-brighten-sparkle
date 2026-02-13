@@ -43,7 +43,7 @@ export function OnboardingPipelineCard() {
       // Build query based on role
       let query = supabase
         .from("agents")
-        .select("onboarding_stage, license_status")
+        .select("onboarding_stage, license_status, has_training_course")
         .eq("is_deactivated", false);
 
       if (!isAdmin) {
@@ -60,23 +60,23 @@ export function OnboardingPipelineCard() {
           in_field_training: 0,
           evaluated: 0,
         };
-        let unlicensedCount = 0;
+        let preLicensingCount = 0;
 
         agents.forEach(agent => {
           const stage = agent.onboarding_stage || "onboarding";
           if (stageCounts[stage] !== undefined) {
             stageCounts[stage]++;
           }
-          if (agent.license_status === "unlicensed") {
-            unlicensedCount++;
+          if (agent.license_status === "unlicensed" && agent.has_training_course === true) {
+            preLicensingCount++;
           }
         });
 
         setStages([
           {
-            stage: "unlicensed",
-            label: "Unlicensed",
-            count: unlicensedCount,
+            stage: "pre_licensing",
+            label: "Pre-Licensing",
+            count: preLicensingCount,
             icon: <GraduationCap className="h-4 w-4" />,
             color: "text-amber-500 bg-amber-500/10",
           },

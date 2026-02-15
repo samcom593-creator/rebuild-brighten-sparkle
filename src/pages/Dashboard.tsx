@@ -299,8 +299,8 @@ export default function Dashboard() {
             <Link to={card.to}>
               <GlassCard className={`p-4 hover:border-${card.color}/50 hover:bg-${card.color}/5 cursor-pointer transition-all card-hover-lift group`}>
                 <card.icon className={`h-5 w-5 text-${card.color} mb-2 group-hover:scale-110 transition-transform`} />
-                <p className="font-semibold text-sm">{card.title}</p>
-                <p className="text-xs text-muted-foreground">{card.sub}</p>
+                <p className="font-semibold text-[13px] sm:text-sm">{card.title}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{card.sub}</p>
               </GlassCard>
             </Link>
           </motion.div>

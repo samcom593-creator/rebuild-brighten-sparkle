@@ -564,7 +564,7 @@ export default function Apply() {
                   >
                     <step.icon className="h-5 w-5" />
                   </div>
-                  <span className={`text-xs mt-2 font-medium ${
+                  <span className={`text-xs mt-2 font-medium hidden sm:block ${
                     currentStep >= step.id ? "text-foreground" : "text-muted-foreground"
                   }`}>
                     {step.title}
@@ -572,6 +572,10 @@ export default function Apply() {
                 </div>
               ))}
             </div>
+            {/* Mobile step label */}
+            <p className="text-center text-sm text-muted-foreground mt-3 sm:hidden">
+              Step {currentStep} of {steps.length}: {steps[currentStep - 1]?.title}
+            </p>
           </div>
 
           {/* Form */}
@@ -584,7 +588,7 @@ export default function Apply() {
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.2 }}
               >
-                <GlassCard className="p-8">
+                <GlassCard className="p-4 sm:p-8">
                   {/* Duplicate Application Error Banner */}
                   {duplicateError && (
                     <div className="mb-6 p-4 rounded-xl border border-destructive/30 bg-destructive/10 text-destructive">

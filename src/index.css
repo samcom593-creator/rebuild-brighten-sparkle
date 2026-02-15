@@ -574,3 +574,17 @@ html, body, #root {
   transform: translateY(-2px);
   box-shadow: 0 8px 25px hsl(var(--primary) / 0.08);
 }
+
+/* iOS overscroll containment for fixed elements */
+.sidebar-nav-scroll,
+main {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Safe area bottom padding for mobile nav */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}

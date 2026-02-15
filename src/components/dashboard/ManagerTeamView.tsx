@@ -20,6 +20,7 @@ import {
   AlertTriangle,
   Loader2,
   GraduationCap,
+  Search,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -111,6 +112,7 @@ export function ManagerTeamView() {
   const [deactivateAgent, setDeactivateAgent] = useState<{ id: string; name: string } | null>(null);
   const [managerUserIds, setManagerUserIds] = useState<Set<string>>(new Set());
   const [togglingManager, setTogglingManager] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleSendPortalLogin = async (member: TeamMember) => {
     try {
@@ -270,21 +272,14 @@ export function ManagerTeamView() {
       // Also fetch unlicensed applicants from the applications table
       // These are people who applied but haven't been converted to agent records yet
       let pipelineApplicants: any[] = [];
-      if (isAdmin) {
-        const { data: apps } = await supabase
-          .from("applications")
-          .select("id, first_name, last_name, email, phone, license_status, status, created_at, assigned_agent_id")
-          .is("terminated_at", null)
-          .eq("license_status", "unlicensed");
-        pipelineApplicants = apps || [];
-      } else {
-        const { data: apps } = await supabase
-          .from("applications")
-          .select("id, first_name, last_name, email, phone, license_status, status, created_at, assigned_agent_id")
-          .is("terminated_at", null)
-          .eq("license_status", "unlicensed");
-        pipelineApplicants = apps || [];
-      }
+      // Only include unlicensed applicants who are actually hired (approved/contracting)
+      const { data: apps } = await supabase
+        .from("applications")
+        .select("id, first_name, last_name, email, phone, license_status, status, created_at, assigned_agent_id")
+        .is("terminated_at", null)
+        .eq("license_status", "unlicensed")
+        .in("status", ["approved", "contracting"]);
+      pipelineApplicants = apps || [];
 
       // Deduplicate: remove applicants who already have agent records (match by email)
       const agentEmails = new Set<string>();
@@ -497,8 +492,17 @@ export function ManagerTeamView() {
   };
 
   // Sorted team members
+  // Apply search filter first
+  const searchFiltered = useMemo(() => {
+    if (!searchQuery.trim()) return teamMembers;
+    const q = searchQuery.toLowerCase();
+    return teamMembers.filter(m =>
+      m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q)
+    );
+  }, [teamMembers, searchQuery]);
+
   const sortedMembers = useMemo(() => {
-    const sorted = [...teamMembers];
+    const sorted = [...searchFiltered];
     switch (sortBy) {
       case "production-desc":
         return sorted.sort((a, b) => b.monthALP - a.monthALP);
@@ -511,7 +515,7 @@ export function ManagerTeamView() {
       default:
         return sorted;
     }
-  }, [teamMembers, sortBy]);
+  }, [searchFiltered, sortBy]);
 
   // Split into licensed, unlicensed, and terminated
   const terminatedMembers = useMemo(() =>
@@ -937,25 +941,38 @@ export function ManagerTeamView() {
 
       {/* Team Members List */}
       <GlassCard className="p-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <h3 className="text-lg font-semibold flex items-center gap-2">
             <Users className="h-5 w-5 text-primary" />
-            {isAdmin ? "Agency Roster" : "Your Team"} ({teamMembers.length})
+            {isAdmin ? "Agency Roster" : "Your Team"} ({searchFiltered.length})
           </h3>
           
-          {/* Sort Dropdown */}
-          <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
-            <SelectTrigger className="w-[180px]">
-              <ArrowUpDown className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Sort by..." />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="production-desc">Highest Production</SelectItem>
-              <SelectItem value="production-asc">Lowest Production</SelectItem>
-              <SelectItem value="name">Name A-Z</SelectItem>
-              <SelectItem value="status">Status</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2">
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search name or email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-9 w-[200px] rounded-md border border-input bg-background pl-8 pr-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              />
+            </div>
+            {/* Sort Dropdown */}
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+              <SelectTrigger className="w-[180px]">
+                <ArrowUpDown className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Sort by..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="production-desc">Highest Production</SelectItem>
+                <SelectItem value="production-asc">Lowest Production</SelectItem>
+                <SelectItem value="name">Name A-Z</SelectItem>
+                <SelectItem value="status">Status</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <div className="space-y-4">

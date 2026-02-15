@@ -1,44 +1,49 @@
 
-# Agency Roster: Search Bar + Accurate Unlicensed Counting + Licensed/Unlicensed Hire Breakdown
+
+# Fix Application Emails, Manager Notifications, Growth Calculation, and Abandoned Follow-ups
 
 ## What's Changing
 
-### 1. Add Search Bar to Agency Roster
-A search input field will be added next to the sort dropdown in the Agency Roster header. It will filter agents by name or email in real-time as you type, working across all sections (Licensed, Unlicensed Pipeline, Terminated).
+### 1. Manager's Own Email (the manager who got the recruit)
+The current `sendManagerNotification` in `submit-application/index.ts` already sends the assigned manager full recruit info. However, it's missing dedicated action buttons. Will add:
+- **View IG** button (links to recruit's Instagram profile, only shown if IG handle exists)
+- **Call Now** button (prominent tel: link styled as a button)
+- **View Lead** button (links to the applicant dashboard page)
 
-### 2. Fix Unlicensed Pipeline Counting
-**Current problem:** The "Unlicensed Pipeline" section pulls in ALL unlicensed applications (new, reviewing, no_pickup, etc.) -- currently 62 people. This inflates the roster with people who haven't even been hired yet.
+These will replace the current inline text links with proper mobile-friendly CTA buttons at the bottom of the email.
 
-**Fix:** Only include unlicensed applicants whose status is `approved` (hired) or `contracting` (in contracting process). People still in "new", "reviewing", or "no_pickup" status are leads, not team members, and should NOT appear in the Agency Roster.
+### 2. All-Managers Broadcast Email (everyone else)
+The current `notify-all-managers-leaderboard` function sends a generic "X scored another recruit!" email to all managers. Will update to:
+- Include the recruit's name: "[Manager] just got a new recruit: [Recruit Name]!"
+- Add the $7K growth calculation: "estimated potential override growth of $7,000"
+- Show a daily leaderboard summary: which manager recruited the most that day, with total estimated value (recruits x $7,000)
+- Keep it clean and motivational per the existing email standards
 
-This will drop the unlicensed count from ~62 to the actual hired/contracted unlicensed people only.
+### 3. Send Re-apply Links to All Abandoned Partial Applications
+There are 4 unconverted partial applications in the database. Will invoke the `send-abandoned-followup` function for each one that has an email and hasn't already received a follow-up (checking `form_data->followup_sent_at`). This sends them a "Complete My Application" email with a direct link to /apply.
 
-### 3. Show Licensed vs Unlicensed Hire Counts in Recruiting Stats
-The "Recruiting Stats" card (AgencyGrowthCard) will break down the "New Hires" number into two sub-labels showing how many are licensed hires vs unlicensed hires for the selected period.
+## Technical Changes
 
-## Technical Details
+### File: `supabase/functions/submit-application/index.ts` (lines 200-270)
+Update `sendManagerNotification` to add three CTA buttons after the applicant details table:
+- "View Instagram" button (conditional on instagramHandle existing) linking to `https://instagram.com/{handle}`
+- "Call Now" button linking to `tel:{phone}`
+- "View Lead" button linking to `https://apex-financial.org/dashboard/applicants?lead={applicationId}`
 
-### File: `src/components/dashboard/ManagerTeamView.tsx`
+Styled as table-based buttons (mobile-safe, no flexbox per email standards).
 
-**Search bar addition (around line 940-958):**
-- Add a `searchQuery` state variable
-- Add an `Input` component with a search icon next to the sort dropdown
-- Filter `filteredMembers`, `licensedMembers`, `unlicensedMembers`, and `terminatedMembers` through the search query (matching on name or email, case-insensitive)
+### File: `supabase/functions/notify-all-managers-leaderboard/index.ts`
+Update `sendLeaderboardEmail` to:
+- Accept and display the recruit's name in the email body
+- Add the $7K estimated value calculation: "That's an estimated $7,000 in potential override value!"
+- Update the subject line to include the recruit name: "[Manager] just recruited [Name]!"
+- For organic leads: "New organic lead: [Name] -- estimated $7,000 in potential override value"
+- Pass `applicantName` through from the handler to the email function
 
-**Pipeline applicant filter fix (lines 273-287):**
-- Change the applications query to only include statuses that represent "hired" people:
-  ```
-  .in("status", ["approved", "contracting"])
-  ```
-- This ensures only people the team has actually marked as hired show up in the roster
-
-### File: `src/components/dashboard/AgencyGrowthCard.tsx`
-
-**Licensed/Unlicensed hire breakdown (around line 150-170):**
-- Split the "New Hires" stat card into showing a breakdown: e.g., "3 Licensed / 5 Unlicensed"
-- Query the `license_status` field on applications to separate the counts
-- Display both numbers in the stat card subtitle
+### Action: Trigger abandoned follow-ups
+After deploying, invoke `send-abandoned-followup` for each unconverted partial application that has an email and no prior follow-up sent. There are 2 eligible leads (the ones without `followup_sent_at`).
 
 ## Files to Modify
-1. `src/components/dashboard/ManagerTeamView.tsx` -- Add search bar, fix pipeline query filter
-2. `src/components/dashboard/AgencyGrowthCard.tsx` -- Add licensed/unlicensed hire breakdown
+1. `supabase/functions/submit-application/index.ts` -- Add IG/Call/View buttons to manager email
+2. `supabase/functions/notify-all-managers-leaderboard/index.ts` -- Add recruit name and $7K growth calculation
+3. Deploy both functions and trigger abandoned follow-ups

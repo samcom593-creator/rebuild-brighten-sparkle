@@ -12,6 +12,8 @@ type Period = "day" | "week" | "month";
 interface GrowthStats {
   licensedProducers: number;
   newHires: number;
+  licensedHires: number;
+  unlicensedHires: number;
   inPipeline: number;
   growthPercent: number;
   avgDaysToLicensed: number | null;
@@ -56,7 +58,7 @@ export function AgencyGrowthCard() {
         // Count ALL non-terminated applications created in the current period
         supabase
           .from("applications")
-          .select("id, created_at, status")
+          .select("id, created_at, status, license_status")
           .is("terminated_at", null)
           .gte("created_at", currentStart),
         // Count ALL non-terminated applications created in the previous period
@@ -94,6 +96,10 @@ export function AgencyGrowthCard() {
 
       // New hires: all non-terminated apps in period OR new agents, whichever is higher
       const newHires = Math.max(currentApps.length, newAgentsCurrent.length);
+
+      // Break down by license status
+      const licensedHires = currentApps.filter(a => a.status !== "rejected" && (a as any).license_status === "licensed").length;
+      const unlicensedHires = currentApps.filter(a => a.status !== "rejected" && (a as any).license_status !== "licensed").length;
 
       // Previous period hires
       const prevHires = Math.max(prevApps.length, newAgentsPrev.length);
@@ -134,6 +140,8 @@ export function AgencyGrowthCard() {
       setStats({
         licensedProducers,
         newHires,
+        licensedHires,
+        unlicensedHires,
         inPipeline,
         growthPercent,
         avgDaysToLicensed,
@@ -177,6 +185,7 @@ export function AgencyGrowthCard() {
     {
       label: `New Hires ${periodLabel}`,
       value: stats?.newHires ?? 0,
+      subtitle: `${stats?.licensedHires ?? 0} Licensed / ${stats?.unlicensedHires ?? 0} Unlicensed`,
       icon: Users,
       color: "from-blue-500/20 to-blue-500/5 border-blue-500/20",
       iconColor: "text-blue-400",
@@ -265,6 +274,9 @@ export function AgencyGrowthCard() {
             </div>
             <p className="text-2xl font-bold text-foreground">{stat.value}</p>
             <p className="text-[10px] text-muted-foreground mt-1 leading-tight">{stat.label}</p>
+            {"subtitle" in stat && stat.subtitle && (
+              <p className="text-[9px] text-muted-foreground/70 mt-0.5 leading-tight">{stat.subtitle}</p>
+            )}
             <div className="absolute -right-4 -top-4 h-12 w-12 rounded-full bg-current opacity-10 blur-xl" />
           </motion.div>
         ))}

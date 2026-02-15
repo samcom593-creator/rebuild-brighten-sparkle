@@ -21,7 +21,7 @@ export function Navbar() {
     href: "#career",
     label: "Career Path"
   }];
-  return <motion.nav className="fixed top-8 left-0 right-0 z-50 glass-strong" initial={{
+  return <motion.nav className="fixed top-[32px] left-0 right-0 z-50 glass-strong" initial={{
     y: -100
   }} animate={{
     y: 0
@@ -77,7 +77,7 @@ export function Navbar() {
 
       {/* Mobile Menu */}
       <AnimatePresence>
-        {isOpen && <motion.div className="md:hidden glass-strong border-t border-border" initial={{
+        {isOpen && <motion.div className="md:hidden bg-background/95 backdrop-blur-xl border-t border-border" initial={{
         opacity: 0,
         height: 0
       }} animate={{

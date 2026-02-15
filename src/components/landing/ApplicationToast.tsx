@@ -89,7 +89,7 @@ export const ApplicationToast = forwardRef<HTMLDivElement, object>((_, ref) => {
             animate={{ opacity: 1, x: 0, y: 0 }}
             exit={{ opacity: 0, x: -100 }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed bottom-6 left-6 z-50"
+            className="fixed bottom-20 sm:bottom-6 left-4 right-4 sm:left-6 sm:right-auto z-50"
           >
           <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-background/95 backdrop-blur-lg border border-primary/20 shadow-2xl shadow-primary/10 max-w-xs">
             {/* Animated ring indicator */}

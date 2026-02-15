@@ -321,14 +321,14 @@ export function CareerPathwaySection() {
       <AnimatePresence>
         {isInView && (
           <motion.div
-            className="fixed right-4 md:right-8 top-1/2 -translate-y-1/2 z-40 hidden md:flex flex-col items-center gap-3"
+            className="fixed right-4 md:right-8 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-3"
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 50 }}
             transition={{ duration: 0.3 }}
           >
             {/* Glass container */}
-            <div className="glass-strong rounded-full p-2 flex flex-col items-center gap-2">
+            <div className="glass-strong rounded-full p-1.5 md:p-2 flex flex-col items-center gap-1.5 md:gap-2">
               {phaseIndicators.map((phase, index) => (
                 <motion.button
                   key={phase.id}
@@ -339,7 +339,7 @@ export function CareerPathwaySection() {
                 >
                   {/* Phase dot */}
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
+                    className={`w-6 h-6 md:w-8 md:h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
                       activePhase === index
                         ? `${phase.color} shadow-lg`
                         : "bg-muted/50 hover:bg-muted"

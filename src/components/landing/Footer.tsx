@@ -8,7 +8,7 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 border-b border-border/30 pb-6 md:border-b-0 md:pb-0">
             <Link to="/" className="flex items-center gap-2 mb-4">
               <Crown className="h-8 w-8 text-primary" />
               <span className="text-xl font-bold gradient-text">APEX Financial</span>

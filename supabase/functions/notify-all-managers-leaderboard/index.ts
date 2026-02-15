@@ -148,7 +148,8 @@ async function getScoringManagerName(managerId: string | undefined, referralSour
 async function sendLeaderboardEmail(
   recipientEmail: string,
   recipientName: string,
-  scoringManagerName: string
+  scoringManagerName: string,
+  applicantName: string
 ): Promise<boolean> {
   if (!RESEND_API_KEY) {
     console.log("[Leaderboard] Resend not configured, skipping email to:", recipientEmail);
@@ -156,13 +157,18 @@ async function sendLeaderboardEmail(
   }
 
   const isOrganic = scoringManagerName === "Organic Lead";
+  const safeName = sanitizeHtml(applicantName);
+  const safeManager = sanitizeHtml(scoringManagerName);
+  
   const subject = isOrganic 
-    ? "🔥 New Organic Lead!" 
-    : `🏆 ${scoringManagerName} Scored Another Recruit!`;
+    ? `🔥 New Organic Lead: ${safeName}!` 
+    : `🏆 ${safeManager} Just Recruited ${safeName}!`;
 
   const headline = isOrganic
-    ? "A new organic lead just came in!"
-    : `${sanitizeHtml(scoringManagerName)} scored another recruit!`;
+    ? `New organic lead: ${safeName}`
+    : `${safeManager} just got a new recruit: ${safeName}!`;
+
+  const growthLine = `That's an estimated <strong>$7,000</strong> in potential override value! 💰`;
 
   const emailHtml = `
 <!DOCTYPE html>
@@ -180,7 +186,7 @@ async function sendLeaderboardEmail(
           <!-- Header -->
           <tr>
             <td style="background: linear-gradient(135deg, #D4AF37, #C5A028); padding: 30px; text-align: center;">
-              <h1 style="margin: 0; color: #000000; font-size: 28px; font-weight: bold;">
+              <h1 style="margin: 0; color: #000000; font-size: 24px; font-weight: bold;">
                 ${headline}
               </h1>
             </td>
@@ -189,6 +195,9 @@ async function sendLeaderboardEmail(
           <!-- Body -->
           <tr>
             <td style="padding: 40px 30px; text-align: center;">
+              <p style="margin: 0 0 20px; color: #333333; font-size: 18px; line-height: 1.6;">
+                ${growthLine}
+              </p>
               <p style="margin: 0; color: #333333; font-size: 18px; line-height: 1.6;">
                 Keep scaling up your team. Let's go! 🚀
               </p>
@@ -274,7 +283,8 @@ const handler = async (req: Request): Promise<Response> => {
       const sent = await sendLeaderboardEmail(
         manager.email,
         manager.name,
-        scorerName
+        scorerName,
+        body.applicantName || "New Recruit"
       );
       if (sent) sentCount++;
       

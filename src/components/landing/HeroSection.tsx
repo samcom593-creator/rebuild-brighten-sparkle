@@ -69,7 +69,7 @@ export function HeroSection() {
   }, []);
 
   return (
-    <section className="relative min-h-[100dvh] flex items-center justify-center overflow-hidden pt-32 pb-16 sm:pt-28">
+    <section className="relative min-h-[100dvh] flex items-center justify-center overflow-hidden pt-24 sm:pt-28 md:pt-32 pb-16">
       {/* Background Effects */}
       <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-background/95" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(168_84%_42%/0.1)_0%,transparent_50%)]" />
@@ -173,7 +173,7 @@ export function HeroSection() {
 
           {/* Trust Indicators */}
           <motion.div
-            className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl mx-auto mb-12"
+            className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-6 max-w-3xl mx-auto mb-8 sm:mb-12"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.4 }}
@@ -196,7 +196,7 @@ export function HeroSection() {
 
           {/* Rotating Carrier Banner */}
           <motion.div
-            className="glass rounded-xl p-4 max-w-lg mx-auto border border-border/50"
+            className="glass rounded-xl p-4 max-w-xs sm:max-w-lg mx-auto border border-border/50"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.5 }}

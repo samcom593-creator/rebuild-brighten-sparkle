@@ -92,7 +92,7 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
       {/* Mobile Sidebar Panel */}
       <div 
         className={cn(
-          "fixed top-0 left-0 z-40 h-full w-64 lg:hidden pt-[env(safe-area-inset-top)]"
+          "fixed top-0 left-0 z-40 h-full w-64 lg:hidden pt-[max(1rem,env(safe-area-inset-top))]"
         )}
         style={{ 
           transform: mobileOpen ? "translateX(0) scale(1)" : "translateX(-100%) scale(0.98)",

@@ -175,7 +175,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-[100dvh] bg-background flex items-center justify-center px-4 py-8">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(var(--primary)/0.1)_0%,transparent_50%)]" />
       
       <motion.div
@@ -192,7 +192,7 @@ export default function Login() {
           <p className="text-muted-foreground">Sign in to access your dashboard</p>
         </div>
 
-        <GlassCard className="p-8">
+        <GlassCard className="p-4 sm:p-8">
           {showPhoneLogin ? (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-center">Sign in with Phone</h3>

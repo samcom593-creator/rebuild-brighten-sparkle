@@ -256,14 +256,36 @@ async function sendManagerNotification(
               </p>
             </div>
 
-            <div style="text-align: center; margin-top: 20px;">
-              <a href="https://apex-financial.org/dashboard/applicants?lead=${applicationId}" style="display: inline-block; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px; margin-bottom: 15px;">
-                📞 View Lead & Call Now →
-              </a>
-              <p style="color: #6b7280; font-size: 14px; margin-top: 15px;">
-                Submitted on ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-              </p>
-            </div>
+            <!-- Action Buttons -->
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 20px;">
+              <tr>
+                <td align="center" style="padding: 6px;">
+                  <a href="tel:${data.phone}" style="display: inline-block; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px; max-width: 100%; box-sizing: border-box;">
+                    📞 Call Now: ${sanitized.phone}
+                  </a>
+                </td>
+              </tr>
+              ${sanitized.instagramHandle ? `
+              <tr>
+                <td align="center" style="padding: 6px;">
+                  <a href="https://instagram.com/${sanitized.instagramHandle}" style="display: inline-block; background: linear-gradient(135deg, #E1306C, #C13584); color: white; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 14px; max-width: 100%; box-sizing: border-box;">
+                    📸 View Instagram: @${sanitized.instagramHandle}
+                  </a>
+                </td>
+              </tr>
+              ` : ''}
+              <tr>
+                <td align="center" style="padding: 6px;">
+                  <a href="https://apex-financial.org/dashboard/applicants?lead=${applicationId}" style="display: inline-block; background: #111827; color: white; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 14px; max-width: 100%; box-sizing: border-box;">
+                    👤 View Lead in Dashboard
+                  </a>
+                </td>
+              </tr>
+            </table>
+
+            <p style="color: #6b7280; font-size: 14px; margin-top: 15px; text-align: center;">
+              Submitted on ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </p>
           </div>
         </div>
       `,

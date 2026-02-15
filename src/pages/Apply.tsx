@@ -740,6 +740,8 @@ export default function Apply() {
                               <Input
                                 id="yearsExperience"
                                 type="number"
+                                step="1"
+                                min="0"
                                 {...register("yearsExperience", { valueAsNumber: true })}
                                 placeholder="0"
                                 className="bg-input"

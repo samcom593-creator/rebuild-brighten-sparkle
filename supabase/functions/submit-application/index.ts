@@ -52,10 +52,10 @@ const NumOptional = (min: number, max: number) =>
   z.preprocess(
     (v) => {
       if (v === null || v === undefined || v === "") return undefined;
-      if (typeof v === "number") return Number.isFinite(v) ? v : undefined;
+      if (typeof v === "number") return Number.isFinite(v) ? Math.floor(v) : undefined;
       if (typeof v === "string") {
         const n = Number(v);
-        return Number.isFinite(n) ? n : undefined;
+        return Number.isFinite(n) ? Math.floor(n) : undefined;
       }
       return undefined;
     },

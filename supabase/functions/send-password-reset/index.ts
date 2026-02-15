@@ -128,8 +128,24 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Build the recovery URL with the token hash
-    const recoveryUrl = `${BASE_URL}/dashboard/settings#access_token=${linkData?.properties?.access_token}&type=recovery`;
+    // Use the official action_link from Supabase which contains the proper hashed_token
+    let recoveryUrl = linkData?.properties?.action_link;
+    
+    if (recoveryUrl) {
+      // Replace the default redirect in action_link to point to our settings page with recovery flag
+      try {
+        const url = new URL(recoveryUrl);
+        url.searchParams.set("redirect_to", `${BASE_URL}/dashboard/settings?recovery=true`);
+        recoveryUrl = url.toString();
+      } catch {
+        // If URL parsing fails, use action_link as-is
+        console.log("Could not parse action_link URL, using as-is");
+      }
+    } else {
+      // Fallback: if action_link is not available, build a basic one
+      console.warn("action_link not available from generateLink, using fallback");
+      recoveryUrl = `${SUPABASE_URL}/auth/v1/verify?type=recovery&token=${linkData?.properties?.hashed_token}&redirect_to=${encodeURIComponent(`${BASE_URL}/dashboard/settings?recovery=true`)}`;
+    }
 
     // Look up name for personalization
     const { data: profile } = await supabaseClient

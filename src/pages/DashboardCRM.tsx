@@ -483,7 +483,64 @@ export default function DashboardCRM() {
         };
       });
 
-      setAgents(crmAgents);
+      // Fetch unlicensed applicants from applications table (approved/contracting, not terminated, not licensed)
+      let appQuery = supabase
+        .from("applications")
+        .select("id, first_name, last_name, email, phone, license_status, license_progress, test_scheduled_date, status, instagram_handle, started_training")
+        .is("terminated_at", null)
+        .neq("license_status", "licensed")
+        .in("status", ["approved", "contracting"]);
+
+      if (isManager && !isAdmin && currentAgent) {
+        appQuery = appQuery.eq("assigned_agent_id", currentAgent.id);
+      }
+
+      const { data: unlicensedApplicants } = await appQuery;
+
+      // Deduplicate: exclude applicants whose email already exists in agent list
+      const existingEmails = new Set(crmAgents.map(a => a.email?.toLowerCase()).filter(Boolean));
+      const newApplicants: AgentCRM[] = (unlicensedApplicants || [])
+        .filter(app => !existingEmails.has(app.email?.toLowerCase()))
+        .map((app, index) => ({
+          id: app.id,
+          userId: "",
+          name: `${app.first_name} ${app.last_name}`.trim(),
+          email: app.email || "",
+          phone: app.phone || undefined,
+          avatarUrl: undefined,
+          instagramHandle: app.instagram_handle || undefined,
+          onboardingStage: "onboarding" as OnboardingStage,
+          attendanceStatus: "good" as AttendanceStatus,
+          performanceTier: "below_10k" as PerformanceTier,
+          fieldTrainingStartedAt: undefined,
+          startDate: undefined,
+          totalEarnings: 0,
+          hasTrainingCourse: app.started_training || false,
+          hasDialerLogin: false,
+          hasDiscordAccess: false,
+          potentialRating: 0,
+          evaluationResult: null,
+          isDeactivated: false,
+          isInactive: false,
+          managerId: undefined,
+          managerName: undefined,
+          weekly10kBadges: 0,
+          sortOrder: crmAgents.length + index,
+          weeklyALP: 0,
+          weeklyPresentations: 0,
+          weeklyDeals: 0,
+          weeklyClosingRate: 0,
+          monthlyALP: 0,
+          monthlyDeals: 0,
+          lastContactedAt: null,
+          standardPaid: false,
+          premiumPaid: false,
+          licenseProgress: app.license_progress || null,
+          testScheduledDate: app.test_scheduled_date || null,
+          agentLicenseStatus: app.license_status || "unlicensed",
+        }));
+
+      setAgents([...crmAgents, ...newApplicants]);
     } catch (error) {
       console.error("Error fetching CRM agents:", error);
       toast.error("Failed to load agents");
@@ -661,7 +718,7 @@ export default function DashboardCRM() {
   // Stats - Use agent.agentLicenseStatus (from agents table) as source of truth
   const activeAgents = agents.filter(a => !a.isDeactivated && !a.isInactive);
   const totalLeadsCount = activeAgents.length;
-  const hiredUnlicensed = activeAgents.filter(a => a.agentLicenseStatus === "unlicensed").length;
+  const hiredUnlicensed = activeAgents.filter(a => a.agentLicenseStatus !== "licensed").length;
   const contractedHired = activeAgents.filter(a => a.onboardingStage === "onboarding" || a.onboardingStage === "training_online").length;
   const coursePurchased = activeAgents.filter(a => a.hasTrainingCourse).length;
   const totalDeals = activeAgents
@@ -1459,7 +1516,7 @@ export default function DashboardCRM() {
                 const expandedAgentsUnsorted = expandedColumn === "all"
                   ? filteredAgents
                   : expandedColumn === "unlicensed"
-                  ? filteredAgents.filter(a => a.agentLicenseStatus === "unlicensed")
+                  ? filteredAgents.filter(a => a.agentLicenseStatus !== "licensed")
                   : expandedColumn === "paid"
                   ? activeAgents.filter(a => a.onboardingStage === "evaluated" && (a.standardPaid || a.premiumPaid))
                   : expandedColumn === "course_purchased"

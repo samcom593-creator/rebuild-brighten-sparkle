@@ -21,6 +21,7 @@ interface AddAgentRequest {
   instagramHandle?: string;
   crmSetupLink?: string;
   licenseProgress?: string;
+  hasTrainingCourse?: boolean;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -87,6 +88,7 @@ const handler = async (req: Request): Promise<Response> => {
       instagramHandle,
       crmSetupLink,
       licenseProgress,
+      hasTrainingCourse = false,
     } = body;
 
     // Validate required fields
@@ -202,7 +204,8 @@ const handler = async (req: Request): Promise<Response> => {
       invited_by_manager_id: managerId,
       status: "active",
       license_status: licenseStatus,
-      onboarding_stage: "onboarding",
+      onboarding_stage: hasTrainingCourse ? "training_online" : "onboarding",
+      has_training_course: hasTrainingCourse || false,
       start_date: startDate || null,
     };
 

@@ -61,6 +61,7 @@ import { QuickAssignMenu } from "@/components/dashboard/QuickAssignMenu";
 import { LastContactedBadge } from "@/components/dashboard/LastContactedBadge";
 import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressSelector";
 import { ContractedModal } from "@/components/dashboard/ContractedModal";
+import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
 
 interface Application {
   id: string;
@@ -627,6 +628,14 @@ export default function DashboardApplicants() {
                     <Mic className="h-4 w-4 mr-1" />
                     Record
                   </Button>
+
+                  {app.license_status !== "licensed" && (
+                    <ResendLicensingButton
+                      recipientEmail={app.email}
+                      recipientName={app.first_name}
+                      licenseStatus={app.license_status}
+                    />
+                  )}
 
                   {status !== "closed" && (
                     <QuickEmailMenu

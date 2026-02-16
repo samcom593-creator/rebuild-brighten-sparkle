@@ -26,6 +26,8 @@ import {
   Send,
   ArrowLeft,
   CheckSquare,
+  EyeOff,
+  Eye,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -637,8 +639,13 @@ export default function DashboardCRM() {
     }
   };
 
-  // Stats
+  // Stats - Reordered: Total Leads, Hired (Unlicensed), Contracted (Hired), Hired (Course Purchased)
   const activeAgents = agents.filter(a => !a.isDeactivated && !a.isInactive);
+  const totalLeadsCount = activeAgents.length;
+  const hiredUnlicensed = activeAgents.filter(a => a.licenseProgress === "unlicensed" || !a.licenseProgress).length;
+  const contractedHired = activeAgents.filter(a => a.onboardingStage === "onboarding" || a.onboardingStage === "training_online").length;
+  const coursePurchased = activeAgents.filter(a => a.hasTrainingCourse).length;
+  // Keep these for the expanded column logic
   const inCourse = activeAgents.filter(a => ["onboarding", "training_online"].includes(a.onboardingStage)).length;
   const inTraining = activeAgents.filter(a => a.onboardingStage === "in_field_training").length;
   const inField = activeAgents.filter(a => a.onboardingStage === "evaluated").length;
@@ -808,6 +815,27 @@ export default function DashboardCRM() {
                 }}
                 size="sm"
               />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-4 w-4 text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10"
+                title="Hide agent"
+                onClick={async () => {
+                  try {
+                    const { error } = await supabase
+                      .from("agents")
+                      .update({ is_inactive: true })
+                      .eq("id", agent.id);
+                    if (error) throw error;
+                    setAgents(prev => prev.map(a => a.id === agent.id ? { ...a, isInactive: true } : a));
+                    toast.success(`${agent.name} hidden from pipeline`);
+                  } catch (err) {
+                    toast.error("Failed to hide agent");
+                  }
+                }}
+              >
+                <EyeOff className="h-2.5 w-2.5" />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"
@@ -1155,7 +1183,7 @@ export default function DashboardCRM() {
           />
         )}
 
-        {/* Clickable Stats Filters - Reordered: In Course, Meeting Eligible, In-Field, Live, Attendance */}
+        {/* Clickable Stats Filters - Reordered: Total Leads, Hired (Unlicensed), Contracted (Hired), Course Purchased */}
         <AnimatePresence initial={false}>
           {!expandedColumn && (
             <motion.div
@@ -1163,81 +1191,9 @@ export default function DashboardCRM() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
-              className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2"
+              className="grid grid-cols-2 md:grid-cols-4 gap-2"
             >
               <GlassCard
-                className={cn(
-                  "p-2 cursor-pointer transition-all hover:ring-2 hover:ring-primary/50 hover:scale-[1.02]",
-                  stageFilter === "in_course" && "ring-2 ring-primary"
-                )}
-                onClick={() => { setExpandedColumn("in_course"); playSound("whoosh"); }}
-              >
-                <div className="flex items-center gap-2">
-                  <div className="p-1 rounded-lg bg-primary/10">
-                    <BookOpen className="h-3.5 w-3.5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-lg font-bold">{inCourse}</p>
-                    <p className="text-[10px] text-muted-foreground">In Course</p>
-                  </div>
-                </div>
-              </GlassCard>
-
-              <GlassCard 
-                className={cn(
-                  "p-2 cursor-pointer transition-all hover:ring-2 hover:ring-accent/50 hover:scale-[1.02]",
-                  stageFilter === "meeting_eligible" && "ring-2 ring-accent"
-                )}
-                onClick={() => { setExpandedColumn("meeting_eligible"); playSound("whoosh"); }}
-              >
-                <div className="flex items-center gap-2">
-                  <div className="p-1 rounded-lg bg-accent/10">
-                    <Video className="h-3.5 w-3.5 text-accent-foreground" />
-                  </div>
-                  <div>
-                    <p className="text-lg font-bold">{meetingEligible}</p>
-                    <p className="text-[10px] text-muted-foreground">Meeting Eligible</p>
-                  </div>
-                </div>
-              </GlassCard>
-
-              <GlassCard 
-                className={cn(
-                  "p-2 cursor-pointer transition-all hover:ring-2 hover:ring-primary/50 hover:scale-[1.02]",
-                  stageFilter === "in_training" && "ring-2 ring-primary"
-                )}
-                onClick={() => { setExpandedColumn("in_training"); playSound("whoosh"); }}
-              >
-                <div className="flex items-center gap-2">
-                  <div className="p-1 rounded-lg bg-primary/10">
-                    <GraduationCap className="h-3.5 w-3.5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-lg font-bold">{inTraining}</p>
-                    <p className="text-[10px] text-muted-foreground">In-Field Training</p>
-                  </div>
-                </div>
-              </GlassCard>
-
-              <GlassCard 
-                className={cn(
-                  "p-2 cursor-pointer transition-all hover:ring-2 hover:ring-primary/50 hover:scale-[1.02]",
-                  stageFilter === "live" && "ring-2 ring-primary"
-                )}
-                onClick={() => { setExpandedColumn("live"); playSound("whoosh"); }}
-              >
-                <div className="flex items-center gap-2">
-                  <div className="p-1 rounded-lg bg-primary/10">
-                    <Briefcase className="h-3.5 w-3.5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-lg font-bold">{inField}</p>
-                    <p className="text-[10px] text-muted-foreground">Live</p>
-                  </div>
-                </div>
-              </GlassCard>
-
-              <GlassCard 
                 className={cn(
                   "p-2 cursor-pointer transition-all hover:ring-2 hover:ring-primary/50 hover:scale-[1.02]",
                   expandedColumn === "all" && "ring-2 ring-primary"
@@ -1249,13 +1205,13 @@ export default function DashboardCRM() {
                     <Users className="h-3.5 w-3.5 text-primary" />
                   </div>
                   <div>
-                    <p className="text-lg font-bold">{activeAgents.length}</p>
-                    <p className="text-[10px] text-muted-foreground">All Agents</p>
+                    <p className="text-lg font-bold">{totalLeadsCount}</p>
+                    <p className="text-[10px] text-muted-foreground">Total Leads</p>
                   </div>
                 </div>
               </GlassCard>
 
-              <GlassCard 
+              <GlassCard
                 className={cn(
                   "p-2 cursor-pointer transition-all hover:ring-2 hover:ring-amber-500/50 hover:scale-[1.02]",
                   expandedColumn === "unlicensed" && "ring-2 ring-amber-500"
@@ -1267,38 +1223,44 @@ export default function DashboardCRM() {
                     <GraduationCap className="h-3.5 w-3.5 text-amber-500" />
                   </div>
                   <div>
-                    <p className="text-lg font-bold">{unlicensedAgents}</p>
-                    <p className="text-[10px] text-muted-foreground">Unlicensed</p>
+                    <p className="text-lg font-bold">{hiredUnlicensed}</p>
+                    <p className="text-[10px] text-muted-foreground">Hired (Unlicensed)</p>
                   </div>
                 </div>
               </GlassCard>
 
-              <GlassCard 
+              <GlassCard
+                className={cn(
+                  "p-2 cursor-pointer transition-all hover:ring-2 hover:ring-primary/50 hover:scale-[1.02]",
+                  expandedColumn === "in_course" && "ring-2 ring-primary"
+                )}
+                onClick={() => { setExpandedColumn("in_course"); playSound("whoosh"); }}
+              >
+                <div className="flex items-center gap-2">
+                  <div className="p-1 rounded-lg bg-primary/10">
+                    <BookOpen className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold">{contractedHired}</p>
+                    <p className="text-[10px] text-muted-foreground">Contracted (Hired)</p>
+                  </div>
+                </div>
+              </GlassCard>
+
+              <GlassCard
                 className={cn(
                   "p-2 cursor-pointer transition-all hover:ring-2 hover:ring-emerald-500/50 hover:scale-[1.02]",
-                  expandedColumn === "paid" && "ring-2 ring-emerald-500"
+                  expandedColumn === "course_purchased" && "ring-2 ring-emerald-500"
                 )}
-                onClick={() => { setExpandedColumn("paid"); playSound("whoosh"); }}
+                onClick={() => { setExpandedColumn("course_purchased"); playSound("whoosh"); }}
               >
                 <div className="flex items-center gap-2">
                   <div className="p-1 rounded-lg bg-emerald-500/10">
-                    <DollarSign className="h-3.5 w-3.5 text-emerald-500" />
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
                   </div>
                   <div>
-                    <p className="text-lg font-bold">{totalPaidAgents}</p>
-                    <p className="text-[10px] text-muted-foreground">Paid Agents</p>
-                  </div>
-                </div>
-              </GlassCard>
-
-              <GlassCard className="p-2">
-                <div className="flex items-center gap-2">
-                  <div className="p-1 rounded-lg bg-emerald-500/10">
-                    <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
-                  </div>
-                  <div>
-                    <p className="text-lg font-bold">{totalDeals}</p>
-                    <p className="text-[10px] text-muted-foreground">Total Deals</p>
+                    <p className="text-lg font-bold">{coursePurchased}</p>
+                    <p className="text-[10px] text-muted-foreground">Hired (Course Purchased)</p>
                   </div>
                 </div>
               </GlassCard>
@@ -1351,6 +1313,16 @@ export default function DashboardCRM() {
               >
                 <UserX className="h-3.5 w-3.5" />
                 {showDeactivated ? "Showing Inactive" : "Show Inactive"}
+              </Button>
+
+              <Button
+                variant={showInactive ? "secondary" : "outline"}
+                size="sm"
+                onClick={() => setShowInactive(!showInactive)}
+                className="gap-1.5 h-8"
+              >
+                <Eye className="h-3.5 w-3.5" />
+                {showInactive ? "Showing Hidden" : "Show Hidden"}
               </Button>
             </motion.div>
           )}
@@ -1429,6 +1401,13 @@ export default function DashboardCRM() {
                     color: "text-emerald-500",
                     bgColor: "bg-emerald-500/10"
                   },
+                  course_purchased: { 
+                    label: "Hired (Course Purchased)", 
+                    icon: CheckCircle2, 
+                    stages: [] as OnboardingStage[],
+                    color: "text-emerald-500",
+                    bgColor: "bg-emerald-500/10"
+                  },
                 };
 
                 const config = columnConfig[expandedColumn as keyof typeof columnConfig];
@@ -1441,6 +1420,8 @@ export default function DashboardCRM() {
                   ? filteredAgents.filter(a => !a.licenseProgress || a.licenseProgress === "unlicensed")
                   : expandedColumn === "paid"
                   ? activeAgents.filter(a => a.onboardingStage === "evaluated" && (a.standardPaid || a.premiumPaid))
+                  : expandedColumn === "course_purchased"
+                  ? filteredAgents.filter(a => a.hasTrainingCourse)
                   : filteredAgents.filter(a => config.stages.includes(a.onboardingStage));
 
                 return (

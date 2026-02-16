@@ -1180,6 +1180,7 @@ export type Database = {
           created_at: string | null
           duration_seconds: number | null
           id: string
+          summary: Json | null
           transcription: string | null
         }
         Insert: {
@@ -1188,6 +1189,7 @@ export type Database = {
           created_at?: string | null
           duration_seconds?: number | null
           id?: string
+          summary?: Json | null
           transcription?: string | null
         }
         Update: {
@@ -1196,6 +1198,7 @@ export type Database = {
           created_at?: string | null
           duration_seconds?: number | null
           id?: string
+          summary?: Json | null
           transcription?: string | null
         }
         Relationships: [

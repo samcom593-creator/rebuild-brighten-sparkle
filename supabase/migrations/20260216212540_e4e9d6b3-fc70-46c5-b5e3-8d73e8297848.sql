@@ -1,0 +1,1 @@
+ALTER TABLE public.interview_recordings ADD COLUMN summary jsonb DEFAULT NULL;

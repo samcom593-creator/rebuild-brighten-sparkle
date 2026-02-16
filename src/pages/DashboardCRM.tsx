@@ -17,6 +17,7 @@ import {
   Phone,
   UserX,
   Filter,
+  Mic,
   BookOpen,
   GraduationCap,
   Briefcase,
@@ -65,6 +66,7 @@ import { BulkStageActions, AgentSelectCheckbox } from "@/components/crm/BulkStag
 import { cn } from "@/lib/utils";
 import { Database } from "@/integrations/supabase/types";
 import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
+import { InterviewRecorder } from "@/components/dashboard/InterviewRecorder";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 type AttendanceStatus = Database["public"]["Enums"]["attendance_status"];
@@ -208,6 +210,7 @@ export default function DashboardCRM() {
   const [bulkMode, setBulkMode] = useState(false);
   const [selectedAgents, setSelectedAgents] = useState<Set<string>>(new Set());
   const [sendingCourseLogin, setSendingCourseLogin] = useState<string | null>(null);
+  const [recorderAgent, setRecorderAgent] = useState<AgentCRM | null>(null);
   const currentAgentIdRef = useState<string | null>(null);
 
   useEffect(() => {
@@ -820,6 +823,13 @@ export default function DashboardCRM() {
                         <span className="text-[9px]">{agent.instagramHandle}</span>
                       </a>
                     )}
+                    <button
+                      onClick={() => setRecorderAgent(agent)}
+                      className="hover:text-foreground transition-colors"
+                      title="Record interview"
+                    >
+                      <Mic className="h-2.5 w-2.5" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -1628,6 +1638,17 @@ export default function DashboardCRM() {
         agentName={instagramPromptAgent?.name || ""}
         onComplete={fetchAgents}
       />
+
+      {/* Interview Recorder Modal */}
+      {recorderAgent && user && (
+        <InterviewRecorder
+          applicationId={recorderAgent.id}
+          agentId={recorderAgent.id}
+          applicantName={recorderAgent.name}
+          onClose={() => setRecorderAgent(null)}
+          onTranscriptionSaved={fetchAgents}
+        />
+      )}
     </DashboardLayout>
   );
 }

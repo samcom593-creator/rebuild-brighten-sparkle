@@ -1,39 +1,59 @@
 
+# Fix CRM Pipeline Dashboard -- Accurate Filtering and Clear Organization
 
-# Upgrade Interview Recorder to Match Call Center AI Summary
+## Problems Found
 
-## Problem
-The "Voice" button in Applications opens the old `InterviewRecorder` component which only does basic speech-to-text transcription and saves raw text. Meanwhile, the Call Center has a much better `CallCenterVoiceRecorder` that automatically analyzes the transcript with AI and displays a rich summary (key points, sentiment, action items, recommendation, follow-up email button).
+### 1. Stat Card Counts Are Wrong
+The four stat cards calculate counts incorrectly:
+- **"Hired (Unlicensed)"** checks `licenseProgress` (from applications table) instead of `license_status` (from agents table). Many agents have null `licenseProgress`, so they all get lumped here.
+- **"Contracted (Hired)"** counts agents in `onboarding` or `training_online` stages -- this is not "contracted," it's "in course."
+- **"Hired (Course Purchased)"** checks `hasTrainingCourse` which is correct but overlaps with the other cards.
+
+### 2. Stat Card Click Filters Don't Match Labels
+When you click a stat card, the expanded view filters don't correspond to what the card says:
+- Clicking "Contracted (Hired)" sets `expandedColumn = "in_course"` which then filters by onboarding stages, not by contracted status.
+- Clicking "Hired (Unlicensed)" sets `expandedColumn = "unlicensed"` which filters by `licenseProgress`, missing agents whose license info comes from the `agents.license_status` field.
+
+### 3. The 3-Column Overview Is Disconnected
+The bottom 3-column grid still shows "In Course / In-Field Training / Live" which is a different organizational scheme than the stat cards above. This is confusing -- the user sees one set of categories at the top and a completely different set at the bottom.
+
+### 4. No "Last Contacted" Sorting for Follow-Up Priority
+The user wants to easily see who to call next, but there's no sorting by last contacted date or visual indicator of stale leads in the pipeline.
 
 ## Solution
-Replace the `InterviewRecorder` component with an upgraded version that mirrors the Call Center experience:
 
-1. **Record and transcribe** (same as now -- browser speech recognition)
-2. **Auto-analyze with AI** when recording stops (calls `analyze-call-transcript` edge function, same as Call Center)
-3. **Display rich AI summary** with key points, sentiment, action items, and recommendation
-4. **Save both transcript and summary** to the `interview_recordings` table
-5. **Include waveform visualization** during recording (same as Call Center)
-6. **Add follow-up email option** post-analysis
+### Redesign the Pipeline View Around the Hiring Funnel
 
-## Files to Modify
+#### Stat Cards (top) -- fix the counts and click behavior:
 
-### 1. `src/components/dashboard/InterviewRecorder.tsx`
-Rewrite to incorporate Call Center voice recorder features:
-- Add audio waveform canvas visualization during recording
-- After stopping, automatically call `analyze-call-transcript` edge function
-- Display the AI summary panel (key points, sentiment, action items, recommendation, brief summary)
-- Allow viewing/hiding the raw transcript
-- Save both transcript AND AI summary JSON to the database
-- Keep the same props interface so `DashboardApplicants.tsx` doesn't need changes
+| Card | Label | Count Logic | Click Filter |
+|---|---|---|---|
+| 1 | Total Leads | All active, non-hidden agents | Show all |
+| 2 | Hired (Unlicensed) | Agents where `license_status = 'unlicensed'` (from agents table) | Filter to unlicensed agents |
+| 3 | Contracted (Hired) | Agents in `onboarding` or `training_online` stage (they've been contracted and are going through the process) | Filter to onboarding/training_online stage |
+| 4 | Course Purchased | Agents where `has_training_course = true` | Filter to agents with course |
 
-### 2. Database Migration
-Add a `summary` JSONB column to the `interview_recordings` table to store the AI analysis alongside the raw transcript. This lets dashboards display the summary without re-analyzing.
+#### 3-Column Overview (bottom) -- align with the pipeline:
+Replace the current "In Course / In-Field Training / Live" columns with pipeline-aligned columns:
+1. **Onboarding** -- agents in `onboarding` or `training_online` stages (newly contracted, getting started)
+2. **In-Field Training** -- agents in `in_field_training` stage (actively training)
+3. **Live** -- agents in `evaluated` stage (producing)
 
-## Technical Details
+This is actually the same stages but with a clearer "Onboarding" label instead of "In Course."
 
-- Reuses the existing `analyze-call-transcript` edge function (already deployed, uses Lovable AI)
-- Same speech recognition API and waveform visualization pattern from `CallCenterVoiceRecorder`
-- Summary structure: `{ keyPoints, sentiment, actionItems, recommendation, briefSummary }`
-- No new edge functions needed -- the analysis function is shared
-- The component keeps its same external interface (`applicationId`, `agentId`, `applicantName`, `onClose`, `onTranscriptionSaved`) so no changes are needed in `DashboardApplicants.tsx`
+#### Add Follow-Up Priority Indicator:
+- Add a "stale" visual indicator (orange/red dot) on agent cards where `lastContactedAt` is older than 48 hours or null
+- Sort agents within each column by last contacted date (oldest first) so the ones needing attention are at the top
 
+### Files to Modify
+
+1. **`src/pages/DashboardCRM.tsx`**:
+   - Fix `hiredUnlicensed` count: use `agent.licenseProgress === 'unlicensed' || agent.licenseProgress === null` combined with checking the agent is actually unlicensed (not licensed)
+   - Fix `contractedHired` to properly count agents in onboarding/training_online
+   - Fix expanded view filter for "unlicensed" to match the corrected logic
+   - Update COLUMNS array label from "In Course" to "Onboarding" for clarity
+   - Add stale-lead indicator (orange dot for agents not contacted in 48+ hours)
+   - Sort agents within columns by `lastContactedAt` (null/oldest first) for follow-up priority
+   - Fix the `expandedColumn` click mapping so "Contracted (Hired)" correctly filters
+
+No database changes needed -- this is purely a UI/logic fix using existing data.

@@ -91,15 +91,29 @@ export function ContractedModal({
 
       if (alreadyContracted) {
         // Skip agent creation — just look up existing agent by email
+        const { data: existingProfile } = await supabase
+          .from("profiles")
+          .select("user_id")
+          .eq("email", application.email)
+          .maybeSingle();
+
+        if (!existingProfile?.user_id) {
+          toast.error("No existing agent found for this email. Uncheck 'Already contracted' to create one.");
+          return;
+        }
+
         const { data: existingAgent } = await supabase
           .from("agents")
           .select("id")
-          .eq("user_id", (
-            await supabase.from("profiles").select("user_id").eq("email", application.email).maybeSingle()
-          ).data?.user_id || "")
+          .eq("user_id", existingProfile.user_id)
           .maybeSingle();
 
-        newAgentId = existingAgent?.id || null;
+        if (!existingAgent?.id) {
+          toast.error("No existing agent record found. Uncheck 'Already contracted' to create one.");
+          return;
+        }
+
+        newAgentId = existingAgent.id;
       } else {
         // Determine license status
         const finalLicenseStatus = 
@@ -117,6 +131,7 @@ export function ContractedModal({
             managerId: agentId,
             licenseStatus: finalLicenseStatus,
             crmSetupLink: linkToUse,
+            hasTrainingCourse: true,
           },
         });
 
@@ -146,6 +161,7 @@ export function ContractedModal({
         const { error: updateError } = await supabase
           .from("applications")
           .update({ 
+            status: "contracting" as any,
             contracted_at: new Date().toISOString(),
             closed_at: new Date().toISOString(),
           })
@@ -190,22 +206,22 @@ export function ContractedModal({
         toast.success(`${application.first_name} enrolled in coursework!`);
       }
 
-      // Set has_training_course and send course enrollment email
+      // Send course enrollment email (add-agent already sets has_training_course)
       if (newAgentId) {
-        supabase
-          .from("agents")
-          .update({ has_training_course: true })
-          .eq("id", newAgentId)
-          .then(({ error: courseErr }) => {
-            if (courseErr) console.error("Failed to set has_training_course:", courseErr);
-          });
+        // For "already contracted" agents, ensure has_training_course is set
+        if (alreadyContracted) {
+          const { error: courseErr } = await supabase
+            .from("agents")
+            .update({ has_training_course: true, onboarding_stage: "training_online" as any })
+            .eq("id", newAgentId);
+          if (courseErr) console.error("Failed to set has_training_course:", courseErr);
+        }
 
-        supabase.functions.invoke("send-course-enrollment-email", {
+        const { error: enrollErr } = await supabase.functions.invoke("send-course-enrollment-email", {
           body: { agentId: newAgentId },
-        }).then(({ error: enrollErr }) => {
-          if (enrollErr) console.error("Failed to send course enrollment email:", enrollErr);
-          else console.log("Course enrollment email sent for agent", newAgentId);
         });
+        if (enrollErr) console.error("Failed to send course enrollment email:", enrollErr);
+        else console.log("Course enrollment email sent for agent", newAgentId);
       }
 
       onOpenChange(false);

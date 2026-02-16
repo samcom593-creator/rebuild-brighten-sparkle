@@ -769,8 +769,8 @@ export default function DashboardCRM() {
                 <div className="flex items-center gap-1 flex-wrap">
                   <h3 className="font-medium text-xs truncate">{agent.name}</h3>
                   {agent.isDeactivated && (
-                    <Badge variant="destructive" className="text-[9px] h-3.5 px-1">
-                      Inactive
+                    <Badge variant="outline" className="text-[9px] h-3.5 px-1 bg-amber-500/10 text-amber-400 border-amber-500/30">
+                      Pass Pre-License Course
                     </Badge>
                   )}
                   {duplicateAgentIds.has(agent.id) && (

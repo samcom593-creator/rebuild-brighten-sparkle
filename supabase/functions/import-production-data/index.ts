@@ -113,13 +113,13 @@ Deno.serve(async (req) => {
           .single();
 
         if (existing) {
-          // Update existing record by adding to existing values
+          // Update existing record by SETTING values (not adding) to prevent doubling
           const { error: updateError } = await supabase
             .from("daily_production")
             .update({
-              aop: Number(existing.aop) + stats.aop,
-              deals_closed: existing.deals_closed + stats.deals_closed,
-              presentations: existing.presentations + stats.presentations,
+              aop: stats.aop,
+              deals_closed: stats.deals_closed,
+              presentations: stats.presentations,
             })
             .eq("id", existing.id);
 

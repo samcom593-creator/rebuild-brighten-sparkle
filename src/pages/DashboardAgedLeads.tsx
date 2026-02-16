@@ -58,6 +58,7 @@ import { cn } from "@/lib/utils";
 import { CallModeInterface } from "@/components/dashboard/CallModeInterface";
 import { AgedLeadImporter } from "@/components/dashboard/AgedLeadImporter";
 import { AnimatedNumber } from "@/components/dashboard/AnimatedNumber";
+import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
 
 interface AgedLead {
   id: string;
@@ -704,6 +705,17 @@ export default function DashboardAgedLeads() {
                         {lead.licenseStatus === "licensed" ? "Licensed" : "Unlicensed"}
                       </Badge>
                     </div>
+
+                    {/* Licensing Button */}
+                    {lead.email && lead.licenseStatus !== "licensed" && (
+                      <div className="shrink-0">
+                        <ResendLicensingButton
+                          recipientEmail={lead.email}
+                          recipientName={lead.firstName}
+                          licenseStatus={lead.licenseStatus === "unlicensed" ? "unlicensed" : "pending"}
+                        />
+                      </div>
+                    )}
 
                     {/* Actions */}
                     <div className="shrink-0">

@@ -135,9 +135,16 @@ export function ContractedModal({
           },
         });
 
-        if (addAgentError || !addAgentResult?.success) {
-          const errorMsg = addAgentResult?.error || addAgentError?.message || "Failed to create agent";
-          console.error("Add agent error:", errorMsg);
+        // Bulletproof error checking: the SDK may not always throw on non-2xx
+        if (addAgentError) {
+          console.error("Add agent invoke error:", addAgentError);
+          toast.error(addAgentError.message || "Failed to create agent — please try again");
+          return;
+        }
+
+        if (!addAgentResult || !addAgentResult.success) {
+          const errorMsg = addAgentResult?.error || "Agent creation failed silently — please try again";
+          console.error("Add agent result error:", errorMsg, addAgentResult);
           toast.error(errorMsg);
           return;
         }
@@ -161,7 +168,7 @@ export function ContractedModal({
         const { error: updateError } = await supabase
           .from("applications")
           .update({ 
-            status: "contracting" as any,
+            status: "contracting",
             contracted_at: new Date().toISOString(),
             closed_at: new Date().toISOString(),
           })

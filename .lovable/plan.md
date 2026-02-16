@@ -1,51 +1,67 @@
 
+# Fix Unlicensed Count -- Include All Non-Licensed People
 
-# Add Licensing Button Everywhere and Fix "Terminated" Label
+## Root Cause
+
+The CRM Pipeline (`DashboardCRM.tsx`) only pulls data from the **agents** table, which has just 3 unlicensed records. Meanwhile, the **applications** table has 60+ unlicensed applicants (people who applied, got approved/hired, are in the licensing process). These people are completely missing from the CRM pipeline counts.
+
+The main Dashboard (`Dashboard.tsx`) has the same problem -- it only counts `license_status === "unlicensed"` from applications assigned to the agent, missing anyone with `pending` status.
+
+## What Counts as "Unlicensed"
+
+Anyone who does NOT have `license_status = 'licensed'` is unlicensed. This includes:
+- Agents with `license_status = 'unlicensed'` (3 in DB)
+- Agents with `license_status = 'pending'` (0 in agents, 2 in applications)  
+- Applicants in any licensing progress stage: course purchased, studying, test scheduled, waiting on license, finished course -- all unlicensed until they get their actual license
 
 ## Changes
 
-### 1. Add ResendLicensingButton to DashboardApplicants (Lead Center)
+### 1. `src/pages/DashboardCRM.tsx` -- Include Applications in Pipeline
 
-The graduation hat button already exists in Call Center, CRM Pipeline, and CallCenterLeadCard -- but it's missing from the applicant cards in `DashboardApplicants.tsx`.
+**Data Fetching**: Add a query to fetch unlicensed applicants from the `applications` table (same pattern used in `ManagerTeamView`):
+- Fetch applications where `terminated_at IS NULL` and `license_status != 'licensed'` and `status IN ('approved', 'contracting')`
+- Deduplicate against existing agent records by email
+- Convert these applicants into `AgentCRM` objects with `agentLicenseStatus: "unlicensed"`
 
-**File: `src/pages/DashboardApplicants.tsx`**
-- Import `ResendLicensingButton` from `@/components/callcenter/ResendLicensingButton`
-- Add the graduation hat icon button in the Actions Row (line ~589) next to the existing email/notes/record buttons
-- Only show for non-licensed applicants (`app.license_status !== "licensed"`)
-
-### 2. Add ResendLicensingButton to Aged Leads
-
-The aged leads cards also lack the button.
-
-**File: `src/pages/DashboardAgedLeads.tsx`**
-- Import `ResendLicensingButton`
-- Add the graduation hat button to each aged lead card's action area
-- Only show for leads that have an email address (can't send without email)
-
-### 3. Change "Inactive" Label to "Pass Pre-License Course" in CRM Pipeline
-
-In `DashboardCRM.tsx`, when an agent has `isDeactivated = true`, the badge currently reads "Inactive". The user wants this to say "Pass Pre-License Course" instead, indicating the agent needs to complete their pre-licensing course.
-
-**File: `src/pages/DashboardCRM.tsx`**
-- Change the badge text on line ~772 from `Inactive` to `Pass Pre-License Course`
-- Update the badge color from destructive red to amber/warning to better reflect it's a pending action, not a termination
-
-## Technical Details
-
-### ResendLicensingButton Props (already built)
-```typescript
-interface ResendLicensingButtonProps {
-  recipientEmail: string;
-  recipientName: string;
-  licenseStatus: "licensed" | "unlicensed" | "pending";
-  managerEmail?: string;
-}
+**Stat Card Fix**: Update the "Hired (Unlicensed)" count to use `!= 'licensed'` instead of `=== 'unlicensed'`, capturing `pending` status too:
+```
+// Before
+a.agentLicenseStatus === "unlicensed"
+// After  
+a.agentLicenseStatus !== "licensed"
 ```
 
-### Files Modified
-1. `src/pages/DashboardApplicants.tsx` -- add import + button in actions row
-2. `src/pages/DashboardAgedLeads.tsx` -- add import + button in lead card actions
-3. `src/pages/DashboardCRM.tsx` -- change "Inactive" badge text to "Pass Pre-License Course"
+**Expanded View Filter**: Same fix for the unlicensed expanded view filter (line ~1462):
+```
+// Before
+filteredAgents.filter(a => a.agentLicenseStatus === "unlicensed")
+// After
+filteredAgents.filter(a => a.agentLicenseStatus !== "licensed")
+```
 
-No database changes needed. No new components needed -- reuses existing `ResendLicensingButton`.
+### 2. `src/pages/Dashboard.tsx` -- Fix Unlicensed Count
 
+Update the unlicensed count calculation (line ~122) to count everyone who isn't licensed:
+```
+// Before
+const unlicensed = applications.filter(a => a.license_status === "unlicensed").length;
+// After
+const unlicensed = applications.filter(a => a.license_status !== "licensed").length;
+```
+
+### 3. `src/components/dashboard/OnboardingPipelineCard.tsx` -- Include Pending
+
+The pipeline card already counts by onboarding stage which is fine, but the pre-licensing count should also include `pending`:
+```
+// Before
+if (agent.license_status === "unlicensed" && agent.has_training_course === true)
+// After
+if (agent.license_status !== "licensed" && agent.has_training_course === true)
+```
+
+## Files Modified
+1. `src/pages/DashboardCRM.tsx` -- Add applications query, merge into agent list, fix filter logic
+2. `src/pages/Dashboard.tsx` -- Fix unlicensed count to use `!== "licensed"`
+3. `src/components/dashboard/OnboardingPipelineCard.tsx` -- Include pending in pre-licensing count
+
+No database changes needed.

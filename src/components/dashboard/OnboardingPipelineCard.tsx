@@ -67,7 +67,7 @@ export function OnboardingPipelineCard() {
           if (stageCounts[stage] !== undefined) {
             stageCounts[stage]++;
           }
-          if (agent.license_status === "unlicensed" && agent.has_training_course === true) {
+          if (agent.license_status !== "licensed" && agent.has_training_course === true) {
             preLicensingCount++;
           }
         });

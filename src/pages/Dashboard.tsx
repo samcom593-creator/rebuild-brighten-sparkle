@@ -119,7 +119,7 @@ export default function Dashboard() {
             const contacted = applications.filter(a => a.contacted_at).length;
             const closed = applications.filter(a => a.closed_at).length;
             const licensed = applications.filter(a => a.license_status === "licensed").length;
-            const unlicensed = applications.filter(a => a.license_status === "unlicensed").length;
+            const unlicensed = applications.filter(a => a.license_status !== "licensed").length;
             
             // Calculate stale leads (not contacted in 48+ hours)
             const now = new Date();

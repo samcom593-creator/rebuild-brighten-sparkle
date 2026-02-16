@@ -114,9 +114,11 @@ interface AgentCRM {
   // Payment status
   standardPaid: boolean;
   premiumPaid: boolean;
-  // License pipeline data
+  // License pipeline data (from applications)
   licenseProgress: string | null;
   testScheduledDate: string | null;
+  // License status from agents table (source of truth)
+  agentLicenseStatus: string;
 }
 
 const attendanceColors: Record<AttendanceStatus, string> = {
@@ -147,7 +149,7 @@ const performanceColors: Record<PerformanceTier, string> = {
 const COLUMNS = [
   { 
     key: "in_course", 
-    label: "In Course", 
+    label: "Onboarding", 
     icon: BookOpen,
     stages: ["onboarding", "training_online"] as OnboardingStage[],
     color: "text-primary",
@@ -474,6 +476,7 @@ export default function DashboardCRM() {
           premiumPaid: pay.premium,
           licenseProgress: licenseProgressMap.get(agent.id)?.progress || null,
           testScheduledDate: licenseProgressMap.get(agent.id)?.testDate || null,
+          agentLicenseStatus: agent.license_status || "unlicensed",
         };
       });
 
@@ -605,11 +608,24 @@ export default function DashboardCRM() {
     }
   });
 
-  // Group agents by column
+  // Group agents by column - sort by lastContactedAt (null/oldest first) for follow-up priority
   const getAgentsForColumn = (stages: OnboardingStage[]) => {
     return stageFilteredAgents
       .filter(agent => stages.includes(agent.onboardingStage))
-      .sort((a, b) => a.sortOrder - b.sortOrder);
+      .sort((a, b) => {
+        // Null (never contacted) first, then oldest first
+        if (!a.lastContactedAt && !b.lastContactedAt) return a.sortOrder - b.sortOrder;
+        if (!a.lastContactedAt) return -1;
+        if (!b.lastContactedAt) return 1;
+        return new Date(a.lastContactedAt).getTime() - new Date(b.lastContactedAt).getTime();
+      });
+  };
+
+  // Check if agent is "stale" (not contacted in 48+ hours or never contacted)
+  const isStaleAgent = (agent: AgentCRM): boolean => {
+    if (!agent.lastContactedAt) return true;
+    const hoursAgo = (Date.now() - new Date(agent.lastContactedAt).getTime()) / (1000 * 60 * 60);
+    return hoursAgo >= 48;
   };
 
   // Optimistic stage update: re-read single agent's stage from DB, update local state (no full reload)
@@ -639,18 +655,12 @@ export default function DashboardCRM() {
     }
   };
 
-  // Stats - Reordered: Total Leads, Hired (Unlicensed), Contracted (Hired), Hired (Course Purchased)
+  // Stats - Use agent.agentLicenseStatus (from agents table) as source of truth
   const activeAgents = agents.filter(a => !a.isDeactivated && !a.isInactive);
   const totalLeadsCount = activeAgents.length;
-  const hiredUnlicensed = activeAgents.filter(a => a.licenseProgress === "unlicensed" || !a.licenseProgress).length;
+  const hiredUnlicensed = activeAgents.filter(a => a.agentLicenseStatus === "unlicensed").length;
   const contractedHired = activeAgents.filter(a => a.onboardingStage === "onboarding" || a.onboardingStage === "training_online").length;
   const coursePurchased = activeAgents.filter(a => a.hasTrainingCourse).length;
-  // Keep these for the expanded column logic
-  const inCourse = activeAgents.filter(a => ["onboarding", "training_online"].includes(a.onboardingStage)).length;
-  const inTraining = activeAgents.filter(a => a.onboardingStage === "in_field_training").length;
-  const inField = activeAgents.filter(a => a.onboardingStage === "evaluated").length;
-  const meetingEligible = inTraining + inField;
-  const unlicensedAgents = activeAgents.filter(a => !a.licenseProgress || a.licenseProgress === "unlicensed").length;
   const totalDeals = activeAgents
     .filter(a => a.onboardingStage === "evaluated")
     .reduce((sum, a) => sum + a.monthlyDeals, 0);
@@ -719,7 +729,17 @@ export default function DashboardCRM() {
         className="animate-stagger-in"
         style={{ animationDelay: `${index * 30}ms` }}
       >
-      <GlassCard className={cn("p-2 card-hover-lift", agent.isDeactivated && "opacity-60")}>
+      <GlassCard className={cn("p-2 card-hover-lift relative", agent.isDeactivated && "opacity-60")}>
+        {/* Stale indicator - orange/red dot for agents not contacted in 48+ hours */}
+        {isStaleAgent(agent) && (
+          <div 
+            className={cn(
+              "absolute top-1.5 right-1.5 h-2.5 w-2.5 rounded-full",
+              !agent.lastContactedAt ? "bg-red-500 animate-pulse" : "bg-amber-500"
+            )} 
+            title={agent.lastContactedAt ? `Last contacted ${getTimeAgo(agent.lastContactedAt)}` : "Never contacted"}
+          />
+        )}
         <div className="flex flex-col gap-1.5">
           {/* Top Row: Agent Info + Star Rating + Deactivate */}
           <div className="flex items-start justify-between gap-1.5">
@@ -936,6 +956,18 @@ export default function DashboardCRM() {
               </div>
             );
           })()}
+
+          {/* Last Follow-Up line */}
+          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+            <Clock className="h-2.5 w-2.5" />
+            <span>Last F/U:</span>
+            <span className={cn(
+              "font-medium",
+              isStaleAgent(agent) ? "text-amber-500" : "text-foreground"
+            )}>
+              {agent.lastContactedAt ? getTimeAgo(agent.lastContactedAt) : "Never"}
+            </span>
+          </div>
 
           {/* Checklist - Compact */}
           <AgentChecklist
@@ -1353,7 +1385,7 @@ export default function DashboardCRM() {
               {(() => {
                 const columnConfig = {
                   in_course: { 
-                    label: "In Course", 
+                    label: "Onboarding", 
                     icon: BookOpen, 
                     stages: ["onboarding", "training_online"] as OnboardingStage[],
                     color: "text-primary",
@@ -1414,15 +1446,23 @@ export default function DashboardCRM() {
                 if (!config) return null;
 
                 const Icon = config.icon;
-                const expandedAgents = expandedColumn === "all"
+                const expandedAgentsUnsorted = expandedColumn === "all"
                   ? filteredAgents
                   : expandedColumn === "unlicensed"
-                  ? filteredAgents.filter(a => !a.licenseProgress || a.licenseProgress === "unlicensed")
+                  ? filteredAgents.filter(a => a.agentLicenseStatus === "unlicensed")
                   : expandedColumn === "paid"
                   ? activeAgents.filter(a => a.onboardingStage === "evaluated" && (a.standardPaid || a.premiumPaid))
                   : expandedColumn === "course_purchased"
                   ? filteredAgents.filter(a => a.hasTrainingCourse)
                   : filteredAgents.filter(a => config.stages.includes(a.onboardingStage));
+
+                // Sort by last contacted (null/oldest first) for follow-up priority
+                const expandedAgents = [...expandedAgentsUnsorted].sort((a, b) => {
+                  if (!a.lastContactedAt && !b.lastContactedAt) return 0;
+                  if (!a.lastContactedAt) return -1;
+                  if (!b.lastContactedAt) return 1;
+                  return new Date(a.lastContactedAt).getTime() - new Date(b.lastContactedAt).getTime();
+                });
 
                 return (
                   <>

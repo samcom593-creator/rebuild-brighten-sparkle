@@ -1,37 +1,57 @@
 
 
-# Fix Contracting Workflow: Agents Not Appearing in CRM, Course, or Dashboard
+# Import 20 Production Deals into the System
 
-## Problem Found
+## Overview
+Import the 20 deals you provided into the daily production tracking system using the existing `import-production-data` backend function.
 
-After investigating the database, here's what's broken:
+## Agent Name Matching
+All agent names from your list match database records **except one**:
 
-1. **Travon Colston** (contracted today) -- has NO agent record at all. The `add-agent` backend function failed (likely due to the deployment timeout error), but the code still marked the application as contracted. This means Travon is invisible everywhere: no CRM card, no course enrollment, no dashboard entry.
+| Deal Agent Name | Database Name | Status |
+|---|---|---|
+| Moody Imran | Moody Imran | Match |
+| Kaeden Vaughns | Kaeden Vaughns | Match |
+| Aisha Kebbeh | Aisha Kebbeh | Match |
+| Chukwudi Ifediora | Chukwudi Ifediora | Match |
+| Obiajulu Ifediora | Obiajulu Ifediora | Match |
+| Michael Kayembe | Michael Kayembe | Match |
+| Leslie Patino Galeana | Leslie | Mismatch -- will fix |
 
-2. **Marc Pelissier** -- has an agent record but `has_training_course` is `false`, so he won't appear in course progress tracking.
+## Deals to Import (20 total)
 
-3. **4 applications** have `status: "new"` instead of `"contracting"` even though they have `contracted_at` timestamps set. This is from older code that didn't update the status field.
+Grouped by agent and posted date, using the Annual ALP column:
 
-## Root Cause
+- **Moody Imran** (4 deals): $2,112 (Feb 15), $1,284 + $1,404 (Feb 10), $1,236 (Feb 9)
+- **Kaeden Vaughns** (4 deals): $3,080.40 (Feb 13), $533.28 (Feb 10), $1,155.72 + $865.80 (Feb 9)
+- **Aisha Kebbeh** (3 deals): $755.88 (Feb 13), $1,019.40 (Feb 12), $560.40 (Feb 9)
+- **Chukwudi Ifediora** (4 deals): $932.16 + $1,172.76 (Feb 12), $1,295.76 (Feb 11), $1,928.40 (Feb 9)
+- **Obiajulu Ifediora** (3 deals): $3,380.52 (Feb 11), $1,303.08 + $1,393.92 (Feb 9)
+- **Michael Kayembe** (1 deal): $451.80 (Feb 10)
+- **Leslie Patino Galeana** (1 deal): $1,645.92 (Feb 9)
 
-The ContractedModal has a critical sequencing bug: it calls the `add-agent` function first, but if the function fails, the code catches the error and returns early -- **except** the Supabase SDK doesn't always properly report edge function errors for non-2xx responses. This means the code can silently proceed past the error check, mark the application as contracted, but never actually create the agent.
+## Steps
 
-## Fixes
+### 1. Fix Leslie's Profile Name
+Update the profile name from "Leslie" to "Leslie Patino Galeana" so the import function can match her.
 
-### 1. Fix ContractedModal.tsx -- Bulletproof Error Handling
-- Add explicit response status checking when invoking `add-agent`
-- If agent creation fails for any reason, do NOT update the application -- abort entirely with an error message
-- Remove the `as any` type cast on status (it's a valid enum, no cast needed)
+### 2. Call the Import Function
+Invoke the `import-production-data` backend function with all 20 deals formatted as:
+```text
+{ agent_name, annual_alp, posted_date (YYYY-MM-DD) }
+```
 
-### 2. Repair Orphaned Data
-- **Travon Colston**: Create auth account, profile, and agent record via the `add-agent` function now that it's deployed
-- **Marc Pelissier**: Set `has_training_course = true` on his agent record
-- **Fix all 4 application statuses**: Update from `"new"` to `"contracting"` where `contracted_at` is set
+The function will:
+- Match each deal to an agent by name
+- Aggregate deals by agent + date (e.g., Chukwudi's two Feb 12 deals become one record with combined ALP)
+- Add to any existing daily_production records for that date (won't overwrite)
+- Report any failures
 
-### 3. Fix Application Status Updates
-- Update all 4 orphaned applications (Travon, Lev, Shavanna, Marc) to have `status = "contracting"` to match their `contracted_at` timestamps
+### 3. Verify Results
+Confirm all 20 deals were imported successfully and check the leaderboard/dashboard reflects the updated numbers.
 
-## Files to Modify
-1. `src/components/dashboard/ContractedModal.tsx` -- Fix error handling to prevent silent failures
-2. Data repair actions for the 5 affected records
+## Technical Details
+- **File modified**: None (profile name fix via database update)
+- **Function used**: `import-production-data` edge function (already deployed)
+- **No code changes needed** -- this is a data operation only
 

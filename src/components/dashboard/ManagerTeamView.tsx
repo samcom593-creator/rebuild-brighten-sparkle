@@ -50,7 +50,7 @@ import { toast } from "sonner";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 type SortOption = "production-desc" | "production-asc" | "name" | "status";
-type RosterFilter = "all" | "licensed" | "unlicensed" | "training";
+type RosterFilter = "all" | "licensed" | "unlicensed" | "training" | "training_online" | "in_field_training";
 
 interface TeamMember {
   id: string;
@@ -543,14 +543,26 @@ export function ManagerTeamView() {
     [activeMembers]
   );
 
+  const inCourseMembers = useMemo(() =>
+    activeMembers.filter(m => m.onboardingStage === "training_online"),
+    [activeMembers]
+  );
+
+  const inFieldMembers = useMemo(() =>
+    activeMembers.filter(m => m.onboardingStage === "in_field_training"),
+    [activeMembers]
+  );
+
   const filteredMembers = useMemo(() => {
     switch (activeFilter) {
       case "licensed": return licensedMembers;
       case "unlicensed": return unlicensedMembers;
       case "training": return trainingMembers;
+      case "training_online": return inCourseMembers;
+      case "in_field_training": return inFieldMembers;
       default: return activeMembers;
     }
-  }, [activeFilter, licensedMembers, unlicensedMembers, trainingMembers, activeMembers]);
+  }, [activeFilter, licensedMembers, unlicensedMembers, trainingMembers, inCourseMembers, inFieldMembers, activeMembers]);
 
   const handleFilterClick = (filter: RosterFilter) => {
     setActiveFilter(prev => prev === filter ? "all" : filter);
@@ -910,7 +922,7 @@ export function ManagerTeamView() {
         <GlassCard
           className={cn(
             "p-4 cursor-pointer transition-all",
-            activeFilter === "training"
+            (activeFilter === "training" || activeFilter === "training_online" || activeFilter === "in_field_training")
               ? "ring-2 ring-violet-500 shadow-lg shadow-violet-500/10"
               : "hover:bg-muted/50"
           )}
@@ -925,6 +937,33 @@ export function ManagerTeamView() {
               <p className="text-xs text-muted-foreground">In Training</p>
             </div>
           </div>
+          {/* Sub-filter buttons */}
+          {(activeFilter === "training" || activeFilter === "training_online" || activeFilter === "in_field_training") && (
+            <div className="flex gap-1.5 mt-2 pt-2 border-t border-border/50">
+              <button
+                onClick={(e) => { e.stopPropagation(); setActiveFilter("training_online"); }}
+                className={cn(
+                  "flex-1 text-[10px] font-medium py-1 px-2 rounded-md transition-all",
+                  activeFilter === "training_online"
+                    ? "bg-violet-500/20 text-violet-400 ring-1 ring-violet-500/30"
+                    : "bg-muted/50 text-muted-foreground hover:text-foreground"
+                )}
+              >
+                In Course ({inCourseMembers.length})
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); setActiveFilter("in_field_training"); }}
+                className={cn(
+                  "flex-1 text-[10px] font-medium py-1 px-2 rounded-md transition-all",
+                  activeFilter === "in_field_training"
+                    ? "bg-violet-500/20 text-violet-400 ring-1 ring-violet-500/30"
+                    : "bg-muted/50 text-muted-foreground hover:text-foreground"
+                )}
+              >
+                In Field ({inFieldMembers.length})
+              </button>
+            </div>
+          )}
         </GlassCard>
         <GlassCard className="p-4">
           <div className="flex items-center gap-3">

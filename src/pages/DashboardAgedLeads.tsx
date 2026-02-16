@@ -288,10 +288,12 @@ export default function DashboardAgedLeads() {
     const emailCount = new Map<string, number>();
     const phoneCount = new Map<string, number>();
     leads.forEach(lead => {
-      if (lead.email) {
-        const key = lead.email.toLowerCase().trim();
-        emailCount.set(key, (emailCount.get(key) || 0) + 1);
+      // Only count non-empty emails for duplicate detection
+      const emailKey = lead.email?.toLowerCase().trim();
+      if (emailKey && emailKey.length > 0) {
+        emailCount.set(emailKey, (emailCount.get(emailKey) || 0) + 1);
       }
+      // Only count valid 10-digit phones
       if (lead.phone) {
         const key = lead.phone.replace(/\D/g, "").slice(-10);
         if (key.length === 10) phoneCount.set(key, (phoneCount.get(key) || 0) + 1);
@@ -301,8 +303,10 @@ export default function DashboardAgedLeads() {
     leads.forEach(lead => {
       const emailKey = lead.email?.toLowerCase().trim();
       const phoneKey = lead.phone?.replace(/\D/g, "").slice(-10);
-      if ((emailKey && (emailCount.get(emailKey) || 0) > 1) ||
-          (phoneKey && phoneKey.length === 10 && (phoneCount.get(phoneKey) || 0) > 1)) {
+      // Only flag as duplicate if the key is non-empty and appears more than once
+      const emailDupe = emailKey && emailKey.length > 0 && (emailCount.get(emailKey) || 0) > 1;
+      const phoneDupe = phoneKey && phoneKey.length === 10 && (phoneCount.get(phoneKey) || 0) > 1;
+      if (emailDupe || phoneDupe) {
         dupeIds.add(lead.id);
       }
     });
@@ -339,7 +343,8 @@ export default function DashboardAgedLeads() {
     leads.forEach(lead => {
       const emailKey = lead.email?.toLowerCase().trim();
       const phoneKey = lead.phone?.replace(/\D/g, "").slice(-10);
-      const key = emailKey || (phoneKey && phoneKey.length === 10 ? phoneKey : null);
+      // Only group by email if non-empty, or by phone if valid 10-digit
+      const key = (emailKey && emailKey.length > 0) ? emailKey : (phoneKey && phoneKey.length === 10 ? phoneKey : null);
       if (!key) return;
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(lead);

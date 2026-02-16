@@ -1,49 +1,48 @@
 
+# Fix Contracted People Not Appearing in CRM, Course, or Dashboard
 
-# Fix Application Emails, Manager Notifications, Growth Calculation, and Abandoned Follow-ups
+## Root Cause Found
 
-## What's Changing
+After investigating the database and code, I found **3 people** who were marked as "contracted" but have **no agent record created** -- meaning they're invisible to the CRM, course progress page, and dashboard roster:
 
-### 1. Manager's Own Email (the manager who got the recruit)
-The current `sendManagerNotification` in `submit-application/index.ts` already sends the assigned manager full recruit info. However, it's missing dedicated action buttons. Will add:
-- **View IG** button (links to recruit's Instagram profile, only shown if IG handle exists)
-- **Call Now** button (prominent tel: link styled as a button)
-- **View Lead** button (links to the applicant dashboard page)
+1. **Donovan Robinson** (drobinson.2019@icloud.com) - contracted Feb 15
+2. **Gabrielle Bannister** (bannigab000@gmail.com) - contracted Feb 6
+3. **Gavin Charles** (06gman08@gmail.com) - contracted Feb 6
 
-These will replace the current inline text links with proper mobile-friendly CTA buttons at the bottom of the email.
+## Bugs Identified
 
-### 2. All-Managers Broadcast Email (everyone else)
-The current `notify-all-managers-leaderboard` function sends a generic "X scored another recruit!" email to all managers. Will update to:
-- Include the recruit's name: "[Manager] just got a new recruit: [Recruit Name]!"
-- Add the $7K growth calculation: "estimated potential override growth of $7,000"
-- Show a daily leaderboard summary: which manager recruited the most that day, with total estimated value (recruits x $7,000)
-- Keep it clean and motivational per the existing email standards
+### Bug 1: "Already Contracted" toggle silently fails
+When the "Already contracted" toggle is ON in the Contract modal, the code tries to look up an existing agent by email. If none exists, it sets `newAgentId = null` and **proceeds anyway** -- marking the application as contracted but creating no agent record and skipping course enrollment entirely. This is the primary cause.
 
-### 3. Send Re-apply Links to All Abandoned Partial Applications
-There are 4 unconverted partial applications in the database. Will invoke the `send-abandoned-followup` function for each one that has an email and hasn't already received a follow-up (checking `form_data->followup_sent_at`). This sends them a "Complete My Application" email with a direct link to /apply.
+### Bug 2: Application status never updated
+The ContractedModal sets `contracted_at` and `closed_at` timestamps but never updates the `status` field. The application stays as "new" or "approved", creating data inconsistency.
 
-## Technical Changes
+### Bug 3: Course enrollment is fire-and-forget
+The `has_training_course = true` update and course enrollment email are called with `.then()` instead of being awaited. If they fail silently, the agent won't appear in course progress.
 
-### File: `supabase/functions/submit-application/index.ts` (lines 200-270)
-Update `sendManagerNotification` to add three CTA buttons after the applicant details table:
-- "View Instagram" button (conditional on instagramHandle existing) linking to `https://instagram.com/{handle}`
-- "Call Now" button linking to `tel:{phone}`
-- "View Lead" button linking to `https://apex-financial.org/dashboard/applicants?lead={applicationId}`
+### Bug 4: Agent created with wrong onboarding stage
+The `add-agent` function sets `onboarding_stage: "onboarding"` instead of `"training_online"` -- but contracted agents should be in the training stage.
 
-Styled as table-based buttons (mobile-safe, no flexbox per email standards).
+## Fixes
 
-### File: `supabase/functions/notify-all-managers-leaderboard/index.ts`
-Update `sendLeaderboardEmail` to:
-- Accept and display the recruit's name in the email body
-- Add the $7K estimated value calculation: "That's an estimated $7,000 in potential override value!"
-- Update the subject line to include the recruit name: "[Manager] just recruited [Name]!"
-- For organic leads: "New organic lead: [Name] -- estimated $7,000 in potential override value"
-- Pass `applicantName` through from the handler to the email function
+### 1. Fix ContractedModal.tsx
+- When "Already contracted" is ON and no existing agent is found: show an error toast and abort (don't mark application as contracted)
+- Update application `status` to `"contracting"` alongside `contracted_at`
+- Pass `hasTrainingCourse: true` to the `add-agent` function so it's set atomically in the initial insert
+- Await the training course update instead of fire-and-forget
+- Remove the redundant client-side `has_training_course` update since it'll be handled by add-agent
 
-### Action: Trigger abandoned follow-ups
-After deploying, invoke `send-abandoned-followup` for each unconverted partial application that has an email and no prior follow-up sent. There are 2 eligible leads (the ones without `followup_sent_at`).
+### 2. Fix add-agent Edge Function
+- Accept new parameter `hasTrainingCourse` (boolean)
+- When true, include `has_training_course: true` and `onboarding_stage: "training_online"` in the agent record insert
+- This ensures the agent is created with the correct state in a single atomic operation
+
+### 3. Repair Orphaned Data
+- Use the `create-new-agent-account` edge function to create auth users, profiles, and agent records for the 3 orphaned contracted people
+- Set `has_training_course: true` and `onboarding_stage: "training_online"` on each
+- Link them to their assigned managers
 
 ## Files to Modify
-1. `supabase/functions/submit-application/index.ts` -- Add IG/Call/View buttons to manager email
-2. `supabase/functions/notify-all-managers-leaderboard/index.ts` -- Add recruit name and $7K growth calculation
-3. Deploy both functions and trigger abandoned follow-ups
+1. `src/components/dashboard/ContractedModal.tsx` -- Fix all 4 bugs
+2. `supabase/functions/add-agent/index.ts` -- Accept hasTrainingCourse param
+3. Deploy both functions and repair the 3 orphaned records

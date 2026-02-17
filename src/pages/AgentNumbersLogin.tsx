@@ -293,21 +293,13 @@ export default function AgentNumbersLogin() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4 overflow-hidden">
-      {/* Animated background */}
+      {/* Static background gradients — no infinite animations */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(var(--primary)/0.15)_0%,transparent_50%)]" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,hsl(var(--chart-2)/0.1)_0%,transparent_50%)]" />
       
-      {/* Floating elements */}
-      <motion.div
-        className="absolute top-20 left-10 w-20 h-20 rounded-full bg-primary/10 blur-xl"
-        animate={{ y: [0, -20, 0], scale: [1, 1.1, 1] }}
-        transition={{ duration: 4, repeat: Infinity }}
-      />
-      <motion.div
-        className="absolute bottom-20 right-10 w-32 h-32 rounded-full bg-primary/5 blur-xl"
-        animate={{ y: [0, 20, 0], scale: [1, 1.2, 1] }}
-        transition={{ duration: 5, repeat: Infinity }}
-      />
+      {/* Static floating elements — no repeat animations */}
+      <div className="absolute top-20 left-10 w-20 h-20 rounded-full bg-primary/10 blur-xl" />
+      <div className="absolute bottom-20 right-10 w-32 h-32 rounded-full bg-primary/5 blur-xl" />
       
       <motion.div
         initial={{ opacity: 0, y: 20 }}

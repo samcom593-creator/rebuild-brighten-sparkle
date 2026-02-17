@@ -97,6 +97,8 @@ export default function Apply() {
   const [motivationText, setMotivationText] = useState("");
   const [motivationError, setMotivationError] = useState("");
   const [duplicateError, setDuplicateError] = useState(false);
+  const [smsConsentError, setSmsConsentError] = useState(false);
+  const smsConsentRef = useRef<HTMLDivElement>(null);
   const isSubmittedRef = useRef(false);
   const [sessionId] = useState<string>(() => {
     // Generate a unique session ID for partial application tracking
@@ -865,13 +867,21 @@ export default function Apply() {
                     </div>
                   )}
 
-                  {/* Step 4: Goals */}
+                   {/* Step 4: Goals */}
                   {currentStep === 4 && (
                     <div className="space-y-6">
                       <div>
                         <h2 className="text-2xl font-bold mb-2">Your Goals</h2>
                         <p className="text-muted-foreground">Help us understand what you're looking for.</p>
                       </div>
+
+                      {/* SMS Consent Error Banner */}
+                      {smsConsentError && (
+                        <div className="p-4 rounded-xl border border-destructive/30 bg-destructive/10 text-destructive">
+                          <p className="font-semibold text-sm">⚠️ SMS Consent Required</p>
+                          <p className="text-xs mt-1">Please scroll down and check the SMS consent checkbox to submit your application.</p>
+                        </div>
+                      )}
 
                       <div className="space-y-2">
                         <Label>Availability *</Label>
@@ -913,7 +923,7 @@ export default function Apply() {
                         <h3 className="font-semibold text-foreground">Communication Consent</h3>
                         
                         {/* SMS Consent */}
-                        <div className="space-y-3">
+                        <div ref={smsConsentRef} className="space-y-3">
                           <p id="smsConsentDisclosure" className="text-sm text-muted-foreground leading-relaxed">
                             By checking the box below, you agree to receive SMS/text messages from{" "}
                             <strong className="text-foreground">Apex Financial</strong> at the number you provide 
@@ -1101,9 +1111,18 @@ export default function Apply() {
                         onClick={async () => {
                           const step4Valid = await validateStep(4);
                           if (!step4Valid) {
-                            toast.error("Please select your availability and agree to SMS consent.");
+                            // Check specifically for SMS consent
+                            const smsValue = getValues("smsConsent");
+                            if (!smsValue) {
+                              setSmsConsentError(true);
+                              smsConsentRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                              toast.error("Please scroll down and check the SMS consent box to continue.", { duration: 6000 });
+                            } else {
+                              toast.error("Please select your availability to continue.");
+                            }
                             return;
                           }
+                          setSmsConsentError(false);
                           handleSubmit(onSubmit, (validationErrors) => {
                             const fieldNames = Object.keys(validationErrors);
                             toast.error(`Please go back and fix: ${fieldNames.join(", ")}`, { duration: 6000 });
@@ -1117,8 +1136,8 @@ export default function Apply() {
                           </>
                         ) : (
                           <>
-                            Continue
-                            <ArrowRight className="h-4 w-4 ml-2" />
+                            Submit Application
+                            <CheckCircle2 className="h-4 w-4 ml-2" />
                           </>
                         )}
                       </GradientButton>

@@ -107,10 +107,10 @@ const App = () => (
                   <Route path="/terms" element={<Terms />} />
                   <Route path="/disclosures" element={<Disclosures />} />
                   <Route path="/install" element={<Install />} />
+                  <Route path="/apex-daily-numbers" element={<LogNumbers />} />
 
                   {/* Authenticated shell - sidebar mounted once */}
                   <Route element={<AuthenticatedShell />}>
-                    <Route path="/apex-daily-numbers" element={<LogNumbers />} />
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/dashboard/applicants" element={<DashboardApplicants />} />
                     <Route path="/dashboard/admin" element={<DashboardAdmin />} />

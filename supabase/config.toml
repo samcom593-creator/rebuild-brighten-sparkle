@@ -279,3 +279,6 @@ verify_jwt = false
 
 [functions.system-health-check]
 verify_jwt = false
+
+[functions.log-production]
+verify_jwt = false

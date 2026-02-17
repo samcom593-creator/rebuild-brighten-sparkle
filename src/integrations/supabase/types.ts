@@ -1173,6 +1173,33 @@ export type Database = {
           },
         ]
       }
+      health_check_log: {
+        Row: {
+          check_name: string
+          created_at: string
+          error_message: string | null
+          id: string
+          response_time_ms: number
+          status: string
+        }
+        Insert: {
+          check_name: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          response_time_ms?: number
+          status: string
+        }
+        Update: {
+          check_name?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          response_time_ms?: number
+          status?: string
+        }
+        Relationships: []
+      }
       interview_recordings: {
         Row: {
           agent_id: string | null

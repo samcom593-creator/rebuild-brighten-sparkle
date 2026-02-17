@@ -276,3 +276,6 @@ verify_jwt = false
 
 [functions.notify-hire-announcement]
 verify_jwt = false
+
+[functions.system-health-check]
+verify_jwt = false

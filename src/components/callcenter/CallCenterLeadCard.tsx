@@ -141,11 +141,7 @@ export function CallCenterLeadCard({
       )}
     >
       {/* Ambient glow effect */}
-      <motion.div
-        className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 pointer-events-none"
-        animate={{ opacity: [0.3, 0.5, 0.3] }}
-        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-      />
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 pointer-events-none opacity-40" />
 
       {/* Recording indicator overlay */}
       {isRecording && (
@@ -200,12 +196,7 @@ export function CallCenterLeadCard({
               <h2 className="text-xl md:text-2xl font-bold text-foreground">
                 {lead.firstName} {lead.lastName || ""}
               </h2>
-              <motion.div
-                animate={{ rotate: [0, 15, -15, 0] }}
-                transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-              >
-                <Sparkles className="h-4 w-4 text-primary/60" />
-              </motion.div>
+              <Sparkles className="h-4 w-4 text-primary/60" />
             </motion.div>
 
             {/* Time info - All three timestamps */}
@@ -282,19 +273,9 @@ export function CallCenterLeadCard({
                 />
               )}
 
-              <motion.div
-                className="relative p-3 rounded-full bg-green-500/20 group-hover:bg-green-500/30 transition-colors"
-                animate={{ scale: [1, 1.05, 1] }}
-                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-              >
+              <div className="relative p-3 rounded-full bg-green-500/20 group-hover:bg-green-500/30 transition-colors">
                 <Phone className="h-5 w-5 text-green-400" />
-                {/* Pulsing ring */}
-                <motion.div
-                  className="absolute inset-0 rounded-full border-2 border-green-400/40"
-                  animate={{ scale: [1, 1.4, 1.4], opacity: [0.6, 0, 0] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
-                />
-              </motion.div>
+              </div>
               <div className="flex-1 relative z-10">
                 <div className="text-lg font-semibold text-foreground">{formatPhoneDisplay(lead.phone)}</div>
                 <div className="text-xs text-green-400">Tap to call</div>

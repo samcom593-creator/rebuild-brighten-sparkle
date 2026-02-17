@@ -1,67 +1,78 @@
 
-# Fix Unlicensed Count -- Include All Non-Licensed People
+# Fix Application Submission Flow -- 3 Critical Issues
 
-## Root Cause
+## Issue 1: Partial Applications Failing with 401 (CRITICAL)
 
-The CRM Pipeline (`DashboardCRM.tsx`) only pulls data from the **agents** table, which has just 3 unlicensed records. Meanwhile, the **applications** table has 60+ unlicensed applicants (people who applied, got approved/hired, are in the licensing process). These people are completely missing from the CRM pipeline counts.
+**Root Cause**: All RLS policies on `partial_applications` are set as **RESTRICTIVE** (not PERMISSIVE). In PostgreSQL, if there are zero PERMISSIVE policies, access is denied by default -- RESTRICTIVE policies only narrow access, they don't grant it. This means every client-side `upsert` to `partial_applications` silently fails with a 401 error.
 
-The main Dashboard (`Dashboard.tsx`) has the same problem -- it only counts `license_status === "unlicensed"` from applications assigned to the agent, missing anyone with `pending` status.
-
-## What Counts as "Unlicensed"
-
-Anyone who does NOT have `license_status = 'licensed'` is unlicensed. This includes:
-- Agents with `license_status = 'unlicensed'` (3 in DB)
-- Agents with `license_status = 'pending'` (0 in agents, 2 in applications)  
-- Applicants in any licensing progress stage: course purchased, studying, test scheduled, waiting on license, finished course -- all unlicensed until they get their actual license
-
-## Changes
-
-### 1. `src/pages/DashboardCRM.tsx` -- Include Applications in Pipeline
-
-**Data Fetching**: Add a query to fetch unlicensed applicants from the `applications` table (same pattern used in `ManagerTeamView`):
-- Fetch applications where `terminated_at IS NULL` and `license_status != 'licensed'` and `status IN ('approved', 'contracting')`
-- Deduplicate against existing agent records by email
-- Convert these applicants into `AgentCRM` objects with `agentLicenseStatus: "unlicensed"`
-
-**Stat Card Fix**: Update the "Hired (Unlicensed)" count to use `!= 'licensed'` instead of `=== 'unlicensed'`, capturing `pending` status too:
+**Evidence**: Browser console shows:
 ```
-// Before
-a.agentLicenseStatus === "unlicensed"
-// After  
-a.agentLicenseStatus !== "licensed"
+Failed to load resource: the server responded with a status of 401 ()
+(partial_applications?on_conflict=session_id)
 ```
 
-**Expanded View Filter**: Same fix for the unlicensed expanded view filter (line ~1462):
-```
-// Before
-filteredAgents.filter(a => a.agentLicenseStatus === "unlicensed")
-// After
-filteredAgents.filter(a => a.agentLicenseStatus !== "licensed")
-```
+**Fix**: Database migration to drop and recreate the INSERT and UPDATE policies as PERMISSIVE:
+```sql
+DROP POLICY "Anyone can insert partial applications" ON partial_applications;
+CREATE POLICY "Anyone can insert partial applications" 
+  ON partial_applications FOR INSERT 
+  WITH CHECK (true);
 
-### 2. `src/pages/Dashboard.tsx` -- Fix Unlicensed Count
-
-Update the unlicensed count calculation (line ~122) to count everyone who isn't licensed:
-```
-// Before
-const unlicensed = applications.filter(a => a.license_status === "unlicensed").length;
-// After
-const unlicensed = applications.filter(a => a.license_status !== "licensed").length;
+DROP POLICY "Anyone can update their own session" ON partial_applications;
+CREATE POLICY "Anyone can update their own session" 
+  ON partial_applications FOR UPDATE 
+  USING (true) WITH CHECK (true);
 ```
 
-### 3. `src/components/dashboard/OnboardingPipelineCard.tsx` -- Include Pending
+## Issue 2: SMS Consent Checkbox Easily Missed
 
-The pipeline card already counts by onboarding stage which is fine, but the pre-licensing count should also include `pending`:
+**Root Cause**: On step 4, the SMS consent checkbox is below the fold. Users fill in Availability, click "Continue", and get a small toast error that disappears in ~4 seconds. On mobile this is even worse -- the toast may be partially hidden.
+
+**Fix** in `src/pages/Apply.tsx`:
+- Add a prominent inline error banner at the TOP of step 4 when the SMS consent fails validation (similar to the existing duplicate error banner)
+- Auto-scroll to the SMS consent checkbox when validation fails
+- Change the error toast text to be clearer: "Please scroll down and check the SMS consent box to continue"
+
+## Issue 3: Step 4 Button Says "Continue" Instead of "Submit"
+
+**Root Cause**: The button on step 4 (line 1098-1124) says "Continue" with an arrow icon. Users don't realize this is the actual submit action, and may not take the consent checkbox seriously.
+
+**Fix** in `src/pages/Apply.tsx`:
+- Change button text from "Continue" to "Submit Application"
+- Change icon from ArrowRight to CheckCircle2
+- This makes it clear that clicking submits the form, prompting users to ensure everything is filled out
+
+## Issue 4: Lost Lead Recovery
+
+**Problem**: Since partial_applications were silently failing, any lead who abandoned the form was never logged. I cannot identify the specific lost lead from the database since no partial record was saved.
+
+**Fix**: Once the RLS policies are fixed, future partial applications will be saved correctly. For the specific lead, I cannot recover their data -- the user would need to know their name/email/phone to send them a resubmit request manually.
+
+## Files to Modify
+
+1. **Database migration** -- Fix partial_applications RLS policies (RESTRICTIVE to PERMISSIVE)
+2. **`src/pages/Apply.tsx`** -- Improve SMS consent error visibility, change button text, add auto-scroll to error
+
+## Technical Details
+
+### RLS Policy Fix (Migration SQL)
+```sql
+-- Fix INSERT policy: change from RESTRICTIVE to PERMISSIVE
+DROP POLICY "Anyone can insert partial applications" ON public.partial_applications;
+CREATE POLICY "Anyone can insert partial applications" 
+  ON public.partial_applications FOR INSERT 
+  TO public
+  WITH CHECK (true);
+
+-- Fix UPDATE policy: change from RESTRICTIVE to PERMISSIVE  
+DROP POLICY "Anyone can update their own session" ON public.partial_applications;
+CREATE POLICY "Anyone can update their own session" 
+  ON public.partial_applications FOR UPDATE 
+  TO public
+  USING (true) WITH CHECK (true);
 ```
-// Before
-if (agent.license_status === "unlicensed" && agent.has_training_course === true)
-// After
-if (agent.license_status !== "licensed" && agent.has_training_course === true)
-```
 
-## Files Modified
-1. `src/pages/DashboardCRM.tsx` -- Add applications query, merge into agent list, fix filter logic
-2. `src/pages/Dashboard.tsx` -- Fix unlicensed count to use `!== "licensed"`
-3. `src/components/dashboard/OnboardingPipelineCard.tsx` -- Include pending in pre-licensing count
-
-No database changes needed.
+### Apply.tsx Changes
+- Line 1098-1124: Change "Continue" button to "Submit Application" with CheckCircle2 icon
+- Line 1101-1111: Add ref-based auto-scroll to SMS consent on validation failure
+- Add state for inline step 4 validation error banner (below the "Your Goals" heading)

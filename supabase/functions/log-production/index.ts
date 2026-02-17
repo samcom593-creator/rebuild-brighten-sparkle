@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
           onboarding_stage,
           profile:profiles!agents_profile_id_fkey(full_name, email)
         `)
-        .eq("is_deactivated", false);
+        ;
 
       if (error) throw error;
 

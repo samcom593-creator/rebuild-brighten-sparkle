@@ -20,17 +20,9 @@ export const CTASection = forwardRef<HTMLElement>((_, ref) => {
       <div className="absolute inset-0 bg-gradient-to-b from-background via-primary/5 to-background" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(168_84%_42%/0.15)_0%,transparent_50%)]" />
       
-      {/* Animated orbs */}
-      <motion.div
-        className="absolute top-10 left-1/4 w-64 h-64 bg-primary/10 rounded-full blur-3xl"
-        animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
-        transition={{ duration: 8, repeat: Infinity }}
-      />
-      <motion.div
-        className="absolute bottom-10 right-1/4 w-64 h-64 bg-primary/10 rounded-full blur-3xl"
-        animate={{ scale: [1.2, 1, 1.2], opacity: [0.5, 0.3, 0.5] }}
-        transition={{ duration: 8, repeat: Infinity }}
-      />
+      {/* Static orbs */}
+      <div className="absolute top-10 left-1/4 w-64 h-64 bg-primary/10 rounded-full blur-3xl opacity-40" />
+      <div className="absolute bottom-10 right-1/4 w-64 h-64 bg-primary/10 rounded-full blur-3xl opacity-40" />
 
       <div className="container mx-auto px-4 relative z-10">
         <motion.div

@@ -108,23 +108,22 @@ export default function LogNumbers() {
       setLoadingExisting(true);
       try {
         const today = getTodayPST();
-        const { data } = await supabase
-          .from("daily_production")
-          .select("*")
-          .eq("agent_id", selectedAgent.id)
-          .eq("production_date", today)
-          .maybeSingle();
+        const { data, error } = await supabase.functions.invoke("log-production", {
+          body: { action: "load-existing", agentId: selectedAgent.id, date: today }
+        });
 
-        if (data) {
+        if (error) throw error;
+
+        if (data?.data) {
           setProductionData({
-            presentations: data.presentations || 0,
+            presentations: data.data.presentations || 0,
             passed_price: 0,
-            hours_called: data.hours_called || 0,
-            referrals_caught: data.referrals_caught || 0,
+            hours_called: data.data.hours_called || 0,
+            referrals_caught: data.data.referrals_caught || 0,
             booked_inhome_referrals: 0,
-            referral_presentations: data.referral_presentations || 0,
-            deals_closed: data.deals_closed || 0,
-            aop: data.aop || 0,
+            referral_presentations: data.data.referral_presentations || 0,
+            deals_closed: data.data.deals_closed || 0,
+            aop: data.data.aop || 0,
           });
         }
       } catch (err) {
@@ -149,33 +148,13 @@ export default function LogNumbers() {
 
     setSearching(true);
     try {
-      const { data: agents, error } = await supabase
-        .from("agents")
-        .select(`
-          id,
-          onboarding_stage,
-          profile:profiles!agents_profile_id_fkey(
-            full_name,
-            email
-          )
-        `)
-        .eq("is_deactivated", false);
+      const { data, error } = await supabase.functions.invoke("log-production", {
+        body: { action: "search", query: searchQuery }
+      });
 
       if (error) throw error;
 
-      const query = searchQuery.toLowerCase().trim();
-      const matches = (agents || [])
-        .filter((a: any) => {
-          const name = a.profile?.full_name?.toLowerCase() || "";
-          const email = a.profile?.email?.toLowerCase() || "";
-          return name.includes(query) || email.includes(query);
-        })
-        .map((a: any) => ({
-          id: a.id,
-          name: a.profile?.full_name || "Unknown",
-          email: a.profile?.email || "",
-          onboardingStage: a.onboarding_stage
-        }));
+      const matches: MatchedAgent[] = data?.agents || [];
 
       setMatchedAgents(matches);
 
@@ -252,21 +231,19 @@ export default function LogNumbers() {
     try {
       const today = getTodayPST();
 
-      const { error } = await supabase
-        .from("daily_production")
-        .upsert({
-          agent_id: selectedAgent.id,
-          production_date: today,
-          ...productionData,
-          hours_called: Number(productionData.hours_called),
-          aop: Number(productionData.aop),
-        }, {
-          onConflict: "agent_id,production_date",
-        });
+      const { data, error } = await supabase.functions.invoke("log-production", {
+        body: {
+          action: "submit",
+          agentId: selectedAgent.id,
+          date: today,
+          productionData,
+        }
+      });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-      // Show success INSTANTLY — don't wait for notifications or leaderboard
+      // Show success INSTANTLY
       setShowConfetti(true);
       setStep("leaderboard");
 
@@ -294,63 +271,17 @@ export default function LogNumbers() {
     try {
       const weekStartStr = getWeekStartPST();
 
-      // Fetch agents and leaderboard profiles in parallel
-      const [agentsResult, profilesResult, prodResult] = await Promise.all([
-        supabase
-          .from("agents")
-          .select("id, user_id")
-          .eq("is_deactivated", false),
-        supabase.rpc("get_leaderboard_profiles"),
-        supabase
-          .from("daily_production")
-          .select("agent_id, aop, deals_closed, presentations")
-          .gte("production_date", weekStartStr),
-      ]);
-
-      if (agentsResult.error) throw agentsResult.error;
-      if (prodResult.error) throw prodResult.error;
-
-      // Build a userId -> name map from the security definer RPC
-      const profileNameMap = new Map<string, string>();
-      for (const p of profilesResult.data || []) {
-        profileNameMap.set(p.user_id, p.full_name || "Unknown");
-      }
-
-      const agentMap = new Map<string, LeaderboardEntry>();
-      
-      for (const agent of agentsResult.data || []) {
-        agentMap.set(agent.id, {
-          agentId: agent.id,
-          agentName: profileNameMap.get(agent.user_id || "") || "Unknown",
-          weeklyALP: 0,
-          weeklyDeals: 0,
-          weeklyPresentations: 0,
-          closingRate: 0,
-          rank: 0
-        });
-      }
-
-      const production = prodResult.data;
-
-      for (const prod of production || []) {
-        const entry = agentMap.get(prod.agent_id);
-        if (entry) {
-          entry.weeklyALP += Number(prod.aop) || 0;
-          entry.weeklyDeals += prod.deals_closed || 0;
-          entry.weeklyPresentations += prod.presentations || 0;
+      const { data, error } = await supabase.functions.invoke("log-production", {
+        body: {
+          action: "leaderboard",
+          weekStart: weekStartStr,
+          currentAgentId: selectedAgent.id,
         }
-      }
+      });
 
-      const entries = Array.from(agentMap.values())
-        .map(e => ({
-          ...e,
-          closingRate: e.weeklyPresentations > 0 
-            ? Math.round((e.weeklyDeals / e.weeklyPresentations) * 100) 
-            : 0
-        }))
-        .sort((a, b) => b.weeklyALP - a.weeklyALP)
-        .map((e, idx) => ({ ...e, rank: idx + 1 }));
+      if (error) throw error;
 
+      const entries: LeaderboardEntry[] = data?.entries || [];
       setLeaderboard(entries);
 
       const currentAgentEntry = entries.find(e => e.agentId === selectedAgent.id);
@@ -372,11 +303,10 @@ export default function LogNumbers() {
   ];
 
   const steps: Step[] = ["search", "select", "new-agent", "production", "leaderboard"];
-  const stepLabels = ["Search", "Select", "New Agent", "Production", "Leaderboard"];
   const currentStepIndex = steps.indexOf(step);
 
   return (
-      <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <ConfettiCelebration 
         trigger={showConfetti} 
         onComplete={() => setShowConfetti(false)} 
@@ -811,6 +741,6 @@ export default function LogNumbers() {
           )}
         </AnimatePresence>
       </motion.div>
-      </div>
+    </div>
   );
 }

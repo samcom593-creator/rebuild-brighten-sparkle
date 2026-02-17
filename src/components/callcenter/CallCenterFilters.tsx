@@ -81,36 +81,12 @@ export function CallCenterFilters({
           whileHover={{ scale: 1.05, rotate: 5 }}
           transition={{ type: "spring", stiffness: 400, damping: 20 }}
         >
-          {/* Floating animation for phone icon */}
-          <motion.div
-            animate={{
-              y: [0, -4, 0],
-              rotate: [0, 5, -5, 0],
-            }}
-            transition={{
-              duration: 3,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-          >
-            <Phone className="h-10 w-10 text-primary" />
-          </motion.div>
+          <Phone className="h-10 w-10 text-primary" />
 
           {/* Sparkle decoration */}
-          <motion.div
-            className="absolute -top-1 -right-1"
-            animate={{ rotate: [0, 20, -20, 0], scale: [1, 1.1, 1] }}
-            transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
-          >
+          <div className="absolute -top-1 -right-1">
             <Sparkles className="h-4 w-4 text-yellow-400" />
-          </motion.div>
-
-          {/* Pulse ring */}
-          <motion.div
-            className="absolute inset-0 rounded-2xl border-2 border-primary/30"
-            animate={{ scale: [1, 1.15, 1.15], opacity: [0.5, 0, 0] }}
-            transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
-          />
+          </div>
         </motion.div>
 
         <motion.h1
@@ -136,12 +112,7 @@ export function CallCenterFilters({
             variants={itemVariants}
             className="flex items-center gap-2 text-foreground font-semibold relative z-10"
           >
-            <motion.div
-              animate={{ rotate: [0, 10, -10, 0] }}
-              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-            >
-              <Filter className="h-4 w-4 text-primary" />
-            </motion.div>
+            <Filter className="h-4 w-4 text-primary" />
             Configure Filters
           </motion.div>
 
@@ -235,12 +206,6 @@ export function CallCenterFilters({
                 size="lg"
                 className="w-full relative overflow-hidden bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/20 group"
               >
-                {/* Shimmer effect */}
-                <motion.div
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full"
-                  animate={{ translateX: ["−100%", "100%"] }}
-                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-                />
 
                 <Phone className="h-5 w-5 mr-2 group-hover:rotate-12 transition-transform" />
                 Start Calling

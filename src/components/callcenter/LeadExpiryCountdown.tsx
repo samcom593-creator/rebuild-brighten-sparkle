@@ -64,14 +64,7 @@ export function LeadExpiryCountdown({ createdAt, contactedAt, lastContactedAt }:
     >
       <div className="flex items-center justify-between text-sm">
         <div className="flex items-center gap-2">
-          <motion.div
-            animate={
-              isUrgent && !isExpired
-                ? { scale: [1, 1.15, 1], opacity: [1, 0.7, 1] }
-                : {}
-            }
-            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-          >
+          <div>
             {isExpired ? (
               <AlertTriangle className="h-4 w-4 text-red-500" />
             ) : isUrgent ? (
@@ -79,7 +72,7 @@ export function LeadExpiryCountdown({ createdAt, contactedAt, lastContactedAt }:
             ) : (
               <Clock className="h-4 w-4 text-muted-foreground" />
             )}
-          </motion.div>
+          </div>
           <motion.span
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -124,14 +117,6 @@ export function LeadExpiryCountdown({ createdAt, contactedAt, lastContactedAt }:
           transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
         />
 
-        {/* Shimmer effect for urgent */}
-        {isUrgent && !isExpired && (
-          <motion.div
-            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
-            animate={{ x: ["-100%", "200%"] }}
-            transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 1 }}
-          />
-        )}
       </div>
 
       <motion.p

@@ -75,17 +75,9 @@ export function HeroSection() {
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,hsl(168_84%_42%/0.1)_0%,transparent_50%)]" />
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[100vw] max-w-[800px] h-[100vw] max-h-[800px] bg-primary/5 rounded-full blur-3xl pointer-events-none" />
       
-      {/* Floating orbs - hidden on very small screens to prevent overflow */}
-      <motion.div
-        className="absolute top-20 left-4 sm:left-10 w-20 sm:w-32 h-20 sm:h-32 bg-primary/10 rounded-full blur-2xl pointer-events-none"
-        animate={{ y: [0, -20, 0], opacity: [0.3, 0.5, 0.3] }}
-        transition={{ duration: 5, repeat: Infinity }}
-      />
-      <motion.div
-        className="absolute bottom-40 right-4 sm:right-20 w-24 sm:w-48 h-24 sm:h-48 bg-primary/10 rounded-full blur-2xl pointer-events-none"
-        animate={{ y: [0, 20, 0], opacity: [0.2, 0.4, 0.2] }}
-        transition={{ duration: 7, repeat: Infinity }}
-      />
+      {/* Floating orbs - static for performance */}
+      <div className="absolute top-20 left-4 sm:left-10 w-20 sm:w-32 h-20 sm:h-32 bg-primary/10 rounded-full blur-2xl pointer-events-none opacity-40" />
+      <div className="absolute bottom-40 right-4 sm:right-20 w-24 sm:w-48 h-24 sm:h-48 bg-primary/10 rounded-full blur-2xl pointer-events-none opacity-30" />
 
       <div className="container mx-auto px-4 sm:px-6 relative z-10 w-full">
         <div className="max-w-5xl mx-auto text-center w-full">

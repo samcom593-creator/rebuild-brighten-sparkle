@@ -32,7 +32,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration";
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { BubbleDealEntry } from "@/components/dashboard/BubbleDealEntry";
 import { BubbleStatInput } from "@/components/dashboard/BubbleStatInput";
 import { GradientButton } from "@/components/ui/gradient-button";
@@ -160,7 +159,6 @@ export default function LogNumbers() {
             email
           )
         `)
-        .eq("onboarding_stage", "evaluated")
         .eq("is_deactivated", false);
 
       if (error) throw error;
@@ -215,41 +213,26 @@ export default function LogNumbers() {
 
     setCreatingAgent(true);
     try {
-      const profileId = crypto.randomUUID();
-      const agentId = crypto.randomUUID();
-      const userId = crypto.randomUUID();
-
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .insert({
-          id: profileId,
-          user_id: userId,
-          full_name: newAgentForm.fullName.trim(),
+      const { data, error } = await supabase.functions.invoke("create-agent-from-leaderboard", {
+        body: {
+          fullName: newAgentForm.fullName.trim(),
           email: newAgentForm.email.trim().toLowerCase(),
-          phone: newAgentForm.phone.trim()
-        });
+          phone: newAgentForm.phone.trim(),
+          licenseStatus: newAgentForm.licenseStatus,
+        },
+      });
 
-      if (profileError) throw profileError;
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-      const { error: agentError } = await supabase
-        .from("agents")
-        .insert({
-          id: agentId,
-          user_id: userId,
-          profile_id: profileId,
-          onboarding_stage: "evaluated",
-          license_status: newAgentForm.licenseStatus,
-          status: "active",
-          start_date: getTodayPST()
-        });
-
-      if (agentError) throw agentError;
+      const agentId = data?.agentId || data?.agent_id;
+      if (!agentId) throw new Error("No agent ID returned");
 
       setSelectedAgent({
         id: agentId,
         name: newAgentForm.fullName.trim(),
         email: newAgentForm.email.trim().toLowerCase(),
-        onboardingStage: "evaluated"
+        onboardingStage: "onboarding"
       });
 
       toast.success("Agent added to CRM!");
@@ -311,30 +294,34 @@ export default function LogNumbers() {
     try {
       const weekStartStr = getWeekStartPST();
 
-      const { data: agents, error: agentsError } = await supabase
-        .from("agents")
-        .select(`
-          id,
-          profile:profiles!agents_profile_id_fkey(full_name)
-        `)
-        .eq("onboarding_stage", "evaluated")
-        .eq("is_deactivated", false);
+      // Fetch agents and leaderboard profiles in parallel
+      const [agentsResult, profilesResult, prodResult] = await Promise.all([
+        supabase
+          .from("agents")
+          .select("id, user_id")
+          .eq("is_deactivated", false),
+        supabase.rpc("get_leaderboard_profiles"),
+        supabase
+          .from("daily_production")
+          .select("agent_id, aop, deals_closed, presentations")
+          .gte("production_date", weekStartStr),
+      ]);
 
-      if (agentsError) throw agentsError;
+      if (agentsResult.error) throw agentsResult.error;
+      if (prodResult.error) throw prodResult.error;
 
-      const { data: production, error: prodError } = await supabase
-        .from("daily_production")
-        .select("agent_id, aop, deals_closed, presentations")
-        .gte("production_date", weekStartStr);
-
-      if (prodError) throw prodError;
+      // Build a userId -> name map from the security definer RPC
+      const profileNameMap = new Map<string, string>();
+      for (const p of profilesResult.data || []) {
+        profileNameMap.set(p.user_id, p.full_name || "Unknown");
+      }
 
       const agentMap = new Map<string, LeaderboardEntry>();
       
-      for (const agent of agents || []) {
+      for (const agent of agentsResult.data || []) {
         agentMap.set(agent.id, {
           agentId: agent.id,
-          agentName: agent.profile?.full_name || "Unknown",
+          agentName: profileNameMap.get(agent.user_id || "") || "Unknown",
           weeklyALP: 0,
           weeklyDeals: 0,
           weeklyPresentations: 0,
@@ -342,6 +329,8 @@ export default function LogNumbers() {
           rank: 0
         });
       }
+
+      const production = prodResult.data;
 
       for (const prod of production || []) {
         const entry = agentMap.get(prod.agent_id);
@@ -387,7 +376,6 @@ export default function LogNumbers() {
   const currentStepIndex = steps.indexOf(step);
 
   return (
-    <DashboardLayout>
       <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
       <ConfettiCelebration 
         trigger={showConfetti} 
@@ -824,6 +812,5 @@ export default function LogNumbers() {
         </AnimatePresence>
       </motion.div>
       </div>
-    </DashboardLayout>
   );
 }

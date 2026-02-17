@@ -59,13 +59,8 @@ export function VideoTestimonialCard({
               <Play className="h-7 w-7 text-primary-foreground fill-primary-foreground ml-1" />
             </motion.div>
             
-            {/* Pulse ring on hover */}
-            <motion.div
-              className="absolute w-16 h-16 rounded-full border-2 border-primary/50"
-              initial={{ scale: 1, opacity: 0 }}
-              animate={{ scale: [1, 1.5], opacity: [0.5, 0] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-            />
+            {/* Static ring */}
+            <div className="absolute w-16 h-16 rounded-full border-2 border-primary/20" />
           </motion.div>
 
           {/* Duration Badge */}

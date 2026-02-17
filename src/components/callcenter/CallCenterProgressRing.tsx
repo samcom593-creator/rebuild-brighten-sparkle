@@ -105,13 +105,9 @@ export function CallCenterProgressRing({
               className="relative"
             >
               <Check className="h-6 w-6 text-green-400" />
-              <motion.div
-                className="absolute -top-1 -right-1"
-                animate={{ rotate: [0, 15, -15, 0] }}
-                transition={{ duration: 1, repeat: Infinity, repeatDelay: 2 }}
-              >
+              <div className="absolute -top-1 -right-1">
                 <Sparkles className="h-3 w-3 text-yellow-400" />
-              </motion.div>
+              </div>
             </motion.div>
           ) : (
             <motion.div key="counting" className="flex flex-col items-center">

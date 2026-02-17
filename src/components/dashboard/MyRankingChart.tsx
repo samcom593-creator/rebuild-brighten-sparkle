@@ -41,10 +41,7 @@ export function MyRankingChart({ currentAgentId, entries }: MyRankingChartProps)
   return (
     <>
       {/* Trigger Button */}
-      <motion.div
-        whileHover={{ y: [0, -2, 0] }}
-        transition={{ repeat: Infinity, duration: 0.6 }}
-      >
+      <div>
         <Button
           variant="outline"
           size="sm"
@@ -58,7 +55,7 @@ export function MyRankingChart({ currentAgentId, entries }: MyRankingChartProps)
           <BarChart3 className="h-3.5 w-3.5 text-primary" />
           My Rank
         </Button>
-      </motion.div>
+      </div>
 
       {/* Drawer */}
       <Drawer open={open} onOpenChange={setOpen}>

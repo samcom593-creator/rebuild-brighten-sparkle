@@ -1,85 +1,52 @@
 
-# Fix Numbers Input + Kill Auto-Rendering Animations
+# Fix: Samuel James Can't Log Production Numbers
 
-## Problem 1: Can't Input Numbers
+## Root Cause
 
-The `/apex-daily-numbers` page is inside `AuthenticatedShell`, which requires you to log in first. But this page is designed for quick name-search production entry -- you just type a name, pick the agent, and log numbers. Requiring a full login defeats the purpose.
+Samuel James (info@kingofsales.net) is marked as **deactivated** in the database with `is_deactivated: true` and `deactivation_reason: "inactive"`. The search in the `log-production` edge function filters these agents out with `.eq("is_deactivated", false)`, making Samuel James invisible when searching.
 
-Additionally, even after logging in, the page queries `agents` and `profiles` tables directly. For non-admin users, RLS blocks visibility of other agents' profiles, so the search returns no results.
+## Two Options
 
-**Fix**: Move `/apex-daily-numbers` outside `AuthenticatedShell` and create a backend function that handles agent search and production logging with service-level access. This way anyone with the link can quickly log numbers without needing to sign in.
+### Option A: Reactivate Samuel James (Quick Fix)
+If Samuel James should still be active and logging numbers, we reactivate the agent record in the database by setting `is_deactivated = false` and `is_inactive = false`.
 
-### Changes:
-1. **`src/App.tsx`** -- Move the `/apex-daily-numbers` route from inside `AuthenticatedShell` to the public routes section
-2. **New edge function `log-production`** -- Handles:
-   - Searching agents by name/email (using service role, bypasses RLS)
-   - Creating new agents (delegates to existing `create-agent-from-leaderboard`)
-   - Upserting daily production records
-   - Fetching weekly leaderboard data
-3. **`src/pages/LogNumbers.tsx`** -- Replace all direct Supabase client queries with calls to the new `log-production` edge function. Remove sidebar layout dependencies.
+### Option B: Allow Deactivated Agents to Log Numbers (Code Fix)
+If agents who are "inactive" should still be able to log production, we update the `log-production` edge function to include inactive/deactivated agents in search results.
 
-## Problem 2: Auto-Rendering / Infinite Animations
+## Recommended Approach: Both
 
-There are **146 instances** of `repeat: Infinity` animations across 12 files. These cause continuous DOM updates, which:
-- Drain battery on mobile
-- Make the browser sluggish, preventing input focus
-- Cause the "auto-rendering" flickering behavior
+1. **Reactivate Samuel James** -- Set `is_deactivated = false` and `is_inactive = false` so the agent can be found immediately
+2. **Update edge function** -- Remove the `is_deactivated` filter from search so that ALL agents (including temporarily inactive ones) can log production. Production logging should never be blocked -- if someone is closing deals, they should be able to record them regardless of their admin status
 
-**Fix**: Replace all `repeat: Infinity` framer-motion animations with static elements or single-play animations across these files:
+## Technical Changes
 
-| File | Instances |
-|---|---|
-| `src/components/landing/HeroSection.tsx` | 2 floating blobs |
-| `src/components/landing/CTASection.tsx` | 2 floating blobs |
-| `src/components/landing/VideoTestimonialCard.tsx` | 1 pulse ring |
-| `src/components/callcenter/CallCenterFilters.tsx` | 5 sparkle/shimmer effects |
-| `src/components/callcenter/CallCenterLeadCard.tsx` | Multiple pulse effects |
-| `src/components/callcenter/CallCenterProgressRing.tsx` | 1 sparkle |
-| `src/components/callcenter/LeadExpiryCountdown.tsx` | 2 pulse/shimmer |
-| `src/components/dashboard/InterviewRecorder.tsx` | 2 recording indicators (keep -- only active during recording) |
-| `src/components/dashboard/MyRankingChart.tsx` | 1 hover bounce |
-
-All decorative infinite animations (floating blobs, shimmer effects, sparkles) will be converted to static elements. Recording indicators in InterviewRecorder will be kept since they only animate when actively recording.
-
-## Technical Details
-
-### New Edge Function: `supabase/functions/log-production/index.ts`
-
-Accepts POST with an `action` field:
-- `action: "search"` -- searches agents by name/email, returns matches
-- `action: "create"` -- delegates to `create-agent-from-leaderboard`
-- `action: "submit"` -- upserts daily_production record
-- `action: "leaderboard"` -- returns weekly leaderboard with names
-
-Uses service role key to bypass RLS, making the page work without user authentication.
-
-### Route Change in App.tsx
-
-```
-// Move from inside AuthenticatedShell to public routes:
-<Route path="/apex-daily-numbers" element={<LogNumbers />} />
+### Database Fix
+Run SQL to reactivate Samuel James:
+```sql
+UPDATE agents 
+SET is_deactivated = false, is_inactive = false 
+WHERE id = '7c3c5581-3544-437f-bfe2-91391afb217d';
 ```
 
-### LogNumbers.tsx Refactor
+### Edge Function Update: `supabase/functions/log-production/index.ts`
 
-- Remove all direct `supabase.from(...)` calls
-- Replace with `supabase.functions.invoke("log-production", { body: { action, ... } })`
-- Remove DashboardLayout/sidebar dependencies (already done)
-- Page renders as standalone (no sidebar needed)
+Remove the `.eq("is_deactivated", false)` filter from the search action so all agents can be found:
 
-### Animation Cleanup
+```typescript
+// Before
+const { data: agents, error } = await supabaseAdmin
+  .from("agents")
+  .select(...)
+  .eq("is_deactivated", false);
 
-All `motion.div` elements with `repeat: Infinity` in landing/callcenter/dashboard components will be converted to plain `div` elements with static CSS classes, preserving the visual appearance without continuous repainting.
+// After - allow all agents to log production
+const { data: agents, error } = await supabaseAdmin
+  .from("agents")
+  .select(...);
+```
+
+Optionally, sort deactivated agents lower in results so active agents appear first.
 
 ## Files Modified
-1. `src/App.tsx` -- move route
-2. `src/pages/LogNumbers.tsx` -- use edge function instead of direct DB queries
-3. `supabase/functions/log-production/index.ts` -- new edge function
-4. `src/components/landing/HeroSection.tsx` -- remove infinite animations
-5. `src/components/landing/CTASection.tsx` -- remove infinite animations
-6. `src/components/landing/VideoTestimonialCard.tsx` -- remove infinite animation
-7. `src/components/callcenter/CallCenterFilters.tsx` -- remove infinite animations
-8. `src/components/callcenter/CallCenterLeadCard.tsx` -- remove infinite animations
-9. `src/components/callcenter/CallCenterProgressRing.tsx` -- remove infinite animation
-10. `src/components/callcenter/LeadExpiryCountdown.tsx` -- remove infinite animations
-11. `src/components/dashboard/MyRankingChart.tsx` -- remove infinite animation
+1. Database migration -- reactivate Samuel James
+2. `supabase/functions/log-production/index.ts` -- remove deactivated filter from search

@@ -1,4 +1,4 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -111,7 +111,6 @@ Apply Now →
           body: JSON.stringify({
             from: "APEX Financial <noreply@apex-financial.org>",
             to: [app.email],
-            cc: ["info@apex-financial.org"],
             subject: `${safeFirst}, Your $20K/Month Opportunity Awaits 🚀`,
             html: emailHtml,
           }),
@@ -127,7 +126,7 @@ Apply Now →
       }
 
       // Rate limit
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
     console.log(`[Bulk Outreach] ✅ Sent ${sentCount}/${applicants?.length || 0} emails`);

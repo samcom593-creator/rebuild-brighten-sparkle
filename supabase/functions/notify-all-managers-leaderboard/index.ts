@@ -32,38 +32,19 @@ function sanitizeHtml(str: string): string {
 }
 
 async function getAllManagerEmails(): Promise<Array<{ email: string; name: string; userId: string }>> {
-  console.log("[Leaderboard] Fetching all managers and admins...");
-  
-  // Get all users with manager or admin role
   const { data: roleData, error: roleError } = await supabaseAdmin
     .from("user_roles")
     .select("user_id, role")
     .in("role", ["manager", "admin"]);
 
-  if (roleError) {
-    console.error("[Leaderboard] Error fetching roles:", roleError);
-    return [];
-  }
-
-  console.log(`[Leaderboard] Found ${roleData?.length || 0} managers/admins`);
+  if (roleError || !roleData?.length) return [];
 
   const managersMap = new Map<string, { email: string; name: string; userId: string }>();
 
-  for (const role of roleData || []) {
-    // Get email from auth.users (most reliable)
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.getUserById(role.user_id);
-    
-    if (authError || !authData?.user?.email) {
-      console.warn(`[Leaderboard] Could not get auth email for user ${role.user_id}`);
-      continue;
-    }
+  for (const role of roleData) {
+    const { data: authData } = await supabaseAdmin.auth.admin.getUserById(role.user_id);
+    if (!authData?.user?.email || managersMap.has(authData.user.email)) continue;
 
-    // Skip if we already have this email (prevents duplicates for dual-role users)
-    if (managersMap.has(authData.user.email)) {
-      continue;
-    }
-
-    // Get name from profiles
     const { data: profileData } = await supabaseAdmin
       .from("profiles")
       .select("full_name")
@@ -73,238 +54,201 @@ async function getAllManagerEmails(): Promise<Array<{ email: string; name: strin
     managersMap.set(authData.user.email, {
       email: authData.user.email,
       name: profileData?.full_name || authData.user.email,
-      userId: role.user_id
+      userId: role.user_id,
     });
   }
 
-  const managers = Array.from(managersMap.values());
-  console.log(`[Leaderboard] Resolved ${managers.length} unique manager emails:`, managers.map(m => m.email));
-  return managers;
+  return Array.from(managersMap.values());
 }
 
 async function getScoringManagerName(managerId: string | undefined, referralSource: string | undefined): Promise<string> {
-  // Priority 1: Check scoringManagerId (direct manager assignment)
   if (managerId) {
-    const { data: agentData } = await supabaseAdmin
-      .from("agents")
-      .select("user_id")
-      .eq("id", managerId)
-      .single();
-
+    const { data: agentData } = await supabaseAdmin.from("agents").select("user_id").eq("id", managerId).single();
     if (agentData?.user_id) {
-      const { data: profileData } = await supabaseAdmin
-        .from("profiles")
-        .select("full_name")
-        .eq("user_id", agentData.user_id)
-        .single();
-
-      if (profileData?.full_name) {
-        console.log(`[Leaderboard] Found manager name from ID: ${profileData.full_name}`);
-        return profileData.full_name;
-      }
+      const { data: profileData } = await supabaseAdmin.from("profiles").select("full_name").eq("user_id", agentData.user_id).single();
+      if (profileData?.full_name) return profileData.full_name;
     }
   }
 
-  // Priority 2: Check if referral_source is a manager UUID
-  if (referralSource && referralSource.trim()) {
+  if (referralSource?.trim()) {
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    
     if (uuidRegex.test(referralSource)) {
-      // It's a UUID - look up the manager's name
-      const { data: agentData } = await supabaseAdmin
-        .from("agents")
-        .select("user_id")
-        .eq("id", referralSource)
-        .single();
-
+      const { data: agentData } = await supabaseAdmin.from("agents").select("user_id").eq("id", referralSource).single();
       if (agentData?.user_id) {
-        const { data: profileData } = await supabaseAdmin
-          .from("profiles")
-          .select("full_name")
-          .eq("user_id", agentData.user_id)
-          .single();
-
-        if (profileData?.full_name) {
-          console.log(`[Leaderboard] Found manager name from referral UUID: ${profileData.full_name}`);
-          return profileData.full_name;
-        }
+        const { data: profileData } = await supabaseAdmin.from("profiles").select("full_name").eq("user_id", agentData.user_id).single();
+        if (profileData?.full_name) return profileData.full_name;
       }
     }
-    
-    // IMPORTANT: Do NOT use generic referral sources like "Agent Referral", "Social Media", etc.
-    // These are NOT manager names - they are category labels from the application form.
-    // Only actual manager names should appear in leaderboard emails.
-    // If referral_source is not a UUID, it's either:
-    // - A generic category label (ignore these)
-    // - A typed "Word of mouth" name (these are NOT managers, so still organic)
-    
-    console.log(`[Leaderboard] referralSource "${referralSource}" is not a manager UUID - treating as organic`);
   }
 
-  // Default: No manager identified = Organic Lead
   return "Organic Lead";
 }
 
-async function sendLeaderboardEmail(
-  recipientEmail: string,
-  recipientName: string,
-  scoringManagerName: string,
-  applicantName: string
-): Promise<boolean> {
-  if (!RESEND_API_KEY) {
-    console.log("[Leaderboard] Resend not configured, skipping email to:", recipientEmail);
-    return false;
-  }
+async function getApplicationDetails(applicationId: string) {
+  const { data } = await supabaseAdmin
+    .from("applications")
+    .select("first_name, last_name, email, phone, city, state, license_status, notes")
+    .eq("id", applicationId)
+    .single();
+  return data;
+}
 
+function buildLeaderboardEmail(
+  scoringManagerName: string,
+  applicantName: string,
+  appDetails: { phone?: string; city?: string; state?: string; license_status?: string; notes?: string } | null,
+  applicationId: string
+): { subject: string; html: string } {
   const isOrganic = scoringManagerName === "Organic Lead";
   const safeName = sanitizeHtml(applicantName);
   const safeManager = sanitizeHtml(scoringManagerName);
-  
-  const subject = isOrganic 
-    ? `🔥 New Organic Lead: ${safeName}!` 
+  const appUrl = `https://rebuild-brighten-sparkle.lovable.app/dashboard/applicants?lead=${applicationId}`;
+
+  const subject = isOrganic
+    ? `🔥 New Organic Lead: ${safeName}!`
     : `🏆 ${safeManager} Just Recruited ${safeName}!`;
 
   const headline = isOrganic
     ? `New organic lead: ${safeName}`
     : `${safeManager} just got a new recruit: ${safeName}!`;
 
-  const growthLine = `That's an estimated <strong>$7,000</strong> in potential override value! 💰`;
+  const phone = appDetails?.phone || "N/A";
+  const location = [appDetails?.city, appDetails?.state].filter(Boolean).join(", ") || "N/A";
+  const license = appDetails?.license_status === "licensed" ? "Licensed ✅" : "Unlicensed";
+  const motivation = appDetails?.notes ? sanitizeHtml(appDetails.notes.slice(0, 200)) : "";
 
-  const emailHtml = `
-<!DOCTYPE html>
+  const html = `<!DOCTYPE html>
 <html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f5f5f5;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 40px 20px;">
-    <tr>
-      <td align="center">
-        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 500px; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-          
-          <!-- Header -->
-          <tr>
-            <td style="background: linear-gradient(135deg, #D4AF37, #C5A028); padding: 30px; text-align: center;">
-              <h1 style="margin: 0; color: #000000; font-size: 24px; font-weight: bold;">
-                ${headline}
-              </h1>
-            </td>
-          </tr>
-          
-          <!-- Body -->
-          <tr>
-            <td style="padding: 40px 30px; text-align: center;">
-              <p style="margin: 0 0 20px; color: #333333; font-size: 18px; line-height: 1.6;">
-                ${growthLine}
-              </p>
-              <p style="margin: 0; color: #333333; font-size: 18px; line-height: 1.6;">
-                Keep scaling up your team. Let's go! 🚀
-              </p>
-            </td>
-          </tr>
-          
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #1a1a1a; padding: 20px; text-align: center;">
-              <p style="margin: 0; color: #888888; font-size: 12px;">
-                Apex Financial Enterprises
-              </p>
-            </td>
-          </tr>
-          
-        </table>
-      </td>
-    </tr>
-  </table>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background-color:#f5f5f5;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f5f5f5;padding:40px 20px;">
+<tr><td align="center">
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:500px;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.1);">
+
+<!-- Header -->
+<tr><td style="background:linear-gradient(135deg,#D4AF37,#C5A028);padding:30px;text-align:center;">
+<h1 style="margin:0;color:#000;font-size:22px;font-weight:bold;">${headline}</h1>
+</td></tr>
+
+<!-- Applicant Details -->
+<tr><td style="padding:30px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px;">
+<tr><td style="padding:8px 0;color:#666;font-size:14px;">📱 Phone</td>
+<td style="padding:8px 0;color:#333;font-size:14px;font-weight:600;text-align:right;">${sanitizeHtml(phone)}</td></tr>
+<tr><td style="padding:8px 0;color:#666;font-size:14px;border-top:1px solid #eee;">📍 Location</td>
+<td style="padding:8px 0;color:#333;font-size:14px;font-weight:600;text-align:right;border-top:1px solid #eee;">${sanitizeHtml(location)}</td></tr>
+<tr><td style="padding:8px 0;color:#666;font-size:14px;border-top:1px solid #eee;">📋 License</td>
+<td style="padding:8px 0;color:#333;font-size:14px;font-weight:600;text-align:right;border-top:1px solid #eee;">${license}</td></tr>
+</table>
+
+${motivation ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8f9fa;border-radius:8px;margin-bottom:20px;">
+<tr><td style="padding:16px;">
+<p style="margin:0 0 4px;color:#666;font-size:12px;font-weight:600;">NOTES</p>
+<p style="margin:0;color:#333;font-size:14px;line-height:1.5;">${motivation}</p>
+</td></tr></table>` : ""}
+
+<p style="margin:0 0 20px;color:#333;font-size:16px;text-align:center;">
+That's an estimated <strong>$7,000</strong> in potential override value! 💰
+</p>
+
+<!-- Action Buttons -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+<tr>
+<td width="48%" style="padding-right:4px;">
+<a href="${appUrl}" style="display:block;background:#D4AF37;color:#000;font-size:14px;font-weight:700;text-decoration:none;padding:14px 0;border-radius:8px;text-align:center;max-width:100%;box-sizing:border-box;">
+View Lead →
+</a>
+</td>
+<td width="48%" style="padding-left:4px;">
+<a href="tel:${phone.replace(/\D/g, "")}" style="display:block;background:#22c55e;color:#fff;font-size:14px;font-weight:700;text-decoration:none;padding:14px 0;border-radius:8px;text-align:center;max-width:100%;box-sizing:border-box;">
+📞 Call Now
+</a>
+</td>
+</tr>
+</table>
+</td></tr>
+
+<!-- Footer -->
+<tr><td style="background-color:#1a1a1a;padding:20px;text-align:center;">
+<p style="margin:0;color:#888;font-size:12px;">Apex Financial Enterprises</p>
+</td></tr>
+
+</table>
+</td></tr>
+</table>
 </body>
 </html>`;
 
-  try {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${RESEND_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: "APEX Financial <noreply@apex-financial.org>",
-        to: [recipientEmail],
-        subject: subject,
-        html: emailHtml,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[Leaderboard] Failed to send to ${recipientEmail}:`, errorText);
-      return false;
-    }
-
-    console.log(`[Leaderboard] ✅ Email sent to ${recipientEmail}`);
-    return true;
-  } catch (error) {
-    console.error(`[Leaderboard] Error sending to ${recipientEmail}:`, error);
-    return false;
-  }
+  return { subject, html };
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  console.log("[Leaderboard] Request received:", req.method);
-
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const body: LeaderboardRequest = await req.json();
-    console.log("[Leaderboard] Processing request for application:", body.applicationId);
+    console.log("[Leaderboard] Processing for application:", body.applicationId);
 
-    // Get all managers
-    const managers = await getAllManagerEmails();
-    
+    const [managers, scorerName, appDetails] = await Promise.all([
+      getAllManagerEmails(),
+      getScoringManagerName(body.scoringManagerId, body.referralSource),
+      getApplicationDetails(body.applicationId),
+    ]);
+
     if (managers.length === 0) {
-      console.log("[Leaderboard] No managers found to notify");
       return new Response(
         JSON.stringify({ success: true, message: "No managers to notify", sent: 0 }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    // Determine who scored this recruit
-    const scorerName = await getScoringManagerName(body.scoringManagerId, body.referralSource);
-    const isOrganic = scorerName === "Organic Lead";
-    
-    console.log(`[Leaderboard] Scorer: ${scorerName} (organic: ${isOrganic})`);
+    console.log(`[Leaderboard] Scorer: ${scorerName}, sending to ${managers.length} managers`);
 
-    // Send to all managers with rate limiting
     let sentCount = 0;
+    const { subject, html } = buildLeaderboardEmail(
+      scorerName,
+      body.applicantName || "New Recruit",
+      appDetails,
+      body.applicationId
+    );
+
     for (const manager of managers) {
-      const sent = await sendLeaderboardEmail(
-        manager.email,
-        manager.name,
-        scorerName,
-        body.applicantName || "New Recruit"
-      );
-      if (sent) sentCount++;
-      
-      // Add delay between emails to prevent rate limiting
+      if (!RESEND_API_KEY) break;
+
+      try {
+        const response = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${RESEND_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: "APEX Financial <noreply@apex-financial.org>",
+            to: [manager.email],
+            subject,
+            html,
+          }),
+        });
+
+        if (response.ok) {
+          sentCount++;
+          console.log(`[Leaderboard] ✅ Sent to ${manager.email}`);
+        } else {
+          console.error(`[Leaderboard] Failed: ${manager.email}`, await response.text());
+        }
+      } catch (error) {
+        console.error(`[Leaderboard] Error: ${manager.email}`, error);
+      }
+
       await new Promise(resolve => setTimeout(resolve, 500));
     }
 
-    console.log(`[Leaderboard] ✅ Completed: ${sentCount}/${managers.length} emails sent`);
-
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: `Leaderboard notifications sent to ${sentCount} managers`,
-        sent: sentCount,
-        total: managers.length,
-        scorer: scorerName
-      }),
+      JSON.stringify({ success: true, sent: sentCount, total: managers.length, scorer: scorerName }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
-
   } catch (error: any) {
     console.error("[Leaderboard] Error:", error);
     return new Response(

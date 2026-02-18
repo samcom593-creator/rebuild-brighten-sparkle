@@ -634,7 +634,10 @@ export default function DashboardCRM() {
     }
   };
 
-  // Filter agents
+  // Stats base - non-deactivated, non-inactive agents (must be computed before filters)
+  const activeAgents = agents.filter(a => !a.isDeactivated && !a.isInactive);
+
+  // Filter agents - base filter for display (search + manager + visibility)
   const filteredAgents = agents.filter(agent => {
     const matchesSearch =
       agent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -642,31 +645,36 @@ export default function DashboardCRM() {
 
     const matchesManager = managerFilter === "all" || agent.managerId === managerFilter;
     const matchesDeactivated = showDeactivated ? agent.isDeactivated : !agent.isDeactivated;
-    
-    // Hide inactive agents unless specifically viewing them (admin only)
     const matchesInactive = showInactive ? agent.isInactive : !agent.isInactive;
-    
-    // Hide failed evaluations from non-admins
     const matchesEvaluation = isAdmin || agent.evaluationResult !== "failed";
 
     return matchesSearch && matchesManager && matchesDeactivated && matchesInactive && matchesEvaluation;
   });
 
-  // Apply stage filter
-  const stageFilteredAgents = filteredAgents.filter(agent => {
-    switch (stageFilter) {
-      case "in_course":
-        return ["onboarding", "training_online"].includes(agent.onboardingStage);
-      case "in_training":
-        return agent.onboardingStage === "in_field_training";
-      case "live":
-        return agent.onboardingStage === "evaluated";
-      case "meeting_eligible":
-        return ["in_field_training", "evaluated"].includes(agent.onboardingStage);
-      default:
-        return true;
-    }
-  });
+  // Apply stage filter - when a stat card is clicked, use activeAgents to match stat counts
+  const stageFilteredAgents = (() => {
+    const base = stageFilter !== "all" ? activeAgents : filteredAgents;
+    return base.filter(agent => {
+      const matchesSearch =
+        agent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        agent.email.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesManager = managerFilter === "all" || agent.managerId === managerFilter;
+      if (!matchesSearch || !matchesManager) return false;
+      
+      switch (stageFilter) {
+        case "in_course":
+          return ["onboarding", "training_online"].includes(agent.onboardingStage);
+        case "in_training":
+          return agent.onboardingStage === "in_field_training";
+        case "live":
+          return agent.onboardingStage === "evaluated";
+        case "meeting_eligible":
+          return ["in_field_training", "evaluated"].includes(agent.onboardingStage);
+        default:
+          return true;
+      }
+    });
+  })();
 
   // Group agents by column - sort by lastContactedAt (null/oldest first) for follow-up priority
   const getAgentsForColumn = (stages: OnboardingStage[]) => {
@@ -716,7 +724,6 @@ export default function DashboardCRM() {
   };
 
   // Stats - Use agent.agentLicenseStatus (from agents table) as source of truth
-  const activeAgents = agents.filter(a => !a.isDeactivated && !a.isInactive);
   const totalLeadsCount = activeAgents.length;
   const hiredUnlicensed = activeAgents.filter(a => a.agentLicenseStatus !== "licensed").length;
   const contractedHired = activeAgents.filter(a => a.onboardingStage === "onboarding" || a.onboardingStage === "training_online").length;

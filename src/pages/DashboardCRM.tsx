@@ -1520,15 +1520,25 @@ export default function DashboardCRM() {
                 if (!config) return null;
 
                 const Icon = config.icon;
+                // Use activeAgents with search+manager filters only (no evaluation filter)
+                // so expanded list matches stat card counts exactly
+                const searchManagerFiltered = activeAgents.filter(a => {
+                  const matchesSearch = !searchTerm || 
+                    a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    a.email.toLowerCase().includes(searchTerm.toLowerCase());
+                  const matchesManager = managerFilter === "all" || a.managerId === managerFilter;
+                  return matchesSearch && matchesManager;
+                });
+
                 const expandedAgentsUnsorted = expandedColumn === "all"
-                  ? filteredAgents
+                  ? searchManagerFiltered
                   : expandedColumn === "unlicensed"
-                  ? filteredAgents.filter(a => a.agentLicenseStatus !== "licensed")
+                  ? searchManagerFiltered.filter(a => a.agentLicenseStatus !== "licensed")
                   : expandedColumn === "paid"
-                  ? activeAgents.filter(a => a.onboardingStage === "evaluated" && (a.standardPaid || a.premiumPaid))
+                  ? searchManagerFiltered.filter(a => a.onboardingStage === "evaluated" && (a.standardPaid || a.premiumPaid))
                   : expandedColumn === "course_purchased"
-                  ? filteredAgents.filter(a => a.hasTrainingCourse)
-                  : filteredAgents.filter(a => config.stages.includes(a.onboardingStage));
+                  ? searchManagerFiltered.filter(a => a.hasTrainingCourse)
+                  : searchManagerFiltered.filter(a => config.stages.includes(a.onboardingStage));
 
                 // Sort by last contacted (null/oldest first) for follow-up priority
                 const expandedAgents = [...expandedAgentsUnsorted].sort((a, b) => {

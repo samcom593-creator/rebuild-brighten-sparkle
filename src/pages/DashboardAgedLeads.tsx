@@ -111,6 +111,11 @@ export default function DashboardAgedLeads() {
   const [banTarget, setBanTarget] = useState<AgedLead | null>(null);
   const [banning, setBanning] = useState(false);
 
+  // Merge duplicates dialog state
+  const [showMergeConfirm, setShowMergeConfirm] = useState(false);
+  const [mergeIdsToDelete, setMergeIdsToDelete] = useState<string[]>([]);
+  const [merging, setMerging] = useState(false);
+
   // Delete state
   const [deleteTarget, setDeleteTarget] = useState<AgedLead | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -365,17 +370,25 @@ export default function DashboardAgedLeads() {
       return;
     }
 
-    const confirmed = window.confirm(`Merge duplicates? This will delete ${idsToDelete.length} older duplicate records, keeping the newest entry for each group.`);
-    if (!confirmed) return;
+    // Store ids and show dialog instead of window.confirm
+    setMergeIdsToDelete(idsToDelete);
+    setShowMergeConfirm(true);
+  };
 
+  const executeMergeDuplicates = async () => {
+    setMerging(true);
     try {
-      const { error } = await supabase.from("aged_leads").delete().in("id", idsToDelete);
+      const { error } = await supabase.from("aged_leads").delete().in("id", mergeIdsToDelete);
       if (error) throw error;
-      toast.success(`Merged ${idsToDelete.length} duplicate leads`);
+      toast.success(`Merged ${mergeIdsToDelete.length} duplicate leads`);
+      setShowMergeConfirm(false);
+      setMergeIdsToDelete([]);
       fetchLeads();
     } catch (error: any) {
       console.error("Error merging duplicates:", error);
       toast.error("Failed to merge duplicates: " + (error.message || "Unknown error"));
+    } finally {
+      setMerging(false);
     }
   };
 
@@ -869,6 +882,30 @@ export default function DashboardAgedLeads() {
         managers={managers}
         onImportComplete={fetchLeads}
       />
+
+      {/* Merge Duplicates Confirmation Dialog */}
+      <AlertDialog open={showMergeConfirm} onOpenChange={setShowMergeConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Merge Duplicates
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will delete <strong>{mergeIdsToDelete.length}</strong> older duplicate records, keeping the newest entry for each group. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={merging}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={executeMergeDuplicates}
+              disabled={merging}
+            >
+              {merging ? "Merging..." : `Merge ${mergeIdsToDelete.length} Duplicates`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

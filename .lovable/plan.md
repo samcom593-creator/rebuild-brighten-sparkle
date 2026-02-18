@@ -1,40 +1,46 @@
 
 
-# Two Changes: Quick Calendly Buttons + Re-send Bulk Licensing Emails
+# Fix: Remove Hired Leads from "Retry Pickups" List
 
-## Change 1: Replace Manual Link Paste with Two Calendly Buttons
+## The Problem
 
-Right now, after a call summary, you see a "Send Follow-Up Email" button and a small "Add calendar link" toggle that opens a text field where you have to manually paste a URL. Instead, this will be replaced with two clearly labeled buttons you can just tap:
+When you select "No Pickup (Retry)" in the Call Center, you're seeing leads you already marked as "hired." This happens because of two bugs:
 
-- **"Licensed Link"** -- auto-fills the licensed Calendly link
-- **"Unlicensed Link"** -- auto-fills the unlicensed Calendly link
+1. **Applications**: The "No Pickup (Retry)" filter has no actual status filter for applications, so ALL applications show up (including hired ones).
+2. **Aged Leads**: Marking an aged lead as "hired" sets its database status to "contacted" instead of "hired," so the exclusion filter never catches it.
 
-Tapping either one will immediately send the follow-up email with the correct link. No pasting required.
+## The Fix
 
-### File Changed
+Two changes in one file: `src/pages/CallCenter.tsx`
 
-| File | What Changes |
-|------|-------------|
-| `src/components/callcenter/CallCenterVoiceRecorder.tsx` | Remove the "Add calendar link" toggle and text input. Replace with two buttons: "Send (Licensed)" and "Send (Unlicensed)" that each call `onSendFollowUp` with the appropriate Calendly URL pre-filled. The links used will match the ones already in the backend: `calendly.com/apexlifeadvisors/15-minute-discovery` for licensed and `calendly.com/apexlifeadvisors/15min` for unlicensed. |
+### Fix 1: Add missing "no_pickup" status filter for applications (lines 164-168)
 
-### How It Will Look
+When "No Pickup (Retry)" is selected, only show applications with status `no_pickup` -- just like aged leads already work.
 
-Instead of:
-```
-[Send Follow-Up Email]  [Add calendar link]
-                        [___paste link here___]
-```
+### Fix 2: Set aged lead status to "hired" when hired (line 337)
 
-It becomes:
-```
-[Send Licensed Follow-Up]   [Send Unlicensed Follow-Up]
+Currently the status map for aged leads maps "hired" to "contacted." It should map to "hired" so these leads are properly excluded from all future lists.
+
+```text
+Before:  hired -> "contacted"
+After:   hired -> "hired"
 ```
 
-Each button sends the email with the correct Calendly link automatically.
+### Fix 3: Also exclude "reviewing" from the applications query
 
----
+Applications marked as hired get status "reviewing." The applications query should exclude `reviewing` and `rejected` statuses when in "no_pickup" mode, so only actual `no_pickup` records appear.
 
-## Change 2: Re-send Bulk Licensing Emails
+## Immediate Data Cleanup
 
-After fixing the buttons above, I will trigger the `bulk-send-licensing` function again to re-send licensing instruction emails to all ~70 unlicensed/pending applicants (oldest first, 1 per second). This is the same function we fixed and deployed last time -- it just needs to be called again.
+After deploying the code fix, any aged leads that were previously marked as "hired" but stored with status "contacted" will need a quick database update to correct their status to "hired" so they disappear from the retry list immediately.
 
+## Files Changed
+
+| File | Change |
+|------|--------|
+| `src/pages/CallCenter.tsx` | (1) Add `else if (statusFilter === "no_pickup") { appQuery = appQuery.eq("status", "no_pickup"); }` for applications query. (2) Change aged lead hired status mapping from `"contacted"` to `"hired"`. |
+| Database migration | Update any existing aged leads with status "contacted" that were actually hired, if identifiable. |
+
+## Result
+
+After this fix, "No Pickup (Retry)" will only show leads with actual `no_pickup` status. Hired leads will be properly excluded from all lists.

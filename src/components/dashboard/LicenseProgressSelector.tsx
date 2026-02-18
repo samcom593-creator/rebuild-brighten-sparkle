@@ -52,12 +52,17 @@ const progressColors: Record<LicenseProgress, string> = {
 export function LicenseProgressSelector({
   applicationId,
   currentProgress,
+  testScheduledDate,
   onProgressUpdated,
   className,
 }: LicenseProgressSelectorProps) {
   const [isUpdating, setIsUpdating] = useState(false);
   const initialProgress: LicenseProgress = currentProgress || "unlicensed";
   const [progress, setProgress] = useState<LicenseProgress>(initialProgress);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedTestDate, setSelectedTestDate] = useState<Date | undefined>(
+    testScheduledDate ? new Date(testScheduledDate) : undefined
+  );
 
   const currentStepIndex = progressSteps.findIndex((s) => s.value === progress);
   const currentStep = progressSteps[currentStepIndex] || progressSteps[0];
@@ -66,17 +71,28 @@ export function LicenseProgressSelector({
   const handleUpdateProgress = async (newProgress: LicenseProgress) => {
     if (newProgress === progress) return;
     
+    // If selecting "test_scheduled", show date picker instead of updating immediately
+    if (newProgress === "test_scheduled") {
+      setShowDatePicker(true);
+      return;
+    }
+
+    await applyProgressUpdate(newProgress);
+  };
+
+  const applyProgressUpdate = async (newProgress: LicenseProgress, testDate?: Date) => {
     setIsUpdating(true);
     try {
-      // Update license_progress column
       const updateData: Record<string, unknown> = { license_progress: newProgress };
       
-      // Also sync license_status if moving to/from licensed
       if (newProgress === "licensed") {
         updateData.license_status = "licensed";
       } else if (progress === "licensed") {
-        // Moving backwards from licensed - set to pending
         updateData.license_status = "pending";
+      }
+
+      if (testDate) {
+        updateData.test_scheduled_date = format(testDate, "yyyy-MM-dd");
       }
 
       const { error } = await supabase
@@ -87,7 +103,8 @@ export function LicenseProgressSelector({
       if (error) throw error;
 
       setProgress(newProgress);
-      toast.success(`Updated to: ${progressSteps.find(s => s.value === newProgress)?.label}`);
+      const stepLabel = progressSteps.find(s => s.value === newProgress)?.label;
+      toast.success(`Updated to: ${stepLabel}${testDate ? ` (${format(testDate, "MMM d, yyyy")})` : ""}`);
       onProgressUpdated?.();
     } catch (err) {
       console.error("Failed to update license progress:", err);
@@ -97,71 +114,106 @@ export function LicenseProgressSelector({
     }
   };
 
+  const handleTestDateConfirm = (date: Date | undefined) => {
+    if (!date) return;
+    setSelectedTestDate(date);
+    setShowDatePicker(false);
+    applyProgressUpdate("test_scheduled", date);
+  };
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className={cn("gap-2", progressColors[progress], className)}
-          disabled={isUpdating}
-        >
-          {isUpdating ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <CurrentIcon className="h-4 w-4" />
-          )}
-          <span className="hidden sm:inline">{currentStep.label}</span>
-          <ChevronRight className="h-3 w-3" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel className="text-xs text-muted-foreground">
-          License Progression
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        
-        {progressSteps.map((step, index) => {
-          const StepIcon = step.icon;
-          const isCurrentStep = step.value === progress;
-          const isPastStep = index < currentStepIndex;
-          
-          return (
-            <DropdownMenuItem
-              key={step.value}
-              onClick={() => handleUpdateProgress(step.value)}
-              disabled={isUpdating}
-              className={cn(
-                "flex items-center gap-3 cursor-pointer",
-                isCurrentStep && "bg-muted"
-              )}
-            >
-              <div className={cn(
-                "flex items-center justify-center w-6 h-6 rounded-full border",
-                isCurrentStep ? progressColors[step.value] : isPastStep ? "bg-primary/20 border-primary/30" : "border-border"
-              )}>
-                {isPastStep ? (
-                  <Check className="h-3 w-3 text-primary" />
-                ) : (
-                  <StepIcon className={cn("h-3 w-3", isCurrentStep ? step.color : "text-muted-foreground")} />
-                )}
-              </div>
-              <span className={cn(
-                "flex-1",
-                isCurrentStep && "font-medium",
-                isPastStep && "text-muted-foreground"
-              )}>
-                {step.label}
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className={cn("gap-2", progressColors[progress], className)}
+            disabled={isUpdating}
+          >
+            {isUpdating ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <CurrentIcon className="h-4 w-4" />
+            )}
+            <span className="hidden sm:inline">{currentStep.label}</span>
+            {progress === "test_scheduled" && selectedTestDate && (
+              <span className="text-[10px] opacity-70 hidden sm:inline">
+                ({format(selectedTestDate, "M/d")})
               </span>
-              {isCurrentStep && (
-                <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30">
-                  Current
-                </Badge>
-              )}
-            </DropdownMenuItem>
-          );
-        })}
-      </DropdownMenuContent>
-    </DropdownMenu>
+            )}
+            <ChevronRight className="h-3 w-3" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel className="text-xs text-muted-foreground">
+            License Progression
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          
+          {progressSteps.map((step, index) => {
+            const StepIcon = step.icon;
+            const isCurrentStep = step.value === progress;
+            const isPastStep = index < currentStepIndex;
+            
+            return (
+              <DropdownMenuItem
+                key={step.value}
+                onClick={() => handleUpdateProgress(step.value)}
+                disabled={isUpdating}
+                className={cn(
+                  "flex items-center gap-3 cursor-pointer",
+                  isCurrentStep && "bg-muted"
+                )}
+              >
+                <div className={cn(
+                  "flex items-center justify-center w-6 h-6 rounded-full border",
+                  isCurrentStep ? progressColors[step.value] : isPastStep ? "bg-primary/20 border-primary/30" : "border-border"
+                )}>
+                  {isPastStep ? (
+                    <Check className="h-3 w-3 text-primary" />
+                  ) : (
+                    <StepIcon className={cn("h-3 w-3", isCurrentStep ? step.color : "text-muted-foreground")} />
+                  )}
+                </div>
+                <span className={cn(
+                  "flex-1",
+                  isCurrentStep && "font-medium",
+                  isPastStep && "text-muted-foreground"
+                )}>
+                  {step.label}
+                </span>
+                {isCurrentStep && (
+                  <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30">
+                    Current
+                  </Badge>
+                )}
+              </DropdownMenuItem>
+            );
+          })}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Test Scheduled Date Picker Popover */}
+      <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
+        <PopoverTrigger asChild>
+          <span className="hidden" />
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="end">
+          <div className="p-3 border-b border-border">
+            <p className="text-sm font-medium">Select Test Date</p>
+            <p className="text-xs text-muted-foreground">When is the licensing exam scheduled?</p>
+          </div>
+          <Calendar
+            mode="single"
+            selected={selectedTestDate}
+            onSelect={handleTestDateConfirm}
+            disabled={(date) => date < new Date()}
+            initialFocus
+            className="p-3 pointer-events-auto"
+          />
+        </PopoverContent>
+      </Popover>
+    </>
   );
 }

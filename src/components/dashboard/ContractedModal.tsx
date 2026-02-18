@@ -115,9 +115,9 @@ export function ContractedModal({
 
         newAgentId = existingAgent.id;
       } else {
-        // Determine license status
+        // Determine license status - check both license_status AND license_progress
         const finalLicenseStatus = 
-          application.license_progress === "licensed" 
+          application.license_status === "licensed" || application.license_progress === "licensed" 
             ? "licensed" 
             : application.license_status;
 

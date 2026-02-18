@@ -355,13 +355,9 @@ export function CareerPathwaySection() {
                   </div>
 
                   {/* Active indicator ring */}
-                  {activePhase === index && (
-                    <motion.div
-                      className={`absolute inset-0 rounded-full border-2 ${phase.color.replace("bg-", "border-")}`}
-                      initial={{ scale: 1 }}
-                      animate={{ scale: [1, 1.3, 1] }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                      style={{ opacity: 0.5 }}
+                   {activePhase === index && (
+                    <div
+                      className={`absolute inset-0 rounded-full border-2 ${phase.color.replace("bg-", "border-")} opacity-50 scale-110`}
                     />
                   )}
 
@@ -411,16 +407,8 @@ export function CareerPathwaySection() {
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(168_84%_42%/0.08)_0%,transparent_60%)]" />
       
       {/* Floating orbs */}
-      <motion.div
-        className="absolute top-40 left-10 w-40 h-40 bg-primary/10 rounded-full blur-3xl"
-        animate={{ y: [0, -30, 0], opacity: [0.2, 0.4, 0.2] }}
-        transition={{ duration: 8, repeat: Infinity }}
-      />
-      <motion.div
-        className="absolute bottom-60 right-10 w-56 h-56 bg-purple-500/10 rounded-full blur-3xl"
-        animate={{ y: [0, 30, 0], opacity: [0.2, 0.3, 0.2] }}
-        transition={{ duration: 10, repeat: Infinity }}
-      />
+      <div className="absolute top-40 left-10 w-40 h-40 bg-primary/10 rounded-full blur-3xl opacity-30" />
+      <div className="absolute bottom-60 right-10 w-56 h-56 bg-purple-500/10 rounded-full blur-3xl opacity-25" />
 
       <div className="container mx-auto px-4 relative z-10">
         {/* Stats Banner */}
@@ -549,27 +537,12 @@ export function CareerPathwaySection() {
                         viewport={{ once: true }}
                         transition={{ duration: 0.8, delay: 0.3, ease: "easeOut" }}
                       />
-                      {/* Animated pulse effect */}
-                      <motion.div
-                        className={`absolute inset-0 w-full bg-gradient-to-b ${phaseConnectorColors[phaseIndex]} opacity-50`}
-                        animate={{
-                          y: ["-100%", "100%"],
-                        }}
-                        transition={{
-                          duration: 2,
-                          repeat: Infinity,
-                          ease: "easeInOut",
-                          repeatDelay: 1,
-                        }}
-                      />
+                      {/* Static pulse accent */}
+                      <div className={`absolute inset-0 w-full bg-gradient-to-b ${phaseConnectorColors[phaseIndex]} opacity-30`} />
                     </div>
                     
-                    {/* Animated arrow */}
-                    <motion.div
-                      className="mt-2"
-                      animate={{ y: [0, 4, 0] }}
-                      transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                    >
+                    {/* Arrow */}
+                    <div className="mt-2">
                       <svg
                         width="24"
                         height="24"
@@ -589,19 +562,11 @@ export function CareerPathwaySection() {
                           transition={{ duration: 0.6, delay: 0.5 }}
                         />
                       </svg>
-                    </motion.div>
+                    </div>
 
-                    {/* Glowing dot at transition */}
-                    <motion.div
-                      className={`absolute top-0 w-3 h-3 rounded-full bg-gradient-to-r ${phaseConnectorColors[phaseIndex]}`}
-                      animate={{
-                        boxShadow: [
-                          "0 0 10px 2px rgba(45, 212, 191, 0.3)",
-                          "0 0 20px 4px rgba(45, 212, 191, 0.5)",
-                          "0 0 10px 2px rgba(45, 212, 191, 0.3)",
-                        ],
-                      }}
-                      transition={{ duration: 2, repeat: Infinity }}
+                    {/* Dot at transition */}
+                    <div
+                      className={`absolute top-0 w-3 h-3 rounded-full bg-gradient-to-r ${phaseConnectorColors[phaseIndex]} shadow-lg`}
                     />
                   </div>
                 </motion.div>

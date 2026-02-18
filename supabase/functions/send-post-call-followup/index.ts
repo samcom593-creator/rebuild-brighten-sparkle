@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { Resend } from "npm:resend@2.0.0";
 
 const corsHeaders = {
@@ -17,6 +17,34 @@ interface PostCallFollowupRequest {
   actionType?: string;
   calendarLink?: string;
   agentId?: string;
+}
+
+// Helper to build a mobile-safe CTA button using table layout
+function ctaButton(href: string, text: string, bg: string): string {
+  return `
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+        <tr>
+          <td align="center" style="padding:32px 0;">
+            <a href="${href}" style="display:block;background:${bg};color:white;text-decoration:none;padding:16px 32px;border-radius:12px;font-size:16px;font-weight:600;text-align:center;max-width:100%;box-sizing:border-box;" target="_blank">
+              ${text}
+            </a>
+          </td>
+        </tr>
+      </table>`;
+}
+
+// Helper for smaller inline step buttons
+function stepButton(href: string, text: string, bg: string): string {
+  return `
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+        <tr>
+          <td align="center" style="padding:8px 0;">
+            <a href="${href}" style="display:block;background:${bg};color:white;text-decoration:none;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;text-align:center;max-width:100%;box-sizing:border-box;" target="_blank">
+              ${text}
+            </a>
+          </td>
+        </tr>
+      </table>`;
 }
 
 async function getManagerEmail(supabase: any, agentId: string): Promise<string | null> {
@@ -96,11 +124,7 @@ const handler = async (req: Request): Promise<Response> => {
           With your license already in hand, you're ready to hit the ground running. Let's get you contracted and set up:
         </p>
 
-        <div style="text-align: center; margin: 32px 0;">
-          <a href="${finalCalendarLink}" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-size: 16px; font-weight: 600; box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4); max-width:100%; box-sizing:border-box;">
-            📅 Schedule Your Onboarding Call
-          </a>
-        </div>`;
+        ${ctaButton(finalCalendarLink, "📅 Schedule Your Onboarding Call", "linear-gradient(135deg, #10b981 0%, #059669 100%)")}`;
       } else {
         hiredBody = `
         <p style="margin: 0 0 20px 0; font-size: 16px; line-height: 1.7; color: #e5e7eb;">
@@ -118,17 +142,17 @@ const handler = async (req: Request): Promise<Response> => {
 
         <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 16px; padding: 24px; margin-bottom: 16px;">
           <h3 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 700; color: #10b981;">📺 Step 1: Watch the Overview Video</h3>
-          <a href="https://www.youtube.com/watch?v=i1e5p-GEfAU" style="display: inline-block; background: #ef4444; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600;">▶️ Watch Video</a>
+          ${stepButton("https://www.youtube.com/watch?v=i1e5p-GEfAU", "▶️ Watch Video", "#ef4444")}
         </div>
 
         <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 16px; padding: 24px; margin-bottom: 16px;">
           <h3 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 700; color: #3b82f6;">📄 Step 2: Review the Licensing Guide</h3>
-          <a href="https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg/edit?usp=sharing" style="display: inline-block; background: #3b82f6; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600;">📖 View Guide</a>
+          ${stepButton("https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg/edit?usp=sharing", "📖 View Guide", "#3b82f6")}
         </div>
 
         <div style="background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 16px; padding: 24px; margin-bottom: 24px;">
           <h3 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 700; color: #a855f7;">🎓 Step 3: Start Your Pre-Licensing Course</h3>
-          <a href="https://partners.xcelsolutions.com/afe" style="display: inline-block; background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%); color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600;">🚀 Start Course</a>
+          ${stepButton("https://partners.xcelsolutions.com/afe", "🚀 Start Course", "linear-gradient(135deg, #a855f7 0%, #9333ea 100%)")}
         </div>
 
         <div style="background: rgba(16, 185, 129, 0.05); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
@@ -137,11 +161,7 @@ const handler = async (req: Request): Promise<Response> => {
           <div><span style="color: #10b981;">✅</span> <span style="color: #e5e7eb; font-size: 14px;"><strong>Full Training & Support Provided</strong></span></div>
         </div>
 
-        <div style="text-align: center; margin: 32px 0;">
-          <a href="${finalCalendarLink}" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-size: 16px; font-weight: 600; box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4); max-width:100%; box-sizing:border-box;">
-            📅 Questions? Book a Call
-          </a>
-        </div>`;
+        ${ctaButton(finalCalendarLink, "📅 Questions? Book a Call", "linear-gradient(135deg, #10b981 0%, #059669 100%)")}`;
       }
     }
 
@@ -159,7 +179,7 @@ const handler = async (req: Request): Promise<Response> => {
 <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0a0a0f; color: #ffffff; word-break: break-word;">
   <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
     <div style="text-align: center; margin-bottom: 40px;">
-      <div style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #14b8a6 100%); padding: 16px 32px; border-radius: 12px;">
+      <div style="background: linear-gradient(135deg, #10b981 0%, #14b8a6 100%); padding: 16px 32px; border-radius: 12px;">
         <span style="font-size: 28px; font-weight: 800; color: white; letter-spacing: -0.5px;">APEX</span>
       </div>
     </div>
@@ -173,11 +193,7 @@ const handler = async (req: Request): Promise<Response> => {
       <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.7; color: #e5e7eb;">
         We'd love to connect with you about the opportunity at <strong style="color: #10b981;">Apex Financial</strong>. When you have a moment, feel free to book a time that works best for you:
       </p>
-      <div style="text-align: center; margin: 32px 0;">
-        <a href="${finalCalendarLink}" style="display: inline-block; background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%); color: white; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-size: 16px; font-weight: 600; box-shadow: 0 8px 24px rgba(245, 158, 11, 0.4); max-width:100%; box-sizing:border-box;">
-          📅 Book a Time That Works for You
-        </a>
-      </div>
+      ${ctaButton(finalCalendarLink, "📅 Book a Time That Works for You", "linear-gradient(135deg, #f59e0b 0%, #f97316 100%)")}
       <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.7; color: #9ca3af;">
         Or simply call us back at your convenience — we're here to help!
       </p>
@@ -204,7 +220,7 @@ const handler = async (req: Request): Promise<Response> => {
 <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0a0a0f; color: #ffffff; word-break: break-word;">
   <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
     <div style="text-align: center; margin-bottom: 40px;">
-      <div style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #14b8a6 100%); padding: 16px 32px; border-radius: 12px;">
+      <div style="background: linear-gradient(135deg, #10b981 0%, #14b8a6 100%); padding: 16px 32px; border-radius: 12px;">
         <span style="font-size: 28px; font-weight: 800; color: white; letter-spacing: -0.5px;">APEX</span>
       </div>
     </div>
@@ -236,7 +252,7 @@ const handler = async (req: Request): Promise<Response> => {
     
     <!-- Logo Header -->
     <div style="text-align: center; margin-bottom: 40px;">
-      <div style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #14b8a6 100%); padding: 16px 32px; border-radius: 12px;">
+      <div style="background: linear-gradient(135deg, #10b981 0%, #14b8a6 100%); padding: 16px 32px; border-radius: 12px;">
         <span style="font-size: 28px; font-weight: 800; color: white; letter-spacing: -0.5px;">APEX</span>
       </div>
     </div>
@@ -262,17 +278,17 @@ const handler = async (req: Request): Promise<Response> => {
 
       <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 16px; padding: 24px; margin-bottom: 16px;">
         <h3 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 700; color: #10b981;">📺 Step 1: Watch the Overview Video</h3>
-        <a href="https://www.youtube.com/watch?v=i1e5p-GEfAU" style="display: inline-block; background: #ef4444; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; max-width:100%; box-sizing:border-box;">▶️ Watch Video</a>
+        ${stepButton("https://www.youtube.com/watch?v=i1e5p-GEfAU", "▶️ Watch Video", "#ef4444")}
       </div>
 
       <div style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 16px; padding: 24px; margin-bottom: 16px;">
         <h3 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 700; color: #3b82f6;">📄 Step 2: Review the Licensing Guide</h3>
-        <a href="https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg/edit?usp=sharing" style="display: inline-block; background: #3b82f6; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; max-width:100%; box-sizing:border-box;">📖 View Guide</a>
+        ${stepButton("https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg/edit?usp=sharing", "📖 View Guide", "#3b82f6")}
       </div>
 
       <div style="background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 16px; padding: 24px; margin-bottom: 24px;">
         <h3 style="margin: 0 0 12px 0; font-size: 18px; font-weight: 700; color: #a855f7;">🎓 Step 3: Start Your Pre-Licensing Course</h3>
-        <a href="https://partners.xcelsolutions.com/afe" style="display: inline-block; background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%); color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; max-width:100%; box-sizing:border-box;">🚀 Start Course</a>
+        ${stepButton("https://partners.xcelsolutions.com/afe", "🚀 Start Course", "linear-gradient(135deg, #a855f7 0%, #9333ea 100%)")}
       </div>
 
       <div style="background: rgba(16, 185, 129, 0.05); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
@@ -286,11 +302,7 @@ const handler = async (req: Request): Promise<Response> => {
       </p>
       `}
 
-      <div style="text-align: center; margin: 32px 0;">
-        <a href="${finalCalendarLink}" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-size: 16px; font-weight: 600; box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4); max-width:100%; box-sizing:border-box;">
-          📅 Schedule Follow-Up Call
-        </a>
-      </div>
+      ${ctaButton(finalCalendarLink, "📅 Schedule Follow-Up Call", "linear-gradient(135deg, #10b981 0%, #059669 100%)")}
 
       <div style="height: 1px; background: linear-gradient(90deg, transparent, rgba(16, 185, 129, 0.3), transparent); margin: 32px 0;"></div>
 

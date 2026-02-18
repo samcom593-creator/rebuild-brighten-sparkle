@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { Resend } from "npm:resend@2.0.0";
 
 const corsHeaders = {
@@ -24,7 +24,8 @@ const handler = async (req: Request): Promise<Response> => {
       .select("id, first_name, email, license_status, assigned_agent_id")
       .in("license_status", ["unlicensed", "pending"])
       .is("terminated_at", null)
-      .not("email", "is", null);
+      .not("email", "is", null)
+      .order("created_at", { ascending: true });
 
     if (queryError) throw queryError;
 
@@ -89,7 +90,7 @@ const handler = async (req: Request): Promise<Response> => {
         console.log(`[bulk-send-licensing] ✅ Sent to ${app.email}`);
 
         // Small delay to avoid rate limiting
-        await new Promise((r) => setTimeout(r, 500));
+        await new Promise((r) => setTimeout(r, 1000));
       } catch (err: any) {
         console.error(`[bulk-send-licensing] ❌ Failed for ${app.email}:`, err.message);
         results.failed.push({ email: app.email, error: err.message });

@@ -106,6 +106,17 @@ export function LicenseProgressSelector({
       const stepLabel = progressSteps.find(s => s.value === newProgress)?.label;
       toast.success(`Updated to: ${stepLabel}${testDate ? ` (${format(testDate, "MMM d, yyyy")})` : ""}`);
       onProgressUpdated?.();
+
+      // Send notification when test date is set
+      if (newProgress === "test_scheduled" && testDate) {
+        try {
+          await supabase.functions.invoke("notify-test-scheduled", {
+            body: { applicationId, testDate: format(testDate, "yyyy-MM-dd") },
+          });
+        } catch (notifyErr) {
+          console.error("Failed to send test scheduled notification:", notifyErr);
+        }
+      }
     } catch (err) {
       console.error("Failed to update license progress:", err);
       toast.error("Failed to update progress");

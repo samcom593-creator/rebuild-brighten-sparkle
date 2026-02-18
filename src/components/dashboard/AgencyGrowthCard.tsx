@@ -11,6 +11,7 @@ type Period = "day" | "week" | "month";
 
 interface GrowthStats {
   licensedProducers: number;
+  totalUnlicensed: number;
   newHires: number;
   licensedHires: number;
   unlicensedHires: number;
@@ -49,62 +50,97 @@ export function AgencyGrowthCard() {
           prevEnd = getDateDaysAgoPST(7);
       }
 
-      // Parallel queries
-      const [agentsRes, currentAppsRes, prevAppsRes, newAgentsRes, prevAgentsRes] = await Promise.all([
+      // Parallel queries — include unlicensed apps + agent profile emails for dedup
+      const [agentsRes, allUnlicensedAppsRes, currentAppsRes, prevAppsRes, newAgentsRes, prevAgentsRes, profilesRes] = await Promise.all([
         supabase
           .from("agents")
-          .select("id, license_status, is_deactivated, onboarding_stage, evaluated_at, created_at")
+          .select("id, license_status, is_deactivated, onboarding_stage, evaluated_at, created_at, profile_id")
           .eq("is_deactivated", false),
-        // Count ALL non-terminated applications created in the current period
+        // ALL hired unlicensed applications (for total unlicensed card)
+        supabase
+          .from("applications")
+          .select("id, email, license_status, status")
+          .is("terminated_at", null)
+          .in("status", ["reviewing", "contracting", "approved"])
+          .neq("license_status", "licensed"),
+        // Period apps
         supabase
           .from("applications")
           .select("id, created_at, status, license_status")
           .is("terminated_at", null)
           .gte("created_at", currentStart),
-        // Count ALL non-terminated applications created in the previous period
         supabase
           .from("applications")
           .select("id, created_at, status")
           .is("terminated_at", null)
           .gte("created_at", prevStart)
           .lt("created_at", prevEnd),
-        // Count agents created in current period
         supabase
           .from("agents")
           .select("id, created_at")
           .eq("is_deactivated", false)
           .gte("created_at", currentStart),
-        // Count agents created in previous period
         supabase
           .from("agents")
           .select("id, created_at")
           .eq("is_deactivated", false)
           .gte("created_at", prevStart)
           .lt("created_at", prevEnd),
+        // Get profile emails for agents to deduplicate
+        supabase
+          .from("profiles")
+          .select("id, email"),
       ]);
 
       const agents = agentsRes.data || [];
+      const allUnlicensedApps = allUnlicensedAppsRes.data || [];
       const currentApps = currentAppsRes.data || [];
       const prevApps = prevAppsRes.data || [];
       const newAgentsCurrent = newAgentsRes.data || [];
       const newAgentsPrev = prevAgentsRes.data || [];
+      const profiles = profilesRes.data || [];
+
+      // Build profile email lookup
+      const profileEmailMap = new Map<string, string>();
+      profiles.forEach((p) => {
+        if (p.email) profileEmailMap.set(p.id, p.email.toLowerCase().trim());
+      });
 
       // Licensed producers (total active)
       const licensedProducers = agents.filter(
         (a) => a.license_status === "licensed"
       ).length;
 
-      // New hires: all non-terminated apps in period OR new agents, whichever is higher
-      const newHires = Math.max(currentApps.length, newAgentsCurrent.length);
+      // --- Unlicensed Total: merge agents + applications, dedup by email ---
+      const unlicensedEmails = new Set<string>();
 
-      // Break down by license status
+      // Add unlicensed agents
+      agents.forEach((a) => {
+        if (a.license_status !== "licensed" && a.profile_id) {
+          const email = profileEmailMap.get(a.profile_id);
+          if (email) unlicensedEmails.add(email);
+          else unlicensedEmails.add(`agent-${a.id}`); // fallback
+        } else if (a.license_status !== "licensed") {
+          unlicensedEmails.add(`agent-${a.id}`);
+        }
+      });
+
+      // Add unlicensed applications (dedup against agent emails)
+      allUnlicensedApps.forEach((app) => {
+        const email = (app.email || "").toLowerCase().trim();
+        if (email) unlicensedEmails.add(email);
+        else unlicensedEmails.add(`app-${app.id}`);
+      });
+
+      const totalUnlicensed = unlicensedEmails.size;
+
+      // New hires for period
+      const newHires = Math.max(currentApps.length, newAgentsCurrent.length);
       const licensedHires = currentApps.filter(a => a.status !== "rejected" && (a as any).license_status === "licensed").length;
       const unlicensedHires = currentApps.filter(a => a.status !== "rejected" && (a as any).license_status !== "licensed").length;
-
-      // Previous period hires
       const prevHires = Math.max(prevApps.length, newAgentsPrev.length);
 
-      // In pipeline (agents in onboarding stages, not yet evaluated)
+      // In pipeline
       const pipelineStages = ["onboarding", "in_field_training", "training_online"];
       const inPipeline = agents.filter(
         (a) =>
@@ -116,9 +152,7 @@ export function AgencyGrowthCard() {
       // Growth %
       let growthPercent = 0;
       if (prevHires > 0) {
-        growthPercent = Math.round(
-          ((newHires - prevHires) / prevHires) * 100
-        );
+        growthPercent = Math.round(((newHires - prevHires) / prevHires) * 100);
       } else if (newHires > 0) {
         growthPercent = 100;
       }
@@ -139,6 +173,7 @@ export function AgencyGrowthCard() {
 
       setStats({
         licensedProducers,
+        totalUnlicensed,
         newHires,
         licensedHires,
         unlicensedHires,
@@ -183,12 +218,12 @@ export function AgencyGrowthCard() {
       iconColor: "text-emerald-400",
     },
     {
-      label: `New Hires ${periodLabel}`,
-      value: stats?.newHires ?? 0,
-      subtitle: `${stats?.licensedHires ?? 0} Licensed / ${stats?.unlicensedHires ?? 0} Unlicensed`,
+      label: "Unlicensed (Total)",
+      value: stats?.totalUnlicensed ?? 0,
+      subtitle: "Merged agents + applications",
       icon: Users,
-      color: "from-blue-500/20 to-blue-500/5 border-blue-500/20",
-      iconColor: "text-blue-400",
+      color: "from-orange-500/20 to-orange-500/5 border-orange-500/20",
+      iconColor: "text-orange-400",
     },
     {
       label: "In Pipeline",
@@ -198,13 +233,12 @@ export function AgencyGrowthCard() {
       iconColor: "text-amber-400",
     },
     {
-      label: "Growth",
-      value: `${stats?.growthPercent ?? 0}%`,
+      label: `New Hires ${periodLabel}`,
+      value: stats?.newHires ?? 0,
+      subtitle: `${stats?.licensedHires ?? 0} Licensed / ${stats?.unlicensedHires ?? 0} Unlicensed`,
       icon: TrendingUp,
-      color: (stats?.growthPercent ?? 0) >= 0
-        ? "from-emerald-500/20 to-emerald-500/5 border-emerald-500/20"
-        : "from-red-500/20 to-red-500/5 border-red-500/20",
-      iconColor: (stats?.growthPercent ?? 0) >= 0 ? "text-emerald-400" : "text-red-400",
+      color: "from-blue-500/20 to-blue-500/5 border-blue-500/20",
+      iconColor: "text-blue-400",
     },
   ];
 

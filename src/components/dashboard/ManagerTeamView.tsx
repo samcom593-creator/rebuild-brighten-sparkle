@@ -48,6 +48,7 @@ import { cn } from "@/lib/utils";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 import { toast } from "sonner";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { LicenseProgressSelector } from "./LicenseProgressSelector";
 
 type SortOption = "production-desc" | "production-asc" | "name" | "status";
 type RosterFilter = "all" | "licensed" | "unlicensed" | "training" | "training_online" | "in_field_training";
@@ -76,6 +77,9 @@ interface TeamMember {
   invitedByManagerId: string | null;
   standardPaid: boolean;
   premiumPaid: boolean;
+  applicationId: string | null;
+  licenseProgress: string | null;
+  testScheduledDate: string | null;
 }
 
 interface TeamStats {
@@ -328,11 +332,11 @@ export function ManagerTeamView() {
         .select("user_id, full_name, email")
         .in("user_id", userIds);
 
-      // Get applications assigned to each team member
+      // Get applications assigned to each team member (include license progress)
       const agentIds = teamAgents.map(a => a.id);
       const { data: applications } = await supabase
         .from("applications")
-        .select("assigned_agent_id, status, contacted_at, closed_at, last_contacted_at")
+        .select("id, assigned_agent_id, status, contacted_at, closed_at, last_contacted_at, license_progress, test_scheduled_date")
         .in("assigned_agent_id", agentIds);
 
       // Get production data for week and month
@@ -403,6 +407,9 @@ export function ManagerTeamView() {
 
         const pay = paymentMap.get(agent.id) || { standard: false, premium: false };
 
+        // Find the most relevant application for license progress
+        const latestApp = agentApps.length > 0 ? agentApps[0] : null;
+
         return {
           id: agent.id,
           userId: agent.user_id || "",
@@ -427,6 +434,9 @@ export function ManagerTeamView() {
           invitedByManagerId: agent.invited_by_manager_id || null,
           standardPaid: pay.standard,
           premiumPaid: pay.premium,
+          applicationId: (latestApp as any)?.id || null,
+          licenseProgress: (latestApp as any)?.license_progress || null,
+          testScheduledDate: (latestApp as any)?.test_scheduled_date || null,
         };
       });
 
@@ -462,6 +472,9 @@ export function ManagerTeamView() {
         invitedByManagerId: null,
         standardPaid: false,
         premiumPaid: false,
+        applicationId: app.id,
+        licenseProgress: null,
+        testScheduledDate: null,
       }));
 
       const allMembers = [...members, ...pipelineMembers];
@@ -674,15 +687,25 @@ export function ManagerTeamView() {
                 <p className="text-[10px] text-muted-foreground">Deals</p>
               </div>
             </div>
-            <Badge className={cn(
-              "text-[10px] capitalize",
-              member.onboardingStage === "evaluated" && "bg-emerald-500/20 text-emerald-400",
-              member.onboardingStage === "in_field_training" && "bg-violet-500/20 text-violet-400",
-              member.onboardingStage === "training_online" && "bg-amber-500/20 text-amber-400",
-              member.onboardingStage === "onboarding" && "bg-blue-500/20 text-blue-400"
-            )}>
-              {member.onboardingStage.replace(/_/g, ' ')}
-            </Badge>
+            {member.licenseStatus !== "licensed" && member.applicationId ? (
+              <LicenseProgressSelector
+                applicationId={member.applicationId.replace('app-', '')}
+                currentProgress={(member.licenseProgress || "unlicensed") as any}
+                testScheduledDate={member.testScheduledDate}
+                onProgressUpdated={fetchTeamData}
+                className="h-5 text-[10px]"
+              />
+            ) : (
+              <Badge className={cn(
+                "text-[10px] capitalize",
+                member.onboardingStage === "evaluated" && "bg-emerald-500/20 text-emerald-400",
+                member.onboardingStage === "in_field_training" && "bg-violet-500/20 text-violet-400",
+                member.onboardingStage === "training_online" && "bg-amber-500/20 text-amber-400",
+                member.onboardingStage === "onboarding" && "bg-blue-500/20 text-blue-400"
+              )}>
+                {member.onboardingStage.replace(/_/g, ' ')}
+              </Badge>
+            )}
             <Badge className={cn("text-xs", getStatusColor(member.status))}>
               {member.status}
             </Badge>

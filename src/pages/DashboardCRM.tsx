@@ -67,6 +67,7 @@ import { cn } from "@/lib/utils";
 import { Database } from "@/integrations/supabase/types";
 import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
 import { InterviewRecorder } from "@/components/dashboard/InterviewRecorder";
+import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressSelector";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 type AttendanceStatus = Database["public"]["Enums"]["attendance_status"];
@@ -1003,33 +1004,16 @@ export default function DashboardCRM() {
             </div>
           )}
 
-          {/* License Progress Badge - always visible */}
-          {(() => {
-            const lp = agent.licenseProgress || "unlicensed";
-            const lpColors: Record<string, string> = {
-              unlicensed: "bg-slate-500/10 text-slate-400 border-slate-500/30",
-              course_purchased: "bg-violet-500/10 text-violet-400 border-violet-500/30",
-              finished_course: "bg-violet-500/10 text-violet-400 border-violet-500/30",
-              test_scheduled: "bg-blue-500/10 text-blue-400 border-blue-500/30",
-              passed_test: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
-              fingerprints_done: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
-              waiting_on_license: "bg-amber-500/10 text-amber-400 border-amber-500/30",
-              licensed: "bg-green-500/10 text-green-400 border-green-500/30",
-            };
-            const colorClass = lpColors[lp] || lpColors.unlicensed;
-            return (
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <Badge variant="outline" className={cn("text-[9px] h-4 px-1.5", colorClass)}>
-                  {lp.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
-                </Badge>
-                {agent.testScheduledDate && (
-                  <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-blue-500/10 text-blue-400 border-blue-500/30">
-                    📅 Exam: {new Date(agent.testScheduledDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                  </Badge>
-                )}
-              </div>
-            );
-          })()}
+          {/* License Progress Selector - interactive dropdown */}
+          <div className="flex items-center gap-1.5">
+            <LicenseProgressSelector
+              applicationId={agent.id}
+              currentProgress={(agent.licenseProgress || "unlicensed") as any}
+              testScheduledDate={agent.testScheduledDate}
+              onProgressUpdated={fetchAgents}
+              className="h-5 text-[10px]"
+            />
+          </div>
 
           {/* Last Follow-Up line */}
           <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">

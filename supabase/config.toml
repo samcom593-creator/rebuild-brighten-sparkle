@@ -282,3 +282,9 @@ verify_jwt = false
 
 [functions.log-production]
 verify_jwt = false
+
+[functions.notify-test-scheduled]
+verify_jwt = false
+
+[functions.notify-test-reminder]
+verify_jwt = false

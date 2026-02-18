@@ -1,76 +1,55 @@
 
-# Fix: Dashboard Stat Mismatches, Aged Leads Duplicates, and Related Bugs
 
-## Issues Identified
+# Fix: Email Buttons Not Working (Deploy Failures + Mobile Button Layout)
 
-### 1. CRM Dashboard: Stat Cards Don't Match Expanded Views
-**Root Cause**: The stat card counts use `activeAgents` (line 638: agents where `!isDeactivated && !isInactive`), but when you tap a stat card to see the list, the expanded view (line 1523-1531) uses `filteredAgents` which additionally excludes agents with `evaluationResult === "failed"` for non-admin users (line 649). This causes the stat to say "19 In-Field Training" but only show 1 when tapped.
+## Root Causes
 
-**Fix**: Change expanded view references from `filteredAgents` to `activeAgents` (with search/manager filters applied) so the list matches the count exactly.
+### Issue 1: Edge functions fail to deploy (bundle timeout)
+`send-outreach-email/index.ts` and `send-post-call-followup/index.ts` use `esm.sh` imports for `@supabase/supabase-js` and `resend`. This causes "Bundle generation timed out" errors, meaning these functions never deploy successfully. When someone taps the graduation hat button or QuickEmailMenu send button, the function call silently fails because no deployed function exists to handle it.
 
-**File**: `src/pages/DashboardCRM.tsx` (lines 1523-1531)
-- Replace all `filteredAgents` references with `activeAgents` filtered by search + manager only (no evaluation filter)
-
-### 2. Aged Leads: "49 Duplicates" Click Does Nothing
-**Root Cause**: The duplicate banner calls `handleAutoMergeDuplicates()` which uses `window.confirm()`. On mobile browsers and some embedded webviews, `window.confirm()` can be blocked or not visible. The user taps the banner and sees no response.
-
-**Fix**: Replace `window.confirm()` with a proper dialog component (AlertDialog from Radix) that works reliably on all devices.
-
-**File**: `src/pages/DashboardAgedLeads.tsx`
-- Add AlertDialog state for merge confirmation
-- Replace `window.confirm` with AlertDialog that shows the count and confirms the action
-- Ensure the merge actually processes and refreshes the list
-
-### 3. Stat Card "In-Field Training" Shows Wrong Count
-Same root cause as issue 1 -- the `stageFilter` logic and expanded view filter diverge. The fix in issue 1 resolves this.
+### Issue 2: Email CTA buttons untappable on mobile
+All 11 outreach email templates use `<div>` wrappers with `display:inline-block` for CTA buttons. Many mobile email clients (Gmail app, Outlook, Apple Mail) do not reliably render these -- recipients tap the button and nothing happens. Per the project's established standard, all email buttons must use table-based layout with `display:block`.
 
 ---
 
-## Technical Changes
+## Fix Plan
 
-### File 1: `src/pages/DashboardCRM.tsx`
+### Step 1: Fix `send-outreach-email/index.ts` imports
+Change lines 2-3 from `esm.sh` to `npm:` specifiers so the function deploys successfully:
+- `import { createClient } from "npm:@supabase/supabase-js@2";`
+- `import { Resend } from "npm:resend@2.0.0";`
 
-**Change**: In the expanded view section (around line 1523), replace `filteredAgents` with `activeAgents` for all stat-card-triggered views so counts match:
+### Step 2: Fix `send-post-call-followup/index.ts` imports
+Same change -- line 2 from `esm.sh` to `npm:` specifier.
 
-```typescript
-// Before (line 1523-1531)
-const expandedAgentsUnsorted = expandedColumn === "all"
-  ? filteredAgents
-  : expandedColumn === "unlicensed"
-  ? filteredAgents.filter(a => a.agentLicenseStatus !== "licensed")
-  : expandedColumn === "course_purchased"
-  ? filteredAgents.filter(a => a.hasTrainingCourse)
-  : filteredAgents.filter(a => config.stages.includes(a.onboardingStage));
+### Step 3: Fix `send-licensing-instructions/index.ts` imports
+Line 2 uses `esm.sh` for Resend initialization at top level -- standardize to `npm:`.
 
-// After -- use activeAgents with search+manager filters only
-const searchManagerFiltered = activeAgents.filter(a => {
-  const matchesSearch = !searchTerm || 
-    a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    a.email.toLowerCase().includes(searchTerm.toLowerCase());
-  const matchesManager = managerFilter === "all" || a.managerId === managerFilter;
-  return matchesSearch && matchesManager;
-});
-
-const expandedAgentsUnsorted = expandedColumn === "all"
-  ? searchManagerFiltered
-  : expandedColumn === "unlicensed"
-  ? searchManagerFiltered.filter(a => a.agentLicenseStatus !== "licensed")
-  : expandedColumn === "paid"
-  ? searchManagerFiltered.filter(a => a.onboardingStage === "evaluated" && (a.standardPaid || a.premiumPaid))
-  : expandedColumn === "course_purchased"
-  ? searchManagerFiltered.filter(a => a.hasTrainingCourse)
-  : searchManagerFiltered.filter(a => config.stages.includes(a.onboardingStage));
+### Step 4: Convert all 11 email template CTA buttons to table-based layout
+Replace every `<div style="text-align:center"><a style="display:inline-block...">` pattern with:
+```html
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+  <tr>
+    <td align="center" style="padding:32px 0;">
+      <a href="..." style="display:block;background:...;color:#ffffff;padding:16px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;text-align:center;max-width:100%;box-sizing:border-box;">
+        Button Text
+      </a>
+    </td>
+  </tr>
+</table>
 ```
 
-### File 2: `src/pages/DashboardAgedLeads.tsx`
+This affects all 11 templates in `send-outreach-email`: cold_licensed, cold_unlicensed, followup1_licensed, followup2_licensed, followup1_unlicensed, followup2_unlicensed, licensing_reminder, licensing_checkin, course_help, schedule_consultation, and couldnt_reach_you.
 
-**Change**: Replace `window.confirm` with a proper AlertDialog for the merge duplicates action.
+### Step 5: Verify all Calendly links are correct
+Current links found in templates:
+- `calendly.com/apexlifeadvisors/15-minute-discovery` (licensed templates)
+- `calendly.com/apexlifeadvisors/15min` (cold unlicensed + couldnt_reach_you)
+- `calendly.com/sam-com593/licensed-prospect-call-clone` (unlicensed followups, licensing, course, schedule)
+- `calendly.com/apexfinancialmarketing/apex-financial-onboarding` (licensed welcome in send-licensing-instructions)
+- `calendly.com/apexfinancialmarketing/apex-interview` (unlicensed welcome in send-licensing-instructions)
 
-- Add state: `const [showMergeConfirm, setShowMergeConfirm] = useState(false);`
-- Add state: `const [mergeCount, setMergeCount] = useState(0);`
-- Modify `handleAutoMergeDuplicates` to calculate `idsToDelete`, store them in state, and show the dialog instead of `window.confirm`
-- Add AlertDialog component to the JSX that, on confirm, executes the delete operation
-- This ensures the confirmation works on all devices including mobile
+All links will be preserved as-is (they are working Calendly links).
 
 ---
 
@@ -78,8 +57,11 @@ const expandedAgentsUnsorted = expandedColumn === "all"
 
 | File | Change |
 |------|--------|
-| `src/pages/DashboardCRM.tsx` | Fix expanded view to use `activeAgents` with search/manager filters, matching stat card counts |
-| `src/pages/DashboardAgedLeads.tsx` | Replace `window.confirm` with AlertDialog for duplicate merge; ensure merge works on mobile |
+| `supabase/functions/send-outreach-email/index.ts` | Fix `esm.sh` to `npm:` imports; convert all 11 template CTA buttons from `div/inline-block` to `table/block` layout |
+| `supabase/functions/send-post-call-followup/index.ts` | Fix `esm.sh` to `npm:` import for supabase |
+| `supabase/functions/send-licensing-instructions/index.ts` | Already uses `npm:` for Resend -- no change needed |
 
-## Priority
-Both fixes are critical for dashboard accuracy and usability.
+## Expected Result
+- Graduation hat button and QuickEmailMenu will successfully send emails (functions will deploy)
+- All CTA buttons in received emails will be tappable on every mobile email client
+- All Calendly and resource links will work correctly

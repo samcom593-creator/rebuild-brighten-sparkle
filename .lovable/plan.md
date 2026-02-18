@@ -1,68 +1,42 @@
 
 
-# Fix: Accurate Unlicensed Tracking + Test Date Notifications
+# Fix: Dashboard Unlicensed Count Is Wrong (Shows 3, Should Be 30+)
 
-## What's Actually Happening
+## The Problem
 
-After investigation, the "Hired (Unlicensed)" stat card in your CRM **does already include** everyone who isn't licensed -- course purchased, fingerprints, test scheduled, waiting on license -- they all count. The number is correct. However, the issue is that **you can't see or change their licensing stage** from the CRM cards or the Dashboard roster, and there are **no email notifications** when a test date is set.
+The dashboard "Recruiting Stats" card (AgencyGrowthCard) only shows **3 unlicensed** because it's counting from the `agents` table, which only has 3 unlicensed agent records. However, there are **30 unlicensed hired people** in the `applications` table (status: reviewing, contracting, approved) who haven't been converted to agent records yet, or whose agent records show "licensed" while their application doesn't.
 
-Here's what needs to be fixed:
+The dashboard never merges these two data sources to give you the real unlicensed total.
 
----
+## The Fix
 
-## Change 1: Add License Progress Selector to CRM Agent Cards
+Update `src/components/dashboard/AgencyGrowthCard.tsx` to show the **true unlicensed count** by merging data from both the `agents` and `applications` tables, matching the same logic used in the CRM.
 
-Right now, the CRM agent cards don't show the licensing stage (Course Purchased, Test Scheduled, Fingerprints, etc.) for unlicensed agents. This makes it impossible to track where each person is in the licensing process from the CRM view.
-
-| File | Change |
-|------|--------|
-| `src/pages/DashboardCRM.tsx` | Add the `LicenseProgressSelector` component to each unlicensed agent's card. This is the same dropdown already used in the Pipeline page -- it shows the current stage and lets you advance it with one tap. When "Test Scheduled" is selected, the date picker will appear. |
-
-After this change, every unlicensed person in the CRM will show their licensing stage badge (e.g., "Course Started", "Test Scheduled (Mar 5)", "Fingerprints") and you can update it directly from the card.
-
----
-
-## Change 2: Add License Progress Selector to Dashboard Roster (ManagerTeamView)
-
-Same issue -- the Agency Roster on the main dashboard doesn't show licensing progress for unlicensed team members.
+### What Changes
 
 | File | Change |
 |------|--------|
-| `src/components/dashboard/ManagerTeamView.tsx` | For unlicensed members, show a `LicenseProgressSelector` badge on their card. This requires fetching `license_progress` and `test_scheduled_date` from the applications table (matching by `assigned_agent_id`) and passing it to the selector. |
+| `src/components/dashboard/AgencyGrowthCard.tsx` | Replace the current "Licensed Producers" / "New Hires" / "In Pipeline" / "Growth" card layout with a more accurate set of stats that includes a dedicated **"Unlicensed"** total card. The unlicensed count will merge agents with `license_status != 'licensed'` AND applications with status `reviewing`/`contracting`/`approved` and `license_status != 'licensed'`, deduplicated by email so no one is counted twice. |
 
----
+### Stat Cards After Fix
 
-## Change 3: Create Test Date Notification Edge Function
+The four cards will be:
 
-When someone's test date is set (or approaching), automatically email the agent, their manager, and admin.
+1. **Licensed Producers** -- total active agents with `license_status = 'licensed'` (unchanged, currently correct)
+2. **Unlicensed (Total)** -- everyone hired who is NOT licensed, merged from both `agents` and `applications` tables, deduplicated by email. This will show the real number (~30) instead of 3.
+3. **In Pipeline** -- agents in onboarding/training stages (unchanged)
+4. **New Hires (Period)** -- new hires for the selected period (day/week/month), with licensed vs unlicensed sub-label (unchanged)
 
-| File | Change |
-|------|--------|
-| `supabase/functions/notify-test-scheduled/index.ts` | **New function.** Sends three emails when a test date is recorded: (1) Confirmation to the applicant with the date and prep tips, (2) CC to the manager, (3) CC to admin. |
-| `supabase/functions/notify-test-reminder/index.ts` | **New function.** A scheduled (cron) function that runs daily, queries all applications with `license_progress = 'test_scheduled'` and `test_scheduled_date` within the next 2 days, and sends reminder emails to the applicant + manager + admin. Also sends a follow-up email 1 day after the test date asking "Did you pass?" |
+### Technical Details
 
----
+The query will:
+1. Fetch all non-deactivated agents with their license status
+2. Fetch all non-terminated applications with status in `('reviewing', 'contracting', 'approved')` and `license_status != 'licensed'`
+3. Get agent emails from the `profiles` table to deduplicate against application emails
+4. Combine both lists, dedup by email, and show the merged count
 
-## Change 4: Trigger Notification When Test Date Is Set
+This matches exactly how the CRM's "Hired (Unlicensed)" stat works, ensuring consistency across the dashboard and CRM views.
 
-| File | Change |
-|------|--------|
-| `src/components/dashboard/LicenseProgressSelector.tsx` | After successfully saving a test date, invoke `notify-test-scheduled` edge function with the application ID and test date. |
+## Result
 
----
-
-## Change 5: Set Up Daily Cron for Test Reminders
-
-A database cron job will call `notify-test-reminder` once daily to check for upcoming and past test dates and send the appropriate emails automatically.
-
----
-
-## Summary of What You'll See After This
-
-- **CRM "Hired (Unlicensed)" view**: Each person shows their exact licensing stage (Course Started, Test Scheduled with date, Fingerprints, etc.) and you can change it with one tap
-- **Dashboard Roster**: Same licensing stage badges on unlicensed team members
-- **When you set a test date**: Automatic email goes to the applicant, their manager, and admin confirming the scheduled date
-- **2 days before the test**: Reminder email to everyone
-- **1 day after the test**: "Did you pass?" follow-up email to everyone
-- All emails CC admin (info@apex-financial.org) and the assigned manager per existing policy
-
+After this fix, when you look at the dashboard you'll see the accurate count of all unlicensed people across your entire pipeline -- whether they exist as agent records or application records. The number will match what you see in the CRM.

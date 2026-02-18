@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Resend } from "https://esm.sh/resend@2.0.0";
+import { createClient } from "npm:@supabase/supabase-js@2";
+import { Resend } from "npm:resend@2.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -23,6 +23,20 @@ async function getManagerEmailFromAgent(supabase: any, agentId: string): Promise
     console.error("Error resolving manager email:", e);
     return null;
   }
+}
+
+// Helper to build a mobile-safe CTA button using table layout
+function ctaButton(href: string, text: string, bg: string = "linear-gradient(135deg,#14b8a6,#0ea5e9)"): string {
+  return `
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+        <tr>
+          <td align="center" style="padding:32px 0;">
+            <a href="${href}" style="display:block;background:${bg};color:#ffffff;padding:16px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;text-align:center;max-width:100%;box-sizing:border-box;" target="_blank">
+              ${text}
+            </a>
+          </td>
+        </tr>
+      </table>`;
 }
 
 // Email templates
@@ -57,12 +71,7 @@ const emailTemplates = {
         <strong style="color:#ffffff;">Would you be open to a quick 15-minute call</strong> to explore if this might be a good fit? No pressure, just a conversation about where you're at and where you want to go.
       </p>
       
-      <div style="text-align:center;margin:32px 0;">
-        <a href="https://calendly.com/apexlifeadvisors/15-minute-discovery" 
-           style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#ffffff;padding:16px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;max-width:100%;box-sizing:border-box;">
-          Schedule a Call
-        </a>
-      </div>
+      ${ctaButton("https://calendly.com/apexlifeadvisors/15-minute-discovery", "Schedule a Call")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Looking forward to connecting,<br>
@@ -109,12 +118,7 @@ const emailTemplates = {
         <strong style="color:#ffffff;">No sales pitch—just a real conversation</strong> about what this industry looks like and how you can start building income from day one.
       </p>
       
-      <div style="text-align:center;margin:32px 0;">
-        <a href="https://calendly.com/apexlifeadvisors/15min" 
-           style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#ffffff;padding:16px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;max-width:100%;box-sizing:border-box;">
-          Let's Talk
-        </a>
-      </div>
+      ${ctaButton("https://calendly.com/apexlifeadvisors/15min", "Let's Talk")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Here whenever you're ready,<br>
@@ -161,12 +165,7 @@ const emailTemplates = {
         <strong style="color:#ffffff;">When works best for a follow-up call?</strong> I want to walk you through our compensation structure and show you exactly what top producers are earning.
       </p>
       
-      <div style="text-align:center;margin:32px 0;">
-        <a href="https://calendly.com/apexlifeadvisors/15-minute-discovery" 
-           style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#ffffff;padding:16px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;max-width:100%;box-sizing:border-box;">
-          Book Follow-Up Call
-        </a>
-      </div>
+      ${ctaButton("https://calendly.com/apexlifeadvisors/15-minute-discovery", "Book Follow-Up Call")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Talk soon,<br>
@@ -213,12 +212,7 @@ const emailTemplates = {
         <strong style="color:#ffffff;">If now isn't the right time, no worries.</strong> But if there's any part of you that's curious, let's revisit the conversation. Sometimes timing is everything.
       </p>
       
-      <div style="text-align:center;margin:32px 0;">
-        <a href="https://calendly.com/apexlifeadvisors/15-minute-discovery" 
-           style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#ffffff;padding:16px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;max-width:100%;box-sizing:border-box;">
-          Let's Reconnect
-        </a>
-      </div>
+      ${ctaButton("https://calendly.com/apexlifeadvisors/15-minute-discovery", "Let's Reconnect")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Here when you're ready,<br>
@@ -265,12 +259,7 @@ const emailTemplates = {
         <strong style="color:#ffffff;">Let me know where you're at</strong> and I can point you in the right direction. No pressure—just want to make sure you have the support you need.
       </p>
       
-      <div style="text-align:center;margin:32px 0;">
-        <a href="https://calendly.com/sam-com593/licensed-prospect-call-clone" 
-           style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#ffffff;padding:16px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;max-width:100%;box-sizing:border-box;">
-          Let's Chat About Your Progress
-        </a>
-      </div>
+      ${ctaButton("https://calendly.com/sam-com593/licensed-prospect-call-clone", "Let's Chat About Your Progress")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Rooting for you,<br>
@@ -317,12 +306,7 @@ const emailTemplates = {
         <strong style="color:#ffffff;">If you're still interested, let's talk.</strong> I can walk you through exactly what you need to do to get started—step by step.
       </p>
       
-      <div style="text-align:center;margin:32px 0;">
-        <a href="https://calendly.com/sam-com593/licensed-prospect-call-clone" 
-           style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#ffffff;padding:16px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;max-width:100%;box-sizing:border-box;">
-          Get Licensed & Start Earning
-        </a>
-      </div>
+      ${ctaButton("https://calendly.com/sam-com593/licensed-prospect-call-clone", "Get Licensed & Start Earning")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Believe in you,<br>
@@ -376,12 +360,7 @@ const emailTemplates = {
         <strong style="color:#ffffff;">Need help getting started with your course?</strong> Let's hop on a quick call and I'll walk you through the fastest path to getting licensed.
       </p>
       
-      <div style="text-align:center;margin:32px 0;">
-        <a href="https://calendly.com/sam-com593/licensed-prospect-call-clone" 
-           style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#ffffff;padding:16px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;max-width:100%;box-sizing:border-box;">
-          Get Help With Licensing
-        </a>
-      </div>
+      ${ctaButton("https://calendly.com/sam-com593/licensed-prospect-call-clone", "Get Help With Licensing")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Here to help,<br>
@@ -438,12 +417,7 @@ const emailTemplates = {
         <strong style="color:#ffffff;">No judgment, no pressure.</strong> I just want to make sure you're not stuck and have everything you need to move forward.
       </p>
       
-      <div style="text-align:center;margin:32px 0;">
-        <a href="https://calendly.com/sam-com593/licensed-prospect-call-clone" 
-           style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#ffffff;padding:16px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;max-width:100%;box-sizing:border-box;">
-          Let's Chat—I'm Here to Help
-        </a>
-      </div>
+      ${ctaButton("https://calendly.com/sam-com593/licensed-prospect-call-clone", "Let's Chat—I'm Here to Help")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         In your corner,<br>
@@ -500,12 +474,7 @@ const emailTemplates = {
         <strong style="color:#ffffff;">Let's hop on a quick call</strong> so I can answer your questions and make sure you're on the fastest path to getting licensed!
       </p>
       
-      <div style="text-align:center;margin:32px 0;">
-        <a href="https://calendly.com/sam-com593/licensed-prospect-call-clone" 
-           style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#ffffff;padding:16px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;max-width:100%;box-sizing:border-box;">
-          Get Course Help
-        </a>
-      </div>
+      ${ctaButton("https://calendly.com/sam-com593/licensed-prospect-call-clone", "Get Course Help")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Here to help you succeed,<br>
@@ -562,12 +531,7 @@ const emailTemplates = {
         <strong style="color:#ffffff;">No pressure, no sales pitch</strong>—just a real conversation to see if this is the right fit for you.
       </p>
       
-      <div style="text-align:center;margin:32px 0;">
-        <a href="https://calendly.com/sam-com593/licensed-prospect-call-clone" 
-           style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#ffffff;padding:16px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;max-width:100%;box-sizing:border-box;">
-          Schedule Your Consultation
-        </a>
-      </div>
+      ${ctaButton("https://calendly.com/sam-com593/licensed-prospect-call-clone", "Schedule Your Consultation")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Looking forward to connecting,<br>
@@ -621,12 +585,7 @@ const emailTemplates = {
         We're excited to chat with you about how you can start building a <strong style="color:#14b8a6;">high-income career</strong> in financial services.
       </p>
       
-      <div style="text-align:center;margin:32px 0;">
-        <a href="https://calendly.com/apexlifeadvisors/15min" 
-           style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#ffffff;padding:16px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;max-width:100%;box-sizing:border-box;">
-          Schedule a Call
-        </a>
-      </div>
+      ${ctaButton("https://calendly.com/apexlifeadvisors/15min", "Schedule a Call")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Talk soon,<br>
@@ -768,7 +727,7 @@ const handler = async (req: Request): Promise<Response> => {
       .from(tableName)
       .update({ 
         last_contacted_at: new Date().toISOString(),
-        contacted_at: lead.contacted_at || new Date().toISOString(), // Set first contact if not already set
+        contacted_at: lead.contacted_at || new Date().toISOString(),
       })
       .eq("id", applicationId);
 

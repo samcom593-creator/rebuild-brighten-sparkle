@@ -163,6 +163,8 @@ export default function CallCenter() {
         // Status filter for applications
         if (statusFilter === "new") {
           appQuery = appQuery.eq("status", "new");
+        } else if (statusFilter === "no_pickup") {
+          appQuery = appQuery.eq("status", "no_pickup");
         } else if (statusFilter === "contacted") {
           appQuery = appQuery.eq("status", "reviewing");
         }
@@ -334,7 +336,7 @@ export default function CallCenter() {
       if (currentLead.source === "aged_leads") {
         const nowIso = new Date().toISOString();
         const statusMap: Record<string, string> = {
-          hired: "contacted",
+          hired: "hired",
           no_pickup: "no_pickup",
           bad_applicant: "bad_applicant",
         };

@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mic, MicOff, Loader2, ChevronDown, ChevronUp, Sparkles, AlertCircle, Mail, Check, CalendarDays } from "lucide-react";
+// Input import removed - no longer needed for calendar link
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -38,9 +39,7 @@ export function CallCenterVoiceRecorder({
   const [showFullTranscript, setShowFullTranscript] = useState(false);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const [sendingFollowUp, setSendingFollowUp] = useState(false);
-  const [followUpSent, setFollowUpSent] = useState(false);
-  const [showCalendarInput, setShowCalendarInput] = useState(false);
-  const [calendarLink, setCalendarLink] = useState("");
+  const [followUpSent, setFollowUpSent] = useState<"licensed" | "unlicensed" | false>(false);
   
   const recognitionRef = useRef<any>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -450,15 +449,15 @@ export function CallCenterVoiceRecorder({
               {/* Send Follow-Up Email */}
               {onSendFollowUp && (
                 <div className="space-y-2 pt-2 border-t border-border/30">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Button
                       size="sm"
-                      disabled={sendingFollowUp || followUpSent}
+                      disabled={sendingFollowUp || followUpSent === "licensed"}
                       onClick={async () => {
                         setSendingFollowUp(true);
                         try {
-                          await onSendFollowUp(calendarLink || undefined);
-                          setFollowUpSent(true);
+                          await onSendFollowUp("https://calendly.com/apexlifeadvisors/15-minute-discovery");
+                          setFollowUpSent("licensed");
                         } catch {
                           // error handled by parent
                         } finally {
@@ -467,46 +466,52 @@ export function CallCenterVoiceRecorder({
                       }}
                       className={cn(
                         "transition-all",
-                        followUpSent && "bg-green-600 hover:bg-green-600"
+                        followUpSent === "licensed" && "bg-green-600 hover:bg-green-600"
                       )}
                     >
-                      {sendingFollowUp ? (
+                      {sendingFollowUp && followUpSent !== "unlicensed" && followUpSent !== "licensed" ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : followUpSent ? (
+                      ) : followUpSent === "licensed" ? (
                         <Check className="h-4 w-4" />
                       ) : (
                         <Mail className="h-4 w-4" />
                       )}
                       <span className="ml-1.5">
-                        {followUpSent ? "Email Sent!" : "Send Follow-Up Email"}
+                        {followUpSent === "licensed" ? "Sent!" : "Send Licensed Follow-Up"}
                       </span>
                     </Button>
-                    <button
-                      type="button"
-                      onClick={() => setShowCalendarInput(!showCalendarInput)}
-                      className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={sendingFollowUp || followUpSent === "unlicensed"}
+                      onClick={async () => {
+                        setSendingFollowUp(true);
+                        try {
+                          await onSendFollowUp("https://calendly.com/apexlifeadvisors/15min");
+                          setFollowUpSent("unlicensed");
+                        } catch {
+                          // error handled by parent
+                        } finally {
+                          setSendingFollowUp(false);
+                        }
+                      }}
+                      className={cn(
+                        "transition-all",
+                        followUpSent === "unlicensed" && "bg-green-600 hover:bg-green-600"
+                      )}
                     >
-                      <CalendarDays className="h-3.5 w-3.5" />
-                      {showCalendarInput ? "Hide" : "Add calendar link"}
-                    </button>
+                      {sendingFollowUp && followUpSent !== "licensed" && followUpSent !== "unlicensed" ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : followUpSent === "unlicensed" ? (
+                        <Check className="h-4 w-4" />
+                      ) : (
+                        <CalendarDays className="h-4 w-4" />
+                      )}
+                      <span className="ml-1.5">
+                        {followUpSent === "unlicensed" ? "Sent!" : "Send Unlicensed Follow-Up"}
+                      </span>
+                    </Button>
                   </div>
-                  <AnimatePresence>
-                    {showCalendarInput && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="overflow-hidden"
-                      >
-                        <Input
-                          placeholder="Paste your Calendly or scheduling link..."
-                          value={calendarLink}
-                          onChange={(e) => setCalendarLink(e.target.value)}
-                          className="text-sm h-9"
-                        />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
                 </div>
               )}
             </div>

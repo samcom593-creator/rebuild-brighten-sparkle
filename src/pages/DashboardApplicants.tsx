@@ -443,7 +443,25 @@ export default function DashboardApplicants() {
   const totalLeads = activeApplications.length;
   const hired = activeApplications.filter(a => a.closed_at && !a.contracted_at).length;
   const contracted = activeApplications.filter(a => a.contracted_at).length;
-  const terminated = terminatedApplications.length;
+  const coursePurchased = activeApplications.filter(a => {
+    const lp = a.license_progress as string | null;
+    return lp === "course_purchased" || lp === "finished_course";
+  }).length;
+
+  // Helper for urgency badge
+  const getUrgencyBadge = (app: Application) => {
+    if (app.contacted_at || app.terminated_at) return null;
+    const daysSinceCreated = Math.floor(
+      (new Date().getTime() - new Date(app.created_at).getTime()) / (1000 * 60 * 60 * 24)
+    );
+    if (daysSinceCreated >= 3) {
+      return <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-[10px] gap-1 animate-pulse">🔴 {daysSinceCreated}d uncontacted</Badge>;
+    }
+    if (daysSinceCreated >= 2) {
+      return <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-[10px] gap-1">🟡 {daysSinceCreated}d uncontacted</Badge>;
+    }
+    return null;
+  };
 
   const renderApplicationCard = (app: Application, index: number, isTerminated = false) => {
     const status = getApplicationStatus(app);
@@ -471,10 +489,11 @@ export default function DashboardApplicants() {
                   <Users className={cn("h-6 w-6", isTerminated ? "text-red-400" : "text-primary")} />
                 </div>
                 <div>
-                  <h3 className="font-semibold">{app.first_name} {app.last_name}</h3>
+                   <h3 className="font-semibold">{app.first_name} {app.last_name}</h3>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Clock className="h-3 w-3" />
                     <span>{getTimeAgo(app.created_at)}</span>
+                    {getUrgencyBadge(app)}
                   </div>
                 </div>
               </div>
@@ -752,7 +771,7 @@ export default function DashboardApplicants() {
           { label: "Total Leads", value: totalLeads, icon: Users, color: "text-primary", filter: "all" },
           { label: "Hired", value: hired, icon: UserCheck, color: "text-emerald-400", filter: "hired" },
           { label: "Contracted", value: contracted, icon: FileCheck, color: "text-violet-400", filter: "contracted" },
-          { label: "Terminated", value: terminated, icon: XCircle, color: "text-red-400", filter: "terminated" },
+          { label: "Course Purchased", value: coursePurchased, icon: GraduationCap, color: "text-blue-400", filter: "all" },
         ].map((stat) => (
           <GlassCard 
             key={stat.label} 

@@ -100,6 +100,19 @@ serve(async (req) => {
 
       if (!teamAgents || teamAgents.length === 0) continue;
 
+      // ---- Uncalled Leads Report (from applications table, excluding aged leads) ----
+      const { data: uncalledApps } = await supabase
+        .from("applications")
+        .select("id, license_status")
+        .eq("assigned_agent_id", manager.id)
+        .is("contacted_at", null)
+        .is("terminated_at", null);
+
+      const uncalledLicensed = uncalledApps?.filter(a => a.license_status === "licensed").length || 0;
+      const uncalledUnlicensed = uncalledApps?.filter(a => a.license_status === "unlicensed").length || 0;
+      const uncalledUnknown = uncalledApps?.filter(a => a.license_status !== "licensed" && a.license_status !== "unlicensed").length || 0;
+      const totalUncalled = (uncalledApps?.length || 0);
+
       const teamIds = teamAgents.map(a => a.id);
 
       // Get team production for yesterday
@@ -315,6 +328,21 @@ serve(async (req) => {
                         </table>
                         ` : ''}
                         
+                        ${totalUncalled > 0 ? `
+                        <!-- Uncalled Leads -->
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background: rgba(255, 165, 0, 0.1); border: 1px solid rgba(255, 165, 0, 0.3); border-radius: 12px; margin-bottom: 16px;">
+                          <tr>
+                            <td style="padding: 20px;">
+                              <h3 style="color: #ffa500; font-size: 14px; margin: 0 0 12px; font-weight: 600;">📞 Uncalled Leads (${totalUncalled})</h3>
+                              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                                ${uncalledLicensed > 0 ? `<tr><td style="color: #888; padding: 4px 0;">Licensed</td><td style="color: #22c55e; font-weight: 700; text-align: right;">${uncalledLicensed}</td></tr>` : ''}
+                                ${uncalledUnlicensed > 0 ? `<tr><td style="color: #888; padding: 4px 0;">Unlicensed</td><td style="color: #ffa500; font-weight: 700; text-align: right;">${uncalledUnlicensed}</td></tr>` : ''}
+                                ${uncalledUnknown > 0 ? `<tr><td style="color: #888; padding: 4px 0;">Unknown</td><td style="color: #888; font-weight: 700; text-align: right;">${uncalledUnknown}</td></tr>` : ''}
+                              </table>
+                            </td>
+                          </tr>
+                        </table>
+                        ` : ''}
                         <!-- CTA Button -->
                         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
                           <tr>

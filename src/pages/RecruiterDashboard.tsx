@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Star, Zap, Flame, Trophy, Phone, Mail, MapPin, Calendar,
-  Clock, Search, Filter, SortAsc, ChevronRight, GraduationCap,
+  Clock, Search, ChevronRight, GraduationCap,
   BookOpen, BookCheck, CalendarClock, FileCheck, Fingerprint,
   Award, Users, UserCheck, AlertTriangle, TrendingUp, Sparkles,
   MessageSquare, ChevronDown, ChevronUp, Plus, ExternalLink,
@@ -274,6 +274,7 @@ function LeadCard({
   const contactColor = contactBadgeColor(lead);
   const contactLabel = contactBadgeLabel(lead);
   const fullName = `${lead.first_name} ${lead.last_name}`.trim();
+  const location = [lead.city, lead.state].filter(Boolean).join(", ");
 
   return (
     <motion.div
@@ -285,31 +286,52 @@ function LeadCard({
       transition={{ type: "spring", stiffness: 300, damping: 25 }}
       className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm"
     >
-      {/* Card header */}
-      <div className="p-3">
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <div className="min-w-0">
-            <p className="font-semibold text-sm truncate">{fullName}</p>
-            {(lead.city || lead.state) && (
-              <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
-                <MapPin className="h-3 w-3 flex-shrink-0" />
-                {[lead.city, lead.state].filter(Boolean).join(", ")}
-              </p>
+      {/* ── Header row: name + freshness badge ── */}
+      <div className="px-3 pt-3 pb-2">
+        <div className="flex items-start justify-between gap-2 mb-1.5">
+          <div className="min-w-0 flex-1">
+            {/* Full name — never truncated */}
+            <p className="font-semibold text-sm leading-tight break-words">{fullName}</p>
+            {/* Location inline */}
+            {location && (
+              <span className="inline-flex items-center gap-1 mt-1 text-[11px] text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded-md">
+                <MapPin className="h-2.5 w-2.5 flex-shrink-0" />
+                {location}
+              </span>
             )}
           </div>
-          <Badge className={cn("text-[10px] border shrink-0", contactColor)}>
+          {/* Contact freshness badge */}
+          <Badge className={cn("text-[10px] border shrink-0 whitespace-nowrap", contactColor)}>
             <Clock className="h-2.5 w-2.5 mr-1" />
             {contactLabel}
           </Badge>
         </div>
 
-        {/* Lead date */}
-        <p className="text-[10px] text-muted-foreground mb-2">
-          <Calendar className="inline h-3 w-3 mr-1" />
-          Lead came in: {new Date(lead.created_at).toLocaleDateString()}
-        </p>
+        {/* ── Info row: phone + email + date ── */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 mb-2.5">
+          {lead.phone && (
+            <a
+              href={`tel:${lead.phone}`}
+              onClick={handleContactLogged}
+              className="flex items-center gap-1 text-[11px] text-emerald-400 hover:text-emerald-300 transition-colors font-medium"
+            >
+              <Phone className="h-3 w-3 flex-shrink-0" />
+              {lead.phone}
+            </a>
+          )}
+          {lead.email && (
+            <span className="flex items-center gap-1 text-[11px] text-muted-foreground min-w-0">
+              <Mail className="h-3 w-3 flex-shrink-0 text-blue-400" />
+              <span className="truncate max-w-[140px]">{lead.email}</span>
+            </span>
+          )}
+          <span className="flex items-center gap-1 text-[10px] text-muted-foreground/70 ml-auto">
+            <Calendar className="h-2.5 w-2.5" />
+            {new Date(lead.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+          </span>
+        </div>
 
-        {/* Progress selector */}
+        {/* ── License progress selector (label always visible) ── */}
         <LicenseProgressSelector
           applicationId={lead.id}
           currentProgress={lead.license_progress as any}
@@ -319,14 +341,14 @@ function LeadCard({
         />
       </div>
 
-      {/* Action row */}
-      <div className="px-3 pb-3 flex items-center gap-1 flex-wrap">
-        {/* Phone */}
+      {/* ── Action row ── */}
+      <div className="px-3 pb-3 flex items-center gap-1.5 flex-wrap">
+        {/* Call */}
         <Button
           variant="outline"
           size="sm"
           asChild
-          className="text-xs h-7 px-2 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+          className="text-xs h-7 px-2.5 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
           onClick={handleContactLogged}
         >
           <a href={`tel:${lead.phone}`}>
@@ -346,22 +368,22 @@ function LeadCard({
             onXP(XP_REWARDS.contact, "📧 Email sent!");
             onRefresh();
           }}
-          className="text-xs h-7 px-2"
+          className="text-xs h-7 px-2.5"
         />
 
-        {/* Licensing course */}
+        {/* Send licensing instructions */}
         <ResendLicensingButton
           recipientEmail={lead.email}
           recipientName={lead.first_name}
           licenseStatus={lead.license_status as any}
         />
 
-        {/* Schedule - unlicensed */}
+        {/* Book call */}
         <Button
           variant="outline"
           size="sm"
           asChild
-          className="text-xs h-7 px-2 border-pink-500/30 text-pink-400 hover:bg-pink-500/10"
+          className="text-xs h-7 px-2.5 border-pink-500/30 text-pink-400 hover:bg-pink-500/10"
         >
           <a href={UNLICENSED_SCHEDULING_LINK} target="_blank" rel="noreferrer">
             <CalendarClock className="h-3 w-3 mr-1" />
@@ -369,12 +391,12 @@ function LeadCard({
           </a>
         </Button>
 
-        {/* Expand for notes */}
+        {/* Notes toggle */}
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setExpanded((v) => !v)}
-          className="text-xs h-7 px-2 ml-auto text-muted-foreground"
+          className="text-xs h-7 px-2 ml-auto text-muted-foreground hover:text-foreground"
         >
           <MessageSquare className="h-3 w-3 mr-1" />
           Notes
@@ -382,15 +404,7 @@ function LeadCard({
         </Button>
       </div>
 
-      {/* Course not purchased strip */}
-      {(!lead.license_progress || lead.license_progress === "unlicensed") && (
-        <div className="mx-3 mb-3 flex items-center gap-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 px-2 py-1.5">
-          <AlertTriangle className="h-3 w-3 text-amber-400 flex-shrink-0" />
-          <span className="text-[10px] text-amber-400">Course not purchased</span>
-        </div>
-      )}
-
-      {/* Expanded notes */}
+      {/* ── Expanded notes ── */}
       <AnimatePresence>
         {expanded && (
           <motion.div
@@ -660,60 +674,57 @@ function RecruiterDashboardInner() {
       </div>
 
       {/* ── Search / Filter / Sort ── */}
-      <GlassCard className="p-3">
-        <div className="flex flex-col sm:flex-row gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by name, email, or phone…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 text-sm"
-            />
-          </div>
+      <GlassCard className="p-3 space-y-2">
+        {/* Search bar */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search by name, email, or phone…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 text-sm"
+          />
+        </div>
 
-          {/* Filter by stage */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-            <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
+        {/* Filter by stage + Sort in one scrollable row */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          <span className="text-xs text-muted-foreground shrink-0 font-medium">Filter:</span>
+          <Button
+            variant={filterStage === "all" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFilterStage("all")}
+            className="text-xs shrink-0 h-7"
+          >All</Button>
+          {PROGRESS_COLUMNS.map((col) => (
             <Button
-              variant={filterStage === "all" ? "default" : "outline"}
+              key={col.id}
+              variant={filterStage === col.id ? "default" : "outline"}
               size="sm"
-              onClick={() => setFilterStage("all")}
-              className="text-xs shrink-0"
-            >All</Button>
-            {PROGRESS_COLUMNS.map((col) => (
-              <Button
-                key={col.id}
-                variant={filterStage === col.id ? "default" : "outline"}
-                size="sm"
-                onClick={() => setFilterStage(col.id)}
-                className="text-xs shrink-0"
-              >
-                {col.emoji} {col.label}
-              </Button>
-            ))}
-          </div>
+              onClick={() => setFilterStage(col.id)}
+              className="text-xs shrink-0 h-7"
+            >
+              {col.emoji} {col.label}
+            </Button>
+          ))}
 
-          {/* Sort */}
-          <div className="flex items-center gap-1.5">
-            <SortAsc className="h-4 w-4 text-muted-foreground shrink-0" />
-            {(["stale", "newest", "oldest", "name"] as SortMode[]).map((s) => (
-              <Button
-                key={s}
-                variant={sortMode === s ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSortMode(s)}
-                className="text-xs capitalize"
-              >
-                {s === "stale" ? "Needs Contact" : s}
-              </Button>
-            ))}
-          </div>
+          <div className="w-px h-5 bg-border shrink-0 mx-1" />
+
+          <span className="text-xs text-muted-foreground shrink-0 font-medium">Sort:</span>
+          <select
+            value={sortMode}
+            onChange={(e) => setSortMode(e.target.value as SortMode)}
+            className="h-7 text-xs rounded-md border border-input bg-background px-2 text-foreground shrink-0 cursor-pointer"
+          >
+            <option value="stale">Needs Contact First</option>
+            <option value="newest">Newest First</option>
+            <option value="oldest">Oldest First</option>
+            <option value="name">Name A–Z</option>
+          </select>
         </div>
       </GlassCard>
 
       {/* ── Kanban columns ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4">
         {columnLeads.map((col, ci) => (
           <motion.div
             key={col.id}

@@ -147,9 +147,9 @@ export function LicenseProgressSelector({
             ) : (
               <CurrentIcon className="h-4 w-4" />
             )}
-            <span className="hidden sm:inline">{currentStep.label}</span>
+            <span>{currentStep.label}</span>
             {progress === "test_scheduled" && selectedTestDate && (
-              <span className="text-[10px] opacity-70 hidden sm:inline">
+              <span className="text-[10px] opacity-70">
                 ({format(selectedTestDate, "M/d")})
               </span>
             )}

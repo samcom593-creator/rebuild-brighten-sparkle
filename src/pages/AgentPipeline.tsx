@@ -12,6 +12,7 @@ import {
   Award,
   Calendar,
   UserCheck,
+  AlertCircle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -328,6 +329,12 @@ export default function AgentPipeline() {
                             <Clock className="h-2.5 w-2.5 mr-1" />
                             {contactLabel}
                           </Badge>
+                          {(!app.license_progress || app.license_progress === "unlicensed") && (
+                            <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/30 text-[10px]">
+                              <AlertCircle className="h-2.5 w-2.5 mr-1" />
+                              Course not purchased
+                            </Badge>
+                          )}
                         </div>
                         <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
                           <span className="flex items-center gap-1">

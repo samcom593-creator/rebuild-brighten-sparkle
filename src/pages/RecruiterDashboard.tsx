@@ -382,6 +382,14 @@ function LeadCard({
         </Button>
       </div>
 
+      {/* Course not purchased strip */}
+      {(!lead.license_progress || lead.license_progress === "unlicensed") && (
+        <div className="mx-3 mb-3 flex items-center gap-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 px-2 py-1.5">
+          <AlertTriangle className="h-3 w-3 text-amber-400 flex-shrink-0" />
+          <span className="text-[10px] text-amber-400">Course not purchased</span>
+        </div>
+      )}
+
       {/* Expanded notes */}
       <AnimatePresence>
         {expanded && (

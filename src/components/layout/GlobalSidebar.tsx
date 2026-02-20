@@ -21,6 +21,7 @@ import {
   ShoppingCart,
   Headphones,
   Target,
+  Sparkles,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -64,6 +65,8 @@ export function GlobalSidebar({
   const navigate = useNavigate();
   const location = useLocation();
   const { user, isAdmin, isManager, isAgent } = useAuth();
+  const AISHA_EMAIL = "kebbeh045@gmail.com";
+  const isAisha = user?.email === AISHA_EMAIL;
   const [showInviteModal, setShowInviteModal] = useState(false);
   const isTouch = useIsTouchDevice();
   const { playSound } = useSoundEffects();
@@ -106,6 +109,11 @@ export function GlobalSidebar({
     if (isAgent && !isAdmin && !isManager) {
       toolItems.push({ icon: BarChart3, label: "My Portal", href: "/agent-portal" });
       toolItems.push({ icon: BarChart3, label: "My Course", href: "/onboarding-course" });
+    }
+
+    // Recruiter HQ — Aisha only (+ admins)
+    if (isAisha || isAdmin) {
+      toolItems.push({ icon: Sparkles, label: "Recruiter HQ ✨", href: "/dashboard/recruiter", special: true });
     }
 
     toolItems.push({ icon: ShoppingCart, label: "Purchase Leads", href: "/purchase-leads" });

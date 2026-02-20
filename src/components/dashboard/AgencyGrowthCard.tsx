@@ -54,7 +54,7 @@ export function AgencyGrowthCard() {
       const [agentsRes, allUnlicensedAppsRes, currentAppsRes, prevAppsRes, newAgentsRes, prevAgentsRes, profilesRes] = await Promise.all([
         supabase
           .from("agents")
-          .select("id, license_status, is_deactivated, onboarding_stage, evaluated_at, created_at, profile_id")
+          .select("id, license_status, is_deactivated, onboarding_stage, evaluated_at, created_at, user_id")
           .eq("is_deactivated", false),
         // ALL hired unlicensed applications (for total unlicensed card)
         supabase
@@ -86,10 +86,10 @@ export function AgencyGrowthCard() {
           .eq("is_deactivated", false)
           .gte("created_at", prevStart)
           .lt("created_at", prevEnd),
-        // Get profile emails for agents to deduplicate
+        // Get profile emails for agents to deduplicate (keyed by user_id)
         supabase
           .from("profiles")
-          .select("id, email"),
+          .select("user_id, email"),
       ]);
 
       const agents = agentsRes.data || [];
@@ -100,10 +100,10 @@ export function AgencyGrowthCard() {
       const newAgentsPrev = prevAgentsRes.data || [];
       const profiles = profilesRes.data || [];
 
-      // Build profile email lookup
+      // Build profile email lookup by user_id (correct field — profile_id is often null)
       const profileEmailMap = new Map<string, string>();
       profiles.forEach((p) => {
-        if (p.email) profileEmailMap.set(p.id, p.email.toLowerCase().trim());
+        if (p.email && p.user_id) profileEmailMap.set(p.user_id, p.email.toLowerCase().trim());
       });
 
       // Licensed producers (total active)
@@ -114,14 +114,16 @@ export function AgencyGrowthCard() {
       // --- Unlicensed Total: merge agents + applications, dedup by email ---
       const unlicensedEmails = new Set<string>();
 
-      // Add unlicensed agents
+      // Add unlicensed agents (lookup by user_id → profile email)
       agents.forEach((a) => {
-        if (a.license_status !== "licensed" && a.profile_id) {
-          const email = profileEmailMap.get(a.profile_id);
-          if (email) unlicensedEmails.add(email);
-          else unlicensedEmails.add(`agent-${a.id}`); // fallback
-        } else if (a.license_status !== "licensed") {
-          unlicensedEmails.add(`agent-${a.id}`);
+        if (a.license_status !== "licensed") {
+          if (a.user_id) {
+            const email = profileEmailMap.get(a.user_id);
+            if (email) unlicensedEmails.add(email);
+            else unlicensedEmails.add(`agent-${a.id}`);
+          } else {
+            unlicensedEmails.add(`agent-${a.id}`);
+          }
         }
       });
 

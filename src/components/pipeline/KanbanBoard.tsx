@@ -12,7 +12,9 @@ import {
   useDroppable,
   useDraggable,
 } from "@dnd-kit/core";
-import { Phone, Mail, Calendar, Clock, GraduationCap } from "lucide-react";
+import { Phone, Mail, Calendar, Clock, GraduationCap, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -122,6 +124,57 @@ function getContactBadge(app: KanbanApplication) {
   };
 }
 
+// ── Course Not Purchased Strip ───────────────────────────────────────────────
+function CourseSendStrip({ app }: { app: KanbanApplication }) {
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  const handleSend = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSending(true);
+    try {
+      const { error } = await supabase.functions.invoke("send-licensing-instructions", {
+        body: {
+          recipientEmail: app.email,
+          recipientName: `${app.first_name} ${app.last_name}`,
+          licenseStatus: app.license_status,
+        },
+      });
+      if (error) throw error;
+      setSent(true);
+      toast.success(`Course email sent to ${app.first_name}!`);
+      setTimeout(() => setSent(false), 4000);
+    } catch {
+      toast.error("Failed to send course email");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="mt-2 flex items-center justify-between rounded-lg bg-amber-500/10 border border-amber-500/20 px-2 py-1.5">
+      <span className="text-[10px] text-amber-400 flex items-center gap-1">
+        <AlertCircle className="h-3 w-3" />
+        Course not purchased
+      </span>
+      <button
+        onClick={handleSend}
+        disabled={sending || sent}
+        className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 transition-colors disabled:opacity-60"
+      >
+        {sending ? (
+          <Loader2 className="h-3 w-3 animate-spin" />
+        ) : sent ? (
+          <CheckCircle className="h-3 w-3 text-emerald-400" />
+        ) : (
+          <GraduationCap className="h-3 w-3" />
+        )}
+        {sent ? "Sent!" : "Send"}
+      </button>
+    </div>
+  );
+}
+
 // ── Draggable Card ──────────────────────────────────────────────────────────
 function DraggableCard({
   app,
@@ -210,6 +263,11 @@ function DraggableCard({
             </Button>
           )}
         </div>
+
+        {/* Course not purchased strip */}
+        {(!app.license_progress || app.license_progress === "unlicensed") && (
+          <CourseSendStrip app={app} />
+        )}
       </motion.div>
     </div>
   );

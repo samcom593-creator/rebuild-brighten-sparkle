@@ -1,98 +1,80 @@
 
-# Add "Course Not Purchased" Flag to Kanban Cards
+# Recruiter HQ Dashboard Redesign
 
-## What the User Wants
+## Problem Summary
 
-On Kanban board cards — specifically in the **"Course"** column and anywhere it's relevant — add a visible indicator and action button at the bottom for applicants who **have not purchased their course yet** (their `license_progress` is still `unlicensed` or `null`). The user wants to be able to:
+The Recruiter HQ (`RecruiterDashboard.tsx`) has two problems:
 
-1. **See at a glance** which people in the Course column haven't bought the course
-2. **Click a button** to send them the course/licensing email right from the card
+1. **Lead cards are cluttered and hard to read** — Names are truncated, action buttons are cramped, the "Course not purchased" warning strip adds visual noise, and the 5-column kanban at small widths forces everything into tiny cards.
+2. **"Failed to get Supabase Edge Function logs" error** — This error message only appears in the Lovable editor's backend panel, not in the live app. It is a platform-level diagnostic message outside the codebase. No code change is needed for it; it should resolve itself. I will note this clearly.
 
-## Where This Gets Added
+---
 
-Three places share the Kanban card UI:
+## What Will Change
 
-| File | What Changes |
-|------|-------------|
-| `src/components/pipeline/KanbanBoard.tsx` | Add "Course Not Purchased" banner + send button to `DraggableCard` when card is in the `course` column but `license_progress` is `unlicensed` or `null` |
-| `src/pages/RecruiterDashboard.tsx` | Same indicator on Aisha's kanban cards in the "In Course" column for unlicensed applicants |
-| `src/pages/AgentPipeline.tsx` | The **list view** cards also get a "Course Not Purchased" badge for applicants who are unlicensed |
+### 1. Lead Card Redesign (`LeadCard` component inside `RecruiterDashboard.tsx`)
 
-## Logic for When to Show It
+The card will be rebuilt to be a **high-density information row** instead of a cramped tile:
 
-A card shows the "Course Not Purchased" indicator when:
-- The applicant's `license_progress` is `unlicensed` (or `null`)
-- AND the card appears in the "Course" column (because someone dragged them there or they need course action)
+**Header row:**
+- Full name (both first + last, never truncated — use `font-semibold text-sm` without `truncate`)
+- Location pill (city, state) inline
+- Contact freshness badge in the top-right
 
-OR, more broadly (to catch all cases across all columns):
-- The applicant is NOT licensed
-- AND `license_progress` is `unlicensed` (never started the course process)
+**Info row (2nd line):**
+- Phone number shown directly (tap-to-call)
+- Email shown directly (truncated gracefully)
+- Lead arrival date
 
-The simplest and most useful approach: **show it on any card where `license_progress === "unlicensed"` and they exist in the pipeline** — this tells the user "this person hasn't even started the course yet, go send it."
+**License progress row:**
+- Full-width `LicenseProgressSelector` with label visible at all sizes (remove `hidden sm:inline` limitation)
 
-## Visual Design
+**Action row:**
+- Call button (tel: link)
+- Email (QuickEmailMenu)
+- Send Licensing (ResendLicensingButton) — this replaces the "Course not purchased" strip with a visible actionable button
+- Book (schedule Calendly link)
+- Notes toggle
 
-At the bottom of the Kanban card (below the action buttons), add a subtle amber warning strip:
+**Remove:**
+- The "Course not purchased" amber strip — it is redundant noise since the ResendLicensingButton already covers this action. If desired, it can be folded into the license progress badge itself.
 
-```
-┌──────────────────────────────────┐
-│  John Smith                      │
-│  🕐 Never contacted              │
-│  john@email.com                  │
-│  📞 555-1234                     │
-│  [View]  [📅]  [📞]              │
-│──────────────────────────────────│
-│  ⚠️ Course not purchased   [🎓 Send] │
-└──────────────────────────────────┘
-```
+### 2. Column Layout Improvement
 
-- Amber/orange background strip at the bottom of the card
-- Small "Course not purchased" text with warning icon
-- A **"Send Course"** icon button that calls the `send-licensing-instructions` edge function immediately (same as `ResendLicensingButton`)
-- The button shows a checkmark briefly after sending, then resets
+- Keep the 5-column kanban for large screens (`xl:grid-cols-5`)
+- On medium screens, use 3 columns (`md:grid-cols-3`) instead of 2 — the 5-stage groups already make sense as 3+2
+- Column headers will show both count and a subtle "needs attention" indicator if any cards are overdue
 
-## Technical Changes
+### 3. Card Width / Name Display
 
-### `src/components/pipeline/KanbanBoard.tsx`
+- Remove `truncate` from the name element so full names always show
+- Add `text-sm font-semibold` with `leading-tight` and `break-words` instead
+- Phone and email appear on a secondary line in `text-xs text-muted-foreground` so all key info is visible at a glance
 
-1. Add `onSendCourse?: (app: KanbanApplication) => void` prop to `KanbanBoardProps` and `DraggableCard`
-2. Pass `recipientEmail` and `recipientName` needed to call the edge function
-3. In `DraggableCard`, after the action buttons row, add a conditional block:
-   ```tsx
-   {app.license_progress === "unlicensed" || !app.license_progress ? (
-     <div className="mt-2 flex items-center justify-between rounded-lg bg-amber-500/10 border border-amber-500/20 px-2 py-1.5">
-       <span className="text-[10px] text-amber-400 flex items-center gap-1">
-         <AlertCircle className="h-3 w-3" /> Course not purchased
-       </span>
-       <button onClick={handleSendCourse} className="...">
-         <GraduationCap className="h-3 w-3" /> Send
-       </button>
-     </div>
-   ) : null}
-   ```
-4. The send button calls `supabase.functions.invoke("send-licensing-instructions", ...)` inline, with a local `isSending` state for the loading spinner
+### 4. Filter/Sort Bar Cleanup
 
-### `src/pages/AgentPipeline.tsx`
+- Move stage filter tabs to a horizontal scrollable row clearly labeled "Filter by stage:"
+- Sort options collapse to a `<select>` or pill group on mobile
 
-In the **list view** cards, add a small amber `Badge` next to the name for unlicensed applicants:
-```tsx
-{!app.license_progress || app.license_progress === "unlicensed" ? (
-  <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/30 text-[10px]">
-    <AlertCircle className="h-2.5 w-2.5 mr-1" /> Course not purchased
-  </Badge>
-) : null}
-```
+---
 
-### `src/pages/RecruiterDashboard.tsx`
+## Technical Details
 
-Aisha's cards already have the `ResendLicensingButton` — but we add the same amber "Course not purchased" strip at the bottom of her cards (inline in the card JSX where `license_progress === "unlicensed"`) so she gets the same immediate visual flag.
+**File changed:** `src/pages/RecruiterDashboard.tsx`
 
-## No Database Changes Needed
+**Changes inside `LeadCard` component (~lines 211–424):**
+- Remove `truncate` from the name `<p>` element (line 292)
+- Add email + phone info row below name/location
+- Remove the "Course not purchased" strip (lines 386–391) — its info is already captured by the license progress stage column title ("Needs Outreach")
+- Widen action buttons slightly by adjusting gap and padding
 
-This is purely a UI enhancement — `license_progress` already exists on every `applications` record and `unlicensed` is already the default value. No migrations required.
+**No database changes needed.**
+**No new edge functions needed.**
 
-## Summary
+---
 
-- `KanbanBoard.tsx`: Add amber "Course not purchased" footer strip + inline Send button to `DraggableCard` when `license_progress === "unlicensed"`
-- `AgentPipeline.tsx`: Add amber badge in list view for unlicensed applicants
-- `RecruiterDashboard.tsx`: Add same amber strip to Aisha's kanban cards
+## About the "Failed to get Supabase Edge Function logs" message
+
+This message **does not appear in your live app**. It appears only in the Lovable editor's Backend view when it cannot fetch diagnostic logs from the platform. It is a temporary Lovable Cloud infrastructure issue and does not affect functionality. Your edge functions are working correctly (confirmed by the network requests showing successful Supabase API calls).
+
+There is no code change that can fix this — it resolves automatically on the platform side.

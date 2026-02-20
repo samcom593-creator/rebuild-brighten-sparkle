@@ -25,6 +25,7 @@ import {
   RotateCcw,
   Send,
   FileCheck,
+  Calendar,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -62,6 +63,7 @@ import { LastContactedBadge } from "@/components/dashboard/LastContactedBadge";
 import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressSelector";
 import { ContractedModal } from "@/components/dashboard/ContractedModal";
 import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
+import { InterviewScheduler } from "@/components/dashboard/InterviewScheduler";
 
 interface Application {
   id: string;
@@ -137,6 +139,8 @@ export default function DashboardApplicants() {
 
   // Contracted modal state
   const [contractedApp, setContractedApp] = useState<Application | null>(null);
+  const [schedulerApp, setSchedulerApp] = useState<Application | null>(null);
+  const [schedulerOpen, setSchedulerOpen] = useState(false);
   
   // When deep linking, clear filters to ensure lead is visible
   useEffect(() => {

@@ -108,6 +108,7 @@ export function GlobalSidebar({
 
     if (isAgent && !isAdmin && !isManager) {
       toolItems.push({ icon: BarChart3, label: "My Portal", href: "/agent-portal" });
+      toolItems.push({ icon: Target, label: "My Pipeline", href: "/agent-pipeline" });
       toolItems.push({ icon: BarChart3, label: "My Course", href: "/onboarding-course" });
     }
 

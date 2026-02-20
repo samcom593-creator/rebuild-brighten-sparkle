@@ -1,42 +1,138 @@
 
+# Aisha's Recruiting Command Center + Dashboard Unlicensed Fix
 
-# Fix: Dashboard Unlicensed Count Is Wrong (Shows 3, Should Be 30+)
+## Overview
 
-## The Problem
+This plan has two parts:
+1. **Fix the dashboard unlicensed count** — currently shows 3, should show 27–30
+2. **Build Aisha Kebbeh a dedicated, access-controlled Recruiting Dashboard** with gamified UX, full lead management tools, AI summaries, scheduling links, and automated notifications
 
-The dashboard "Recruiting Stats" card (AgencyGrowthCard) only shows **3 unlicensed** because it's counting from the `agents` table, which only has 3 unlicensed agent records. However, there are **30 unlicensed hired people** in the `applications` table (status: reviewing, contracting, approved) who haven't been converted to agent records yet, or whose agent records show "licensed" while their application doesn't.
+---
 
-The dashboard never merges these two data sources to give you the real unlicensed total.
+## Part 1: Fix Dashboard Unlicensed Count
 
-## The Fix
+### Root Cause
 
-Update `src/components/dashboard/AgencyGrowthCard.tsx` to show the **true unlicensed count** by merging data from both the `agents` and `applications` tables, matching the same logic used in the CRM.
+The `AgencyGrowthCard` queries the `agents` table but only 3 agents there are unlicensed. The 27+ hired people living in `applications` (status: `reviewing`, `contracting`, `approved`) are **not being deduped correctly** — the `profile_id` lookup fails for most agents because `profile_id` is null (agents use `user_id`, not `profile_id`, to link to profiles). This means the dedup by email silently misses most agents and the Set accumulates both sources without removing duplicates.
 
-### What Changes
+### Fix
+
+In `src/components/dashboard/AgencyGrowthCard.tsx`, change the agent→email lookup to use `user_id` → profiles (`user_id`) instead of `profile_id` → profiles (`id`). This ensures correct deduplication and the count will reflect the true ~30 unlicensed people.
+
+**Also**: The `allUnlicensedApps` query only pulls `reviewing`, `contracting`, `approved` but misses `new`-status hired applicants. We'll keep it to those three statuses (which are the "hired" statuses) to stay consistent with the CRM's definition.
+
+---
+
+## Part 2: Aisha's Recruiting Dashboard
+
+### Access Control
+
+Aisha already has both `agent` and `manager` roles. Rather than create a new database role (which would require a migration), we'll use **email-based gating** in the route and page component: only `kebbeh045@gmail.com` (and any admin) can access `/dashboard/recruiter`. This is enforced server-side via the authenticated user's email from `useAuth()`, which comes from Supabase Auth — not from localStorage, so it cannot be spoofed.
+
+The route will be added to `App.tsx` and a nav link will appear in `GlobalSidebar.tsx` only for her specific email + admins.
+
+### New Route
+
+`/dashboard/recruiter` — accessible only to Aisha's email + admins
+
+### New File
+
+`src/pages/RecruiterDashboard.tsx` — Aisha's full command center
+
+---
+
+## Dashboard Features
+
+### Header Stats Bar
+Four animated stat cards at the top:
+- **Total Hired** (all non-terminated, non-licensed applicants assigned to her)
+- **Needs Contact** (never contacted or 48h+ stale)
+- **In Progress** (actively moving through licensing stages)
+- **Licensed This Month** (became licensed)
+
+With bubbly entrance animations and XP/progress-style bar below each card.
+
+### Gamification System
+- **XP Points**: Each action earns points — contacting a lead (+10), updating a stage (+15), scheduling a test date (+25), getting someone licensed (+100)
+- **Level badge** in the header showing her current recruiter "rank" (Rookie → Rising Star → Power Recruiter → Elite)
+- Confetti burst on major milestones (first contact, test scheduled, licensed)
+- Sound effects on every stage update (success chime, celebrate on milestone)
+- **Streak counter** — consecutive days with activity
+
+### Lead Cards (Kanban-style columns)
+Five columns based on `license_progress`:
+1. **Needs Outreach** (unlicensed, never contacted)
+2. **Course** (course_purchased, finished_course)
+3. **Test Phase** (test_scheduled, passed_test)
+4. **Final Steps** (fingerprints_done, waiting_on_license)
+5. **Licensed** ✓
+
+Each card shows:
+- Name, phone, email, location
+- Lead date (when they came in — `created_at`)
+- Last contact badge (relative time, color-coded: red = never/48h+, amber = 24-48h, green = recent)
+- License progress stage selector (existing `LicenseProgressSelector` component)
+- **Action buttons**:
+  - 🎓 Course link (ResendLicensingButton)
+  - 📧 Email menu (QuickEmailMenu with all templates)
+  - 🎤 AI Interview Recorder (InterviewRecorder)
+  - 📞 Phone tap-to-call
+  - 📅 Scheduling link buttons (one for unlicensed Calendly, one for licensed)
+- Notes section (inline, expandable)
+
+### Scheduling Links Section
+Two quick-access buttons always visible in the page header:
+- **"Send Unlicensed Scheduling Link"** — opens email menu pre-filled with `schedule_consultation` template for unlicensed
+- **"Send Licensed Scheduling Link"** — same for licensed prospects
+
+Also shown on each card as tap targets.
+
+### AI Notes & Summaries
+Each card has an expandable "AI Notes" panel that:
+- Shows the most recent `InterviewRecorder` AI summary if one exists
+- Shows all contact history inline
+- Allows adding a manual note
+
+### Search + Filter Bar
+- Search by name, email, phone
+- Filter by license progress stage
+- Sort by: Needs Contact (stale first), Newest, Oldest, Name
+
+### Rewards/Boosts System
+- When she moves someone to "Licensed" → full confetti burst + "🎉 LICENSED!" toast with celebration sound
+- When she moves someone to "test_scheduled" → smaller celebration + "Test booked!" badge animation
+- Daily activity streak shown in header
+- "Boost" counter — total people advanced today shown as a glowing badge
+
+---
+
+## Files Changed
 
 | File | Change |
 |------|--------|
-| `src/components/dashboard/AgencyGrowthCard.tsx` | Replace the current "Licensed Producers" / "New Hires" / "In Pipeline" / "Growth" card layout with a more accurate set of stats that includes a dedicated **"Unlicensed"** total card. The unlicensed count will merge agents with `license_status != 'licensed'` AND applications with status `reviewing`/`contracting`/`approved` and `license_status != 'licensed'`, deduplicated by email so no one is counted twice. |
+| `src/components/dashboard/AgencyGrowthCard.tsx` | Fix agent→profile email lookup to use `user_id` instead of `profile_id` |
+| `src/pages/RecruiterDashboard.tsx` | **NEW** — Aisha's full recruiting command center |
+| `src/App.tsx` | Add `/dashboard/recruiter` route (lazy loaded) |
+| `src/components/layout/GlobalSidebar.tsx` | Add "Recruiter HQ" nav link visible only to Aisha's email + admins |
 
-### Stat Cards After Fix
+---
 
-The four cards will be:
+## Design Language
 
-1. **Licensed Producers** -- total active agents with `license_status = 'licensed'` (unchanged, currently correct)
-2. **Unlicensed (Total)** -- everyone hired who is NOT licensed, merged from both `agents` and `applications` tables, deduplicated by email. This will show the real number (~30) instead of 3.
-3. **In Pipeline** -- agents in onboarding/training stages (unchanged)
-4. **New Hires (Period)** -- new hires for the selected period (day/week/month), with licensed vs unlicensed sub-label (unchanged)
+- **Color palette**: Pink/rose/purple accents on top of the existing glass morphism — giving it a distinctly "her" feel while staying within the design system
+- **Animations**: Framer Motion spring animations on card entrance, stagger effect on load, `whileTap` scale on buttons, floating particles on milestone events
+- **Sound design**: Uses existing `useSoundEffects` hook — `celebrate` on licensing milestones, `success` on stage updates, `click` on actions
+- **Confetti**: Uses existing `ConfettiCelebration` component triggered on "Licensed" milestone
+- **Mobile-first**: Cards stack on mobile, two-column on tablet, kanban on desktop
 
-### Technical Details
+---
 
-The query will:
-1. Fetch all non-deactivated agents with their license status
-2. Fetch all non-terminated applications with status in `('reviewing', 'contracting', 'approved')` and `license_status != 'licensed'`
-3. Get agent emails from the `profiles` table to deduplicate against application emails
-4. Combine both lists, dedup by email, and show the merged count
+## Database: No Schema Changes Required
 
-This matches exactly how the CRM's "Hired (Unlicensed)" stat works, ensuring consistency across the dashboard and CRM views.
+All data already exists in `applications`, `contact_history`, and `interview_recordings` tables. No migrations needed.
 
-## Result
+---
 
-After this fix, when you look at the dashboard you'll see the accurate count of all unlicensed people across your entire pipeline -- whether they exist as agent records or application records. The number will match what you see in the CRM.
+## Security Note
+
+Access control is done via `user.email === 'kebbeh045@gmail.com' || isAdmin` check using the authenticated Supabase session — this is server-validated identity, not client-side storage, so it cannot be bypassed.

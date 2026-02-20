@@ -1745,6 +1745,53 @@ export type Database = {
         }
         Relationships: []
       }
+      scheduled_interviews: {
+        Row: {
+          application_id: string
+          created_at: string
+          id: string
+          interview_date: string
+          interview_type: string
+          meeting_link: string | null
+          notes: string | null
+          scheduled_by: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          application_id: string
+          created_at?: string
+          id?: string
+          interview_date: string
+          interview_type?: string
+          meeting_link?: string | null
+          notes?: string | null
+          scheduled_by: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          application_id?: string
+          created_at?: string
+          id?: string
+          interview_date?: string
+          interview_type?: string
+          meeting_link?: string | null
+          notes?: string | null
+          scheduled_by?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_interviews_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string

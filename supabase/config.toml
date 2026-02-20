@@ -288,3 +288,9 @@ verify_jwt = false
 
 [functions.notify-test-reminder]
 verify_jwt = false
+
+[functions.schedule-interview]
+verify_jwt = false
+
+[functions.check-low-aop-friday]
+verify_jwt = false

@@ -1,80 +1,53 @@
 
-# Recruiter HQ Dashboard Redesign
 
-## Problem Summary
+# Recruiter HQ — Further Declutter and Information Density Pass
 
-The Recruiter HQ (`RecruiterDashboard.tsx`) has two problems:
+## Current State
 
-1. **Lead cards are cluttered and hard to read** — Names are truncated, action buttons are cramped, the "Course not purchased" warning strip adds visual noise, and the 5-column kanban at small widths forces everything into tiny cards.
-2. **"Failed to get Supabase Edge Function logs" error** — This error message only appears in the Lovable editor's backend panel, not in the live app. It is a platform-level diagnostic message outside the codebase. No code change is needed for it; it should resolve itself. I will note this clearly.
+The previous redesign is already live in the code: full names are shown, phone/email are displayed inline, and the layout uses a responsive 3/5-column grid. However, the cards still use a multi-row tile layout inside narrow kanban columns, which can feel cramped with many leads.
 
----
+## What This Plan Will Do
 
-## What Will Change
+### 1. Switch to a Compact Row-Style Card (less vertical space per lead)
 
-### 1. Lead Card Redesign (`LeadCard` component inside `RecruiterDashboard.tsx`)
+Current cards use 4 vertical sections (header, info row, license selector, action row). We will compress this into a tighter 2-row layout:
 
-The card will be rebuilt to be a **high-density information row** instead of a cramped tile:
+- **Row 1**: Full name (bold, no truncation) + location pill + contact freshness badge (right-aligned)
+- **Row 2**: Phone (tap-to-call) | Email | License stage badge | Action icons (Call, Email, Licensing, Book, Notes) — all inline
 
-**Header row:**
-- Full name (both first + last, never truncated — use `font-semibold text-sm` without `truncate`)
-- Location pill (city, state) inline
-- Contact freshness badge in the top-right
+This cuts each card's height roughly in half, letting the recruiter see more leads per column without scrolling.
 
-**Info row (2nd line):**
-- Phone number shown directly (tap-to-call)
-- Email shown directly (truncated gracefully)
-- Lead arrival date
+### 2. Make Action Buttons Icon-Only (with tooltips)
 
-**License progress row:**
-- Full-width `LicenseProgressSelector` with label visible at all sizes (remove `hidden sm:inline` limitation)
+Currently the "Call" and "Book" buttons show text labels. On narrow kanban columns these wrap awkwardly. Switching to icon-only buttons with tooltips keeps them compact and uniform — matching the existing `ResendLicensingButton` which is already icon-only.
 
-**Action row:**
-- Call button (tel: link)
-- Email (QuickEmailMenu)
-- Send Licensing (ResendLicensingButton) — this replaces the "Course not purchased" strip with a visible actionable button
-- Book (schedule Calendly link)
-- Notes toggle
+### 3. Move License Progress to an Inline Badge
 
-**Remove:**
-- The "Course not purchased" amber strip — it is redundant noise since the ResendLicensingButton already covers this action. If desired, it can be folded into the license progress badge itself.
+Instead of a full-width dropdown trigger button, the `LicenseProgressSelector` will render as a small inline badge (same color coding) that opens the dropdown on click. This saves a full row of height per card.
 
-### 2. Column Layout Improvement
+### 4. Add "Needs Attention" Count on Column Headers
 
-- Keep the 5-column kanban for large screens (`xl:grid-cols-5`)
-- On medium screens, use 3 columns (`md:grid-cols-3`) instead of 2 — the 5-stage groups already make sense as 3+2
-- Column headers will show both count and a subtle "needs attention" indicator if any cards are overdue
+Each column header will show a small red dot or count if any leads in that column haven't been contacted in 48+ hours. This gives an at-a-glance urgency indicator.
 
-### 3. Card Width / Name Display
+### 5. No Changes to "Edge Function Logs" Error
 
-- Remove `truncate` from the name element so full names always show
-- Add `text-sm font-semibold` with `leading-tight` and `break-words` instead
-- Phone and email appear on a secondary line in `text-xs text-muted-foreground` so all key info is visible at a glance
-
-### 4. Filter/Sort Bar Cleanup
-
-- Move stage filter tabs to a horizontal scrollable row clearly labeled "Filter by stage:"
-- Sort options collapse to a `<select>` or pill group on mobile
+This error only appears in the Lovable editor's backend panel — it is NOT in your live app. No code change can fix it; it is a temporary platform diagnostic message.
 
 ---
 
 ## Technical Details
 
-**File changed:** `src/pages/RecruiterDashboard.tsx`
+### File: `src/pages/RecruiterDashboard.tsx`
 
-**Changes inside `LeadCard` component (~lines 211–424):**
-- Remove `truncate` from the name `<p>` element (line 292)
-- Add email + phone info row below name/location
-- Remove the "Course not purchased" strip (lines 386–391) — its info is already captured by the license progress stage column title ("Needs Outreach")
-- Widen action buttons slightly by adjusting gap and padding
+**LeadCard component (lines 211-437):**
+- Restructure the JSX to use a 2-row compact layout instead of 4 sections
+- Convert "Call" and "Book" buttons from labeled buttons to icon-only with `Tooltip` wrappers
+- Move the `LicenseProgressSelector` inline next to the phone/email row
+- Reduce padding from `px-3 pt-3 pb-2` to `p-2.5` for tighter cards
+- Remove the separate "Action row" div — merge action icons into the info row
 
-**No database changes needed.**
-**No new edge functions needed.**
+**Column headers (lines 736-743):**
+- Add a red dot indicator when any lead in the column has `getLastContactAge > 48 hours`
 
----
+**No new files, no database changes, no new edge functions.**
 
-## About the "Failed to get Supabase Edge Function logs" message
-
-This message **does not appear in your live app**. It appears only in the Lovable editor's Backend view when it cannot fetch diagnostic logs from the platform. It is a temporary Lovable Cloud infrastructure issue and does not affect functionality. Your edge functions are working correctly (confirmed by the network requests showing successful Supabase API calls).
-
-There is no code change that can fix this — it resolves automatically on the platform side.

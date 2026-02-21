@@ -26,7 +26,7 @@ import { Switch } from "@/components/ui/switch";
 import { GlassCard } from "@/components/ui/glass-card";
 import { AvatarUpload } from "@/components/dashboard/AvatarUpload";
 import { toast } from "@/hooks/use-toast";
-
+import { getAllFlags, setFeatureFlag, FEATURE_FLAG_LABELS, type FeatureFlagName } from "@/lib/featureFlags";
 export function ProfileSettings() {
   const { user, profile, refreshProfile, isAdmin } = useAuth();
   const navigate = useNavigate();
@@ -63,6 +63,12 @@ export function ProfileSettings() {
     emailTeamUpdates: true,
     emailWeeklyDigest: false,
   });
+
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    try { return localStorage.getItem("apex_sound_enabled") !== "false"; } catch { return true; }
+  });
+
+  const [featureFlagsState, setFeatureFlagsState] = useState(() => getAllFlags());
 
   useEffect(() => {
     if (profile) {
@@ -607,6 +613,54 @@ export function ProfileSettings() {
           Note: Notification preferences are stored locally for now.
         </p>
       </GlassCard>
+
+      {/* Sound Effects Toggle */}
+      <GlassCard className="p-6">
+        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          🔊 Sound Effects
+        </h3>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="font-medium">Enable Sound Effects</p>
+            <p className="text-sm text-muted-foreground">
+              Play sounds on actions like stage changes, XP gains, and celebrations
+            </p>
+          </div>
+          <Switch
+            checked={soundEnabled}
+            onCheckedChange={(checked) => {
+              setSoundEnabled(checked);
+              localStorage.setItem("apex_sound_enabled", String(checked));
+            }}
+          />
+        </div>
+      </GlassCard>
+
+      {/* Feature Flags — Admin Only */}
+      {isAdmin && (
+        <GlassCard className="p-6">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            ⚙️ Feature Flags
+          </h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Toggle system features on or off. Changes take effect immediately.
+          </p>
+          <div className="space-y-3">
+            {(Object.keys(featureFlagsState) as FeatureFlagName[]).map((flag) => (
+              <div key={flag} className="flex items-center justify-between">
+                <p className="font-medium text-sm">{FEATURE_FLAG_LABELS[flag]}</p>
+                <Switch
+                  checked={featureFlagsState[flag]}
+                  onCheckedChange={(checked) => {
+                    setFeatureFlag(flag, checked);
+                    setFeatureFlagsState((prev) => ({ ...prev, [flag]: checked }));
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        </GlassCard>
+      )}
 
       {/* Admin Only: Deleted Leads Vault */}
       {isAdmin && (

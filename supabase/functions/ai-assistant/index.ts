@@ -69,7 +69,23 @@ interface ChatRequest {
   };
 }
 
-type AIRequest = CoachingRequest | SummaryRequest | ChatRequest | PerformanceBreakdownRequest;
+interface RecruiterInsightsRequest {
+  type: 'recruiter_insights';
+  stats: {
+    totalLeads: number;
+    needsContact: number;
+    inProgress: number;
+    hotLeads: number;
+    atRisk: number;
+    overdueFollowups: number;
+    newThisWeek: number;
+    contactRate: number;
+    licenseRate: number;
+    pipelineBreakdown: Record<string, number>;
+  };
+}
+
+type AIRequest = CoachingRequest | SummaryRequest | ChatRequest | PerformanceBreakdownRequest | RecruiterInsightsRequest;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -201,6 +217,33 @@ Team Averages:
 - Closing Rate: ${teamAverages.closingRate?.toFixed(1) || 0}%
 
 Provide a 3-4 sentence analysis: highlight their strongest metric vs team, identify the one area to improve, and give ONE specific tip to climb the rankings.`;
+        break;
+      }
+
+      case 'recruiter_insights': {
+        const s = (body as RecruiterInsightsRequest).stats;
+        systemPrompt = `You are a recruiting operations analyst for an insurance agency. You help recruiters prioritize their day by analyzing pipeline data and suggesting specific actions. Be direct, actionable, and motivational. Use bullet points and emojis.`;
+        
+        const breakdownStr = Object.entries(s.pipelineBreakdown).map(([k, v]) => `  - ${k}: ${v}`).join('\n');
+        userPrompt = `Generate a daily recruiter brief based on this data:
+
+Total Active Leads: ${s.totalLeads}
+Needs Contact (48h+): ${s.needsContact}
+Overdue Follow-ups: ${s.overdueFollowups}
+Hot Leads (score 70+): ${s.hotLeads}
+At-Risk Leads (score <40): ${s.atRisk}
+In Progress (licensing): ${s.inProgress}
+New This Week: ${s.newThisWeek}
+Contact Rate: ${s.contactRate}%
+License Conversion Rate: ${s.licenseRate}%
+
+Pipeline Breakdown:
+${breakdownStr}
+
+Provide:
+1. A 2-3 sentence executive summary of pipeline health
+2. Top 3 priorities for today (numbered, specific actions)
+3. One motivational insight based on the data`;
         break;
       }
 

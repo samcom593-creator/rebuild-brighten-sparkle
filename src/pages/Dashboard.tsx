@@ -17,6 +17,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ActivationRiskBanner } from "@/components/dashboard/ActivationRiskBanner";
 import { supabase } from "@/integrations/supabase/client";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { StatCard } from "@/components/dashboard/StatCard";
@@ -311,6 +312,13 @@ export default function Dashboard() {
       <div className="mb-6">
         <TeamSnapshotCard />
       </div>
+
+      {/* ====== Activation Risk Banner (Admin/Manager) ====== */}
+      {(isAdmin || isManager) && (
+        <div className="mb-6">
+          <ActivationRiskBanner />
+        </div>
+      )}
 
       {/* ====== Agency Growth Stats (Admin/Manager) ====== */}
       {(isAdmin || isManager) && (

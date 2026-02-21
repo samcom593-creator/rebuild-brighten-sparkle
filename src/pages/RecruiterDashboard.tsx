@@ -38,6 +38,9 @@ import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration"
 import { ActivityTimeline } from "@/components/recruiter/ActivityTimeline";
 import { InterviewScheduler } from "@/components/dashboard/InterviewScheduler";
 import { RecruiterAIPanel, LeadAISummary } from "@/components/recruiter/RecruiterAIPanel";
+import { LeadDetailSheet } from "@/components/recruiter/LeadDetailSheet";
+import { DailyChallenge } from "@/components/recruiter/DailyChallenge";
+import { DormantBadge } from "@/components/recruiter/DormantBadge";
 import { logLeadActivity } from "@/lib/logLeadActivity";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, addDays, addMinutes, subDays, differenceInDays } from "date-fns";
@@ -335,6 +338,7 @@ const LeadCard = memo(function LeadCard({
   onXP,
   onCelebrate,
   disableHover,
+  onDetailClick,
 }: {
   lead: Lead;
   agentId: string | null;
@@ -342,6 +346,7 @@ const LeadCard = memo(function LeadCard({
   onXP: (pts: number, label: string) => void;
   onCelebrate: () => void;
   disableHover?: boolean;
+  onDetailClick?: (lead: Lead) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [noteText, setNoteText] = useState(lead.notes || "");
@@ -438,8 +443,9 @@ const LeadCard = memo(function LeadCard({
         <div className="p-2.5 space-y-1.5">
           {/* ── Row 1: Name + score ── */}
           <div className="flex items-start justify-between gap-1">
-            <p className="font-semibold text-sm leading-tight truncate min-w-0 flex-1" title={fullName}>{fullName}</p>
+            <p className="font-semibold text-sm leading-tight truncate min-w-0 flex-1 cursor-pointer hover:text-primary transition-colors" title={fullName} onClick={() => onDetailClick?.(lead)}>{fullName}</p>
             <div className="flex items-center gap-1 shrink-0">
+              <DormantBadge lastContactedAt={lead.last_contacted_at} contactedAt={lead.contacted_at} createdAt={lead.created_at} />
               {isFeatureEnabled("leadScoring") && (
                 <Badge className={cn("text-[9px] border whitespace-nowrap px-1.5 py-0 font-bold", scoreBadge.className)}>
                   {scoreBadge.label}
@@ -784,6 +790,7 @@ function RecruiterDashboardInner() {
   const [confetti, setConfetti] = useState(false);
   const [advancedToday, setAdvancedToday] = useState(0);
   const [focusMode, setFocusMode] = useState(false);
+  const [detailLead, setDetailLead] = useState<Lead | null>(null);
   const [mobileColumn, setMobileColumn] = useState<string | null>(null);
 
   // Fetch leads assigned to Aisha (or all if admin viewing)
@@ -1062,6 +1069,9 @@ function RecruiterDashboardInner() {
       {/* ── Performance Metrics Strip ── */}
       {isFeatureEnabled("performanceMetrics") && <MetricsStrip leads={leads} />}
 
+      {/* ── Daily Challenges ── */}
+      <DailyChallenge leads={leads} onXP={addXP} />
+
       {/* ── AI Intelligence Panel ── */}
       <RecruiterAIPanel leads={leads} />
 
@@ -1255,6 +1265,7 @@ function RecruiterDashboardInner() {
                         onRefresh={() => fetchLeads(true)}
                         onXP={addXP}
                         onCelebrate={triggerCelebrate}
+                        onDetailClick={setDetailLead}
                         disableHover
                       />
                     ))
@@ -1313,6 +1324,7 @@ function RecruiterDashboardInner() {
                           onRefresh={() => fetchLeads(true)}
                           onXP={addXP}
                           onCelebrate={triggerCelebrate}
+                          onDetailClick={setDetailLead}
                           disableHover={isLargeList}
                         />
                       ))
@@ -1337,6 +1349,14 @@ function RecruiterDashboardInner() {
           <p className="text-sm mt-1">Try adjusting your filters</p>
         </motion.div>
       )}
+
+      {/* ── Lead Detail Sheet (Communication Hub) ── */}
+      <LeadDetailSheet
+        lead={detailLead}
+        open={!!detailLead}
+        onOpenChange={(open) => !open && setDetailLead(null)}
+        onRefresh={() => fetchLeads(true)}
+      />
     </div>
   );
 }

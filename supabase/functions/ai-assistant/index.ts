@@ -85,7 +85,25 @@ interface RecruiterInsightsRequest {
   };
 }
 
-type AIRequest = CoachingRequest | SummaryRequest | ChatRequest | PerformanceBreakdownRequest | RecruiterInsightsRequest;
+interface WeeklyDigestRequest {
+  type: 'weekly_digest';
+  stats: {
+    activeAgents: number;
+    weekAlp: number;
+    weekDeals: number;
+    weekPresentations: number;
+    producersCount: number;
+    closingRate: number;
+    totalApps: number;
+    newThisWeek: number;
+    licensedCount: number;
+    inCourse: number;
+    testPhase: number;
+    overdueCount: number;
+  };
+}
+
+type AIRequest = CoachingRequest | SummaryRequest | ChatRequest | PerformanceBreakdownRequest | RecruiterInsightsRequest | WeeklyDigestRequest;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -244,6 +262,39 @@ Provide:
 1. A 2-3 sentence executive summary of pipeline health
 2. Top 3 priorities for today (numbered, specific actions)
 3. One motivational insight based on the data`;
+        break;
+      }
+
+      case 'weekly_digest': {
+        const wd = (body as WeeklyDigestRequest).stats;
+        systemPrompt = `You are a senior business analyst for an insurance agency. Generate a comprehensive weekly executive summary that an agency owner would review. Be data-driven, highlight wins, flag concerns, and provide strategic recommendations. Use emojis for visual appeal. Format with clear sections.`;
+
+        userPrompt = `Generate a weekly executive summary report for this insurance agency:
+
+PRODUCTION METRICS (This Week):
+- Total ALP: $${wd.weekAlp.toLocaleString()}
+- Total Deals Closed: ${wd.weekDeals}
+- Total Presentations: ${wd.weekPresentations}
+- Closing Rate: ${wd.closingRate}%
+- Active Producers: ${wd.producersCount}
+
+TEAM METRICS:
+- Active Agents: ${wd.activeAgents}
+
+RECRUITMENT PIPELINE:
+- Total Active Applications: ${wd.totalApps}
+- New This Week: ${wd.newThisWeek}
+- Currently In Course: ${wd.inCourse}
+- In Test Phase: ${wd.testPhase}
+- Licensed: ${wd.licensedCount}
+- Overdue Follow-Ups (48h+): ${wd.overdueCount}
+
+Provide:
+1. 📊 Executive Summary (3-4 sentences on overall agency health)
+2. 🏆 Wins This Week (what went well)
+3. ⚠️ Areas of Concern (flagged issues)
+4. 📋 Top 3 Strategic Recommendations for next week
+5. 📈 Key Ratios (conversion rate, production per agent, etc.)`;
         break;
       }
 

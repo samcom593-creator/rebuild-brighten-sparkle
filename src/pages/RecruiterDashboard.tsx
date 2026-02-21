@@ -7,7 +7,7 @@ import {
   Award, Users, UserCheck, AlertTriangle, TrendingUp, Sparkles,
   MessageSquare, ChevronDown, ChevronUp, Plus, ExternalLink, AlertCircle,
   Activity, PhoneOff, PhoneCall, PhoneForwarded, PhoneMissed, Ban,
-  BarChart3, Percent, Timer, Target, Eye, EyeOff,
+  BarChart3, Percent, Timer, Target, Eye, EyeOff, Lightbulb,
 } from "lucide-react";
 import {
   Tooltip,
@@ -41,126 +41,101 @@ import { cn } from "@/lib/utils";
 import { formatDistanceToNow, addDays, addMinutes, subDays, differenceInDays } from "date-fns";
 import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
+import {
+  SCORING_WEIGHTS, SCORE_THRESHOLDS, XP_REWARDS, RANK_LEVELS,
+  PROGRESS_COLUMNS, SCHEDULING_LINKS, CALL_OUTCOMES as CALL_OUTCOME_DEFS,
+  ANIMATION_THRESHOLDS, SUGGESTION_RULES, FOLLOWUP_TIMING,
+} from "@/lib/apexConfig";
+import { isFeatureEnabled } from "@/lib/featureFlags";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const AISHA_EMAIL = "kebbeh045@gmail.com";
 
-const UNLICENSED_SCHEDULING_LINK = "https://calendly.com/apexlifeadvisors/15min";
-const LICENSED_SCHEDULING_LINK = "https://calendly.com/apexlifeadvisors/30min";
-
-const XP_REWARDS = {
-  contact: 10,
-  stage_update: 15,
-  test_scheduled: 25,
-  licensed: 100,
-  note_added: 5,
-};
-
-const RANK_LEVELS = [
-  { min: 0, label: "Rookie", color: "text-muted-foreground", emoji: "🌱" },
-  { min: 100, label: "Rising Star", color: "text-blue-400", emoji: "⭐" },
-  { min: 300, label: "Power Recruiter", color: "text-purple-400", emoji: "💜" },
-  { min: 600, label: "Elite", color: "text-amber-400", emoji: "👑" },
-  { min: 1000, label: "Legend", color: "text-rose-400", emoji: "🔥" },
-];
-
-const PROGRESS_COLUMNS = [
-  {
-    id: "needs_outreach",
-    label: "Needs Outreach",
-    emoji: "📣",
-    values: ["unlicensed"],
-    color: "border-rose-500/30 bg-rose-500/5",
-    headerColor: "text-rose-400",
-  },
-  {
-    id: "course",
-    label: "In Course",
-    emoji: "📚",
-    values: ["course_purchased", "finished_course"],
-    color: "border-blue-500/30 bg-blue-500/5",
-    headerColor: "text-blue-400",
-  },
-  {
-    id: "test_phase",
-    label: "Test Phase",
-    emoji: "✏️",
-    values: ["test_scheduled", "passed_test"],
-    color: "border-purple-500/30 bg-purple-500/5",
-    headerColor: "text-purple-400",
-  },
-  {
-    id: "final_steps",
-    label: "Final Steps",
-    emoji: "🏁",
-    values: ["fingerprints_done", "waiting_on_license"],
-    color: "border-amber-500/30 bg-amber-500/5",
-    headerColor: "text-amber-400",
-  },
-  {
-    id: "licensed",
-    label: "Licensed! 🎉",
-    emoji: "🏆",
-    values: ["licensed"],
-    color: "border-emerald-500/30 bg-emerald-500/5",
-    headerColor: "text-emerald-400",
-  },
-];
+const UNLICENSED_SCHEDULING_LINK = SCHEDULING_LINKS.unlicensed;
+const LICENSED_SCHEDULING_LINK = SCHEDULING_LINKS.licensed;
 
 type SortMode = "stale" | "newest" | "oldest" | "name" | "score";
 
-// ─── Call Outcome Types ───────────────────────────────────────────────────────
-const CALL_OUTCOMES = [
-  { key: "no_answer", label: "No Answer", icon: PhoneMissed, activityType: "call_no_answer", color: "text-muted-foreground" },
-  { key: "voicemail", label: "Left Voicemail", icon: PhoneOff, activityType: "call_voicemail", color: "text-amber-400" },
-  { key: "interested", label: "Spoke – Interested", icon: PhoneCall, activityType: "call_connected", color: "text-emerald-400" },
-  { key: "not_interested", label: "Spoke – Not Interested", icon: PhoneForwarded, activityType: "call_connected", color: "text-rose-400" },
-  { key: "wrong_number", label: "Wrong Number", icon: Ban, activityType: "call_wrong_number", color: "text-muted-foreground" },
-] as const;
+// ─── Call Outcome Types (add icons to config defs) ────────────────────────────
+const CALL_OUTCOME_ICONS: Record<string, React.ElementType> = {
+  no_answer: PhoneMissed,
+  voicemail: PhoneOff,
+  interested: PhoneCall,
+  not_interested: PhoneForwarded,
+  wrong_number: Ban,
+};
+const CALL_OUTCOMES = CALL_OUTCOME_DEFS.map((o) => ({
+  ...o,
+  icon: CALL_OUTCOME_ICONS[o.key] || Phone,
+}));
 
-// ─── Lead Scoring ─────────────────────────────────────────────────────────────
+// ─── Lead Scoring (uses config weights) ───────────────────────────────────────
 function computeLeadScore(lead: Lead): number {
-  let score = 30;
-  if (lead.license_progress === "licensed") score += 25;
-  if (lead.test_scheduled_date) score += 20;
+  let score = SCORING_WEIGHTS.baseScore;
+  if (lead.license_progress === "licensed") score += SCORING_WEIGHTS.licensed;
+  if (lead.test_scheduled_date) score += SCORING_WEIGHTS.testScheduled;
   const lastContact = lead.last_contacted_at || lead.contacted_at;
   if (lastContact) {
     const hrs = (Date.now() - new Date(lastContact).getTime()) / (1000 * 60 * 60);
-    if (hrs <= 48) score += 15;
-    if (hrs > 72) score -= 20;
+    if (hrs <= 48) score += SCORING_WEIGHTS.recentContact48h;
+    if (hrs > 72) score += SCORING_WEIGHTS.stalePenalty72h;
   }
-  if (lead.notes && lead.notes.trim().split(/\s+/).length >= 3) score += 10;
+  if (lead.notes && lead.notes.trim().split(/\s+/).length >= 3) score += SCORING_WEIGHTS.notesBonus;
   const daysSinceCreated = (Date.now() - new Date(lead.created_at).getTime()) / (1000 * 60 * 60 * 24);
-  if (daysSinceCreated <= 7 && lead.contacted_at) score += 15;
-  if (lead.referral_source) score += 10;
+  if (daysSinceCreated <= 7 && lead.contacted_at) score += SCORING_WEIGHTS.newAndContacted7d;
+  if (lead.referral_source) score += SCORING_WEIGHTS.referralBonus;
   return Math.max(0, Math.min(100, score));
 }
 
 function getScoreBadge(score: number) {
-  if (score < 40) return { label: `${score}`, className: "bg-rose-500/20 text-rose-400 border-rose-500/30" };
-  if (score < 70) return { label: `${score}`, className: "bg-amber-500/20 text-amber-400 border-amber-500/30" };
+  if (score < SCORE_THRESHOLDS.low) return { label: `${score}`, className: "bg-rose-500/20 text-rose-400 border-rose-500/30" };
+  if (score < SCORE_THRESHOLDS.medium) return { label: `${score}`, className: "bg-amber-500/20 text-amber-400 border-amber-500/30" };
   return { label: `${score}`, className: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" };
+}
+
+// ─── Auto-Stage Suggestion ────────────────────────────────────────────────────
+interface StageSuggestion {
+  label: string;
+  newProgress: string;
+}
+
+function computeStageSuggestion(lead: Lead): StageSuggestion | null {
+  if (!isFeatureEnabled("autoStageSuggestions")) return null;
+  const now = Date.now();
+  const lastActivity = lead.last_contacted_at || lead.contacted_at || lead.created_at;
+  const daysSinceActivity = (now - new Date(lastActivity).getTime()) / (1000 * 60 * 60 * 24);
+
+  if (lead.license_progress === "passed_test" && daysSinceActivity >= SUGGESTION_RULES.passedTestStaleDays) {
+    return { label: "Move to Final Steps", newProgress: "fingerprints_done" };
+  }
+  if (lead.license_progress === "waiting_on_license" && daysSinceActivity >= SUGGESTION_RULES.waitingOnLicenseStaleDays) {
+    return { label: "Move to Licensed", newProgress: "licensed" };
+  }
+  if (daysSinceActivity >= SUGGESTION_RULES.coldInactivityDays && computeLeadScore(lead) < SUGGESTION_RULES.coldScoreThreshold) {
+    return null; // "Mark as Cold" — no cold stage exists, skip for now
+  }
+  return null;
 }
 
 // ─── Smart Follow-Up ──────────────────────────────────────────────────────────
 function computeNextAction(lead: Lead): { dueAt: Date; actionType: string } | null {
   const now = new Date();
   if (!lead.contacted_at && !lead.last_contacted_at) {
-    return { dueAt: addMinutes(new Date(lead.created_at), 10), actionType: "initial_outreach" };
+    return { dueAt: addMinutes(new Date(lead.created_at), FOLLOWUP_TIMING.initialOutreachDelayMinutes), actionType: "initial_outreach" };
   }
   const lastContact = lead.last_contacted_at || lead.contacted_at;
   if (lastContact) {
     const hrs = (now.getTime() - new Date(lastContact).getTime()) / (1000 * 60 * 60);
-    if (hrs >= 24 && (!lead.license_progress || lead.license_progress === "unlicensed")) {
+    if (hrs >= FOLLOWUP_TIMING.noAnswerRetryHours && (!lead.license_progress || lead.license_progress === "unlicensed")) {
       return { dueAt: now, actionType: "call_followup" };
     }
   }
   if (lead.license_progress === "course_purchased" || lead.license_progress === "finished_course") {
     const contactDate = lead.last_contacted_at || lead.contacted_at;
-    if (contactDate) return { dueAt: addDays(new Date(contactDate), 3), actionType: "course_checkin" };
+    if (contactDate) return { dueAt: addDays(new Date(contactDate), FOLLOWUP_TIMING.courseCheckInDays), actionType: "course_checkin" };
   }
   if (lead.license_progress === "test_scheduled" && lead.test_scheduled_date) {
-    return { dueAt: subDays(new Date(lead.test_scheduled_date), 1), actionType: "test_reminder" };
+    return { dueAt: subDays(new Date(lead.test_scheduled_date), FOLLOWUP_TIMING.testReminderLeadDays), actionType: "test_reminder" };
   }
   return null;
 }
@@ -474,9 +449,11 @@ const LeadCard = memo(function LeadCard({
                 <Clock className="h-2 w-2 mr-0.5" />
                 {contactLabel}
               </Badge>
-              <Badge className={cn("text-[9px] border shrink-0 whitespace-nowrap px-1.5 py-0 font-bold", scoreBadge.className)}>
-                {scoreBadge.label}
-              </Badge>
+              {isFeatureEnabled("leadScoring") && (
+                <Badge className={cn("text-[9px] border shrink-0 whitespace-nowrap px-1.5 py-0 font-bold", scoreBadge.className)}>
+                  {scoreBadge.label}
+                </Badge>
+              )}
             </div>
           </div>
 
@@ -622,8 +599,52 @@ const LeadCard = memo(function LeadCard({
             </Tooltip>
           </div>
         </div>
+          {/* ── Auto-Stage Suggestion Chip ── */}
+          {(() => {
+            const suggestion = computeStageSuggestion(lead);
+            if (!suggestion) return null;
+            return (
+              <div className="px-2.5 pb-1">
+                <button
+                  onClick={async () => {
+                    try {
+                      await supabase
+                        .from("applications")
+                        .update({ license_progress: suggestion.newProgress as any })
+                        .eq("id", lead.id);
+                      logLeadActivity({
+                        leadId: lead.id,
+                        type: "stage_changed",
+                        title: `Suggestion applied: ${suggestion.label}`,
+                        details: { from_stage: lead.license_progress, to_stage: suggestion.newProgress },
+                      });
+                      logLeadActivity({
+                        leadId: lead.id,
+                        type: "suggestion_applied",
+                        title: `Auto-suggestion: ${suggestion.label}`,
+                        details: {},
+                      });
+                      if (suggestion.newProgress === "licensed") {
+                        onXP(XP_REWARDS.licensed, "🏆 Licensed via suggestion!");
+                        onCelebrate();
+                      } else {
+                        onXP(XP_REWARDS.stage_update, "✨ Suggestion applied!");
+                      }
+                      onRefresh();
+                    } catch {
+                      toast.error("Failed to apply suggestion");
+                    }
+                  }}
+                  className="flex items-center gap-1.5 w-full rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[10px] font-medium text-amber-400 hover:bg-amber-500/20 transition-colors"
+                >
+                  <Lightbulb className="h-3 w-3 shrink-0" />
+                  <span>Suggested: {suggestion.label}</span>
+                  <span className="ml-auto text-[9px] bg-amber-500/20 rounded px-1.5 py-0.5">Apply</span>
+                </button>
+              </div>
+            );
+          })()}
 
-        {/* ── Expanded notes ── */}
         <AnimatePresence>
           {expanded && (
             <motion.div
@@ -799,7 +820,7 @@ function RecruiterDashboardInner() {
         if (q && !name.includes(q) && !l.email.toLowerCase().includes(q) && !l.phone.includes(q)) return false;
         if (filterStage !== "all") {
           const col = PROGRESS_COLUMNS.find((c) => c.id === filterStage);
-          if (col && !col.values.includes(l.license_progress || "unlicensed")) return false;
+          if (col && !(col.values as readonly string[]).includes(l.license_progress || "unlicensed")) return false;
         }
         return true;
       });
@@ -824,8 +845,8 @@ function RecruiterDashboardInner() {
   const columnLeads = useMemo(() => {
     const cols = PROGRESS_COLUMNS.map((col) => ({
       ...col,
-      leads: filtered.filter((l) => col.values.includes(l.license_progress || "unlicensed")),
-      needsAttention: filtered.filter((l) => col.values.includes(l.license_progress || "unlicensed") && (getLastContactAge(l) > 48 * 3600 * 1000 || getLastContactAge(l) === Infinity)).length,
+      leads: filtered.filter((l) => (col.values as readonly string[]).includes(l.license_progress || "unlicensed")),
+      needsAttention: filtered.filter((l) => (col.values as readonly string[]).includes(l.license_progress || "unlicensed") && (getLastContactAge(l) > 48 * 3600 * 1000 || getLastContactAge(l) === Infinity)).length,
     }));
 
     // Auto-select mobile column with most needs-attention leads
@@ -907,9 +928,11 @@ function RecruiterDashboardInner() {
           </div>
 
           {/* XP Bar */}
-          <div className="md:w-64 bg-background/60 rounded-xl p-3 border border-border/50">
-            <XPBar xp={xp} />
-          </div>
+          {isFeatureEnabled("xpSystem") && (
+            <div className="md:w-64 bg-background/60 rounded-xl p-3 border border-border/50">
+              <XPBar xp={xp} />
+            </div>
+          )}
 
           {/* Quick scheduling buttons */}
           <div className="flex gap-2 flex-wrap">
@@ -954,7 +977,7 @@ function RecruiterDashboardInner() {
       </div>
 
       {/* ── Performance Metrics Strip ── */}
-      <MetricsStrip leads={leads} />
+      {isFeatureEnabled("performanceMetrics") && <MetricsStrip leads={leads} />}
 
       {/* ── Search / Filter / Sort ── */}
       <GlassCard className="p-3 space-y-2">
@@ -1159,7 +1182,7 @@ function RecruiterDashboardInner() {
         // Desktop: full grid with scroll containers
         <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4">
           {columnLeads.map((col, ci) => {
-            const isLargeList = col.leads.length >= 15;
+            const isLargeList = col.leads.length >= ANIMATION_THRESHOLDS.disableHoverAboveCards;
             return (
               <motion.div
                 key={col.id}

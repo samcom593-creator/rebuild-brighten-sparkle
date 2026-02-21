@@ -1182,6 +1182,33 @@ export type Database = {
           },
         ]
       }
+      error_logs: {
+        Row: {
+          component_stack: string | null
+          created_at: string
+          error_message: string
+          id: string
+          url: string | null
+          user_id: string | null
+        }
+        Insert: {
+          component_stack?: string | null
+          created_at?: string
+          error_message: string
+          id?: string
+          url?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          component_stack?: string | null
+          created_at?: string
+          error_message?: string
+          id?: string
+          url?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       health_check_log: {
         Row: {
           check_name: string

@@ -36,6 +36,12 @@ export const useSoundEffects = () => {
   }, [getAudioContext]);
 
   const playSound = useCallback((soundType: SoundType) => {
+    // Respect user preference
+    try {
+      const soundEnabled = localStorage.getItem("apex_sound_enabled");
+      if (soundEnabled === "false") return;
+    } catch { /* ignore */ }
+
     try {
       const ctx = getAudioContext();
       

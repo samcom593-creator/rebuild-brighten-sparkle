@@ -1,91 +1,75 @@
 
 
-# Update Lead Records from Course Data + Add Calendar Sidebar Navigation
+# Fix Calendar Date Picker, Email Notifications, and Calendar Page Scheduling
 
-## Part 1: Update Existing Lead Records in Database
+## Issues Identified
 
-Based on the uploaded XcelSolutions course data, the following updates need to be made to the `applications` table. Each update also appends course progress details into the lead's `notes` field.
+### 1. Calendar popup broken in LicenseProgressSelector (Test Scheduled date picker)
+The `Popover` component uses a **hidden trigger** (`<span className="hidden" />`), which means it has no anchor element for positioning. When `showDatePicker` is set to `true`, the popover tries to open but has nowhere to render relative to. This is the root cause of the broken calendar popup across all platforms (CRM, Pipeline, Call Center, etc.).
 
-### Updates for Existing Records (5 leads already in DB)
+**Fix**: Replace the detached `Popover` with a `Dialog` component that doesn't need an anchor point. This ensures the date picker renders as a centered modal overlay that works everywhere.
 
-| Lead | Current `license_progress` | New `license_progress` | Notes to Append |
-|---|---|---|---|
-| **Andre Sanabria** | `unlicensed` | `finished_course` | "XCEL Pre-Licensing: 100% complete. Final Exam Score: 91/100 (Passed). Completed 2/19/2026. Time in course: 18h 47m." |
-| **Malik Tobias** | `test_scheduled` | Keep `test_scheduled` | "XCEL Pre-Licensing: 100% complete (98% overall). Final Exam Score: 92/100 (Passed). Completed 2/14/2026. Time in course: 1h 39m." |
-| **Demetric Fulton** | `test_scheduled` | Keep `test_scheduled` | "XCEL Pre-Licensing: 100% complete (64% overall). Final Exam Score: 74/100 (Passed). Completed 2/18/2026. Time in course: 17h 7m." |
-| **Ben Gillie** | `finished_course` | Keep `finished_course` | "XCEL Pre-Licensing (PA): 28% complete (18% overall). Still in course. Time in course: 3h 9m. Enrolled 2/18/2026." |
-| **Cooper Ubert** | `course_purchased` | Keep `course_purchased` | "XCEL Pre-Licensing (WI): 90% complete (61% overall). Still in course. Time in course: 4h 41m. Enrolled 2/17/2026." |
+### 2. Test Scheduled email only goes to admin + direct manager -- needs ALL managers
+The `notify-test-scheduled` edge function currently resolves only the direct manager via `invited_by_manager_id` and CCs them + admin. It does NOT notify all managers.
 
-Andre is the only one who needs a `license_progress` change (from `unlicensed` to `finished_course` since he completed his pre-licensing course and passed).
+**Fix**: Update the edge function to query ALL managers (all agents with a corresponding `manager` role in `user_roles`) and include their emails in the CC list. This ensures every manager is notified when any applicant schedules a licensing exam.
 
-### New Application Records (4 leads NOT in DB)
+### 3. Calendar page "Schedule" button opens empty InterviewScheduler
+The Calendar page passes `applicationId=""` to InterviewScheduler, so it can't actually schedule anything.
 
-These 4 people have courses in XcelSolutions but no `applications` record. They will be inserted as new applications with the correct `license_progress`:
+**Fix**: Replace the Schedule button with a two-step flow:
+- Step 1: Open a lead search dialog with a search bar querying `applications` by name/email/phone
+- Step 2: Once a lead is selected, open the InterviewScheduler pre-filled with that lead's data
 
-| Lead | State | Progress | `license_progress` |
-|---|---|---|---|
-| **Jordan McClendon** | Florida | 100% complete, exam passed (87) | `finished_course` |
-| **Joshua Auguste** | Florida | 0%, course disabled | `unlicensed` |
-| **Pierre Auguste** | Florida | 100% complete, exam passed (74), course disabled | `finished_course` |
-| **Yosiah Augustine** | Texas | 17% in progress | `course_purchased` |
+### 4. InterviewScheduler calls wrong edge function
+It calls `notify-test-scheduled` (for licensing exams) instead of `schedule-interview` (for interview emails). This means interview emails are formatted incorrectly.
 
-Each new record will include full course progress in the `notes` field.
+**Fix**: Change the edge function call to `schedule-interview` which sends the proper interview notification email.
 
-## Part 2: Add "Calendar" Sidebar Navigation Item
+### 5. Weekend dates not disabled
+The InterviewScheduler allows selecting Saturday and Sunday.
 
-A new **Calendar** page will be created and added to the sidebar navigation for all authenticated users (admin, manager, agent). This page provides a centralized scheduling hub.
-
-### What the Calendar page will show:
-- **Upcoming Interviews**: All scheduled interviews from `scheduled_interviews` table, displayed as a chronological list with date/time, applicant name, type (video/phone/in-person), and meeting link
-- **Schedule New Meeting**: An embedded `InterviewScheduler` component to schedule interviews without leaving the page
-- **Auto-Send Calendar Link**: Ability to send a Google Calendar invite link to the applicant after scheduling
-- **Past Interviews**: History of completed/no-show interviews
-- **Quick filters**: Today, This Week, All Upcoming
-
-### Sidebar Changes
-- Add a `Calendar` icon nav item labeled **"Calendar"** in the TOOLS section of the GlobalSidebar
-- Route: `/dashboard/calendar`
-- Available to all roles (admin, manager, agent)
-
-## Part 3: Checklist Verification
-
-All previously identified checklist items from the Final System Completion remain implemented:
-- Error boundaries, feature flags, central config, schedule bar, lead scoring, smart follow-ups, activity timeline, XP system, sound effects, confetti, AI panel, interview scheduler, dark/light mode, sidebar, weekly badges, memoization, query caching
-- Communication Hub (LeadDetailSheet), Daily Challenges, Dormant Badge, No-Show Recovery, Production Forecast, System Integrity Card, Activation Risk Banner -- all implemented in previous iterations
+**Fix**: Add a weekend check to the `disabled` prop on the CalendarPicker.
 
 ---
 
-## Technical Implementation Details
+## Technical Implementation
 
-### Step 1: Database Updates (via data insert tool)
+### File: `src/components/dashboard/LicenseProgressSelector.tsx`
+- Remove the broken `Popover` + hidden trigger pattern (lines 208-227)
+- Replace with a `Dialog` containing the Calendar picker
+- The Dialog opens when `showDatePicker` is `true` and closes on date selection or cancel
+- This fix applies everywhere the component is used (CRM, Pipeline, Call Center, HR, etc.)
 
-Run SQL updates for the 5 existing leads (update `license_progress` where needed + append course notes). Run SQL inserts for the 4 missing leads as new applications.
+### File: `supabase/functions/notify-test-scheduled/index.ts`
+- After resolving the direct manager, add a query to get ALL managers:
+  - Query `user_roles` where `role = 'manager'` to get all manager user IDs
+  - Query `profiles` to get their emails
+  - Add all manager emails to the CC list (deduplicated)
+- Send a separate "heads up" email to all managers notifying them that an applicant has scheduled their licensing exam
+- Keep the applicant email + prep tips as-is
 
-### Step 2: Create `src/pages/CalendarPage.tsx` (NEW)
+### File: `src/pages/CalendarPage.tsx`
+- Add a `LeadSearchDialog` component inline:
+  - Search input that queries `applications` by first_name, last_name, email, or phone (using `ilike`)
+  - Shows matching leads in a list with name, email, and current status
+  - On lead selection, sets `selectedLead` state and opens InterviewScheduler with proper props
+- Replace the empty `applicationId=""` with the selected lead's actual data
+- The "Schedule" button now opens the search dialog first
 
-- Fetches all `scheduled_interviews` joined with `applications` for applicant names
-- Groups by date (Today, This Week, Later)
-- Each interview card shows: time, applicant name, type badge, meeting link button, status badge
-- "Schedule Interview" button opens the existing `InterviewScheduler` dialog
-- "Send Calendar Link" button generates and opens a Google Calendar URL (reusing `buildCalendarUrl` from InterviewScheduler)
-- Filter tabs: Upcoming | Past | All
+### File: `src/components/dashboard/InterviewScheduler.tsx`
+- Change edge function call from `notify-test-scheduled` to `schedule-interview` (line 136)
+- Pass correct payload: `{ applicationId, interviewDate, interviewType, meetingLink, notes }`
+- Add weekend disabling to CalendarPicker: `disabled={(date) => date < today || date.getDay() === 0 || date.getDay() === 6}`
 
-### Step 3: Update `src/App.tsx`
-
-- Add lazy import for `CalendarPage`
-- Add route: `/dashboard/calendar` inside the AuthenticatedShell
-
-### Step 4: Update `src/components/layout/GlobalSidebar.tsx`
-
-- Import `Calendar` icon from lucide-react (already imported elsewhere)
-- Add `{ icon: Calendar, label: "Calendar", href: "/dashboard/calendar" }` to the TOOLS section, available for all roles (admin, manager, agent)
-- Position it after "Call Center" for admin/manager, or after "My Pipeline" for agent-only users
-
-### Files Created
-- `src/pages/CalendarPage.tsx`
+### Edge Function: `supabase/functions/schedule-interview/index.ts`
+- Fix the import: uses `npm:@hono/node-server` which is incorrect for Deno.serve pattern -- change to standard `Deno.serve`
+- Ensure it sends the interview email to the applicant with CC to admin, assigned agent, direct manager, AND all managers
 
 ### Files Modified
-- `src/App.tsx` (add route)
-- `src/components/layout/GlobalSidebar.tsx` (add nav item)
-- Database: 5 UPDATE queries + 4 INSERT queries for lead records
+- `src/components/dashboard/LicenseProgressSelector.tsx` -- fix calendar popup (Popover to Dialog)
+- `src/pages/CalendarPage.tsx` -- add lead search flow for scheduling
+- `src/components/dashboard/InterviewScheduler.tsx` -- fix edge function call + disable weekends
+- `supabase/functions/notify-test-scheduled/index.ts` -- email all managers
+- `supabase/functions/schedule-interview/index.ts` -- fix serve pattern + email all managers
 

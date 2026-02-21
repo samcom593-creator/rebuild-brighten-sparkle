@@ -36,6 +36,7 @@ import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingBu
 import { QuickEmailMenu } from "@/components/dashboard/QuickEmailMenu";
 import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration";
 import { ActivityTimeline } from "@/components/recruiter/ActivityTimeline";
+import { InterviewScheduler } from "@/components/dashboard/InterviewScheduler";
 import { logLeadActivity } from "@/lib/logLeadActivity";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, addDays, addMinutes, subDays, differenceInDays } from "date-fns";
@@ -348,6 +349,7 @@ const LeadCard = memo(function LeadCard({
   const { playSound } = useSoundEffects();
 
   const [showTimeline, setShowTimeline] = useState(false);
+  const [schedulerOpen, setSchedulerOpen] = useState(false);
   const leadScore = useMemo(() => computeLeadScore(lead), [lead]);
   const scoreBadge = getScoreBadge(leadScore);
 
@@ -562,7 +564,22 @@ const LeadCard = memo(function LeadCard({
                   <CalendarClock className="h-3 w-3" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent><p>Book a call</p></TooltipContent>
+              <TooltipContent><p>Book a call (Calendly)</p></TooltipContent>
+            </Tooltip>
+
+            {/* Schedule Interview (in-app) */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-7 w-7 border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+                  onClick={() => setSchedulerOpen(true)}
+                >
+                  <Calendar className="h-3 w-3" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent><p>Schedule interview</p></TooltipContent>
             </Tooltip>
 
             {/* Activity timeline toggle */}
@@ -691,6 +708,25 @@ const LeadCard = memo(function LeadCard({
           )}
         </AnimatePresence>
       </motion.div>
+
+      {/* Interview Scheduler Dialog */}
+      <InterviewScheduler
+        open={schedulerOpen}
+        onOpenChange={setSchedulerOpen}
+        applicationId={lead.id}
+        applicantName={fullName}
+        applicantEmail={lead.email}
+        onScheduled={() => {
+          logLeadActivity({
+            leadId: lead.id,
+            type: "interview_scheduled",
+            title: "Interview scheduled",
+            details: { scheduled_from: "recruiter_hq" },
+          });
+          onXP(XP_REWARDS.stage_update, "📅 Interview scheduled!");
+          onRefresh();
+        }}
+      />
     </TooltipProvider>
   );
 }, (prev, next) => {
@@ -753,10 +789,7 @@ function RecruiterDashboardInner() {
         .neq("license_status", "licensed")
         .in("status", ["reviewing", "contracting", "approved", "new"]);
 
-      if (myAgentId) {
-        query.eq("assigned_agent_id", myAgentId);
-      }
-
+      // Show ALL unlicensed leads (no agent filter) — Recruiter HQ is access-restricted
       const { data, error } = await query.order("created_at", { ascending: false });
       if (error) throw error;
       setLeads(data || []);

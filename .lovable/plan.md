@@ -1,157 +1,107 @@
 
 
-# Recruiter HQ Elite Upgrade — Phased Implementation Plan
+# Phase 2 — Lead Scoring + Smart Follow-Ups + Call Outcomes
 
-This is a large-scale initiative. To deliver quality without breaking things, we split into **3 phases**, starting with the highest-ROI items.
-
----
-
-## PHASE 1 — Lead Activity Timeline + Layout Polish (Core)
-
-### 1A. New Database Table: `lead_activity`
-
-Create a `lead_activity` table to track all interactions with leads.
-
-**Columns:**
-- `id` (uuid, PK)
-- `lead_id` (uuid, FK to applications.id, indexed)
-- `actor_user_id` (uuid, nullable)
-- `actor_name` (text, nullable, denormalized)
-- `actor_role` (text, nullable)
-- `activity_type` (text, required) -- e.g. `call_attempt`, `email_sent`, `stage_changed`, `note_added`, `calendly_link_sent`
-- `title` (text, required)
-- `details` (jsonb, nullable)
-- `created_at` (timestamptz, default now(), indexed)
-
-**RLS Policies:**
-- Admins: full access (ALL)
-- Managers: SELECT on leads assigned to them or their team
-- Agents/recruiters: SELECT + INSERT on their assigned leads
-
-**Indexes:**
-- `lead_id` + `created_at DESC` composite index for fast timeline queries
-
-**Realtime:** Enable via `ALTER PUBLICATION supabase_realtime ADD TABLE lead_activity`
-
-### 1B. Activity Logging Utility
-
-Create `src/lib/logLeadActivity.ts`:
-- Single async function: `logLeadActivity({ leadId, type, title, details })`
-- Auto-populates `actor_user_id`, `actor_name`, `actor_role` from current auth session
-- Fire-and-forget (never blocks UI; `console.warn` on failure in dev)
-- Used by all action handlers in RecruiterDashboard
-
-### 1C. Auto-Log Activity for Key Events
-
-Instrument the existing `RecruiterDashboard.tsx` handlers:
-
-| Event | activity_type | title | details |
-|---|---|---|---|
-| Call button clicked | `call_attempt` | "Called {name}" | `{ phone }` |
-| Email sent (QuickEmailMenu) | `email_sent` | "Email sent" | `{ template }` |
-| Licensing instructions sent | `email_sent` | "Licensing instructions sent" | `{ channel: "email" }` |
-| Calendly link opened | `calendly_link_sent` | "Calendly link sent" | `{ link_type }` |
-| Stage changed (LicenseProgressSelector) | `stage_changed` | "Stage moved" | `{ from_stage, to_stage }` |
-| Note saved | `note_added` | "Note added" | `{ note_preview: first 140 chars }` |
-
-### 1D. ActivityTimeline Component
-
-Create `src/components/recruiter/ActivityTimeline.tsx`:
-- Vertical timeline with left border + colored dots
-- Each item: title, relative timestamp (exact on hover), actor name/role, optional detail line
-- Newest first by default
-- Uses TanStack Query with `lead_id` in query key
-- Subscribes to realtime inserts on `lead_activity` for live updates
-
-### 1E. Timeline Integration into LeadCard
-
-- Add a collapsible "Recent Activity" section (last 3 items) below the notes toggle
-- Uses the same expand/collapse pattern as existing notes
-- On desktop: shows inline; on mobile: collapsed by default
-
-### 1F. Layout Polish
-
-- **Mobile kanban**: On small screens, switch from grid to a segmented tab control that shows one column at a time (avoid tiny cards)
-- **Card consistency**: Fixed padding (`p-2.5`), fixed action bar height (`h-7`), no layout shift
-- **Virtualization**: If a column has 20+ cards, render only visible ones using a simple scroll-based approach (CSS `max-h-[60vh] overflow-y-auto` is already in place; add lazy rendering for 50+ cards)
-- **Reduce heavy animations**: Disable `whileHover` and per-card `motion.div layout` when list has 30+ items
+Phase 1 (Activity Timeline, logging utility, layout polish) is complete. This plan implements the three highest-ROI intelligence features from Phase 2.
 
 ---
 
-## PHASE 2 — Lead Scoring + Smart Follow-Ups (Intelligence Layer)
+## 2A. Lead Score System
 
-### 2A. Lead Score Field
+### Database Change
 
-Add `lead_score` (integer, 0-100) column to `applications` table.
+Add three columns to the `applications` table:
 
-**Scoring formula (computed on activity log or stage change):**
-- Licensed = +25
-- Test scheduled = +20
-- Replied in last 48h = +15
-- No contact 72h+ = -20
-- Multiple notes (3+) = +10
-- Applied + booked call = +15
-- Referred by agent = +10
+- `lead_score` (integer, default 50) — computed score 0-100
+- `next_action_at` (timestamptz, nullable) — when the next follow-up is due
+- `next_action_type` (text, nullable) — what the follow-up is (e.g. "call_followup", "course_checkin", "test_reminder")
 
-Display as color badge on card: Red (less than 40), Yellow (40-70), Green (70+). Add "Sort by Score" option.
+No new table needed; these extend the existing `applications` table that the Recruiter HQ already queries.
 
-### 2B. Smart Follow-Up Engine
+### Scoring Logic (client-side computation on fetch)
 
-Add `next_action_at` (timestamptz) and `next_action_type` (text) columns to `applications`.
+Rather than a background worker, compute the score in the dashboard from existing data:
 
-Auto-assign rules:
-- New lead: 10 min follow-up
-- No answer: 24h follow-up
-- In course: 3-day check-in
-- Test scheduled: 24h reminder
+- `license_progress = licensed` -> +25
+- `test_scheduled_date` is set -> +20
+- `last_contacted_at` within 48h -> +15
+- `last_contacted_at` older than 72h -> -20
+- `notes` is non-empty (3+ words) -> +10
+- `created_at` within 7 days + `contacted_at` set -> +15
+- `referral_source` is set -> +10
+- Base score starts at 30, clamped to 0-100
 
-Add "Action Required Now" strip at top of Recruiter HQ showing overdue count. One-click "Mark Done" logs timeline entry.
+### UI Changes in RecruiterDashboard.tsx
 
-### 2C. Call Outcome Tracking
-
-When logging a call, show a quick outcome selector:
-- No Answer / Left Voicemail / Spoke - Interested / Spoke - Not Interested / Wrong Number
-
-Store in `lead_activity.details`. Add filter: "Show all Interested leads not yet scheduled."
+- Add a `computeLeadScore(lead)` helper function
+- Display a color-coded score badge on each LeadCard (Row 1, next to the contact freshness badge):
+  - Red badge for score less than 40
+  - Yellow/amber badge for score 40-70
+  - Green badge for score 70+
+- Add "Score" as a new sort option in the sort dropdown
 
 ---
 
-## PHASE 3 — Performance + Analytics (Command Layer)
+## 2B. Smart Follow-Up Engine
 
-### 3A. Recruiter Performance Board
+### Auto-Assign Logic
 
-Metrics panel above Kanban:
-- Leads Assigned, Contact Rate %, License Rate %, Avg Days to Licensed, 7-Day Activity Count
+When leads are fetched, compute `next_action_at` client-side based on current state:
 
-### 3B. Conversion Funnel Heatmap
+- New lead (no `contacted_at`): action due 10 minutes after `created_at`
+- No contact in 24h+: action due now
+- `license_progress = course_purchased`: action due 3 days after last contact
+- `license_progress = test_scheduled`: action due 1 day before `test_scheduled_date`
 
-Track time between stages. Visual funnel with drop-off % at each stage. Highlight bottleneck in red.
+### "Action Required Now" Banner
 
-### 3C. Auto No-Show Recovery
-
-On `meeting_scheduled` with `no_show` status: auto-send SMS (15 min) + email (2 hrs) + create follow-up task. Track No-Show Recovery Rate %.
-
-### 3D. Daily Execution Mode
-
-Toggle that filters to only: overdue leads, high-score leads, leads with no contact 48h+. Hides everything else for focused work.
+Add a highlighted strip above the kanban columns showing:
+- Count of overdue leads (where computed `next_action_at` is in the past)
+- "Mark Done" button that:
+  1. Updates `last_contacted_at` to now
+  2. Logs a `followup_completed` activity
+  3. Refreshes the list
 
 ---
 
-## Files Changed/Created (Phase 1)
+## 2C. Call Outcome Tracking
+
+### UI Change
+
+When the Call button is clicked, instead of immediately logging `call_attempt`, show a small popover/dialog with outcome options:
+
+- No Answer
+- Left Voicemail
+- Spoke - Interested
+- Spoke - Not Interested
+- Wrong Number
+
+### Activity Logging
+
+Store the selected outcome in `lead_activity.details.outcome`. The `activity_type` becomes:
+- `call_no_answer`
+- `call_voicemail`
+- `call_connected` (for Interested/Not Interested)
+- `call_wrong_number`
+
+### Filter Addition
+
+Add a new filter option: "Interested (no meeting)" — shows leads where any `call_connected` activity has `outcome = "interested"` AND no `test_scheduled_date` is set.
+
+---
+
+## Files Changed/Created
 
 | File | Action |
 |---|---|
-| `supabase/migrations/XXXX_create_lead_activity.sql` | New migration |
-| `src/lib/logLeadActivity.ts` | New utility |
-| `src/components/recruiter/ActivityTimeline.tsx` | New component |
-| `src/pages/RecruiterDashboard.tsx` | Modified (add activity logging calls, timeline integration, mobile tab layout) |
-| `src/components/dashboard/LicenseProgressSelector.tsx` | Modified (pass `onBeforeChange` to capture from_stage for activity log) |
+| `supabase/migrations/XXXX_add_lead_score_columns.sql` | New migration: add `lead_score`, `next_action_at`, `next_action_type` to `applications` |
+| `src/pages/RecruiterDashboard.tsx` | Modified: add score computation, score badge on cards, "Action Required" banner, call outcome popover, new sort/filter options |
 
 ## Technical Notes
 
-- All activity logging is fire-and-forget to maintain sub-1s UI responsiveness
-- TanStack Query with 120s staleTime for timeline data, realtime subscription for live updates
-- No breaking API changes; `lead_activity` is a new additive table
-- RLS policies follow the existing `has_role()` / `get_agent_id()` pattern
-- The massive feature list (Parts 4-12, add-ons like OCR, SMS integration, AI coaching, etc.) is documented as future phases and will be tackled incrementally after Phase 1-3 are stable
+- Lead score is computed client-side from existing fields to avoid a background worker. This keeps it simple and avoids new edge functions.
+- The `lead_score` column in the database is reserved for future server-side computation but not written to in this phase.
+- `next_action_at` and `next_action_type` columns are added for future server-side automation but computed client-side for now.
+- Call outcome popover uses the existing Popover component from the UI library.
+- No new dependencies needed.
 

@@ -7,7 +7,7 @@ import {
   Award, Users, UserCheck, AlertTriangle, TrendingUp, Sparkles,
   MessageSquare, ChevronDown, ChevronUp, Plus, ExternalLink, AlertCircle,
   Activity, PhoneOff, PhoneCall, PhoneForwarded, PhoneMissed, Ban,
-  BarChart3, Percent, Timer, Target, Eye, EyeOff, Lightbulb,
+  BarChart3, Percent, Timer, Target, Eye, EyeOff, Lightbulb, Brain,
 } from "lucide-react";
 import {
   Tooltip,
@@ -37,6 +37,7 @@ import { QuickEmailMenu } from "@/components/dashboard/QuickEmailMenu";
 import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration";
 import { ActivityTimeline } from "@/components/recruiter/ActivityTimeline";
 import { InterviewScheduler } from "@/components/dashboard/InterviewScheduler";
+import { RecruiterAIPanel, LeadAISummary } from "@/components/recruiter/RecruiterAIPanel";
 import { logLeadActivity } from "@/lib/logLeadActivity";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, addDays, addMinutes, subDays, differenceInDays } from "date-fns";
@@ -582,6 +583,22 @@ const LeadCard = memo(function LeadCard({
               <TooltipContent><p>Schedule interview</p></TooltipContent>
             </Tooltip>
 
+            {/* AI Summary */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-pink-400 hover:text-pink-300 hover:bg-pink-500/10"
+                >
+                  <Brain className="h-3 w-3" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-2" side="bottom" align="start">
+                <LeadAISummary lead={lead} />
+              </PopoverContent>
+            </Popover>
+
             {/* Activity timeline toggle */}
             <Tooltip>
               <TooltipTrigger asChild>
@@ -792,7 +809,43 @@ function RecruiterDashboardInner() {
       // Show ALL unlicensed leads (no agent filter) — Recruiter HQ is access-restricted
       const { data, error } = await query.order("created_at", { ascending: false });
       if (error) throw error;
-      setLeads(data || []);
+
+      // Also fetch contacted aged leads
+      const { data: agedData } = await supabase
+        .from("aged_leads")
+        .select("id, first_name, last_name, email, phone, contacted_at, last_contacted_at, created_at, license_status, notes")
+        .eq("status", "contacted");
+
+      const normalizedAged: Lead[] = (agedData || []).map((a) => ({
+        id: a.id,
+        first_name: a.first_name,
+        last_name: a.last_name || "",
+        email: a.email || "",
+        phone: a.phone || "",
+        city: null,
+        state: null,
+        created_at: a.created_at || new Date().toISOString(),
+        last_contacted_at: a.last_contacted_at,
+        contacted_at: a.contacted_at,
+        license_status: a.license_status || "unlicensed",
+        license_progress: "unlicensed",
+        test_scheduled_date: null,
+        notes: a.notes,
+        assigned_agent_id: null,
+        referral_source: "aged_lead",
+      }));
+
+      // Merge and deduplicate by email
+      const allLeads: Lead[] = [...(data || []).map((d) => ({ ...d, license_progress: d.license_progress as string | null }))];
+      const existingEmails = new Set(allLeads.map((l) => l.email?.toLowerCase()).filter(Boolean));
+      for (const aged of normalizedAged) {
+        if (aged.email && !existingEmails.has(aged.email.toLowerCase())) {
+          allLeads.push(aged);
+          existingEmails.add(aged.email.toLowerCase());
+        }
+      }
+
+      setLeads(allLeads);
     } catch (err) {
       console.error("RecruiterDashboard fetch error:", err);
     } finally {
@@ -1008,6 +1061,9 @@ function RecruiterDashboardInner() {
 
       {/* ── Performance Metrics Strip ── */}
       {isFeatureEnabled("performanceMetrics") && <MetricsStrip leads={leads} />}
+
+      {/* ── AI Intelligence Panel ── */}
+      <RecruiterAIPanel leads={leads} />
 
       {/* ── Search / Filter / Sort ── */}
       <GlassCard className="p-3 space-y-2">

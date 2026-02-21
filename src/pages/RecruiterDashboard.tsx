@@ -5,8 +5,14 @@ import {
   Clock, Search, ChevronRight, GraduationCap,
   BookOpen, BookCheck, CalendarClock, FileCheck, Fingerprint,
   Award, Users, UserCheck, AlertTriangle, TrendingUp, Sparkles,
-  MessageSquare, ChevronDown, ChevronUp, Plus, ExternalLink,
+  MessageSquare, ChevronDown, ChevronUp, Plus, ExternalLink, AlertCircle,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
@@ -277,163 +283,170 @@ function LeadCard({
   const location = [lead.city, lead.state].filter(Boolean).join(", ");
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      whileHover={{ y: -2 }}
-      transition={{ type: "spring", stiffness: 300, damping: 25 }}
-      className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm"
-    >
-      {/* ── Header row: name + freshness badge ── */}
-      <div className="px-3 pt-3 pb-2">
-        <div className="flex items-start justify-between gap-2 mb-1.5">
-          <div className="min-w-0 flex-1">
-            {/* Full name — never truncated */}
-            <p className="font-semibold text-sm leading-tight break-words">{fullName}</p>
-            {/* Location inline */}
-            {location && (
-              <span className="inline-flex items-center gap-1 mt-1 text-[11px] text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded-md">
-                <MapPin className="h-2.5 w-2.5 flex-shrink-0" />
-                {location}
-              </span>
-            )}
-          </div>
-          {/* Contact freshness badge */}
-          <Badge className={cn("text-[10px] border shrink-0 whitespace-nowrap", contactColor)}>
-            <Clock className="h-2.5 w-2.5 mr-1" />
-            {contactLabel}
-          </Badge>
-        </div>
-
-        {/* ── Info row: phone + email + date ── */}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 mb-2.5">
-          {lead.phone && (
-            <a
-              href={`tel:${lead.phone}`}
-              onClick={handleContactLogged}
-              className="flex items-center gap-1 text-[11px] text-emerald-400 hover:text-emerald-300 transition-colors font-medium"
-            >
-              <Phone className="h-3 w-3 flex-shrink-0" />
-              {lead.phone}
-            </a>
-          )}
-          {lead.email && (
-            <span className="flex items-center gap-1 text-[11px] text-muted-foreground min-w-0">
-              <Mail className="h-3 w-3 flex-shrink-0 text-blue-400" />
-              <span className="truncate max-w-[140px]">{lead.email}</span>
-            </span>
-          )}
-          <span className="flex items-center gap-1 text-[10px] text-muted-foreground/70 ml-auto">
-            <Calendar className="h-2.5 w-2.5" />
-            {new Date(lead.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-          </span>
-        </div>
-
-        {/* ── License progress selector (label always visible) ── */}
-        <LicenseProgressSelector
-          applicationId={lead.id}
-          currentProgress={lead.license_progress as any}
-          testScheduledDate={lead.test_scheduled_date}
-          onProgressUpdated={() => handleProgressUpdated()}
-          className="w-full text-xs"
-        />
-      </div>
-
-      {/* ── Action row ── */}
-      <div className="px-3 pb-3 flex items-center gap-1.5 flex-wrap">
-        {/* Call */}
-        <Button
-          variant="outline"
-          size="sm"
-          asChild
-          className="text-xs h-7 px-2.5 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
-          onClick={handleContactLogged}
-        >
-          <a href={`tel:${lead.phone}`}>
-            <Phone className="h-3 w-3 mr-1" />
-            Call
-          </a>
-        </Button>
-
-        {/* Email */}
-        <QuickEmailMenu
-          applicationId={lead.id}
-          agentId={agentId}
-          licenseStatus={lead.license_status as any}
-          recipientEmail={lead.email}
-          recipientName={fullName}
-          onEmailSent={() => {
-            onXP(XP_REWARDS.contact, "📧 Email sent!");
-            onRefresh();
-          }}
-          className="text-xs h-7 px-2.5"
-        />
-
-        {/* Send licensing instructions */}
-        <ResendLicensingButton
-          recipientEmail={lead.email}
-          recipientName={lead.first_name}
-          licenseStatus={lead.license_status as any}
-        />
-
-        {/* Book call */}
-        <Button
-          variant="outline"
-          size="sm"
-          asChild
-          className="text-xs h-7 px-2.5 border-pink-500/30 text-pink-400 hover:bg-pink-500/10"
-        >
-          <a href={UNLICENSED_SCHEDULING_LINK} target="_blank" rel="noreferrer">
-            <CalendarClock className="h-3 w-3 mr-1" />
-            Book
-          </a>
-        </Button>
-
-        {/* Notes toggle */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setExpanded((v) => !v)}
-          className="text-xs h-7 px-2 ml-auto text-muted-foreground hover:text-foreground"
-        >
-          <MessageSquare className="h-3 w-3 mr-1" />
-          Notes
-          {expanded ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />}
-        </Button>
-      </div>
-
-      {/* ── Expanded notes ── */}
-      <AnimatePresence>
-        {expanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
-          >
-            <div className="px-3 pb-3 border-t border-border/50 pt-3 space-y-2">
-              <Textarea
-                value={noteText}
-                onChange={(e) => setNoteText(e.target.value)}
-                placeholder="Add notes about this person..."
-                className="text-xs min-h-[80px] resize-none"
-              />
-              <Button
-                size="sm"
-                onClick={handleSaveNote}
-                disabled={savingNote}
-                className="w-full text-xs h-7 bg-pink-500/20 text-pink-300 hover:bg-pink-500/30 border-pink-500/30 border"
-              >
-                {savingNote ? "Saving..." : "Save Note"}
-              </Button>
+    <TooltipProvider delayDuration={200}>
+      <motion.div
+        layout
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        whileHover={{ y: -1 }}
+        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+        className="bg-card border border-border rounded-xl overflow-hidden shadow-sm"
+      >
+        <div className="p-2.5 space-y-1.5">
+          {/* ── Row 1: Full name + location + freshness badge ── */}
+          <div className="flex items-start justify-between gap-1.5">
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-sm leading-tight break-words">{fullName}</p>
+              {location && (
+                <span className="inline-flex items-center gap-0.5 mt-0.5 text-[10px] text-muted-foreground">
+                  <MapPin className="h-2.5 w-2.5 flex-shrink-0" />
+                  {location}
+                </span>
+              )}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+            <Badge className={cn("text-[9px] border shrink-0 whitespace-nowrap px-1.5 py-0", contactColor)}>
+              <Clock className="h-2 w-2 mr-0.5" />
+              {contactLabel}
+            </Badge>
+          </div>
+
+          {/* ── Row 2: Phone | Email | License badge | Actions ── */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {/* Contact info */}
+            {lead.phone && (
+              <a
+                href={`tel:${lead.phone}`}
+                onClick={handleContactLogged}
+                className="text-[11px] text-emerald-400 hover:text-emerald-300 transition-colors font-medium"
+              >
+                {lead.phone}
+              </a>
+            )}
+            {lead.phone && lead.email && <span className="text-muted-foreground/30 text-[10px]">|</span>}
+            {lead.email && (
+              <span className="text-[11px] text-muted-foreground truncate max-w-[120px]">{lead.email}</span>
+            )}
+
+            {/* Spacer to push actions right */}
+            <div className="flex-1" />
+
+            {/* Inline license progress */}
+            <LicenseProgressSelector
+              applicationId={lead.id}
+              currentProgress={lead.license_progress as any}
+              testScheduledDate={lead.test_scheduled_date}
+              onProgressUpdated={() => handleProgressUpdated()}
+              className="text-[10px] h-6"
+            />
+          </div>
+
+          {/* ── Row 3: Icon-only action buttons ── */}
+          <div className="flex items-center gap-1 pt-0.5">
+            {/* Call */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  asChild
+                  className="h-7 w-7 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                  onClick={handleContactLogged}
+                >
+                  <a href={`tel:${lead.phone}`}>
+                    <Phone className="h-3 w-3" />
+                  </a>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent><p>Call {lead.first_name}</p></TooltipContent>
+            </Tooltip>
+
+            {/* Email */}
+            <QuickEmailMenu
+              applicationId={lead.id}
+              agentId={agentId}
+              licenseStatus={lead.license_status as any}
+              recipientEmail={lead.email}
+              recipientName={fullName}
+              onEmailSent={() => {
+                onXP(XP_REWARDS.contact, "📧 Email sent!");
+                onRefresh();
+              }}
+              className="text-xs h-7 w-7 px-0"
+            />
+
+            {/* Send licensing instructions */}
+            <ResendLicensingButton
+              recipientEmail={lead.email}
+              recipientName={lead.first_name}
+              licenseStatus={lead.license_status as any}
+            />
+
+            {/* Book call */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  asChild
+                  className="h-7 w-7 border-pink-500/30 text-pink-400 hover:bg-pink-500/10"
+                >
+                  <a href={UNLICENSED_SCHEDULING_LINK} target="_blank" rel="noreferrer">
+                    <CalendarClock className="h-3 w-3" />
+                  </a>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent><p>Book a call</p></TooltipContent>
+            </Tooltip>
+
+            {/* Notes toggle */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setExpanded((v) => !v)}
+                  className="h-7 w-7 ml-auto text-muted-foreground hover:text-foreground"
+                >
+                  <MessageSquare className="h-3 w-3" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent><p>{expanded ? "Hide notes" : "Notes"}</p></TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
+
+        {/* ── Expanded notes ── */}
+        <AnimatePresence>
+          {expanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="px-2.5 pb-2.5 border-t border-border/50 pt-2.5 space-y-2">
+                <Textarea
+                  value={noteText}
+                  onChange={(e) => setNoteText(e.target.value)}
+                  placeholder="Add notes about this person..."
+                  className="text-xs min-h-[60px] resize-none"
+                />
+                <Button
+                  size="sm"
+                  onClick={handleSaveNote}
+                  disabled={savingNote}
+                  className="w-full text-xs h-7 bg-pink-500/20 text-pink-300 hover:bg-pink-500/30 border-pink-500/30 border"
+                >
+                  {savingNote ? "Saving..." : "Save Note"}
+                </Button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    </TooltipProvider>
   );
 }
 
@@ -734,13 +747,24 @@ function RecruiterDashboardInner() {
             className={cn("rounded-2xl border p-3 min-h-[200px]", col.color)}
           >
             {/* Column header */}
-            <div className={cn("flex items-center gap-2 mb-3 font-bold text-sm", col.headerColor)}>
-              <span className="text-base">{col.emoji}</span>
-              <span>{col.label}</span>
-              <Badge variant="outline" className={cn("ml-auto text-xs border", col.headerColor.replace("text-", "border-").replace("-400", "-400/40"))}>
-                {col.leads.length}
-              </Badge>
-            </div>
+            {(() => {
+              const needsAttention = col.leads.filter((l) => getLastContactAge(l) > 48 * 3600 * 1000 || getLastContactAge(l) === Infinity).length;
+              return (
+                <div className={cn("flex items-center gap-2 mb-3 font-bold text-sm", col.headerColor)}>
+                  <span className="text-base">{col.emoji}</span>
+                  <span>{col.label}</span>
+                  {needsAttention > 0 && (
+                    <span className="flex items-center gap-0.5 text-[10px] font-medium text-rose-400 bg-rose-500/15 border border-rose-500/30 rounded-full px-1.5 py-0">
+                      <AlertCircle className="h-2.5 w-2.5" />
+                      {needsAttention}
+                    </span>
+                  )}
+                  <Badge variant="outline" className={cn("ml-auto text-xs border", col.headerColor.replace("text-", "border-").replace("-400", "-400/40"))}>
+                    {col.leads.length}
+                  </Badge>
+                </div>
+              );
+            })()}
 
             {/* Lead cards */}
             <div className="space-y-3">

@@ -133,7 +133,7 @@ export function InterviewScheduler({
         .eq("id", applicationId);
 
       // Send notification via edge function
-      const { error: notifyError } = await supabase.functions.invoke("notify-test-scheduled", {
+      const { error: notifyError } = await supabase.functions.invoke("schedule-interview", {
         body: {
           applicationId,
           interviewDate: interviewDate.toISOString(),
@@ -271,7 +271,7 @@ export function InterviewScheduler({
                     mode="single"
                     selected={selectedDate}
                     onSelect={setSelectedDate}
-                    disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                    disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0)) || date.getDay() === 0 || date.getDay() === 6}
                     initialFocus
                     className={cn("p-3 pointer-events-auto")}
                   />

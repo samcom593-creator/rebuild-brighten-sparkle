@@ -1,6 +1,7 @@
 import { Component, ErrorInfo, ReactNode } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   children: ReactNode;
@@ -10,20 +11,52 @@ interface Props {
 interface State {
   hasError: boolean;
   error: Error | null;
+  retryCount: number;
 }
+
+const MAX_RETRIES = 2;
 
 export class ErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
     error: null,
+    retryCount: 0,
   };
 
-  public static getDerivedStateFromError(error: Error): State {
+  public static getDerivedStateFromError(error: Error): Partial<State> {
     return { hasError: true, error };
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("ErrorBoundary caught an error:", error, errorInfo);
+
+    // Fire-and-forget error logging
+    this.logErrorToDb(error, errorInfo);
+
+    // Auto-retry up to MAX_RETRIES
+    if (this.state.retryCount < MAX_RETRIES) {
+      setTimeout(() => {
+        this.setState((prev) => ({
+          hasError: false,
+          error: null,
+          retryCount: prev.retryCount + 1,
+        }));
+      }, 500 * (this.state.retryCount + 1));
+    }
+  }
+
+  private async logErrorToDb(error: Error, errorInfo: ErrorInfo) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      await supabase.from("error_logs" as any).insert({
+        user_id: user?.id || null,
+        error_message: error.message?.slice(0, 2000) || "Unknown error",
+        component_stack: errorInfo.componentStack?.slice(0, 4000) || null,
+        url: window.location.href,
+      });
+    } catch {
+      // Silent
+    }
   }
 
   private handleReload = () => {

@@ -219,24 +219,60 @@ export function ScheduleBar() {
                 </div>
               )}
               <div className="flex gap-2 pt-2">
-                {detailItem.leadId && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-xs"
-                    onClick={async () => {
-                      if (detailItem.type !== "interview") {
-                        await supabase
-                          .from("applications")
-                          .update({ last_contacted_at: new Date().toISOString() })
-                          .eq("id", detailItem.leadId!);
-                      }
-                      setDetailItem(null);
-                    }}
-                  >
-                    <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-                    {detailItem.type === "interview" ? "View Lead" : "Mark Contacted"}
-                  </Button>
+              {detailItem.leadId && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs"
+                      onClick={async () => {
+                        if (detailItem.type !== "interview") {
+                          await supabase
+                            .from("applications")
+                            .update({ last_contacted_at: new Date().toISOString() })
+                            .eq("id", detailItem.leadId!);
+                        }
+                        setDetailItem(null);
+                      }}
+                    >
+                      <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                      {detailItem.type === "interview" ? "View Lead" : "Mark Contacted"}
+                    </Button>
+                    {/* No-Show Recovery for past-due interviews */}
+                    {detailItem.type === "interview" && detailItem.color === "red" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs border-rose-500/30 text-rose-400 hover:bg-rose-500/10"
+                        onClick={async () => {
+                          try {
+                            await supabase
+                              .from("scheduled_interviews")
+                              .update({ status: "no_show" })
+                              .eq("id", detailItem.id);
+                            const { logLeadActivity } = await import("@/lib/logLeadActivity");
+                            if (detailItem.leadId) {
+                              logLeadActivity({
+                                leadId: detailItem.leadId,
+                                type: "interview_no_show",
+                                title: "Interview marked as no-show",
+                                details: { interview_id: detailItem.id },
+                              });
+                            }
+                            const { toast } = await import("sonner");
+                            toast.success("Marked as no-show. Consider rescheduling.");
+                            setDetailItem(null);
+                          } catch {
+                            const { toast } = await import("sonner");
+                            toast.error("Failed to update");
+                          }
+                        }}
+                      >
+                        <AlertTriangle className="h-3.5 w-3.5 mr-1" />
+                        No-Show
+                      </Button>
+                    )}
+                  </>
                 )}
               </div>
             </div>

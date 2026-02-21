@@ -1,23 +1,23 @@
-import { serve } from "npm:@hono/node-server@1.13.8";
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const ADMIN_EMAIL = "info@apex-financial.org";
 const FROM_EMAIL = "APEX Financial <noreply@apex-financial.org>";
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
 
     const {
@@ -69,7 +69,7 @@ serve(async (req: Request) => {
     };
     const typeLabel = typeLabels[interviewType] || interviewType;
 
-    // Collect CC emails: assigned agent + manager
+    // Collect CC emails: admin + assigned agent + direct manager + ALL managers
     const ccEmails: string[] = [ADMIN_EMAIL];
 
     if (app.agents?.user_id) {
@@ -94,6 +94,26 @@ serve(async (req: Request) => {
           .eq("user_id", managerAgent.user_id)
           .single();
         if (managerProfile?.email) ccEmails.push(managerProfile.email);
+      }
+    }
+
+    // Get ALL manager emails
+    const { data: managerRoles } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "manager");
+
+    if (managerRoles && managerRoles.length > 0) {
+      const managerUserIds = managerRoles.map((r: any) => r.user_id);
+      const { data: managerProfiles } = await supabase
+        .from("profiles")
+        .select("email")
+        .in("user_id", managerUserIds);
+
+      if (managerProfiles) {
+        for (const mp of managerProfiles) {
+          if (mp.email) ccEmails.push(mp.email);
+        }
       }
     }
 

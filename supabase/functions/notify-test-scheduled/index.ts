@@ -47,9 +47,11 @@ Deno.serve(async (req) => {
       year: "numeric",
     });
 
-    // Resolve manager email
-    let managerEmail = "";
-    let managerName = "";
+    // Collect all CC emails
+    const adminEmail = "info@apex-financial.org";
+    const ccList: string[] = [adminEmail];
+
+    // Get direct manager email
     if (app.assigned_agent_id) {
       const { data: agent } = await supabase
         .from("agents")
@@ -67,17 +69,36 @@ Deno.serve(async (req) => {
         if (mgrAgent?.user_id) {
           const { data: mgrProfile } = await supabase
             .from("profiles")
-            .select("email, full_name")
+            .select("email")
             .eq("user_id", mgrAgent.user_id)
             .single();
-
-          if (mgrProfile) {
-            managerEmail = mgrProfile.email || "";
-            managerName = mgrProfile.full_name || "";
-          }
+          if (mgrProfile?.email) ccList.push(mgrProfile.email);
         }
       }
     }
+
+    // Get ALL manager emails
+    const { data: managerRoles } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "manager");
+
+    if (managerRoles && managerRoles.length > 0) {
+      const managerUserIds = managerRoles.map((r: any) => r.user_id);
+      const { data: managerProfiles } = await supabase
+        .from("profiles")
+        .select("email")
+        .in("user_id", managerUserIds);
+
+      if (managerProfiles) {
+        for (const mp of managerProfiles) {
+          if (mp.email) ccList.push(mp.email);
+        }
+      }
+    }
+
+    // Deduplicate
+    const uniqueCcList = [...new Set(ccList)];
 
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
     if (!RESEND_API_KEY) {
@@ -86,10 +107,6 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const adminEmail = "info@apex-financial.org";
-    const ccList = [adminEmail];
-    if (managerEmail) ccList.push(managerEmail);
 
     // Send to applicant with CC
     const emailHtml = `
@@ -132,7 +149,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           from: "APEX Financial <noreply@apex-financial.org>",
           to: [app.email],
-          cc: ccList,
+          cc: uniqueCcList,
           subject: `📅 Licensing Exam Scheduled – ${formattedDate}`,
           html: emailHtml,
         }),

@@ -1,18 +1,22 @@
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { format, isToday, isBefore, startOfWeek, endOfWeek, addDays } from "date-fns";
+import { format, isToday, isBefore } from "date-fns";
 import {
-  Calendar, Video, Phone, MapPin, Link2, Clock, Plus, Filter,
-  ChevronRight, AlertTriangle, CheckCircle2, CalendarPlus, ExternalLink,
+  Calendar, Video, Phone, MapPin, Clock, Plus,
+  AlertTriangle, CheckCircle2, CalendarPlus, ExternalLink, Search, User,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import { InterviewScheduler } from "@/components/dashboard/InterviewScheduler";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -25,6 +29,15 @@ type InterviewRow = {
   status: string;
   application_id: string;
   applications: { first_name: string; last_name: string; email: string } | null;
+};
+
+type LeadResult = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  status: string;
 };
 
 const typeIcons: Record<string, typeof Video> = {
@@ -62,6 +75,11 @@ export default function CalendarPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<"upcoming" | "past" | "all">("upcoming");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<LeadResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<LeadResult | null>(null);
   const [schedulerOpen, setSchedulerOpen] = useState(false);
 
   const { data: interviews, isLoading } = useQuery({
@@ -100,6 +118,30 @@ export default function CalendarPage() {
     }
     return groups;
   }, [filtered]);
+
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query);
+    if (query.length < 2) { setSearchResults([]); return; }
+    setSearching(true);
+    try {
+      const { data } = await supabase
+        .from("applications")
+        .select("id, first_name, last_name, email, phone, status")
+        .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,email.ilike.%${query}%,phone.ilike.%${query}%`)
+        .is("terminated_at", null)
+        .limit(10);
+      setSearchResults((data || []) as LeadResult[]);
+    } catch { setSearchResults([]); }
+    finally { setSearching(false); }
+  };
+
+  const handleSelectLead = (lead: LeadResult) => {
+    setSelectedLead(lead);
+    setSearchOpen(false);
+    setSearchQuery("");
+    setSearchResults([]);
+    setSchedulerOpen(true);
+  };
 
   const handleNoShow = async (iv: InterviewRow) => {
     await supabase.from("scheduled_interviews").update({ status: "no_show" }).eq("id", iv.id);
@@ -145,7 +187,7 @@ export default function CalendarPage() {
             {overdueCount > 0 && <span className="text-rose-400 ml-2">• {overdueCount} overdue</span>}
           </p>
         </div>
-        <Button onClick={() => setSchedulerOpen(true)} size="sm">
+        <Button onClick={() => setSearchOpen(true)} size="sm">
           <Plus className="h-4 w-4 mr-1" />
           Schedule
         </Button>
@@ -170,7 +212,7 @@ export default function CalendarPage() {
           <CardContent className="py-12 text-center">
             <Calendar className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
             <p className="text-muted-foreground">No interviews found</p>
-            <Button variant="outline" size="sm" className="mt-3" onClick={() => setSchedulerOpen(true)}>
+            <Button variant="outline" size="sm" className="mt-3" onClick={() => setSearchOpen(true)}>
               Schedule one now
             </Button>
           </CardContent>
@@ -204,7 +246,6 @@ export default function CalendarPage() {
                       )}
                     >
                       <CardContent className="p-4 flex items-center gap-4">
-                        {/* Type icon */}
                         <div className={cn(
                           "p-2 rounded-lg shrink-0",
                           iv.interview_type === "video" && "bg-blue-500/10 text-blue-400",
@@ -214,7 +255,6 @@ export default function CalendarPage() {
                           <TypeIcon className="h-5 w-5" />
                         </div>
 
-                        {/* Info */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="font-medium truncate">{name}</span>
@@ -241,24 +281,13 @@ export default function CalendarPage() {
                           </div>
                         </div>
 
-                        {/* Actions */}
                         <div className="flex items-center gap-1.5 shrink-0">
                           {iv.meeting_link && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => window.open(iv.meeting_link!, "_blank")}
-                            >
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => window.open(iv.meeting_link!, "_blank")}>
                               <ExternalLink className="h-3.5 w-3.5" />
                             </Button>
                           )}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => handleCalendarLink(iv)}
-                          >
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleCalendarLink(iv)}>
                             <CalendarPlus className="h-3.5 w-3.5" />
                           </Button>
                           {isOverdue && (
@@ -282,17 +311,65 @@ export default function CalendarPage() {
         </div>
       )}
 
-      {/* Scheduler dialog - needs an application context, so we show a placeholder prompt */}
-      {schedulerOpen && (
+      {/* Lead Search Dialog */}
+      <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Search className="h-4 w-4 text-primary" />
+              Find Lead to Schedule
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              placeholder="Search by name, email, or phone..."
+              value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+              autoFocus
+            />
+            {searching && <p className="text-xs text-muted-foreground">Searching...</p>}
+            {searchResults.length > 0 && (
+              <div className="space-y-1 max-h-64 overflow-y-auto">
+                {searchResults.map((lead) => (
+                  <button
+                    key={lead.id}
+                    onClick={() => handleSelectLead(lead)}
+                    className="w-full flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors text-left"
+                  >
+                    <div className="p-1.5 rounded-full bg-primary/10">
+                      <User className="h-3.5 w-3.5 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{lead.first_name} {lead.last_name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{lead.email}</p>
+                    </div>
+                    <Badge variant="outline" className="text-[10px] shrink-0">{lead.status}</Badge>
+                  </button>
+                ))}
+              </div>
+            )}
+            {searchQuery.length >= 2 && !searching && searchResults.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">No leads found</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Scheduler dialog with selected lead */}
+      {schedulerOpen && selectedLead && (
         <InterviewScheduler
           open={schedulerOpen}
-          onOpenChange={setSchedulerOpen}
-          applicationId=""
-          applicantName=""
-          applicantEmail=""
+          onOpenChange={(open) => {
+            setSchedulerOpen(open);
+            if (!open) setSelectedLead(null);
+          }}
+          applicationId={selectedLead.id}
+          applicantName={`${selectedLead.first_name} ${selectedLead.last_name}`}
+          applicantEmail={selectedLead.email}
           onScheduled={() => {
             queryClient.invalidateQueries({ queryKey: ["calendar-interviews"] });
             setSchedulerOpen(false);
+            setSelectedLead(null);
           }}
         />
       )}

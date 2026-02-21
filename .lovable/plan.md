@@ -1,165 +1,91 @@
 
 
-# Final System Completion -- Gap Analysis and Implementation Plan
+# Update Lead Records from Course Data + Add Calendar Sidebar Navigation
 
-## Current State Summary
+## Part 1: Update Existing Lead Records in Database
 
-After a thorough audit of the entire codebase, here is what IS working and what is NOT yet implemented against the checklist.
+Based on the uploaded XcelSolutions course data, the following updates need to be made to the `applications` table. Each update also appends course progress details into the lead's `notes` field.
 
----
+### Updates for Existing Records (5 leads already in DB)
 
-## ALREADY IMPLEMENTED (No Changes Needed)
+| Lead | Current `license_progress` | New `license_progress` | Notes to Append |
+|---|---|---|---|
+| **Andre Sanabria** | `unlicensed` | `finished_course` | "XCEL Pre-Licensing: 100% complete. Final Exam Score: 91/100 (Passed). Completed 2/19/2026. Time in course: 18h 47m." |
+| **Malik Tobias** | `test_scheduled` | Keep `test_scheduled` | "XCEL Pre-Licensing: 100% complete (98% overall). Final Exam Score: 92/100 (Passed). Completed 2/14/2026. Time in course: 1h 39m." |
+| **Demetric Fulton** | `test_scheduled` | Keep `test_scheduled` | "XCEL Pre-Licensing: 100% complete (64% overall). Final Exam Score: 74/100 (Passed). Completed 2/18/2026. Time in course: 17h 7m." |
+| **Ben Gillie** | `finished_course` | Keep `finished_course` | "XCEL Pre-Licensing (PA): 28% complete (18% overall). Still in course. Time in course: 3h 9m. Enrolled 2/18/2026." |
+| **Cooper Ubert** | `course_purchased` | Keep `course_purchased` | "XCEL Pre-Licensing (WI): 90% complete (61% overall). Still in course. Time in course: 4h 41m. Enrolled 2/17/2026." |
 
-| Category | Items |
-|---|---|
-| Error Boundaries | Global `ErrorBoundary` + section-level `ComponentErrorBoundary` with auto-retry and DB logging |
-| error_logs table | Exists with RLS policies, auto-logged on crash |
-| Feature Flags | `featureFlags.ts` with 9 toggleable flags + localStorage overrides |
-| Central Config | `apexConfig.ts` with all tunable thresholds |
-| Schedule Bar | Shows interviews, overdue leads, color-coded pills, detail sheet |
-| Lead Scoring | 0-100 score using config weights, badge coloring |
-| Smart Follow-Up | `computeNextAction()` with configurable timing |
-| Auto-Stage Suggestions | Chip UI on lead cards with one-click apply |
-| Activity Timeline | Real-time updates via Supabase channel, shows last 3 on card |
-| Call Outcome Tracking | 5 outcomes with activity logging |
-| XP System | XP bar, ranks (Rookie to Legend), localStorage persistence |
-| Sound Effects | Web Audio API, volume-controlled, toggleable |
-| Confetti | Works on licensing milestones |
-| Recruiter AI Panel | Daily brief + per-lead AI summaries |
-| Performance Metrics Strip | Contact rate, license rate, avg days, overdue rate |
-| Lead Coverage | All unlicensed applications + contacted aged leads (deduplicated) |
-| Interview Scheduler | In-app scheduling dialog wired into lead cards |
-| Focus Mode | Filters to urgent/overdue/uncontacted leads |
-| Mobile Column Switcher | Segmented tabs for Kanban on mobile |
-| Skeleton Loaders | Loading state with skeleton animation |
-| Dark/Light Mode | ThemeToggle component present |
-| Sidebar | GlobalSidebar with role-based nav items |
-| Weekly Badges | Earned badges system for agents |
-| Memoization | `memo()` on LeadCard with custom comparator |
-| Query Caching | `staleTime: 120_000` on queries |
+Andre is the only one who needs a `license_progress` change (from `unlicensed` to `finished_course` since he completed his pre-licensing course and passed).
 
----
+### New Application Records (4 leads NOT in DB)
 
-## GAPS IDENTIFIED -- Must Be Implemented
+These 4 people have courses in XcelSolutions but no `applications` record. They will be inserted as new applications with the correct `license_progress`:
 
-### 1. Communication Hub (Lead Detail View)
-**Status: NOT IMPLEMENTED**
-There is no unified communication thread per lead. Currently, activity timeline shows events but there is no searchable, filterable communication view that consolidates calls, emails, SMS, notes, and stage changes into a single thread with search capability.
+| Lead | State | Progress | `license_progress` |
+|---|---|---|---|
+| **Jordan McClendon** | Florida | 100% complete, exam passed (87) | `finished_course` |
+| **Joshua Auguste** | Florida | 0%, course disabled | `unlicensed` |
+| **Pierre Auguste** | Florida | 100% complete, exam passed (74), course disabled | `finished_course` |
+| **Yosiah Augustine** | Texas | 17% in progress | `course_purchased` |
 
-**Plan:**
-- Create `src/components/recruiter/LeadDetailSheet.tsx` -- a slide-out sheet triggered from the lead card
-- Shows: full activity timeline (no limit), notes editor, contact info, lead score breakdown
-- Includes search/filter within the timeline (by type: call, email, note, stage change)
-- Replaces the current "expand card" pattern with a proper detail view
+Each new record will include full course progress in the `notes` field.
 
-### 2. Production Forecast Module
-**Status: NOT IMPLEMENTED**
-No 30-day AOP projection or production forecast exists.
+## Part 2: Add "Calendar" Sidebar Navigation Item
 
-**Plan:**
-- Add a `ProductionForecast` section to the Agent Portal that takes last 7 and 30 days of `daily_production` data and projects a 30-day AOP estimate using simple linear regression
-- Display as a small card with projected AOP, trend arrow, and confidence indicator
+A new **Calendar** page will be created and added to the sidebar navigation for all authenticated users (admin, manager, agent). This page provides a centralized scheduling hub.
 
-### 3. Activation Risk Engine
-**Status: NOT IMPLEMENTED**
-No system flags inactive agents or alerts managers about at-risk onboarding.
+### What the Calendar page will show:
+- **Upcoming Interviews**: All scheduled interviews from `scheduled_interviews` table, displayed as a chronological list with date/time, applicant name, type (video/phone/in-person), and meeting link
+- **Schedule New Meeting**: An embedded `InterviewScheduler` component to schedule interviews without leaving the page
+- **Auto-Send Calendar Link**: Ability to send a Google Calendar invite link to the applicant after scheduling
+- **Past Interviews**: History of completed/no-show interviews
+- **Quick filters**: Today, This Week, All Upcoming
 
-**Plan:**
-- Add logic to the Dashboard/CRM that identifies agents with no production entries in 14+ days and flags them with a "Risk" badge
-- Add an alert banner on the manager dashboard showing count of at-risk agents
+### Sidebar Changes
+- Add a `Calendar` icon nav item labeled **"Calendar"** in the TOOLS section of the GlobalSidebar
+- Route: `/dashboard/calendar`
+- Available to all roles (admin, manager, agent)
 
-### 4. System Integrity Monitor (Admin)
-**Status: NOT IMPLEMENTED**
-No duplicate detection, orphan record detection, or integrity scanning exists.
+## Part 3: Checklist Verification
 
-**Plan:**
-- Add a small `SystemIntegrityCard` to the Admin dashboard
-- Runs client-side checks: duplicate emails in applications, agents without user_ids, applications with invalid status combinations
-- Displays count of issues found with one-click "View Details"
-
-### 5. Daily Challenge Module
-**Status: NOT IMPLEMENTED**
-No daily challenge/task system exists for gamification beyond XP.
-
-**Plan:**
-- Add a `DailyChallenge` component to the Recruiter HQ header area
-- Generates 1-2 daily challenges based on pipeline state (e.g., "Contact 3 overdue leads today", "Move 2 leads to Test Phase")
-- Tracks completion via localStorage (resets daily)
-- Awards bonus XP on completion
-
-### 6. Dormant Lead Auto-Detection
-**Status: PARTIALLY IMPLEMENTED**
-Focus mode shows overdue leads, but there's no explicit "dormant" tagging for leads with 14+ days of inactivity.
-
-**Plan:**
-- Add a visual "Dormant" badge on lead cards where last activity exceeds `FOLLOWUP_TIMING.dormantDays` (14 days)
-- Add a filter option in the search bar for "Dormant only"
-
-### 7. Auto No-Show Recovery
-**Status: NOT IMPLEMENTED**
-No automatic handling when a scheduled interview is missed.
-
-**Plan:**
-- In the ScheduleBar, when an interview is past its time and status is still "scheduled", show a "No-Show?" action button
-- Clicking it updates the interview status to "no_show", logs activity, and auto-suggests rescheduling
-
-### 8. Bulk Actions Log Timeline Entries
-**Status: PARTIALLY IMPLEMENTED**
-The "Mark All Done" bulk action logs individual activities, but there's no confirmation that ALL bulk operations (like bulk stage changes) log entries.
-
-**Plan:**
-- Audit all bulk action handlers and ensure `logLeadActivity` is called for each affected lead
+All previously identified checklist items from the Final System Completion remain implemented:
+- Error boundaries, feature flags, central config, schedule bar, lead scoring, smart follow-ups, activity timeline, XP system, sound effects, confetti, AI panel, interview scheduler, dark/light mode, sidebar, weekly badges, memoization, query caching
+- Communication Hub (LeadDetailSheet), Daily Challenges, Dormant Badge, No-Show Recovery, Production Forecast, System Integrity Card, Activation Risk Banner -- all implemented in previous iterations
 
 ---
 
 ## Technical Implementation Details
 
-### File: `src/components/recruiter/LeadDetailSheet.tsx` (NEW)
-- Full-height Sheet component with lead profile header
-- Tabbed interface: "Timeline" | "Notes" | "Info"
-- Timeline tab: fetches ALL `lead_activity` for the lead (no limit), with a search input that filters by `title` or `activity_type`
-- Notes tab: existing notes textarea + save
-- Info tab: contact details, lead score breakdown, assigned agent, referral source
+### Step 1: Database Updates (via data insert tool)
 
-### File: `src/components/recruiter/DailyChallenge.tsx` (NEW)
-- Reads pipeline stats to generate 2 daily challenges
-- Stores completion state in `localStorage` with date key
-- Awards 25 XP per challenge completed
-- Renders as a compact card with progress indicators
+Run SQL updates for the 5 existing leads (update `license_progress` where needed + append course notes). Run SQL inserts for the 4 missing leads as new applications.
 
-### File: `src/components/recruiter/DormantBadge.tsx` (NEW)
-- Simple badge component that shows "Dormant" when lead has 14+ days since last activity
-- Used in LeadCard alongside the existing contact freshness badge
+### Step 2: Create `src/pages/CalendarPage.tsx` (NEW)
 
-### File: `src/pages/RecruiterDashboard.tsx` (MODIFIED)
-- Import and render `LeadDetailSheet` (triggered by clicking lead name)
-- Import and render `DailyChallenge` in the header area
-- Add "Dormant" badge rendering in LeadCard
-- Add no-show recovery button logic
+- Fetches all `scheduled_interviews` joined with `applications` for applicant names
+- Groups by date (Today, This Week, Later)
+- Each interview card shows: time, applicant name, type badge, meeting link button, status badge
+- "Schedule Interview" button opens the existing `InterviewScheduler` dialog
+- "Send Calendar Link" button generates and opens a Google Calendar URL (reusing `buildCalendarUrl` from InterviewScheduler)
+- Filter tabs: Upcoming | Past | All
 
-### File: `src/components/layout/ScheduleBar.tsx` (MODIFIED)
-- Add "No-Show" action for past-due interviews
-- Update interview status and log activity on click
+### Step 3: Update `src/App.tsx`
 
-### File: `src/pages/AgentPortal.tsx` (MODIFIED)
-- Add `ProductionForecast` card showing 30-day AOP projection
+- Add lazy import for `CalendarPage`
+- Add route: `/dashboard/calendar` inside the AuthenticatedShell
 
-### File: `src/pages/DashboardAdmin.tsx` (MODIFIED)
-- Add `SystemIntegrityCard` showing duplicate/orphan counts
+### Step 4: Update `src/components/layout/GlobalSidebar.tsx`
 
-### File: `src/pages/Dashboard.tsx` or `DashboardCRM.tsx` (MODIFIED)
-- Add activation risk badges for agents with 14+ days of inactivity
+- Import `Calendar` icon from lucide-react (already imported elsewhere)
+- Add `{ icon: Calendar, label: "Calendar", href: "/dashboard/calendar" }` to the TOOLS section, available for all roles (admin, manager, agent)
+- Position it after "Call Center" for admin/manager, or after "My Pipeline" for agent-only users
 
----
+### Files Created
+- `src/pages/CalendarPage.tsx`
 
-## Implementation Order
-
-1. **LeadDetailSheet** -- Communication Hub (biggest UX gap)
-2. **DormantBadge + filter** -- Quick win for lead management
-3. **DailyChallenge** -- Gamification enhancement
-4. **No-Show Recovery** in ScheduleBar -- Automation gap
-5. **ProductionForecast** -- Agent Portal enhancement
-6. **SystemIntegrityCard** -- Admin tooling
-7. **Activation Risk Engine** -- Manager alerting
-8. **Bulk action audit** -- Ensure all bulk ops log activity
+### Files Modified
+- `src/App.tsx` (add route)
+- `src/components/layout/GlobalSidebar.tsx` (add nav item)
+- Database: 5 UPDATE queries + 4 INSERT queries for lead records
 

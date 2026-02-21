@@ -22,6 +22,7 @@ import {
   Headphones,
   Target,
   Sparkles,
+  CalendarDays,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -104,12 +105,14 @@ export function GlobalSidebar({
     if (isAdmin || isManager) {
       toolItems.push({ icon: Archive, label: "Aged Leads", href: "/dashboard/aged-leads" });
       toolItems.push({ icon: Headphones, label: "Call Center", href: "/dashboard/call-center" });
+      toolItems.push({ icon: CalendarDays, label: "Calendar", href: "/dashboard/calendar" });
     }
 
     if (isAgent && !isAdmin && !isManager) {
       toolItems.push({ icon: BarChart3, label: "My Portal", href: "/agent-portal" });
       toolItems.push({ icon: Target, label: "My Pipeline", href: "/agent-pipeline" });
       toolItems.push({ icon: BarChart3, label: "My Course", href: "/onboarding-course" });
+      toolItems.push({ icon: CalendarDays, label: "Calendar", href: "/dashboard/calendar" });
     }
 
     // Recruiter HQ — Aisha only (+ admins)

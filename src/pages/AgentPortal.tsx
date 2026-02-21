@@ -41,6 +41,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getTodayPST } from "@/lib/dateUtils";
 import apexIcon from "@/assets/apex-icon.png";
+import { ProductionForecast } from "@/components/dashboard/ProductionForecast";
 
 const motivationalQuotes = [
   "Success is not final, failure is not fatal: it's the courage to continue that counts.",
@@ -541,6 +542,17 @@ export default function AgentPortal() {
             </Button>
           ))}
         </motion.div>
+
+        {/* ── Production Forecast ── */}
+        {agentId && (
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+          >
+            <ProductionForecast agentId={agentId} />
+          </motion.section>
+        )}
 
         {/* Main Leaderboard - FIRST so agents see their rank immediately */}
         <AnimatePresence initial={false}>

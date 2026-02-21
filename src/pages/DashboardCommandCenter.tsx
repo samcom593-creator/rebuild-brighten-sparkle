@@ -63,6 +63,7 @@ import { TerminatedAgentLeadsPanel } from "@/components/dashboard/TerminatedAgen
 import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
 import { AbandonedLeadsPanel } from "@/components/dashboard/AbandonedLeadsPanel";
 import { AllLeadsPanel } from "@/components/dashboard/AllLeadsPanel";
+import { SystemIntegrityCard } from "@/components/admin/SystemIntegrityCard";
 import { DateRangePicker, type DateRange } from "@/components/ui/date-range-picker";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 import { useInFlightGuard } from "@/hooks/useInFlightGuard";
@@ -937,6 +938,7 @@ export default function DashboardCommandCenter() {
 
           {/* Recognition Queue & Course Progress - 30% on desktop */}
           <div className="w-full lg:w-[30%] space-y-6">
+            <SystemIntegrityCard />
             <RecognitionQueue />
             <CourseProgressPanel />
           </div>

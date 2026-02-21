@@ -1274,6 +1274,50 @@ export type Database = {
           },
         ]
       }
+      lead_activity: {
+        Row: {
+          activity_type: string
+          actor_name: string | null
+          actor_role: string | null
+          actor_user_id: string | null
+          created_at: string
+          details: Json | null
+          id: string
+          lead_id: string
+          title: string
+        }
+        Insert: {
+          activity_type: string
+          actor_name?: string | null
+          actor_role?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          lead_id: string
+          title: string
+        }
+        Update: {
+          activity_type?: string
+          actor_name?: string | null
+          actor_role?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          details?: Json | null
+          id?: string
+          lead_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_activity_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_counter: {
         Row: {
           count: number

@@ -6,6 +6,7 @@ import {
   BookOpen, BookCheck, CalendarClock, FileCheck, Fingerprint,
   Award, Users, UserCheck, AlertTriangle, TrendingUp, Sparkles,
   MessageSquare, ChevronDown, ChevronUp, Plus, ExternalLink, AlertCircle,
+  Activity,
 } from "lucide-react";
 import {
   Tooltip,
@@ -25,6 +26,8 @@ import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressS
 import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
 import { QuickEmailMenu } from "@/components/dashboard/QuickEmailMenu";
 import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration";
+import { ActivityTimeline } from "@/components/recruiter/ActivityTimeline";
+import { logLeadActivity } from "@/lib/logLeadActivity";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
@@ -232,8 +235,17 @@ function LeadCard({
   const [savingNote, setSavingNote] = useState(false);
   const { playSound } = useSoundEffects();
 
+  const [showTimeline, setShowTimeline] = useState(false);
+
   const handleProgressUpdated = useCallback(async (newProgress?: string) => {
     playSound("success");
+    const oldProgress = lead.license_progress || "unlicensed";
+    logLeadActivity({
+      leadId: lead.id,
+      type: "stage_changed",
+      title: "Stage moved",
+      details: { from_stage: oldProgress, to_stage: newProgress },
+    });
     if (newProgress === "licensed") {
       onXP(XP_REWARDS.licensed, "🏆 Someone got LICENSED!");
       onCelebrate();
@@ -243,7 +255,7 @@ function LeadCard({
       onXP(XP_REWARDS.stage_update, "✨ Stage updated!");
     }
     onRefresh();
-  }, [playSound, onXP, onCelebrate, onRefresh]);
+  }, [playSound, onXP, onCelebrate, onRefresh, lead.id, lead.license_progress]);
 
   const handleSaveNote = async () => {
     if (!noteText.trim()) return;
@@ -254,6 +266,12 @@ function LeadCard({
         .update({ notes: noteText })
         .eq("id", lead.id);
       if (error) throw error;
+      logLeadActivity({
+        leadId: lead.id,
+        type: "note_added",
+        title: "Note added",
+        details: { note_preview: noteText.slice(0, 140) },
+      });
       onXP(XP_REWARDS.note_added, "📝 Note saved!");
       toast.success("Note saved!");
     } catch {
@@ -264,6 +282,12 @@ function LeadCard({
   };
 
   const handleContactLogged = useCallback(async () => {
+    logLeadActivity({
+      leadId: lead.id,
+      type: "call_attempt",
+      title: `Called ${lead.first_name}`,
+      details: { phone: lead.phone },
+    });
     try {
       await supabase
         .from("applications")
@@ -275,7 +299,7 @@ function LeadCard({
     } catch {
       console.error("Failed to log contact");
     }
-  }, [lead.id, onXP, playSound, onRefresh]);
+  }, [lead.id, lead.first_name, lead.phone, onXP, playSound, onRefresh]);
 
   const contactColor = contactBadgeColor(lead);
   const contactLabel = contactBadgeLabel(lead);
@@ -369,6 +393,12 @@ function LeadCard({
               recipientEmail={lead.email}
               recipientName={fullName}
               onEmailSent={() => {
+                logLeadActivity({
+                  leadId: lead.id,
+                  type: "email_sent",
+                  title: "Email sent",
+                  details: { template: "quick_email" },
+                });
                 onXP(XP_REWARDS.contact, "📧 Email sent!");
                 onRefresh();
               }}
@@ -388,15 +418,36 @@ function LeadCard({
                 <Button
                   variant="outline"
                   size="icon"
-                  asChild
                   className="h-7 w-7 border-pink-500/30 text-pink-400 hover:bg-pink-500/10"
+                  onClick={() => {
+                    logLeadActivity({
+                      leadId: lead.id,
+                      type: "calendly_link_sent",
+                      title: "Calendly link sent",
+                      details: { link_type: "unlicensed" },
+                    });
+                    window.open(UNLICENSED_SCHEDULING_LINK, "_blank");
+                  }}
                 >
-                  <a href={UNLICENSED_SCHEDULING_LINK} target="_blank" rel="noreferrer">
-                    <CalendarClock className="h-3 w-3" />
-                  </a>
+                  <CalendarClock className="h-3 w-3" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent><p>Book a call</p></TooltipContent>
+            </Tooltip>
+
+            {/* Activity timeline toggle */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowTimeline((v) => !v)}
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                >
+                  <Activity className="h-3 w-3" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent><p>{showTimeline ? "Hide activity" : "Activity"}</p></TooltipContent>
             </Tooltip>
 
             {/* Notes toggle */}
@@ -441,6 +492,26 @@ function LeadCard({
                 >
                   {savingNote ? "Saving..." : "Save Note"}
                 </Button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── Activity Timeline ── */}
+        <AnimatePresence>
+          {showTimeline && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="px-2.5 pb-2.5 border-t border-border/50 pt-2.5">
+                <p className="text-[10px] font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
+                  <Activity className="h-3 w-3" /> Recent Activity
+                </p>
+                <ActivityTimeline leadId={lead.id} limit={3} compact />
               </div>
             </motion.div>
           )}

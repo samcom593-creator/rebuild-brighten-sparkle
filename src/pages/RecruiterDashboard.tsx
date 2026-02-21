@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Star, Zap, Flame, Trophy, Phone, Mail, MapPin, Calendar,
@@ -7,6 +7,7 @@ import {
   Award, Users, UserCheck, AlertTriangle, TrendingUp, Sparkles,
   MessageSquare, ChevronDown, ChevronUp, Plus, ExternalLink, AlertCircle,
   Activity, PhoneOff, PhoneCall, PhoneForwarded, PhoneMissed, Ban,
+  BarChart3, Percent, Timer, Target, Eye, EyeOff,
 } from "lucide-react";
 import {
   Tooltip,
@@ -22,11 +23,14 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressSelector";
 import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
 import { QuickEmailMenu } from "@/components/dashboard/QuickEmailMenu";
@@ -34,7 +38,7 @@ import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration"
 import { ActivityTimeline } from "@/components/recruiter/ActivityTimeline";
 import { logLeadActivity } from "@/lib/logLeadActivity";
 import { cn } from "@/lib/utils";
-import { formatDistanceToNow, addDays, addMinutes, subDays } from "date-fns";
+import { formatDistanceToNow, addDays, addMinutes, subDays, differenceInDays } from "date-fns";
 import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
 
@@ -222,6 +226,29 @@ function getNextRankXP(xp: number) {
   return null;
 }
 
+// ─── Performance Metrics ──────────────────────────────────────────────────────
+function computeMetrics(leads: Lead[]) {
+  const total = leads.length;
+  if (total === 0) return { contactRate: 0, licenseRate: 0, avgDaysToLicensed: 0, overdueRate: 0 };
+
+  const contacted = leads.filter((l) => l.last_contacted_at || l.contacted_at).length;
+  const licensed = leads.filter((l) => l.license_progress === "licensed").length;
+  const overdue = leads.filter(isOverdue).length;
+
+  // Avg days to licensed — from created_at to contacted_at for licensed leads
+  const licensedLeads = leads.filter((l) => l.license_progress === "licensed" && l.contacted_at);
+  const avgDays = licensedLeads.length > 0
+    ? Math.round(licensedLeads.reduce((sum, l) => sum + differenceInDays(new Date(l.contacted_at!), new Date(l.created_at)), 0) / licensedLeads.length)
+    : 0;
+
+  return {
+    contactRate: Math.round((contacted / total) * 100),
+    licenseRate: Math.round((licensed / total) * 100),
+    avgDaysToLicensed: avgDays,
+    overdueRate: Math.round((overdue / total) * 100),
+  };
+}
+
 // ─── Sub-components ────────────────────────────────────────────────────────────
 function XPBar({ xp }: { xp: number }) {
   const rank = getRankForXP(xp);
@@ -284,18 +311,60 @@ function StatBubble({
   );
 }
 
-function LeadCard({
+// ─── Metrics Strip ────────────────────────────────────────────────────────────
+function MetricsStrip({ leads }: { leads: Lead[] }) {
+  const [open, setOpen] = useState(false);
+  const metrics = useMemo(() => computeMetrics(leads), [leads]);
+
+  const pills = [
+    { icon: Phone, label: "Contact Rate", value: `${metrics.contactRate}%`, color: metrics.contactRate >= 80 ? "text-emerald-400" : metrics.contactRate >= 50 ? "text-amber-400" : "text-rose-400" },
+    { icon: Award, label: "License Rate", value: `${metrics.licenseRate}%`, color: metrics.licenseRate >= 30 ? "text-emerald-400" : metrics.licenseRate >= 15 ? "text-amber-400" : "text-rose-400" },
+    { icon: Timer, label: "Avg Days to Licensed", value: `${metrics.avgDaysToLicensed}d`, color: "text-blue-400" },
+    { icon: AlertTriangle, label: "Overdue", value: `${metrics.overdueRate}%`, color: metrics.overdueRate <= 10 ? "text-emerald-400" : metrics.overdueRate <= 30 ? "text-amber-400" : "text-rose-400" },
+  ];
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger asChild>
+        <button className="flex items-center gap-2 w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-1 px-1">
+          <BarChart3 className="h-3.5 w-3.5" />
+          <span className="font-medium">Performance Metrics</span>
+          {open ? <ChevronUp className="h-3 w-3 ml-auto" /> : <ChevronDown className="h-3 w-3 ml-auto" />}
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="flex flex-wrap gap-2 pt-2 pb-1">
+          {pills.map((p) => (
+            <div
+              key={p.label}
+              className="flex items-center gap-1.5 rounded-full border border-border/60 bg-card px-3 py-1.5"
+            >
+              <p.icon className={cn("h-3 w-3", p.color)} />
+              <span className="text-[10px] text-muted-foreground">{p.label}</span>
+              <span className={cn("text-xs font-bold", p.color)}>{p.value}</span>
+            </div>
+          ))}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+// ─── Memoized LeadCard ────────────────────────────────────────────────────────
+const LeadCard = memo(function LeadCard({
   lead,
   agentId,
   onRefresh,
   onXP,
   onCelebrate,
+  disableHover,
 }: {
   lead: Lead;
   agentId: string | null;
   onRefresh: () => void;
   onXP: (pts: number, label: string) => void;
   onCelebrate: () => void;
+  disableHover?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [noteText, setNoteText] = useState(lead.notes || "");
@@ -380,11 +449,11 @@ function LeadCard({
   return (
     <TooltipProvider delayDuration={200}>
       <motion.div
-        layout
+        layout={!disableHover}
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        whileHover={{ y: -1 }}
+        whileHover={disableHover ? undefined : { y: -1 }}
         transition={{ type: "spring", stiffness: 300, damping: 25 }}
         className="bg-card border border-border rounded-xl overflow-hidden shadow-sm"
       >
@@ -441,8 +510,8 @@ function LeadCard({
             />
           </div>
 
-          {/* ── Row 3: Icon-only action buttons ── */}
-          <div className="flex items-center gap-1 pt-0.5">
+          {/* ── Row 3: Icon-only action buttons (fixed min-height to prevent jitter) ── */}
+          <div className="flex items-center gap-1 pt-0.5 min-h-[28px]">
             {/* Call with outcome popover */}
             <Popover open={callOutcomeOpen} onOpenChange={setCallOutcomeOpen}>
               <PopoverTrigger asChild>
@@ -606,7 +675,16 @@ function LeadCard({
       </motion.div>
     </TooltipProvider>
   );
-}
+}, (prev, next) => {
+  return (
+    prev.lead.id === next.lead.id &&
+    prev.lead.license_progress === next.lead.license_progress &&
+    prev.lead.last_contacted_at === next.lead.last_contacted_at &&
+    prev.lead.notes === next.lead.notes &&
+    prev.agentId === next.agentId &&
+    prev.disableHover === next.disableHover
+  );
+});
 
 // ─── Main page ─────────────────────────────────────────────────────────────────
 export default function RecruiterDashboard() {
@@ -622,6 +700,7 @@ export default function RecruiterDashboard() {
 function RecruiterDashboardInner() {
   const { user } = useAuth();
   const { playSound } = useSoundEffects();
+  const isMobile = useIsMobile();
 
   const [leads, setLeads] = useState<Lead[]>([]);
   const [agentId, setAgentId] = useState<string | null>(null);
@@ -633,12 +712,13 @@ function RecruiterDashboardInner() {
   const [xpToast, setXpToast] = useState<string | null>(null);
   const [confetti, setConfetti] = useState(false);
   const [advancedToday, setAdvancedToday] = useState(0);
+  const [focusMode, setFocusMode] = useState(false);
+  const [mobileColumn, setMobileColumn] = useState<string | null>(null);
 
   // Fetch leads assigned to Aisha (or all if admin viewing)
   const fetchLeads = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      // Get Aisha's agent record
       const { data: agentData } = await supabase
         .from("agents")
         .select("id")
@@ -655,7 +735,6 @@ function RecruiterDashboardInner() {
         .neq("license_status", "licensed")
         .in("status", ["reviewing", "contracting", "approved", "new"]);
 
-      // If Aisha is viewing, show her assigned leads
       if (myAgentId) {
         query.eq("assigned_agent_id", myAgentId);
       }
@@ -672,7 +751,7 @@ function RecruiterDashboardInner() {
 
   useEffect(() => { fetchLeads(); }, [fetchLeads]);
 
-  // XP system (session-based, persisted to localStorage for fun)
+  // XP system
   useEffect(() => {
     const saved = localStorage.getItem("aisha_xp");
     if (saved) setXp(parseInt(saved, 10) || 0);
@@ -711,31 +790,60 @@ function RecruiterDashboardInner() {
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   }).length;
 
-  // Filter + sort
-  const filtered = leads
-    .filter((l) => {
-      const q = search.toLowerCase();
-      const name = `${l.first_name} ${l.last_name}`.toLowerCase();
-      if (q && !name.includes(q) && !l.email.toLowerCase().includes(q) && !l.phone.includes(q)) return false;
-      if (filterStage !== "all") {
-        const col = PROGRESS_COLUMNS.find((c) => c.id === filterStage);
-        if (col && !col.values.includes(l.license_progress || "unlicensed")) return false;
-      }
-      return true;
-    })
-    .sort((a, b) => {
+  // Filter + sort + focus mode
+  const filtered = useMemo(() => {
+    let result = leads
+      .filter((l) => {
+        const q = search.toLowerCase();
+        const name = `${l.first_name} ${l.last_name}`.toLowerCase();
+        if (q && !name.includes(q) && !l.email.toLowerCase().includes(q) && !l.phone.includes(q)) return false;
+        if (filterStage !== "all") {
+          const col = PROGRESS_COLUMNS.find((c) => c.id === filterStage);
+          if (col && !col.values.includes(l.license_progress || "unlicensed")) return false;
+        }
+        return true;
+      });
+
+    // Focus mode: only urgent leads
+    if (focusMode) {
+      result = result.filter((l) =>
+        isOverdue(l) || computeLeadScore(l) < 40 || getLastContactAge(l) === Infinity
+      );
+    }
+
+    return result.sort((a, b) => {
       if (sortMode === "score") return computeLeadScore(b) - computeLeadScore(a);
       if (sortMode === "stale") return getLastContactAge(b) - getLastContactAge(a);
       if (sortMode === "newest") return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       if (sortMode === "oldest") return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
       return `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`);
     });
+  }, [leads, search, filterStage, sortMode, focusMode]);
 
   // Group by column
-  const columnLeads = PROGRESS_COLUMNS.map((col) => ({
-    ...col,
-    leads: filtered.filter((l) => col.values.includes(l.license_progress || "unlicensed")),
-  }));
+  const columnLeads = useMemo(() => {
+    const cols = PROGRESS_COLUMNS.map((col) => ({
+      ...col,
+      leads: filtered.filter((l) => col.values.includes(l.license_progress || "unlicensed")),
+      needsAttention: filtered.filter((l) => col.values.includes(l.license_progress || "unlicensed") && (getLastContactAge(l) > 48 * 3600 * 1000 || getLastContactAge(l) === Infinity)).length,
+    }));
+
+    // Auto-select mobile column with most needs-attention leads
+    if (isMobile && mobileColumn === null && cols.length > 0) {
+      const best = cols.reduce((a, b) => (b.needsAttention > a.needsAttention ? b : a), cols[0]);
+      // We'll set this in an effect to avoid setState during render
+    }
+
+    return cols;
+  }, [filtered, isMobile, mobileColumn]);
+
+  // Set default mobile column
+  useEffect(() => {
+    if (isMobile && mobileColumn === null && columnLeads.length > 0) {
+      const best = columnLeads.reduce((a, b) => (b.needsAttention > a.needsAttention ? b : a), columnLeads[0]);
+      setMobileColumn(best.id);
+    }
+  }, [isMobile, mobileColumn, columnLeads]);
 
   if (loading) {
     return (
@@ -845,6 +953,9 @@ function RecruiterDashboardInner() {
         <StatBubble icon={Star} label="New This Month" value={thisMonth} color="border border-amber-500/20 bg-amber-500/5 text-amber-400" delay={0.18} />
       </div>
 
+      {/* ── Performance Metrics Strip ── */}
+      <MetricsStrip leads={leads} />
+
       {/* ── Search / Filter / Sort ── */}
       <GlassCard className="p-3 space-y-2">
         {/* Search bar */}
@@ -858,7 +969,7 @@ function RecruiterDashboardInner() {
           />
         </div>
 
-        {/* Filter by stage + Sort in one scrollable row */}
+        {/* Filter by stage + Sort + Focus Mode in one scrollable row */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1">
           <span className="text-xs text-muted-foreground shrink-0 font-medium">Filter:</span>
           <Button
@@ -893,11 +1004,41 @@ function RecruiterDashboardInner() {
             <option value="oldest">Oldest First</option>
             <option value="name">Name A–Z</option>
           </select>
+
+          <div className="w-px h-5 bg-border shrink-0 mx-1" />
+
+          {/* Focus Mode toggle */}
+          <Button
+            variant={focusMode ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFocusMode((v) => !v)}
+            className={cn(
+              "text-xs shrink-0 h-7 gap-1",
+              focusMode && "bg-amber-500/20 text-amber-400 border-amber-500/30 hover:bg-amber-500/30"
+            )}
+          >
+            {focusMode ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+            Focus Mode
+          </Button>
         </div>
       </GlassCard>
 
+      {/* ── Focus Mode Banner ── */}
+      {focusMode && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2"
+        >
+          <Target className="h-4 w-4 text-amber-400 shrink-0" />
+          <span className="text-sm font-medium text-amber-400">
+            Focus Mode — Showing only urgent leads ({filtered.length})
+          </span>
+        </motion.div>
+      )}
+
       {/* ── Action Required Banner ── */}
-      {(() => {
+      {!focusMode && (() => {
         const overdueLeads = leads.filter(isOverdue);
         if (overdueLeads.length === 0) return null;
         return (
@@ -940,65 +1081,140 @@ function RecruiterDashboardInner() {
         );
       })()}
 
+      {/* ── Mobile Column Picker (segmented tabs) ── */}
+      {isMobile && (
+        <div className="flex gap-1.5 overflow-x-auto pb-1 sticky top-0 z-10 bg-background/80 backdrop-blur-sm py-2 -mx-4 px-4">
+          {columnLeads.map((col) => (
+            <button
+              key={col.id}
+              onClick={() => setMobileColumn(col.id)}
+              className={cn(
+                "flex items-center gap-1 shrink-0 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors",
+                mobileColumn === col.id
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-card border-border text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <span>{col.emoji}</span>
+              <span className="hidden sm:inline">{col.label}</span>
+              <Badge variant="outline" className="text-[9px] ml-0.5 h-4 px-1 border-current">
+                {col.leads.length}
+              </Badge>
+              {col.needsAttention > 0 && (
+                <span className="flex items-center justify-center h-4 w-4 rounded-full bg-rose-500/20 text-rose-400 text-[9px] font-bold">
+                  {col.needsAttention}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* ── Kanban columns ── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4">
-        {columnLeads.map((col, ci) => (
-          <motion.div
-            key={col.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: ci * 0.06 }}
-            className={cn("rounded-2xl border p-3 min-h-[200px]", col.color)}
-          >
-            {/* Column header */}
-            {(() => {
-              const needsAttention = col.leads.filter((l) => getLastContactAge(l) > 48 * 3600 * 1000 || getLastContactAge(l) === Infinity).length;
-              return (
-                <div className={cn("flex items-center gap-2 mb-3 font-bold text-sm", col.headerColor)}>
+      {isMobile ? (
+        // Mobile: show only selected column
+        (() => {
+          const col = columnLeads.find((c) => c.id === mobileColumn) || columnLeads[0];
+          if (!col) return null;
+          return (
+            <div className={cn("rounded-2xl border p-3 min-h-[200px]", col.color)}>
+              <div className={cn("flex items-center gap-2 mb-3 font-bold text-sm", col.headerColor)}>
+                <span className="text-base">{col.emoji}</span>
+                <span>{col.label}</span>
+                {col.needsAttention > 0 && (
+                  <span className="flex items-center gap-0.5 text-[10px] font-medium text-rose-400 bg-rose-500/15 border border-rose-500/30 rounded-full px-1.5 py-0">
+                    <AlertCircle className="h-2.5 w-2.5" />
+                    {col.needsAttention}
+                  </span>
+                )}
+                <Badge variant="outline" className={cn("ml-auto text-xs border", col.headerColor.replace("text-", "border-").replace("-400", "-400/40"))}>
+                  {col.leads.length}
+                </Badge>
+              </div>
+              <div className="space-y-3">
+                <AnimatePresence mode="popLayout">
+                  {col.leads.length === 0 ? (
+                    <motion.p key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xs text-muted-foreground text-center py-8">
+                      No leads here yet ✨
+                    </motion.p>
+                  ) : (
+                    col.leads.map((lead) => (
+                      <LeadCard
+                        key={lead.id}
+                        lead={lead}
+                        agentId={agentId}
+                        onRefresh={() => fetchLeads(true)}
+                        onXP={addXP}
+                        onCelebrate={triggerCelebrate}
+                        disableHover
+                      />
+                    ))
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          );
+        })()
+      ) : (
+        // Desktop: full grid with scroll containers
+        <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4">
+          {columnLeads.map((col, ci) => {
+            const isLargeList = col.leads.length >= 15;
+            return (
+              <motion.div
+                key={col.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: ci * 0.06 }}
+                className={cn("rounded-2xl border p-3 min-h-[200px] flex flex-col", col.color)}
+              >
+                {/* Column header */}
+                <div className={cn("flex items-center gap-2 mb-3 font-bold text-sm shrink-0", col.headerColor)}>
                   <span className="text-base">{col.emoji}</span>
                   <span>{col.label}</span>
-                  {needsAttention > 0 && (
+                  {col.needsAttention > 0 && (
                     <span className="flex items-center gap-0.5 text-[10px] font-medium text-rose-400 bg-rose-500/15 border border-rose-500/30 rounded-full px-1.5 py-0">
                       <AlertCircle className="h-2.5 w-2.5" />
-                      {needsAttention}
+                      {col.needsAttention}
                     </span>
                   )}
                   <Badge variant="outline" className={cn("ml-auto text-xs border", col.headerColor.replace("text-", "border-").replace("-400", "-400/40"))}>
                     {col.leads.length}
                   </Badge>
                 </div>
-              );
-            })()}
 
-            {/* Lead cards */}
-            <div className="space-y-3">
-              <AnimatePresence mode="popLayout">
-                {col.leads.length === 0 ? (
-                  <motion.p
-                    key="empty"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="text-xs text-muted-foreground text-center py-8"
-                  >
-                    No leads here yet ✨
-                  </motion.p>
-                ) : (
-                  col.leads.map((lead) => (
-                    <LeadCard
-                      key={lead.id}
-                      lead={lead}
-                      agentId={agentId}
-                      onRefresh={() => fetchLeads(true)}
-                      onXP={addXP}
-                      onCelebrate={triggerCelebrate}
-                    />
-                  ))
-                )}
-              </AnimatePresence>
-            </div>
-          </motion.div>
-        ))}
-      </div>
+                {/* Lead cards with max height scroll */}
+                <div className="space-y-3 max-h-[65vh] overflow-y-auto flex-1 pr-0.5">
+                  <AnimatePresence mode="popLayout">
+                    {col.leads.length === 0 ? (
+                      <motion.p
+                        key="empty"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="text-xs text-muted-foreground text-center py-8"
+                      >
+                        No leads here yet ✨
+                      </motion.p>
+                    ) : (
+                      col.leads.map((lead) => (
+                        <LeadCard
+                          key={lead.id}
+                          lead={lead}
+                          agentId={agentId}
+                          onRefresh={() => fetchLeads(true)}
+                          onXP={addXP}
+                          onCelebrate={triggerCelebrate}
+                          disableHover={isLargeList}
+                        />
+                      ))
+                    )}
+                  </AnimatePresence>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Empty state */}
       {filtered.length === 0 && !loading && (

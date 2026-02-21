@@ -754,6 +754,7 @@ export type Database = {
           instagram_handle: string | null
           last_contacted_at: string | null
           last_name: string
+          lead_score: number | null
           license_doc_url: string | null
           license_progress:
             | Database["public"]["Enums"]["license_progress"]
@@ -761,6 +762,8 @@ export type Database = {
           license_status: Database["public"]["Enums"]["license_status"]
           licensed_states: string[] | null
           manual_followup_sent_at: string | null
+          next_action_at: string | null
+          next_action_type: string | null
           nipr_number: string | null
           notes: string | null
           phone: string
@@ -809,6 +812,7 @@ export type Database = {
           instagram_handle?: string | null
           last_contacted_at?: string | null
           last_name: string
+          lead_score?: number | null
           license_doc_url?: string | null
           license_progress?:
             | Database["public"]["Enums"]["license_progress"]
@@ -816,6 +820,8 @@ export type Database = {
           license_status?: Database["public"]["Enums"]["license_status"]
           licensed_states?: string[] | null
           manual_followup_sent_at?: string | null
+          next_action_at?: string | null
+          next_action_type?: string | null
           nipr_number?: string | null
           notes?: string | null
           phone: string
@@ -864,6 +870,7 @@ export type Database = {
           instagram_handle?: string | null
           last_contacted_at?: string | null
           last_name?: string
+          lead_score?: number | null
           license_doc_url?: string | null
           license_progress?:
             | Database["public"]["Enums"]["license_progress"]
@@ -871,6 +878,8 @@ export type Database = {
           license_status?: Database["public"]["Enums"]["license_status"]
           licensed_states?: string[] | null
           manual_followup_sent_at?: string | null
+          next_action_at?: string | null
+          next_action_type?: string | null
           nipr_number?: string | null
           notes?: string | null
           phone?: string

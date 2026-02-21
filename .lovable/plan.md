@@ -1,58 +1,52 @@
 
 
-# Verification Complete + Production Data Entry
+# Fix Recruiter HQ: Show All Unlicensed Leads + Add Interview Scheduling
 
-## ALL IMPLEMENTATION PHASES: VERIFIED COMPLETE
+## Problem 1: Not All Unlicensed Leads Are Showing
 
-Every item from the master objective has been confirmed implemented and working:
+Currently, the data fetch in Recruiter HQ filters leads by `assigned_agent_id` -- meaning Aisha only sees leads assigned specifically to her, not ALL unlicensed leads in the system. The fix is to remove this filter so the Recruiter HQ shows every single unlicensed lead.
 
-- **Phase 1**: Lead Activity Timeline, database table, logging utility, ActivityTimeline component, realtime subscriptions
-- **Phase 2**: Lead Scoring (0-100), Smart Follow-Up Engine, Call Outcome Tracking with 5 outcomes
-- **Phase 3**: Recruiter Performance Metrics Strip, Mobile Kanban segmented tabs, Layout Hardening (memo, fixed heights, scroll containers), Focus Mode toggle
-- **Phase 4**: Central Config (apexConfig.ts), Feature Flags (featureFlags.ts), Self-Healing ErrorBoundary with auto-retry + DB logging, Global Schedule Bar, Auto-Stage Suggestion Chips, Sound toggle
+**What changes:**
+- Remove the `assigned_agent_id` filter from the fetch query (line 756-758 in RecruiterDashboard.tsx)
+- This means ALL non-terminated, non-licensed applications will appear in the Kanban board regardless of who they're assigned to
+
+## Problem 2: No Interview Scheduling Option
+
+The "Schedule Interview" dialog component already exists (`InterviewScheduler.tsx`) but it was never wired into Recruiter HQ. The only calendar button currently opens an external Calendly link.
+
+**What changes:**
+- Import the `InterviewScheduler` component into RecruiterDashboard
+- Add a "Schedule Interview" action button (Calendar icon) to each lead card's action row
+- Clicking it opens the in-app interview scheduling dialog for that specific lead
+- The existing Calendly button stays as a secondary option
+
+## Problem 3: Side Navigation Missing
+
+The side navigation IS present in the code (GlobalSidebar renders inside AuthenticatedShell which wraps /dashboard/recruiter). If it's not appearing visually, this could be:
+- The sidebar is in "fullscreen" mode (hidden)
+- A mobile viewport where the sidebar is behind the hamburger menu
+
+**What changes:**
+- No structural changes needed -- the sidebar is already mounted
+- Will verify it renders correctly on the Recruiter HQ route after the other fixes
 
 ---
 
-## Production Numbers to Enter
+## Technical Details
 
-After parsing the data provided, here are the 12 deals mapped to agents and aggregated by agent + date:
+### File: `src/pages/RecruiterDashboard.tsx`
 
-| Agent | Date | Deals | AOP | Client(s) | DB Status |
-|---|---|---|---|---|---|
-| KJ Vaughns | 02/21 | 1 | $627.84 | Michael Pennell | **MISSING — INSERT** |
-| KJ Vaughns | 02/18 | 2 | $2,074.80 | Tyrone Irvin + Hilda Cueva | EXISTS (1 deal / $2,075) — **UPDATE deals to 2** |
-| KJ Vaughns | 02/19 | 1 | $965.76 | Roger Spear | Already correct |
-| Obiajulu Ifediora | 02/20 | 1 | $1,415.64 | Kristy Sanders | Already correct |
-| Moody Imran | 02/20 | 1 | $552.00 | Renee Peavy | Already correct |
-| Moody Imran | 02/19 | 1 | $1,356.00 | Christi Ahmed | EXISTS ($1,836 / 1 deal) — **UPDATE: add deal (2 deals, $3,192)** |
-| Brennan Barker | 02/20 | 1 | $492.00 | Mary Davis | Already correct |
-| Brennan Barker | 02/19 | 1 | $1,712.40 | Ivy Johnson | Already correct |
-| Samuel James | 02/20 | 1 | $960.00 | Beverley Bingaman | **MISSING — INSERT** |
-| Jacob Causer | 02/20 | 1 | $989.88 | Beverley Bingaman | EXISTS (0 deals / $0) — **UPDATE** |
-| Chukwudi Ifediora | 02/19 | 1 | $733.68 | Glen Neal | **MISSING — INSERT** |
+**Change 1 -- Show all unlicensed leads (remove agent filter):**
 
-### Actions Required
+Remove lines 756-758 that conditionally filter by `assigned_agent_id`. The Recruiter HQ is already access-restricted to Aisha + admins, so showing all leads is the intended behavior.
 
-**3 INSERTs** (new rows):
-1. KJ Vaughns — 02/21 — 1 deal, $627.84
-2. Samuel James — 02/20 — 1 deal, $960.00
-3. Chukwudi Ifediora — 02/19 — 1 deal, $733.68
+**Change 2 -- Add InterviewScheduler:**
 
-**3 UPDATEs** (existing rows need correction):
-1. KJ Vaughns — 02/18 — update `deals_closed` from 1 to 2 (AOP already close at $2,075)
-2. Moody Imran — 02/19 — update `deals_closed` to 2, `aop` to 3192 (add $1,356 Christi Ahmed deal)
-3. Jacob Causer — 02/20 — update `deals_closed` to 1, `aop` to 989.88
+- Import `InterviewScheduler` from `@/components/dashboard/InterviewScheduler`
+- Add state to the `LeadCard` component: `schedulerOpen` and the selected lead info
+- Add a Calendar icon button in the action row (between Email and Calendly buttons)
+- Render `InterviewScheduler` dialog conditionally when `schedulerOpen` is true
+- On successful scheduling, refresh leads and log activity
 
-**6 rows already correct** — no changes needed.
-
-### Technical Details
-
-All changes use the Supabase data insert/update tool against the `daily_production` table. No schema changes needed.
-
-Agent ID mapping:
-- KJ Vaughns: `431dff0d-7c82-4134-a85e-457e5226fc7f`
-- Samuel James: `7c3c5581-3544-437f-bfe2-91391afb217d`
-- Chukwudi Ifediora: `a60e70c5-f2d4-4a3d-bcdb-0002327f8e3f`
-- Jacob Causer: `4fdb2e83-e66c-465e-8df4-076174e70b82`
-- Moody Imran: `af13f7f5-789e-4d92-81dc-1511efcc8fab`
-
+### Files Modified
+- `src/pages/RecruiterDashboard.tsx` (2 changes: query fix + interview scheduler integration)

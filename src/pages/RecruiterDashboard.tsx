@@ -433,59 +433,56 @@ const LeadCard = memo(function LeadCard({
         className="bg-card border border-border rounded-xl overflow-hidden shadow-sm"
       >
         <div className="p-2.5 space-y-1.5">
-          {/* ── Row 1: Full name + location + freshness badge ── */}
-          <div className="flex items-start justify-between gap-1.5">
-            <div className="min-w-0 flex-1">
-              <p className="font-semibold text-sm leading-tight break-words">{fullName}</p>
-              {location && (
-                <span className="inline-flex items-center gap-0.5 mt-0.5 text-[10px] text-muted-foreground">
-                  <MapPin className="h-2.5 w-2.5 flex-shrink-0" />
-                  {location}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-1">
-              <Badge className={cn("text-[9px] border shrink-0 whitespace-nowrap px-1.5 py-0", contactColor)}>
-                <Clock className="h-2 w-2 mr-0.5" />
-                {contactLabel}
-              </Badge>
+          {/* ── Row 1: Name + score ── */}
+          <div className="flex items-start justify-between gap-1">
+            <p className="font-semibold text-sm leading-tight truncate min-w-0 flex-1" title={fullName}>{fullName}</p>
+            <div className="flex items-center gap-1 shrink-0">
               {isFeatureEnabled("leadScoring") && (
-                <Badge className={cn("text-[9px] border shrink-0 whitespace-nowrap px-1.5 py-0 font-bold", scoreBadge.className)}>
+                <Badge className={cn("text-[9px] border whitespace-nowrap px-1.5 py-0 font-bold", scoreBadge.className)}>
                   {scoreBadge.label}
                 </Badge>
               )}
             </div>
           </div>
 
-          {/* ── Row 2: Phone | Email | License badge | Actions ── */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {/* Contact info */}
+          {/* ── Row 2: Location + contact freshness ── */}
+          <div className="flex items-center justify-between gap-1">
+            {location && (
+              <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground truncate min-w-0">
+                <MapPin className="h-2.5 w-2.5 shrink-0" />
+                <span className="truncate">{location}</span>
+              </span>
+            )}
+            <Badge className={cn("text-[9px] border shrink-0 whitespace-nowrap px-1.5 py-0", contactColor)}>
+              <Clock className="h-2 w-2 mr-0.5" />
+              {contactLabel}
+            </Badge>
+          </div>
+
+          {/* ── Row 3: Phone + Email (stacked) ── */}
+          <div className="space-y-0.5">
             {lead.phone && (
               <a
                 href={`tel:${lead.phone}`}
                 onClick={() => setCallOutcomeOpen(true)}
-                className="text-[11px] text-emerald-400 hover:text-emerald-300 transition-colors font-medium"
+                className="block text-[11px] text-emerald-400 hover:text-emerald-300 transition-colors font-medium truncate"
               >
                 {lead.phone}
               </a>
             )}
-            {lead.phone && lead.email && <span className="text-muted-foreground/30 text-[10px]">|</span>}
             {lead.email && (
-              <span className="text-[11px] text-muted-foreground truncate max-w-[120px]">{lead.email}</span>
+              <span className="block text-[11px] text-muted-foreground truncate">{lead.email}</span>
             )}
-
-            {/* Spacer to push actions right */}
-            <div className="flex-1" />
-
-            {/* Inline license progress */}
-            <LicenseProgressSelector
-              applicationId={lead.id}
-              currentProgress={lead.license_progress as any}
-              testScheduledDate={lead.test_scheduled_date}
-              onProgressUpdated={() => handleProgressUpdated()}
-              className="text-[10px] h-6"
-            />
           </div>
+
+          {/* ── Row 4: License progress ── */}
+          <LicenseProgressSelector
+            applicationId={lead.id}
+            currentProgress={lead.license_progress as any}
+            testScheduledDate={lead.test_scheduled_date}
+            onProgressUpdated={() => handleProgressUpdated()}
+            className="text-[10px] h-6"
+          />
 
           {/* ── Row 3: Icon-only action buttons (fixed min-height to prevent jitter) ── */}
           <div className="flex items-center gap-1 pt-0.5 min-h-[28px]">

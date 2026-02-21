@@ -1,75 +1,49 @@
 
+# Make Activation Risk Banner Interactive with Agent Actions
 
-# Fix Calendar Date Picker, Email Notifications, and Calendar Page Scheduling
+## Current Problem
+The Activation Risk Banner is purely informational -- it shows a count of at-risk agents (no production in 14+ days) but clicking it does nothing. You want to tap it, see who those agents are, and take action on each one (deactivate, move to inactive, remove, etc.).
 
-## Issues Identified
+## Solution
 
-### 1. Calendar popup broken in LicenseProgressSelector (Test Scheduled date picker)
-The `Popover` component uses a **hidden trigger** (`<span className="hidden" />`), which means it has no anchor element for positioning. When `showDatePicker` is set to `true`, the popover tries to open but has nowhere to render relative to. This is the root cause of the broken calendar popup across all platforms (CRM, Pipeline, Call Center, etc.).
+Transform the banner into a clickable element that expands to show the full list of at-risk agents with one-tap action buttons for each.
 
-**Fix**: Replace the detached `Popover` with a `Dialog` component that doesn't need an anchor point. This ensures the date picker renders as a centered modal overlay that works everywhere.
+### How It Will Work
+1. **Tap the banner** -- it expands inline (or opens a sheet/dialog) showing the list of at-risk agents with their name, last production date, and days since last activity
+2. **Each agent row has quick actions**:
+   - **"Move to Inactive"** -- sets `is_inactive = true` (soft removal, keeps data)
+   - **"Deactivate"** -- opens the existing `DeactivateAgentDialog` for full options (terminate, switch teams, remove from system)
+   - **"Dismiss"** -- hides that agent from the risk list for 7 days (without changing their status)
+3. **Bulk action**: A "Move All to Inactive" button at the bottom to handle the entire list in one tap
+4. After any action, the list and count update immediately
 
-### 2. Test Scheduled email only goes to admin + direct manager -- needs ALL managers
-The `notify-test-scheduled` edge function currently resolves only the direct manager via `invited_by_manager_id` and CCs them + admin. It does NOT notify all managers.
-
-**Fix**: Update the edge function to query ALL managers (all agents with a corresponding `manager` role in `user_roles`) and include their emails in the CC list. This ensures every manager is notified when any applicant schedules a licensing exam.
-
-### 3. Calendar page "Schedule" button opens empty InterviewScheduler
-The Calendar page passes `applicationId=""` to InterviewScheduler, so it can't actually schedule anything.
-
-**Fix**: Replace the Schedule button with a two-step flow:
-- Step 1: Open a lead search dialog with a search bar querying `applications` by name/email/phone
-- Step 2: Once a lead is selected, open the InterviewScheduler pre-filled with that lead's data
-
-### 4. InterviewScheduler calls wrong edge function
-It calls `notify-test-scheduled` (for licensing exams) instead of `schedule-interview` (for interview emails). This means interview emails are formatted incorrectly.
-
-**Fix**: Change the edge function call to `schedule-interview` which sends the proper interview notification email.
-
-### 5. Weekend dates not disabled
-The InterviewScheduler allows selecting Saturday and Sunday.
-
-**Fix**: Add a weekend check to the `disabled` prop on the CalendarPicker.
+### Visual Design
+- The banner stays as-is when collapsed (amber warning card with count)
+- On tap, it expands with a smooth animation to show agent rows
+- Each row: Agent name | Last active date | Days inactive | Action buttons
+- Compact rows to fit many agents without excessive scrolling
 
 ---
 
-## Technical Implementation
+## Technical Details
 
-### File: `src/components/dashboard/LicenseProgressSelector.tsx`
-- Remove the broken `Popover` + hidden trigger pattern (lines 208-227)
-- Replace with a `Dialog` containing the Calendar picker
-- The Dialog opens when `showDatePicker` is `true` and closes on date selection or cancel
-- This fix applies everywhere the component is used (CRM, Pipeline, Call Center, HR, etc.)
+### File: `src/components/dashboard/ActivationRiskBanner.tsx` (REWRITE)
+- Change the query to return the full agent list (not just a count) -- fetch `agents.id`, `agents.user_id`, join with `profiles.full_name`, and compute last production date from `daily_production`
+- Add `expanded` state toggled by clicking the banner
+- When expanded, render agent rows with:
+  - Name from profiles
+  - Last production date (or "Never" if none)
+  - Days since last activity
+  - "Inactive" button (quick action: sets `is_inactive = true`)
+  - "Options" button (opens `DeactivateAgentDialog`)
+  - "Dismiss" button (stores agent ID in local state to hide for current session)
+- Add "Move All to Inactive" bulk action button
+- Each action triggers a Supabase update, plays a sound effect, shows a toast, and refetches the query
+- Import and use `DeactivateAgentDialog` for the full options flow
 
-### File: `supabase/functions/notify-test-scheduled/index.ts`
-- After resolving the direct manager, add a query to get ALL managers:
-  - Query `user_roles` where `role = 'manager'` to get all manager user IDs
-  - Query `profiles` to get their emails
-  - Add all manager emails to the CC list (deduplicated)
-- Send a separate "heads up" email to all managers notifying them that an applicant has scheduled their licensing exam
-- Keep the applicant email + prep tips as-is
-
-### File: `src/pages/CalendarPage.tsx`
-- Add a `LeadSearchDialog` component inline:
-  - Search input that queries `applications` by first_name, last_name, email, or phone (using `ilike`)
-  - Shows matching leads in a list with name, email, and current status
-  - On lead selection, sets `selectedLead` state and opens InterviewScheduler with proper props
-- Replace the empty `applicationId=""` with the selected lead's actual data
-- The "Schedule" button now opens the search dialog first
-
-### File: `src/components/dashboard/InterviewScheduler.tsx`
-- Change edge function call from `notify-test-scheduled` to `schedule-interview` (line 136)
-- Pass correct payload: `{ applicationId, interviewDate, interviewType, meetingLink, notes }`
-- Add weekend disabling to CalendarPicker: `disabled={(date) => date < today || date.getDay() === 0 || date.getDay() === 6}`
-
-### Edge Function: `supabase/functions/schedule-interview/index.ts`
-- Fix the import: uses `npm:@hono/node-server` which is incorrect for Deno.serve pattern -- change to standard `Deno.serve`
-- Ensure it sends the interview email to the applicant with CC to admin, assigned agent, direct manager, AND all managers
+### No database changes needed
+- The `agents` table already has `is_inactive` and `is_deactivated` columns
+- The `DeactivateAgentDialog` already handles all termination/transfer flows
 
 ### Files Modified
-- `src/components/dashboard/LicenseProgressSelector.tsx` -- fix calendar popup (Popover to Dialog)
-- `src/pages/CalendarPage.tsx` -- add lead search flow for scheduling
-- `src/components/dashboard/InterviewScheduler.tsx` -- fix edge function call + disable weekends
-- `supabase/functions/notify-test-scheduled/index.ts` -- email all managers
-- `supabase/functions/schedule-interview/index.ts` -- fix serve pattern + email all managers
-
+- `src/components/dashboard/ActivationRiskBanner.tsx` -- full rewrite to interactive expandable list with actions

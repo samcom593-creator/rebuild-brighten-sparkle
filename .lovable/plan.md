@@ -1,106 +1,165 @@
 
 
-# Complete Recruiter HQ: AI Summarization + Lead Coverage + Missing Features
+# Final System Completion -- Gap Analysis and Implementation Plan
 
-## What's Already Working
+## Current State Summary
 
-- Kanban board with 5 columns, mobile segmented tabs
-- Lead scoring (0-100), auto-stage suggestions, smart follow-ups
-- Activity timeline on cards, call outcome tracking
-- Performance metrics strip, XP system, focus mode
-- InterviewScheduler wired in, global ScheduleBar
-- ai-assistant edge function handles coaching, summaries, chat, and performance breakdowns
-
-## What's Missing (Gap Analysis)
-
-### 1. AI Insight Panel for Recruiter HQ
-The `AIInsightsCard` and `AICoachingPanel` components exist but are NOT rendered anywhere on the Recruiter HQ page. Aisha has no AI-powered intelligence panel showing:
-- Hot Leads Today
-- At-Risk Leads
-- Suggested Stage Moves
-- Leads Not Contacted in 48h
-- Recruiter-specific coaching
-
-### 2. AI Summarization for Individual Leads
-There is no way for Aisha to get an AI summary of a specific lead directly from the Recruiter HQ card. The `ApplicantSummary` component exists but is not integrated into lead cards.
-
-### 3. Lead Coverage Gap
-The current query only pulls from the `applications` table (57 leads). The user wants ALL leads that are not licensed. There are 925 aged leads (`aged_leads` table) that are NOT contacted yet. The user said: "all leads except aged leads, unless they were contacted." This means:
-- All `applications` that are not licensed (currently working)
-- Plus `aged_leads` WHERE `status = 'contacted'` (these SHOULD appear since they've been contacted)
-
-### 4. `ai-assistant` Edge Function Missing `recruiter_insights` Type
-Need a new request type that generates a recruiter-specific daily brief from lead data.
+After a thorough audit of the entire codebase, here is what IS working and what is NOT yet implemented against the checklist.
 
 ---
 
-## Implementation Plan
+## ALREADY IMPLEMENTED (No Changes Needed)
 
-### Step 1: Add `recruiter_insights` type to `ai-assistant` edge function
-
-Add a new case to the `ai-assistant` edge function that accepts recruiter stats (total leads, overdue count, hot leads, at-risk count, pipeline breakdown) and returns a structured daily brief with actionable items.
-
-### Step 2: Create `RecruiterAIPanel` component
-
-New component: `src/components/recruiter/RecruiterAIPanel.tsx`
-
-Features:
-- "Get AI Brief" button that calls `ai-assistant` with type `recruiter_insights`
-- Shows 4 quick-stat cards: Hot Leads, At-Risk, Overdue, Suggested Moves
-- Expandable AI-generated daily brief text
-- Auto-generates local insights (like `AIInsightsCard` does) for instant feedback
-- "Summarize Lead" button on each lead card that calls `ai-assistant` with type `summary`
-
-### Step 3: Add AI Summary Button to LeadCard
-
-Add a small Brain icon button to each lead card's action row. When clicked:
-- Calls `ai-assistant` with the lead's data
-- Shows a popover/dialog with the AI-generated summary
-- Helps Aisha quickly assess any lead without manual review
-
-### Step 4: Include Contacted Aged Leads
-
-Modify `fetchLeads` in `RecruiterDashboardInner` to also query `aged_leads` WHERE `status = 'contacted'`, normalize them to the same `Lead` interface, and merge them into the lead list. These will appear in the "Needs Outreach" column since they don't have a `license_progress` value.
-
-### Step 5: Render AI Panel on Recruiter HQ
-
-Insert `RecruiterAIPanel` between the stat bubbles and the search/filter bar on the Recruiter HQ page. It will be collapsible so it doesn't take up space when Aisha wants to focus on the Kanban.
-
----
-
-## Files Changed/Created
-
-| File | Action |
+| Category | Items |
 |---|---|
-| `supabase/functions/ai-assistant/index.ts` | Add `recruiter_insights` request type |
-| `src/components/recruiter/RecruiterAIPanel.tsx` | New component -- AI daily brief + insights |
-| `src/pages/RecruiterDashboard.tsx` | Import RecruiterAIPanel, add lead AI summary button, include contacted aged leads in query |
+| Error Boundaries | Global `ErrorBoundary` + section-level `ComponentErrorBoundary` with auto-retry and DB logging |
+| error_logs table | Exists with RLS policies, auto-logged on crash |
+| Feature Flags | `featureFlags.ts` with 9 toggleable flags + localStorage overrides |
+| Central Config | `apexConfig.ts` with all tunable thresholds |
+| Schedule Bar | Shows interviews, overdue leads, color-coded pills, detail sheet |
+| Lead Scoring | 0-100 score using config weights, badge coloring |
+| Smart Follow-Up | `computeNextAction()` with configurable timing |
+| Auto-Stage Suggestions | Chip UI on lead cards with one-click apply |
+| Activity Timeline | Real-time updates via Supabase channel, shows last 3 on card |
+| Call Outcome Tracking | 5 outcomes with activity logging |
+| XP System | XP bar, ranks (Rookie to Legend), localStorage persistence |
+| Sound Effects | Web Audio API, volume-controlled, toggleable |
+| Confetti | Works on licensing milestones |
+| Recruiter AI Panel | Daily brief + per-lead AI summaries |
+| Performance Metrics Strip | Contact rate, license rate, avg days, overdue rate |
+| Lead Coverage | All unlicensed applications + contacted aged leads (deduplicated) |
+| Interview Scheduler | In-app scheduling dialog wired into lead cards |
+| Focus Mode | Filters to urgent/overdue/uncontacted leads |
+| Mobile Column Switcher | Segmented tabs for Kanban on mobile |
+| Skeleton Loaders | Loading state with skeleton animation |
+| Dark/Light Mode | ThemeToggle component present |
+| Sidebar | GlobalSidebar with role-based nav items |
+| Weekly Badges | Earned badges system for agents |
+| Memoization | `memo()` on LeadCard with custom comparator |
+| Query Caching | `staleTime: 120_000` on queries |
 
-## Technical Details
+---
 
-### ai-assistant edge function -- new type
+## GAPS IDENTIFIED -- Must Be Implemented
 
-```
-case 'recruiter_insights':
-  - System prompt: "You are a recruiting operations analyst..."
-  - User prompt: pipeline breakdown, overdue count, hot leads, at-risk, velocity
-  - Returns: 3-4 sentence daily brief with priorities
-```
+### 1. Communication Hub (Lead Detail View)
+**Status: NOT IMPLEMENTED**
+There is no unified communication thread per lead. Currently, activity timeline shows events but there is no searchable, filterable communication view that consolidates calls, emails, SMS, notes, and stage changes into a single thread with search capability.
 
-### Aged leads normalization
+**Plan:**
+- Create `src/components/recruiter/LeadDetailSheet.tsx` -- a slide-out sheet triggered from the lead card
+- Shows: full activity timeline (no limit), notes editor, contact info, lead score breakdown
+- Includes search/filter within the timeline (by type: call, email, note, stage change)
+- Replaces the current "expand card" pattern with a proper detail view
 
-Aged leads from the `aged_leads` table will be mapped to the `Lead` interface:
-- `license_progress` defaults to `"unlicensed"`
-- `license_status` defaults to `"unlicensed"`
-- `contacted_at` maps from `contacted_at`
-- `last_contacted_at` maps from `last_contacted_at`
-- Only include where `status = 'contacted'` per user requirement
+### 2. Production Forecast Module
+**Status: NOT IMPLEMENTED**
+No 30-day AOP projection or production forecast exists.
 
-### LeadCard AI Summary
+**Plan:**
+- Add a `ProductionForecast` section to the Agent Portal that takes last 7 and 30 days of `daily_production` data and projects a 30-day AOP estimate using simple linear regression
+- Display as a small card with projected AOP, trend arrow, and confidence indicator
 
-- New Brain icon button in the action row
-- On click: opens a small dialog/popover
-- Calls `ai-assistant` with type `summary` passing lead data
-- Shows loading spinner then the AI-generated text
-- Cached per lead to avoid redundant API calls
+### 3. Activation Risk Engine
+**Status: NOT IMPLEMENTED**
+No system flags inactive agents or alerts managers about at-risk onboarding.
+
+**Plan:**
+- Add logic to the Dashboard/CRM that identifies agents with no production entries in 14+ days and flags them with a "Risk" badge
+- Add an alert banner on the manager dashboard showing count of at-risk agents
+
+### 4. System Integrity Monitor (Admin)
+**Status: NOT IMPLEMENTED**
+No duplicate detection, orphan record detection, or integrity scanning exists.
+
+**Plan:**
+- Add a small `SystemIntegrityCard` to the Admin dashboard
+- Runs client-side checks: duplicate emails in applications, agents without user_ids, applications with invalid status combinations
+- Displays count of issues found with one-click "View Details"
+
+### 5. Daily Challenge Module
+**Status: NOT IMPLEMENTED**
+No daily challenge/task system exists for gamification beyond XP.
+
+**Plan:**
+- Add a `DailyChallenge` component to the Recruiter HQ header area
+- Generates 1-2 daily challenges based on pipeline state (e.g., "Contact 3 overdue leads today", "Move 2 leads to Test Phase")
+- Tracks completion via localStorage (resets daily)
+- Awards bonus XP on completion
+
+### 6. Dormant Lead Auto-Detection
+**Status: PARTIALLY IMPLEMENTED**
+Focus mode shows overdue leads, but there's no explicit "dormant" tagging for leads with 14+ days of inactivity.
+
+**Plan:**
+- Add a visual "Dormant" badge on lead cards where last activity exceeds `FOLLOWUP_TIMING.dormantDays` (14 days)
+- Add a filter option in the search bar for "Dormant only"
+
+### 7. Auto No-Show Recovery
+**Status: NOT IMPLEMENTED**
+No automatic handling when a scheduled interview is missed.
+
+**Plan:**
+- In the ScheduleBar, when an interview is past its time and status is still "scheduled", show a "No-Show?" action button
+- Clicking it updates the interview status to "no_show", logs activity, and auto-suggests rescheduling
+
+### 8. Bulk Actions Log Timeline Entries
+**Status: PARTIALLY IMPLEMENTED**
+The "Mark All Done" bulk action logs individual activities, but there's no confirmation that ALL bulk operations (like bulk stage changes) log entries.
+
+**Plan:**
+- Audit all bulk action handlers and ensure `logLeadActivity` is called for each affected lead
+
+---
+
+## Technical Implementation Details
+
+### File: `src/components/recruiter/LeadDetailSheet.tsx` (NEW)
+- Full-height Sheet component with lead profile header
+- Tabbed interface: "Timeline" | "Notes" | "Info"
+- Timeline tab: fetches ALL `lead_activity` for the lead (no limit), with a search input that filters by `title` or `activity_type`
+- Notes tab: existing notes textarea + save
+- Info tab: contact details, lead score breakdown, assigned agent, referral source
+
+### File: `src/components/recruiter/DailyChallenge.tsx` (NEW)
+- Reads pipeline stats to generate 2 daily challenges
+- Stores completion state in `localStorage` with date key
+- Awards 25 XP per challenge completed
+- Renders as a compact card with progress indicators
+
+### File: `src/components/recruiter/DormantBadge.tsx` (NEW)
+- Simple badge component that shows "Dormant" when lead has 14+ days since last activity
+- Used in LeadCard alongside the existing contact freshness badge
+
+### File: `src/pages/RecruiterDashboard.tsx` (MODIFIED)
+- Import and render `LeadDetailSheet` (triggered by clicking lead name)
+- Import and render `DailyChallenge` in the header area
+- Add "Dormant" badge rendering in LeadCard
+- Add no-show recovery button logic
+
+### File: `src/components/layout/ScheduleBar.tsx` (MODIFIED)
+- Add "No-Show" action for past-due interviews
+- Update interview status and log activity on click
+
+### File: `src/pages/AgentPortal.tsx` (MODIFIED)
+- Add `ProductionForecast` card showing 30-day AOP projection
+
+### File: `src/pages/DashboardAdmin.tsx` (MODIFIED)
+- Add `SystemIntegrityCard` showing duplicate/orphan counts
+
+### File: `src/pages/Dashboard.tsx` or `DashboardCRM.tsx` (MODIFIED)
+- Add activation risk badges for agents with 14+ days of inactivity
+
+---
+
+## Implementation Order
+
+1. **LeadDetailSheet** -- Communication Hub (biggest UX gap)
+2. **DormantBadge + filter** -- Quick win for lead management
+3. **DailyChallenge** -- Gamification enhancement
+4. **No-Show Recovery** in ScheduleBar -- Automation gap
+5. **ProductionForecast** -- Agent Portal enhancement
+6. **SystemIntegrityCard** -- Admin tooling
+7. **Activation Risk Engine** -- Manager alerting
+8. **Bulk action audit** -- Ensure all bulk ops log activity
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Star, Zap, Flame, Trophy, Phone, Mail, MapPin, Calendar,
@@ -6,7 +6,7 @@ import {
   BookOpen, BookCheck, CalendarClock, FileCheck, Fingerprint,
   Award, Users, UserCheck, AlertTriangle, TrendingUp, Sparkles,
   MessageSquare, ChevronDown, ChevronUp, Plus, ExternalLink, AlertCircle,
-  Activity,
+  Activity, PhoneOff, PhoneCall, PhoneForwarded, PhoneMissed, Ban,
 } from "lucide-react";
 import {
   Tooltip,
@@ -14,6 +14,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
@@ -29,7 +34,7 @@ import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration"
 import { ActivityTimeline } from "@/components/recruiter/ActivityTimeline";
 import { logLeadActivity } from "@/lib/logLeadActivity";
 import { cn } from "@/lib/utils";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, addDays, addMinutes, subDays } from "date-fns";
 import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
 
@@ -98,7 +103,68 @@ const PROGRESS_COLUMNS = [
   },
 ];
 
-type SortMode = "stale" | "newest" | "oldest" | "name";
+type SortMode = "stale" | "newest" | "oldest" | "name" | "score";
+
+// ─── Call Outcome Types ───────────────────────────────────────────────────────
+const CALL_OUTCOMES = [
+  { key: "no_answer", label: "No Answer", icon: PhoneMissed, activityType: "call_no_answer", color: "text-muted-foreground" },
+  { key: "voicemail", label: "Left Voicemail", icon: PhoneOff, activityType: "call_voicemail", color: "text-amber-400" },
+  { key: "interested", label: "Spoke – Interested", icon: PhoneCall, activityType: "call_connected", color: "text-emerald-400" },
+  { key: "not_interested", label: "Spoke – Not Interested", icon: PhoneForwarded, activityType: "call_connected", color: "text-rose-400" },
+  { key: "wrong_number", label: "Wrong Number", icon: Ban, activityType: "call_wrong_number", color: "text-muted-foreground" },
+] as const;
+
+// ─── Lead Scoring ─────────────────────────────────────────────────────────────
+function computeLeadScore(lead: Lead): number {
+  let score = 30;
+  if (lead.license_progress === "licensed") score += 25;
+  if (lead.test_scheduled_date) score += 20;
+  const lastContact = lead.last_contacted_at || lead.contacted_at;
+  if (lastContact) {
+    const hrs = (Date.now() - new Date(lastContact).getTime()) / (1000 * 60 * 60);
+    if (hrs <= 48) score += 15;
+    if (hrs > 72) score -= 20;
+  }
+  if (lead.notes && lead.notes.trim().split(/\s+/).length >= 3) score += 10;
+  const daysSinceCreated = (Date.now() - new Date(lead.created_at).getTime()) / (1000 * 60 * 60 * 24);
+  if (daysSinceCreated <= 7 && lead.contacted_at) score += 15;
+  if (lead.referral_source) score += 10;
+  return Math.max(0, Math.min(100, score));
+}
+
+function getScoreBadge(score: number) {
+  if (score < 40) return { label: `${score}`, className: "bg-rose-500/20 text-rose-400 border-rose-500/30" };
+  if (score < 70) return { label: `${score}`, className: "bg-amber-500/20 text-amber-400 border-amber-500/30" };
+  return { label: `${score}`, className: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" };
+}
+
+// ─── Smart Follow-Up ──────────────────────────────────────────────────────────
+function computeNextAction(lead: Lead): { dueAt: Date; actionType: string } | null {
+  const now = new Date();
+  if (!lead.contacted_at && !lead.last_contacted_at) {
+    return { dueAt: addMinutes(new Date(lead.created_at), 10), actionType: "initial_outreach" };
+  }
+  const lastContact = lead.last_contacted_at || lead.contacted_at;
+  if (lastContact) {
+    const hrs = (now.getTime() - new Date(lastContact).getTime()) / (1000 * 60 * 60);
+    if (hrs >= 24 && (!lead.license_progress || lead.license_progress === "unlicensed")) {
+      return { dueAt: now, actionType: "call_followup" };
+    }
+  }
+  if (lead.license_progress === "course_purchased" || lead.license_progress === "finished_course") {
+    const contactDate = lead.last_contacted_at || lead.contacted_at;
+    if (contactDate) return { dueAt: addDays(new Date(contactDate), 3), actionType: "course_checkin" };
+  }
+  if (lead.license_progress === "test_scheduled" && lead.test_scheduled_date) {
+    return { dueAt: subDays(new Date(lead.test_scheduled_date), 1), actionType: "test_reminder" };
+  }
+  return null;
+}
+
+function isOverdue(lead: Lead): boolean {
+  const action = computeNextAction(lead);
+  return action ? action.dueAt <= new Date() : false;
+}
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 interface Lead {
@@ -117,6 +183,7 @@ interface Lead {
   test_scheduled_date: string | null;
   notes: string | null;
   assigned_agent_id: string | null;
+  referral_source: string | null;
 }
 
 // ─── Helper functions ──────────────────────────────────────────────────────────
@@ -233,9 +300,12 @@ function LeadCard({
   const [expanded, setExpanded] = useState(false);
   const [noteText, setNoteText] = useState(lead.notes || "");
   const [savingNote, setSavingNote] = useState(false);
+  const [callOutcomeOpen, setCallOutcomeOpen] = useState(false);
   const { playSound } = useSoundEffects();
 
   const [showTimeline, setShowTimeline] = useState(false);
+  const leadScore = useMemo(() => computeLeadScore(lead), [lead]);
+  const scoreBadge = getScoreBadge(leadScore);
 
   const handleProgressUpdated = useCallback(async (newProgress?: string) => {
     playSound("success");
@@ -281,25 +351,26 @@ function LeadCard({
     }
   };
 
-  const handleContactLogged = useCallback(async () => {
+  const handleCallOutcome = useCallback(async (outcome: typeof CALL_OUTCOMES[number]) => {
+    setCallOutcomeOpen(false);
     logLeadActivity({
       leadId: lead.id,
-      type: "call_attempt",
-      title: `Called ${lead.first_name}`,
-      details: { phone: lead.phone },
+      type: outcome.activityType,
+      title: `Call: ${outcome.label}`,
+      details: { phone: lead.phone, outcome: outcome.key },
     });
     try {
       await supabase
         .from("applications")
         .update({ last_contacted_at: new Date().toISOString() })
         .eq("id", lead.id);
-      onXP(XP_REWARDS.contact, "📞 Contact logged!");
+      onXP(XP_REWARDS.contact, `📞 ${outcome.label}`);
       playSound("success");
       onRefresh();
     } catch {
       console.error("Failed to log contact");
     }
-  }, [lead.id, lead.first_name, lead.phone, onXP, playSound, onRefresh]);
+  }, [lead.id, lead.phone, onXP, playSound, onRefresh]);
 
   const contactColor = contactBadgeColor(lead);
   const contactLabel = contactBadgeLabel(lead);
@@ -329,10 +400,15 @@ function LeadCard({
                 </span>
               )}
             </div>
-            <Badge className={cn("text-[9px] border shrink-0 whitespace-nowrap px-1.5 py-0", contactColor)}>
-              <Clock className="h-2 w-2 mr-0.5" />
-              {contactLabel}
-            </Badge>
+            <div className="flex items-center gap-1">
+              <Badge className={cn("text-[9px] border shrink-0 whitespace-nowrap px-1.5 py-0", contactColor)}>
+                <Clock className="h-2 w-2 mr-0.5" />
+                {contactLabel}
+              </Badge>
+              <Badge className={cn("text-[9px] border shrink-0 whitespace-nowrap px-1.5 py-0 font-bold", scoreBadge.className)}>
+                {scoreBadge.label}
+              </Badge>
+            </div>
           </div>
 
           {/* ── Row 2: Phone | Email | License badge | Actions ── */}
@@ -341,7 +417,7 @@ function LeadCard({
             {lead.phone && (
               <a
                 href={`tel:${lead.phone}`}
-                onClick={handleContactLogged}
+                onClick={() => setCallOutcomeOpen(true)}
                 className="text-[11px] text-emerald-400 hover:text-emerald-300 transition-colors font-medium"
               >
                 {lead.phone}
@@ -367,23 +443,34 @@ function LeadCard({
 
           {/* ── Row 3: Icon-only action buttons ── */}
           <div className="flex items-center gap-1 pt-0.5">
-            {/* Call */}
-            <Tooltip>
-              <TooltipTrigger asChild>
+            {/* Call with outcome popover */}
+            <Popover open={callOutcomeOpen} onOpenChange={setCallOutcomeOpen}>
+              <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   size="icon"
-                  asChild
                   className="h-7 w-7 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
-                  onClick={handleContactLogged}
                 >
-                  <a href={`tel:${lead.phone}`}>
-                    <Phone className="h-3 w-3" />
-                  </a>
+                  <Phone className="h-3 w-3" />
                 </Button>
-              </TooltipTrigger>
-              <TooltipContent><p>Call {lead.first_name}</p></TooltipContent>
-            </Tooltip>
+              </PopoverTrigger>
+              <PopoverContent className="w-48 p-1" side="bottom" align="start">
+                <p className="text-[10px] font-medium text-muted-foreground px-2 py-1">Call Outcome</p>
+                {CALL_OUTCOMES.map((o) => (
+                  <button
+                    key={o.key}
+                    onClick={() => {
+                      handleCallOutcome(o);
+                      window.open(`tel:${lead.phone}`, "_self");
+                    }}
+                    className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded-md hover:bg-accent transition-colors"
+                  >
+                    <o.icon className={cn("h-3 w-3", o.color)} />
+                    <span>{o.label}</span>
+                  </button>
+                ))}
+              </PopoverContent>
+            </Popover>
 
             {/* Email */}
             <QuickEmailMenu
@@ -563,7 +650,7 @@ function RecruiterDashboardInner() {
 
       const query = supabase
         .from("applications")
-        .select("id, first_name, last_name, email, phone, city, state, created_at, last_contacted_at, contacted_at, license_status, license_progress, test_scheduled_date, notes, assigned_agent_id")
+        .select("id, first_name, last_name, email, phone, city, state, created_at, last_contacted_at, contacted_at, license_status, license_progress, test_scheduled_date, notes, assigned_agent_id, referral_source")
         .is("terminated_at", null)
         .neq("license_status", "licensed")
         .in("status", ["reviewing", "contracting", "approved", "new"]);
@@ -637,6 +724,7 @@ function RecruiterDashboardInner() {
       return true;
     })
     .sort((a, b) => {
+      if (sortMode === "score") return computeLeadScore(b) - computeLeadScore(a);
       if (sortMode === "stale") return getLastContactAge(b) - getLastContactAge(a);
       if (sortMode === "newest") return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       if (sortMode === "oldest") return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
@@ -800,12 +888,57 @@ function RecruiterDashboardInner() {
             className="h-7 text-xs rounded-md border border-input bg-background px-2 text-foreground shrink-0 cursor-pointer"
           >
             <option value="stale">Needs Contact First</option>
+            <option value="score">Lead Score ↓</option>
             <option value="newest">Newest First</option>
             <option value="oldest">Oldest First</option>
             <option value="name">Name A–Z</option>
           </select>
         </div>
       </GlassCard>
+
+      {/* ── Action Required Banner ── */}
+      {(() => {
+        const overdueLeads = leads.filter(isOverdue);
+        if (overdueLeads.length === 0) return null;
+        return (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center justify-between gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5"
+          >
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-rose-400 shrink-0" />
+              <span className="text-sm font-medium text-rose-400">
+                {overdueLeads.length} lead{overdueLeads.length > 1 ? "s" : ""} overdue for follow-up
+              </span>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs h-7 border-rose-500/30 text-rose-400 hover:bg-rose-500/20"
+              onClick={async () => {
+                const ids = overdueLeads.map((l) => l.id);
+                await supabase
+                  .from("applications")
+                  .update({ last_contacted_at: new Date().toISOString() })
+                  .in("id", ids);
+                for (const l of overdueLeads) {
+                  logLeadActivity({
+                    leadId: l.id,
+                    type: "followup_completed",
+                    title: "Follow-up marked done",
+                    details: {},
+                  });
+                }
+                toast.success(`Marked ${ids.length} follow-ups done`);
+                fetchLeads(true);
+              }}
+            >
+              Mark All Done
+            </Button>
+          </motion.div>
+        );
+      })()}
 
       {/* ── Kanban columns ── */}
       <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4">

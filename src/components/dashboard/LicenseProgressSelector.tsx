@@ -11,7 +11,7 @@ import {
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -205,16 +205,13 @@ export function LicenseProgressSelector({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Test Scheduled Date Picker Popover */}
-      <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
-        <PopoverTrigger asChild>
-          <span className="hidden" />
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="end">
-          <div className="p-3 border-b border-border">
-            <p className="text-sm font-medium">Select Test Date</p>
+      {/* Test Scheduled Date Picker Dialog */}
+      <Dialog open={showDatePicker} onOpenChange={setShowDatePicker}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-sm">Select Test Date</DialogTitle>
             <p className="text-xs text-muted-foreground">When is the licensing exam scheduled?</p>
-          </div>
+          </DialogHeader>
           <Calendar
             mode="single"
             selected={selectedTestDate}
@@ -223,8 +220,8 @@ export function LicenseProgressSelector({
             initialFocus
             className="p-3 pointer-events-auto"
           />
-        </PopoverContent>
-      </Popover>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

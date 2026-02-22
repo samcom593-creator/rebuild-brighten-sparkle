@@ -766,7 +766,7 @@ export type Database = {
           next_action_type: string | null
           nipr_number: string | null
           notes: string | null
-          phone: string
+          phone: string | null
           previous_company: string | null
           previous_production: number | null
           qualified_at: string | null
@@ -824,7 +824,7 @@ export type Database = {
           next_action_type?: string | null
           nipr_number?: string | null
           notes?: string | null
-          phone: string
+          phone?: string | null
           previous_company?: string | null
           previous_production?: number | null
           qualified_at?: string | null
@@ -882,7 +882,7 @@ export type Database = {
           next_action_type?: string | null
           nipr_number?: string | null
           notes?: string | null
-          phone?: string
+          phone?: string | null
           previous_company?: string | null
           previous_production?: number | null
           qualified_at?: string | null

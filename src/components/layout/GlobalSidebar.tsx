@@ -98,10 +98,6 @@ export function GlobalSidebar({
       toolItems.push({ icon: Briefcase, label: "CRM", href: "/dashboard/crm" });
     }
 
-    if (isAdmin) {
-      toolItems.push({ icon: UserCog, label: "Accounts", href: "/dashboard/accounts" });
-    }
-
     if (isAdmin || isManager) {
       toolItems.push({ icon: Archive, label: "Aged Leads", href: "/dashboard/aged-leads" });
       toolItems.push({ icon: Headphones, label: "Call Center", href: "/dashboard/call-center" });

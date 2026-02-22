@@ -955,6 +955,30 @@ const handler = async (req: Request): Promise<Response> => {
       console.error("Background leaderboard notification failed:", err);
     });
 
+    // Auto opt-in: Send welcome notification via all channels (push + SMS + email)
+    (async () => {
+      try {
+        // SMS welcome via auto-detect (applicant likely doesn't have an account yet)
+        if (data.phone) {
+          await fetch(`${supabaseUrl}/functions/v1/send-sms-auto-detect`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${serviceRoleKey}`,
+            },
+            body: JSON.stringify({
+              phone: data.phone,
+              message: `Welcome to Apex Financial, ${data.firstName}! 🚀 Your application has been received. Check your email for next steps!`.substring(0, 160),
+              applicationId: inserted.id,
+            }),
+          });
+          console.log("Welcome SMS sent to:", data.phone);
+        }
+      } catch (err) {
+        console.error("Welcome notification failed:", err);
+      }
+    })();
+
     return new Response(
       JSON.stringify({ applicationId: inserted.id }),
       {

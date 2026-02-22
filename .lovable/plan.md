@@ -1,110 +1,76 @@
 
 
-# Notification Hub + Bulk Blast + Carrier Assignment
+# Twilio SMS Integration
 
-Three major deliverables in one build.
-
----
-
-## 1. Notification Log (Database Table)
-
-Create a `notification_log` table to record every notification sent across all channels:
-
-- `id` (uuid, PK)
-- `recipient_user_id` (uuid, nullable -- for agents/managers)
-- `recipient_email` (text)
-- `recipient_phone` (text, nullable)
-- `channel` (text -- 'push', 'sms', 'email')
-- `title` (text)
-- `message` (text)
-- `status` (text -- 'sent', 'failed', 'pending')
-- `error_message` (text, nullable)
-- `metadata` (jsonb -- extra context like lead name, trigger type)
-- `created_at` (timestamptz)
-
-RLS: Admin-only read access. Edge functions write via service role.
+Add real SMS capability via Twilio so you can text any lead with just their phone number — no carrier data needed.
 
 ---
 
-## 2. Update `send-notification` Edge Function
+## What You Need First
 
-Modify the unified notification function to log every send attempt to `notification_log` with channel, status, and error details.
-
----
-
-## 3. Notification Dashboard Page (`/dashboard/notifications`)
-
-A new admin-only page showing:
-
-- **Summary stats** at top: Total sent today, Push count, SMS count, Email count, Failed count
-- **Filterable table** of all notifications:
-  - Date/time, recipient email, channel (color-coded badge), title, message preview, status
-  - Filters: channel type, status, date range
-  - Search by recipient email or title
-- Auto-refreshes via realtime subscription
+1. Go to [twilio.com](https://twilio.com) and create a free account
+2. Get a phone number (takes 2 minutes, costs ~$1.15/month)
+3. From your Twilio Console, grab:
+   - **Account SID** (starts with "AC...")
+   - **Auth Token**
+   - **Twilio Phone Number** (the number you purchased, e.g. +1234567890)
 
 ---
 
-## 4. Add to Sidebar Navigation
+## What Gets Built
 
-Add a "Notifications" nav item (Bell icon) under the TOOLS section in `GlobalSidebar.tsx`, visible only to admins.
+### 1. Store Twilio Credentials
+Add three secrets to your project:
+- `TWILIO_ACCOUNT_SID`
+- `TWILIO_AUTH_TOKEN`
+- `TWILIO_PHONE_NUMBER`
 
----
+### 2. New Edge Function: `send-sms-twilio`
+A simple function that sends a real SMS via Twilio's REST API:
+- Takes `to` (phone number) and `body` (message text)
+- Normalizes phone to E.164 format (+1XXXXXXXXXX)
+- Logs the result to `notification_log` with channel = "sms-twilio"
+- No SDK needed — just a fetch call to Twilio's API
 
-## 5. Carrier Assignment Tool
+### 3. Update `send-notification` Function
+Add Twilio as the preferred SMS channel:
+- **Priority**: Push -> Twilio SMS -> Email-to-SMS (fallback if Twilio fails) -> Email
+- If the user has a phone number, use Twilio directly (no carrier needed)
+- Falls back to email-to-SMS gateway if Twilio creds aren't set
 
-Add a section to the Notification Dashboard (or a tab) where the admin can:
+### 4. Update `send-bulk-notification-blast`
+- For every applicant and aged lead with a phone number, send SMS via Twilio
+- No longer dependent on carrier data for SMS delivery
+- Still sends email in parallel
 
-- See all leads/agents with phone numbers but no carrier
-- Quick-assign a carrier from a dropdown for each one
-- Bulk-assign carriers (select multiple, assign same carrier)
-
-This updates the `carrier` field on `applications` and/or `profiles`.
-
----
-
-## 6. Bulk Blast Function + UI
-
-Create a new edge function `send-bulk-notification-blast` that:
-
-1. Fetches all active applicants (86) and all aged leads (925)
-2. For each applicant: sends licensing instructions email (same template as `send-licensing-instructions`)
-3. For each aged lead with email: sends the re-engagement email (same template as `send-aged-lead-email`)
-4. For any with carrier set: also sends SMS via `send-sms-via-email`
-5. Logs everything to `notification_log`
-6. Rate-limits at 1000ms between sends
-
-Add a "Blast All Leads" button on the Notification Dashboard with a confirmation dialog showing counts before sending.
-
----
-
-## 7. Route + App.tsx
-
-- Add `/dashboard/notifications` route (admin-only, lazy-loaded)
-- Add `NotificationHub.tsx` page component
+### 5. Update Notification Hub UI
+- Add a "sms-twilio" channel badge (green) alongside existing badges
+- Stats row shows Twilio SMS count separately
+- Carrier assignment tool becomes optional (still useful for cost savings with free email-to-SMS)
 
 ---
 
 ## Technical Details
 
-### Files to create:
-- `src/pages/NotificationHub.tsx` -- main dashboard page
-- Migration SQL for `notification_log` table + realtime
+### New file:
+- `supabase/functions/send-sms-twilio/index.ts`
 
-### Files to modify:
-- `supabase/functions/send-notification/index.ts` -- add logging to `notification_log`
-- `src/components/layout/GlobalSidebar.tsx` -- add nav item
-- `src/App.tsx` -- add route
-- `supabase/config.toml` -- add `send-bulk-notification-blast` config
+### Modified files:
+- `supabase/functions/send-notification/index.ts` — add Twilio as primary SMS
+- `supabase/functions/send-bulk-notification-blast/index.ts` — use Twilio for bulk SMS
+- `src/pages/NotificationHub.tsx` — add Twilio badge and stats
 
-### Files to create (edge functions):
-- `supabase/functions/send-bulk-notification-blast/index.ts`
+### Twilio API call (no SDK needed):
+```text
+POST https://api.twilio.com/2010-04-01/Accounts/{SID}/Messages.json
+Auth: Basic (SID:Token)
+Body: To, From, Body
+```
 
 ### Implementation order:
-1. Database migration (notification_log table)
-2. Update send-notification to log
-3. Create NotificationHub page with stats, table, carrier tool, blast button
-4. Create send-bulk-notification-blast edge function
-5. Add sidebar nav + route
-6. Deploy and test
-
+1. Request Twilio secrets from you
+2. Create `send-sms-twilio` edge function
+3. Update `send-notification` to use Twilio as primary SMS
+4. Update bulk blast to use Twilio
+5. Update Notification Hub UI
+6. Deploy and test with a single number before blasting

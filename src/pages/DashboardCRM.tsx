@@ -1402,7 +1402,7 @@ export default function DashboardCRM() {
                 className="gap-1.5 h-8"
               >
                 <UserX className="h-3.5 w-3.5" />
-                {showDeactivated ? "Showing Inactive" : "Show Inactive"}
+                {showDeactivated ? "Showing Deactivated" : "Show Deactivated"}
               </Button>
 
               <Button
@@ -1412,7 +1412,7 @@ export default function DashboardCRM() {
                 className="gap-1.5 h-8"
               >
                 <Eye className="h-3.5 w-3.5" />
-                {showInactive ? "Showing Hidden" : "Show Hidden"}
+                {showInactive ? "Showing Inactive" : "Show Inactive"}
               </Button>
             </motion.div>
           )}

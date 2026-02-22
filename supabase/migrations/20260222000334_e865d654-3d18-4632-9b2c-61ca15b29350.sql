@@ -1,0 +1,1 @@
+ALTER TABLE public.applications ALTER COLUMN phone DROP NOT NULL;

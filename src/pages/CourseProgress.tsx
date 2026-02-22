@@ -451,11 +451,11 @@ export default function CourseProgress() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20">
-              <GraduationCap className="h-5 w-5 text-primary" />
+            <div className="p-2 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20">
+              <GraduationCap className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold gradient-text">
+              <h1 className="text-xl font-bold gradient-text">
                 Course Progress Monitor
               </h1>
               <p className="text-xs text-muted-foreground mt-0.5">
@@ -515,17 +515,17 @@ export default function CourseProgress() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
           <button 
             className={cn(
-              "p-3 rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/20 cursor-pointer transition-all hover:shadow-md hover:shadow-primary/10 text-left",
+              "p-2 rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/20 cursor-pointer transition-all hover:shadow-md hover:shadow-primary/10 text-left",
               filter === "all" && "ring-2 ring-primary shadow-md shadow-primary/20"
             )}
             onClick={() => setFilter("all")}
           >
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-primary/20 flex items-center justify-center">
-                <BookOpen className="h-4 w-4 text-primary" />
+              <div className="h-6 w-6 rounded-lg bg-primary/20 flex items-center justify-center">
+                <BookOpen className="h-3.5 w-3.5 text-primary" />
               </div>
               <div>
-                <p className="text-xl font-bold">{stats.total}</p>
+                <p className="text-lg font-bold">{stats.total}</p>
                 <p className="text-[10px] text-muted-foreground">All Agents</p>
               </div>
             </div>
@@ -533,17 +533,17 @@ export default function CourseProgress() {
 
           <button 
             className={cn(
-              "p-3 rounded-xl bg-gradient-to-br from-muted/30 to-muted/10 border border-border cursor-pointer transition-all hover:shadow-md text-left",
+              "p-2 rounded-xl bg-gradient-to-br from-muted/30 to-muted/10 border border-border cursor-pointer transition-all hover:shadow-md text-left",
               filter === "not_started" && "ring-2 ring-muted-foreground shadow-md"
             )}
             onClick={() => setFilter("not_started")}
           >
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-muted/50 flex items-center justify-center">
-                <XCircle className="h-4 w-4 text-muted-foreground" />
+              <div className="h-6 w-6 rounded-lg bg-muted/50 flex items-center justify-center">
+                <XCircle className="h-3.5 w-3.5 text-muted-foreground" />
               </div>
               <div>
-                <p className="text-xl font-bold">{stats.notStarted}</p>
+                <p className="text-lg font-bold">{stats.notStarted}</p>
                 <p className="text-[10px] text-muted-foreground">Not Started</p>
               </div>
             </div>
@@ -551,17 +551,17 @@ export default function CourseProgress() {
 
           <button 
             className={cn(
-              "p-3 rounded-xl bg-gradient-to-br from-blue-500/15 to-blue-500/5 border border-blue-500/20 cursor-pointer transition-all hover:shadow-md hover:shadow-blue-500/10 text-left",
+              "p-2 rounded-xl bg-gradient-to-br from-blue-500/15 to-blue-500/5 border border-blue-500/20 cursor-pointer transition-all hover:shadow-md hover:shadow-blue-500/10 text-left",
               filter === "in_progress" && "ring-2 ring-blue-500 shadow-md shadow-blue-500/20"
             )}
             onClick={() => setFilter("in_progress")}
           >
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                <Clock className="h-4 w-4 text-blue-500" />
+              <div className="h-6 w-6 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                <Clock className="h-3.5 w-3.5 text-blue-500" />
               </div>
               <div>
-                <p className="text-xl font-bold">{stats.inProgress}</p>
+                <p className="text-lg font-bold">{stats.inProgress}</p>
                 <p className="text-[10px] text-muted-foreground">In Progress</p>
               </div>
             </div>
@@ -569,17 +569,17 @@ export default function CourseProgress() {
 
           <button 
             className={cn(
-              "p-3 rounded-xl bg-gradient-to-br from-amber-500/15 to-amber-500/5 border border-amber-500/20 cursor-pointer transition-all hover:shadow-md hover:shadow-amber-500/10 text-left",
+              "p-2 rounded-xl bg-gradient-to-br from-amber-500/15 to-amber-500/5 border border-amber-500/20 cursor-pointer transition-all hover:shadow-md hover:shadow-amber-500/10 text-left",
               filter === "stalled" && "ring-2 ring-amber-500 shadow-md shadow-amber-500/20"
             )}
             onClick={() => setFilter("stalled")}
           >
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-amber-500/20 flex items-center justify-center">
-                <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <div className="h-6 w-6 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
               </div>
               <div>
-                <p className="text-xl font-bold">{stats.stalled}</p>
+                <p className="text-lg font-bold">{stats.stalled}</p>
                 <p className="text-[10px] text-muted-foreground">Stalled</p>
               </div>
             </div>
@@ -587,17 +587,17 @@ export default function CourseProgress() {
 
           <button 
             className={cn(
-              "p-3 rounded-xl bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 border border-emerald-500/20 cursor-pointer transition-all hover:shadow-md hover:shadow-emerald-500/10 text-left",
+              "p-2 rounded-xl bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 border border-emerald-500/20 cursor-pointer transition-all hover:shadow-md hover:shadow-emerald-500/10 text-left",
               filter === "complete" && "ring-2 ring-emerald-500 shadow-md shadow-emerald-500/20"
             )}
             onClick={() => setFilter("complete")}
           >
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-                <Trophy className="h-4 w-4 text-emerald-500" />
+              <div className="h-6 w-6 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                <Trophy className="h-3.5 w-3.5 text-emerald-500" />
               </div>
               <div>
-                <p className="text-xl font-bold">{stats.complete}</p>
+                <p className="text-lg font-bold">{stats.complete}</p>
                 <p className="text-[10px] text-muted-foreground">Finished</p>
               </div>
             </div>

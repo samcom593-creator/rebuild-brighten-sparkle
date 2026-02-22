@@ -36,18 +36,17 @@ serve(async (req: Request) => {
     });
 
     // Verify the user
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claims, error: claimsError } = await userClient.auth.getClaims(token);
+    const { data: userData, error: userError } = await userClient.auth.getUser();
     
-    if (claimsError || !claims?.claims) {
-      console.error("Auth verification failed:", claimsError);
+    if (userError || !userData?.user) {
+      console.error("Auth verification failed:", userError);
       return new Response(
         JSON.stringify({ error: "Unauthorized - invalid token" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const userId = claims.claims.sub as string;
+    const userId = userData.user.id;
     console.log(`🔐 User ${userId} attempting merge`);
 
     // Use service role client for admin operations

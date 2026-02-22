@@ -26,7 +26,8 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AdminManagerInvites } from "@/components/dashboard/AdminManagerInvites";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 import {
   Table,
   TableBody,
@@ -75,6 +76,7 @@ interface AccountInfo {
 
 export default function DashboardAccounts() {
   const { isAdmin, isManager, isLoading: authLoading } = useAuth();
+  const { playSound } = useSoundEffects();
   const [searchQuery, setSearchQuery] = useState("");
   const [accounts, setAccounts] = useState<AccountInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -101,7 +103,7 @@ export default function DashboardAccounts() {
   const fetchAccounts = async () => {
     setIsLoading(true);
     try {
-      // Fetch all agents with their profiles and roles
+      // Batch fetch: all agents
       const { data: agents, error: agentsError } = await supabase
         .from("agents")
         .select("id, user_id, status, created_at")
@@ -109,44 +111,47 @@ export default function DashboardAccounts() {
 
       if (agentsError) throw agentsError;
 
-      const accountList: AccountInfo[] = [];
+      const validAgents = (agents || []).filter(a => a.user_id);
+      const userIds = validAgents.map(a => a.user_id!);
+
+      // Batch fetch profiles and roles in parallel
+      const [profilesResult, rolesResult] = await Promise.all([
+        supabase.from("profiles").select("user_id, full_name, email").in("user_id", userIds),
+        supabase.from("user_roles").select("user_id, role").in("user_id", userIds),
+      ]);
+
+      const profileMap = new Map<string, { full_name: string | null; email: string | null }>();
+      for (const p of profilesResult.data || []) {
+        profileMap.set(p.user_id, { full_name: p.full_name, email: p.email });
+      }
+
+      const roleMap = new Map<string, string>();
+      for (const r of rolesResult.data || []) {
+        roleMap.set(r.user_id, r.role);
+      }
+
       let managersCount = 0;
       let agentsCount = 0;
       let pendingCount = 0;
 
-      for (const agent of agents || []) {
-        if (!agent.user_id) continue;
-
-        // Get profile
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("full_name, email")
-          .eq("user_id", agent.user_id)
-          .maybeSingle();
-
-        // Get role
-        const { data: roleData } = await supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", agent.user_id)
-          .maybeSingle();
-
-        const role = roleData?.role as "admin" | "manager" | "agent" || "agent";
+      const accountList: AccountInfo[] = validAgents.map(agent => {
+        const profile = profileMap.get(agent.user_id!);
+        const role = (roleMap.get(agent.user_id!) || "agent") as "admin" | "manager" | "agent";
 
         if (role === "manager") managersCount++;
         if (role === "agent") agentsCount++;
         if (agent.status === "pending") pendingCount++;
 
-        accountList.push({
+        return {
           id: agent.id,
-          userId: agent.user_id,
+          userId: agent.user_id!,
           name: profile?.full_name || "Unknown",
           email: profile?.email || "Unknown",
           role,
           status: agent.status,
           createdAt: agent.created_at,
-        });
-      }
+        };
+      });
 
       setAccounts(accountList);
       setStats({
@@ -164,6 +169,7 @@ export default function DashboardAccounts() {
   };
 
   const handleEditAccount = (account: AccountInfo) => {
+    playSound("click");
     setEditingAccount(account);
     setEditName(account.name);
     setEditEmail(account.email);
@@ -200,14 +206,13 @@ export default function DashboardAccounts() {
       );
 
       const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Failed to update email");
 
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to update email");
-      }
-
+      playSound("success");
       toast.success(`Email updated to ${editEmail}`);
       fetchAccounts();
     } catch (err: any) {
+      playSound("error");
       console.error("Error updating email:", err);
       toast.error(err.message || "Failed to update email");
     } finally {
@@ -220,7 +225,6 @@ export default function DashboardAccounts() {
     setIsSaving(true);
 
     try {
-      // Update profile name
       const { error: profileError } = await supabase
         .from("profiles")
         .update({ full_name: editName })
@@ -228,7 +232,6 @@ export default function DashboardAccounts() {
 
       if (profileError) throw profileError;
 
-      // Update role if changed (admin only)
       if (isAdmin && editRole !== editingAccount.role) {
         const { error: roleError } = await supabase
           .from("user_roles")
@@ -238,10 +241,12 @@ export default function DashboardAccounts() {
         if (roleError) throw roleError;
       }
 
+      playSound("success");
       toast.success("Account updated successfully");
       setEditDialogOpen(false);
       fetchAccounts();
     } catch (error) {
+      playSound("error");
       console.error("Error updating account:", error);
       toast.error("Failed to update account");
     } finally {
@@ -269,9 +274,11 @@ export default function DashboardAccounts() {
 
       if (error) throw error;
 
+      playSound(newStatus === "active" ? "celebrate" : "whoosh");
       toast.success(`Account ${action}d successfully`);
       fetchAccounts();
     } catch (error) {
+      playSound("error");
       console.error(`Error ${action}ing account:`, error);
       toast.error(`Failed to ${action} account`);
     }
@@ -338,7 +345,6 @@ export default function DashboardAccounts() {
     }
   };
 
-  // Access control check
   if (authLoading) {
     return (
       <DashboardLayout>
@@ -353,6 +359,13 @@ export default function DashboardAccounts() {
     return <Navigate to="/dashboard" replace />;
   }
 
+  const statCards = [
+    { label: "Total Accounts", value: stats.totalAccounts, icon: Users, gradient: "from-primary/20 to-primary/5 border-primary/20", color: "text-primary" },
+    { label: "Managers", value: stats.managers, icon: Shield, gradient: "from-blue-500/20 to-blue-500/5 border-blue-500/20", color: "text-blue-400" },
+    { label: "Agents", value: stats.agents, icon: UserPlus, gradient: "from-emerald-500/20 to-emerald-500/5 border-emerald-500/20", color: "text-emerald-400" },
+    { label: "Pending", value: stats.pendingApproval, icon: AlertTriangle, gradient: "from-amber-500/20 to-amber-500/5 border-amber-500/20", color: "text-amber-400" },
+  ];
+
   return (
     <DashboardLayout>
       {/* Header */}
@@ -366,52 +379,45 @@ export default function DashboardAccounts() {
           <h1 className="text-3xl font-bold">Accounts</h1>
         </div>
         <p className="text-muted-foreground">
-          Manage all manager and agent accounts. Create invite links to add new managers.
+          Manage all manager and agent accounts.
         </p>
       </motion.div>
 
-      {/* Stats */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"
-      >
-        {[
-          { label: "Total Accounts", value: stats.totalAccounts, icon: Users, color: "text-primary" },
-          { label: "Managers", value: stats.managers, icon: Shield, color: "text-blue-400" },
-          { label: "Agents", value: stats.agents, icon: UserPlus, color: "text-emerald-400" },
-          { label: "Pending Approval", value: stats.pendingApproval, icon: AlertTriangle, color: "text-amber-400" },
-        ].map((stat) => (
-          <GlassCard key={stat.label} className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-muted">
-                <stat.icon className={cn("h-5 w-5", stat.color)} />
+      {/* Animated Stat Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        {statCards.map((stat, i) => (
+          <motion.div
+            key={stat.label}
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ delay: i * 0.05, type: "spring", stiffness: 200 }}
+          >
+            <div className={cn(
+              "relative overflow-hidden rounded-xl border bg-gradient-to-br p-4 backdrop-blur-sm transition-all hover:scale-[1.02] hover:shadow-lg",
+              stat.gradient
+            )}>
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-background/50">
+                  <stat.icon className={cn("h-5 w-5", stat.color)} />
+                </div>
+                <div>
+                  <p className={cn("text-2xl font-bold", stat.color)}>
+                    <AnimatedCounter value={stat.value} />
+                  </p>
+                  <p className="text-xs text-muted-foreground">{stat.label}</p>
+                </div>
               </div>
-              <div>
-                <p className={cn("text-2xl font-bold", stat.color)}>{stat.value}</p>
-                <p className="text-xs text-muted-foreground">{stat.label}</p>
-              </div>
+              <div className="absolute -right-4 -top-4 h-16 w-16 rounded-full bg-current opacity-10 blur-xl" />
             </div>
-          </GlassCard>
+          </motion.div>
         ))}
-      </motion.div>
-
-      {/* Manager Invite Links - The main feature! */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15 }}
-        className="mb-8"
-      >
-        <AdminManagerInvites />
-      </motion.div>
+      </div>
 
       {/* Search */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
+        transition={{ delay: 0.15 }}
         className="mb-6"
       >
         <div className="relative max-w-md">
@@ -429,7 +435,7 @@ export default function DashboardAccounts() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.25 }}
+        transition={{ delay: 0.2 }}
       >
         <GlassCard className="p-6">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
@@ -493,8 +499,10 @@ export default function DashboardAccounts() {
                                     body: { email: account.email, type: "reset" },
                                   });
                                   if (error) throw error;
+                                  playSound("success");
                                   toast.success(`Password reset email sent to ${account.email}`);
                                 } catch (err: any) {
+                                  playSound("error");
                                   toast.error(err.message || "Failed to send password reset");
                                 }
                               }}
@@ -509,8 +517,10 @@ export default function DashboardAccounts() {
                                     body: { email: account.email, destination: "portal" }
                                   });
                                   if (error) throw error;
+                                  playSound("success");
                                   toast.success(`Magic login link sent to ${account.email}`);
                                 } catch (err: any) {
+                                  playSound("error");
                                   toast.error(err.message || "Failed to send login link");
                                 }
                               }}

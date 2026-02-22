@@ -1,12 +1,13 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Calendar, Clock, AlertTriangle, ChevronDown, ChevronUp, Phone, CheckCircle2,
+  Calendar, Clock, AlertTriangle, ChevronDown, ChevronUp, Phone, CheckCircle2, X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +16,7 @@ import {
 import { isFeatureEnabled } from "@/lib/featureFlags";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, isToday, isBefore, format } from "date-fns";
+import { toast } from "sonner";
 
 interface ScheduleItem {
   id: string;
@@ -29,12 +31,14 @@ interface ScheduleItem {
 export function ScheduleBar() {
   const { user } = useAuth();
   const isMobile = useIsMobile();
+  const { playSound } = useSoundEffects();
+  const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState(!isMobile);
   const [detailItem, setDetailItem] = useState<ScheduleItem | null>(null);
+  const [dismissingId, setDismissingId] = useState<string | null>(null);
 
   const enabled = isFeatureEnabled("scheduleBar");
 
-  // Fetch interviews
   const { data: interviews } = useQuery({
     queryKey: ["schedule-bar-interviews", user?.id],
     queryFn: async () => {
@@ -52,7 +56,6 @@ export function ScheduleBar() {
     refetchInterval: 60_000,
   });
 
-  // Fetch overdue leads (last_contacted_at > 48h or null)
   const { data: overdueLeads } = useQuery({
     queryKey: ["schedule-bar-overdue", user?.id],
     queryFn: async () => {
@@ -71,26 +74,56 @@ export function ScheduleBar() {
     refetchInterval: 60_000,
   });
 
+  const handleDismiss = async (item: ScheduleItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDismissingId(item.id);
+    
+    try {
+      if (item.type === "interview") {
+        await supabase
+          .from("scheduled_interviews")
+          .update({ status: "completed" })
+          .eq("id", item.id);
+      } else if (item.leadId) {
+        await supabase
+          .from("applications")
+          .update({ last_contacted_at: new Date().toISOString() })
+          .eq("id", item.leadId);
+      }
+      
+      playSound("success");
+      toast.success(`${item.title} marked as handled`);
+      
+      // Refetch to remove dismissed item
+      queryClient.invalidateQueries({ queryKey: ["schedule-bar-interviews"] });
+      queryClient.invalidateQueries({ queryKey: ["schedule-bar-overdue"] });
+    } catch {
+      playSound("error");
+      toast.error("Failed to dismiss");
+    } finally {
+      setDismissingId(null);
+    }
+  };
+
   const items = useMemo<ScheduleItem[]>(() => {
     const result: ScheduleItem[] = [];
     const now = new Date();
 
-    // Interviews
     if (interviews) {
       for (const iv of interviews) {
+        if (iv.status === "completed") continue;
         const date = new Date(iv.interview_date);
         const app = (iv as any).applications;
         const name = app ? `${app.first_name} ${app.last_name}`.trim() : "Unknown";
         let color: ScheduleItem["color"] = "blue";
-        if (iv.status === "completed") color = "green";
-        else if (isBefore(date, now)) color = "red";
+        if (isBefore(date, now)) color = "red";
         else if (isToday(date)) color = "orange";
 
         result.push({
           id: iv.id,
           type: "interview",
           title: name,
-          subtitle: iv.status === "completed" ? "Completed" : format(date, "h:mm a"),
+          subtitle: format(date, "h:mm a"),
           time: date,
           color,
           leadId: iv.application_id,
@@ -98,7 +131,6 @@ export function ScheduleBar() {
       }
     }
 
-    // Overdue leads
     if (overdueLeads) {
       for (const lead of overdueLeads.slice(0, 8)) {
         const name = `${lead.first_name} ${lead.last_name || ""}`.trim();
@@ -173,11 +205,12 @@ export function ScheduleBar() {
                 {items.map((item) => {
                   const Icon = iconMap[item.type];
                   return (
-                    <button
+                    <motion.button
                       key={item.id}
+                      whileTap={{ scale: 0.95 }}
                       onClick={() => setDetailItem(item)}
                       className={cn(
-                        "flex items-center gap-1.5 shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-all hover:scale-[1.02]",
+                        "group relative flex items-center gap-1.5 shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-all hover:scale-[1.02]",
                         colorMap[item.color]
                       )}
                     >
@@ -186,7 +219,18 @@ export function ScheduleBar() {
                       {item.subtitle && (
                         <span className="opacity-70 text-[10px]">{item.subtitle}</span>
                       )}
-                    </button>
+                      {/* Dismiss X button */}
+                      <span
+                        role="button"
+                        onClick={(e) => handleDismiss(item, e)}
+                        className={cn(
+                          "ml-1 flex h-4 w-4 items-center justify-center rounded-full bg-background/60 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background",
+                          dismissingId === item.id && "animate-spin opacity-100"
+                        )}
+                      >
+                        <X className="h-2.5 w-2.5" />
+                      </span>
+                    </motion.button>
                   );
                 })}
               </div>
@@ -232,13 +276,14 @@ export function ScheduleBar() {
                             .update({ last_contacted_at: new Date().toISOString() })
                             .eq("id", detailItem.leadId!);
                         }
+                        playSound("success");
                         setDetailItem(null);
+                        queryClient.invalidateQueries({ queryKey: ["schedule-bar-overdue"] });
                       }}
                     >
                       <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
                       {detailItem.type === "interview" ? "View Lead" : "Mark Contacted"}
                     </Button>
-                    {/* No-Show Recovery for past-due interviews */}
                     {detailItem.type === "interview" && detailItem.color === "red" && (
                       <Button
                         size="sm"
@@ -259,11 +304,12 @@ export function ScheduleBar() {
                                 details: { interview_id: detailItem.id },
                               });
                             }
-                            const { toast } = await import("sonner");
+                            playSound("whoosh");
                             toast.success("Marked as no-show. Consider rescheduling.");
                             setDetailItem(null);
+                            queryClient.invalidateQueries({ queryKey: ["schedule-bar-interviews"] });
                           } catch {
-                            const { toast } = await import("sonner");
+                            playSound("error");
                             toast.error("Failed to update");
                           }
                         }}

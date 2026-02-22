@@ -42,6 +42,7 @@ import { cn } from "@/lib/utils";
 import { getTodayPST } from "@/lib/dateUtils";
 import apexIcon from "@/assets/apex-icon.png";
 import { ProductionForecast } from "@/components/dashboard/ProductionForecast";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 const motivationalQuotes = [
   "Success is not final, failure is not fatal: it's the courage to continue that counts.",
@@ -106,6 +107,7 @@ function QuickStat({
 
 export default function AgentPortal() {
   const navigate = useNavigate();
+  const { playSound } = useSoundEffects();
   const { user, profile, isLoading: authLoading, isAdmin, isManager } = useAuth();
   const [agentId, setAgentId] = useState<string | null>(null);
   const [todayProduction, setTodayProduction] = useState<any>(null);
@@ -313,6 +315,7 @@ export default function AgentPortal() {
   };
 
   const handleSaved = () => {
+    playSound("celebrate");
     fetchAgentData();
     setRefreshKey((k) => k + 1);
   };
@@ -534,7 +537,7 @@ export default function AgentPortal() {
               key={tab.key}
               variant={activeTab === tab.key ? "default" : "outline"}
               size="sm"
-              onClick={() => setActiveTab(tab.key as any)}
+              onClick={() => { playSound("click"); setActiveTab(tab.key as any); }}
               className="flex-shrink-0 gap-1.5"
             >
               <tab.icon className="h-4 w-4" />

@@ -174,7 +174,10 @@ export function ScheduleBar() {
     <>
       <div className="border-b border-border/50 bg-card/50 backdrop-blur-sm">
         <button
-          onClick={() => setExpanded((v) => !v)}
+          onClick={() => {
+            playSound("click");
+            setExpanded((v) => !v);
+          }}
           className="flex items-center gap-2 w-full px-4 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
           <Clock className="h-3.5 w-3.5" />
@@ -211,7 +214,8 @@ export function ScheduleBar() {
                       onClick={() => setDetailItem(item)}
                       className={cn(
                         "group relative flex items-center gap-1.5 shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-all hover:scale-[1.02]",
-                        colorMap[item.color]
+                        colorMap[item.color],
+                        item.color === "red" && "animate-pulse"
                       )}
                     >
                       <Icon className="h-3 w-3 shrink-0" />

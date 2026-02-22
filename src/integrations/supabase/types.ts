@@ -1525,6 +1525,48 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_log: {
+        Row: {
+          channel: string
+          created_at: string
+          error_message: string | null
+          id: string
+          message: string
+          metadata: Json | null
+          recipient_email: string | null
+          recipient_phone: string | null
+          recipient_user_id: string | null
+          status: string
+          title: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message: string
+          metadata?: Json | null
+          recipient_email?: string | null
+          recipient_phone?: string | null
+          recipient_user_id?: string | null
+          status?: string
+          title: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message?: string
+          metadata?: Json | null
+          recipient_email?: string | null
+          recipient_phone?: string | null
+          recipient_user_id?: string | null
+          status?: string
+          title?: string
+        }
+        Relationships: []
+      }
       onboarding_modules: {
         Row: {
           created_at: string | null

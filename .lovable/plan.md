@@ -1,100 +1,110 @@
 
 
-# PWA Push Notifications + Email-to-SMS Gateway
+# Notification Hub + Bulk Blast + Carrier Assignment
 
-Two notification channels that work today with zero third-party SMS signup.
-
----
-
-## Part A: Email-to-SMS Gateway (using Resend you already have)
-
-Every US carrier has a free email-to-SMS gateway. Send an email to `{10-digit-number}@gateway` and it arrives as a text message.
-
-**Carrier map** (covers ~95% of US phones):
-
-| Carrier | Gateway |
-|---------|---------|
-| AT&T | txt.att.net |
-| Verizon | vtext.com |
-| T-Mobile | tmomail.net |
-| Sprint (T-Mobile) | messaging.sprintpcs.com |
-| US Cellular | email.uscc.net |
-| Cricket | sms.cricketwireless.net |
-| Metro | mymetropcs.com |
-| Boost | sms.myboostmobile.com |
-
-**Limitation**: You need to know the carrier. We solve this by adding a `carrier` dropdown to the application form and profile settings. When we know the carrier, we construct the gateway address and send via Resend.
-
-### New edge function: `send-sms-via-email`
-- Accepts `{ phone, carrier, message }` (or `{ agentId, message }` to auto-resolve)
-- Looks up the carrier gateway address
-- Sends a plain-text email via Resend to `{phone}@{gateway}`
-- Returns success/failure
-
-### Database changes
-- Add `carrier` column (text, nullable) to `applications` table
-- Add `carrier` column (text, nullable) to `profiles` table
-
-### UI changes
-- Add carrier dropdown to the Apply form (Step 1 where phone is collected)
-- Add carrier dropdown to ProfileSettings
-- Optional: add carrier dropdown to AddAgentModal
+Three major deliverables in one build.
 
 ---
 
-## Part B: PWA Push Notifications (Web Push API)
+## 1. Notification Log (Database Table)
 
-Works on Android, Windows, Mac. iOS 16.4+ supports it for installed PWAs.
+Create a `notification_log` table to record every notification sent across all channels:
 
-### How it works
-1. Generate VAPID keys (public + private key pair) -- stored as backend secrets
-2. Frontend asks user for notification permission and subscribes via `pushManager.subscribe()`
-3. Frontend sends the subscription object (endpoint + keys) to the database
-4. Backend edge function uses the `web-push` library to send push notifications to all stored subscriptions
-
-### New database table: `push_subscriptions`
 - `id` (uuid, PK)
-- `user_id` (uuid, references profiles.user_id)
-- `endpoint` (text, not null)
-- `p256dh` (text, not null)
-- `auth` (text, not null)
+- `recipient_user_id` (uuid, nullable -- for agents/managers)
+- `recipient_email` (text)
+- `recipient_phone` (text, nullable)
+- `channel` (text -- 'push', 'sms', 'email')
+- `title` (text)
+- `message` (text)
+- `status` (text -- 'sent', 'failed', 'pending')
+- `error_message` (text, nullable)
+- `metadata` (jsonb -- extra context like lead name, trigger type)
 - `created_at` (timestamptz)
-- RLS: users can INSERT/SELECT/DELETE their own subscriptions
 
-### New secrets needed
-- `VAPID_PUBLIC_KEY` -- I will generate this for you (also exposed to frontend via an edge function)
-- `VAPID_PRIVATE_KEY` -- I will generate this for you
-
-### New edge function: `get-vapid-public-key`
-- Returns the public VAPID key so the frontend can subscribe
-
-### New edge function: `send-push-notification`
-- Accepts `{ userId, title, body, url }` (or `{ userIds: [...] }` for bulk)
-- Fetches all push subscriptions for the user(s)
-- Sends web push via the `web-push` npm package
-- Cleans up expired/invalid subscriptions automatically
-
-### Frontend changes
-- New hook: `usePushNotifications` -- handles permission request, subscription, and saving to DB
-- Add "Enable Notifications" button/prompt to Agent Portal and Settings page
-- Service worker already exists (via vite-plugin-pwa) -- add a `push` event listener in a custom service worker snippet
-
-### Integration with existing notifications
-- After building both channels, add a helper `sendNotification(userId, message, title)` that:
-  1. Sends a push notification (if subscription exists)
-  2. Sends an email-to-SMS (if carrier is known)
-  3. Falls back to email only (existing behavior)
-- Wire this into key flows: deal alerts, streak alerts, milestone congrats, etc.
+RLS: Admin-only read access. Edge functions write via service role.
 
 ---
 
-## Implementation Order
+## 2. Update `send-notification` Edge Function
 
-1. Database migration: add `carrier` column to `applications` and `profiles`, create `push_subscriptions` table
-2. Create `send-sms-via-email` edge function
-3. Add carrier dropdown to Apply form and ProfileSettings
-4. Generate VAPID keys and store as secrets
-5. Create `get-vapid-public-key` and `send-push-notification` edge functions
-6. Add push event listener to service worker
-7. Create `usePushNotifications` hook and UI prompt
-8. Create unified `sendNotification` helper and wire into existing notification flows
+Modify the unified notification function to log every send attempt to `notification_log` with channel, status, and error details.
+
+---
+
+## 3. Notification Dashboard Page (`/dashboard/notifications`)
+
+A new admin-only page showing:
+
+- **Summary stats** at top: Total sent today, Push count, SMS count, Email count, Failed count
+- **Filterable table** of all notifications:
+  - Date/time, recipient email, channel (color-coded badge), title, message preview, status
+  - Filters: channel type, status, date range
+  - Search by recipient email or title
+- Auto-refreshes via realtime subscription
+
+---
+
+## 4. Add to Sidebar Navigation
+
+Add a "Notifications" nav item (Bell icon) under the TOOLS section in `GlobalSidebar.tsx`, visible only to admins.
+
+---
+
+## 5. Carrier Assignment Tool
+
+Add a section to the Notification Dashboard (or a tab) where the admin can:
+
+- See all leads/agents with phone numbers but no carrier
+- Quick-assign a carrier from a dropdown for each one
+- Bulk-assign carriers (select multiple, assign same carrier)
+
+This updates the `carrier` field on `applications` and/or `profiles`.
+
+---
+
+## 6. Bulk Blast Function + UI
+
+Create a new edge function `send-bulk-notification-blast` that:
+
+1. Fetches all active applicants (86) and all aged leads (925)
+2. For each applicant: sends licensing instructions email (same template as `send-licensing-instructions`)
+3. For each aged lead with email: sends the re-engagement email (same template as `send-aged-lead-email`)
+4. For any with carrier set: also sends SMS via `send-sms-via-email`
+5. Logs everything to `notification_log`
+6. Rate-limits at 1000ms between sends
+
+Add a "Blast All Leads" button on the Notification Dashboard with a confirmation dialog showing counts before sending.
+
+---
+
+## 7. Route + App.tsx
+
+- Add `/dashboard/notifications` route (admin-only, lazy-loaded)
+- Add `NotificationHub.tsx` page component
+
+---
+
+## Technical Details
+
+### Files to create:
+- `src/pages/NotificationHub.tsx` -- main dashboard page
+- Migration SQL for `notification_log` table + realtime
+
+### Files to modify:
+- `supabase/functions/send-notification/index.ts` -- add logging to `notification_log`
+- `src/components/layout/GlobalSidebar.tsx` -- add nav item
+- `src/App.tsx` -- add route
+- `supabase/config.toml` -- add `send-bulk-notification-blast` config
+
+### Files to create (edge functions):
+- `supabase/functions/send-bulk-notification-blast/index.ts`
+
+### Implementation order:
+1. Database migration (notification_log table)
+2. Update send-notification to log
+3. Create NotificationHub page with stats, table, carrier tool, blast button
+4. Create send-bulk-notification-blast edge function
+5. Add sidebar nav + route
+6. Deploy and test
+

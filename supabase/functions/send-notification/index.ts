@@ -22,6 +22,37 @@ const CARRIER_GATEWAYS: Record<string, string> = {
   boost: "sms.myboostmobile.com",
 };
 
+async function logNotification(
+  supabase: any,
+  data: {
+    recipient_user_id?: string;
+    recipient_email?: string;
+    recipient_phone?: string;
+    channel: string;
+    title: string;
+    message: string;
+    status: string;
+    error_message?: string;
+    metadata?: any;
+  }
+) {
+  try {
+    await supabase.from("notification_log").insert({
+      recipient_user_id: data.recipient_user_id || null,
+      recipient_email: data.recipient_email || null,
+      recipient_phone: data.recipient_phone || null,
+      channel: data.channel,
+      title: data.title,
+      message: data.message,
+      status: data.status,
+      error_message: data.error_message || null,
+      metadata: data.metadata || {},
+    });
+  } catch (e) {
+    console.error("Failed to log notification:", e);
+  }
+}
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -55,6 +86,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const recipientEmail = email || profileData?.email;
+    const logMeta = { url, trigger: "send-notification" };
 
     // 1. Try push notification
     if (userId) {
@@ -69,8 +101,28 @@ const handler = async (req: Request): Promise<Response> => {
         });
         const pushResult = await pushResponse.json();
         results.push = pushResult.sent > 0;
-      } catch (err) {
+        await logNotification(supabase, {
+          recipient_user_id: userId,
+          recipient_email: recipientEmail,
+          channel: "push",
+          title: title || "Notification",
+          message: message || "",
+          status: results.push ? "sent" : "failed",
+          error_message: results.push ? null : "No push subscriptions",
+          metadata: logMeta,
+        });
+      } catch (err: any) {
         console.error("Push notification failed:", err);
+        await logNotification(supabase, {
+          recipient_user_id: userId,
+          recipient_email: recipientEmail,
+          channel: "push",
+          title: title || "Notification",
+          message: message || "",
+          status: "failed",
+          error_message: err.message,
+          metadata: logMeta,
+        });
       }
     }
 
@@ -89,8 +141,27 @@ const handler = async (req: Request): Promise<Response> => {
               text: `${title}: ${message}`.substring(0, 160),
             });
             results.sms = true;
-          } catch (err) {
+            await logNotification(supabase, {
+              recipient_user_id: userId,
+              recipient_phone: profileData.phone,
+              channel: "sms",
+              title: title || "Notification",
+              message: `${title}: ${message}`.substring(0, 160),
+              status: "sent",
+              metadata: { ...logMeta, carrier: profileData.carrier, gateway: smsEmail },
+            });
+          } catch (err: any) {
             console.error("SMS via email failed:", err);
+            await logNotification(supabase, {
+              recipient_user_id: userId,
+              recipient_phone: profileData.phone,
+              channel: "sms",
+              title: title || "Notification",
+              message: `${title}: ${message}`.substring(0, 160),
+              status: "failed",
+              error_message: err.message,
+              metadata: { ...logMeta, carrier: profileData.carrier },
+            });
           }
         }
       }
@@ -114,8 +185,27 @@ const handler = async (req: Request): Promise<Response> => {
           `,
         });
         results.email = true;
-      } catch (err) {
+        await logNotification(supabase, {
+          recipient_user_id: userId,
+          recipient_email: recipientEmail,
+          channel: "email",
+          title: title || "Notification",
+          message: message || "",
+          status: "sent",
+          metadata: logMeta,
+        });
+      } catch (err: any) {
         console.error("Email fallback failed:", err);
+        await logNotification(supabase, {
+          recipient_user_id: userId,
+          recipient_email: recipientEmail,
+          channel: "email",
+          title: title || "Notification",
+          message: message || "",
+          status: "failed",
+          error_message: err.message,
+          metadata: logMeta,
+        });
       }
     }
 

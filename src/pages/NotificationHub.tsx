@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Bell, Mail, MessageSquare, Smartphone, AlertTriangle, Send, Search, RefreshCw, Zap, Phone } from "lucide-react";
+import { Bell, Mail, MessageSquare, Smartphone, AlertTriangle, Send, Search, RefreshCw, Zap, Phone, Radio, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { CARRIER_OPTIONS } from "@/lib/carrierOptions";
@@ -24,12 +24,13 @@ function NotificationStats({ logs }: { logs: any[] }) {
     { label: "Total Today", value: todayLogs.length, icon: Bell, color: "text-primary" },
     { label: "Push", value: todayLogs.filter((l) => l.channel === "push").length, icon: Smartphone, color: "text-blue-500" },
     { label: "SMS", value: todayLogs.filter((l) => l.channel === "sms").length, icon: MessageSquare, color: "text-green-500" },
+    { label: "Auto SMS", value: todayLogs.filter((l) => l.channel === "sms-auto").length, icon: Radio, color: "text-purple-500" },
     { label: "Email", value: todayLogs.filter((l) => l.channel === "email").length, icon: Mail, color: "text-amber-500" },
     { label: "Failed", value: todayLogs.filter((l) => l.status === "failed").length, icon: AlertTriangle, color: "text-destructive" },
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
       {stats.map((s) => (
         <Card key={s.label} className="border-border/50">
           <CardContent className="p-4 flex items-center gap-3">
@@ -47,21 +48,64 @@ function NotificationStats({ logs }: { logs: any[] }) {
 
 // ─── Channel Badge ───
 function ChannelBadge({ channel }: { channel: string }) {
-  const config: Record<string, { variant: "default" | "secondary" | "outline" | "destructive"; label: string }> = {
+  const config: Record<string, { variant: "default" | "secondary" | "outline" | "destructive"; label: string; className?: string }> = {
     push: { variant: "default", label: "Push" },
     sms: { variant: "secondary", label: "SMS" },
+    "sms-auto": { variant: "outline", label: "SMS Auto", className: "border-purple-500 text-purple-600" },
     email: { variant: "outline", label: "Email" },
   };
   const c = config[channel] || { variant: "outline" as const, label: channel };
-  return <Badge variant={c.variant}>{c.label}</Badge>;
+  return <Badge variant={c.variant} className={c.className}>{c.label}</Badge>;
+}
+
+// ─── Mark Delivered Button ───
+function MarkDeliveredButton({ log, onMarked }: { log: any; onMarked: () => void }) {
+  const [saving, setSaving] = useState(false);
+
+  if (log.channel !== "sms-auto" || log.status !== "sent") return null;
+
+  const carrier = log.metadata?.carrier;
+  const applicationId = log.metadata?.applicationId;
+  const agedLeadId = log.metadata?.agedLeadId;
+
+  const handleMark = async () => {
+    if (!carrier) return;
+    setSaving(true);
+    try {
+      if (applicationId) {
+        await supabase.from("applications").update({ carrier }).eq("id", applicationId);
+      }
+      toast.success(`Carrier "${carrier}" saved for this lead`);
+      onMarked();
+    } catch (err: any) {
+      toast.error("Failed to save carrier");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Button
+      size="sm"
+      variant="ghost"
+      className="h-7 text-xs text-purple-600 hover:text-purple-700"
+      onClick={handleMark}
+      disabled={saving || !carrier}
+      title={`Mark ${carrier} as confirmed carrier`}
+    >
+      <CheckCircle className="h-3 w-3 mr-1" />
+      Mark {carrier}
+    </Button>
+  );
 }
 
 // ─── Notification Log Table ───
-function NotificationLogTable({ logs, search, channelFilter, statusFilter }: {
+function NotificationLogTable({ logs, search, channelFilter, statusFilter, onRefresh }: {
   logs: any[];
   search: string;
   channelFilter: string;
   statusFilter: string;
+  onRefresh: () => void;
 }) {
   const filtered = useMemo(() => {
     return logs.filter((l) => {
@@ -71,6 +115,7 @@ function NotificationLogTable({ logs, search, channelFilter, statusFilter }: {
         const q = search.toLowerCase();
         return (
           l.recipient_email?.toLowerCase().includes(q) ||
+          l.recipient_phone?.toLowerCase().includes(q) ||
           l.title?.toLowerCase().includes(q) ||
           l.message?.toLowerCase().includes(q)
         );
@@ -90,12 +135,13 @@ function NotificationLogTable({ logs, search, channelFilter, statusFilter }: {
             <TableHead>Title</TableHead>
             <TableHead className="hidden md:table-cell">Message</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {filtered.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                 No notifications found
               </TableCell>
             </TableRow>
@@ -118,6 +164,9 @@ function NotificationLogTable({ logs, search, channelFilter, statusFilter }: {
                     {log.status}
                   </Badge>
                 </TableCell>
+                <TableCell>
+                  <MarkDeliveredButton log={log} onMarked={onRefresh} />
+                </TableCell>
               </TableRow>
             ))
           )}
@@ -132,6 +181,7 @@ function CarrierAssignmentTool() {
   const queryClient = useQueryClient();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkCarrier, setBulkCarrier] = useState("");
+  const [autoBlasting, setAutoBlasting] = useState(false);
 
   const { data: leads, isLoading } = useQuery({
     queryKey: ["leads-missing-carrier"],
@@ -167,6 +217,31 @@ function CarrierAssignmentTool() {
     toast.success(`Carrier assigned to ${selectedIds.size} leads`);
   };
 
+  const handleAutoBlast = async () => {
+    if (!leads?.length) return;
+    setAutoBlasting(true);
+    let sent = 0;
+    try {
+      for (const lead of leads) {
+        if (!lead.phone) continue;
+        const { error } = await supabase.functions.invoke("send-sms-auto-detect", {
+          body: {
+            phone: lead.phone,
+            message: `Hey ${lead.first_name}! Apex Financial has an opportunity for you — check your email! 🚀`.substring(0, 160),
+            applicationId: lead.id,
+          },
+        });
+        if (!error) sent++;
+      }
+      toast.success(`Auto-blast sent to ${sent} leads across all carriers`);
+      queryClient.invalidateQueries({ queryKey: ["notification-logs"] });
+    } catch (err: any) {
+      toast.error(err.message || "Auto-blast failed");
+    } finally {
+      setAutoBlasting(false);
+    }
+  };
+
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -190,24 +265,52 @@ function CarrierAssignmentTool() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {selectedIds.size > 0 && (
-          <div className="flex items-center gap-3 mb-4 p-3 bg-muted rounded-lg">
-            <span className="text-sm font-medium">{selectedIds.size} selected</span>
-            <Select value={bulkCarrier} onValueChange={setBulkCarrier}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Bulk carrier..." />
-              </SelectTrigger>
-              <SelectContent>
-                {CARRIER_OPTIONS.map((c) => (
-                  <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button size="sm" onClick={bulkAssign} disabled={!bulkCarrier}>
-              Assign All
-            </Button>
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+              <span className="text-sm font-medium">{selectedIds.size} selected</span>
+              <Select value={bulkCarrier} onValueChange={setBulkCarrier}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Bulk carrier..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {CARRIER_OPTIONS.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button size="sm" onClick={bulkAssign} disabled={!bulkCarrier}>
+                Assign All
+              </Button>
+            </div>
+          )}
+
+          {(leads?.length || 0) > 0 && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" disabled={autoBlasting} className="border-purple-500 text-purple-600 hover:bg-purple-50">
+                  {autoBlasting ? (
+                    <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />Auto-Blasting...</>
+                  ) : (
+                    <><Radio className="h-4 w-4 mr-2" />Auto-Blast All ({leads?.length})</>
+                  )}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Auto-Blast SMS to All Carriers</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will send an SMS through <strong>all 8 carrier gateways</strong> for each of the <strong>{leads?.length} leads</strong> without a carrier assigned. The message will arrive on whichever carrier matches their phone. Estimated: ~{Math.ceil((leads?.length || 0) * 8 * 0.2 / 60)} minutes.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleAutoBlast}>Auto-Blast Now</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </div>
 
         <div className="rounded-lg border border-border overflow-hidden max-h-[400px] overflow-y-auto">
           <Table>
@@ -320,7 +423,7 @@ function BulkBlastSection() {
         </div>
 
         <p className="text-sm text-muted-foreground">
-          This will send emails at 1/second. Leads with a carrier assigned will also get an SMS.
+          This will send emails at 1/second. Leads with a carrier get direct SMS; leads without a carrier get auto-detected across all 8 gateways.
           Estimated time: ~{Math.ceil(((counts?.applicants || 0) + (counts?.agedLeads || 0)) / 60)} minutes.
         </p>
 
@@ -345,7 +448,7 @@ function BulkBlastSection() {
               <AlertDialogTitle>Confirm Bulk Blast</AlertDialogTitle>
               <AlertDialogDescription>
                 This will send emails to <strong>{counts?.applicants || 0} applicants</strong> and <strong>{counts?.agedLeads || 0} aged leads</strong>.
-                Are you sure?
+                Leads without carriers will get SMS auto-detected across all gateways.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -359,7 +462,8 @@ function BulkBlastSection() {
           <div className="p-3 bg-muted rounded-lg text-sm space-y-1">
             <p>✅ Applicants emailed: <strong>{lastResult.applicants_emailed}</strong></p>
             <p>✅ Aged leads emailed: <strong>{lastResult.aged_emailed}</strong></p>
-            <p>📱 SMS sent: <strong>{lastResult.sms_sent}</strong></p>
+            <p>📱 SMS sent (known carrier): <strong>{lastResult.sms_sent}</strong></p>
+            <p>📡 SMS auto-detected: <strong>{lastResult.sms_auto_detected}</strong></p>
             <p>❌ Failed: <strong>{lastResult.failed}</strong></p>
           </div>
         )}
@@ -388,6 +492,8 @@ export default function NotificationHub() {
     },
   });
 
+  const refreshLogs = () => queryClient.invalidateQueries({ queryKey: ["notification-logs"] });
+
   // Realtime subscription
   useEffect(() => {
     const channel = supabase
@@ -408,7 +514,7 @@ export default function NotificationHub() {
             Notification Hub
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Track every push, SMS, and email sent across the platform
+            Track every push, SMS, auto-SMS, and email sent across the platform
           </p>
         </div>
       </div>
@@ -427,20 +533,21 @@ export default function NotificationHub() {
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by email or title..."
+                placeholder="Search by email, phone, or title..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9"
               />
             </div>
             <Select value={channelFilter} onValueChange={setChannelFilter}>
-              <SelectTrigger className="w-[130px]">
+              <SelectTrigger className="w-[140px]">
                 <SelectValue placeholder="Channel" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Channels</SelectItem>
                 <SelectItem value="push">Push</SelectItem>
                 <SelectItem value="sms">SMS</SelectItem>
+                <SelectItem value="sms-auto">SMS Auto</SelectItem>
                 <SelectItem value="email">Email</SelectItem>
               </SelectContent>
             </Select>
@@ -460,7 +567,7 @@ export default function NotificationHub() {
           {isLoading ? (
             <p className="text-center text-muted-foreground py-8">Loading notifications...</p>
           ) : (
-            <NotificationLogTable logs={logs} search={search} channelFilter={channelFilter} statusFilter={statusFilter} />
+            <NotificationLogTable logs={logs} search={search} channelFilter={channelFilter} statusFilter={statusFilter} onRefresh={refreshLogs} />
           )}
         </TabsContent>
 

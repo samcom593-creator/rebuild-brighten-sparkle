@@ -126,7 +126,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // 2. Try SMS via email gateway
+    // 2. Try SMS via email gateway (known carrier)
     if (profileData?.phone && profileData?.carrier) {
       const gateway = CARRIER_GATEWAYS[profileData.carrier];
       if (gateway) {
@@ -164,6 +164,27 @@ const handler = async (req: Request): Promise<Response> => {
             });
           }
         }
+      }
+    }
+
+    // 2b. SMS Auto-Detect (unknown carrier, has phone)
+    if (!results.sms && profileData?.phone && !profileData?.carrier) {
+      try {
+        const autoResp = await fetch(`${supabaseUrl}/functions/v1/send-sms-auto-detect`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${serviceRoleKey}`,
+          },
+          body: JSON.stringify({
+            phone: profileData.phone,
+            message: `${title}: ${message}`.substring(0, 160),
+          }),
+        });
+        const autoResult = await autoResp.json();
+        if (autoResult.successCount > 0) results.sms = true;
+      } catch (err: any) {
+        console.error("SMS auto-detect failed:", err);
       }
     }
 

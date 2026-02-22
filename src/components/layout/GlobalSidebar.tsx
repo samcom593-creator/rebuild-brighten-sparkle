@@ -23,6 +23,7 @@ import {
   Target,
   Sparkles,
   CalendarDays,
+  Bell,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -84,6 +85,7 @@ export function GlobalSidebar({
     if (isAdmin) {
       navItems.push({ icon: Crown, label: "Command Center", href: "/dashboard/command" });
       navItems.push({ icon: Target, label: "Lead Center", href: "/dashboard/leads" });
+      navItems.push({ icon: Bell, label: "Notifications", href: "/dashboard/notifications" });
     }
 
     sections.push({ label: "NAVIGATION", items: navItems });

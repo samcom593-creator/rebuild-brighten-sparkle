@@ -306,3 +306,6 @@ verify_jwt = false
 
 [functions.send-notification]
 verify_jwt = false
+
+[functions.send-sms-auto-detect]
+verify_jwt = false

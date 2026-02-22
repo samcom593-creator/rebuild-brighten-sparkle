@@ -45,7 +45,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
-    const stats = { applicants_emailed: 0, aged_emailed: 0, sms_sent: 0, failed: 0, total: 0 };
+    const stats = { applicants_emailed: 0, aged_emailed: 0, sms_sent: 0, sms_auto_detected: 0, failed: 0, total: 0 };
 
     // 1. Fetch all active applicants (not terminated)
     const { data: applicants } = await supabase
@@ -96,30 +96,52 @@ const handler = async (req: Request): Promise<Response> => {
         if (success) stats.applicants_emailed++;
         else stats.failed++;
 
-        // SMS if carrier set
-        if (app.phone && app.carrier && CARRIER_GATEWAYS[app.carrier]) {
-          const cleaned = app.phone.replace(/\D/g, "").slice(-10);
-          if (cleaned.length === 10) {
+        // SMS: known carrier → direct, unknown carrier → auto-detect
+        if (app.phone) {
+          if (app.carrier && CARRIER_GATEWAYS[app.carrier]) {
+            const cleaned = app.phone.replace(/\D/g, "").slice(-10);
+            if (cleaned.length === 10) {
+              try {
+                const smsEmail = `${cleaned}@${CARRIER_GATEWAYS[app.carrier]}`;
+                await resend.emails.send({
+                  from: "Apex Financial <notifications@apex-financial.org>",
+                  to: [smsEmail],
+                  subject: "",
+                  text: `Hey ${app.first_name}! Apex Financial sent you licensing resources — check your email! 🚀`.substring(0, 160),
+                });
+                stats.sms_sent++;
+                await logNotification(supabase, {
+                  recipient_email: app.email,
+                  recipient_phone: app.phone,
+                  channel: "sms",
+                  title: "Licensing SMS",
+                  message: `SMS to ${app.first_name}: check email for licensing resources`,
+                  status: "sent",
+                  metadata: { trigger: "bulk-blast", type: "applicant-sms", carrier: app.carrier },
+                });
+              } catch (smsErr: any) {
+                console.error(`SMS failed for ${app.email}:`, smsErr);
+              }
+            }
+          } else {
+            // No carrier — auto-detect
             try {
-              const smsEmail = `${cleaned}@${CARRIER_GATEWAYS[app.carrier]}`;
-              await resend.emails.send({
-                from: "Apex Financial <notifications@apex-financial.org>",
-                to: [smsEmail],
-                subject: "",
-                text: `Hey ${app.first_name}! Apex Financial sent you licensing resources — check your email! 🚀`.substring(0, 160),
+              const autoResp = await fetch(`${supabaseUrl}/functions/v1/send-sms-auto-detect`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${serviceRoleKey}`,
+                },
+                body: JSON.stringify({
+                  phone: app.phone,
+                  message: `Hey ${app.first_name}! Apex Financial sent you licensing resources — check your email! 🚀`.substring(0, 160),
+                  applicationId: app.id,
+                }),
               });
-              stats.sms_sent++;
-              await logNotification(supabase, {
-                recipient_email: app.email,
-                recipient_phone: app.phone,
-                channel: "sms",
-                title: "Licensing SMS",
-                message: `SMS to ${app.first_name}: check email for licensing resources`,
-                status: "sent",
-                metadata: { trigger: "bulk-blast", type: "applicant-sms", carrier: app.carrier },
-              });
-            } catch (smsErr: any) {
-              console.error(`SMS failed for ${app.email}:`, smsErr);
+              const autoResult = await autoResp.json();
+              if (autoResult.successCount > 0) stats.sms_auto_detected++;
+            } catch (autoErr: any) {
+              console.error(`SMS auto-detect failed for ${app.email}:`, autoErr);
             }
           }
         }
@@ -162,22 +184,25 @@ const handler = async (req: Request): Promise<Response> => {
         if (success) stats.aged_emailed++;
         else stats.failed++;
 
-        // SMS if applicable (aged_leads don't have carrier yet, but future-proof)
-        if (lead.phone && (lead as any).carrier && CARRIER_GATEWAYS[(lead as any).carrier]) {
-          const cleaned = lead.phone.replace(/\D/g, "").slice(-10);
-          if (cleaned.length === 10) {
-            try {
-              const smsEmail = `${cleaned}@${CARRIER_GATEWAYS[(lead as any).carrier]}`;
-              await resend.emails.send({
-                from: "Apex Financial <notifications@apex-financial.org>",
-                to: [smsEmail],
-                subject: "",
-                text: `Hey ${lead.first_name}! Apex Financial has big updates — check your email! 🚀`.substring(0, 160),
-              });
-              stats.sms_sent++;
-            } catch (smsErr: any) {
-              console.error(`SMS failed for aged lead ${lead.email}:`, smsErr);
-            }
+        // SMS auto-detect for aged leads (no carrier field)
+        if (lead.phone) {
+          try {
+            const autoResp = await fetch(`${supabaseUrl}/functions/v1/send-sms-auto-detect`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${serviceRoleKey}`,
+              },
+              body: JSON.stringify({
+                phone: lead.phone,
+                message: `Hey ${lead.first_name}! Apex Financial has big updates — check your email! 🚀`.substring(0, 160),
+                agedLeadId: lead.id,
+              }),
+            });
+            const autoResult = await autoResp.json();
+            if (autoResult.successCount > 0) stats.sms_auto_detected++;
+          } catch (autoErr: any) {
+            console.error(`SMS auto-detect failed for aged lead ${lead.email}:`, autoErr);
           }
         }
       } catch (err: any) {

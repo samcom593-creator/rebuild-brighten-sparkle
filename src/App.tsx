@@ -55,6 +55,7 @@ const LeadCenter = lazy(() => import("./pages/LeadCenter"));
 const RecruiterDashboard = lazy(() => import("./pages/RecruiterDashboard"));
 const AgentPipeline = lazy(() => import("./pages/AgentPipeline"));
 const CalendarPage = lazy(() => import("./pages/CalendarPage"));
+const NotificationHub = lazy(() => import("./pages/NotificationHub"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -135,6 +136,7 @@ const App = () => (
                      <Route path="/dashboard/recruiter" element={<RecruiterDashboard />} />
                      <Route path="/agent-pipeline" element={<AgentPipeline />} />
                      <Route path="/dashboard/calendar" element={<CalendarPage />} />
+                     <Route path="/dashboard/notifications" element={<ProtectedRoute requireAdmin><NotificationHub /></ProtectedRoute>} />
                   </Route>
 
                   {/* Legacy redirect */}

@@ -59,8 +59,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { Navigate } from "react-router-dom";
+import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 interface AccountInfo {
@@ -349,7 +351,7 @@ export default function DashboardAccounts() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">Loading...</p>
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       </DashboardLayout>
     );
@@ -378,9 +380,24 @@ export default function DashboardAccounts() {
           <Users className="h-6 w-6 text-primary" />
           <h1 className="text-3xl font-bold">Accounts</h1>
         </div>
-        <p className="text-muted-foreground">
-          Manage all manager and agent accounts.
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="text-muted-foreground">
+            Manage all manager and agent accounts.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              playSound("whoosh");
+              fetchAccounts();
+            }}
+            disabled={isLoading}
+            className="ml-auto"
+          >
+            <RefreshCw className={cn("h-4 w-4 mr-1", isLoading && "animate-spin")} />
+            Refresh
+          </Button>
+        </div>
       </motion.div>
 
       {/* Animated Stat Cards */}
@@ -444,7 +461,11 @@ export default function DashboardAccounts() {
           </h3>
           
           {isLoading ? (
-            <p className="text-muted-foreground text-sm">Loading accounts...</p>
+            <div className="space-y-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full rounded-lg" />
+              ))}
+            </div>
           ) : filteredAccounts.length === 0 ? (
             <p className="text-muted-foreground text-sm">
               {searchQuery ? "No accounts match your search." : "No accounts found."}
@@ -464,7 +485,7 @@ export default function DashboardAccounts() {
                 </TableHeader>
                 <TableBody>
                   {filteredAccounts.map((account) => (
-                    <TableRow key={account.id}>
+                    <TableRow key={account.id} className="transition-colors hover:bg-muted/50">
                       <TableCell className="font-medium">{account.name}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2 text-muted-foreground">

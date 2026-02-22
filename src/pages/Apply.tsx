@@ -33,6 +33,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { US_STATES, AVAILABILITY_OPTIONS, REFERRAL_SOURCES } from "@/lib/constants";
+import { CARRIER_OPTIONS } from "@/lib/carrierOptions";
 
 const applicationSchema = z.object({
   // Step 1: Personal Info
@@ -710,6 +711,29 @@ export default function Apply() {
                         />
                         <p className="text-xs text-muted-foreground">
                           We may reach out via Instagram for faster communication
+                        </p>
+                      </div>
+
+                      {/* Mobile Carrier Field */}
+                      <div className="space-y-2">
+                        <Label htmlFor="carrier">Mobile Carrier (optional)</Label>
+                        <Select
+                          value={watch("carrier" as any) || undefined}
+                          onValueChange={(value) => setValue("carrier" as any, value)}
+                        >
+                          <SelectTrigger className="bg-input">
+                            <SelectValue placeholder="Select your carrier" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {CARRIER_OPTIONS.map((c) => (
+                              <SelectItem key={c.value} value={c.value}>
+                                {c.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          Helps us send you text alerts about your application status
                         </p>
                       </div>
                     </div>

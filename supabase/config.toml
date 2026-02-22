@@ -294,3 +294,15 @@ verify_jwt = false
 
 [functions.check-low-aop-friday]
 verify_jwt = false
+
+[functions.send-sms-via-email]
+verify_jwt = false
+
+[functions.get-vapid-public-key]
+verify_jwt = false
+
+[functions.send-push-notification]
+verify_jwt = false
+
+[functions.send-notification]
+verify_jwt = false

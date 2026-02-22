@@ -1,22 +1,27 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ShieldCheck, AlertTriangle, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { ShieldCheck, AlertTriangle, RefreshCw, ChevronDown, ChevronUp, Wrench } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface IntegrityIssue {
   type: string;
   label: string;
   count: number;
   details?: string[];
+  ids?: string[];
 }
 
 export function SystemIntegrityCard() {
   const [expanded, setExpanded] = useState(false);
+  const [fixing, setFixing] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const { data: issues, isLoading, refetch } = useQuery({
     queryKey: ["system-integrity"],
@@ -57,6 +62,7 @@ export function SystemIntegrityCard() {
           label: "Active agents without user accounts",
           count: orphanAgents.length,
           details: orphanAgents.slice(0, 5).map((a) => a.display_name || a.id),
+          ids: orphanAgents.map((a) => a.id),
         });
       }
 
@@ -73,6 +79,7 @@ export function SystemIntegrityCard() {
           label: "Terminated leads with non-rejected status",
           count: badStatus.length,
           details: badStatus.slice(0, 5).map((a) => `${a.first_name} ${a.last_name} (${a.status})`),
+          ids: badStatus.map((a) => a.id),
         });
       }
 
@@ -80,6 +87,36 @@ export function SystemIntegrityCard() {
     },
     staleTime: 300_000,
   });
+
+  const handleFix = async (issue: IntegrityIssue) => {
+    setFixing(issue.type);
+    try {
+      if (issue.type === "orphan_agents" && issue.ids?.length) {
+        const { error } = await supabase
+          .from("agents")
+          .update({ status: "inactive" as any, is_inactive: true })
+          .in("id", issue.ids);
+        if (error) throw error;
+        toast.success(`Set ${issue.ids.length} orphan agents to inactive`);
+        refetch();
+      } else if (issue.type === "invalid_status" && issue.ids?.length) {
+        const { error } = await supabase
+          .from("applications")
+          .update({ status: "rejected" as any })
+          .in("id", issue.ids);
+        if (error) throw error;
+        toast.success(`Fixed ${issue.ids.length} terminated leads to rejected status`);
+        refetch();
+      } else if (issue.type === "duplicate_emails") {
+        navigate("/dashboard/admin");
+        toast.info("Use the Merge Tool to resolve duplicate emails");
+      }
+    } catch (err: any) {
+      toast.error(`Fix failed: ${err.message}`);
+    } finally {
+      setFixing(null);
+    }
+  };
 
   const totalIssues = issues?.reduce((sum, i) => sum + i.count, 0) || 0;
 
@@ -122,6 +159,16 @@ export function SystemIntegrityCard() {
                     <AlertTriangle className="h-3 w-3 text-amber-400 shrink-0" />
                     <span className="font-medium">{issue.label}</span>
                     <Badge variant="outline" className="text-[9px] ml-auto">{issue.count}</Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-5 px-1.5 text-[10px] gap-1"
+                      disabled={fixing === issue.type}
+                      onClick={() => handleFix(issue)}
+                    >
+                      <Wrench className="h-2.5 w-2.5" />
+                      {issue.type === "duplicate_emails" ? "Merge" : "Fix"}
+                    </Button>
                   </div>
                   {issue.details && (
                     <div className="mt-1 space-y-0.5">

@@ -33,6 +33,51 @@ async function logNotification(supabase: any, data: any) {
   }
 }
 
+// Try sending push notification for an applicant by looking up their agent record
+async function trySendPush(supabaseUrl: string, serviceRoleKey: string, supabase: any, app: any): Promise<boolean> {
+  try {
+    // Find agent linked to this applicant's email
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("user_id")
+      .ilike("email", app.email)
+      .maybeSingle();
+
+    if (!profile?.user_id) return false;
+
+    const pushResponse = await fetch(`${supabaseUrl}/functions/v1/send-push-notification`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${serviceRoleKey}`,
+      },
+      body: JSON.stringify({
+        userId: profile.user_id,
+        title: "Apex Financial Update 🚀",
+        body: `Hey ${app.first_name}! Check your email for important updates from Apex Financial.`,
+        url: "/dashboard",
+      }),
+    });
+    const pushResult = await pushResponse.json();
+    const success = pushResult.sent > 0;
+
+    await logNotification(supabase, {
+      recipient_email: app.email,
+      channel: "push",
+      title: "Bulk Blast Push",
+      message: `Push to ${app.first_name} ${app.last_name || ""}`,
+      status: success ? "sent" : "failed",
+      error_message: success ? null : "No push subscriptions",
+      metadata: { trigger: "bulk-blast", type: "push" },
+    });
+
+    return success;
+  } catch (err: any) {
+    console.error(`Push failed for ${app.email}:`, err);
+    return false;
+  }
+}
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -45,7 +90,15 @@ const handler = async (req: Request): Promise<Response> => {
 
     const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
-    const stats = { applicants_emailed: 0, aged_emailed: 0, sms_sent: 0, sms_auto_detected: 0, failed: 0, total: 0 };
+    const stats = {
+      applicants_emailed: 0,
+      aged_emailed: 0,
+      sms_sent: 0,
+      sms_auto_detected: 0,
+      push_sent: 0,
+      failed: 0,
+      total: 0,
+    };
 
     // 1. Fetch all active applicants (not terminated)
     const { data: applicants } = await supabase
@@ -62,11 +115,15 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Blast: ${applicants?.length || 0} applicants, ${agedLeads?.length || 0} aged leads`);
 
-    // Process applicants — send licensing instructions
+    // Process applicants — send push + SMS + email (all channels)
     for (const app of applicants || []) {
       stats.total++;
       try {
-        // Call send-licensing-instructions
+        // 1. Push notification (fire and don't block)
+        const pushSuccess = await trySendPush(supabaseUrl, serviceRoleKey, supabase, app);
+        if (pushSuccess) stats.push_sent++;
+
+        // 2. Email: licensing instructions
         const resp = await fetch(`${supabaseUrl}/functions/v1/send-licensing-instructions`, {
           method: "POST",
           headers: {
@@ -96,7 +153,7 @@ const handler = async (req: Request): Promise<Response> => {
         if (success) stats.applicants_emailed++;
         else stats.failed++;
 
-        // SMS: known carrier → direct, unknown carrier → auto-detect
+        // 3. SMS: known carrier → direct, unknown carrier → auto-detect
         if (app.phone) {
           if (app.carrier && CARRIER_GATEWAYS[app.carrier]) {
             const cleaned = app.phone.replace(/\D/g, "").slice(-10);
@@ -152,10 +209,15 @@ const handler = async (req: Request): Promise<Response> => {
       await delay(1000);
     }
 
-    // Process aged leads — send re-engagement
+    // Process aged leads — send push + SMS + email
     for (const lead of agedLeads || []) {
       stats.total++;
       try {
+        // 1. Push (try)
+        const pushSuccess = await trySendPush(supabaseUrl, serviceRoleKey, supabase, lead);
+        if (pushSuccess) stats.push_sent++;
+
+        // 2. Email: re-engagement
         const resp = await fetch(`${supabaseUrl}/functions/v1/send-aged-lead-email`, {
           method: "POST",
           headers: {
@@ -184,7 +246,7 @@ const handler = async (req: Request): Promise<Response> => {
         if (success) stats.aged_emailed++;
         else stats.failed++;
 
-        // SMS auto-detect for aged leads (no carrier field)
+        // 3. SMS auto-detect for aged leads
         if (lead.phone) {
           try {
             const autoResp = await fetch(`${supabaseUrl}/functions/v1/send-sms-auto-detect`, {

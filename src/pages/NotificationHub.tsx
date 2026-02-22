@@ -366,6 +366,159 @@ function CarrierAssignmentTool() {
   );
 }
 
+// ─── Quick Action Buttons ───
+function QuickActionButtons() {
+  const [textingAll, setTextingAll] = useState(false);
+  const [textingCourse, setTextingCourse] = useState(false);
+  const [sendingOptIn, setSendingOptIn] = useState(false);
+  const queryClient = useQueryClient();
+
+  const handleTextAll = async () => {
+    setTextingAll(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-bulk-notification-blast", {
+        method: "POST",
+        body: {},
+      });
+      if (error) throw error;
+      const s = data?.stats;
+      toast.success(`Blast complete! Push: ${s?.push_sent || 0}, SMS: ${(s?.sms_sent || 0) + (s?.sms_auto_detected || 0)}, Email: ${(s?.applicants_emailed || 0) + (s?.aged_emailed || 0)}`);
+      queryClient.invalidateQueries({ queryKey: ["notification-logs"] });
+    } catch (err: any) {
+      toast.error(err.message || "Text all failed");
+    } finally {
+      setTextingAll(false);
+    }
+  };
+
+  const handleTextCourseProgress = async () => {
+    setTextingCourse(true);
+    try {
+      // Query applicants with course progress
+      const { data: apps } = await supabase
+        .from("applications")
+        .select("id, first_name, phone, license_progress")
+        .is("terminated_at", null)
+        .not("phone", "is", null)
+        .in("license_progress", ["finished_course", "course_purchased"]);
+
+      if (!apps?.length) {
+        toast.info("No applicants with course progress found");
+        return;
+      }
+
+      let sent = 0;
+      for (const app of apps) {
+        try {
+          await supabase.functions.invoke("send-sms-auto-detect", {
+            body: {
+              phone: app.phone,
+              message: `Hey ${app.first_name}! You're making great progress on your course. Let's schedule a call to discuss next steps! 📞`,
+              applicationId: app.id,
+            },
+          });
+          sent++;
+        } catch {
+          // continue
+        }
+      }
+      toast.success(`Sent scheduling SMS to ${sent} applicants with course progress`);
+      queryClient.invalidateQueries({ queryKey: ["notification-logs"] });
+    } catch (err: any) {
+      toast.error(err.message || "Course progress text failed");
+    } finally {
+      setTextingCourse(false);
+    }
+  };
+
+  const handleSendOptIn = async () => {
+    setSendingOptIn(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-push-optin-email", {
+        method: "POST",
+        body: {},
+      });
+      if (error) throw error;
+      toast.success(`Opt-in emails sent: ${data?.sent || 0}`);
+      queryClient.invalidateQueries({ queryKey: ["notification-logs"] });
+    } catch (err: any) {
+      toast.error(err.message || "Opt-in email failed");
+    } finally {
+      setSendingOptIn(false);
+    }
+  };
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button className="w-full h-auto py-4 flex flex-col items-center gap-1" variant="default" disabled={textingAll}>
+            {textingAll ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+            <span className="font-semibold">Text All Applicants</span>
+            <span className="text-xs opacity-80">Push + SMS + Email</span>
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Text All Applicants</AlertDialogTitle>
+            <AlertDialogDescription>
+              This sends <strong>push notifications, SMS, and email</strong> to every active applicant and aged lead. All three channels fire simultaneously.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleTextAll}>Send All Channels Now</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button className="w-full h-auto py-4 flex flex-col items-center gap-1" variant="secondary" disabled={textingCourse}>
+            {textingCourse ? <RefreshCw className="h-5 w-5 animate-spin" /> : <MessageSquare className="h-5 w-5" />}
+            <span className="font-semibold">Course Progress Leads</span>
+            <span className="text-xs opacity-80">Schedule a meeting SMS</span>
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Text Course Progress Leads</AlertDialogTitle>
+            <AlertDialogDescription>
+              Send an SMS to all applicants who have started or completed their course, encouraging them to schedule a meeting.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleTextCourseProgress}>Send SMS Now</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button className="w-full h-auto py-4 flex flex-col items-center gap-1" variant="outline" disabled={sendingOptIn}>
+            {sendingOptIn ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Bell className="h-5 w-5" />}
+            <span className="font-semibold">Send Opt-In Email</span>
+            <span className="text-xs opacity-80">Enable push notifications</span>
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Send Push Notification Opt-In Email</AlertDialogTitle>
+            <AlertDialogDescription>
+              Send an email to all active applicants encouraging them to enable push notifications and install the app.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSendOptIn}>Send Opt-In Emails</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
 // ─── Bulk Blast Section ───
 function BulkBlastSection() {
   const [blasting, setBlasting] = useState(false);
@@ -403,72 +556,77 @@ function BulkBlastSection() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Zap className="h-5 w-5 text-amber-500" />
-          Bulk Blast — Send to All Leads
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="p-4 rounded-lg bg-muted">
-            <p className="text-2xl font-bold">{counts?.applicants || "—"}</p>
-            <p className="text-xs text-muted-foreground">Active Applicants → Licensing Instructions</p>
-          </div>
-          <div className="p-4 rounded-lg bg-muted">
-            <p className="text-2xl font-bold">{counts?.agedLeads || "—"}</p>
-            <p className="text-xs text-muted-foreground">Aged Leads → Re-engagement Email</p>
-          </div>
-        </div>
+    <div className="space-y-4">
+      <QuickActionButtons />
 
-        <p className="text-sm text-muted-foreground">
-          This will send emails at 1/second. Leads with a carrier get direct SMS; leads without a carrier get auto-detected across all 8 gateways.
-          Estimated time: ~{Math.ceil(((counts?.applicants || 0) + (counts?.agedLeads || 0)) / 60)} minutes.
-        </p>
-
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button className="w-full" size="lg" disabled={blasting}>
-              {blasting ? (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  Sending...
-                </>
-              ) : (
-                <>
-                  <Send className="h-4 w-4 mr-2" />
-                  Blast All Leads
-                </>
-              )}
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Confirm Bulk Blast</AlertDialogTitle>
-              <AlertDialogDescription>
-                This will send emails to <strong>{counts?.applicants || 0} applicants</strong> and <strong>{counts?.agedLeads || 0} aged leads</strong>.
-                Leads without carriers will get SMS auto-detected across all gateways.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleBlast}>Send Now</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        {lastResult && (
-          <div className="p-3 bg-muted rounded-lg text-sm space-y-1">
-            <p>✅ Applicants emailed: <strong>{lastResult.applicants_emailed}</strong></p>
-            <p>✅ Aged leads emailed: <strong>{lastResult.aged_emailed}</strong></p>
-            <p>📱 SMS sent (known carrier): <strong>{lastResult.sms_sent}</strong></p>
-            <p>📡 SMS auto-detected: <strong>{lastResult.sms_auto_detected}</strong></p>
-            <p>❌ Failed: <strong>{lastResult.failed}</strong></p>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Zap className="h-5 w-5 text-amber-500" />
+            Bulk Blast — Send to All Leads
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-4 rounded-lg bg-muted">
+              <p className="text-2xl font-bold">{counts?.applicants || "—"}</p>
+              <p className="text-xs text-muted-foreground">Active Applicants → Push + SMS + Email</p>
+            </div>
+            <div className="p-4 rounded-lg bg-muted">
+              <p className="text-2xl font-bold">{counts?.agedLeads || "—"}</p>
+              <p className="text-xs text-muted-foreground">Aged Leads → Push + SMS + Email</p>
+            </div>
           </div>
-        )}
-      </CardContent>
-    </Card>
+
+          <p className="text-sm text-muted-foreground">
+            This sends all 3 channels (push + SMS + email) at 1/second. Leads with a carrier get direct SMS; others get auto-detected across all 8 gateways.
+            Estimated time: ~{Math.ceil(((counts?.applicants || 0) + (counts?.agedLeads || 0)) / 60)} minutes.
+          </p>
+
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button className="w-full" size="lg" disabled={blasting}>
+                {blasting ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Blast All Leads (All Channels)
+                  </>
+                )}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirm Full Blast</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will send <strong>push notifications, SMS, and email</strong> to <strong>{counts?.applicants || 0} applicants</strong> and <strong>{counts?.agedLeads || 0} aged leads</strong>.
+                  All three channels fire for every lead.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleBlast}>Send Now</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          {lastResult && (
+            <div className="p-3 bg-muted rounded-lg text-sm space-y-1">
+              <p>🔔 Push notifications sent: <strong>{lastResult.push_sent || 0}</strong></p>
+              <p>✅ Applicants emailed: <strong>{lastResult.applicants_emailed}</strong></p>
+              <p>✅ Aged leads emailed: <strong>{lastResult.aged_emailed}</strong></p>
+              <p>📱 SMS sent (known carrier): <strong>{lastResult.sms_sent}</strong></p>
+              <p>📡 SMS auto-detected: <strong>{lastResult.sms_auto_detected}</strong></p>
+              <p>❌ Failed: <strong>{lastResult.failed}</strong></p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 

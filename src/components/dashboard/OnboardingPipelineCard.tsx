@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Users, BookOpen, Briefcase, Award, GraduationCap } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
 
 interface PipelineStage {
   stage: string;
@@ -14,112 +14,67 @@ interface PipelineStage {
   color: string;
 }
 
+async function fetchPipeline(userId: string, isAdmin: boolean): Promise<PipelineStage[]> {
+  const { data: currentAgent } = await supabase
+    .from("agents")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("is_deactivated", false)
+    .maybeSingle();
+
+  if (!currentAgent) return [];
+
+  let query = supabase
+    .from("agents")
+    .select("onboarding_stage, license_status, has_training_course")
+    .eq("is_deactivated", false);
+
+  if (!isAdmin) {
+    query = query.eq("invited_by_manager_id", currentAgent.id);
+  }
+
+  const { data: agents } = await query;
+  if (!agents) return [];
+
+  const stageCounts: Record<string, number> = {
+    onboarding: 0,
+    training_online: 0,
+    in_field_training: 0,
+    evaluated: 0,
+  };
+  let preLicensingCount = 0;
+
+  agents.forEach(agent => {
+    const stage = agent.onboarding_stage || "onboarding";
+    if (stageCounts[stage] !== undefined) {
+      stageCounts[stage]++;
+    }
+    if (agent.license_status !== "licensed" && agent.has_training_course === true) {
+      preLicensingCount++;
+    }
+  });
+
+  return [
+    { stage: "pre_licensing", label: "Pre-Licensing", count: preLicensingCount, icon: <GraduationCap className="h-4 w-4" />, color: "text-amber-500 bg-amber-500/10" },
+    { stage: "onboarding", label: "Onboarding", count: stageCounts.onboarding, icon: <Users className="h-4 w-4" />, color: "text-blue-500 bg-blue-500/10" },
+    { stage: "training_online", label: "Training Online", count: stageCounts.training_online, icon: <BookOpen className="h-4 w-4" />, color: "text-cyan-500 bg-cyan-500/10" },
+    { stage: "in_field_training", label: "Field Training", count: stageCounts.in_field_training, icon: <Briefcase className="h-4 w-4" />, color: "text-violet-500 bg-violet-500/10" },
+    { stage: "evaluated", label: "Evaluated", count: stageCounts.evaluated, icon: <Award className="h-4 w-4" />, color: "text-emerald-500 bg-emerald-500/10" },
+  ];
+}
+
 export function OnboardingPipelineCard() {
   const { user, isAdmin } = useAuth();
-  const [stages, setStages] = useState<PipelineStage[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchPipelineData();
-  }, [user?.id, isAdmin]);
-
-  const fetchPipelineData = async () => {
-    if (!user) return;
-
-    try {
-      // Get current user's agent ID
-      const { data: currentAgent } = await supabase
-        .from("agents")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("is_deactivated", false)
-        .maybeSingle();
-
-      if (!currentAgent) {
-        setLoading(false);
-        return;
-      }
-
-      // Build query based on role
-      let query = supabase
-        .from("agents")
-        .select("onboarding_stage, license_status, has_training_course")
-        .eq("is_deactivated", false);
-
-      if (!isAdmin) {
-        query = query.eq("invited_by_manager_id", currentAgent.id);
-      }
-
-      const { data: agents } = await query;
-
-      if (agents) {
-        // Count agents per stage
-        const stageCounts: Record<string, number> = {
-          onboarding: 0,
-          training_online: 0,
-          in_field_training: 0,
-          evaluated: 0,
-        };
-        let preLicensingCount = 0;
-
-        agents.forEach(agent => {
-          const stage = agent.onboarding_stage || "onboarding";
-          if (stageCounts[stage] !== undefined) {
-            stageCounts[stage]++;
-          }
-          if (agent.license_status !== "licensed" && agent.has_training_course === true) {
-            preLicensingCount++;
-          }
-        });
-
-        setStages([
-          {
-            stage: "pre_licensing",
-            label: "Pre-Licensing",
-            count: preLicensingCount,
-            icon: <GraduationCap className="h-4 w-4" />,
-            color: "text-amber-500 bg-amber-500/10",
-          },
-          {
-            stage: "onboarding",
-            label: "Onboarding",
-            count: stageCounts.onboarding,
-            icon: <Users className="h-4 w-4" />,
-            color: "text-blue-500 bg-blue-500/10",
-          },
-          {
-            stage: "training_online",
-            label: "Training Online",
-            count: stageCounts.training_online,
-            icon: <BookOpen className="h-4 w-4" />,
-            color: "text-cyan-500 bg-cyan-500/10",
-          },
-          {
-            stage: "in_field_training",
-            label: "Field Training",
-            count: stageCounts.in_field_training,
-            icon: <Briefcase className="h-4 w-4" />,
-            color: "text-violet-500 bg-violet-500/10",
-          },
-          {
-            stage: "evaluated",
-            label: "Evaluated",
-            count: stageCounts.evaluated,
-            icon: <Award className="h-4 w-4" />,
-            color: "text-emerald-500 bg-emerald-500/10",
-          },
-        ]);
-      }
-    } catch (error) {
-      console.error("Error fetching pipeline:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: stages = [], isLoading } = useQuery({
+    queryKey: ["onboarding-pipeline", user?.id, isAdmin],
+    queryFn: () => fetchPipeline(user!.id, isAdmin),
+    enabled: !!user,
+  });
 
   const totalAgents = stages.reduce((sum, s) => sum + s.count, 0);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <GlassCard className="p-5">
         <div className="animate-pulse space-y-3">
@@ -175,7 +130,6 @@ export function OnboardingPipelineCard() {
                 </p>
               </div>
               
-              {/* Progress connector */}
               {index < stages.length - 1 && (
                 <div className="hidden md:block absolute top-1/2 -right-1.5 w-3 h-0.5 bg-border" />
               )}

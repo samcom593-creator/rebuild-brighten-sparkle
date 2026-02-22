@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   Users,
@@ -19,7 +19,6 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ActivationRiskBanner } from "@/components/dashboard/ActivationRiskBanner";
 import { supabase } from "@/integrations/supabase/client";
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { GrowthChart } from "@/components/dashboard/GrowthChart";
 import { AnalyticsPieChart } from "@/components/dashboard/AnalyticsPieChart";
@@ -40,6 +39,7 @@ import { Button } from "@/components/ui/button";
 import { SkeletonLoader } from "@/components/ui/skeleton-loader";
 import { AgencyGrowthCard } from "@/components/dashboard/AgencyGrowthCard";
 import { useNavigate, Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 
 interface DashboardStats {
   totalLeads: number;
@@ -53,200 +53,190 @@ interface DashboardStats {
   staleLeads: number;
 }
 
+const defaultStats: DashboardStats = {
+  totalLeads: 0,
+  contacted: 0,
+  closed: 0,
+  licensed: 0,
+  unlicensed: 0,
+  closeRate: 0,
+  avgWaitTime: 0,
+  growthPercent: 0,
+  staleLeads: 0,
+};
+
+const emptyChartData: Array<{ label: string; leads: number; closed: number }> = [];
+const emptySourceData: Array<{ name: string; value: number; color: string }> = [];
+
+async function fetchDashboardData(userId: string, profileName: string | null | undefined, userEmail: string | undefined) {
+  const userName = profileName || userEmail?.split("@")[0] || "Agent";
+
+  const { data: agentData } = await supabase
+    .from("agents")
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (!agentData) {
+    return { stats: defaultStats, dailyData: emptyChartData, weeklyData: emptyChartData, monthlyData: emptyChartData, sourceData: emptySourceData, userName, currentAgentId: undefined };
+  }
+
+  const { data: applications } = await supabase
+    .from("applications")
+    .select("*")
+    .eq("assigned_agent_id", agentData.id);
+
+  if (!applications || applications.length === 0) {
+    return { stats: defaultStats, dailyData: emptyChartData, weeklyData: emptyChartData, monthlyData: emptyChartData, sourceData: emptySourceData, userName, currentAgentId: agentData.id };
+  }
+
+  const totalLeads = applications.length;
+  const contacted = applications.filter(a => a.contacted_at).length;
+  const closed = applications.filter(a => a.closed_at).length;
+  const licensed = applications.filter(a => a.license_status === "licensed").length;
+  const unlicensed = applications.filter(a => a.license_status !== "licensed").length;
+
+  const now = new Date();
+  const staleLeads = applications.filter(a => {
+    if (a.contacted_at) return false;
+    const createdAt = new Date(a.created_at);
+    return (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60) > 48;
+  }).length;
+
+  let totalWaitTime = 0;
+  let countWithContact = 0;
+  applications
+    .filter(a => a.license_status === "licensed" && a.contacted_at)
+    .forEach(a => {
+      const created = new Date(a.created_at);
+      const contactedDate = new Date(a.contacted_at!);
+      totalWaitTime += (contactedDate.getTime() - created.getTime()) / (1000 * 60 * 60);
+      countWithContact++;
+    });
+
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const sixtyDaysAgo = new Date();
+  sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+
+  const currentPeriodLeads = applications.filter(a => new Date(a.created_at) >= thirtyDaysAgo).length;
+  const previousPeriodLeads = applications.filter(a => {
+    const date = new Date(a.created_at);
+    return date >= sixtyDaysAgo && date < thirtyDaysAgo;
+  }).length;
+
+  const growthPercent = previousPeriodLeads > 0
+    ? ((currentPeriodLeads - previousPeriodLeads) / previousPeriodLeads) * 100
+    : currentPeriodLeads > 0 ? 100 : 0;
+
+  const stats: DashboardStats = {
+    totalLeads, contacted, closed, licensed, unlicensed,
+    closeRate: totalLeads > 0 ? (closed / totalLeads) * 100 : 0,
+    avgWaitTime: countWithContact > 0 ? totalWaitTime / countWithContact : 0,
+    growthPercent: Math.round(growthPercent),
+    staleLeads,
+  };
+
+  // Daily chart data
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const last7Days = Array.from({ length: 7 }, (_, i) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (6 - i));
+    return date;
+  });
+  const dailyData = last7Days.map(date => {
+    const dayApps = applications.filter(a => new Date(a.created_at).toDateString() === date.toDateString());
+    return { label: dayNames[date.getDay()], leads: dayApps.length, closed: dayApps.filter(a => a.closed_at).length };
+  });
+
+  // Weekly chart data
+  const weeklyData = Array.from({ length: 4 }, (_, i) => {
+    const weekStart = new Date();
+    weekStart.setDate(weekStart.getDate() - ((3 - i) * 7 + 7));
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 7);
+    const weekApps = applications.filter(a => {
+      const appDate = new Date(a.created_at);
+      return appDate >= weekStart && appDate < weekEnd;
+    });
+    return { label: `Week ${i + 1}`, leads: weekApps.length, closed: weekApps.filter(a => a.closed_at).length };
+  });
+
+  // Monthly chart data
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const monthlyData = Array.from({ length: 6 }, (_, i) => {
+    const date = new Date();
+    date.setMonth(date.getMonth() - (5 - i));
+    const monthApps = applications.filter(a => {
+      const appDate = new Date(a.created_at);
+      return appDate.getMonth() === date.getMonth() && appDate.getFullYear() === date.getFullYear();
+    });
+    return { label: monthNames[date.getMonth()], leads: monthApps.length, closed: monthApps.filter(a => a.closed_at).length };
+  });
+
+  // Source data
+  const sourceMap = new Map<string, number>();
+  applications.forEach(a => {
+    const source = a.referral_source || 'Direct';
+    sourceMap.set(source, (sourceMap.get(source) || 0) + 1);
+  });
+  const colors = ["hsl(168, 84%, 42%)", "hsl(160, 84%, 39%)", "hsl(45, 93%, 58%)", "hsl(222, 47%, 40%)", "hsl(220, 15%, 50%)"];
+  const sourceData = Array.from(sourceMap.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([name, value], i) => ({ name, value, color: colors[i % colors.length] }));
+
+  return {
+    stats,
+    dailyData,
+    weeklyData,
+    monthlyData,
+    sourceData: sourceData.length > 0 ? sourceData : [{ name: "No data yet", value: 1, color: "hsl(222, 30%, 30%)" }],
+    userName,
+    currentAgentId: agentData.id,
+  };
+}
+
+const quickActions = [
+  { to: "/numbers", icon: Edit3, color: "primary", title: "Log Numbers", sub: "Enter today's stats" },
+  { to: "/agent-portal", icon: BarChart3, color: "violet-500", title: "Agent Portal", sub: "View performance" },
+  { to: "/dashboard/crm", icon: Users, color: "emerald-500", title: "CRM", sub: "Manage agents" },
+  { to: "/dashboard/applicants", icon: Sparkles, color: "amber-500", title: "Pipeline", sub: "View applicants" },
+] as const;
+
 export default function Dashboard() {
   const { profile, user, isManager, isAdmin, isAgent, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
-  const [stats, setStats] = useState<DashboardStats>({
-    totalLeads: 0,
-    contacted: 0,
-    closed: 0,
-    licensed: 0,
-    unlicensed: 0,
-    closeRate: 0,
-    avgWaitTime: 0,
-    growthPercent: 0,
-    staleLeads: 0,
-  });
-  const [userName, setUserName] = useState("");
-  const [currentAgentId, setCurrentAgentId] = useState<string | undefined>();
   const [showConfetti, setShowConfetti] = useState(false);
 
-  // Chart data
-  const [dailyData, setDailyData] = useState<Array<{ label: string; leads: number; closed: number }>>([]);
-  const [weeklyData, setWeeklyData] = useState<Array<{ label: string; leads: number; closed: number }>>([]);
-  const [monthlyData, setMonthlyData] = useState<Array<{ label: string; leads: number; closed: number }>>([]);
-  const [sourceData, setSourceData] = useState<Array<{ name: string; value: number; color: string }>>([]);
+  const { data } = useQuery({
+    queryKey: ["dashboard-stats", user?.id],
+    queryFn: () => fetchDashboardData(user!.id, profile?.full_name, user!.email),
+    enabled: !!user,
+  });
 
-  const licenseData = [
+  const stats = data?.stats ?? defaultStats;
+  const dailyData = data?.dailyData ?? emptyChartData;
+  const weeklyData = data?.weeklyData ?? emptyChartData;
+  const monthlyData = data?.monthlyData ?? emptyChartData;
+  const sourceData = data?.sourceData ?? emptySourceData;
+  const userName = data?.userName ?? "";
+  const currentAgentId = data?.currentAgentId;
+
+  const licenseData = useMemo(() => [
     { name: "Licensed", value: stats.licensed, color: "hsl(168, 84%, 42%)" },
     { name: "Unlicensed", value: stats.unlicensed, color: "hsl(222, 47%, 40%)" },
-  ];
+  ], [stats.licensed, stats.unlicensed]);
 
   useEffect(() => {
-    // Show confetti on initial load
     const hasSeenConfetti = sessionStorage.getItem('dashboard-confetti');
     if (!hasSeenConfetti) {
       setShowConfetti(true);
       sessionStorage.setItem('dashboard-confetti', 'true');
-      // Hide after animation
       setTimeout(() => setShowConfetti(false), 4000);
     }
   }, []);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      if (user) {
-        setUserName(profile?.full_name || user.email?.split("@")[0] || "Agent");
-        
-        // Fetch agent's assigned applications
-        const { data: agentData } = await supabase
-          .from("agents")
-          .select("id")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (agentData) {
-          setCurrentAgentId(agentData.id);
-          
-          // Fetch applications assigned to this agent
-          const { data: applications } = await supabase
-            .from("applications")
-            .select("*")
-            .eq("assigned_agent_id", agentData.id);
-
-          if (applications && applications.length > 0) {
-            const totalLeads = applications.length;
-            const contacted = applications.filter(a => a.contacted_at).length;
-            const closed = applications.filter(a => a.closed_at).length;
-            const licensed = applications.filter(a => a.license_status === "licensed").length;
-            const unlicensed = applications.filter(a => a.license_status !== "licensed").length;
-            
-            // Calculate stale leads (not contacted in 48+ hours)
-            const now = new Date();
-            const staleLeads = applications.filter(a => {
-              if (a.contacted_at) return false;
-              const createdAt = new Date(a.created_at);
-              const hoursDiff = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
-              return hoursDiff > 48;
-            }).length;
-
-            // Calculate average wait time ONLY for licensed leads
-            let totalWaitTime = 0;
-            let countWithContact = 0;
-            applications
-              .filter(a => a.license_status === "licensed" && a.contacted_at)
-              .forEach(a => {
-                const created = new Date(a.created_at);
-                const contactedDate = new Date(a.contacted_at!);
-                totalWaitTime += (contactedDate.getTime() - created.getTime()) / (1000 * 60 * 60);
-                countWithContact++;
-              });
-
-            // Calculate growth (compare to previous period)
-            const thirtyDaysAgo = new Date();
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-            const sixtyDaysAgo = new Date();
-            sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
-            
-            const currentPeriodLeads = applications.filter(a => new Date(a.created_at) >= thirtyDaysAgo).length;
-            const previousPeriodLeads = applications.filter(a => {
-              const date = new Date(a.created_at);
-              return date >= sixtyDaysAgo && date < thirtyDaysAgo;
-            }).length;
-            
-            const growthPercent = previousPeriodLeads > 0 
-              ? ((currentPeriodLeads - previousPeriodLeads) / previousPeriodLeads) * 100 
-              : currentPeriodLeads > 0 ? 100 : 0;
-
-            setStats({
-              totalLeads,
-              contacted,
-              closed,
-              licensed,
-              unlicensed,
-              closeRate: totalLeads > 0 ? (closed / totalLeads) * 100 : 0,
-              avgWaitTime: countWithContact > 0 ? totalWaitTime / countWithContact : 0,
-              growthPercent: Math.round(growthPercent),
-              staleLeads,
-            });
-
-            // Build chart data
-            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-            const last7Days = Array.from({ length: 7 }, (_, i) => {
-              const date = new Date();
-              date.setDate(date.getDate() - (6 - i));
-              return date;
-            });
-            
-            const dailyChartData = last7Days.map(date => {
-              const dayApps = applications.filter(a => {
-                const appDate = new Date(a.created_at);
-                return appDate.toDateString() === date.toDateString();
-              });
-              return {
-                label: dayNames[date.getDay()],
-                leads: dayApps.length,
-                closed: dayApps.filter(a => a.closed_at).length,
-              };
-            });
-            setDailyData(dailyChartData);
-
-            // Weekly data (last 4 weeks)
-            const weeklyChartData = Array.from({ length: 4 }, (_, i) => {
-              const weekStart = new Date();
-              weekStart.setDate(weekStart.getDate() - ((3 - i) * 7 + 7));
-              const weekEnd = new Date(weekStart);
-              weekEnd.setDate(weekEnd.getDate() + 7);
-              
-              const weekApps = applications.filter(a => {
-                const appDate = new Date(a.created_at);
-                return appDate >= weekStart && appDate < weekEnd;
-              });
-              return {
-                label: `Week ${i + 1}`,
-                leads: weekApps.length,
-                closed: weekApps.filter(a => a.closed_at).length,
-              };
-            });
-            setWeeklyData(weeklyChartData);
-
-            // Monthly data (last 6 months)
-            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            const monthlyChartData = Array.from({ length: 6 }, (_, i) => {
-              const date = new Date();
-              date.setMonth(date.getMonth() - (5 - i));
-              const monthApps = applications.filter(a => {
-                const appDate = new Date(a.created_at);
-                return appDate.getMonth() === date.getMonth() && appDate.getFullYear() === date.getFullYear();
-              });
-              return {
-                label: monthNames[date.getMonth()],
-                leads: monthApps.length,
-                closed: monthApps.filter(a => a.closed_at).length,
-              };
-            });
-            setMonthlyData(monthlyChartData);
-
-            // Source data from referral_source field
-            const sourceMap = new Map<string, number>();
-            applications.forEach(a => {
-              const source = a.referral_source || 'Direct';
-              sourceMap.set(source, (sourceMap.get(source) || 0) + 1);
-            });
-            const colors = ["hsl(168, 84%, 42%)", "hsl(160, 84%, 39%)", "hsl(45, 93%, 58%)", "hsl(222, 47%, 40%)", "hsl(220, 15%, 50%)"];
-            const sourceChartData = Array.from(sourceMap.entries())
-              .sort((a, b) => b[1] - a[1])
-              .slice(0, 5)
-              .map(([name, value], i) => ({ name, value, color: colors[i % colors.length] }));
-            setSourceData(sourceChartData.length > 0 ? sourceChartData : [{ name: "No data yet", value: 1, color: "hsl(222, 30%, 30%)" }]);
-          }
-        }
-      }
-    };
-    
-    fetchData();
-  }, [user?.id, profile]);
 
   // Determine what to show based on role
   const showAgencyStats = isAdmin;
@@ -285,18 +275,8 @@ export default function Dashboard() {
 
       {/* ====== QUICK ACTIONS ROW ====== */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        {[
-          { to: "/numbers", icon: Edit3, color: "primary", title: "Log Numbers", sub: "Enter today's stats", delay: 0 },
-          { to: "/agent-portal", icon: BarChart3, color: "violet-500", title: "Agent Portal", sub: "View performance", delay: 0.05 },
-          { to: "/dashboard/crm", icon: Users, color: "emerald-500", title: "CRM", sub: "Manage agents", delay: 0.1 },
-          { to: "/dashboard/applicants", icon: Sparkles, color: "amber-500", title: "Pipeline", sub: "View applicants", delay: 0.15 },
-        ].map((card) => (
-          <motion.div
-            key={card.to}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: card.delay, duration: 0.3 }}
-          >
+        {quickActions.map((card) => (
+          <div key={card.to}>
             <Link to={card.to}>
               <GlassCard className={`p-4 hover:border-${card.color}/50 hover:bg-${card.color}/5 cursor-pointer transition-all card-hover-lift group`}>
                 <card.icon className={`h-5 w-5 text-${card.color} mb-2 group-hover:scale-110 transition-transform`} />
@@ -304,7 +284,7 @@ export default function Dashboard() {
                 <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{card.sub}</p>
               </GlassCard>
             </Link>
-          </motion.div>
+          </div>
         ))}
       </div>
 
@@ -353,15 +333,10 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         {/* LEFT COLUMN: Mini Leaderboard (Production) - 2/3 width */}
         <div className="lg:col-span-2 space-y-6">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="flex items-center gap-2"
-          >
+          <div className="flex items-center gap-2">
             <DollarSign className="h-4 w-4 text-primary" />
             <h3 className="text-base font-bold">Top Producers</h3>
-          </motion.div>
+          </div>
 
           {/* Sales Leaderboard - Primary focus */}
           <LeaderboardTabs currentAgentId={currentAgentId} />
@@ -376,20 +351,12 @@ export default function Dashboard() {
 
         {/* RIGHT COLUMN: Recruiting Stats + Quick Actions - 1/3 width */}
         <div className="space-y-6">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="flex items-center gap-2"
-          >
+          <div className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-emerald-500" />
             <h3 className="text-base font-bold">
               {isAdmin ? "Recruiting & Growth" : isManager ? "Team Growth" : "Your Stats"}
             </h3>
-          </motion.div>
-
-          {/* Manager Leaderboard for Admin/Manager */}
-          
+          </div>
 
           {/* Onboarding Pipeline for Admin/Manager */}
           {(isManager || isAdmin) && <OnboardingPipelineCard />}
@@ -438,15 +405,10 @@ export default function Dashboard() {
       {/* ====== 4. TEAM VIEW (Managers & Admins) ====== */}
       {(isManager || isAdmin) && (
         <div className="mb-6">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="flex items-center gap-2 mb-4"
-          >
+          <div className="flex items-center gap-2 mb-4">
             <Users className="h-4 w-4 text-primary" />
             <h3 className="text-base font-bold">Your Team</h3>
-          </motion.div>
+          </div>
           <ManagerTeamView />
         </div>
       )}
@@ -454,14 +416,10 @@ export default function Dashboard() {
       {/* ====== 5. PERSONAL STATS (Agents only - NOT Admin) ====== */}
       {showPersonalOnly && (
         <div className="mb-6">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-2 mb-3"
-          >
+          <div className="flex items-center gap-2 mb-3">
             <Users className="h-4 w-4 text-muted-foreground" />
             <h3 className="text-sm font-semibold text-muted-foreground">Your Recruiting Stats</h3>
-          </motion.div>
+          </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <StatCard

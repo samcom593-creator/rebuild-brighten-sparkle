@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,39 +10,87 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Progress } from "@/components/ui/progress";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
+import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Bell, Mail, MessageSquare, Smartphone, AlertTriangle, Send, Search, RefreshCw, Zap, Phone, Radio, CheckCircle } from "lucide-react";
+import { Bell, Mail, MessageSquare, Smartphone, AlertTriangle, Send, Search, RefreshCw, Zap, Phone, Radio, CheckCircle, ChevronLeft, ChevronRight, RotateCcw, Rocket } from "lucide-react";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { CARRIER_OPTIONS } from "@/lib/carrierOptions";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { cn } from "@/lib/utils";
+import confetti from "canvas-confetti";
 
 // ─── Summary Stats ───
-function NotificationStats({ logs }: { logs: any[] }) {
+function NotificationStats({ logs, onFilterChannel }: { logs: any[]; onFilterChannel: (ch: string) => void }) {
+  const { playSound } = useSoundEffects();
   const today = new Date().toISOString().split("T")[0];
   const todayLogs = logs.filter((l) => l.created_at?.startsWith(today));
 
+  const sentCount = todayLogs.filter(l => l.status === "sent").length;
+  const failedCount = todayLogs.filter(l => l.status === "failed").length;
+  const successRate = todayLogs.length > 0 ? Math.round((sentCount / todayLogs.length) * 100) : 100;
+
   const stats = [
-    { label: "Total Today", value: todayLogs.length, icon: Bell, color: "text-primary" },
-    { label: "Push", value: todayLogs.filter((l) => l.channel === "push").length, icon: Smartphone, color: "text-blue-500" },
-    { label: "SMS", value: todayLogs.filter((l) => l.channel === "sms").length, icon: MessageSquare, color: "text-green-500" },
-    { label: "Auto SMS", value: todayLogs.filter((l) => l.channel === "sms-auto").length, icon: Radio, color: "text-purple-500" },
-    { label: "Email", value: todayLogs.filter((l) => l.channel === "email").length, icon: Mail, color: "text-amber-500" },
-    { label: "Failed", value: todayLogs.filter((l) => l.status === "failed").length, icon: AlertTriangle, color: "text-destructive" },
+    { label: "Total Today", value: todayLogs.length, icon: Bell, gradient: "from-primary/20 to-primary/5 border-primary/20", color: "text-primary", filter: "all" },
+    { label: "Push", value: todayLogs.filter((l) => l.channel === "push").length, icon: Smartphone, gradient: "from-blue-500/20 to-blue-500/5 border-blue-500/20", color: "text-blue-400", filter: "push" },
+    { label: "SMS", value: todayLogs.filter((l) => l.channel === "sms").length, icon: MessageSquare, gradient: "from-emerald-500/20 to-emerald-500/5 border-emerald-500/20", color: "text-emerald-400", filter: "sms" },
+    { label: "Auto SMS", value: todayLogs.filter((l) => l.channel === "sms-auto").length, icon: Radio, gradient: "from-purple-500/20 to-purple-500/5 border-purple-500/20", color: "text-purple-400", filter: "sms-auto" },
+    { label: "Email", value: todayLogs.filter((l) => l.channel === "email").length, icon: Mail, gradient: "from-amber-500/20 to-amber-500/5 border-amber-500/20", color: "text-amber-400", filter: "email" },
+    { label: "Failed", value: failedCount, icon: AlertTriangle, gradient: "from-red-500/20 to-red-500/5 border-red-500/20", color: "text-red-400", filter: "failed" },
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-      {stats.map((s) => (
-        <Card key={s.label} className="border-border/50">
-          <CardContent className="p-4 flex items-center gap-3">
-            <s.icon className={`h-5 w-5 ${s.color}`} />
-            <div>
-              <p className="text-2xl font-bold">{s.value}</p>
-              <p className="text-xs text-muted-foreground">{s.label}</p>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+        {stats.map((s, i) => (
+          <motion.div
+            key={s.label}
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ delay: i * 0.05, type: "spring", stiffness: 200 }}
+          >
+            <button
+              onClick={() => {
+                playSound("click");
+                onFilterChannel(s.filter === "failed" ? "all" : s.filter);
+              }}
+              className={cn(
+                "relative w-full overflow-hidden rounded-xl border bg-gradient-to-br p-4 backdrop-blur-sm transition-all hover:scale-[1.03] hover:shadow-lg text-left",
+                s.gradient
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-background/50">
+                  <s.icon className={cn("h-5 w-5", s.color)} />
+                </div>
+                <div>
+                  <p className={cn("text-2xl font-bold", s.color)}>
+                    <AnimatedCounter value={s.value} />
+                  </p>
+                  <p className="text-xs text-muted-foreground">{s.label}</p>
+                </div>
+              </div>
+              <div className="absolute -right-4 -top-4 h-16 w-16 rounded-full bg-current opacity-10 blur-xl" />
+            </button>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Success Rate Bar */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+        className="flex items-center gap-3 px-1"
+      >
+        <span className="text-xs text-muted-foreground whitespace-nowrap">Success Rate</span>
+        <Progress value={successRate} className="h-2 flex-1" />
+        <span className={cn("text-sm font-bold", successRate >= 90 ? "text-emerald-400" : successRate >= 70 ? "text-amber-400" : "text-red-400")}>
+          {successRate}%
+        </span>
+      </motion.div>
     </div>
   );
 }
@@ -58,15 +107,22 @@ function ChannelBadge({ channel }: { channel: string }) {
   return <Badge variant={c.variant} className={c.className}>{c.label}</Badge>;
 }
 
+const channelBorderColor: Record<string, string> = {
+  push: "border-l-blue-500",
+  sms: "border-l-emerald-500",
+  "sms-auto": "border-l-purple-500",
+  email: "border-l-amber-500",
+};
+
 // ─── Mark Delivered Button ───
 function MarkDeliveredButton({ log, onMarked }: { log: any; onMarked: () => void }) {
   const [saving, setSaving] = useState(false);
+  const { playSound } = useSoundEffects();
 
   if (log.channel !== "sms-auto" || log.status !== "sent") return null;
 
   const carrier = log.metadata?.carrier;
   const applicationId = log.metadata?.applicationId;
-  const agedLeadId = log.metadata?.agedLeadId;
 
   const handleMark = async () => {
     if (!carrier) return;
@@ -75,9 +131,11 @@ function MarkDeliveredButton({ log, onMarked }: { log: any; onMarked: () => void
       if (applicationId) {
         await supabase.from("applications").update({ carrier }).eq("id", applicationId);
       }
+      playSound("success");
       toast.success(`Carrier "${carrier}" saved for this lead`);
       onMarked();
     } catch (err: any) {
+      playSound("error");
       toast.error("Failed to save carrier");
     } finally {
       setSaving(false);
@@ -99,7 +157,9 @@ function MarkDeliveredButton({ log, onMarked }: { log: any; onMarked: () => void
   );
 }
 
-// ─── Notification Log Table ───
+// ─── Notification Log Table with Pagination ───
+const PAGE_SIZE = 25;
+
 function NotificationLogTable({ logs, search, channelFilter, statusFilter, onRefresh }: {
   logs: any[];
   search: string;
@@ -107,6 +167,10 @@ function NotificationLogTable({ logs, search, channelFilter, statusFilter, onRef
   statusFilter: string;
   onRefresh: () => void;
 }) {
+  const [page, setPage] = useState(0);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const { playSound } = useSoundEffects();
+
   const filtered = useMemo(() => {
     return logs.filter((l) => {
       if (channelFilter && channelFilter !== "all" && l.channel !== channelFilter) return false;
@@ -124,54 +188,110 @@ function NotificationLogTable({ logs, search, channelFilter, statusFilter, onRef
     });
   }, [logs, search, channelFilter, statusFilter]);
 
+  // Reset page when filters change
+  useEffect(() => { setPage(0); }, [search, channelFilter, statusFilter]);
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paged = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const start = page * PAGE_SIZE + 1;
+  const end = Math.min((page + 1) * PAGE_SIZE, filtered.length);
+
   return (
-    <div className="rounded-lg border border-border overflow-hidden">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Time</TableHead>
-            <TableHead>Recipient</TableHead>
-            <TableHead>Channel</TableHead>
-            <TableHead>Title</TableHead>
-            <TableHead className="hidden md:table-cell">Message</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {filtered.length === 0 ? (
+    <div className="space-y-3">
+      <div className="rounded-xl border border-border overflow-hidden">
+        <Table>
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                No notifications found
-              </TableCell>
+              <TableHead>Time</TableHead>
+              <TableHead>Recipient</TableHead>
+              <TableHead>Channel</TableHead>
+              <TableHead>Title</TableHead>
+              <TableHead className="hidden md:table-cell">Message</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
-          ) : (
-            filtered.slice(0, 100).map((log) => (
-              <TableRow key={log.id}>
-                <TableCell className="text-xs whitespace-nowrap">
-                  {log.created_at ? format(new Date(log.created_at), "MMM d, h:mm a") : "—"}
-                </TableCell>
-                <TableCell className="text-sm max-w-[200px] truncate">
-                  {log.recipient_email || log.recipient_phone || "—"}
-                </TableCell>
-                <TableCell><ChannelBadge channel={log.channel} /></TableCell>
-                <TableCell className="text-sm font-medium max-w-[200px] truncate">{log.title}</TableCell>
-                <TableCell className="hidden md:table-cell text-sm text-muted-foreground max-w-[250px] truncate">
-                  {log.message}
-                </TableCell>
-                <TableCell>
-                  <Badge variant={log.status === "sent" ? "default" : log.status === "failed" ? "destructive" : "secondary"}>
-                    {log.status}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <MarkDeliveredButton log={log} onMarked={onRefresh} />
+          </TableHeader>
+          <TableBody>
+            {filtered.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                  No notifications found
                 </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+            ) : (
+              paged.map((log) => (
+                <>
+                  <TableRow
+                    key={log.id}
+                    className={cn(
+                      "border-l-[3px] cursor-pointer transition-colors hover:bg-muted/50",
+                      channelBorderColor[log.channel] || "border-l-transparent"
+                    )}
+                    onClick={() => {
+                      playSound("click");
+                      setExpandedId(expandedId === log.id ? null : log.id);
+                    }}
+                  >
+                    <TableCell className="text-xs whitespace-nowrap">
+                      {log.created_at ? format(new Date(log.created_at), "MMM d, h:mm a") : "—"}
+                    </TableCell>
+                    <TableCell className="text-sm max-w-[200px] truncate">
+                      {log.recipient_email || log.recipient_phone || "—"}
+                    </TableCell>
+                    <TableCell><ChannelBadge channel={log.channel} /></TableCell>
+                    <TableCell className="text-sm font-medium max-w-[200px] truncate">{log.title}</TableCell>
+                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground max-w-[250px] truncate">
+                      {log.message}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={log.status === "sent" ? "default" : log.status === "failed" ? "destructive" : "secondary"}>
+                        {log.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <MarkDeliveredButton log={log} onMarked={onRefresh} />
+                    </TableCell>
+                  </TableRow>
+                  {/* Expanded detail row */}
+                  {expandedId === log.id && (
+                    <TableRow key={`${log.id}-detail`} className="bg-muted/30">
+                      <TableCell colSpan={7} className="py-3 px-6">
+                        <div className="text-sm space-y-1">
+                          <p><span className="text-muted-foreground">Full Message:</span> {log.message || "—"}</p>
+                          {log.error_message && <p className="text-red-400"><span className="text-muted-foreground">Error:</span> {log.error_message}</p>}
+                          {log.recipient_email && <p><span className="text-muted-foreground">Email:</span> {log.recipient_email}</p>}
+                          {log.recipient_phone && <p><span className="text-muted-foreground">Phone:</span> {log.recipient_phone}</p>}
+                          <p className="text-muted-foreground text-xs">
+                            Sent {log.created_at ? formatDistanceToNow(new Date(log.created_at), { addSuffix: true }) : "—"}
+                          </p>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">
+            Showing {start}–{end} of {filtered.length}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-muted-foreground">Page {page + 1} / {totalPages}</span>
+            <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -179,6 +299,7 @@ function NotificationLogTable({ logs, search, channelFilter, statusFilter, onRef
 // ─── Carrier Assignment Tool ───
 function CarrierAssignmentTool() {
   const queryClient = useQueryClient();
+  const { playSound } = useSoundEffects();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkCarrier, setBulkCarrier] = useState("");
   const [autoBlasting, setAutoBlasting] = useState(false);
@@ -203,6 +324,7 @@ function CarrierAssignmentTool() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leads-missing-carrier"] });
+      playSound("success");
       toast.success("Carrier updated");
     },
   });
@@ -214,6 +336,7 @@ function CarrierAssignmentTool() {
     }
     setSelectedIds(new Set());
     setBulkCarrier("");
+    playSound("celebrate");
     toast.success(`Carrier assigned to ${selectedIds.size} leads`);
   };
 
@@ -233,9 +356,11 @@ function CarrierAssignmentTool() {
         });
         if (!error) sent++;
       }
+      playSound("celebrate");
       toast.success(`Auto-blast sent to ${sent} leads across all carriers`);
       queryClient.invalidateQueries({ queryKey: ["notification-logs"] });
     } catch (err: any) {
+      playSound("error");
       toast.error(err.message || "Auto-blast failed");
     } finally {
       setAutoBlasting(false);
@@ -257,14 +382,23 @@ function CarrierAssignmentTool() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Phone className="h-5 w-5 text-green-500" />
-          Carrier Assignment — {leads?.length || 0} leads missing carrier
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+      <div className={cn(
+        "relative overflow-hidden rounded-xl border bg-gradient-to-br p-6 backdrop-blur-sm",
+        "from-emerald-500/10 to-emerald-500/5 border-emerald-500/20"
+      )}>
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-background/50">
+            <Phone className="h-5 w-5 text-emerald-400" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold">Carrier Assignment</h3>
+            <p className="text-sm text-muted-foreground">
+              <span className="text-emerald-400 font-bold">{leads?.length || 0}</span> leads missing carrier
+            </p>
+          </div>
+        </div>
+
         <div className="flex flex-wrap items-center gap-3 mb-4">
           {selectedIds.size > 0 && (
             <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
@@ -300,7 +434,7 @@ function CarrierAssignmentTool() {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Auto-Blast SMS to All Carriers</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will send an SMS through <strong>all 8 carrier gateways</strong> for each of the <strong>{leads?.length} leads</strong> without a carrier assigned. The message will arrive on whichever carrier matches their phone. Estimated: ~{Math.ceil((leads?.length || 0) * 8 * 0.2 / 60)} minutes.
+                    This will send an SMS through <strong>all 8 carrier gateways</strong> for each of the <strong>{leads?.length} leads</strong> without a carrier assigned.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -334,7 +468,7 @@ function CarrierAssignmentTool() {
                 <TableRow><TableCell colSpan={4} className="text-center py-6 text-muted-foreground">All leads have carriers assigned ✓</TableCell></TableRow>
               ) : (
                 leads?.map((lead: any) => (
-                  <TableRow key={lead.id}>
+                  <TableRow key={lead.id} className="hover:bg-muted/50 transition-colors">
                     <TableCell>
                       <Checkbox
                         checked={selectedIds.has(lead.id)}
@@ -361,20 +495,24 @@ function CarrierAssignmentTool() {
             </TableBody>
           </Table>
         </div>
-      </CardContent>
-    </Card>
+        <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-emerald-500 opacity-5 blur-2xl" />
+      </div>
+    </motion.div>
   );
 }
 
-// ─── Quick Action Buttons ───
-function QuickActionButtons() {
+// ─── Quick Action Cards ───
+function QuickActionCards() {
   const [textingAll, setTextingAll] = useState(false);
   const [textingCourse, setTextingCourse] = useState(false);
   const [sendingOptIn, setSendingOptIn] = useState(false);
+  const [resendingFailed, setResendingFailed] = useState(false);
   const queryClient = useQueryClient();
+  const { playSound } = useSoundEffects();
 
   const handleTextAll = async () => {
     setTextingAll(true);
+    playSound("whoosh");
     try {
       const { data, error } = await supabase.functions.invoke("send-bulk-notification-blast", {
         method: "POST",
@@ -382,9 +520,12 @@ function QuickActionButtons() {
       });
       if (error) throw error;
       const s = data?.stats;
+      playSound("celebrate");
+      confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
       toast.success(`Blast complete! Push: ${s?.push_sent || 0}, SMS: ${(s?.sms_sent || 0) + (s?.sms_auto_detected || 0)}, Email: ${(s?.applicants_emailed || 0) + (s?.aged_emailed || 0)}`);
       queryClient.invalidateQueries({ queryKey: ["notification-logs"] });
     } catch (err: any) {
+      playSound("error");
       toast.error(err.message || "Text all failed");
     } finally {
       setTextingAll(false);
@@ -393,8 +534,8 @@ function QuickActionButtons() {
 
   const handleTextCourseProgress = async () => {
     setTextingCourse(true);
+    playSound("whoosh");
     try {
-      // Query applicants with course progress
       const { data: apps } = await supabase
         .from("applications")
         .select("id, first_name, phone, license_progress")
@@ -422,9 +563,11 @@ function QuickActionButtons() {
           // continue
         }
       }
+      playSound("celebrate");
       toast.success(`Sent scheduling SMS to ${sent} applicants with course progress`);
       queryClient.invalidateQueries({ queryKey: ["notification-logs"] });
     } catch (err: any) {
+      playSound("error");
       toast.error(err.message || "Course progress text failed");
     } finally {
       setTextingCourse(false);
@@ -433,88 +576,163 @@ function QuickActionButtons() {
 
   const handleSendOptIn = async () => {
     setSendingOptIn(true);
+    playSound("whoosh");
     try {
       const { data, error } = await supabase.functions.invoke("send-push-optin-email", {
         method: "POST",
         body: {},
       });
       if (error) throw error;
+      playSound("celebrate");
       toast.success(`Opt-in emails sent: ${data?.sent || 0}`);
       queryClient.invalidateQueries({ queryKey: ["notification-logs"] });
     } catch (err: any) {
+      playSound("error");
       toast.error(err.message || "Opt-in email failed");
     } finally {
       setSendingOptIn(false);
     }
   };
 
+  const handleResendFailed = async () => {
+    setResendingFailed(true);
+    playSound("whoosh");
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const { data: failedLogs } = await supabase
+        .from("notification_log")
+        .select("*")
+        .eq("status", "failed")
+        .gte("created_at", `${today}T00:00:00`)
+        .limit(50);
+
+      if (!failedLogs?.length) {
+        toast.info("No failed notifications today!");
+        return;
+      }
+
+      let resent = 0;
+      for (const log of failedLogs) {
+        try {
+          if (log.channel === "push" && log.recipient_user_id) {
+            await supabase.functions.invoke("send-push-notification", {
+              body: { userId: log.recipient_user_id, title: log.title, message: log.message },
+            });
+            resent++;
+          } else if (log.channel === "email" && log.recipient_email) {
+            await supabase.functions.invoke("send-notification", {
+              body: { to: log.recipient_email, subject: log.title, html: log.message },
+            });
+            resent++;
+          }
+        } catch {
+          // skip individual failures
+        }
+      }
+      playSound("celebrate");
+      confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
+      toast.success(`Resent ${resent} of ${failedLogs.length} failed notifications`);
+      queryClient.invalidateQueries({ queryKey: ["notification-logs"] });
+    } catch (err: any) {
+      playSound("error");
+      toast.error(err.message || "Resend failed");
+    } finally {
+      setResendingFailed(false);
+    }
+  };
+
+  const actions = [
+    {
+      title: "Text All Applicants",
+      desc: "Push + SMS + Email blast",
+      icon: Send,
+      gradient: "from-primary/20 to-primary/5 border-primary/20",
+      color: "text-primary",
+      loading: textingAll,
+      handler: handleTextAll,
+      confirmTitle: "Text All Applicants",
+      confirmDesc: "This sends push notifications, SMS, and email to every active applicant and aged lead.",
+    },
+    {
+      title: "Course Progress Leads",
+      desc: "SMS to schedule meeting",
+      icon: MessageSquare,
+      gradient: "from-emerald-500/20 to-emerald-500/5 border-emerald-500/20",
+      color: "text-emerald-400",
+      loading: textingCourse,
+      handler: handleTextCourseProgress,
+      confirmTitle: "Text Course Progress Leads",
+      confirmDesc: "Send an SMS to all applicants who have started or completed their course.",
+    },
+    {
+      title: "Send Opt-In Email",
+      desc: "Enable push notifications",
+      icon: Bell,
+      gradient: "from-amber-500/20 to-amber-500/5 border-amber-500/20",
+      color: "text-amber-400",
+      loading: sendingOptIn,
+      handler: handleSendOptIn,
+      confirmTitle: "Send Push Notification Opt-In Email",
+      confirmDesc: "Send an email to all active applicants encouraging them to enable push notifications.",
+    },
+    {
+      title: "Resend All Failed",
+      desc: "Retry today's failures",
+      icon: RotateCcw,
+      gradient: "from-red-500/20 to-red-500/5 border-red-500/20",
+      color: "text-red-400",
+      loading: resendingFailed,
+      handler: handleResendFailed,
+      confirmTitle: "Resend Failed Notifications",
+      confirmDesc: "This will retry all failed notifications from today (push and email channels).",
+    },
+  ];
+
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-      <AlertDialog>
-        <AlertDialogTrigger asChild>
-          <Button className="w-full h-auto py-4 flex flex-col items-center gap-1" variant="default" disabled={textingAll}>
-            {textingAll ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
-            <span className="font-semibold">Text All Applicants</span>
-            <span className="text-xs opacity-80">Push + SMS + Email</span>
-          </Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Text All Applicants</AlertDialogTitle>
-            <AlertDialogDescription>
-              This sends <strong>push notifications, SMS, and email</strong> to every active applicant and aged lead. All three channels fire simultaneously.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleTextAll}>Send All Channels Now</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog>
-        <AlertDialogTrigger asChild>
-          <Button className="w-full h-auto py-4 flex flex-col items-center gap-1" variant="secondary" disabled={textingCourse}>
-            {textingCourse ? <RefreshCw className="h-5 w-5 animate-spin" /> : <MessageSquare className="h-5 w-5" />}
-            <span className="font-semibold">Course Progress Leads</span>
-            <span className="text-xs opacity-80">Schedule a meeting SMS</span>
-          </Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Text Course Progress Leads</AlertDialogTitle>
-            <AlertDialogDescription>
-              Send an SMS to all applicants who have started or completed their course, encouraging them to schedule a meeting.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleTextCourseProgress}>Send SMS Now</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog>
-        <AlertDialogTrigger asChild>
-          <Button className="w-full h-auto py-4 flex flex-col items-center gap-1" variant="outline" disabled={sendingOptIn}>
-            {sendingOptIn ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Bell className="h-5 w-5" />}
-            <span className="font-semibold">Send Opt-In Email</span>
-            <span className="text-xs opacity-80">Enable push notifications</span>
-          </Button>
-        </AlertDialogTrigger>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Send Push Notification Opt-In Email</AlertDialogTitle>
-            <AlertDialogDescription>
-              Send an email to all active applicants encouraging them to enable push notifications and install the app.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleSendOptIn}>Send Opt-In Emails</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+      {actions.map((action, i) => (
+        <motion.div
+          key={action.title}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: i * 0.05 }}
+        >
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button
+                disabled={action.loading}
+                className={cn(
+                  "relative w-full overflow-hidden rounded-xl border bg-gradient-to-br p-5 backdrop-blur-sm transition-all hover:scale-[1.03] hover:shadow-lg text-left",
+                  action.gradient
+                )}
+              >
+                <div className="flex flex-col items-center gap-2 text-center">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-background/50">
+                    {action.loading ? (
+                      <RefreshCw className={cn("h-6 w-6 animate-spin", action.color)} />
+                    ) : (
+                      <action.icon className={cn("h-6 w-6", action.color)} />
+                    )}
+                  </div>
+                  <span className="font-semibold text-sm">{action.title}</span>
+                  <span className="text-xs text-muted-foreground">{action.desc}</span>
+                </div>
+                <div className="absolute -right-4 -top-4 h-16 w-16 rounded-full bg-current opacity-10 blur-xl" />
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{action.confirmTitle}</AlertDialogTitle>
+                <AlertDialogDescription>{action.confirmDesc}</AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={action.handler}>Send Now</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </motion.div>
+      ))}
     </div>
   );
 }
@@ -523,6 +741,7 @@ function QuickActionButtons() {
 function BulkBlastSection() {
   const [blasting, setBlasting] = useState(false);
   const [lastResult, setLastResult] = useState<any>(null);
+  const { playSound } = useSoundEffects();
 
   const { data: counts } = useQuery({
     queryKey: ["blast-counts"],
@@ -540,6 +759,7 @@ function BulkBlastSection() {
 
   const handleBlast = async () => {
     setBlasting(true);
+    playSound("whoosh");
     try {
       const { data, error } = await supabase.functions.invoke("send-bulk-notification-blast", {
         method: "POST",
@@ -547,8 +767,11 @@ function BulkBlastSection() {
       });
       if (error) throw error;
       setLastResult(data?.stats);
+      playSound("celebrate");
+      confetti({ particleCount: 120, spread: 90, origin: { y: 0.6 } });
       toast.success("Bulk blast complete!");
     } catch (err: any) {
+      playSound("error");
       toast.error(err.message || "Blast failed");
     } finally {
       setBlasting(false);
@@ -557,45 +780,45 @@ function BulkBlastSection() {
 
   return (
     <div className="space-y-4">
-      <QuickActionButtons />
+      <QuickActionCards />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Zap className="h-5 w-5 text-amber-500" />
-            Bulk Blast — Send to All Leads
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="p-4 rounded-lg bg-muted">
-              <p className="text-2xl font-bold">{counts?.applicants || "—"}</p>
-              <p className="text-xs text-muted-foreground">Active Applicants → Push + SMS + Email</p>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+        <div className={cn(
+          "relative overflow-hidden rounded-xl border bg-gradient-to-br p-6 backdrop-blur-sm",
+          "from-amber-500/10 to-amber-500/5 border-amber-500/20"
+        )}>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-background/50">
+              <Rocket className="h-5 w-5 text-amber-400" />
             </div>
-            <div className="p-4 rounded-lg bg-muted">
-              <p className="text-2xl font-bold">{counts?.agedLeads || "—"}</p>
-              <p className="text-xs text-muted-foreground">Aged Leads → Push + SMS + Email</p>
+            <div>
+              <h3 className="text-lg font-semibold">Bulk Blast — Send to All Leads</h3>
+              <p className="text-sm text-muted-foreground">Push + SMS + Email to everyone</p>
             </div>
           </div>
 
-          <p className="text-sm text-muted-foreground">
-            This sends all 3 channels (push + SMS + email) at 1/second. Leads with a carrier get direct SMS; others get auto-detected across all 8 gateways.
-            Estimated time: ~{Math.ceil(((counts?.applicants || 0) + (counts?.agedLeads || 0)) / 60)} minutes.
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className={cn("rounded-xl border bg-gradient-to-br p-4 from-blue-500/10 to-blue-500/5 border-blue-500/20")}>
+              <p className="text-2xl font-bold text-blue-400"><AnimatedCounter value={counts?.applicants || 0} /></p>
+              <p className="text-xs text-muted-foreground">Active Applicants</p>
+            </div>
+            <div className={cn("rounded-xl border bg-gradient-to-br p-4 from-purple-500/10 to-purple-500/5 border-purple-500/20")}>
+              <p className="text-2xl font-bold text-purple-400"><AnimatedCounter value={counts?.agedLeads || 0} /></p>
+              <p className="text-xs text-muted-foreground">Aged Leads</p>
+            </div>
+          </div>
+
+          <p className="text-sm text-muted-foreground mb-4">
+            Sends all 3 channels at 1/second. Estimated: ~{Math.ceil(((counts?.applicants || 0) + (counts?.agedLeads || 0)) / 60)} minutes.
           </p>
 
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button className="w-full" size="lg" disabled={blasting}>
                 {blasting ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                    Sending...
-                  </>
+                  <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />Sending...</>
                 ) : (
-                  <>
-                    <Send className="h-4 w-4 mr-2" />
-                    Blast All Leads (All Channels)
-                  </>
+                  <><Send className="h-4 w-4 mr-2" />Blast All Leads (All Channels)</>
                 )}
               </Button>
             </AlertDialogTrigger>
@@ -603,8 +826,7 @@ function BulkBlastSection() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Confirm Full Blast</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will send <strong>push notifications, SMS, and email</strong> to <strong>{counts?.applicants || 0} applicants</strong> and <strong>{counts?.agedLeads || 0} aged leads</strong>.
-                  All three channels fire for every lead.
+                  This will send push, SMS, and email to <strong>{counts?.applicants || 0} applicants</strong> and <strong>{counts?.agedLeads || 0} aged leads</strong>.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -614,18 +836,35 @@ function BulkBlastSection() {
             </AlertDialogContent>
           </AlertDialog>
 
-          {lastResult && (
-            <div className="p-3 bg-muted rounded-lg text-sm space-y-1">
-              <p>🔔 Push notifications sent: <strong>{lastResult.push_sent || 0}</strong></p>
-              <p>✅ Applicants emailed: <strong>{lastResult.applicants_emailed}</strong></p>
-              <p>✅ Aged leads emailed: <strong>{lastResult.aged_emailed}</strong></p>
-              <p>📱 SMS sent (known carrier): <strong>{lastResult.sms_sent}</strong></p>
-              <p>📡 SMS auto-detected: <strong>{lastResult.sms_auto_detected}</strong></p>
-              <p>❌ Failed: <strong>{lastResult.failed}</strong></p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          {/* Blast Results */}
+          <AnimatePresence>
+            {lastResult && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-2"
+              >
+                {[
+                  { label: "Push Sent", value: lastResult.push_sent || 0, color: "text-blue-400" },
+                  { label: "Applicants Emailed", value: lastResult.applicants_emailed || 0, color: "text-emerald-400" },
+                  { label: "Aged Emailed", value: lastResult.aged_emailed || 0, color: "text-purple-400" },
+                  { label: "SMS Sent", value: lastResult.sms_sent || 0, color: "text-emerald-400" },
+                  { label: "SMS Auto-Detected", value: lastResult.sms_auto_detected || 0, color: "text-amber-400" },
+                  { label: "Failed", value: lastResult.failed || 0, color: "text-red-400" },
+                ].map(r => (
+                  <div key={r.label} className="rounded-lg bg-muted/50 p-3 text-center">
+                    <p className={cn("text-xl font-bold", r.color)}><AnimatedCounter value={r.value} /></p>
+                    <p className="text-[10px] text-muted-foreground">{r.label}</p>
+                  </div>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-amber-500 opacity-5 blur-2xl" />
+        </div>
+      </motion.div>
     </div>
   );
 }
@@ -635,7 +874,11 @@ export default function NotificationHub() {
   const [search, setSearch] = useState("");
   const [channelFilter, setChannelFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState("logs");
+  const { playSound } = useSoundEffects();
   const queryClient = useQueryClient();
+  const [lastRefreshed, setLastRefreshed] = useState(new Date());
+  const [refreshing, setRefreshing] = useState(false);
 
   const { data: logs = [], isLoading } = useQuery({
     queryKey: ["notification-logs"],
@@ -646,11 +889,17 @@ export default function NotificationHub() {
         .order("created_at", { ascending: false })
         .limit(500);
       if (error) throw error;
+      setLastRefreshed(new Date());
       return data || [];
     },
   });
 
-  const refreshLogs = () => queryClient.invalidateQueries({ queryKey: ["notification-logs"] });
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    playSound("whoosh");
+    await queryClient.invalidateQueries({ queryKey: ["notification-logs"] });
+    setTimeout(() => setRefreshing(false), 600);
+  };
 
   // Realtime subscription
   useEffect(() => {
@@ -663,25 +912,63 @@ export default function NotificationHub() {
     return () => { supabase.removeChannel(channel); };
   }, [queryClient]);
 
+  const tabCounts = useMemo(() => {
+    const today = new Date().toISOString().split("T")[0];
+    const todayLogs = logs.filter(l => l.created_at?.startsWith(today));
+    return {
+      logs: todayLogs.length,
+      carriers: 0, // loaded lazily
+      blast: 0,
+    };
+  }, [logs]);
+
   return (
     <div className="space-y-6 p-4 md:p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Bell className="h-6 w-6 text-primary" />
-            Notification Hub
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Track every push, SMS, auto-SMS, and email sent across the platform
-          </p>
+      {/* Premium Header */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-blue-500/5 to-background p-6 backdrop-blur-sm"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/20">
+                <Bell className="h-6 w-6 text-primary" />
+              </div>
+              <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 border-2 border-background animate-pulse" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">Notification Hub</h1>
+              <p className="text-sm text-muted-foreground">
+                Track every push, SMS, auto-SMS, and email · Last refreshed {formatDistanceToNow(lastRefreshed, { addSuffix: true })}
+              </p>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
+            <RefreshCw className={cn("h-4 w-4 mr-1", refreshing && "animate-spin")} />
+            Refresh
+          </Button>
         </div>
-      </div>
+        <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-primary opacity-5 blur-3xl" />
+      </motion.div>
 
-      <NotificationStats logs={logs} />
+      <NotificationStats logs={logs} onFilterChannel={(ch) => {
+        setChannelFilter(ch);
+        setActiveTab("logs");
+      }} />
 
-      <Tabs defaultValue="logs" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={(v) => {
+        playSound("click");
+        setActiveTab(v);
+      }} className="space-y-4">
         <TabsList>
-          <TabsTrigger value="logs">Notification Log</TabsTrigger>
+          <TabsTrigger value="logs" className="gap-1">
+            Notification Log
+            {tabCounts.logs > 0 && (
+              <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{tabCounts.logs}</Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="carriers">Carrier Assignment</TabsTrigger>
           <TabsTrigger value="blast">Bulk Blast</TabsTrigger>
         </TabsList>
@@ -723,9 +1010,13 @@ export default function NotificationHub() {
           </div>
 
           {isLoading ? (
-            <p className="text-center text-muted-foreground py-8">Loading notifications...</p>
+            <div className="space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full rounded-lg" />
+              ))}
+            </div>
           ) : (
-            <NotificationLogTable logs={logs} search={search} channelFilter={channelFilter} statusFilter={statusFilter} onRefresh={refreshLogs} />
+            <NotificationLogTable logs={logs} search={search} channelFilter={channelFilter} statusFilter={statusFilter} onRefresh={handleRefresh} />
           )}
         </TabsContent>
 

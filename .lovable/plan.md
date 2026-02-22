@@ -1,76 +1,72 @@
 
+# SMS Auto-Carrier-Detection: Try All Gateways Until Success
 
-# Twilio SMS Integration
-
-Add real SMS capability via Twilio so you can text any lead with just their phone number — no carrier data needed.
+Instead of manually guessing carriers, the system will automatically try sending SMS through every carrier gateway (AT&T, Verizon, T-Mobile, etc.) for each phone number. The first one that delivers successfully gets saved as that lead's carrier for future sends.
 
 ---
 
-## What You Need First
+## How Auto-Detection Works
 
-1. Go to [twilio.com](https://twilio.com) and create a free account
-2. Get a phone number (takes 2 minutes, costs ~$1.15/month)
-3. From your Twilio Console, grab:
-   - **Account SID** (starts with "AC...")
-   - **Auth Token**
-   - **Twilio Phone Number** (the number you purchased, e.g. +1234567890)
+For any lead without a carrier assigned:
+1. Try sending via all 8 carrier email gateways (AT&T, Verizon, T-Mobile, Sprint, US Cellular, Cricket, Metro, Boost)
+2. Resend's email API returns success/failure — if the gateway rejects it, we move to the next
+3. When one succeeds, save that carrier to the lead's record so future sends skip straight to it
+4. Log every attempt to `notification_log` for visibility
+
+**Important caveat**: Email-to-SMS gateways don't always return clear delivery failures — Resend may report "sent" even if the carrier gateway silently drops it. So this is a "best effort spray" approach: all 8 get attempted, and the message will arrive on whichever carrier actually matches. We save the carrier once you manually confirm which one worked (via a "Mark as delivered" button in the UI).
 
 ---
 
 ## What Gets Built
 
-### 1. Store Twilio Credentials
-Add three secrets to your project:
-- `TWILIO_ACCOUNT_SID`
-- `TWILIO_AUTH_TOKEN`
-- `TWILIO_PHONE_NUMBER`
+### 1. New Edge Function: `send-sms-auto-detect`
+- Accepts `phone`, `message`, and optionally `applicationId` or `agedLeadId`
+- If the lead already has a carrier, sends to that one only
+- If no carrier, loops through all 8 gateways sending the SMS via Resend
+- Adds a 200ms delay between each attempt to avoid rate limits
+- Logs each attempt to `notification_log` with channel = "sms-auto"
+- Returns which gateways were attempted
 
-### 2. New Edge Function: `send-sms-twilio`
-A simple function that sends a real SMS via Twilio's REST API:
-- Takes `to` (phone number) and `body` (message text)
-- Normalizes phone to E.164 format (+1XXXXXXXXXX)
-- Logs the result to `notification_log` with channel = "sms-twilio"
-- No SDK needed — just a fetch call to Twilio's API
+### 2. Update `send-bulk-notification-blast`
+- For leads WITH a carrier: send to that carrier only (fast, 1 call)
+- For leads WITHOUT a carrier: call `send-sms-auto-detect` which tries all 8
+- Stats updated to show "sms_auto_detected" count
 
-### 3. Update `send-notification` Function
-Add Twilio as the preferred SMS channel:
-- **Priority**: Push -> Twilio SMS -> Email-to-SMS (fallback if Twilio fails) -> Email
-- If the user has a phone number, use Twilio directly (no carrier needed)
-- Falls back to email-to-SMS gateway if Twilio creds aren't set
+### 3. Update `send-notification`
+- Add auto-detect as step 2 in the priority chain:
+  - Push -> SMS (known carrier) -> SMS Auto-Detect (unknown carrier) -> Email
+- If carrier is known, use it directly; if not, try all gateways
 
-### 4. Update `send-bulk-notification-blast`
-- For every applicant and aged lead with a phone number, send SMS via Twilio
-- No longer dependent on carrier data for SMS delivery
-- Still sends email in parallel
-
-### 5. Update Notification Hub UI
-- Add a "sms-twilio" channel badge (green) alongside existing badges
-- Stats row shows Twilio SMS count separately
-- Carrier assignment tool becomes optional (still useful for cost savings with free email-to-SMS)
+### 4. Update Notification Hub UI
+- New "SMS Auto" badge in the log table (purple)
+- Stats row adds "Auto SMS" count
+- Carrier Assignment tool gets a new "Auto-Blast All" button that triggers auto-detect for all leads missing carriers
+- Add a "Mark Delivered" action on SMS log entries so you can confirm which carrier worked and save it
 
 ---
 
 ## Technical Details
 
 ### New file:
-- `supabase/functions/send-sms-twilio/index.ts`
+- `supabase/functions/send-sms-auto-detect/index.ts`
 
 ### Modified files:
-- `supabase/functions/send-notification/index.ts` — add Twilio as primary SMS
-- `supabase/functions/send-bulk-notification-blast/index.ts` — use Twilio for bulk SMS
-- `src/pages/NotificationHub.tsx` — add Twilio badge and stats
+- `supabase/functions/send-notification/index.ts` — add auto-detect fallback
+- `supabase/functions/send-bulk-notification-blast/index.ts` — use auto-detect for unknown carriers
+- `src/pages/NotificationHub.tsx` — add auto SMS badge, stats, and auto-blast button
+- `src/lib/carrierOptions.ts` — no changes needed (carriers stay the same)
 
-### Twilio API call (no SDK needed):
+### Auto-detect loop logic:
 ```text
-POST https://api.twilio.com/2010-04-01/Accounts/{SID}/Messages.json
-Auth: Basic (SID:Token)
-Body: To, From, Body
+for each carrier in [att, verizon, tmobile, sprint, uscellular, cricket, metro, boost]:
+  send email to {phone}@{gateway}
+  if Resend returns success: log as "sent"
+  if Resend returns error: log as "failed", try next
+  wait 200ms between attempts
 ```
 
 ### Implementation order:
-1. Request Twilio secrets from you
-2. Create `send-sms-twilio` edge function
-3. Update `send-notification` to use Twilio as primary SMS
-4. Update bulk blast to use Twilio
-5. Update Notification Hub UI
-6. Deploy and test with a single number before blasting
+1. Create `send-sms-auto-detect` edge function
+2. Update `send-notification` to use auto-detect when no carrier
+3. Update `send-bulk-notification-blast` to use auto-detect
+4. Update Notification Hub UI with auto SMS stats and controls

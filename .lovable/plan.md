@@ -1,49 +1,84 @@
 
-# Make Activation Risk Banner Interactive with Agent Actions
 
-## Current Problem
-The Activation Risk Banner is purely informational -- it shows a count of at-risk agents (no production in 14+ days) but clicking it does nothing. You want to tap it, see who those agents are, and take action on each one (deactivate, move to inactive, remove, etc.).
+# Finish Remaining Items -- Sidebar Cleanup, Merge Fix, System Integrity Auto-Fix, CRM Tweaks, Course Progress Compaction, Data Fixes
 
-## Solution
-
-Transform the banner into a clickable element that expands to show the full list of at-risk agents with one-tap action buttons for each.
-
-### How It Will Work
-1. **Tap the banner** -- it expands inline (or opens a sheet/dialog) showing the list of at-risk agents with their name, last production date, and days since last activity
-2. **Each agent row has quick actions**:
-   - **"Move to Inactive"** -- sets `is_inactive = true` (soft removal, keeps data)
-   - **"Deactivate"** -- opens the existing `DeactivateAgentDialog` for full options (terminate, switch teams, remove from system)
-   - **"Dismiss"** -- hides that agent from the risk list for 7 days (without changing their status)
-3. **Bulk action**: A "Move All to Inactive" button at the bottom to handle the entire list in one tap
-4. After any action, the list and count update immediately
-
-### Visual Design
-- The banner stays as-is when collapsed (amber warning card with count)
-- On tap, it expands with a smooth animation to show agent rows
-- Each row: Agent name | Last active date | Days inactive | Action buttons
-- Compact rows to fit many agents without excessive scrolling
+This plan covers all the remaining items from the original plans that have not yet been implemented.
 
 ---
 
-## Technical Details
+## 1. Remove "Accounts" from Sidebar
 
-### File: `src/components/dashboard/ActivationRiskBanner.tsx` (REWRITE)
-- Change the query to return the full agent list (not just a count) -- fetch `agents.id`, `agents.user_id`, join with `profiles.full_name`, and compute last production date from `daily_production`
-- Add `expanded` state toggled by clicking the banner
-- When expanded, render agent rows with:
-  - Name from profiles
-  - Last production date (or "Never" if none)
-  - Days since last activity
-  - "Inactive" button (quick action: sets `is_inactive = true`)
-  - "Options" button (opens `DeactivateAgentDialog`)
-  - "Dismiss" button (stores agent ID in local state to hide for current session)
-- Add "Move All to Inactive" bulk action button
-- Each action triggers a Supabase update, plays a sound effect, shows a toast, and refetches the query
-- Import and use `DeactivateAgentDialog` for the full options flow
+The "Accounts" nav item in `GlobalSidebar.tsx` (line 102) points to `/dashboard/accounts` but serves no purpose. It will be removed.
 
-### No database changes needed
-- The `agents` table already has `is_inactive` and `is_deactivated` columns
-- The `DeactivateAgentDialog` already handles all termination/transfer flows
+**File:** `src/components/layout/GlobalSidebar.tsx` -- delete line 102.
 
-### Files Modified
-- `src/components/dashboard/ActivationRiskBanner.tsx` -- full rewrite to interactive expandable list with actions
+---
+
+## 2. Fix Duplicate Merge Edge Function
+
+The `merge-agent-records` edge function uses `userClient.auth.getClaims(token)` which is not a valid Supabase JS method. This causes silent failures when merging.
+
+**Fix:** Replace `getClaims(token)` with `getUser()` (which uses the Authorization header already set on the client). Extract user ID from the result.
+
+**File:** `supabase/functions/merge-agent-records/index.ts` -- lines 39-50, replace the `getClaims` block with `getUser()` and extract `data.user.id`.
+
+---
+
+## 3. System Integrity -- "Fix All" Buttons
+
+Currently the `SystemIntegrityCard` only shows issues but offers no way to resolve them. Add a "Fix" button next to each issue type:
+
+- **Orphan agents** (active agents without user accounts): Button sets their `status` to `inactive`
+- **Invalid status** (terminated leads with non-rejected status): Button sets their `status` to `rejected`
+- **Duplicate emails**: Button links to the existing Merge Tool (navigates to it)
+
+Each fix shows a toast confirmation and refetches the integrity data.
+
+**File:** `src/components/admin/SystemIntegrityCard.tsx` -- add fix handler functions and "Fix" buttons per issue row.
+
+---
+
+## 4. Course Progress -- Compact Layout
+
+Reduce vertical spacing to show more agents per screen without scrolling:
+
+- Reduce header padding from `p-2.5` to `p-2`, icon from `h-5 w-5` to `h-4 w-4`
+- Title from `text-2xl` to `text-xl`
+- Stats cards padding from `p-3` to `p-2`, icon containers from `h-8 w-8` to `h-6 w-6`, numbers from `text-xl` to `text-lg`
+- Table row padding reduced
+- Progress Ring size from 40 to 32
+
+**File:** `src/pages/CourseProgress.tsx` -- multiple small spacing/size reductions.
+
+---
+
+## 5. Fix Phone Number Data
+
+The 3 placeholder leads inserted with `0000000000` phone numbers need correction. Run a database update to set those phones to `NULL`.
+
+**Action:** SQL update on `applications` table where `phone = '0000000000'` to set `phone = NULL`.
+
+---
+
+## 6. CRM Hide Inactive Labels Fix
+
+The CRM already has the toggle buttons, but the labels are misleading -- "Show Inactive" button is labeled "Showing Inactive" when toggled (it actually shows deactivated agents). Fix the label text to match the actual behavior:
+
+- First button (showDeactivated): "Show Deactivated" / "Hiding Deactivated"
+- Second button (showInactive): "Show Inactive" / "Hiding Inactive"
+
+**File:** `src/pages/DashboardCRM.tsx` -- fix label text on lines 1405 and 1415.
+
+---
+
+## Technical Summary
+
+| File | Change |
+|------|--------|
+| `src/components/layout/GlobalSidebar.tsx` | Remove Accounts nav item |
+| `supabase/functions/merge-agent-records/index.ts` | Fix auth from `getClaims` to `getUser` |
+| `src/components/admin/SystemIntegrityCard.tsx` | Add "Fix" buttons for each issue type |
+| `src/pages/CourseProgress.tsx` | Compact layout (smaller padding, fonts, icons) |
+| `src/pages/DashboardCRM.tsx` | Fix toggle button labels |
+| Database | Set `phone = NULL` where `phone = '0000000000'` in applications |
+

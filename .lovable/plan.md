@@ -1,90 +1,75 @@
 
+# Notification Hub Upgrade: Quick Action Buttons + Full-Channel Blast + Auto Opt-In
 
-# Dashboard Performance Optimization
+## What's Changing
 
-After auditing the full dashboard, here are the key issues and fixes organized by impact.
+### 1. New Quick Action Buttons on Notification Hub
+Add prominent action buttons at the top of the Bulk Blast tab:
 
----
+- **"Text All Applicants"** -- sends SMS (+ email + push) to every active applicant with a motivational or licensing message
+- **"Text Applicants with Course Progress"** -- targets only applicants who have course progress and sends them a message to schedule a meeting/interview
+- **"Send Opt-In Email to All"** -- sends an email to all applicants encouraging them to enable push notifications (with a direct link to the app's install/notification page)
 
-## Issue 1: No Query Caching on Main Dashboard Data (HIGH IMPACT)
+### 2. Blast Sends ALL Channels (Not Just Email + SMS)
+Currently the bulk blast sends email + SMS but doesn't attempt push notifications. Update `send-bulk-notification-blast` to also:
+- Send **push notifications** to every applicant who has a push subscription
+- Send **SMS** (known carrier or auto-detect)
+- Send **email**
+- All three channels fire for every lead (not fallback -- all at once)
 
-The main `Dashboard.tsx` fetches all its stats (leads, charts, source data) using a raw `useEffect` + `useState` pattern. This means:
-- Data re-fetches on every mount (no caching)
-- No stale-while-revalidate behavior
-- No deduplication if multiple renders happen
+### 3. Opt-In Recovery Email
+Create a new edge function `send-push-optin-email` that sends a clean branded email to applicants saying:
+- "Stay in the loop! Enable push notifications so you never miss an update from Apex Financial"
+- Links to the app's `/install` page where they can install the PWA and enable notifications
+- Tracks in `notification_log` as channel "email" with metadata `{ trigger: "push-optin" }`
 
-**Fix**: Convert the `useEffect` fetch in `Dashboard.tsx` (lines 97-249) to a `useQuery` hook with the existing 120s `staleTime`. This gives instant re-renders on tab switches and prevents duplicate network requests.
-
----
-
-## Issue 2: Unstable `useEffect` Dependency Causing Extra Refetches (HIGH IMPACT)
-
-Line 249: `[user?.id, profile]` — the `profile` object gets a new reference on every auth state change, causing the entire dashboard data fetch to re-run unnecessarily.
-
-**Fix**: Change dependency to `[user?.id, profile?.full_name]` so it only refetches when the name actually changes.
-
----
-
-## Issue 3: Unused Import (LOW IMPACT, cleanup)
-
-`DashboardLayout` is imported on line 22 but never used in the JSX (the `AuthenticatedShell` already provides the sidebar). This is dead code.
-
-**Fix**: Remove the unused import.
-
----
-
-## Issue 4: `OnboardingPipelineCard` Uses Raw useEffect Instead of useQuery (MEDIUM IMPACT)
-
-This component fetches data with `useEffect` + manual `setLoading`, missing caching entirely. Every dashboard mount triggers a fresh query.
-
-**Fix**: Convert to `useQuery` with a stable query key.
-
----
-
-## Issue 5: Excessive Staggered Motion Animations (MEDIUM IMPACT)
-
-The dashboard has ~10+ `motion.div` wrappers with staggered `delay` values. On every mount these run entrance animations, causing:
-- Layout shifts during staggered reveals
-- Extra JS work on the main thread
-
-**Fix**: Replace most staggered `motion.div` wrappers with simple `div` elements. Keep only the welcome header animation (first impression) and remove delays from section headers and stat cards that are below the fold.
-
----
-
-## Issue 6: Inline Object/Array Recreation on Every Render (LOW-MEDIUM IMPACT)
-
-- `licenseData` (line 81-84) recreates on every render
-- Quick actions array (lines 288-308) recreates on every render
-- `sourceData` default value recreates on every render
-
-**Fix**: Wrap computed values in `useMemo` where they depend on `stats`.
-
----
-
-## Summary of Changes
-
-| File | Change |
-|------|--------|
-| `src/pages/Dashboard.tsx` | Convert data fetch to `useQuery`, fix `profile` dependency, remove unused `DashboardLayout` import, wrap computed arrays in `useMemo`, reduce `motion.div` wrappers |
-| `src/components/dashboard/OnboardingPipelineCard.tsx` | Convert `useEffect` fetch to `useQuery` |
+### 4. Auto Opt-In on Application Submission
+Update `submit-application` to:
+- After successful insert, call `send-notification` for the new applicant to deliver a welcome push/SMS/email
+- This ensures every new applicant immediately gets a notification through all available channels
+- The confirmation email already exists; this adds push + SMS to the welcome flow
 
 ---
 
 ## Technical Details
 
-### Dashboard.tsx useQuery conversion:
-- Extract fetch logic into a `queryFn` 
-- Query key: `["dashboard-stats", user?.id]`
-- Return a single object with `stats`, `dailyData`, `weeklyData`, `monthlyData`, `sourceData`, `userName`, `currentAgentId`
-- Enable the query only when `user` exists (`enabled: !!user`)
-- Leverages the global 120s `staleTime` already configured
+### New file:
+- `supabase/functions/send-push-optin-email/index.ts` -- sends opt-in encouragement email via Resend
 
-### Motion cleanup:
-- Keep: welcome header animation (lines 267-284)
-- Remove: section header motion wrappers (lines 356-364, 379-389, 441-449, 457-462), quick action card stagger (lines 294-298)
-- Quick action cards become plain `div` with CSS `transition` for hover only
+### Modified files:
 
-### OnboardingPipelineCard useQuery:
-- Query key: `["onboarding-pipeline", user?.id, isAdmin]`
-- Removes manual `loading` state in favor of `isLoading` from useQuery
+**`supabase/functions/send-bulk-notification-blast/index.ts`**
+- Add push notification call for each applicant (invoke `send-push-notification` with the applicant's user_id if they have one linked via the agents table)
+- Keep existing email + SMS logic
 
+**`supabase/functions/submit-application/index.ts`**
+- After insert + email notifications, also call `send-notification` to send a welcome push/SMS to the applicant's phone (auto-detect carrier)
+- This happens in the background alongside existing email sends
+
+**`src/pages/NotificationHub.tsx`**
+- Add 3 new action buttons to the Bulk Blast tab:
+  1. "Text All Applicants" -- calls `send-bulk-notification-blast` with a flag to send motivational outreach
+  2. "Text Course Progress Leads" -- queries applicants with course progress, then sends scheduling messages via `send-sms-auto-detect` for each
+  3. "Send Opt-In Email" -- calls `send-push-optin-email` for all applicants
+- Update blast results display to show push notification stats
+- Add push count to the stats summary
+
+### Blast flow after changes:
+```text
+For each applicant:
+  1. Send push notification (if user has push subscription)
+  2. Send SMS (known carrier direct, unknown carrier auto-detect)
+  3. Send email (licensing instructions or re-engagement)
+All three fire -- no fallback chain, all channels attempted
+```
+
+### Course Progress targeting logic:
+- Query `applications` joined with `onboarding_course_progress` or check `license_progress` for values like `started_course`, `finished_course`
+- Send SMS: "Hey {name}! You're making great progress on your course. Let's schedule a call to discuss next steps!"
+- Include a link or prompt to schedule via the calendar
+
+### Implementation order:
+1. Create `send-push-optin-email` edge function
+2. Update `send-bulk-notification-blast` to send push + SMS + email (all channels)
+3. Update `submit-application` to send welcome notification via all channels
+4. Update NotificationHub UI with new action buttons and push stats

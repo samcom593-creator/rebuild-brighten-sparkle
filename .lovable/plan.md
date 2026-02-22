@@ -1,72 +1,90 @@
 
-# SMS Auto-Carrier-Detection: Try All Gateways Until Success
 
-Instead of manually guessing carriers, the system will automatically try sending SMS through every carrier gateway (AT&T, Verizon, T-Mobile, etc.) for each phone number. The first one that delivers successfully gets saved as that lead's carrier for future sends.
+# Dashboard Performance Optimization
 
----
-
-## How Auto-Detection Works
-
-For any lead without a carrier assigned:
-1. Try sending via all 8 carrier email gateways (AT&T, Verizon, T-Mobile, Sprint, US Cellular, Cricket, Metro, Boost)
-2. Resend's email API returns success/failure — if the gateway rejects it, we move to the next
-3. When one succeeds, save that carrier to the lead's record so future sends skip straight to it
-4. Log every attempt to `notification_log` for visibility
-
-**Important caveat**: Email-to-SMS gateways don't always return clear delivery failures — Resend may report "sent" even if the carrier gateway silently drops it. So this is a "best effort spray" approach: all 8 get attempted, and the message will arrive on whichever carrier actually matches. We save the carrier once you manually confirm which one worked (via a "Mark as delivered" button in the UI).
+After auditing the full dashboard, here are the key issues and fixes organized by impact.
 
 ---
 
-## What Gets Built
+## Issue 1: No Query Caching on Main Dashboard Data (HIGH IMPACT)
 
-### 1. New Edge Function: `send-sms-auto-detect`
-- Accepts `phone`, `message`, and optionally `applicationId` or `agedLeadId`
-- If the lead already has a carrier, sends to that one only
-- If no carrier, loops through all 8 gateways sending the SMS via Resend
-- Adds a 200ms delay between each attempt to avoid rate limits
-- Logs each attempt to `notification_log` with channel = "sms-auto"
-- Returns which gateways were attempted
+The main `Dashboard.tsx` fetches all its stats (leads, charts, source data) using a raw `useEffect` + `useState` pattern. This means:
+- Data re-fetches on every mount (no caching)
+- No stale-while-revalidate behavior
+- No deduplication if multiple renders happen
 
-### 2. Update `send-bulk-notification-blast`
-- For leads WITH a carrier: send to that carrier only (fast, 1 call)
-- For leads WITHOUT a carrier: call `send-sms-auto-detect` which tries all 8
-- Stats updated to show "sms_auto_detected" count
+**Fix**: Convert the `useEffect` fetch in `Dashboard.tsx` (lines 97-249) to a `useQuery` hook with the existing 120s `staleTime`. This gives instant re-renders on tab switches and prevents duplicate network requests.
 
-### 3. Update `send-notification`
-- Add auto-detect as step 2 in the priority chain:
-  - Push -> SMS (known carrier) -> SMS Auto-Detect (unknown carrier) -> Email
-- If carrier is known, use it directly; if not, try all gateways
+---
 
-### 4. Update Notification Hub UI
-- New "SMS Auto" badge in the log table (purple)
-- Stats row adds "Auto SMS" count
-- Carrier Assignment tool gets a new "Auto-Blast All" button that triggers auto-detect for all leads missing carriers
-- Add a "Mark Delivered" action on SMS log entries so you can confirm which carrier worked and save it
+## Issue 2: Unstable `useEffect` Dependency Causing Extra Refetches (HIGH IMPACT)
+
+Line 249: `[user?.id, profile]` — the `profile` object gets a new reference on every auth state change, causing the entire dashboard data fetch to re-run unnecessarily.
+
+**Fix**: Change dependency to `[user?.id, profile?.full_name]` so it only refetches when the name actually changes.
+
+---
+
+## Issue 3: Unused Import (LOW IMPACT, cleanup)
+
+`DashboardLayout` is imported on line 22 but never used in the JSX (the `AuthenticatedShell` already provides the sidebar). This is dead code.
+
+**Fix**: Remove the unused import.
+
+---
+
+## Issue 4: `OnboardingPipelineCard` Uses Raw useEffect Instead of useQuery (MEDIUM IMPACT)
+
+This component fetches data with `useEffect` + manual `setLoading`, missing caching entirely. Every dashboard mount triggers a fresh query.
+
+**Fix**: Convert to `useQuery` with a stable query key.
+
+---
+
+## Issue 5: Excessive Staggered Motion Animations (MEDIUM IMPACT)
+
+The dashboard has ~10+ `motion.div` wrappers with staggered `delay` values. On every mount these run entrance animations, causing:
+- Layout shifts during staggered reveals
+- Extra JS work on the main thread
+
+**Fix**: Replace most staggered `motion.div` wrappers with simple `div` elements. Keep only the welcome header animation (first impression) and remove delays from section headers and stat cards that are below the fold.
+
+---
+
+## Issue 6: Inline Object/Array Recreation on Every Render (LOW-MEDIUM IMPACT)
+
+- `licenseData` (line 81-84) recreates on every render
+- Quick actions array (lines 288-308) recreates on every render
+- `sourceData` default value recreates on every render
+
+**Fix**: Wrap computed values in `useMemo` where they depend on `stats`.
+
+---
+
+## Summary of Changes
+
+| File | Change |
+|------|--------|
+| `src/pages/Dashboard.tsx` | Convert data fetch to `useQuery`, fix `profile` dependency, remove unused `DashboardLayout` import, wrap computed arrays in `useMemo`, reduce `motion.div` wrappers |
+| `src/components/dashboard/OnboardingPipelineCard.tsx` | Convert `useEffect` fetch to `useQuery` |
 
 ---
 
 ## Technical Details
 
-### New file:
-- `supabase/functions/send-sms-auto-detect/index.ts`
+### Dashboard.tsx useQuery conversion:
+- Extract fetch logic into a `queryFn` 
+- Query key: `["dashboard-stats", user?.id]`
+- Return a single object with `stats`, `dailyData`, `weeklyData`, `monthlyData`, `sourceData`, `userName`, `currentAgentId`
+- Enable the query only when `user` exists (`enabled: !!user`)
+- Leverages the global 120s `staleTime` already configured
 
-### Modified files:
-- `supabase/functions/send-notification/index.ts` — add auto-detect fallback
-- `supabase/functions/send-bulk-notification-blast/index.ts` — use auto-detect for unknown carriers
-- `src/pages/NotificationHub.tsx` — add auto SMS badge, stats, and auto-blast button
-- `src/lib/carrierOptions.ts` — no changes needed (carriers stay the same)
+### Motion cleanup:
+- Keep: welcome header animation (lines 267-284)
+- Remove: section header motion wrappers (lines 356-364, 379-389, 441-449, 457-462), quick action card stagger (lines 294-298)
+- Quick action cards become plain `div` with CSS `transition` for hover only
 
-### Auto-detect loop logic:
-```text
-for each carrier in [att, verizon, tmobile, sprint, uscellular, cricket, metro, boost]:
-  send email to {phone}@{gateway}
-  if Resend returns success: log as "sent"
-  if Resend returns error: log as "failed", try next
-  wait 200ms between attempts
-```
+### OnboardingPipelineCard useQuery:
+- Query key: `["onboarding-pipeline", user?.id, isAdmin]`
+- Removes manual `loading` state in favor of `isLoading` from useQuery
 
-### Implementation order:
-1. Create `send-sms-auto-detect` edge function
-2. Update `send-notification` to use auto-detect when no carrier
-3. Update `send-bulk-notification-blast` to use auto-detect
-4. Update Notification Hub UI with auto SMS stats and controls

@@ -15,6 +15,7 @@ import {
   Eye,
   EyeOff,
   Trash2,
+  BellRing,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -27,6 +28,9 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { AvatarUpload } from "@/components/dashboard/AvatarUpload";
 import { toast } from "@/hooks/use-toast";
 import { getAllFlags, setFeatureFlag, FEATURE_FLAG_LABELS, type FeatureFlagName } from "@/lib/featureFlags";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CARRIER_OPTIONS } from "@/lib/carrierOptions";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 export function ProfileSettings() {
   const { user, profile, refreshProfile, isAdmin } = useAuth();
   const navigate = useNavigate();
@@ -37,6 +41,7 @@ export function ProfileSettings() {
   const [resetLoading, setResetLoading] = useState(false);
   const isRecovery = searchParams.get("recovery") === "true";
   const forcePasswordChange = searchParams.get("force_password_change") === "true";
+  const { supported: pushSupported, isSubscribed, loading: pushLoading, subscribe, unsubscribe } = usePushNotifications();
   
   const [formData, setFormData] = useState({
     fullName: "",
@@ -46,6 +51,7 @@ export function ProfileSettings() {
     state: "",
     bio: "",
     instagramHandle: "",
+    carrier: "",
   });
 
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -80,6 +86,7 @@ export function ProfileSettings() {
         state: profile.state || "",
         bio: profile.bio || "",
         instagramHandle: profile.instagram_handle || "",
+        carrier: (profile as any).carrier || "",
       });
       setAvatarUrl(profile.avatar_url || null);
     }
@@ -128,7 +135,8 @@ export function ProfileSettings() {
           state: formData.state,
           bio: formData.bio,
           instagram_handle: instagramHandle || null,
-        })
+          carrier: formData.carrier || null,
+        } as any)
         .eq("user_id", user.id);
 
       if (profileError) throw profileError;
@@ -428,6 +436,35 @@ export function ProfileSettings() {
             </p>
           </div>
 
+          {/* Mobile Carrier */}
+          <div className="space-y-2">
+            <Label htmlFor="carrier" className="flex items-center gap-2">
+              <Phone className="h-4 w-4 text-primary" />
+              Mobile Carrier
+            </Label>
+            <Select
+              value={formData.carrier || undefined}
+              onValueChange={(value) => {
+                setFormData((prev) => ({ ...prev, carrier: value }));
+                setSaved(false);
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select your carrier" />
+              </SelectTrigger>
+              <SelectContent>
+                {CARRIER_OPTIONS.map((c) => (
+                  <SelectItem key={c.value} value={c.value}>
+                    {c.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Enables text message alerts for deals, milestones, and reminders
+            </p>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="bio">Bio</Label>
             <Textarea
@@ -545,6 +582,54 @@ export function ProfileSettings() {
           </div>
         </form>
       </GlassCard>
+
+      {/* Push Notifications */}
+      {pushSupported && (
+        <GlassCard className="p-6">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+            <BellRing className="h-5 w-5 text-primary" />
+            Push Notifications
+          </h3>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium">
+                {isSubscribed ? "Notifications Enabled" : "Enable Push Notifications"}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {isSubscribed
+                  ? "You'll receive instant alerts for deals, milestones, and reminders"
+                  : "Get instant alerts on your device — no app download needed"}
+              </p>
+            </div>
+            <Button
+              variant={isSubscribed ? "outline" : "default"}
+              size="sm"
+              disabled={pushLoading}
+              onClick={async () => {
+                if (isSubscribed) {
+                  await unsubscribe();
+                  toast({ title: "Notifications Disabled", description: "You won't receive push notifications anymore." });
+                } else {
+                  const success = await subscribe();
+                  if (success) {
+                    toast({ title: "Notifications Enabled! 🔔", description: "You'll now receive instant alerts." });
+                  } else {
+                    toast({ title: "Permission Denied", description: "Please allow notifications in your browser settings.", variant: "destructive" });
+                  }
+                }
+              }}
+            >
+              {pushLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : isSubscribed ? (
+                "Disable"
+              ) : (
+                "Enable"
+              )}
+            </Button>
+          </div>
+        </GlassCard>
+      )}
 
       {/* Notification Preferences */}
       <GlassCard className="p-6">

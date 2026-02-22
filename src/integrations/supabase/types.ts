@@ -731,6 +731,7 @@ export type Database = {
         Row: {
           assigned_agent_id: string | null
           availability: string | null
+          carrier: string | null
           city: string | null
           closed_at: string | null
           consent_form_version: string | null
@@ -789,6 +790,7 @@ export type Database = {
         Insert: {
           assigned_agent_id?: string | null
           availability?: string | null
+          carrier?: string | null
           city?: string | null
           closed_at?: string | null
           consent_form_version?: string | null
@@ -847,6 +849,7 @@ export type Database = {
         Update: {
           assigned_agent_id?: string | null
           availability?: string | null
+          carrier?: string | null
           city?: string | null
           closed_at?: string | null
           consent_form_version?: string | null
@@ -1739,6 +1742,7 @@ export type Database = {
         Row: {
           avatar_url: string | null
           bio: string | null
+          carrier: string | null
           city: string | null
           created_at: string
           email: string
@@ -1753,6 +1757,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           bio?: string | null
+          carrier?: string | null
           city?: string | null
           created_at?: string
           email: string
@@ -1767,6 +1772,7 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           bio?: string | null
+          carrier?: string | null
           city?: string | null
           created_at?: string
           email?: string
@@ -1776,6 +1782,33 @@ export type Database = {
           phone?: string | null
           state?: string | null
           updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
           user_id?: string
         }
         Relationships: []

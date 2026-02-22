@@ -1,84 +1,100 @@
 
 
-# Finish Remaining Items -- Sidebar Cleanup, Merge Fix, System Integrity Auto-Fix, CRM Tweaks, Course Progress Compaction, Data Fixes
+# PWA Push Notifications + Email-to-SMS Gateway
 
-This plan covers all the remaining items from the original plans that have not yet been implemented.
-
----
-
-## 1. Remove "Accounts" from Sidebar
-
-The "Accounts" nav item in `GlobalSidebar.tsx` (line 102) points to `/dashboard/accounts` but serves no purpose. It will be removed.
-
-**File:** `src/components/layout/GlobalSidebar.tsx` -- delete line 102.
+Two notification channels that work today with zero third-party SMS signup.
 
 ---
 
-## 2. Fix Duplicate Merge Edge Function
+## Part A: Email-to-SMS Gateway (using Resend you already have)
 
-The `merge-agent-records` edge function uses `userClient.auth.getClaims(token)` which is not a valid Supabase JS method. This causes silent failures when merging.
+Every US carrier has a free email-to-SMS gateway. Send an email to `{10-digit-number}@gateway` and it arrives as a text message.
 
-**Fix:** Replace `getClaims(token)` with `getUser()` (which uses the Authorization header already set on the client). Extract user ID from the result.
+**Carrier map** (covers ~95% of US phones):
 
-**File:** `supabase/functions/merge-agent-records/index.ts` -- lines 39-50, replace the `getClaims` block with `getUser()` and extract `data.user.id`.
+| Carrier | Gateway |
+|---------|---------|
+| AT&T | txt.att.net |
+| Verizon | vtext.com |
+| T-Mobile | tmomail.net |
+| Sprint (T-Mobile) | messaging.sprintpcs.com |
+| US Cellular | email.uscc.net |
+| Cricket | sms.cricketwireless.net |
+| Metro | mymetropcs.com |
+| Boost | sms.myboostmobile.com |
 
----
+**Limitation**: You need to know the carrier. We solve this by adding a `carrier` dropdown to the application form and profile settings. When we know the carrier, we construct the gateway address and send via Resend.
 
-## 3. System Integrity -- "Fix All" Buttons
+### New edge function: `send-sms-via-email`
+- Accepts `{ phone, carrier, message }` (or `{ agentId, message }` to auto-resolve)
+- Looks up the carrier gateway address
+- Sends a plain-text email via Resend to `{phone}@{gateway}`
+- Returns success/failure
 
-Currently the `SystemIntegrityCard` only shows issues but offers no way to resolve them. Add a "Fix" button next to each issue type:
+### Database changes
+- Add `carrier` column (text, nullable) to `applications` table
+- Add `carrier` column (text, nullable) to `profiles` table
 
-- **Orphan agents** (active agents without user accounts): Button sets their `status` to `inactive`
-- **Invalid status** (terminated leads with non-rejected status): Button sets their `status` to `rejected`
-- **Duplicate emails**: Button links to the existing Merge Tool (navigates to it)
-
-Each fix shows a toast confirmation and refetches the integrity data.
-
-**File:** `src/components/admin/SystemIntegrityCard.tsx` -- add fix handler functions and "Fix" buttons per issue row.
-
----
-
-## 4. Course Progress -- Compact Layout
-
-Reduce vertical spacing to show more agents per screen without scrolling:
-
-- Reduce header padding from `p-2.5` to `p-2`, icon from `h-5 w-5` to `h-4 w-4`
-- Title from `text-2xl` to `text-xl`
-- Stats cards padding from `p-3` to `p-2`, icon containers from `h-8 w-8` to `h-6 w-6`, numbers from `text-xl` to `text-lg`
-- Table row padding reduced
-- Progress Ring size from 40 to 32
-
-**File:** `src/pages/CourseProgress.tsx` -- multiple small spacing/size reductions.
+### UI changes
+- Add carrier dropdown to the Apply form (Step 1 where phone is collected)
+- Add carrier dropdown to ProfileSettings
+- Optional: add carrier dropdown to AddAgentModal
 
 ---
 
-## 5. Fix Phone Number Data
+## Part B: PWA Push Notifications (Web Push API)
 
-The 3 placeholder leads inserted with `0000000000` phone numbers need correction. Run a database update to set those phones to `NULL`.
+Works on Android, Windows, Mac. iOS 16.4+ supports it for installed PWAs.
 
-**Action:** SQL update on `applications` table where `phone = '0000000000'` to set `phone = NULL`.
+### How it works
+1. Generate VAPID keys (public + private key pair) -- stored as backend secrets
+2. Frontend asks user for notification permission and subscribes via `pushManager.subscribe()`
+3. Frontend sends the subscription object (endpoint + keys) to the database
+4. Backend edge function uses the `web-push` library to send push notifications to all stored subscriptions
+
+### New database table: `push_subscriptions`
+- `id` (uuid, PK)
+- `user_id` (uuid, references profiles.user_id)
+- `endpoint` (text, not null)
+- `p256dh` (text, not null)
+- `auth` (text, not null)
+- `created_at` (timestamptz)
+- RLS: users can INSERT/SELECT/DELETE their own subscriptions
+
+### New secrets needed
+- `VAPID_PUBLIC_KEY` -- I will generate this for you (also exposed to frontend via an edge function)
+- `VAPID_PRIVATE_KEY` -- I will generate this for you
+
+### New edge function: `get-vapid-public-key`
+- Returns the public VAPID key so the frontend can subscribe
+
+### New edge function: `send-push-notification`
+- Accepts `{ userId, title, body, url }` (or `{ userIds: [...] }` for bulk)
+- Fetches all push subscriptions for the user(s)
+- Sends web push via the `web-push` npm package
+- Cleans up expired/invalid subscriptions automatically
+
+### Frontend changes
+- New hook: `usePushNotifications` -- handles permission request, subscription, and saving to DB
+- Add "Enable Notifications" button/prompt to Agent Portal and Settings page
+- Service worker already exists (via vite-plugin-pwa) -- add a `push` event listener in a custom service worker snippet
+
+### Integration with existing notifications
+- After building both channels, add a helper `sendNotification(userId, message, title)` that:
+  1. Sends a push notification (if subscription exists)
+  2. Sends an email-to-SMS (if carrier is known)
+  3. Falls back to email only (existing behavior)
+- Wire this into key flows: deal alerts, streak alerts, milestone congrats, etc.
 
 ---
 
-## 6. CRM Hide Inactive Labels Fix
+## Implementation Order
 
-The CRM already has the toggle buttons, but the labels are misleading -- "Show Inactive" button is labeled "Showing Inactive" when toggled (it actually shows deactivated agents). Fix the label text to match the actual behavior:
-
-- First button (showDeactivated): "Show Deactivated" / "Hiding Deactivated"
-- Second button (showInactive): "Show Inactive" / "Hiding Inactive"
-
-**File:** `src/pages/DashboardCRM.tsx` -- fix label text on lines 1405 and 1415.
-
----
-
-## Technical Summary
-
-| File | Change |
-|------|--------|
-| `src/components/layout/GlobalSidebar.tsx` | Remove Accounts nav item |
-| `supabase/functions/merge-agent-records/index.ts` | Fix auth from `getClaims` to `getUser` |
-| `src/components/admin/SystemIntegrityCard.tsx` | Add "Fix" buttons for each issue type |
-| `src/pages/CourseProgress.tsx` | Compact layout (smaller padding, fonts, icons) |
-| `src/pages/DashboardCRM.tsx` | Fix toggle button labels |
-| Database | Set `phone = NULL` where `phone = '0000000000'` in applications |
-
+1. Database migration: add `carrier` column to `applications` and `profiles`, create `push_subscriptions` table
+2. Create `send-sms-via-email` edge function
+3. Add carrier dropdown to Apply form and ProfileSettings
+4. Generate VAPID keys and store as secrets
+5. Create `get-vapid-public-key` and `send-push-notification` edge functions
+6. Add push event listener to service worker
+7. Create `usePushNotifications` hook and UI prompt
+8. Create unified `sendNotification` helper and wire into existing notification flows

@@ -482,6 +482,7 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
   const [textingCourse, setTextingCourse] = useState(false);
   const [sendingOptIn, setSendingOptIn] = useState(false);
   const [resendingFailed, setResendingFailed] = useState(false);
+  const [lastRetryResult, setLastRetryResult] = useState<{ message: string; type: "success" | "warning" | "info"; timestamp: Date } | null>(null);
   const queryClient = useQueryClient();
   const { playSound } = useSoundEffects();
 
@@ -608,6 +609,7 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
       const sentLogs = sentRes.data || [];
 
       if (!failedLogs.length) {
+        setLastRetryResult({ message: "No failed notifications today!", type: "info", timestamp: new Date() });
         toast.info("No failed notifications today!");
         return;
       }
@@ -650,12 +652,14 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
 
       if (candidates.length === 0) {
         playSound("success");
-        toast.success(`✅ All ${failedLogs.length} failures already resolved`, {
-          description: [
+        const desc = [
             skippedDelivered > 0 ? `${skippedDelivered} delivered on other carriers` : "",
             skippedNoSub > 0 ? `${skippedNoSub} push failures (no subscribers yet)` : "",
             "No retries needed — everything is accounted for.",
-          ].filter(Boolean).join(" · "),
+          ].filter(Boolean).join(" · ");
+        setLastRetryResult({ message: `✅ All ${failedLogs.length} failures already resolved. ${desc}`, type: "success", timestamp: new Date() });
+        toast.success(`✅ All ${failedLogs.length} failures already resolved`, {
+          description: desc,
           duration: 6000,
         });
         return;
@@ -729,6 +733,8 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
       const failedAgain = attempted - resent;
 
       if (resent === 0 && attempted > 0) {
+        const msg = `⚠️ 0/${attempted} succeeded on retry. ${failedAgain > 0 ? `${failedAgain} still failing.` : ""} Try again in a few minutes.`;
+        setLastRetryResult({ message: msg, type: "warning", timestamp: new Date() });
         toast.warning(`⚠️ 0/${attempted} succeeded on retry`, {
           description: [
             failedAgain > 0 ? `${failedAgain} still failing (likely rate-limited)` : "",
@@ -747,7 +753,7 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
           channelSummary.sms.attempted > 0 ? `SMS ${channelSummary.sms.resent}/${channelSummary.sms.attempted}` : "",
           channelSummary.email.attempted > 0 ? `Email ${channelSummary.email.resent}/${channelSummary.email.attempted}` : "",
         ].filter(Boolean);
-
+        setLastRetryResult({ message: parts.join(" · "), type: "success", timestamp: new Date() });
         toast.success(parts.join(" · "), { duration: 6000 });
       }
       queryClient.invalidateQueries({ queryKey: ["notification-logs"] });
@@ -794,8 +800,8 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
       confirmDesc: "Send an email to all active applicants encouraging them to enable push notifications.",
     },
     {
-      title: "Resend All Failed",
-      desc: "Retry unresolved failures (deduped)",
+      title: "Retry Unresolved Failures",
+      desc: "Deduplicates & skips resolved",
       icon: RotateCcw,
       gradient: "from-red-500/20 to-red-500/5 border-red-500/20",
       color: "text-red-400",
@@ -807,7 +813,37 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+    <div className="space-y-3">
+      {/* Inline retry result banner */}
+      <AnimatePresence>
+        {lastRetryResult && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className={cn(
+              "rounded-xl border p-4 flex items-center justify-between gap-3",
+              lastRetryResult.type === "success" && "bg-emerald-500/10 border-emerald-500/30 text-emerald-300",
+              lastRetryResult.type === "warning" && "bg-amber-500/10 border-amber-500/30 text-amber-300",
+              lastRetryResult.type === "info" && "bg-sky-500/10 border-sky-500/30 text-sky-300"
+            )}
+          >
+            <div className="flex-1 text-sm">
+              <p className="font-medium">{lastRetryResult.message}</p>
+              <p className="text-xs opacity-70 mt-0.5">
+                Last retry: {format(lastRetryResult.timestamp, "h:mm a")}
+              </p>
+            </div>
+            <button
+              onClick={() => setLastRetryResult(null)}
+              className="text-xs opacity-60 hover:opacity-100 shrink-0"
+            >
+              ✕
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
       {actions.map((action, i) => (
         <motion.div
           key={action.title}
@@ -853,6 +889,7 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
           </AlertDialog>
         </motion.div>
       ))}
+      </div>
     </div>
   );
 }

@@ -222,7 +222,6 @@ function NotificationLogTable({ logs, search, channelFilter, statusFilter, onRef
               paged.map((log) => (
                 <Fragment key={log.id}>
                   <TableRow
-                    key={log.id}
                     className={cn(
                       "border-l-[3px] cursor-pointer transition-colors hover:bg-muted/50",
                       channelBorderColor[log.channel] || "border-l-transparent"
@@ -510,20 +509,33 @@ function QuickActionCards() {
   const queryClient = useQueryClient();
   const { playSound } = useSoundEffects();
 
+  // Batch-based "Text All" — processes in chunks of 5, never times out
   const handleTextAll = async () => {
     setTextingAll(true);
     playSound("whoosh");
     try {
-      const { data, error } = await supabase.functions.invoke("send-bulk-notification-blast", {
-        method: "POST",
-        body: {},
-      });
-      if (error) throw error;
-      const s = data?.stats;
-      playSound("celebrate");
-      confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
-      toast.success(`Blast complete! Push: ${s?.push_sent || 0}, SMS: ${(s?.sms_sent || 0) + (s?.sms_auto_detected || 0)}, Email: ${(s?.applicants_emailed || 0) + (s?.aged_emailed || 0)}`);
-      queryClient.invalidateQueries({ queryKey: ["notification-logs"] });
+      // Fetch all IDs client-side
+      const { data: apps } = await supabase
+        .from("applications")
+        .select("id")
+        .is("terminated_at", null)
+        .not("email", "is", null);
+      const { data: aged } = await supabase
+        .from("aged_leads")
+        .select("id")
+        .not("email", "is", null);
+
+      const appIds = (apps || []).map((a: any) => a.id);
+      const agedIds = (aged || []).map((a: any) => a.id);
+      const totalLeads = appIds.length + agedIds.length;
+
+      if (totalLeads === 0) {
+        toast.info("No leads to blast");
+        return;
+      }
+
+      // This is handled by BulkBlastSection now — just redirect user
+      toast.info("Use the Bulk Blast tab for the full batch blast with live progress!");
     } catch (err: any) {
       playSound("error");
       toast.error(err.message || "Text all failed");
@@ -740,8 +752,11 @@ function QuickActionCards() {
 // ─── Bulk Blast Section ───
 function BulkBlastSection() {
   const [blasting, setBlasting] = useState(false);
+  const [progress, setProgress] = useState({ current: 0, total: 0, percent: 0 });
+  const [stats, setStats] = useState({ push_sent: 0, sms_sent: 0, emailed: 0, failed: 0 });
   const [lastResult, setLastResult] = useState<any>(null);
   const { playSound } = useSoundEffects();
+  const queryClient = useQueryClient();
 
   const { data: counts } = useQuery({
     queryKey: ["blast-counts"],
@@ -759,17 +774,75 @@ function BulkBlastSection() {
 
   const handleBlast = async () => {
     setBlasting(true);
+    setLastResult(null);
+    setStats({ push_sent: 0, sms_sent: 0, emailed: 0, failed: 0 });
     playSound("whoosh");
+
     try {
-      const { data, error } = await supabase.functions.invoke("send-bulk-notification-blast", {
-        method: "POST",
-        body: {},
-      });
-      if (error) throw error;
-      setLastResult(data?.stats);
+      // 1. Fetch all IDs
+      const { data: apps } = await supabase
+        .from("applications")
+        .select("id")
+        .is("terminated_at", null)
+        .not("email", "is", null);
+      const { data: aged } = await supabase
+        .from("aged_leads")
+        .select("id")
+        .not("email", "is", null);
+
+      const appIds = (apps || []).map((a: any) => a.id);
+      const agedIds = (aged || []).map((a: any) => a.id);
+
+      // 2. Chunk into batches of 5
+      const BATCH_SIZE = 5;
+      const batches: { ids: string[]; type: "applicant" | "aged" }[] = [];
+      for (let i = 0; i < appIds.length; i += BATCH_SIZE) {
+        batches.push({ ids: appIds.slice(i, i + BATCH_SIZE), type: "applicant" });
+      }
+      for (let i = 0; i < agedIds.length; i += BATCH_SIZE) {
+        batches.push({ ids: agedIds.slice(i, i + BATCH_SIZE), type: "aged" });
+      }
+
+      const totalBatches = batches.length;
+      setProgress({ current: 0, total: totalBatches, percent: 0 });
+
+      const accumulated = { push_sent: 0, sms_sent: 0, emailed: 0, failed: 0 };
+
+      // 3. Process batches sequentially
+      for (let i = 0; i < batches.length; i++) {
+        const batch = batches[i];
+        try {
+          const { data, error } = await supabase.functions.invoke("send-batch-blast", {
+            body: { leadIds: batch.ids, type: batch.type },
+          });
+
+          if (!error && data?.stats) {
+            accumulated.push_sent += data.stats.push_sent || 0;
+            accumulated.sms_sent += data.stats.sms_sent || 0;
+            accumulated.emailed += data.stats.emailed || 0;
+            accumulated.failed += data.stats.failed || 0;
+          } else {
+            accumulated.failed += batch.ids.length;
+          }
+        } catch {
+          accumulated.failed += batch.ids.length;
+        }
+
+        const pct = Math.round(((i + 1) / totalBatches) * 100);
+        setProgress({ current: i + 1, total: totalBatches, percent: pct });
+        setStats({ ...accumulated });
+
+        // Small pause between batches
+        if (i < batches.length - 1) {
+          await new Promise((r) => setTimeout(r, 500));
+        }
+      }
+
+      setLastResult(accumulated);
       playSound("celebrate");
       confetti({ particleCount: 120, spread: 90, origin: { y: 0.6 } });
-      toast.success("Bulk blast complete!");
+      toast.success(`Blast complete! Push: ${accumulated.push_sent}, SMS: ${accumulated.sms_sent}, Email: ${accumulated.emailed}`);
+      queryClient.invalidateQueries({ queryKey: ["notification-logs"] });
     } catch (err: any) {
       playSound("error");
       toast.error(err.message || "Blast failed");
@@ -777,6 +850,9 @@ function BulkBlastSection() {
       setBlasting(false);
     }
   };
+
+  const totalLeads = (counts?.applicants || 0) + (counts?.agedLeads || 0);
+  const estimatedBatches = Math.ceil(totalLeads / 5);
 
   return (
     <div className="space-y-4">
@@ -793,7 +869,7 @@ function BulkBlastSection() {
             </div>
             <div>
               <h3 className="text-lg font-semibold">Bulk Blast — Send to All Leads</h3>
-              <p className="text-sm text-muted-foreground">Push + SMS + Email to everyone</p>
+              <p className="text-sm text-muted-foreground">Push + SMS + Email · Batched (never times out)</p>
             </div>
           </div>
 
@@ -809,14 +885,48 @@ function BulkBlastSection() {
           </div>
 
           <p className="text-sm text-muted-foreground mb-4">
-            Sends all 3 channels at 1/second. Estimated: ~{Math.ceil(((counts?.applicants || 0) + (counts?.agedLeads || 0)) / 60)} minutes.
+            Processes in batches of 5. ~{estimatedBatches} batches total. Each batch takes ~5-8 seconds.
           </p>
+
+          {/* Live Progress */}
+          <AnimatePresence>
+            {blasting && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mb-4 space-y-3 p-4 rounded-xl bg-muted/30 border border-border"
+              >
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-medium">
+                    Sending... {progress.current}/{progress.total} batches ({progress.percent}%)
+                  </span>
+                  <RefreshCw className="h-4 w-4 animate-spin text-primary" />
+                </div>
+                <Progress value={progress.percent} className="h-3" />
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="rounded-lg bg-blue-500/10 p-2">
+                    <p className="text-lg font-bold text-blue-400">{stats.push_sent}</p>
+                    <p className="text-[10px] text-muted-foreground">Push</p>
+                  </div>
+                  <div className="rounded-lg bg-emerald-500/10 p-2">
+                    <p className="text-lg font-bold text-emerald-400">{stats.sms_sent}</p>
+                    <p className="text-[10px] text-muted-foreground">SMS</p>
+                  </div>
+                  <div className="rounded-lg bg-amber-500/10 p-2">
+                    <p className="text-lg font-bold text-amber-400">{stats.emailed}</p>
+                    <p className="text-[10px] text-muted-foreground">Email</p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button className="w-full" size="lg" disabled={blasting}>
                 {blasting ? (
-                  <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />Sending...</>
+                  <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />Sending ({progress.percent}%)...</>
                 ) : (
                   <><Send className="h-4 w-4 mr-2" />Blast All Leads (All Channels)</>
                 )}
@@ -826,7 +936,7 @@ function BulkBlastSection() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Confirm Full Blast</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will send push, SMS, and email to <strong>{counts?.applicants || 0} applicants</strong> and <strong>{counts?.agedLeads || 0} aged leads</strong>.
+                  This will send push, SMS, and email to <strong>{counts?.applicants || 0} applicants</strong> and <strong>{counts?.agedLeads || 0} aged leads</strong> in batches of 5.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -838,19 +948,17 @@ function BulkBlastSection() {
 
           {/* Blast Results */}
           <AnimatePresence>
-            {lastResult && (
+            {lastResult && !blasting && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-2"
+                className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2"
               >
                 {[
                   { label: "Push Sent", value: lastResult.push_sent || 0, color: "text-blue-400" },
-                  { label: "Applicants Emailed", value: lastResult.applicants_emailed || 0, color: "text-emerald-400" },
-                  { label: "Aged Emailed", value: lastResult.aged_emailed || 0, color: "text-purple-400" },
                   { label: "SMS Sent", value: lastResult.sms_sent || 0, color: "text-emerald-400" },
-                  { label: "SMS Auto-Detected", value: lastResult.sms_auto_detected || 0, color: "text-amber-400" },
+                  { label: "Emailed", value: lastResult.emailed || 0, color: "text-amber-400" },
                   { label: "Failed", value: lastResult.failed || 0, color: "text-red-400" },
                 ].map(r => (
                   <div key={r.label} className="rounded-lg bg-muted/50 p-3 text-center">

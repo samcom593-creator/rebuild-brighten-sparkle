@@ -12,7 +12,8 @@ import {
   useDroppable,
   useDraggable,
 } from "@dnd-kit/core";
-import { Phone, Mail, Calendar, Clock, GraduationCap, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
+import { Phone, Mail, Calendar, Clock, GraduationCap, AlertCircle, CheckCircle, Loader2, Eye } from "lucide-react";
+import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -187,6 +188,7 @@ function DraggableCard({
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: app.id });
   const contactBadge = getContactBadge(app);
+  const [showAppSheet, setShowAppSheet] = useState(false);
 
   return (
     <div
@@ -238,6 +240,15 @@ function DraggableCard({
           >
             View
           </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0 text-primary hover:text-primary/80 hover:bg-primary/10"
+            onClick={(e) => { e.stopPropagation(); setShowAppSheet(true); }}
+            title="View Application"
+          >
+            <Eye className="h-3.5 w-3.5" />
+          </Button>
           {onSchedule && (
             <Button
               variant="ghost"
@@ -269,6 +280,11 @@ function DraggableCard({
           <CourseSendStrip app={app} />
         )}
       </motion.div>
+      <ApplicationDetailSheet
+        open={showAppSheet}
+        onOpenChange={setShowAppSheet}
+        applicationId={app.id}
+      />
     </div>
   );
 }

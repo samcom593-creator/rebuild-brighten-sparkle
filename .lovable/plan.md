@@ -1,57 +1,101 @@
 
 
-# Full Site Audit — Findings & Fix Plan
+# Fix Blast Timeout, Ensure All Notifications Work, Add Site-Wide Sound Effects
 
-## Issues Found
+## Root Cause: Blast is Timing Out
 
-### 1. partial_applications 401 Errors (Blocks Partial Save on Apply Page)
-**Severity: Medium** — The `savePartialApplication` function in `Apply.tsx` (line 234) does a client-side `supabase.from("partial_applications").upsert(...)`. Unauthenticated users (applicants aren't logged in) get **401 errors** from PostgREST. The RLS policies exist but the `anon` role likely lacks `GRANT` permissions on the table. This doesn't block the final submission (which uses the edge function with service role), but it means:
-- Console is spammed with 401 errors on every step transition
-- Partial application tracking (abandoned form recovery) silently fails
+The blast function processes **97 applicants + 925 aged leads = 1,022 leads** with a 1-second delay each. That's ~17 minutes of execution time. Edge functions timeout at ~60 seconds. The function silently dies mid-execution, which is why it appears "frozen" and only partial notifications get sent.
 
-**Fix:** Grant `INSERT` and `UPDATE` on `partial_applications` to the `anon` role, and also grant `SELECT` for upsert to work.
+## Fix Strategy
 
-### 2. React Fragment Missing Key in NotificationHub
-**Severity: Low** — In `NotificationHub.tsx` line 222-271, `paged.map()` renders a bare `<>` fragment wrapping two `<TableRow>` elements. The fragment has no `key` prop, which causes React warnings and potential rendering issues.
+### 1. Rewrite Blast to Process in Batches (Client-Side Orchestration)
 
-**Fix:** Replace `<>` with `<Fragment key={log.id}>` (import `Fragment` from React).
+Instead of one giant edge function call that processes everything, break it into small batches processed from the client. The UI shows a **live progress bar** with per-batch results.
 
-### 3. Application Flow — Verified Working
-I tested the full Apply flow on a 390x844 mobile viewport:
-- Step 1 (Personal Info) ✓
-- Step 2 (Experience) ✓
-- Step 3 (Licensing) ✓
-- Step 4 (Goals + SMS Consent) ✓
-- Submission → Step 5 (Referral) ✓
+**New approach in `NotificationHub.tsx` `BulkBlastSection`:**
+- Fetch all applicant IDs and aged lead IDs client-side
+- Process in batches of 5 leads per edge function call
+- Show a live progress bar with percentage + current count
+- Accumulate stats across batches
+- Fire confetti + celebrate sound only after ALL batches complete
+- If any batch fails, continue with remaining batches (resilient)
 
-The `submit-application` edge function logs confirm successful recent submissions. **The apply flow itself works correctly.** If people are saying they "can't apply," it's likely:
-- They hit a duplicate check (email/phone already on file) and see the error
-- They missed the SMS consent checkbox and don't scroll down to see the error
-- The 401 console errors on partial save are not blocking but are noise
+**New edge function: `send-batch-blast`** -- takes a small array of lead IDs + type (applicant or aged), processes just those 5, returns stats. This runs in ~10 seconds max, well within timeout.
 
-### 4. NotificationHub & Accounts — Code Review Pass
-Both pages look solid after the recent overhaul. No runtime errors found. The Notification Hub stats, pagination, quick actions, and blast functionality are all properly wired.
+### 2. Fix Quick Action "Text All Applicants" (Same Timeout Issue)
 
-### 5. ScheduleBar — Code Review Pass  
-Dismiss functionality, sound effects, and pulse animation all look correct.
+The "Text All Applicants" button calls the same `send-bulk-notification-blast` function. Replace with the same batch approach.
+
+### 3. Fix Duplicate `key` Warning
+
+Line 224-225 in `NotificationHub.tsx`: `<Fragment key={log.id}>` wraps a `<TableRow key={log.id}>`. Remove the duplicate key from the inner `TableRow`.
+
+### 4. Add Sound Effects to Pages Missing Them
+
+Pages that currently lack sound effects:
+- **`Dashboard.tsx` (Manager/Admin dashboard)**: Add sounds on tab switches, refresh clicks, production entry saves
+- **`Index.tsx` (Landing page)**: Add subtle click sounds on CTA buttons  
+- **`Login.tsx`**: Add success sound on login, error sound on failure
+- **`GlobalSidebar.tsx`**: Add click sound on navigation item clicks
+
+### 5. Ensure SMS Auto-Detect Works Properly
+
+The edge function logs confirm SMS auto-detect is working (6/8 and 5/8 gateways accepted). No changes needed -- it's functioning correctly.
 
 ---
 
-## Technical Changes
+## Technical Details
 
-### Database Migration
-```sql
--- Grant anon role access to partial_applications for unauthenticated form saves
-GRANT SELECT, INSERT, UPDATE ON public.partial_applications TO anon;
+### New Edge Function: `send-batch-blast`
+
+```text
+Input: { leadIds: string[], type: "applicant" | "aged" }
+Process: For each lead ID:
+  - Fetch lead data
+  - Send push (if profile exists)
+  - Send SMS (carrier known → direct, unknown → auto-detect)
+  - Send email
+  - 200ms delay between leads
+Output: { stats: { push_sent, sms_sent, emailed, failed } }
 ```
 
-### File: `src/pages/NotificationHub.tsx`
-- Line 222: Replace bare `<>` fragment with `<Fragment key={log.id}>` 
-- Add `import { Fragment }` to React imports (or use `React.Fragment`)
+Max 5 leads per call = ~5-8 seconds execution time. Safe.
 
-### Files NOT Changed (verified working)
-- `src/pages/Apply.tsx` — full flow works end-to-end
-- `supabase/functions/submit-application/index.ts` — confirmed successful submissions in logs
-- `src/pages/DashboardAccounts.tsx` — no errors found
-- `src/components/layout/ScheduleBar.tsx` — no errors found
+### Client-Side Batch Loop (BulkBlastSection)
+
+```text
+1. Fetch all applicant IDs (terminated_at IS NULL)
+2. Fetch all aged lead IDs
+3. Chunk into batches of 5
+4. For each batch:
+   - Call send-batch-blast
+   - Update progress bar (batch N / total batches)
+   - Accumulate stats
+   - 500ms pause between batches
+5. Show final stats + confetti
+```
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `supabase/functions/send-batch-blast/index.ts` | **NEW** -- processes 5 leads at a time |
+| `supabase/config.toml` | Add `send-batch-blast` config |
+| `src/pages/NotificationHub.tsx` | Replace BulkBlastSection with batch orchestration + live progress bar; fix duplicate key; update "Text All" quick action to use batches |
+| `src/pages/Dashboard.tsx` | Add `useSoundEffects` for tab switches, refresh, date range changes |
+| `src/components/layout/GlobalSidebar.tsx` | Add click sound on nav item clicks |
+| `src/pages/Login.tsx` | Add success/error sounds on login result |
+
+### Progress Bar UI
+
+```text
+┌─────────────────────────────────────────────┐
+│  Sending... 45/205 batches (22%)            │
+│  ████████░░░░░░░░░░░░░░░░░░  Push: 12       │
+│                               SMS: 38       │
+│                               Email: 89     │
+└─────────────────────────────────────────────┘
+```
+
+This replaces the current "Sending..." spinner that gives no feedback.
 

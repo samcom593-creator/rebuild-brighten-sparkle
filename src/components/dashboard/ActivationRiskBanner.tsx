@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, ChevronDown, ChevronUp, UserMinus, Settings, EyeOff, Users, Loader2 } from "lucide-react";
+import { AlertTriangle, ChevronDown, ChevronUp, UserMinus, RotateCcw, Settings, EyeOff, Users, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { subDays, format, differenceInDays } from "date-fns";
 import { toast } from "sonner";
 import { DeactivateAgentDialog } from "./DeactivateAgentDialog";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 interface AtRiskAgent {
   id: string;
@@ -20,6 +21,7 @@ interface AtRiskAgent {
 
 export function ActivationRiskBanner() {
   const queryClient = useQueryClient();
+  const { playSound } = useSoundEffects();
   const [expanded, setExpanded] = useState(false);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -111,9 +113,11 @@ export function ActivationRiskBanner() {
         .eq("id", agent.id);
       if (error) throw error;
       toast.success(`${agent.name} moved to inactive`);
+      playSound("success");
       queryClient.invalidateQueries({ queryKey: ["activation-risk-agents"] });
     } catch {
       toast.error("Failed to update agent");
+      playSound("error");
     } finally {
       setLoadingId(null);
     }
@@ -134,9 +138,11 @@ export function ActivationRiskBanner() {
         .in("id", ids);
       if (error) throw error;
       toast.success(`${ids.length} agents moved to inactive`);
+      playSound("celebrate");
       queryClient.invalidateQueries({ queryKey: ["activation-risk-agents"] });
     } catch {
       toast.error("Failed to update agents");
+      playSound("error");
     } finally {
       setBulkLoading(false);
     }
@@ -202,6 +208,33 @@ export function ActivationRiskBanner() {
                           <UserMinus className="h-3 w-3 mr-1" />
                         )}
                         Inactive
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2 text-[10px] border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                        onClick={async () => {
+                          setLoadingId(agent.id);
+                          try {
+                            const { error } = await supabase
+                              .from("agents")
+                              .update({ status: "active" as any, is_deactivated: false, is_inactive: false, deactivation_reason: null })
+                              .eq("id", agent.id);
+                            if (error) throw error;
+                            toast.success(`${agent.name} reactivated`);
+                            playSound("success");
+                            queryClient.invalidateQueries({ queryKey: ["activation-risk-agents"] });
+                          } catch {
+                            toast.error("Failed to reactivate");
+                            playSound("error");
+                          } finally {
+                            setLoadingId(null);
+                          }
+                        }}
+                        disabled={loadingId === agent.id}
+                      >
+                        <RotateCcw className="h-3 w-3 mr-1" />
+                        Reactivate
                       </Button>
                       <Button
                         size="sm"

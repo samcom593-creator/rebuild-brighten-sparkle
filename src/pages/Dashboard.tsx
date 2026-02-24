@@ -40,6 +40,7 @@ import { SkeletonLoader } from "@/components/ui/skeleton-loader";
 import { AgencyGrowthCard } from "@/components/dashboard/AgencyGrowthCard";
 import { useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 interface DashboardStats {
   totalLeads: number;
@@ -208,6 +209,7 @@ export default function Dashboard() {
   const { profile, user, isManager, isAdmin, isAgent, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { playSound } = useSoundEffects();
   const [showConfetti, setShowConfetti] = useState(false);
 
   const { data } = useQuery({
@@ -277,7 +279,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         {quickActions.map((card) => (
           <div key={card.to}>
-            <Link to={card.to}>
+            <Link to={card.to} onClick={() => playSound("click")}>
               <GlassCard className={`p-4 hover:border-${card.color}/50 hover:bg-${card.color}/5 cursor-pointer transition-all card-hover-lift group`}>
                 <card.icon className={`h-5 w-5 text-${card.color} mb-2 group-hover:scale-110 transition-transform`} />
                 <p className="font-semibold text-[13px] sm:text-sm">{card.title}</p>

@@ -21,6 +21,18 @@ const CARRIER_GATEWAYS: Record<string, string> = {
   boost: "sms.myboostmobile.com",
 };
 
+// Priority scoring for best-guess carrier selection
+const CARRIER_PRIORITY: Record<string, number> = {
+  att: 100,
+  verizon: 95,
+  tmobile: 90,
+  sprint: 80,
+  uscellular: 70,
+  cricket: 60,
+  metro: 50,
+  boost: 40,
+};
+
 const CARRIER_KEYS = Object.keys(CARRIER_GATEWAYS);
 
 function cleanPhone(phone: string): string {
@@ -69,6 +81,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     const results: { carrier: string; success: boolean; error?: string }[] = [];
     let successCount = 0;
+    const carrierSuccesses: string[] = [];
+    const carrierFailures: string[] = [];
 
     for (const carrier of CARRIER_KEYS) {
       const gateway = CARRIER_GATEWAYS[carrier];
@@ -85,6 +99,13 @@ const handler = async (req: Request): Promise<Response> => {
         const success = !sendError;
         results.push({ carrier, success, error: sendError?.message });
 
+        if (success) {
+          successCount++;
+          carrierSuccesses.push(carrier);
+        } else {
+          carrierFailures.push(carrier);
+        }
+
         await logNotification(supabase, {
           recipient_phone: phone,
           channel: "sms-auto",
@@ -100,16 +121,46 @@ const handler = async (req: Request): Promise<Response> => {
             agedLeadId: agedLeadId || null,
           },
         });
-
-        if (success) successCount++;
       } catch (err: any) {
         results.push({ carrier, success: false, error: err.message });
+        carrierFailures.push(carrier);
       }
 
       await delay(200);
     }
 
-    console.log(`SMS auto-detect for ${phone}: ${successCount}/${CARRIER_KEYS.length} gateways accepted`);
+    // ─── Auto-save best-guess carrier ───
+    let carrierSelected: string | null = null;
+
+    if (carrierSuccesses.length > 0) {
+      // Pick highest-priority carrier among successes
+      carrierSelected = carrierSuccesses.sort(
+        (a, b) => (CARRIER_PRIORITY[b] || 0) - (CARRIER_PRIORITY[a] || 0)
+      )[0];
+
+      // Auto-save to application if applicable and carrier is currently null
+      if (applicationId && carrierSelected) {
+        try {
+          const { data: app } = await supabase
+            .from("applications")
+            .select("carrier")
+            .eq("id", applicationId)
+            .maybeSingle();
+
+          if (app && !app.carrier) {
+            await supabase
+              .from("applications")
+              .update({ carrier: carrierSelected })
+              .eq("id", applicationId);
+            console.log(`Auto-saved carrier "${carrierSelected}" for application ${applicationId}`);
+          }
+        } catch (err: any) {
+          console.error("Failed to auto-save carrier:", err.message);
+        }
+      }
+    }
+
+    console.log(`SMS auto-detect for ${phone}: ${successCount}/${CARRIER_KEYS.length} gateways accepted. Best guess: ${carrierSelected || "none"}`);
 
     return new Response(
       JSON.stringify({
@@ -118,6 +169,9 @@ const handler = async (req: Request): Promise<Response> => {
         attempts: results,
         successCount,
         totalAttempts: CARRIER_KEYS.length,
+        carrierSelected,
+        carrierSuccesses,
+        carrierFailures,
       }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );

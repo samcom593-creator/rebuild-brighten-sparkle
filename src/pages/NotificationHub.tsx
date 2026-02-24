@@ -114,46 +114,22 @@ const channelBorderColor: Record<string, string> = {
   email: "border-l-amber-500",
 };
 
-// ─── Mark Delivered Button ───
-function MarkDeliveredButton({ log, onMarked }: { log: any; onMarked: () => void }) {
-  const [saving, setSaving] = useState(false);
-  const { playSound } = useSoundEffects();
-
-  if (log.channel !== "sms-auto" || log.status !== "sent") return null;
-
-  const carrier = log.metadata?.carrier;
-  const applicationId = log.metadata?.applicationId;
-
-  const handleMark = async () => {
-    if (!carrier) return;
-    setSaving(true);
-    try {
-      if (applicationId) {
-        await supabase.from("applications").update({ carrier }).eq("id", applicationId);
-      }
-      playSound("success");
-      toast.success(`Carrier "${carrier}" saved for this lead`);
-      onMarked();
-    } catch (err: any) {
-      playSound("error");
-      toast.error("Failed to save carrier");
-    } finally {
-      setSaving(false);
-    }
-  };
-
+// ─── Carrier Auto-Save Indicator (replaces MarkDeliveredButton) ───
+function CarrierIndicator({ log }: { log: any }) {
+  if (log.channel !== "sms-auto") return null;
+  
+  const carrierSelected = log.metadata?.carrierSelected || log.metadata?.carrier_selected;
+  const carrierId = carrierSelected || log.metadata?.carrier;
+  
+  if (!carrierId) return null;
+  
+  const carrierLabel = CARRIER_OPTIONS.find(c => c.value === carrierId)?.label || carrierId;
+  
   return (
-    <Button
-      size="sm"
-      variant="ghost"
-      className="h-7 text-xs text-purple-600 hover:text-purple-700"
-      onClick={handleMark}
-      disabled={saving || !carrier}
-      title={`Mark ${carrier} as confirmed carrier`}
-    >
-      <CheckCircle className="h-3 w-3 mr-1" />
-      Mark {carrier}
-    </Button>
+    <span className="inline-flex items-center gap-1 text-[10px] text-purple-500">
+      <CheckCircle className="h-3 w-3" />
+      {carrierLabel}
+    </span>
   );
 }
 
@@ -248,7 +224,7 @@ function NotificationLogTable({ logs, search, channelFilter, statusFilter, onRef
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <MarkDeliveredButton log={log} onMarked={onRefresh} />
+                      <CarrierIndicator log={log} />
                     </TableCell>
                   </TableRow>
                   {/* Expanded detail row */}
@@ -501,7 +477,7 @@ function CarrierAssignmentTool() {
 }
 
 // ─── Quick Action Cards ───
-function QuickActionCards() {
+function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
   const [textingAll, setTextingAll] = useState(false);
   const [textingCourse, setTextingCourse] = useState(false);
   const [sendingOptIn, setSendingOptIn] = useState(false);
@@ -712,11 +688,13 @@ function QuickActionCards() {
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <button
-                disabled={action.loading}
+                disabled={action.loading || boostLocked}
                 className={cn(
-                  "relative w-full overflow-hidden rounded-xl border bg-gradient-to-br p-5 backdrop-blur-sm transition-all hover:scale-[1.03] hover:shadow-lg text-left",
+                  "relative w-full overflow-hidden rounded-xl border bg-gradient-to-br p-5 backdrop-blur-sm transition-all text-left",
+                  boostLocked ? "opacity-50 cursor-not-allowed" : "hover:scale-[1.03] hover:shadow-lg",
                   action.gradient
                 )}
+                title={boostLocked ? "Finish or discard the current boost first" : undefined}
               >
                 <div className="flex flex-col items-center gap-2 text-center">
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-background/50">
@@ -777,7 +755,7 @@ function clearBlastProgress() {
 }
 
 // ─── Bulk Blast Section ───
-function BulkBlastSection() {
+function BulkBlastSection({ onBoostLockChange }: { onBoostLockChange?: (locked: boolean) => void }) {
   const [blasting, setBlasting] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0, percent: 0 });
   const [stats, setStats] = useState({ push_sent: 0, sms_sent: 0, emailed: 0, failed: 0 });
@@ -785,16 +763,34 @@ function BulkBlastSection() {
   const [savedProgress, setSavedProgress] = useState<BlastProgress | null>(null);
   const { playSound } = useSoundEffects();
   const queryClient = useQueryClient();
+  const [autoResumeCountdown, setAutoResumeCountdown] = useState<number | null>(null);
 
-  // Load saved progress on mount
+  // Load saved progress on mount + auto-resume countdown
   useEffect(() => {
     const saved = loadBlastProgress();
     if (saved && saved.batchIndex < saved.totalBatches) {
       setSavedProgress(saved);
+      onBoostLockChange?.(true);
+      setAutoResumeCountdown(3);
     } else if (saved) {
       clearBlastProgress();
     }
   }, []);
+
+  // Auto-resume countdown timer
+  useEffect(() => {
+    if (autoResumeCountdown === null || autoResumeCountdown <= 0) return;
+    const timer = setTimeout(() => setAutoResumeCountdown(autoResumeCountdown - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [autoResumeCountdown]);
+
+  // Auto-resume when countdown hits 0
+  useEffect(() => {
+    if (autoResumeCountdown === 0 && savedProgress && !blasting) {
+      setAutoResumeCountdown(null);
+      handleResume();
+    }
+  }, [autoResumeCountdown]);
 
   const { data: counts } = useQuery({
     queryKey: ["blast-counts"],
@@ -862,6 +858,7 @@ function BulkBlastSection() {
       clearBlastProgress();
       setSavedProgress(null);
       setLastResult(accumulated);
+      onBoostLockChange?.(false);
       playSound("celebrate");
       confetti({ particleCount: 120, spread: 90, origin: { y: 0.6 } });
       toast.success(`Blast complete! Push: ${accumulated.push_sent}, SMS: ${accumulated.sms_sent}, Email: ${accumulated.emailed}`);
@@ -915,6 +912,8 @@ function BulkBlastSection() {
   const handleDiscard = () => {
     clearBlastProgress();
     setSavedProgress(null);
+    setAutoResumeCountdown(null);
+    onBoostLockChange?.(false);
     toast.info("Previous blast progress discarded");
   };
 
@@ -923,7 +922,7 @@ function BulkBlastSection() {
 
   return (
     <div className="space-y-4">
-      <QuickActionCards />
+      <QuickActionCards boostLocked={!!(savedProgress || blasting)} />
 
       {/* Resume Blast Card */}
       {savedProgress && !blasting && (
@@ -937,7 +936,11 @@ function BulkBlastSection() {
                 <Zap className="h-5 w-5 text-blue-400" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold">Resume Previous Blast</h3>
+                <h3 className="text-lg font-semibold">
+                  {autoResumeCountdown !== null && autoResumeCountdown > 0
+                    ? `Auto-resuming in ${autoResumeCountdown}…`
+                    : "Resume Previous Blast"}
+                </h3>
                 <p className="text-sm text-muted-foreground">
                   {Math.round((savedProgress.batchIndex / savedProgress.totalBatches) * 100)}% complete — {savedProgress.batchIndex} of {savedProgress.totalBatches} batches sent
                 </p>
@@ -1104,6 +1107,21 @@ export default function NotificationHub() {
   const [lastRefreshed, setLastRefreshed] = useState(new Date());
   const [refreshing, setRefreshing] = useState(false);
 
+  // Single-boost lock: check if there's a blast in progress
+  const [boostLocked, setBoostLocked] = useState(() => {
+    const saved = loadBlastProgress();
+    return !!(saved && saved.batchIndex < saved.totalBatches);
+  });
+
+  // Auto-resume: if saved progress exists, switch to blast tab
+  useEffect(() => {
+    const saved = loadBlastProgress();
+    if (saved && saved.batchIndex < saved.totalBatches) {
+      setActiveTab("blast");
+      setBoostLocked(true);
+    }
+  }, []);
+
   const { data: logs = [], isLoading } = useQuery({
     queryKey: ["notification-logs"],
     queryFn: async () => {
@@ -1249,7 +1267,7 @@ export default function NotificationHub() {
         </TabsContent>
 
         <TabsContent value="blast">
-          <BulkBlastSection />
+          <BulkBlastSection onBoostLockChange={setBoostLocked} />
         </TabsContent>
       </Tabs>
     </div>

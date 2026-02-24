@@ -7,7 +7,8 @@ function formatPhoneDisplay(phone: string): string {
   return phone;
 }
 import { motion } from "framer-motion";
-import { Phone, Mail, Instagram, Clock, User, Calendar, Sparkles, Building2, FileText, MapPin } from "lucide-react";
+import { Phone, Mail, Instagram, Clock, User, Calendar, Sparkles, Building2, FileText, MapPin, Eye } from "lucide-react";
+import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, format } from "date-fns";
 import { CallCenterVoiceRecorder } from "./CallCenterVoiceRecorder";
@@ -117,6 +118,7 @@ export function CallCenterLeadCard({
 }: CallCenterLeadCardProps) {
   const currentStage = progressToStage(lead.licenseProgress, lead.licenseStatus);
   const [showRipple, setShowRipple] = useState(false);
+  const [showAppSheet, setShowAppSheet] = useState(false);
 
   const handleCall = () => {
     setShowRipple(true);
@@ -474,6 +476,16 @@ export function CallCenterLeadCard({
                   licenseStatus={lead.licenseStatus as "licensed" | "unlicensed" | "pending"}
                 />
               )}
+              {/* View Application */}
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowAppSheet(true)}
+                className="p-2.5 rounded-full bg-primary/10 hover:bg-primary/20 text-primary transition-colors border border-primary/30"
+                title="View Application"
+              >
+                <Eye className="h-4 w-4" />
+              </motion.button>
               {isAdmin && (
                 <LeadReassignButton
                   leadId={lead.id}
@@ -485,6 +497,12 @@ export function CallCenterLeadCard({
           </div>
         </motion.div>
       </div>
+
+      <ApplicationDetailSheet
+        open={showAppSheet}
+        onOpenChange={setShowAppSheet}
+        applicationId={lead.source === "applications" ? lead.id : undefined}
+      />
     </motion.div>
   );
 }

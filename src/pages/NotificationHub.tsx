@@ -85,7 +85,7 @@ function NotificationStats({ logs, onFilterChannel }: { logs: any[]; onFilterCha
         transition={{ delay: 0.3 }}
         className="flex items-center gap-3 px-1"
       >
-        <span className="text-xs text-muted-foreground whitespace-nowrap">Success Rate</span>
+        <span className="text-xs text-muted-foreground whitespace-nowrap">Success Rate (today)</span>
         <Progress value={successRate} className="h-2 flex-1" />
         <span className={cn("text-sm font-bold", successRate >= 90 ? "text-emerald-400" : successRate >= 70 ? "text-amber-400" : "text-red-400")}>
           {successRate}%
@@ -587,39 +587,80 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
     playSound("whoosh");
     try {
       const today = new Date().toISOString().split("T")[0];
-      const { data: failedLogs } = await supabase
+      const { data: failedLogs, error: failedError } = await supabase
         .from("notification_log")
-        .select("*")
+        .select("id, channel, recipient_user_id, recipient_email, recipient_phone, title, message, metadata, created_at")
         .eq("status", "failed")
         .gte("created_at", `${today}T00:00:00`)
-        .limit(50);
+        .order("created_at", { ascending: false });
+
+      if (failedError) throw failedError;
 
       if (!failedLogs?.length) {
         toast.info("No failed notifications today!");
         return;
       }
 
+      let attempted = 0;
       let resent = 0;
+      const channelSummary = {
+        push: { attempted: 0, resent: 0 },
+        email: { attempted: 0, resent: 0 },
+        sms: { attempted: 0, resent: 0 },
+      };
+
       for (const log of failedLogs) {
         try {
           if (log.channel === "push" && log.recipient_user_id) {
-            await supabase.functions.invoke("send-push-notification", {
-              body: { userId: log.recipient_user_id, title: log.title, message: log.message },
+            attempted++;
+            channelSummary.push.attempted++;
+            const { error } = await supabase.functions.invoke("send-push-notification", {
+              body: { userId: log.recipient_user_id, title: log.title, body: log.message },
             });
-            resent++;
+            if (!error) {
+              resent++;
+              channelSummary.push.resent++;
+            }
           } else if (log.channel === "email" && log.recipient_email) {
-            await supabase.functions.invoke("send-notification", {
-              body: { to: log.recipient_email, subject: log.title, html: log.message },
+            attempted++;
+            channelSummary.email.attempted++;
+            const { error } = await supabase.functions.invoke("send-notification", {
+              body: { email: log.recipient_email, title: log.title, message: log.message },
             });
-            resent++;
+            if (!error) {
+              resent++;
+              channelSummary.email.resent++;
+            }
+          } else if ((log.channel === "sms-auto" || log.channel === "sms") && log.recipient_phone) {
+            attempted++;
+            channelSummary.sms.attempted++;
+            const metadata =
+              log.metadata && typeof log.metadata === "object" && !Array.isArray(log.metadata)
+                ? (log.metadata as Record<string, unknown>)
+                : {};
+            const { data, error } = await supabase.functions.invoke("send-sms-auto-detect", {
+              body: {
+                phone: log.recipient_phone,
+                message: (log.message || `${log.title}: retry`).substring(0, 160),
+                applicationId: typeof metadata.applicationId === "string" ? metadata.applicationId : null,
+                agedLeadId: typeof metadata.agedLeadId === "string" ? metadata.agedLeadId : null,
+              },
+            });
+            if (!error && (data?.successCount || 0) > 0) {
+              resent++;
+              channelSummary.sms.resent++;
+            }
           }
         } catch {
           // skip individual failures
         }
       }
+
       playSound("celebrate");
       confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
-      toast.success(`Resent ${resent} of ${failedLogs.length} failed notifications`);
+      toast.success(
+        `Resend complete: ${resent}/${attempted} retried · Push ${channelSummary.push.resent}/${channelSummary.push.attempted} · SMS ${channelSummary.sms.resent}/${channelSummary.sms.attempted} · Email ${channelSummary.email.resent}/${channelSummary.email.attempted}`
+      );
       queryClient.invalidateQueries({ queryKey: ["notification-logs"] });
     } catch (err: any) {
       playSound("error");

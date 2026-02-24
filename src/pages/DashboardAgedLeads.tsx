@@ -113,7 +113,6 @@ export default function DashboardAgedLeads() {
 
   // Merge duplicates dialog state
   const [showMergeConfirm, setShowMergeConfirm] = useState(false);
-  const [mergeIdsToDelete, setMergeIdsToDelete] = useState<string[]>([]);
   const [merging, setMerging] = useState(false);
 
   // Delete state
@@ -343,46 +342,26 @@ export default function DashboardAgedLeads() {
   const licensedLeads = leads.filter(l => l.licenseStatus === "licensed").length;
   const unlicensedLeads = leads.filter(l => l.licenseStatus === "unlicensed").length;
 
-  // Auto-merge all duplicates: keep newest per email/phone group, delete the rest
+  // Backend-driven dedupe: calls the dedupe-aged-leads edge function
   const handleAutoMergeDuplicates = async () => {
-    const groups = new Map<string, AgedLead[]>();
-    leads.forEach(lead => {
-      const emailKey = lead.email?.toLowerCase().trim();
-      const phoneKey = lead.phone?.replace(/\D/g, "").slice(-10);
-      // Only group by email if non-empty, or by phone if valid 10-digit
-      const key = (emailKey && emailKey.length > 0) ? emailKey : (phoneKey && phoneKey.length === 10 ? phoneKey : null);
-      if (!key) return;
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key)!.push(lead);
-    });
-
-    const idsToDelete: string[] = [];
-    groups.forEach(group => {
-      if (group.length <= 1) return;
-      // Sort newest first
-      group.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      // Delete all except first (newest)
-      group.slice(1).forEach(lead => idsToDelete.push(lead.id));
-    });
-
-    if (idsToDelete.length === 0) {
+    if (duplicateMap.size === 0) {
       toast.info("No duplicates to merge");
       return;
     }
-
-    // Store ids and show dialog instead of window.confirm
-    setMergeIdsToDelete(idsToDelete);
     setShowMergeConfirm(true);
   };
 
   const executeMergeDuplicates = async () => {
     setMerging(true);
     try {
-      const { error } = await supabase.from("aged_leads").delete().in("id", mergeIdsToDelete);
+      const { data, error } = await supabase.functions.invoke("dedupe-aged-leads", {
+        method: "POST",
+        body: {},
+      });
       if (error) throw error;
-      toast.success(`Merged ${mergeIdsToDelete.length} duplicate leads`);
+      if (data?.error) throw new Error(data.error);
+      toast.success(data?.message || `Merged ${data?.merged || 0} groups, removed ${data?.deleted || 0} duplicates`);
       setShowMergeConfirm(false);
-      setMergeIdsToDelete([]);
       fetchLeads();
     } catch (error: any) {
       console.error("Error merging duplicates:", error);
@@ -889,10 +868,10 @@ export default function DashboardAgedLeads() {
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-amber-500" />
-              Merge Duplicates
+              Merge All Duplicates
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This will delete <strong>{mergeIdsToDelete.length}</strong> older duplicate records, keeping the newest entry for each group. This action cannot be undone.
+              This will intelligently merge <strong>{duplicateMap.size}</strong> duplicate groups — keeping the best record (latest contact, richest data) and consolidating notes from all copies. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -901,7 +880,7 @@ export default function DashboardAgedLeads() {
               onClick={executeMergeDuplicates}
               disabled={merging}
             >
-              {merging ? "Merging..." : `Merge ${mergeIdsToDelete.length} Duplicates`}
+              {merging ? "Merging…" : `Merge ${duplicateMap.size} Duplicate Groups`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -126,7 +126,7 @@ const handler = async (req: Request): Promise<Response> => {
         carrierFailures.push(carrier);
       }
 
-      await delay(600);
+      await delay(1000);
     }
 
     // ─── Auto-save best-guess carrier ───

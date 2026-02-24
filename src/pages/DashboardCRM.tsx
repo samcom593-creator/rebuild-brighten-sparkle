@@ -29,6 +29,7 @@ import {
   CheckSquare,
   EyeOff,
   Eye,
+  FileText,
 } from "lucide-react";
 import {
   Table,
@@ -76,6 +77,7 @@ import { Database } from "@/integrations/supabase/types";
 import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
 import { InterviewRecorder } from "@/components/dashboard/InterviewRecorder";
 import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressSelector";
+import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 type AttendanceStatus = Database["public"]["Enums"]["attendance_status"];
@@ -220,6 +222,7 @@ export default function DashboardCRM() {
   const [selectedAgents, setSelectedAgents] = useState<Set<string>>(new Set());
   const [sendingCourseLogin, setSendingCourseLogin] = useState<string | null>(null);
   const [recorderAgent, setRecorderAgent] = useState<AgentCRM | null>(null);
+  const [viewAppAgentId, setViewAppAgentId] = useState<string | null>(null);
   const currentAgentIdRef = useState<string | null>(null);
 
   useEffect(() => {
@@ -923,6 +926,15 @@ export default function DashboardCRM() {
                 }}
                 size="sm"
               />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-4 w-4 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                title="View Application"
+                onClick={() => setViewAppAgentId(agent.id)}
+              >
+                <FileText className="h-2.5 w-2.5" />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"
@@ -1793,6 +1805,13 @@ export default function DashboardCRM() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* View Application Sheet */}
+      <ApplicationDetailSheet
+        open={!!viewAppAgentId}
+        onOpenChange={(o) => !o && setViewAppAgentId(null)}
+        agentId={viewAppAgentId || undefined}
+      />
 
       {/* Deactivate Dialog */}
       <DeactivateAgentDialog

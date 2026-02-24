@@ -309,3 +309,6 @@ verify_jwt = false
 
 [functions.send-sms-auto-detect]
 verify_jwt = false
+
+[functions.send-batch-blast]
+verify_jwt = false

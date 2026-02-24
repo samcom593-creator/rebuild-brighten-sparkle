@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 const loginSchema = z.object({
   email: z.string().email("Valid email is required"),
@@ -26,6 +27,7 @@ export default function Login() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const { playSound } = useSoundEffects();
   const [showPhoneLogin, setShowPhoneLogin] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [otpSent, setOtpSent] = useState(false);
@@ -67,16 +69,19 @@ export default function Login() {
         }
         
         if (agent?.has_training_course) {
+          playSound("success");
           toast.success("Welcome! Taking you to your course 📚");
           navigate("/onboarding-course");
           return;
         }
       }
 
+      playSound("success");
       toast.success("Welcome back!");
       navigate("/dashboard");
     } catch (error: any) {
       console.error("Login error:", error);
+      playSound("error");
       toast.error(error.message || "Failed to sign in");
     } finally {
       setIsLoading(false);

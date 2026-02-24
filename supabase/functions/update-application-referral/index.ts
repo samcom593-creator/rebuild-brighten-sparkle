@@ -88,7 +88,10 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    if (app.assigned_agent_id) {
+    // Allow reassignment if current assignment is the admin default
+    const ADMIN_DEFAULT_ID = "7c3c5581-3544-437f-bfe2-91391afb217d";
+
+    if (app.assigned_agent_id && app.assigned_agent_id !== ADMIN_DEFAULT_ID) {
       return new Response(JSON.stringify({ error: "Referral already set" }), {
         status: 409,
         headers: { "Content-Type": "application/json", ...corsHeaders },

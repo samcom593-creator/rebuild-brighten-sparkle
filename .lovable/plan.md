@@ -1,82 +1,75 @@
 
 
-# Full Implementation: Batch Blast Deploy + Dashboard Inactive Management + Sound Effects + Site Polish
+# Add Total Applications FOMO Counter to Dashboard
 
-## Status of Previous Work
+## What We're Building
 
-Everything from the approved plan has already been implemented in code:
-- Batch blast edge function (`send-batch-blast/index.ts`) -- created and registered in config.toml
-- NotificationHub rewrite with batch orchestration, live progress bar, confetti -- done
-- Fragment key fix -- done
-- Login sound effects -- done
-- GlobalSidebar click sounds -- done
-- ScheduleBar pulse + sounds -- done
-- partial_applications GRANT migration -- done
+A visually striking "Total Applications" banner on the Dashboard that combines all applications (98 new + 925 aged = 1,023 total) into one big animated counter. This creates FOMO for agents and managers by showing how many people are applying to work with the agency.
 
-The edge function needs to be deployed to start working.
+## Placement
 
-## What Still Needs to Be Done
+Right after the welcome message and before the quick actions row. This is the first data point every user sees -- maximum visibility.
 
-### 1. Deploy `send-batch-blast` Edge Function
-The function code exists but hasn't been deployed yet. This is why the blast appears frozen -- it's calling a function that doesn't exist on the server.
+## Component: `TotalApplicationsBanner`
 
-### 2. Dashboard Inactive Agent Management -- Simplified Flow
-The `ActivationRiskBanner` on the Dashboard already lets admins move agents to inactive one-by-one or in bulk. The Command Center has a 3-dot menu with Reactivate. But there's no quick "Mark Active" toggle directly from the Dashboard risk banner, and inactive agents still show in various views (leaderboards, team views) causing confusion.
+A new standalone component (`src/components/dashboard/TotalApplicationsBanner.tsx`) that:
 
-**Changes to `ActivationRiskBanner.tsx`:**
-- Add a "Reactivate" button alongside the existing "Inactive" button on each agent row
-- Add sound effects (success on inactive/reactivate, error on failure)
-- When an agent is marked inactive, they're automatically hidden from all leaderboards and team views (this already works via the `is_inactive` flag -- just need to confirm filtering)
+1. Fetches two counts via separate queries:
+   - `applications` table: `COUNT(*) WHERE terminated_at IS NULL`
+   - `aged_leads` table: `COUNT(*)`
+2. Displays the combined total with the existing `AnimatedCounter` component for a smooth count-up effect
+3. Shows a breakdown row: "98 New Applicants + 925 Aged Leads"
+4. Shows "today" and "this week" mini-badges for recency FOMO
+5. Uses `framer-motion` entrance animation + subtle pulse on the number
+6. Gradient background (primary-to-emerald) with a glowing effect
+7. Fire/rocket icon to reinforce momentum
+8. Visible to ALL roles (agents, managers, admins) -- everyone should feel the FOMO
 
-**Changes to `DashboardCommandCenter.tsx`:**
-- Add an "Inactive" quick filter tab so admins can see and manage all inactive agents in one view
-- Add sound effects on filter switches, agent actions, and reactivation
+## Visual Design
 
-### 3. Sound Effects on Dashboard.tsx
-- Add `useSoundEffects` hook
-- Play "click" on quick action card taps
-- Play "whoosh" on tab/filter switches
+```text
+┌─────────────────────────────────────────────────┐
+│  🚀  Total Applications                        │
+│                                                 │
+│         1,023                                   │
+│    (animated count-up, large bold text)          │
+│                                                 │
+│  98 New Applicants  •  925 Aged Leads           │
+│                                                 │
+│  [+4 today]  [+9 this week]    ← green badges   │
+└─────────────────────────────────────────────────┘
+```
 
-### 4. Verify All Filtering is Consistent
-Confirm that inactive agents (`is_inactive = true`) are properly excluded from:
-- LeaderboardTabs (production leaderboard)
-- ManagerTeamView
-- TeamSnapshotCard
-- ClosingRateLeaderboard / ReferralLeaderboard
-
----
+- Gradient border (primary/emerald)
+- GlassCard base with gradient overlay
+- Number uses `text-4xl font-black` with gradient text
+- Sub-counts in muted text
+- Green pulse badges for today/this week counts
+- Sound effect on mount ("whoosh")
 
 ## Technical Details
 
-### Files Modified
+### Files
 
-| File | Changes |
-|------|---------|
-| `supabase/functions/send-batch-blast/index.ts` | Deploy only (no code changes) |
-| `src/components/dashboard/ActivationRiskBanner.tsx` | Add "Reactivate" button per row, add sound effects on all actions |
-| `src/pages/Dashboard.tsx` | Add `useSoundEffects`, play sounds on quick action clicks |
-| `src/pages/DashboardCommandCenter.tsx` | Add "inactive" filter option to QuickFilters, add sound effects on actions |
-| `src/components/admin/QuickFilters.tsx` | Add "Inactive" filter option |
+| File | Change |
+|------|--------|
+| `src/components/dashboard/TotalApplicationsBanner.tsx` | **NEW** -- fetches counts, renders animated FOMO banner |
+| `src/pages/Dashboard.tsx` | Import and place `TotalApplicationsBanner` between welcome message and quick actions |
 
-### ActivationRiskBanner Enhancement
+### Data Fetching
 
-Each at-risk agent row currently has: **Inactive** | **Settings** | **Dismiss**
+Uses `useQuery` with key `["total-applications-fomo"]`, refetches every 60 seconds to stay live. Two parallel Supabase `count` queries (head-only, no data transfer):
 
-Updated to: **Inactive** | **Reactivate** | **Settings** | **Dismiss**
+```
+supabase.from("applications").select("*", { count: "exact", head: true }).is("terminated_at", null)
+supabase.from("aged_leads").select("*", { count: "exact", head: true })
+supabase.from("applications").select("*", { count: "exact", head: true }).gte("created_at", todayISO)
+supabase.from("applications").select("*", { count: "exact", head: true }).gte("created_at", weekStartISO)
+```
 
-The Reactivate button is shown for agents that are currently inactive (visible if they were previously marked inactive from this banner). It performs the same atomic reactivation as the Command Center: sets `status = active`, clears `is_deactivated`, `is_inactive`, and `deactivation_reason`.
+### No Database Changes
 
-### QuickFilters Update
+All data already exists in `applications` and `aged_leads` tables. RLS policies already allow admin/manager SELECT. For agents, the banner will use the edge function or a simple server count -- but since agents can view their own applications and aged_leads have manager-only RLS, we'll fetch counts via a lightweight approach: the banner shows the total for admins/managers who can see all data, and for agents it shows just their own application count + a motivational message.
 
-Current filter tabs: `Producers` | `Needs Attention` | `Zero Production` | `Course Purchased` | `All`
-
-Updated to: `Producers` | `Needs Attention` | `Zero Production` | `Inactive` | `All`
-
-The "Inactive" filter shows agents where `isInactive = true` or `isDeactivated = true`, giving admins a single view to manage and reactivate dormant agents without navigating away from the Command Center.
-
-### Sound Effects Integration
-
-- **Dashboard.tsx**: `playSound("click")` on quick action card clicks
-- **DashboardCommandCenter.tsx**: `playSound("click")` on filter changes, `playSound("success")` on reactivation/deactivation, `playSound("error")` on failures
-- **ActivationRiskBanner.tsx**: `playSound("success")` on move-to-inactive, `playSound("celebrate")` on bulk inactive, `playSound("error")` on failures
+Actually, to keep it simple and universal: admins see the full count (1,023), managers see their team + aged leads assigned to them, agents see their own leads. The FOMO effect works at every level.
 

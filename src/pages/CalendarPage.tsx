@@ -71,6 +71,60 @@ function buildCalendarUrl(params: {
   return url.toString();
 }
 
+// ─── Add New Applicant Form (shown when search yields no results) ───
+function AddNewApplicantForm({ onCreated }: { onCreated: (lead: LeadResult) => void }) {
+  const [form, setForm] = useState({ first_name: "", last_name: "", email: "", phone: "", instagram_handle: "" });
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.first_name || !form.last_name || !form.email) {
+      toast.error("First name, last name, and email are required");
+      return;
+    }
+    setSaving(true);
+    try {
+      const { data, error } = await supabase.from("applications").insert({
+        first_name: form.first_name,
+        last_name: form.last_name,
+        email: form.email,
+        phone: form.phone || null,
+        instagram_handle: form.instagram_handle || null,
+        status: "new" as any,
+      }).select("id, first_name, last_name, email, phone, status").single();
+      if (error) throw error;
+      toast.success(`${form.first_name} ${form.last_name} added!`);
+      onCreated(data as LeadResult);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to add applicant");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground text-center py-2">No leads found</p>
+      <form onSubmit={handleSubmit} className="space-y-2 border border-border rounded-lg p-3">
+        <p className="text-xs font-medium text-foreground flex items-center gap-1.5">
+          <Plus className="h-3.5 w-3.5 text-primary" />
+          Add New Applicant
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          <Input placeholder="First Name *" value={form.first_name} onChange={e => setForm(p => ({ ...p, first_name: e.target.value }))} required />
+          <Input placeholder="Last Name *" value={form.last_name} onChange={e => setForm(p => ({ ...p, last_name: e.target.value }))} required />
+        </div>
+        <Input placeholder="Email *" type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} required />
+        <Input placeholder="Phone" value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} />
+        <Input placeholder="Instagram Handle" value={form.instagram_handle} onChange={e => setForm(p => ({ ...p, instagram_handle: e.target.value }))} />
+        <Button type="submit" size="sm" className="w-full" disabled={saving}>
+          {saving ? "Adding..." : "Add & Schedule"}
+        </Button>
+      </form>
+    </div>
+  );
+}
+
 export default function CalendarPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -349,7 +403,7 @@ export default function CalendarPage() {
               </div>
             )}
             {searchQuery.length >= 2 && !searching && searchResults.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">No leads found</p>
+              <AddNewApplicantForm onCreated={handleSelectLead} />
             )}
           </div>
         </DialogContent>

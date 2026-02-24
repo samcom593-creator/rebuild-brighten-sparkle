@@ -435,7 +435,7 @@ export function CallCenterLeadCard({
           </>
         )}
 
-        {/* Voice Recorder & Quick Email & Admin Actions */}
+        {/* Voice Recorder & Quick Email & Admin Actions & Schedule */}
         <motion.div variants={itemVariants} className="pt-4 border-t border-border/30 space-y-4">
           <div className="flex items-center gap-4">
             <div className="flex-1">
@@ -446,6 +446,19 @@ export function CallCenterLeadCard({
               />
             </div>
             <div className="flex items-center gap-2 shrink-0">
+              {/* Schedule Interview Button */}
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  const url = `/dashboard/calendar`;
+                  window.open(url, "_blank");
+                }}
+                className="p-2.5 rounded-full bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 transition-colors border border-blue-500/30"
+                title="Schedule Interview"
+              >
+                <Calendar className="h-4 w-4" />
+              </motion.button>
             <QuickEmailMenu
               applicationId={lead.id}
               agentId={null}

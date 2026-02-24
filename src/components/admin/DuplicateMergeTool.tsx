@@ -36,10 +36,168 @@ interface DuplicateMergeToolProps {
   onMergeComplete: () => void;
 }
 
+// ─── Aged Lead Duplicates Sub-Component ───
+function AgedLeadDuplicates() {
+  const queryClient = useQueryClient();
+
+  const { data: agedDupes, isLoading } = useQuery({
+    queryKey: ["aged-lead-duplicates"],
+    queryFn: async () => {
+      const { data: leads, error } = await supabase
+        .from("aged_leads")
+        .select("id, first_name, last_name, email, phone, notes, last_contacted_at, created_at")
+        .order("email");
+      if (error) throw error;
+
+      // Group by email
+      const emailGroups = new Map<string, typeof leads>();
+      (leads || []).forEach(l => {
+        if (l.email && l.email.trim()) {
+          const key = l.email.toLowerCase().trim();
+          const group = emailGroups.get(key) || [];
+          group.push(l);
+          emailGroups.set(key, group);
+        }
+      });
+
+      // Group by phone
+      const phoneGroups = new Map<string, typeof leads>();
+      (leads || []).forEach(l => {
+        if (l.phone && l.phone.trim()) {
+          const key = l.phone.replace(/\D/g, "").slice(-10);
+          if (key.length === 10) {
+            const group = phoneGroups.get(key) || [];
+            group.push(l);
+            phoneGroups.set(key, group);
+          }
+        }
+      });
+
+      const groups: { key: string; matchType: string; leads: any[] }[] = [];
+      const seenIds = new Set<string>();
+
+      emailGroups.forEach((group, email) => {
+        if (group.length > 1) {
+          const ids = group.map(l => l.id).sort().join(",");
+          if (!seenIds.has(ids)) {
+            seenIds.add(ids);
+            groups.push({ key: email, matchType: "email", leads: group });
+          }
+        }
+      });
+
+      phoneGroups.forEach((group, phone) => {
+        if (group.length > 1) {
+          const ids = group.map(l => l.id).sort().join(",");
+          if (!seenIds.has(ids)) {
+            seenIds.add(ids);
+            groups.push({ key: phone, matchType: "phone", leads: group });
+          }
+        }
+      });
+
+      return groups;
+    },
+  });
+
+  const handleDeleteDuplicates = async (group: { leads: any[] }) => {
+    // Keep the one with most recent last_contacted_at, or newest created_at
+    const sorted = [...group.leads].sort((a, b) => {
+      const aDate = a.last_contacted_at || a.created_at || "";
+      const bDate = b.last_contacted_at || b.created_at || "";
+      return bDate.localeCompare(aDate);
+    });
+    const keepId = sorted[0].id;
+    const deleteIds = sorted.slice(1).map(l => l.id);
+
+    // Merge notes into the keeper
+    const allNotes = sorted
+      .map(l => l.notes)
+      .filter(Boolean)
+      .join("\n---\n");
+
+    try {
+      if (allNotes) {
+        await supabase.from("aged_leads").update({ notes: allNotes }).eq("id", keepId);
+      }
+      const { error } = await supabase.from("aged_leads").delete().in("id", deleteIds);
+      if (error) throw error;
+      toast({ title: "Duplicates removed", description: `Kept 1, deleted ${deleteIds.length} duplicate(s)` });
+      queryClient.invalidateQueries({ queryKey: ["aged-lead-duplicates"] });
+      queryClient.invalidateQueries();
+    } catch (err: any) {
+      toast({ title: "Failed", description: err.message, variant: "destructive" });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!agedDupes || agedDupes.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <Check className="h-12 w-12 mx-auto text-green-500 mb-4" />
+        <h3 className="text-lg font-semibold">No Aged Lead Duplicates</h3>
+        <p className="text-muted-foreground mt-2">All aged lead records appear unique.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Found <strong>{agedDupes.length}</strong> duplicate groups in aged leads
+      </p>
+      {agedDupes.map((group) => (
+        <div key={group.key} className="border rounded-lg p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <span className="text-sm font-medium">{group.leads.length} records</span>
+              <Badge variant="outline" className="text-[10px]">
+                {group.matchType === "email" ? "Same Email" : "Same Phone"}
+              </Badge>
+            </div>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => handleDeleteDuplicates(group)}
+              className="gap-1 h-7 text-xs"
+            >
+              <Merge className="h-3 w-3" />
+              Keep Best, Delete Rest
+            </Button>
+          </div>
+          <div className="space-y-1">
+            {group.leads.map((lead: any) => (
+              <div key={lead.id} className="flex items-center gap-3 p-2 rounded bg-muted/30 text-sm">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{lead.first_name} {lead.last_name || ""}</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {lead.email || "No email"} {lead.phone && `• ${lead.phone}`}
+                  </p>
+                </div>
+                <div className="text-xs text-muted-foreground whitespace-nowrap">
+                  {lead.last_contacted_at ? `Contacted ${new Date(lead.last_contacted_at).toLocaleDateString()}` : "Never contacted"}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function DuplicateMergeTool({ open, onClose, onMergeComplete }: DuplicateMergeToolProps) {
   const queryClient = useQueryClient();
   const [selectedPrimary, setSelectedPrimary] = useState<Record<string, string>>({});
-  const [activeTab, setActiveTab] = useState<"auto" | "manual">("manual");
+  const [activeTab, setActiveTab] = useState<"auto" | "manual" | "aged_leads">("manual");
   const [searchQuery, setSearchQuery] = useState("");
   const [manualSelectedAgents, setManualSelectedAgents] = useState<string[]>([]);
   const [manualPrimaryAgent, setManualPrimaryAgent] = useState<string | null>(null);
@@ -332,11 +490,14 @@ export function DuplicateMergeTool({ open, onClose, onMergeComplete }: Duplicate
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "auto" | "manual")} className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="grid w-full grid-cols-2">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "auto" | "manual" | "aged_leads")} className="flex-1 flex flex-col overflow-hidden">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="manual">Manual Merge</TabsTrigger>
             <TabsTrigger value="auto">
               Auto-Detect ({duplicates?.length || 0})
+            </TabsTrigger>
+            <TabsTrigger value="aged_leads">
+              Aged Lead Dupes
             </TabsTrigger>
           </TabsList>
 
@@ -543,6 +704,11 @@ export function DuplicateMergeTool({ open, onClose, onMergeComplete }: Duplicate
                 ))}
               </div>
             )}
+          </TabsContent>
+
+          {/* Aged Lead Duplicates Tab */}
+          <TabsContent value="aged_leads" className="flex-1 overflow-y-auto mt-4">
+            <AgedLeadDuplicates />
           </TabsContent>
         </Tabs>
       </DialogContent>

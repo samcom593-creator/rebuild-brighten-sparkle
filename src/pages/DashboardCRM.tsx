@@ -30,6 +30,14 @@ import {
   EyeOff,
   Eye,
 } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
@@ -1621,63 +1629,166 @@ export default function DashboardCRM() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.98 }}
               transition={{ duration: 0.2 }}
-              className="grid grid-cols-1 lg:grid-cols-3 gap-4"
+              className="space-y-2"
             >
-              {COLUMNS.map((column) => {
-                const columnAgents = getAgentsForColumn(column.stages);
-                const Icon = column.icon;
-                
-                return (
-                  <motion.div 
-                    key={column.key} 
-                    className="space-y-3"
-                    whileHover={{ scale: 1.01 }}
-                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                  >
-                    <div 
-                      className={cn(
-                        "flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all hover:ring-2 hover:ring-primary/50",
-                        column.bgColor
-                      )}
-                      onClick={() => setExpandedColumn(column.key)}
-                    >
-                      <Icon className={cn("h-4 w-4", column.color)} />
-                      <h2 className={cn("font-semibold text-sm", column.color)}>
-                        {column.label}
-                      </h2>
-                      <Badge variant="secondary" className="ml-auto text-xs">
-                        {columnAgents.length}
-                      </Badge>
-                    </div>
-                    
-                    {columnAgents.length === 0 ? (
-                      <GlassCard className="p-4 text-center">
-                        <p className="text-xs text-muted-foreground">
-                          No agents in this stage
-                        </p>
-                      </GlassCard>
-                    ) : (
-                      <div className="space-y-2">
-                        {columnAgents.slice(0, 5).map((agent, index) => (
-                          <div key={agent.id}>
-                            {renderAgentCard(agent, index)}
-                          </div>
-                        ))}
-                        {columnAgents.length > 5 && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="w-full text-xs text-muted-foreground hover:text-foreground"
-                            onClick={() => setExpandedColumn(column.key)}
+              {/* CRM Table Layout - Row format */}
+              <div className="rounded-xl border border-border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[200px]">Agent</TableHead>
+                      <TableHead className="w-[100px]">Stage</TableHead>
+                      <TableHead className="w-[120px]">License</TableHead>
+                      <TableHead className="w-[80px]">Course</TableHead>
+                      <TableHead className="w-[100px]">Last Contact</TableHead>
+                      <TableHead className="w-[100px]">Weekly ALP</TableHead>
+                      <TableHead className="w-[120px] text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(() => {
+                      const allColumnAgents = [
+                        ...getAgentsForColumn(["onboarding", "training_online"] as OnboardingStage[]),
+                        ...getAgentsForColumn(["in_field_training"] as OnboardingStage[]),
+                        ...getAgentsForColumn(["evaluated"] as OnboardingStage[]),
+                      ];
+                      
+                      if (allColumnAgents.length === 0) {
+                        return (
+                          <TableRow>
+                            <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                              No agents in the pipeline
+                            </TableCell>
+                          </TableRow>
+                        );
+                      }
+
+                      return allColumnAgents.map((agent) => {
+                        const stageLabel = ["onboarding", "training_online"].includes(agent.onboardingStage)
+                          ? "Onboarding"
+                          : agent.onboardingStage === "in_field_training"
+                          ? "In Training"
+                          : "Live";
+                        const stageColor = stageLabel === "Onboarding"
+                          ? "bg-primary/10 text-primary border-primary/20"
+                          : stageLabel === "In Training"
+                          ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                          : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
+
+                        const licenseLabel = agent.agentLicenseStatus === "licensed" ? "Licensed" : (agent.licenseProgress || "Unlicensed");
+                        const licenseColor = agent.agentLicenseStatus === "licensed"
+                          ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                          : "bg-muted text-muted-foreground";
+
+                        const contactFresh = (() => {
+                          if (!agent.lastContactedAt) return { label: "Never", color: "text-red-400" };
+                          const h = (Date.now() - new Date(agent.lastContactedAt).getTime()) / 3600000;
+                          if (h < 24) return { label: getTimeAgo(agent.lastContactedAt), color: "text-emerald-400" };
+                          if (h < 48) return { label: getTimeAgo(agent.lastContactedAt), color: "text-amber-400" };
+                          return { label: getTimeAgo(agent.lastContactedAt), color: "text-red-400" };
+                        })();
+
+                        return (
+                          <TableRow
+                            key={agent.id}
+                            className={cn(
+                              "cursor-pointer hover:bg-muted/50 transition-colors",
+                              isStaleAgent(agent) && "bg-red-500/5"
+                            )}
+                            onClick={() => {
+                              const stage = ["onboarding", "training_online"].includes(agent.onboardingStage)
+                                ? "in_course" : agent.onboardingStage === "in_field_training"
+                                ? "in_training" : "in_field";
+                              setExpandedColumn(stage);
+                            }}
                           >
-                            View all {columnAgents.length} agents →
-                          </Button>
-                        )}
-                      </div>
-                    )}
-                  </motion.div>
-                );
-              })}
+                            <TableCell>
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div className={cn(
+                                  "h-7 w-7 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-xs font-bold shrink-0",
+                                  getAvatarColor(agent.name)
+                                )}>
+                                  {agent.name.charAt(0).toUpperCase()}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-medium text-sm truncate">{agent.name}</p>
+                                  <p className="text-[10px] text-muted-foreground truncate">{agent.email}</p>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className={cn("text-[10px]", stageColor)}>{stageLabel}</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className={cn("text-[10px]", licenseColor)}>
+                                {licenseLabel === "course_purchased" ? "Course" : licenseLabel === "finished_course" ? "Course Done" : licenseLabel === "test_scheduled" ? "Test Sched." : licenseLabel}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {agent.hasTrainingCourse ? (
+                                <span className="text-emerald-400 text-sm">✅</span>
+                              ) : (
+                                <span className="text-red-400 text-sm">❌</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <span className={cn("text-xs font-medium", contactFresh.color)}>
+                                {contactFresh.label}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-sm font-semibold">
+                                ${agent.weeklyALP.toLocaleString()}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                                {agent.phone && (
+                                  <Button variant="ghost" size="icon" className="h-6 w-6" asChild>
+                                    <a href={`tel:${agent.phone}`}><Phone className="h-3 w-3" /></a>
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6"
+                                  onClick={() => setRecorderAgent(agent)}
+                                  title="Record interview"
+                                >
+                                  <Mic className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-muted-foreground hover:text-amber-500"
+                                  title="Hide agent"
+                                  onClick={async () => {
+                                    try {
+                                      await supabase.from("agents").update({ is_inactive: true }).eq("id", agent.id);
+                                      setAgents(prev => prev.map(a => a.id === agent.id ? { ...a, isInactive: true } : a));
+                                      toast.success(`${agent.name} hidden`);
+                                    } catch { toast.error("Failed"); }
+                                  }}
+                                >
+                                  <EyeOff className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                                  onClick={() => setDeactivateAgent(agent)}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      });
+                    })()}
+                  </TableBody>
+                </Table>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

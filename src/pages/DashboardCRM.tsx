@@ -1835,32 +1835,97 @@ export default function DashboardCRM() {
                         </p>
                       </GlassCard>
                     ) : (
-                      <motion.div 
-                        className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
-                        initial="hidden"
-                        animate="visible"
-                        variants={{
-                          hidden: { opacity: 0 },
-                          visible: {
-                            opacity: 1,
-                            transition: {
-                              staggerChildren: 0.05
-                            }
-                          }
-                        }}
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.3 }}
                       >
-                        {expandedAgents.map((agent, index) => (
-                          <motion.div
-                            key={agent.id}
-                            variants={{
-                              hidden: { opacity: 0, y: 20 },
-                              visible: { opacity: 1, y: 0 }
-                            }}
-                            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                          >
-                            {renderAgentCard(agent, index)}
-                          </motion.div>
-                        ))}
+                        <div className="rounded-xl border bg-card overflow-hidden">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="w-[200px]">Agent</TableHead>
+                                <TableHead>Stage</TableHead>
+                                <TableHead>License</TableHead>
+                                <TableHead>Last Contact</TableHead>
+                                <TableHead>Course</TableHead>
+                                <TableHead className="text-right">ALP</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {expandedAgents.map((agent, index) => {
+                                const contactInfo = (() => {
+                                  if (!agent.lastContactedAt) return { label: "Never", color: "text-red-400" };
+                                  const h = (Date.now() - new Date(agent.lastContactedAt).getTime()) / 3600000;
+                                  if (h < 24) return { label: getTimeAgo(agent.lastContactedAt), color: "text-emerald-400" };
+                                  if (h < 48) return { label: getTimeAgo(agent.lastContactedAt), color: "text-amber-400" };
+                                  return { label: getTimeAgo(agent.lastContactedAt), color: "text-red-400" };
+                                })();
+                                const stageLabel = agent.onboardingStage === "evaluated" ? "Live" 
+                                  : agent.onboardingStage === "in_field_training" ? "In-Field" 
+                                  : agent.onboardingStage === "training_online" ? "Course"
+                                  : agent.onboardingStage || "—";
+                                return (
+                                  <motion.tr
+                                    key={agent.id}
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    transition={{ delay: index * 0.03, type: "spring", stiffness: 300, damping: 30 }}
+                                    className={cn(
+                                      "border-b transition-colors hover:bg-muted/50 cursor-pointer",
+                                      isStaleAgent(agent) && "bg-red-500/5",
+                                      agent.isDeactivated && "opacity-60"
+                                    )}
+                                  >
+                                    <TableCell className="py-2">
+                                      <div className="flex items-center gap-2">
+                                        <div className={cn(
+                                          "h-7 w-7 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-xs font-bold shrink-0",
+                                          getAvatarColor(agent.name)
+                                        )}>
+                                          {agent.name.charAt(0).toUpperCase()}
+                                        </div>
+                                        <div className="min-w-0">
+                                          <p className="font-medium text-xs truncate">{agent.name}</p>
+                                          <p className="text-[10px] text-muted-foreground truncate">{agent.email}</p>
+                                        </div>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="py-2">
+                                      <Badge variant="outline" className="text-[10px] capitalize">
+                                        {stageLabel}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="py-2">
+                                      <Badge variant="outline" className={cn("text-[10px]",
+                                        agent.agentLicenseStatus === "licensed" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" : "bg-amber-500/10 text-amber-400 border-amber-500/30"
+                                      )}>
+                                        {agent.agentLicenseStatus === "licensed" ? "Licensed" : "Unlicensed"}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="py-2">
+                                      <span className={cn("text-xs", contactInfo.color)}>
+                                        {contactInfo.label}
+                                      </span>
+                                    </TableCell>
+                                    <TableCell className="py-2">
+                                      {agent.hasTrainingCourse ? (
+                                        <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                                      ) : (
+                                        <span className="text-xs text-muted-foreground">—</span>
+                                      )}
+                                    </TableCell>
+                                    <TableCell className="py-2 text-right">
+                                      <span className="text-xs font-medium">
+                                        {agent.weeklyALP > 0 ? `$${agent.weeklyALP.toLocaleString()}` : "—"}
+                                      </span>
+                                    </TableCell>
+                                  </motion.tr>
+                                );
+                              })}
+                            </TableBody>
+                          </Table>
+                        </div>
                       </motion.div>
                     )}
                   </>

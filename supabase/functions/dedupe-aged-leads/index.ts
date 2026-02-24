@@ -89,19 +89,62 @@ serve(async (req) => {
       });
     }
 
-    // Build duplicate groups
-    const groupMap = new Map<string, typeof leads>();
+    // Build duplicate groups by connected keys (email and/or phone)
+    const parent = new Map<string, string>();
+    const find = (id: string): string => {
+      const p = parent.get(id) || id;
+      if (p === id) return id;
+      const root = find(p);
+      parent.set(id, root);
+      return root;
+    };
+    const union = (a: string, b: string) => {
+      const ra = find(a);
+      const rb = find(b);
+      if (ra !== rb) parent.set(rb, ra);
+    };
+
+    for (const lead of leads) parent.set(lead.id, lead.id);
+
+    const emailBuckets = new Map<string, string[]>();
+    const phoneBuckets = new Map<string, string[]>();
 
     for (const lead of leads) {
       const emailKey = lead.email?.toLowerCase().trim();
       const phoneKey = cleanPhone(lead.phone);
 
-      // Prefer email grouping, fall back to phone
-      const key = (emailKey && emailKey.length > 0) ? `e:${emailKey}` : (phoneKey ? `p:${phoneKey}` : null);
-      if (!key) continue;
+      if (emailKey && emailKey.length > 0) {
+        const ids = emailBuckets.get(emailKey) || [];
+        ids.push(lead.id);
+        emailBuckets.set(emailKey, ids);
+      }
 
-      if (!groupMap.has(key)) groupMap.set(key, []);
-      groupMap.get(key)!.push(lead);
+      if (phoneKey) {
+        const ids = phoneBuckets.get(phoneKey) || [];
+        ids.push(lead.id);
+        phoneBuckets.set(phoneKey, ids);
+      }
+    }
+
+    for (const ids of emailBuckets.values()) {
+      if (ids.length > 1) {
+        const head = ids[0];
+        for (let i = 1; i < ids.length; i++) union(head, ids[i]);
+      }
+    }
+
+    for (const ids of phoneBuckets.values()) {
+      if (ids.length > 1) {
+        const head = ids[0];
+        for (let i = 1; i < ids.length; i++) union(head, ids[i]);
+      }
+    }
+
+    const groupMap = new Map<string, typeof leads>();
+    for (const lead of leads) {
+      const root = find(lead.id);
+      if (!groupMap.has(root)) groupMap.set(root, []);
+      groupMap.get(root)!.push(lead);
     }
 
     let groupsMerged = 0;

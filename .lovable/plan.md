@@ -1,135 +1,161 @@
 
 
-# Enhance Dashboard Recruiting Visibility & Quick-View Course/Contact Tracking
+# Comprehensive Dashboard & Blast Optimization Plan
 
-## Problem
+## User Issues Identified
 
-The user wants to scroll through their main Dashboard and CRM and immediately see:
-- Who has purchased a course
-- When they were last contacted
-- Where each person stands in the hiring/licensing pipeline
-- All of this without needing to click into individual cards or navigate to separate pages
-
-Currently, the **main Dashboard** (`/dashboard`) shows production stats, leaderboards, and a high-level `OnboardingPipelineCard` with counts (e.g., "3 in Onboarding, 2 In-Field Training"), but it does **not** show individual names, course purchase status, or last-contact dates inline.
-
-The **CRM** (`/dashboard/crm`) has all this data per agent card, but only shows 3 agents per column before requiring expansion. The **Recruiter HQ** has full lead cards with contact freshness badges but is restricted to one user (Aisha).
+1. **Blast Resume**: SMS/Push campaigns get interrupted halfway with no way to resume — need percentage tracking and a "Continue" button
+2. **Total Applications Count**: Dashboard should prominently show total application count  
+3. **CRM Layout**: Card-based layout is cluttered and unpleasant — needs a traditional row/table format instead of box-by-box
+4. **Duplicate Merge Not Working**: Shows 49 duplicates in aged leads but can't merge them — the DuplicateMergeTool only merges `agents` table records, not `aged_leads` or `applications`
+5. **Calendar Scheduling**: Needs an "Add Applicant" option when lead doesn't exist in system, plus Instagram field
+6. **Schedule Button Everywhere**: Every lead card in Call Center, Lead Center, and Pipeline should have a schedule button
+7. **Lead Center Slow**: Loading all applications + aged leads without pagination
+8. **Remove from Pipeline**: Need ability to remove/archive people from license progress pipeline
+9. **Dashboard Load Time**: Still takes a second to load
 
 ## Plan
 
-### 1. Add "Recruiting Quick-View" Section to Main Dashboard
+### 1. Blast Resume System (NotificationHub)
 
-**File: `src/components/dashboard/RecruitingQuickView.tsx`** (NEW)
+**File: `src/pages/NotificationHub.tsx`** — Modify `BulkBlastSection`
 
-A new component placed on the Dashboard (below `OnboardingPipelineCard`, visible to managers and admins) that shows a compact table/list of all agents in the pipeline with:
+The current blast fetches all IDs fresh each time and has no memory of previous progress. Changes:
 
-| Name | Stage | Course? | License Progress | Last Contact | Action |
-|------|-------|---------|-----------------|--------------|--------|
-| John Smith | Onboarding | ✅ Purchased | Course Started | 2h ago | → CRM |
-| Jane Doe | In Training | ❌ Not yet | Unlicensed | 3d ago ⚠ | → CRM |
-| Bob Lee | Live | ✅ | Licensed | Yesterday | → CRM |
+- Add `localStorage` persistence for blast state: save `{ batchIndex, totalBatches, leadIds, type, stats, startedAt }` under key `apex_blast_progress`
+- On mount, check if a previous blast exists. If so, show a "Resume Blast" card with:
+  - Percentage completed (e.g., "67% — 134 of 200 batches sent")
+  - Accumulated stats (Push: 45, SMS: 32, Email: 89)
+  - "Continue Blast" button that picks up from `batchIndex`
+  - "Discard & Start Fresh" button
+- During blast, save progress to localStorage after each batch completes
+- On completion (100%), clear localStorage and show final results
+- Add a "Blast History" section that logs blast metadata to `notification_log` with a special channel type
 
-Key features:
-- Compact row-based layout (not cards) for fast scanning
-- Color-coded "Last Contact" column: green (<24h), amber (24-48h), red (>48h), red pulse (never)
-- Course status: green checkmark if `has_training_course` is true, red X if not
-- License progress shown as colored badge (reuses `progressColors` from `LicenseProgressSelector`)
-- Click any row to jump to CRM with that agent's section expanded
-- Collapsible on mobile with a "View Recruiting Pipeline" trigger button
-- Fetches from the same `agents` + `applications` tables already used by the CRM
-- Uses `useQuery` with a 2-minute stale time, keyed by user ID
+### 2. CRM Conversion to Row/Table Layout
 
-### 2. Expand OnboardingPipelineCard to Show Names
+**File: `src/pages/DashboardCRM.tsx`** — Major refactor of the main view
 
-**File: `src/components/dashboard/OnboardingPipelineCard.tsx`** (MODIFY)
+Replace the 3-column card grid (lines 1617-1681) with a traditional table/row layout:
 
-Currently shows only stage counts. Add a small "peek" section under each count showing the first 2-3 agent names in that stage with their last-contact freshness indicator. Example:
+- Replace `GlassCard` agent cards with compact table rows
+- Each row shows: Avatar + Name | Stage | License Progress | Course? | Last Contact | Weekly ALP | Actions (mic, email, licensing, hide, deactivate)
+- Expandable row detail on click (shows attendance, checklist, notes, onboarding tracker)
+- Keep the 4 stat cards at top as clickable filters
+- Keep column headers clickable to sort by any column
+- Mobile: switch to a compact list with the most essential info per row (name, stage badge, last contact)
+- Remove the 3-column overview entirely; the table IS the default view
+- Keep expanded single-column view for stat card drill-down, but render as table rows not cards
 
+The key layout change:
 ```text
-Onboarding (3)
-  • John Smith — 2h ago ✅
-  • Jane Doe — Never ❌
-  • +1 more
+Current (cards):
+┌──────────┐ ┌──────────┐ ┌──────────┐
+│ Onboarding│ │In Training│ │   Live   │
+│ ┌──────┐  │ │ ┌──────┐  │ │ ┌──────┐ │
+│ │Card 1│  │ │ │Card 1│  │ │ │Card 1│ │
+│ └──────┘  │ │ └──────┘  │ │ └──────┘ │
+│ ┌──────┐  │ │ ┌──────┐  │ │ ┌──────┐ │
+│ │Card 2│  │ │ │Card 2│  │ │ │Card 2│ │
+│ └──────┘  │ │ └──────┘  │ │ └──────┘ │
+└──────────┘ └──────────┘ └──────────┘
+
+New (rows):
+┌─────────────────────────────────────────────┐
+│ Name     │ Stage │ License │ Contact │ ALP  │
+├─────────────────────────────────────────────┤
+│ John S.  │ Onb.  │ Course  │ 2h ago  │ $0   │
+│ Jane D.  │ Train │ Unlicen │ 3d ⚠   │ $0   │
+│ Bob L.   │ Live  │ Licensed│ Today   │ $5K  │
+│ ...      │       │         │         │      │
+└─────────────────────────────────────────────┘
 ```
 
-This gives the user instant visibility without navigating to CRM.
+### 3. Fix Duplicate Merge for Aged Leads
+
+**File: `src/components/admin/DuplicateMergeTool.tsx`** — Currently only detects duplicates in the `agents` table
+
+The "49 duplicates" the user sees are likely aged leads with the same email/phone, not agent records. The tool doesn't scan `aged_leads` or `applications` at all.
 
 Changes:
-- Expand the existing `fetchPipeline` function to also return agent names + `last_contacted_at` for each stage
-- Render a small list of names under each stage count
-- Add a "View all →" link to CRM
+- Add a third tab: "Aged Lead Duplicates"
+- Query `aged_leads` for duplicate emails/phones
+- For aged lead duplicates, provide:
+  - "Merge Notes" — combine notes from all duplicates into one record
+  - "Delete Duplicates" — delete extra records, keeping the one with the most recent `last_contacted_at`
+- Also add duplicate detection for `applications` table (same email = duplicate applicant)
+- For application duplicates, soft-delete extras by setting `terminated_at`
 
-### 3. Increase Default Visible Agents in CRM Columns
+### 4. Add Schedule Button to Lead Cards Everywhere
 
-**File: `src/pages/DashboardCRM.tsx`** (MODIFY, line 1656)
+**Files:**
+- `src/components/callcenter/CallCenterLeadCard.tsx` — Add schedule button next to voice recorder actions
+- `src/pages/LeadCenter.tsx` — Add schedule icon button in lead row actions
+- `src/components/pipeline/KanbanBoard.tsx` — Add schedule button on pipeline cards
 
-Currently shows only 3 agents per column before the "View all X agents →" button. Change this to 5 agents to reduce clicks.
+For each location:
+- Add a `Calendar` icon button that opens the `InterviewScheduler` dialog pre-populated with the lead's info
+- The scheduler already exists and works — just needs to be wired in
 
-```
-// Line 1656: Change slice(0, 3) to slice(0, 5)
-{columnAgents.slice(0, 5).map(...)}
-// Line 1661: Change > 3 to > 5
-{columnAgents.length > 5 && (
-```
+### 5. Calendar: Add New Applicant Option
 
-### 4. Add "Course Purchased" Badge to CRM Agent Cards
+**File: `src/pages/CalendarPage.tsx`** — Modify lead search dialog
 
-**File: `src/pages/DashboardCRM.tsx`** (MODIFY, ~line 955)
+When search yields no results, show an "Add New Applicant" button that:
+- Opens a mini-form inline: First Name, Last Name, Email, Phone, Instagram Handle
+- On submit, inserts into `applications` table with status `new`
+- Then automatically opens the scheduler for the newly created application
+- Include Instagram handle field in the form
 
-The CRM agent cards already show the course link for onboarding agents, but there's no visible badge showing course purchase status at a glance. Add a small badge:
+### 6. Lead Center Performance
 
-```
-{agent.hasTrainingCourse && (
-  <Badge className="text-[9px] h-3.5 px-1 bg-blue-500/10 text-blue-400 border-blue-500/30">
-    📚 Course Purchased
-  </Badge>
-)}
-```
+**File: `src/pages/LeadCenter.tsx`** — Currently loads ALL applications + ALL aged leads on mount
 
-This goes in the badges section next to "Under [Manager]" and "Duplicate" badges (~line 837-863).
+Changes:
+- Switch from `useState` + `useEffect` to `useQuery` with 120s staleTime for caching
+- Add pagination: show 50 leads per page with next/prev controls
+- Move the heavy `useMemo` filtering to happen on the paginated subset, not the full array
+- Add a loading skeleton instead of blank screen on first load
+- Run the agents/profiles lookup in `Promise.all` instead of sequential
 
-### 5. Fix Recruiter HQ Infinite Animation
+### 7. Remove from Pipeline
 
-**File: `src/pages/RecruiterDashboard.tsx`** (MODIFY, line 1000 and 1007)
+**File: `src/pages/DashboardCRM.tsx`** — Add "Archive/Remove" action to agent cards
 
-Two infinite animations detected:
-- Line 1000: `<Sparkles className="h-6 w-6 text-pink-400 animate-pulse" />` — change to static
-- Line 1007: `animate={{ scale: [1, 1.1, 1] }} transition={{ repeat: Infinity, duration: 2 }}` — change to single-play
+- Add a "Remove from Pipeline" option in the agent card actions (next to Hide and Deactivate)
+- This sets the agent's `license_progress` back to `unlicensed` and `has_training_course` to `false` in both `agents` and `applications` tables
+- Different from "Deactivate" — this just resets their licensing progress without removing them from the system
+- Confirmation dialog: "This will reset {name}'s license progress. They'll remain active but will no longer appear in the license pipeline."
+
+### 8. Dashboard Total Applications Display
+
+The `TotalApplicationsBanner` already shows total application count on the Dashboard. However, the user may want it more prominent or placed differently.
+
+**File: `src/pages/Dashboard.tsx`** — Verify `TotalApplicationsBanner` is visible and positioned well. The component already exists and is imported on line 42 and rendered. No changes needed here — the count IS showing. If the user can't see it, it may be below the fold. Move it higher in the render order if needed.
+
+### 9. Dashboard Load Optimization
+
+**File: `src/pages/Dashboard.tsx`** — The dashboard runs multiple sequential queries
+
+- Audit and convert any remaining sequential queries to `Promise.all`
+- Ensure the `useQuery` pattern is used with 120s staleTime (already implemented per memory)
+- Add skeleton placeholders for each section while loading
+- Lazy-load below-fold components (leaderboards, growth chart)
 
 ---
 
-## Technical Details
+## Technical Summary
 
-| File | Change |
-|------|--------|
-| `src/components/dashboard/RecruitingQuickView.tsx` | **NEW** — compact table of all pipeline agents with course status, license progress, last contact |
-| `src/components/dashboard/OnboardingPipelineCard.tsx` | **MODIFY** — add agent names + contact freshness under each stage count |
-| `src/pages/Dashboard.tsx` | **MODIFY** — import and place `RecruitingQuickView` below `OnboardingPipelineCard` |
-| `src/pages/DashboardCRM.tsx` | **MODIFY** — increase default visible agents from 3→5, add "Course Purchased" badge |
-| `src/pages/RecruiterDashboard.tsx` | **MODIFY** — fix 2 infinite animations |
+| File | Type | Change |
+|------|------|--------|
+| `src/pages/NotificationHub.tsx` | MODIFY | Add blast resume via localStorage, continue button, progress persistence |
+| `src/pages/DashboardCRM.tsx` | MAJOR REFACTOR | Convert card layout to row/table format, add remove-from-pipeline action |
+| `src/components/admin/DuplicateMergeTool.tsx` | MODIFY | Add aged leads + applications duplicate detection and merge/delete |
+| `src/components/callcenter/CallCenterLeadCard.tsx` | MODIFY | Add schedule interview button |
+| `src/pages/LeadCenter.tsx` | MODIFY | Add pagination, useQuery caching, performance optimization |
+| `src/pages/CalendarPage.tsx` | MODIFY | Add "New Applicant" form with Instagram field when no search results |
+| `src/components/pipeline/KanbanBoard.tsx` | MODIFY | Add schedule button to pipeline cards |
+| `src/pages/Dashboard.tsx` | MODIFY | Optimize load order, ensure TotalApplicationsBanner visibility |
 
-### Data Fetching (RecruitingQuickView)
-
-```typescript
-// Fetch all active agents with pipeline data
-const agents = await supabase
-  .from("agents")
-  .select("id, onboarding_stage, has_training_course, license_status, is_deactivated, is_inactive, invited_by_manager_id")
-  .eq("status", "active")
-  .eq("is_deactivated", false);
-
-// Get profiles for names
-const profiles = await supabase
-  .from("profiles")
-  .select("user_id, full_name")
-  .in("user_id", userIds);
-
-// Get last contact from applications
-const contacts = await supabase
-  .from("applications")
-  .select("assigned_agent_id, last_contacted_at, license_progress")
-  .in("assigned_agent_id", agentIds)
-  .is("terminated_at", null);
-```
-
-No new database tables, no edge functions, no migrations needed. All data is already available and protected by existing RLS policies.
+No database migrations required. No new edge functions. All changes use existing tables and RLS policies.
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Fragment } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
@@ -220,7 +220,7 @@ function NotificationLogTable({ logs, search, channelFilter, statusFilter, onRef
               </TableRow>
             ) : (
               paged.map((log) => (
-                <>
+                <Fragment key={log.id}>
                   <TableRow
                     key={log.id}
                     className={cn(
@@ -268,7 +268,7 @@ function NotificationLogTable({ logs, search, channelFilter, statusFilter, onRef
                       </TableCell>
                     </TableRow>
                   )}
-                </>
+                </Fragment>
               ))
             )}
           </TableBody>

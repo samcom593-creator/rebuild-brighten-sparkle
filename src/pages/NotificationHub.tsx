@@ -749,14 +749,52 @@ function QuickActionCards() {
   );
 }
 
+// ─── Blast Progress Persistence ───
+const BLAST_STORAGE_KEY = "apex_blast_progress";
+
+interface BlastProgress {
+  batchIndex: number;
+  totalBatches: number;
+  batches: { ids: string[]; type: "applicant" | "aged" }[];
+  stats: { push_sent: number; sms_sent: number; emailed: number; failed: number };
+  startedAt: string;
+}
+
+function saveBlastProgress(progress: BlastProgress) {
+  localStorage.setItem(BLAST_STORAGE_KEY, JSON.stringify(progress));
+}
+
+function loadBlastProgress(): BlastProgress | null {
+  try {
+    const raw = localStorage.getItem(BLAST_STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch { return null; }
+}
+
+function clearBlastProgress() {
+  localStorage.removeItem(BLAST_STORAGE_KEY);
+}
+
 // ─── Bulk Blast Section ───
 function BulkBlastSection() {
   const [blasting, setBlasting] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0, percent: 0 });
   const [stats, setStats] = useState({ push_sent: 0, sms_sent: 0, emailed: 0, failed: 0 });
   const [lastResult, setLastResult] = useState<any>(null);
+  const [savedProgress, setSavedProgress] = useState<BlastProgress | null>(null);
   const { playSound } = useSoundEffects();
   const queryClient = useQueryClient();
+
+  // Load saved progress on mount
+  useEffect(() => {
+    const saved = loadBlastProgress();
+    if (saved && saved.batchIndex < saved.totalBatches) {
+      setSavedProgress(saved);
+    } else if (saved) {
+      clearBlastProgress();
+    }
+  }, []);
 
   const { data: counts } = useQuery({
     queryKey: ["blast-counts"],
@@ -772,44 +810,18 @@ function BulkBlastSection() {
     },
   });
 
-  const handleBlast = async () => {
+  const runBlast = async (startFromIndex: number, batches: { ids: string[]; type: "applicant" | "aged" }[], initialStats?: typeof stats) => {
     setBlasting(true);
     setLastResult(null);
-    setStats({ push_sent: 0, sms_sent: 0, emailed: 0, failed: 0 });
+    const accumulated = initialStats ? { ...initialStats } : { push_sent: 0, sms_sent: 0, emailed: 0, failed: 0 };
+    setStats(accumulated);
     playSound("whoosh");
 
+    const totalBatches = batches.length;
+    setProgress({ current: startFromIndex, total: totalBatches, percent: Math.round((startFromIndex / totalBatches) * 100) });
+
     try {
-      // 1. Fetch all IDs
-      const { data: apps } = await supabase
-        .from("applications")
-        .select("id")
-        .is("terminated_at", null)
-        .not("email", "is", null);
-      const { data: aged } = await supabase
-        .from("aged_leads")
-        .select("id")
-        .not("email", "is", null);
-
-      const appIds = (apps || []).map((a: any) => a.id);
-      const agedIds = (aged || []).map((a: any) => a.id);
-
-      // 2. Chunk into batches of 5
-      const BATCH_SIZE = 5;
-      const batches: { ids: string[]; type: "applicant" | "aged" }[] = [];
-      for (let i = 0; i < appIds.length; i += BATCH_SIZE) {
-        batches.push({ ids: appIds.slice(i, i + BATCH_SIZE), type: "applicant" });
-      }
-      for (let i = 0; i < agedIds.length; i += BATCH_SIZE) {
-        batches.push({ ids: agedIds.slice(i, i + BATCH_SIZE), type: "aged" });
-      }
-
-      const totalBatches = batches.length;
-      setProgress({ current: 0, total: totalBatches, percent: 0 });
-
-      const accumulated = { push_sent: 0, sms_sent: 0, emailed: 0, failed: 0 };
-
-      // 3. Process batches sequentially
-      for (let i = 0; i < batches.length; i++) {
+      for (let i = startFromIndex; i < batches.length; i++) {
         const batch = batches[i];
         try {
           const { data, error } = await supabase.functions.invoke("send-batch-blast", {
@@ -832,12 +844,23 @@ function BulkBlastSection() {
         setProgress({ current: i + 1, total: totalBatches, percent: pct });
         setStats({ ...accumulated });
 
-        // Small pause between batches
+        // Save progress after each batch
+        saveBlastProgress({
+          batchIndex: i + 1,
+          totalBatches,
+          batches,
+          stats: { ...accumulated },
+          startedAt: savedProgress?.startedAt || new Date().toISOString(),
+        });
+
         if (i < batches.length - 1) {
           await new Promise((r) => setTimeout(r, 500));
         }
       }
 
+      // Blast complete
+      clearBlastProgress();
+      setSavedProgress(null);
       setLastResult(accumulated);
       playSound("celebrate");
       confetti({ particleCount: 120, spread: 90, origin: { y: 0.6 } });
@@ -851,12 +874,105 @@ function BulkBlastSection() {
     }
   };
 
+  const handleBlast = async () => {
+    try {
+      const { data: apps } = await supabase
+        .from("applications")
+        .select("id")
+        .is("terminated_at", null)
+        .not("email", "is", null);
+      const { data: aged } = await supabase
+        .from("aged_leads")
+        .select("id")
+        .not("email", "is", null);
+
+      const appIds = (apps || []).map((a: any) => a.id);
+      const agedIds = (aged || []).map((a: any) => a.id);
+
+      const BATCH_SIZE = 5;
+      const batches: { ids: string[]; type: "applicant" | "aged" }[] = [];
+      for (let i = 0; i < appIds.length; i += BATCH_SIZE) {
+        batches.push({ ids: appIds.slice(i, i + BATCH_SIZE), type: "applicant" });
+      }
+      for (let i = 0; i < agedIds.length; i += BATCH_SIZE) {
+        batches.push({ ids: agedIds.slice(i, i + BATCH_SIZE), type: "aged" });
+      }
+
+      await runBlast(0, batches);
+    } catch (err: any) {
+      playSound("error");
+      toast.error(err.message || "Blast failed");
+    }
+  };
+
+  const handleResume = async () => {
+    if (!savedProgress) return;
+    const sp = savedProgress;
+    setSavedProgress(null);
+    await runBlast(sp.batchIndex, sp.batches, sp.stats);
+  };
+
+  const handleDiscard = () => {
+    clearBlastProgress();
+    setSavedProgress(null);
+    toast.info("Previous blast progress discarded");
+  };
+
   const totalLeads = (counts?.applicants || 0) + (counts?.agedLeads || 0);
   const estimatedBatches = Math.ceil(totalLeads / 5);
 
   return (
     <div className="space-y-4">
       <QuickActionCards />
+
+      {/* Resume Blast Card */}
+      {savedProgress && !blasting && (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+          <div className={cn(
+            "relative overflow-hidden rounded-xl border bg-gradient-to-br p-6 backdrop-blur-sm",
+            "from-blue-500/10 to-blue-500/5 border-blue-500/20"
+          )}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-background/50">
+                <Zap className="h-5 w-5 text-blue-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold">Resume Previous Blast</h3>
+                <p className="text-sm text-muted-foreground">
+                  {Math.round((savedProgress.batchIndex / savedProgress.totalBatches) * 100)}% complete — {savedProgress.batchIndex} of {savedProgress.totalBatches} batches sent
+                </p>
+              </div>
+            </div>
+
+            <Progress value={Math.round((savedProgress.batchIndex / savedProgress.totalBatches) * 100)} className="h-3 mb-4" />
+
+            <div className="grid grid-cols-3 gap-2 text-center mb-4">
+              <div className="rounded-lg bg-blue-500/10 p-2">
+                <p className="text-lg font-bold text-blue-400">{savedProgress.stats.push_sent}</p>
+                <p className="text-[10px] text-muted-foreground">Push</p>
+              </div>
+              <div className="rounded-lg bg-emerald-500/10 p-2">
+                <p className="text-lg font-bold text-emerald-400">{savedProgress.stats.sms_sent}</p>
+                <p className="text-[10px] text-muted-foreground">SMS</p>
+              </div>
+              <div className="rounded-lg bg-amber-500/10 p-2">
+                <p className="text-lg font-bold text-amber-400">{savedProgress.stats.emailed}</p>
+                <p className="text-[10px] text-muted-foreground">Email</p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <Button className="flex-1" size="lg" onClick={handleResume}>
+                <Send className="h-4 w-4 mr-2" />
+                Continue Blast ({savedProgress.totalBatches - savedProgress.batchIndex} batches left)
+              </Button>
+              <Button variant="outline" size="lg" onClick={handleDiscard}>
+                Discard
+              </Button>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
         <div className={cn(

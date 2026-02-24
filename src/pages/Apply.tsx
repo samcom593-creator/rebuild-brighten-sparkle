@@ -422,47 +422,37 @@ export default function Apply() {
     } catch (error: any) {
       console.error("Error submitting application:", error);
       
-      // Try to extract detailed validation errors from edge function response
-      try {
-        if (error?.context?.body) {
-          const body = await error.context.body.json?.() || error.context.json;
-          if (body?.details && Array.isArray(body.details)) {
+      // Handle FunctionsHttpError: error.context is a Response object
+      if (error?.context && typeof error.context.json === 'function' && typeof error.context.status === 'number') {
+        const status = error.context.status;
+        try {
+          const body = await error.context.json();
+          if (status === 409) {
+            setDuplicateError(true);
+            toast.error(body?.error || "An application with this email already exists. Contact info@apex-financial.org if you need help.", { duration: 10000 });
+          } else if (body?.details && Array.isArray(body.details)) {
             const fields = body.details.map((d: any) => d.path?.join?.(".") || d.message).filter(Boolean);
             toast.error(`Please fix these fields: ${fields.join(", ")}`, { duration: 6000 });
-            return;
+          } else {
+            toast.error(body?.error || "Failed to submit application. Please try again.", { duration: 5000 });
           }
-          if (body?.error) {
-            toast.error(body.error, { duration: 5000 });
-            return;
+        } catch (_) {
+          if (status === 409) {
+            setDuplicateError(true);
+            toast.error("An application with this email already exists. Contact info@apex-financial.org if you need help.", { duration: 10000 });
+          } else {
+            toast.error("Failed to submit application. Please check your connection and try again.", { duration: 5000 });
           }
         }
-      } catch (_) { /* fall through to generic handling */ }
+        return;
+      }
       
-      // Handle specific error types for better user feedback
+      // Generic / network errors
       const errorMessage = error?.message?.toLowerCase() || "";
-      const errorStatus = error?.status || error?.code;
-      
-      if (errorMessage.includes("duplicate") || errorStatus === 409) {
-        setDuplicateError(true);
-        toast.error("An application with this email or phone already exists. Contact info@apex-financial.org if you need help.", {
-          duration: 10000,
-        });
-      } else if (errorStatus === 404) {
-        toast.error("Service temporarily unavailable. Please try again in a moment.", {
-          duration: 5000,
-        });
-      } else if (errorStatus === 429) {
-        toast.error("Too many requests. Please wait a moment and try again.", {
-          duration: 5000,
-        });
-      } else if (errorMessage.includes("network") || errorMessage.includes("fetch")) {
-        toast.error("Network error. Please check your connection and try again.", {
-          duration: 5000,
-        });
+      if (errorMessage.includes("network") || errorMessage.includes("fetch")) {
+        toast.error("Network error. Please check your connection and try again.", { duration: 5000 });
       } else {
-        toast.error("Failed to submit application. Please check your connection and try again.", {
-          duration: 5000,
-        });
+        toast.error("Failed to submit application. Please check your connection and try again.", { duration: 5000 });
       }
     } finally {
       setIsSubmitting(false);

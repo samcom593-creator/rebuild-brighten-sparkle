@@ -73,6 +73,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { getTodayPST, getWeekStartPST, getMonthStartPST } from "@/lib/dateUtils";
 import { toast } from "sonner";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 type TimePeriod = "day" | "week" | "month" | "custom";
 type FilterType = "all" | "producers" | "weak" | "zero" | "inactive";
@@ -106,9 +107,10 @@ interface AgentWithStats {
 
 export default function DashboardCommandCenter() {
   const { isAdmin } = useAuth();
+  const { playSound } = useSoundEffects();
   const [timePeriod, setTimePeriod] = useState<TimePeriod>("week");
   const [customDateRange, setCustomDateRange] = useState<DateRange>({ from: undefined, to: undefined });
-  const [activeFilter, setActiveFilter] = useState<"all" | "producers" | "weak" | "zero" | "course_purchased">("producers");
+  const [activeFilter, setActiveFilter] = useState<FilterType>("producers");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedAgent, setSelectedAgent] = useState<AgentWithStats | null>(null);
   const [showDuplicateTool, setShowDuplicateTool] = useState(false);
@@ -310,11 +312,13 @@ export default function DashboardCommandCenter() {
         .eq("id", agentId);
       if (error) throw error;
       toast.success(`Reassigned to ${managerName}`);
+      playSound("success");
       refetch();
     } catch (err: any) {
       toast.error(err.message || "Failed to reassign manager");
+      playSound("error");
     }
-  }, [refetch]);
+  }, [refetch, playSound]);
 
   const handleChangeStage = useCallback(async (agentId: string, stage: string, label: string) => {
     try {
@@ -324,11 +328,13 @@ export default function DashboardCommandCenter() {
         .eq("id", agentId);
       if (error) throw error;
       toast.success(`Stage changed to ${label}`);
+      playSound("success");
       refetch();
     } catch (err: any) {
       toast.error(err.message || "Failed to change stage");
+      playSound("error");
     }
-  }, [refetch]);
+  }, [refetch, playSound]);
 
   const handleEmailLoginLink = useCallback(async (agent: AgentWithStats) => {
     if (!agent.email) {
@@ -460,10 +466,8 @@ export default function DashboardCommandCenter() {
       case "zero":
         filtered = filtered.filter((a) => a.totalAlp === 0 && !a.isDeactivated && !a.isInactive);
         break;
-      case "course_purchased":
-        // This filter is for applicants, not agents - show empty for now
-        // Course purchased filtering happens in the applicants pipeline
-        filtered = [];
+      case "inactive":
+        filtered = filtered.filter((a) => a.isInactive || a.isDeactivated);
         break;
       case "all":
       default:

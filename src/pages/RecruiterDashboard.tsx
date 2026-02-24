@@ -997,14 +997,15 @@ function RecruiterDashboardInner() {
         <div className="flex flex-col md:flex-row md:items-center gap-4">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-1">
-              <Sparkles className="h-6 w-6 text-pink-400 animate-pulse" />
+              <Sparkles className="h-6 w-6 text-pink-400" />
               <h1 className="text-2xl font-bold bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">
                 Aisha's Recruiter HQ
               </h1>
               {advancedToday > 0 && (
                 <motion.div
-                  animate={{ scale: [1, 1.1, 1] }}
-                  transition={{ repeat: Infinity, duration: 2 }}
+                  initial={{ scale: 0.9 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
                   className="flex items-center gap-1 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-full px-3 py-0.5 text-xs font-bold"
                 >
                   <Zap className="h-3 w-3" />

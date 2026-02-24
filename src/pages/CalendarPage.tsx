@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, isToday, isBefore } from "date-fns";
+import { motion } from "framer-motion";
 import {
   Calendar, Video, Phone, MapPin, Clock, Plus,
   AlertTriangle, CheckCircle2, CalendarPlus, ExternalLink, Search, User,
@@ -14,6 +15,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { InterviewScheduler } from "@/components/dashboard/InterviewScheduler";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BackgroundGlow } from "@/components/ui/BackgroundGlow";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -229,23 +231,44 @@ export default function CalendarPage() {
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Calendar className="h-6 w-6 text-primary" />
-            Calendar
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {todayCount > 0 ? `${todayCount} interview${todayCount > 1 ? "s" : ""} today` : "No interviews today"}
-            {overdueCount > 0 && <span className="text-rose-400 ml-2">• {overdueCount} overdue</span>}
-          </p>
+      {/* Premium Header */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-blue-500/5 to-background p-6 backdrop-blur-sm"
+      >
+        <BackgroundGlow accent="blue" intensity="subtle" />
+        <div className="relative z-10 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/20">
+              <Calendar className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">Calendar</h1>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {todayCount > 0 ? `${todayCount} interview${todayCount > 1 ? "s" : ""} today` : "No interviews today"}
+                {overdueCount > 0 && <span className="text-rose-400 ml-2">• {overdueCount} overdue</span>}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            {todayCount > 0 && (
+              <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
+                {todayCount} today
+              </Badge>
+            )}
+            {overdueCount > 0 && (
+              <Badge variant="outline" className="text-xs bg-rose-500/10 text-rose-400 border-rose-500/30">
+                {overdueCount} overdue
+              </Badge>
+            )}
+            <Button onClick={() => setSearchOpen(true)} size="sm">
+              <Plus className="h-4 w-4 mr-1" />
+              Schedule
+            </Button>
+          </div>
         </div>
-        <Button onClick={() => setSearchOpen(true)} size="sm">
-          <Plus className="h-4 w-4 mr-1" />
-          Schedule
-        </Button>
-      </div>
+      </motion.div>
 
       {/* Filters */}
       <Tabs value={filter} onValueChange={(v) => setFilter(v as any)}>

@@ -587,20 +587,73 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
     playSound("whoosh");
     try {
       const today = new Date().toISOString().split("T")[0];
-      const { data: failedLogs, error: failedError } = await supabase
-        .from("notification_log")
-        .select("id, channel, recipient_user_id, recipient_email, recipient_phone, title, message, metadata, created_at")
-        .eq("status", "failed")
-        .gte("created_at", `${today}T00:00:00`)
-        .order("created_at", { ascending: false });
 
-      if (failedError) throw failedError;
+      // 1. Load today's failed + sent logs in parallel
+      const [failedRes, sentRes] = await Promise.all([
+        supabase
+          .from("notification_log")
+          .select("id, channel, recipient_user_id, recipient_email, recipient_phone, title, message, metadata, error_message")
+          .eq("status", "failed")
+          .gte("created_at", `${today}T00:00:00`)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("notification_log")
+          .select("channel, recipient_user_id, recipient_email, recipient_phone, title, message, metadata")
+          .eq("status", "sent")
+          .gte("created_at", `${today}T00:00:00`),
+      ]);
 
-      if (!failedLogs?.length) {
+      if (failedRes.error) throw failedRes.error;
+      const failedLogs = failedRes.data || [];
+      const sentLogs = sentRes.data || [];
+
+      if (!failedLogs.length) {
         toast.info("No failed notifications today!");
         return;
       }
 
+      // 2. Build target key for deduplication
+      const getTargetKey = (log: any): string => {
+        const meta = log.metadata && typeof log.metadata === "object" && !Array.isArray(log.metadata)
+          ? (log.metadata as Record<string, unknown>)
+          : {};
+        const ch = log.channel === "sms-auto" ? "sms" : log.channel; // normalize sms channels
+        if (ch === "push") return `push|${log.recipient_user_id}|${log.title}`;
+        if (ch === "email") return `email|${log.recipient_email}|${log.title}`;
+        // SMS — key by phone + applicationId/agedLeadId
+        const leadKey = meta.applicationId || meta.agedLeadId || log.recipient_phone || "";
+        return `sms|${leadKey}|${log.message?.substring(0, 40)}`;
+      };
+
+      // 3. Build set of already-delivered target keys
+      const deliveredKeys = new Set<string>();
+      for (const s of sentLogs) {
+        deliveredKeys.add(getTargetKey(s));
+      }
+
+      // 4. Deduplicate failed logs — one retry candidate per target key
+      const seen = new Map<string, any>();
+      let skippedDelivered = 0;
+      let skippedNoSub = 0;
+
+      for (const log of failedLogs) {
+        const key = getTargetKey(log);
+        // Skip if already delivered today
+        if (deliveredKeys.has(key)) { skippedDelivered++; continue; }
+        // Skip non-actionable push failures (no subscriptions)
+        if (log.channel === "push" && log.error_message?.includes("No push subscriptions")) { skippedNoSub++; continue; }
+        // Keep first occurrence only
+        if (!seen.has(key)) seen.set(key, log);
+      }
+
+      const candidates = Array.from(seen.values());
+
+      if (candidates.length === 0) {
+        toast.info(`All ${failedLogs.length} failures resolved or non-actionable (${skippedDelivered} already delivered, ${skippedNoSub} no push subs)`);
+        return;
+      }
+
+      // 5. Retry with pacing
       let attempted = 0;
       let resent = 0;
       const channelSummary = {
@@ -609,41 +662,42 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
         sms: { attempted: 0, resent: 0 },
       };
 
-      for (const log of failedLogs) {
+      const paceDelay = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+      for (const log of candidates) {
         try {
           if (log.channel === "push" && log.recipient_user_id) {
             attempted++;
             channelSummary.push.attempted++;
-            const { error } = await supabase.functions.invoke("send-push-notification", {
+            const { data } = await supabase.functions.invoke("send-push-notification", {
               body: { userId: log.recipient_user_id, title: log.title, body: log.message },
             });
-            if (!error) {
+            if (data?.sent > 0) {
               resent++;
               channelSummary.push.resent++;
             }
           } else if (log.channel === "email" && log.recipient_email) {
             attempted++;
             channelSummary.email.attempted++;
-            const { error } = await supabase.functions.invoke("send-notification", {
+            const { data, error } = await supabase.functions.invoke("send-notification", {
               body: { email: log.recipient_email, title: log.title, message: log.message },
             });
-            if (!error) {
+            if (!error && data?.channels?.email) {
               resent++;
               channelSummary.email.resent++;
             }
           } else if ((log.channel === "sms-auto" || log.channel === "sms") && log.recipient_phone) {
             attempted++;
             channelSummary.sms.attempted++;
-            const metadata =
-              log.metadata && typeof log.metadata === "object" && !Array.isArray(log.metadata)
-                ? (log.metadata as Record<string, unknown>)
-                : {};
+            const meta = log.metadata && typeof log.metadata === "object" && !Array.isArray(log.metadata)
+              ? (log.metadata as Record<string, unknown>)
+              : {};
             const { data, error } = await supabase.functions.invoke("send-sms-auto-detect", {
               body: {
                 phone: log.recipient_phone,
                 message: (log.message || `${log.title}: retry`).substring(0, 160),
-                applicationId: typeof metadata.applicationId === "string" ? metadata.applicationId : null,
-                agedLeadId: typeof metadata.agedLeadId === "string" ? metadata.agedLeadId : null,
+                applicationId: typeof meta.applicationId === "string" ? meta.applicationId : null,
+                agedLeadId: typeof meta.agedLeadId === "string" ? meta.agedLeadId : null,
               },
             });
             if (!error && (data?.successCount || 0) > 0) {
@@ -654,13 +708,22 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
         } catch {
           // skip individual failures
         }
+        await paceDelay(300);
       }
 
       playSound("celebrate");
       confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
-      toast.success(
-        `Resend complete: ${resent}/${attempted} retried · Push ${channelSummary.push.resent}/${channelSummary.push.attempted} · SMS ${channelSummary.sms.resent}/${channelSummary.sms.attempted} · Email ${channelSummary.email.resent}/${channelSummary.email.attempted}`
-      );
+
+      const parts = [
+        `✅ ${resent}/${attempted} retried`,
+        skippedDelivered > 0 ? `${skippedDelivered} already delivered` : "",
+        skippedNoSub > 0 ? `${skippedNoSub} no push subs` : "",
+        `Push ${channelSummary.push.resent}/${channelSummary.push.attempted}`,
+        `SMS ${channelSummary.sms.resent}/${channelSummary.sms.attempted}`,
+        `Email ${channelSummary.email.resent}/${channelSummary.email.attempted}`,
+      ].filter(Boolean);
+
+      toast.success(parts.join(" · "));
       queryClient.invalidateQueries({ queryKey: ["notification-logs"] });
     } catch (err: any) {
       playSound("error");
@@ -706,14 +769,14 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
     },
     {
       title: "Resend All Failed",
-      desc: "Retry today's failures",
+      desc: "Retry unresolved failures (deduped)",
       icon: RotateCcw,
       gradient: "from-red-500/20 to-red-500/5 border-red-500/20",
       color: "text-red-400",
       loading: resendingFailed,
       handler: handleResendFailed,
-      confirmTitle: "Resend Failed Notifications",
-      confirmDesc: "This will retry all failed notifications from today (push and email channels).",
+      confirmTitle: "Resend Unresolved Failures",
+      confirmDesc: "Deduplicates failed logs, skips already-delivered and non-actionable entries, then retries only unresolved targets with pacing.",
     },
   ];
 

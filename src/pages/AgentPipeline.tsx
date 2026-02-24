@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Users,
   Phone,
@@ -13,6 +13,10 @@ import {
   Calendar,
   UserCheck,
   AlertCircle,
+  ChevronDown,
+  ChevronRight,
+  UsersRound,
+  User,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -30,12 +34,13 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { KanbanBoard, KanbanApplication, KanbanStage } from "@/components/pipeline/KanbanBoard";
+import { KanbanBoard, KanbanApplication, KanbanStage, KANBAN_COLUMNS, getColumnForStage } from "@/components/pipeline/KanbanBoard";
 import { InterviewScheduler } from "@/components/dashboard/InterviewScheduler";
 import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressSelector";
 import { LastContactedBadge } from "@/components/dashboard/LastContactedBadge";
 import { QuickEmailMenu } from "@/components/dashboard/QuickEmailMenu";
 import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { formatDistanceToNow } from "date-fns";
 
 interface Application extends KanbanApplication {
@@ -47,12 +52,15 @@ interface Application extends KanbanApplication {
 
 export default function AgentPipeline() {
   const { user, isAdmin, isManager } = useAuth();
+  const { playSound } = useSoundEffects();
   const [applications, setApplications] = useState<Application[]>([]);
   const [agentId, setAgentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [teamMode, setTeamMode] = useState<"mine" | "team">("mine");
+  const [expandedSection, setExpandedSection] = useState<string | null>("needs_outreach");
 
   // Interview scheduler
   const [schedulerOpen, setSchedulerOpen] = useState(false);
@@ -76,23 +84,43 @@ export default function AgentPipeline() {
       }
       setAgentId(agentData.id);
 
-      // Fetch applications assigned to this agent
-      const { data, error } = await supabase
-        .from("applications")
-        .select("*")
-        .eq("assigned_agent_id", agentData.id)
-        .is("terminated_at", null)
-        .order("created_at", { ascending: false });
+      if (teamMode === "team" && (isManager || isAdmin)) {
+        // Fetch team agents under this manager
+        const { data: teamAgents } = await supabase
+          .from("agents")
+          .select("id")
+          .eq("invited_by_manager_id", agentData.id);
 
-      if (error) throw error;
-      setApplications((data || []) as Application[]);
+        const teamIds = [agentData.id, ...(teamAgents || []).map(a => a.id)];
+
+        const { data, error } = await supabase
+          .from("applications")
+          .select("*")
+          .in("assigned_agent_id", teamIds)
+          .is("terminated_at", null)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        setApplications((data || []) as Application[]);
+      } else {
+        // Fetch only my direct recruits
+        const { data, error } = await supabase
+          .from("applications")
+          .select("*")
+          .eq("assigned_agent_id", agentData.id)
+          .is("terminated_at", null)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        setApplications((data || []) as Application[]);
+      }
     } catch (err) {
       console.error("Error fetching pipeline:", err);
       toast.error("Failed to load pipeline");
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, teamMode, isManager, isAdmin]);
 
   useEffect(() => {
     fetchApplications();
@@ -119,12 +147,15 @@ export default function AgentPipeline() {
       );
 
       if (newStage === "licensed") {
+        playSound("celebrate");
         toast.success("🎉 Congratulations! Agent is now licensed!");
       } else {
+        playSound("success");
         toast.success("Stage updated");
       }
     } catch (err) {
       console.error("Error updating stage:", err);
+      playSound("error");
       toast.error("Failed to update stage");
     }
   };
@@ -151,6 +182,14 @@ export default function AgentPipeline() {
     return matchesSearch && matchesStatus;
   });
 
+  // Group by kanban column for accordion sections
+  const sectionApps = KANBAN_COLUMNS.reduce<Record<string, Application[]>>((acc, col) => {
+    acc[col.id] = filteredApps.filter(
+      (app) => getColumnForStage(app.license_progress) === col.id
+    );
+    return acc;
+  }, {});
+
   // Stats
   const totalLeads = applications.length;
   const needsContact = applications.filter((a) => !a.contacted_at).length;
@@ -174,6 +213,128 @@ export default function AgentPipeline() {
     return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
   };
 
+  const toggleSection = (sectionId: string) => {
+    if (expandedSection === sectionId) {
+      playSound("click");
+      setExpandedSection(null);
+    } else {
+      playSound("whoosh");
+      setExpandedSection(sectionId);
+    }
+  };
+
+  const renderAppRow = (app: Application, idx: number) => {
+    const contactBadgeStyle = getContactBadgeStyle(app);
+    const last = app.last_contacted_at || app.contacted_at;
+    const contactLabel = last
+      ? formatDistanceToNow(new Date(last), { addSuffix: true })
+      : "Never contacted";
+
+    return (
+      <motion.div
+        key={app.id}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: idx * 0.02 }}
+        className="px-3 py-2 border-b border-border/50 last:border-b-0 hover:bg-muted/30 transition-colors"
+      >
+        <div className="flex flex-col md:flex-row md:items-center gap-3">
+          {/* Name & Contact */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+              <h3 className="font-semibold text-sm">{app.first_name} {app.last_name}</h3>
+              <Badge variant="outline" className={cn("text-[10px]", contactBadgeStyle)}>
+                <Clock className="h-2.5 w-2.5 mr-1" />
+                {contactLabel}
+              </Badge>
+              {(!app.license_progress || app.license_progress === "unlicensed") && (
+                <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/30 text-[10px]">
+                  <AlertCircle className="h-2.5 w-2.5 mr-1" />
+                  Course not purchased
+                </Badge>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Mail className="h-3 w-3" />
+                {app.email}
+              </span>
+              {app.phone && (
+                <span className="flex items-center gap-1">
+                  <Phone className="h-3 w-3" />
+                  {app.phone}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Stage selector */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {app.license_status !== "licensed" ? (
+              <LicenseProgressSelector
+                applicationId={app.id}
+                currentProgress={app.license_progress as any}
+                onProgressUpdated={fetchApplications}
+              />
+            ) : (
+              <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+                <Award className="h-3 w-3 mr-1" />
+                Licensed
+              </Badge>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-1">
+            <LastContactedBadge applicationId={app.id} />
+
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+              onClick={() => openScheduler(app)}
+              title="Schedule Interview"
+            >
+              <Calendar className="h-3.5 w-3.5" />
+            </Button>
+
+            {agentId && (
+              <QuickEmailMenu
+                applicationId={app.id}
+                agentId={agentId}
+                licenseStatus={app.license_status as any}
+                recipientEmail={app.email}
+                recipientName={`${app.first_name} ${app.last_name}`}
+                onEmailSent={fetchApplications}
+              />
+            )}
+
+            {app.license_status !== "licensed" && (
+              <ResendLicensingButton
+                recipientEmail={app.email}
+                recipientName={app.first_name}
+                licenseStatus={app.license_status as any}
+              />
+            )}
+
+            {app.phone && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+                asChild
+              >
+                <a href={`tel:${app.phone}`}>
+                  <Phone className="h-3.5 w-3.5" />
+                </a>
+              </Button>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    );
+  };
+
   return (
     <DashboardLayout>
       {/* Header */}
@@ -194,26 +355,51 @@ export default function AgentPipeline() {
               </p>
             </div>
           </div>
-          {/* View toggle */}
-          <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
-            <Button
-              variant={viewMode === "list" ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("list")}
-              className="h-8"
-            >
-              <List className="h-4 w-4 mr-1" />
-              List
-            </Button>
-            <Button
-              variant={viewMode === "kanban" ? "secondary" : "ghost"}
-              size="sm"
-              onClick={() => setViewMode("kanban")}
-              className="h-8"
-            >
-              <LayoutGrid className="h-4 w-4 mr-1" />
-              Kanban
-            </Button>
+          <div className="flex items-center gap-2">
+            {/* Team toggle for managers */}
+            {(isManager || isAdmin) && (
+              <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+                <Button
+                  variant={teamMode === "mine" ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => { setTeamMode("mine"); playSound("click"); }}
+                  className="h-8 gap-1.5"
+                >
+                  <User className="h-3.5 w-3.5" />
+                  My Recruits
+                </Button>
+                <Button
+                  variant={teamMode === "team" ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => { setTeamMode("team"); playSound("click"); }}
+                  className="h-8 gap-1.5"
+                >
+                  <UsersRound className="h-3.5 w-3.5" />
+                  Full Team
+                </Button>
+              </div>
+            )}
+            {/* View toggle */}
+            <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+              <Button
+                variant={viewMode === "list" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => { setViewMode("list"); playSound("click"); }}
+                className="h-8"
+              >
+                <List className="h-4 w-4 mr-1" />
+                List
+              </Button>
+              <Button
+                variant={viewMode === "kanban" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => { setViewMode("kanban"); playSound("click"); }}
+                className="h-8"
+              >
+                <LayoutGrid className="h-4 w-4 mr-1" />
+                Kanban
+              </Button>
+            </div>
           </div>
         </div>
       </motion.div>
@@ -232,7 +418,7 @@ export default function AgentPipeline() {
               "p-4 cursor-pointer transition-all hover:scale-[1.02]",
               statusFilter === stat.filter && "ring-2 ring-primary"
             )}
-            onClick={() => setStatusFilter(stat.filter)}
+            onClick={() => { setStatusFilter(stat.filter); playSound("click"); }}
           >
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-muted">
@@ -263,7 +449,7 @@ export default function AgentPipeline() {
             className="pl-10 bg-input"
           />
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); playSound("click"); }}>
           <SelectTrigger className="w-full sm:w-44 bg-input">
             <Filter className="h-4 w-4 mr-2" />
             <SelectValue placeholder="Filter" />
@@ -303,117 +489,69 @@ export default function AgentPipeline() {
             onScheduleInterview={(app) => openScheduler(app as Application)}
           />
         ) : (
-          // List view
-          <div className="space-y-4">
-            {filteredApps.map((app, idx) => {
-              const contactBadgeStyle = getContactBadgeStyle(app);
-              const last = app.last_contacted_at || app.contacted_at;
-              const contactLabel = last
-                ? formatDistanceToNow(new Date(last), { addSuffix: true })
-                : "Never contacted";
+          /* Accordion list view grouped by pipeline stage */
+          <div className="space-y-3">
+            {KANBAN_COLUMNS.map((col, colIdx) => {
+              const apps = sectionApps[col.id] || [];
+              const isOpen = expandedSection === col.id;
 
               return (
                 <motion.div
-                  key={app.id}
+                  key={col.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.03 }}
+                  transition={{ delay: colIdx * 0.05 }}
                 >
-                  <GlassCard className="p-4 hover:bg-muted/30 transition-colors">
-                    <div className="flex flex-col md:flex-row md:items-center gap-4">
-                      {/* Name & Contact */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <h3 className="font-semibold">{app.first_name} {app.last_name}</h3>
-                          <Badge variant="outline" className={cn("text-[10px]", contactBadgeStyle)}>
-                            <Clock className="h-2.5 w-2.5 mr-1" />
-                            {contactLabel}
-                          </Badge>
-                          {(!app.license_progress || app.license_progress === "unlicensed") && (
-                            <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/30 text-[10px]">
-                              <AlertCircle className="h-2.5 w-2.5 mr-1" />
-                              Course not purchased
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Mail className="h-3.5 w-3.5" />
-                            {app.email}
-                          </span>
-                          {app.phone && (
-                            <span className="flex items-center gap-1">
-                              <Phone className="h-3.5 w-3.5" />
-                              {app.phone}
-                            </span>
-                          )}
-                        </div>
+                  <div
+                    className={cn(
+                      "rounded-xl border-2 overflow-hidden transition-all",
+                      col.color,
+                      isOpen && "shadow-lg"
+                    )}
+                  >
+                    {/* Section Header */}
+                    <button
+                      onClick={() => toggleSection(col.id)}
+                      className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg">{col.emoji}</span>
+                        <span className="font-semibold text-sm text-foreground">{col.label}</span>
+                        <Badge variant="outline" className="text-xs bg-muted border-border text-muted-foreground">
+                          {apps.length}
+                        </Badge>
                       </div>
+                      <motion.div
+                        animate={{ rotate: isOpen ? 90 : 0 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      </motion.div>
+                    </button>
 
-                      {/* Stage selector */}
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {app.license_status !== "licensed" ? (
-                          <LicenseProgressSelector
-                            applicationId={app.id}
-                            currentProgress={app.license_progress as any}
-                            onProgressUpdated={fetchApplications}
-                          />
-                        ) : (
-                          <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
-                            <Award className="h-3 w-3 mr-1" />
-                            Licensed
-                          </Badge>
-                        )}
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex items-center gap-1">
-                        <LastContactedBadge applicationId={app.id} />
-
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
-                          onClick={() => openScheduler(app)}
-                          title="Schedule Interview"
+                    {/* Section Content */}
+                    <AnimatePresence>
+                      {isOpen && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.25, ease: "easeInOut" }}
+                          className="overflow-hidden"
                         >
-                          <Calendar className="h-4 w-4" />
-                        </Button>
-
-                        {agentId && (
-                          <QuickEmailMenu
-                            applicationId={app.id}
-                            agentId={agentId}
-                            licenseStatus={app.license_status as any}
-                            recipientEmail={app.email}
-                            recipientName={`${app.first_name} ${app.last_name}`}
-                            onEmailSent={fetchApplications}
-                          />
-                        )}
-
-                        {app.license_status !== "licensed" && (
-                          <ResendLicensingButton
-                            recipientEmail={app.email}
-                            recipientName={app.first_name}
-                            licenseStatus={app.license_status as any}
-                          />
-                        )}
-
-                        {app.phone && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
-                            asChild
-                          >
-                            <a href={`tel:${app.phone}`}>
-                              <Phone className="h-4 w-4" />
-                            </a>
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </GlassCard>
+                          <div className="border-t border-border/50">
+                            {apps.length === 0 ? (
+                              <div className="py-8 text-center text-sm text-muted-foreground/50 italic">
+                                No recruits in this stage
+                              </div>
+                            ) : (
+                              apps.map((app, idx) => renderAppRow(app, idx))
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </motion.div>
               );
             })}

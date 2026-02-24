@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { Users, BookOpen, ChevronRight, Clock, AlertTriangle, CheckCircle } from "lucide-react";
+import { Users, BookOpen, ChevronRight, Clock, AlertTriangle, CheckCircle, FileText } from "lucide-react";
+import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -114,6 +115,7 @@ export function RecruitingQuickView() {
   const queryClient = useQueryClient();
   const [activeFilter, setActiveFilter] = useState<FilterTab>("all");
   const [markingId, setMarkingId] = useState<string | null>(null);
+  const [viewAppId, setViewAppId] = useState<string | null>(null);
 
   const { data: agents = [], isLoading } = useQuery({
     queryKey: ["recruiting-quick-view", user?.id, isAdmin],
@@ -240,9 +242,13 @@ export function RecruitingQuickView() {
                     isStale && activeFilter === "needs_followup" ? "bg-destructive/5" : "hover:bg-muted/30"
                   )}
                 >
-                  <Link to="/dashboard/crm" className="font-medium truncate hover:text-primary transition-colors">
+                  <button
+                    onClick={() => agent.applicationId ? setViewAppId(agent.applicationId) : null}
+                    className="font-medium truncate hover:text-primary transition-colors text-left flex items-center gap-1"
+                  >
+                    <FileText className="h-3 w-3 text-muted-foreground shrink-0" />
                     {agent.name}
-                  </Link>
+                  </button>
                   <Badge variant="outline" className="text-[9px] h-4 px-1 justify-center">
                     {stageLabels[agent.onboardingStage] || agent.onboardingStage}
                   </Badge>
@@ -285,6 +291,11 @@ export function RecruitingQuickView() {
           })
         )}
       </div>
+      <ApplicationDetailSheet
+        open={!!viewAppId}
+        onOpenChange={(o) => !o && setViewAppId(null)}
+        applicationId={viewAppId || undefined}
+      />
     </GlassCard>
   );
 

@@ -38,6 +38,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SkeletonLoader } from "@/components/ui/skeleton-loader";
 import { AgencyGrowthCard } from "@/components/dashboard/AgencyGrowthCard";
+import { TotalApplicationsBanner } from "@/components/dashboard/TotalApplicationsBanner";
 import { useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
@@ -274,6 +275,9 @@ export default function Dashboard() {
           {isAdmin ? "Here's your agency overview" : isManager ? "Here's your team performance" : "Track your progress"}
         </p>
       </motion.div>
+
+      {/* ====== FOMO APPLICATIONS BANNER ====== */}
+      <TotalApplicationsBanner />
 
       {/* ====== QUICK ACTIONS ROW ====== */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">

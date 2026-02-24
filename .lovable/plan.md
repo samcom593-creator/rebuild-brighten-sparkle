@@ -1,75 +1,57 @@
 
 
-# Add Total Applications FOMO Counter to Dashboard
+# Polish: Fix Infinite Animation + Ensure Dashboard Flows Are Smooth
 
-## What We're Building
+## Current State
 
-A visually striking "Total Applications" banner on the Dashboard that combines all applications (98 new + 925 aged = 1,023 total) into one big animated counter. This creates FOMO for agents and managers by showing how many people are applying to work with the agency.
+All previously planned features are already implemented and live:
 
-## Placement
+- **TotalApplicationsBanner** -- animated counter, gradient GlassCard, today/this-week badges, whoosh sound -- placed after welcome message on Dashboard
+- **ActivationRiskBanner** -- has Inactive + Reactivate + Settings + Dismiss buttons with sound effects
+- **QuickFilters** -- has Producers, Needs Attention, Zero Production, Inactive, All
+- **DashboardCommandCenter** -- inactive filter logic, sound effects on filter changes and agent actions
+- **DashboardCRM** -- LicenseProgressSelector integrated on agent cards, onboarding stage management, attendance, evaluation, bulk actions
+- **Dashboard.tsx** -- useSoundEffects on quick action clicks
 
-Right after the welcome message and before the quick actions row. This is the first data point every user sees -- maximum visibility.
+## Issue Found: Prohibited Infinite Animation
 
-## Component: `TotalApplicationsBanner`
+The `TotalApplicationsBanner` (line 92-98) has a `repeat: Infinity` animation on the fire emoji. This violates the platform standard that prohibits decorative infinite animations to prevent browser lag and battery drain.
 
-A new standalone component (`src/components/dashboard/TotalApplicationsBanner.tsx`) that:
+## Changes Needed
 
-1. Fetches two counts via separate queries:
-   - `applications` table: `COUNT(*) WHERE terminated_at IS NULL`
-   - `aged_leads` table: `COUNT(*)`
-2. Displays the combined total with the existing `AnimatedCounter` component for a smooth count-up effect
-3. Shows a breakdown row: "98 New Applicants + 925 Aged Leads"
-4. Shows "today" and "this week" mini-badges for recency FOMO
-5. Uses `framer-motion` entrance animation + subtle pulse on the number
-6. Gradient background (primary-to-emerald) with a glowing effect
-7. Fire/rocket icon to reinforce momentum
-8. Visible to ALL roles (agents, managers, admins) -- everyone should feel the FOMO
+### 1. Fix Infinite Animation in TotalApplicationsBanner
 
-## Visual Design
+**File: `src/components/dashboard/TotalApplicationsBanner.tsx`** (lines 92-98)
 
-```text
-┌─────────────────────────────────────────────────┐
-│  🚀  Total Applications                        │
-│                                                 │
-│         1,023                                   │
-│    (animated count-up, large bold text)          │
-│                                                 │
-│  98 New Applicants  •  925 Aged Leads           │
-│                                                 │
-│  [+4 today]  [+9 this week]    ← green badges   │
-└─────────────────────────────────────────────────┘
-```
+Replace the infinite pulsing fire emoji with a single-play entrance animation that settles into a static state. The emoji will scale up once on mount, then stay still.
 
-- Gradient border (primary/emerald)
-- GlassCard base with gradient overlay
-- Number uses `text-4xl font-black` with gradient text
-- Sub-counts in muted text
-- Green pulse badges for today/this week counts
-- Sound effect on mount ("whoosh")
+### 2. Add Locale Formatting to AnimatedNumber Counter
+
+The `AnimatedNumber` component currently shows raw numbers (e.g., `1023`). For the FOMO banner to look polished with 1,000+ applications, the display should use `toLocaleString()` formatting so it renders as `1,023`.
+
+**File: `src/components/dashboard/AnimatedNumber.tsx`** (line 46)
+
+Change `current.toFixed(decimals)` to use locale formatting when decimals is 0.
+
+### 3. Verify No Other Issues
+
+All dashboards already have:
+- CRM: LicenseProgressSelector for updating pre-licensing course stages (unlicensed > course purchased > finished course > test scheduled > passed test > fingerprints > waiting on license > licensed)
+- CRM: Onboarding stage management (onboarding, training_online, in_field_training, evaluated)
+- CRM: Attendance, ratings, evaluation buttons, notes, bulk stage actions
+- Command Center: Filter by producers/needs attention/zero/inactive/all, reassign managers, change stages, promote/demote, reactivate
+- Dashboard: Team snapshot, activation risk banner, agency growth, performance breakdown, leaderboards
+
+No additional code changes are required beyond the two fixes above.
+
+---
 
 ## Technical Details
 
-### Files
-
 | File | Change |
 |------|--------|
-| `src/components/dashboard/TotalApplicationsBanner.tsx` | **NEW** -- fetches counts, renders animated FOMO banner |
-| `src/pages/Dashboard.tsx` | Import and place `TotalApplicationsBanner` between welcome message and quick actions |
+| `src/components/dashboard/TotalApplicationsBanner.tsx` | Replace `repeat: Infinity` animation with single-play scale entrance |
+| `src/components/dashboard/AnimatedNumber.tsx` | Add `toLocaleString()` formatting for whole numbers |
 
-### Data Fetching
-
-Uses `useQuery` with key `["total-applications-fomo"]`, refetches every 60 seconds to stay live. Two parallel Supabase `count` queries (head-only, no data transfer):
-
-```
-supabase.from("applications").select("*", { count: "exact", head: true }).is("terminated_at", null)
-supabase.from("aged_leads").select("*", { count: "exact", head: true })
-supabase.from("applications").select("*", { count: "exact", head: true }).gte("created_at", todayISO)
-supabase.from("applications").select("*", { count: "exact", head: true }).gte("created_at", weekStartISO)
-```
-
-### No Database Changes
-
-All data already exists in `applications` and `aged_leads` tables. RLS policies already allow admin/manager SELECT. For agents, the banner will use the edge function or a simple server count -- but since agents can view their own applications and aged_leads have manager-only RLS, we'll fetch counts via a lightweight approach: the banner shows the total for admins/managers who can see all data, and for agents it shows just their own application count + a motivational message.
-
-Actually, to keep it simple and universal: admins see the full count (1,023), managers see their team + aged leads assigned to them, agents see their own leads. The FOMO effect works at every level.
+Both changes are two-line edits. No database changes, no new components, no edge functions.
 

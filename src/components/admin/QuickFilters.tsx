@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button";
-import { Users, TrendingUp, AlertTriangle, XCircle, GraduationCap } from "lucide-react";
+import { Users, TrendingUp, AlertTriangle, XCircle, UserMinus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type FilterType = "all" | "producers" | "weak" | "zero" | "course_purchased";
+type FilterType = "all" | "producers" | "weak" | "zero" | "inactive";
 
 interface QuickFiltersProps {
   activeFilter: FilterType;
@@ -15,7 +15,7 @@ export function QuickFilters({ activeFilter, onFilterChange }: QuickFiltersProps
     { id: "producers", label: "Producers", icon: <TrendingUp className="h-4 w-4" />, color: "text-green-500" },
     { id: "weak", label: "Needs Attention", icon: <AlertTriangle className="h-4 w-4" />, color: "text-amber-500" },
     { id: "zero", label: "Zero Production", icon: <XCircle className="h-4 w-4" />, color: "text-red-500" },
-    { id: "course_purchased", label: "Course Purchased", icon: <GraduationCap className="h-4 w-4" />, color: "text-purple-500" },
+    { id: "inactive", label: "Inactive", icon: <UserMinus className="h-4 w-4" />, color: "text-muted-foreground" },
   ];
 
   return (

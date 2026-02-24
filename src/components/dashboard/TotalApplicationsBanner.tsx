@@ -90,8 +90,9 @@ export function TotalApplicationsBanner() {
               className="text-4xl sm:text-5xl font-black bg-gradient-to-r from-primary via-primary to-emerald-500 bg-clip-text text-transparent tracking-tight"
             />
             <motion.span
-              animate={{ scale: [1, 1.15, 1] }}
-              transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.4, type: "spring", stiffness: 300 }}
               className="text-lg"
             >
               🔥

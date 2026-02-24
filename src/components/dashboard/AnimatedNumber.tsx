@@ -43,7 +43,7 @@ export const AnimatedNumber = forwardRef<HTMLSpanElement, AnimatedNumberProps>(
           maximumFractionDigits: 0,
         }).format(Math.round(current));
       }
-      return current.toFixed(decimals);
+      return decimals === 0 ? Math.round(current).toLocaleString() : current.toFixed(decimals);
     });
 
     useEffect(() => {

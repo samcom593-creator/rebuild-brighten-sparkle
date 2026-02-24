@@ -1,0 +1,1 @@
+GRANT SELECT, INSERT, UPDATE ON public.partial_applications TO anon;

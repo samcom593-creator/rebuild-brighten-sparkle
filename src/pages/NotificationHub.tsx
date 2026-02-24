@@ -649,7 +649,15 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
       const candidates = Array.from(seen.values());
 
       if (candidates.length === 0) {
-        toast.info(`All ${failedLogs.length} failures resolved or non-actionable (${skippedDelivered} already delivered, ${skippedNoSub} no push subs)`);
+        playSound("success");
+        toast.success(`✅ All ${failedLogs.length} failures already resolved`, {
+          description: [
+            skippedDelivered > 0 ? `${skippedDelivered} delivered on other carriers` : "",
+            skippedNoSub > 0 ? `${skippedNoSub} push failures (no subscribers yet)` : "",
+            "No retries needed — everything is accounted for.",
+          ].filter(Boolean).join(" · "),
+          duration: 6000,
+        });
         return;
       }
 
@@ -682,7 +690,7 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
             const { data, error } = await supabase.functions.invoke("send-notification", {
               body: { email: log.recipient_email, title: log.title, message: log.message },
             });
-            if (!error && data?.channels?.email) {
+            if (!error && (data?.channels?.email || data?.success)) {
               resent++;
               channelSummary.email.resent++;
             }
@@ -711,19 +719,37 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
         await paceDelay(300);
       }
 
-      playSound("celebrate");
-      confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
+      if (resent > 0) {
+        playSound("celebrate");
+        confetti({ particleCount: 50, spread: 60, origin: { y: 0.6 } });
+      } else {
+        playSound("success");
+      }
 
-      const parts = [
-        `✅ ${resent}/${attempted} retried`,
-        skippedDelivered > 0 ? `${skippedDelivered} already delivered` : "",
-        skippedNoSub > 0 ? `${skippedNoSub} no push subs` : "",
-        `Push ${channelSummary.push.resent}/${channelSummary.push.attempted}`,
-        `SMS ${channelSummary.sms.resent}/${channelSummary.sms.attempted}`,
-        `Email ${channelSummary.email.resent}/${channelSummary.email.attempted}`,
-      ].filter(Boolean);
+      const failedAgain = attempted - resent;
 
-      toast.success(parts.join(" · "));
+      if (resent === 0 && attempted > 0) {
+        toast.warning(`⚠️ 0/${attempted} succeeded on retry`, {
+          description: [
+            failedAgain > 0 ? `${failedAgain} still failing (likely rate-limited)` : "",
+            "Try again in a few minutes.",
+            skippedDelivered > 0 ? `${skippedDelivered} already delivered` : "",
+          ].filter(Boolean).join(" · "),
+          duration: 6000,
+        });
+      } else {
+        const parts = [
+          `✅ ${resent}/${attempted} retried successfully`,
+          failedAgain > 0 ? `${failedAgain} still failing` : "",
+          skippedDelivered > 0 ? `${skippedDelivered} already delivered` : "",
+          skippedNoSub > 0 ? `${skippedNoSub} no push subs` : "",
+          channelSummary.push.attempted > 0 ? `Push ${channelSummary.push.resent}/${channelSummary.push.attempted}` : "",
+          channelSummary.sms.attempted > 0 ? `SMS ${channelSummary.sms.resent}/${channelSummary.sms.attempted}` : "",
+          channelSummary.email.attempted > 0 ? `Email ${channelSummary.email.resent}/${channelSummary.email.attempted}` : "",
+        ].filter(Boolean);
+
+        toast.success(parts.join(" · "), { duration: 6000 });
+      }
       queryClient.invalidateQueries({ queryKey: ["notification-logs"] });
     } catch (err: any) {
       playSound("error");

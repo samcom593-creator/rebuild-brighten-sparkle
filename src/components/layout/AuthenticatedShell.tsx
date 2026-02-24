@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { Outlet } from "react-router-dom";
 import { SidebarLayout } from "./SidebarLayout";
 import { ScheduleBar } from "./ScheduleBar";
+import { PushNotificationPrompt } from "./PushNotificationPrompt";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ComponentErrorBoundary } from "@/components/ComponentErrorBoundary";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -31,6 +32,7 @@ export function AuthenticatedShell() {
     <ProtectedRoute>
       <SidebarLayout showPhoneBanner={true}>
         <ScheduleBar />
+        <PushNotificationPrompt />
         <ComponentErrorBoundary name="page-content">
           <Suspense fallback={<InnerPageLoader />}>
             <Outlet />

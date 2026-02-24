@@ -7,7 +7,7 @@ const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 function delay(ms: number) {
@@ -53,7 +53,7 @@ const handler = async (req: Request): Promise<Response> => {
                   new training resources, team announcements, and opportunities delivered straight to your phone.
                 </p>
                 <div style="text-align: center; margin: 30px 0;">
-                  <a href="https://rebuild-brighten-sparkle.lovable.app/install" 
+                  <a href="https://rebuild-brighten-sparkle.lovable.app/dashboard/settings" 
                      style="display: inline-block; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; text-decoration: none; padding: 16px 40px; border-radius: 10px; font-weight: 700; font-size: 18px;">
                     Enable Notifications →
                   </a>

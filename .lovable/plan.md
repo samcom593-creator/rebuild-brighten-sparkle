@@ -1,104 +1,57 @@
 
-# Notification Hub -- Top-Tier Overhaul + Full Platform Polish Pass
 
-## Overview
-Complete redesign of the Notification Hub into a premium, gamified command center with animated stats, gradient cards, sound effects, and visual flair. Plus a polish pass across Accounts and Schedule Bar to ensure consistency.
+# Full Site Audit — Findings & Fix Plan
 
----
+## Issues Found
 
-## 1. Notification Hub -- Premium Redesign
+### 1. partial_applications 401 Errors (Blocks Partial Save on Apply Page)
+**Severity: Medium** — The `savePartialApplication` function in `Apply.tsx` (line 234) does a client-side `supabase.from("partial_applications").upsert(...)`. Unauthenticated users (applicants aren't logged in) get **401 errors** from PostgREST. The RLS policies exist but the `anon` role likely lacks `GRANT` permissions on the table. This doesn't block the final submission (which uses the edge function with service role), but it means:
+- Console is spammed with 401 errors on every step transition
+- Partial application tracking (abandoned form recovery) silently fails
 
-### Header Section
-- Replace plain text header with a gradient hero banner (teal-to-blue gradient background with glassmorphism)
-- Add animated "pulse" indicator next to "Notification Hub" showing real-time status
-- Add a "Last refreshed X seconds ago" live counter
+**Fix:** Grant `INSERT` and `UPDATE` on `partial_applications` to the `anon` role, and also grant `SELECT` for upsert to work.
 
-### Stats Cards -- Animated + Gradient
-- Replace the plain flat stat cards with gradient `GlassCard` components matching the Accounts page pattern
-- Each stat gets its own gradient color scheme (Push = blue, SMS = green, Auto SMS = purple, Email = amber, Failed = red)
-- Use `AnimatedCounter` for all numbers with count-up animation
-- Add glow hover effects on each card
-- Add sound effect ("click") when tapping a stat card to filter the log by that channel
+### 2. React Fragment Missing Key in NotificationHub
+**Severity: Low** — In `NotificationHub.tsx` line 222-271, `paged.map()` renders a bare `<>` fragment wrapping two `<TableRow>` elements. The fragment has no `key` prop, which causes React warnings and potential rendering issues.
 
-### Quick Action Buttons -- Redesigned
-- Upgrade the 3 action buttons from plain buttons to large gradient cards with icons, descriptions, and animated hover states
-- Add `motion.div` with `whileHover` scale and glow
-- Play "whoosh" sound on button click, "celebrate" on completion
-- Add a 4th quick action: **"Resend All Failed"** -- retries all failed notifications from today
+**Fix:** Replace `<>` with `<Fragment key={log.id}>` (import `Fragment` from React).
 
-### Notification Log Table -- Enhanced
-- Add alternating row hover highlights with subtle glow
-- Add row click to expand full message details inline (accordion-style)
-- Add color-coded left border on each row based on channel (blue = push, green = SMS, purple = auto-SMS, amber = email)
-- Add a "Success Rate" progress bar at the top of the log showing sent vs failed ratio
-- Add pagination (25 per page) instead of showing all 100
+### 3. Application Flow — Verified Working
+I tested the full Apply flow on a 390x844 mobile viewport:
+- Step 1 (Personal Info) ✓
+- Step 2 (Experience) ✓
+- Step 3 (Licensing) ✓
+- Step 4 (Goals + SMS Consent) ✓
+- Submission → Step 5 (Referral) ✓
 
-### Bulk Blast Section -- Command Center Feel
-- Add a live progress bar during blast execution (percentage counter)
-- After blast completes, show animated result cards with `AnimatedCounter` counting up stats
-- Add confetti burst when blast completes successfully
-- Play "celebrate" sound on completion
+The `submit-application` edge function logs confirm successful recent submissions. **The apply flow itself works correctly.** If people are saying they "can't apply," it's likely:
+- They hit a duplicate check (email/phone already on file) and see the error
+- They missed the SMS consent checkbox and don't scroll down to see the error
+- The 401 console errors on partial save are not blocking but are noise
 
-### Carrier Assignment -- Polish
-- Add gradient stat showing "X leads missing carrier" prominently
-- Add a "quick assign" dropdown that appears on hover for each row
+### 4. NotificationHub & Accounts — Code Review Pass
+Both pages look solid after the recent overhaul. No runtime errors found. The Notification Hub stats, pagination, quick actions, and blast functionality are all properly wired.
 
-### Tab Navigation
-- Add sound effect ("click") on tab switch
-- Add animated underline indicator on active tab
-- Add badge counts on each tab (e.g., "Bulk Blast (3 actions)")
+### 5. ScheduleBar — Code Review Pass  
+Dismiss functionality, sound effects, and pulse animation all look correct.
 
 ---
 
-## 2. Accounts Page -- Final Polish
+## Technical Changes
 
-- Add a "Refresh" button with spin animation
-- Add row hover highlight with subtle glow effect matching the design system
-- Add a skeleton loader while accounts are loading (instead of text "Loading...")
+### Database Migration
+```sql
+-- Grant anon role access to partial_applications for unauthenticated form saves
+GRANT SELECT, INSERT, UPDATE ON public.partial_applications TO anon;
+```
 
----
+### File: `src/pages/NotificationHub.tsx`
+- Line 222: Replace bare `<>` fragment with `<Fragment key={log.id}>` 
+- Add `import { Fragment }` to React imports (or use `React.Fragment`)
 
-## 3. Schedule Bar -- Minor Polish
+### Files NOT Changed (verified working)
+- `src/pages/Apply.tsx` — full flow works end-to-end
+- `supabase/functions/submit-application/index.ts` — confirmed successful submissions in logs
+- `src/pages/DashboardAccounts.tsx` — no errors found
+- `src/components/layout/ScheduleBar.tsx` — no errors found
 
-- Add a subtle "new" pulse animation on urgent (red) pills
-- Sound already plays on dismiss -- add "click" sound on expand/collapse toggle
-
----
-
-## Technical Details
-
-### Files Modified
-
-| File | Changes |
-|------|---------|
-| `src/pages/NotificationHub.tsx` | Full redesign: gradient stats with AnimatedCounter, GlassCard wrappers, sound effects on all interactions, success rate bar, pagination, resend-failed button, confetti on blast, animated results, color-coded log rows |
-| `src/pages/DashboardAccounts.tsx` | Add refresh button, skeleton loader, row hover glow |
-| `src/components/layout/ScheduleBar.tsx` | Add pulse animation on red pills, click sound on toggle |
-
-### Key Implementation Patterns
-
-**Stats cards pattern (NotificationHub):**
-- Use same gradient card pattern already in DashboardAccounts (`bg-gradient-to-br` + `from-{color}/20 to-{color}/5 border-{color}/20`)
-- Wrap values in `AnimatedCounter` component
-- Add `useSoundEffects` hook, play "click" on stat tap to filter
-
-**Pagination for log table:**
-- Add `page` state, show 25 rows per page
-- Prev/Next buttons at bottom
-- Show "Showing X-Y of Z" label
-
-**Resend Failed action:**
-- Query `notification_log` for today's failed entries
-- For each, re-invoke the original channel function based on metadata
-- Track success/fail count and display results
-
-**Confetti on blast complete:**
-- Import `canvas-confetti` (already installed)
-- Fire confetti burst after blast mutation resolves successfully
-
-**Color-coded log rows:**
-- Add a 3px left border to each `TableRow`: `border-l-3 border-l-blue-500` for push, `border-l-green-500` for SMS, etc.
-
-**Success Rate Bar:**
-- Calculate `sentCount / totalCount * 100`
-- Render using the existing `Progress` component from `@/components/ui/progress`

@@ -861,6 +861,11 @@ export default function DashboardCRM() {
                       $250 Paid
                     </Badge>
                   )}
+                  {agent.hasTrainingCourse && (
+                    <Badge variant="outline" className="text-[9px] h-3.5 px-1 bg-blue-500/10 text-blue-400 border-blue-500/30">
+                      📚 Course
+                    </Badge>
+                  )}
                 </div>
                 <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-0.5">
                   <a 
@@ -1653,12 +1658,12 @@ export default function DashboardCRM() {
                       </GlassCard>
                     ) : (
                       <div className="space-y-2">
-                        {columnAgents.slice(0, 3).map((agent, index) => (
+                        {columnAgents.slice(0, 5).map((agent, index) => (
                           <div key={agent.id}>
                             {renderAgentCard(agent, index)}
                           </div>
                         ))}
-                        {columnAgents.length > 3 && (
+                        {columnAgents.length > 5 && (
                           <Button
                             variant="ghost"
                             size="sm"

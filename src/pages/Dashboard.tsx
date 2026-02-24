@@ -30,6 +30,7 @@ import { ReferralLeaderboard } from "@/components/dashboard/ReferralLeaderboard"
 import { TeamSnapshotCard } from "@/components/dashboard/TeamSnapshotCard";
 import { TeamPerformanceBreakdown } from "@/components/dashboard/TeamPerformanceBreakdown";
 import { OnboardingPipelineCard } from "@/components/dashboard/OnboardingPipelineCard";
+import { RecruitingQuickView } from "@/components/dashboard/RecruitingQuickView";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration";
@@ -366,6 +367,9 @@ export default function Dashboard() {
 
           {/* Onboarding Pipeline for Admin/Manager */}
           {(isManager || isAdmin) && <OnboardingPipelineCard />}
+
+          {/* Recruiting Quick-View Table */}
+          {(isManager || isAdmin) && <RecruitingQuickView />}
 
           {/* Pipeline Alert Summary */}
           {(isManager || isAdmin) && (stats.unlicensed > 0 || stats.staleLeads > 0) && (

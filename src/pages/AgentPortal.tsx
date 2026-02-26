@@ -546,8 +546,8 @@ export default function AgentPortal() {
           ))}
         </motion.div>
 
-        {/* ── Production Forecast ── */}
-        {agentId && (
+        {/* ── Production Forecast (Admin Only) ── */}
+        {agentId && isAdmin && (
           <motion.section
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

@@ -274,8 +274,7 @@ export function CompactLeaderboard({ currentAgentId, className, refreshKey }: Co
         .from("agents")
         .select("id, user_id")
         .in("id", agentIds)
-        .eq("is_deactivated", false)
-        .eq("is_inactive", false);
+        .eq("is_deactivated", false);
 
       if (!agents) {
         setEntries([]);

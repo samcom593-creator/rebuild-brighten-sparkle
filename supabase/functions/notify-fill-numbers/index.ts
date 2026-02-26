@@ -17,7 +17,6 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     const { reminderType } = await req.json();
-    // reminderType: "4pm" | "7pm" | "9pm"
 
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -48,7 +47,7 @@ const handler = async (req: Request): Promise<Response> => {
       month: "2-digit",
       day: "2-digit",
     });
-    const todayCST = cstFormatter.format(now); // YYYY-MM-DD format
+    const todayCST = cstFormatter.format(now);
 
     // For 10am reminder, check yesterday's production; otherwise check today's
     let targetDate = todayCST;
@@ -73,6 +72,32 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // ── AUTO-MARK AS PAYING FOR LEADS ──────────────────────────────────
+    if (reminderType === "840pm" || reminderType === "9pm") {
+      const weekDay = now.getDay();
+      const sundayOffset = weekDay;
+      const sunday = new Date(now.getTime() - sundayOffset * 24 * 60 * 60 * 1000);
+      const weekStart = cstFormatter.format(sunday);
+
+      const markResults = await Promise.allSettled(
+        agentsNeedingReminder.map(async (agent) => {
+          await supabaseClient
+            .from("lead_payment_tracking")
+            .upsert(
+              {
+                agent_id: agent.id,
+                week_start: weekStart,
+                tier: "standard",
+                paid: false,
+                marked_at: new Date().toISOString(),
+              },
+              { onConflict: "agent_id,week_start,tier" }
+            );
+        })
+      );
+      console.log(`Auto-marked ${markResults.filter(r => r.status === "fulfilled").length} agents as paying for leads`);
+    }
+
     // BATCH: Fetch all profiles in one query
     const userIds = agentsNeedingReminder.map(a => a.user_id).filter(Boolean);
     const { data: profiles } = await supabaseClient
@@ -82,14 +107,58 @@ const handler = async (req: Request): Promise<Response> => {
 
     const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
 
+    // ── SEND PUSH NOTIFICATIONS ────────────────────────────────────────
+    const pushTitleByType: Record<string, string> = {
+      "10am": "☀️ Log yesterday's numbers!",
+      "4pm": "📊 Log your numbers!",
+      "6pm": "⏰ Log your numbers now!",
+      "7pm": "⏰ Log your numbers now!",
+      "840pm": "🚨 Log numbers NOW or you're marked as paying for leads!",
+      "9pm": "🚨 FINAL: Log numbers before midnight!",
+    };
+
+    const pushBodyByType: Record<string, string> = {
+      "10am": "Start your day right — log yesterday's production.",
+      "4pm": "End of day approaching. Take 30 seconds to log.",
+      "6pm": "Only a few hours left! Don't miss today.",
+      "7pm": "Only a few hours left! Don't miss today.",
+      "840pm": "You haven't logged today's numbers. Do it NOW or you'll be marked as paying for leads this week.",
+      "9pm": "LAST CHANCE! Log now before the day ends.",
+    };
+
+    let pushSent = 0;
+    const pushUserIds = agentsNeedingReminder.map(a => a.user_id).filter(Boolean);
+    if (pushUserIds.length > 0) {
+      try {
+        const pushRes = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-push-notification`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+          },
+          body: JSON.stringify({
+            userIds: pushUserIds,
+            title: pushTitleByType[reminderType] || "Log Your Numbers",
+            body: pushBodyByType[reminderType] || "Log your daily production numbers.",
+            url: "/agent-portal",
+          }),
+        });
+        const pushData = await pushRes.json();
+        pushSent = pushData.sent || 0;
+      } catch (e) {
+        console.error("Push batch error:", e);
+      }
+    }
+
+    // ── SEND EMAILS ────────────────────────────────────────────────────
     const emailsSent: string[] = [];
     
-    // Increasing urgency based on time
     const subjectByType: Record<string, string> = {
       "10am": "☀️ Good morning! Log your numbers for yesterday",
       "4pm": "📊 Don't forget to log your numbers!",
       "6pm": "⏰ Time is running out - log your numbers now!",
       "7pm": "⏰ Time is running out - log your numbers now!",
+      "840pm": "🚨 LOG YOUR NUMBERS NOW — or you're marked as paying for leads!",
       "9pm": "🚨 FINAL REMINDER: Log your numbers before midnight!",
     };
 
@@ -98,18 +167,19 @@ const handler = async (req: Request): Promise<Response> => {
       "4pm": "End of day is approaching - take a moment to log your production.",
       "6pm": "Only a few hours left! Don't miss today's numbers.",
       "7pm": "Only a few hours left! Don't miss today's numbers.",
+      "840pm": "⚠️ You haven't logged your numbers yet today. If you don't log them before midnight, you will be marked as PAYING FOR LEADS this week.",
       "9pm": "LAST CHANCE! Log your numbers now before the day ends.",
     };
 
     const urgencyColorByType: Record<string, string> = {
-      "10am": "#3b82f6", // blue
-      "4pm": "#14b8a6", // teal
-      "6pm": "#f59e0b", // amber
-      "7pm": "#f59e0b", // amber
-      "9pm": "#ef4444", // red
+      "10am": "#3b82f6",
+      "4pm": "#14b8a6",
+      "6pm": "#f59e0b",
+      "7pm": "#f59e0b",
+      "840pm": "#ef4444",
+      "9pm": "#ef4444",
     };
 
-    // BATCH: Send emails in parallel batches of 10
     const BATCH_SIZE = 10;
     for (let i = 0; i < agentsNeedingReminder.length; i += BATCH_SIZE) {
       const batch = agentsNeedingReminder.slice(i, i + BATCH_SIZE);
@@ -121,6 +191,7 @@ const handler = async (req: Request): Promise<Response> => {
 
           const firstName = profile.full_name?.split(" ")[0] || "Agent";
           const urgencyColor = urgencyColorByType[reminderType] || "#14b8a6";
+          const isPayingWarning = reminderType === "840pm";
 
           await resend.emails.send({
             from: "APEX Financial Empire <notifications@tx.apex-financial.org>",
@@ -144,6 +215,14 @@ const handler = async (req: Request): Promise<Response> => {
                     <p style="color: ${urgencyColor}; font-size: 16px; font-weight: bold; margin: 0 0 16px 0;">
                       ${urgencyByType[reminderType]}
                     </p>
+                    
+                    ${isPayingWarning ? `
+                    <div style="background: #ef444420; border: 1px solid #ef4444; border-radius: 8px; padding: 16px; margin: 0 0 24px 0;">
+                      <p style="color: #fca5a5; font-size: 14px; font-weight: bold; margin: 0;">
+                        ⚠️ CONSEQUENCE: Agents who don't log their numbers are automatically marked as paying for leads for the current week. Log now to avoid this.
+                      </p>
+                    </div>
+                    ` : ''}
                     
                     <p style="color: #e2e8f0; font-size: 16px; line-height: 1.8; margin: 0 0 24px 0;">
                       Your daily production numbers haven't been logged yet. Take a minute to update your stats so we can track your progress and celebrate your wins!
@@ -185,14 +264,15 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    console.log(`Sent ${emailsSent.length} fill numbers reminders (${reminderType})`);
+    console.log(`Sent ${emailsSent.length} emails + ${pushSent} push notifications (${reminderType})`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         reminderType,
-        message: `Sent ${emailsSent.length} fill numbers reminders`,
-        emailsSent 
+        message: `Sent ${emailsSent.length} emails + ${pushSent} push notifications`,
+        emailsSent,
+        pushSent,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

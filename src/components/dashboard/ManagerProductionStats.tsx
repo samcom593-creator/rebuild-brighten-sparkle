@@ -37,8 +37,7 @@ export function ManagerProductionStats({ managerId }: ManagerProductionStatsProp
       const { data: teamAgents } = await supabase
         .from("agents")
         .select("id")
-        .eq("invited_by_manager_id", managerId)
-        .eq("is_deactivated", false);
+        .eq("invited_by_manager_id", managerId);
 
       if (!teamAgents || teamAgents.length === 0) {
         setStats({
@@ -175,7 +174,7 @@ export function ManagerProductionStats({ managerId }: ManagerProductionStatsProp
             <p className="text-lg font-bold text-primary">
               ${stats.todayALP.toLocaleString()}
             </p>
-            <p className="text-[10px] text-muted-foreground">Today ALP</p>
+            <p className="text-[10px] text-muted-foreground">Today AOP</p>
           </div>
 
           <div className="bg-emerald-500/10 rounded-lg p-3 text-center">
@@ -183,7 +182,7 @@ export function ManagerProductionStats({ managerId }: ManagerProductionStatsProp
             <p className="text-lg font-bold text-emerald-500">
               ${stats.weekALP.toLocaleString()}
             </p>
-            <p className="text-[10px] text-muted-foreground">Week ALP</p>
+            <p className="text-[10px] text-muted-foreground">Week AOP</p>
           </div>
 
           <div className="bg-amber-500/10 rounded-lg p-3 text-center">

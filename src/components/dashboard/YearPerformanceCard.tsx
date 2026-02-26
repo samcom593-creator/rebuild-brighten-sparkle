@@ -49,17 +49,20 @@ export function YearPerformanceCard({ agentId, isAdmin = false, isManager = fals
 
       let filtered = data || [];
 
-      if (!isAdmin && isManager) {
+      if (isAdmin) {
+        // Admin sees all
+        // filtered is already all
+      } else if (isManager) {
         // Manager sees their team + self
+        // Note: we intentionally do NOT filter by is_deactivated here to keep historical production accurate
         const { data: teamAgents } = await supabase
           .from("agents")
           .select("id")
-          .or(`id.eq.${agentId},invited_by_manager_id.eq.${agentId}`)
-          .eq("is_deactivated", false);
+          .or(`id.eq.${agentId},invited_by_manager_id.eq.${agentId}`);
 
         const teamIds = new Set(teamAgents?.map(a => a.id) || [agentId]);
         filtered = filtered.filter((r: any) => teamIds.has(r.agent_id));
-      } else if (!isAdmin && !isManager) {
+      } else {
         // Agent sees only personal
         filtered = filtered.filter((r: any) => r.agent_id === agentId);
       }
@@ -68,7 +71,13 @@ export function YearPerformanceCard({ agentId, isAdmin = false, isManager = fals
         const ytdALP = filtered.reduce((sum: number, r: any) => sum + Number(r.total_alp || 0), 0);
         const ytdDeals = filtered.reduce((sum: number, r: any) => sum + Number(r.total_deals || 0), 0);
         const ytdPresentations = filtered.reduce((sum: number, r: any) => sum + Number(r.total_presentations || 0), 0);
+        
+        // Calculate average close rate
+        // IMPORTANT: For consistency with other dashboards, we simply sum deals / sum presentations
+        // Or if you want "average of rates", you'd sum rates / count.
+        // Usually global close rate = total deals / total presentations
         const avgCloseRate = ytdPresentations > 0 ? (ytdDeals / ytdPresentations) * 100 : 0;
+        
         const avgDealSize = ytdDeals > 0 ? ytdALP / ytdDeals : 0;
 
         setStats({ ytdALP, ytdDeals, ytdPresentations, avgCloseRate, avgDealSize });
@@ -88,7 +97,7 @@ export function YearPerformanceCard({ agentId, isAdmin = false, isManager = fals
   }, [agentId, fetchYearStats]);
 
   // Use shared realtime hook for instant updates
-  useProductionRealtime(fetchYearStats, 300);
+  useProductionRealtime(fetchYearStats, 800);
 
   if (loading) {
     return (
@@ -110,7 +119,7 @@ export function YearPerformanceCard({ agentId, isAdmin = false, isManager = fals
   const statCards = [
     {
       label: "YTD ALP",
-      value: `$${stats?.ytdALP.toLocaleString() || 0}`,
+      value: `$${Math.round(stats?.ytdALP || 0).toLocaleString()}`,
       icon: DollarSign,
       color: "from-emerald-500/20 to-emerald-500/5 border-emerald-500/20",
       iconColor: "text-emerald-400",
@@ -194,7 +203,7 @@ export function YearPerformanceCard({ agentId, isAdmin = false, isManager = fals
         <div className="flex items-center gap-2 text-sm">
           <Award className="h-4 w-4 text-muted-foreground" />
           <span className="text-muted-foreground">Avg Deal Size:</span>
-          <span className="font-semibold">${stats?.avgDealSize.toLocaleString(undefined, { maximumFractionDigits: 0 }) || 0}</span>
+          <span className="font-semibold">${Math.round(stats?.avgDealSize || 0).toLocaleString()}</span>
         </div>
       </div>
 

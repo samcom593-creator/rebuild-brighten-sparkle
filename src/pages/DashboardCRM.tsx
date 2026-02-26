@@ -1,11 +1,12 @@
-import { useState, useEffect, useMemo } from "react";
+// ============= Full file contents =============
+
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { differenceInDays } from "date-fns";
 import {
   Users,
   Search,
   RefreshCw,
-  CheckCircle2,
   Clock,
   AlertTriangle,
   ChevronDown,
@@ -25,6 +26,7 @@ import {
   EyeOff,
   Eye,
   FileText,
+  CheckCircle2,
 } from "lucide-react";
 import {
   Table,
@@ -73,6 +75,7 @@ import { InterviewRecorder } from "@/components/dashboard/InterviewRecorder";
 import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressSelector";
 import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { differenceInDays } from "date-fns";
 
 type AttendanceStatus = Database["public"]["Enums"]["attendance_status"];
 type PerformanceTier = Database["public"]["Enums"]["performance_tier"];
@@ -165,7 +168,6 @@ const getTimeAgo = (dateString: string): string => {
 
 const isStaleAgent = (agent: AgentCRM): boolean => {
   if (!agent.lastContactedAt) {
-    // New agents with no production/deals aren't stale — they're just new
     return (agent.weeklyDeals > 0 || agent.monthlyDeals > 0);
   }
   return (Date.now() - new Date(agent.lastContactedAt).getTime()) / 3600000 >= 48;
@@ -173,7 +175,6 @@ const isStaleAgent = (agent: AgentCRM): boolean => {
 
 const getContactInfo = (agent: AgentCRM) => {
   if (!agent.lastContactedAt) {
-    // Differentiate "new" vs truly "never contacted"
     const hasActivity = agent.weeklyDeals > 0 || agent.monthlyDeals > 0 || agent.weeklyALP > 0;
     if (!hasActivity) return { label: "New", color: "text-muted-foreground" };
     return { label: "Never", color: "text-red-500 dark:text-red-400" };
@@ -191,7 +192,6 @@ const SECTIONS = [
   { key: "needs_followup", label: "Needs Follow-Up", icon: AlertTriangle, stages: [] as OnboardingStage[], accent: "border-l-red-500", headerBg: "bg-red-500/5", iconColor: "text-red-500" },
 ];
 
-// Unlicensed pipeline columns
 const UNLICENSED_COLUMNS = [
   { key: "unlicensed", label: "Course Not Purchased", progress: ["unlicensed"] },
   { key: "course_purchased", label: "Course Purchased", progress: ["course_purchased"] },
@@ -200,7 +200,6 @@ const UNLICENSED_COLUMNS = [
   { key: "waiting_on_license", label: "Waiting on License", progress: ["fingerprints_done", "waiting_on_license"] },
 ];
 
-// ── Expanded Agent Row Detail ──
 function AgentExpandedRow({
   agent,
   onRefresh,
@@ -476,12 +475,12 @@ function AgentExpandedRow({
             {/* Production Summary — ALL stages */}
             <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/5 border border-primary/10">
               <div>
-                <p className="text-[10px] text-muted-foreground">Week AOP</p>
+                <p className="text-[10px] text-muted-foreground">Week ALP</p>
                 <p className="text-sm font-bold text-primary">${agent.weeklyALP.toLocaleString()}</p>
               </div>
               <div className="w-px h-8 bg-border" />
               <div>
-                <p className="text-[10px] text-muted-foreground">Month AOP</p>
+                <p className="text-[10px] text-muted-foreground">Month ALP</p>
                 <p className="text-sm font-bold">${agent.monthlyALP.toLocaleString()}</p>
               </div>
               <div className="w-px h-8 bg-border" />
@@ -554,7 +553,6 @@ function AgentExpandedRow({
   );
 }
 
-
 export default function DashboardCRM() {
   const { user, isAdmin, isManager, isLoading: authLoading } = useAuth();
   const { playSound } = useSoundEffects();
@@ -575,7 +573,23 @@ export default function DashboardCRM() {
   const [viewAppAgentId, setViewAppAgentId] = useState<string | null>(null);
   const [expandedAgentId, setExpandedAgentId] = useState<string | null>(null);
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(["onboarding", "in_training", "live", "needs_followup"]));
-  const currentAgentIdRef = useState<string | null>(null);
+  const [currentAgentId, setCurrentAgentId] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+
+  // Focus agent logic
+  const focusAgentId = searchParams.get('focusAgentId');
+  useEffect(() => {
+    if (focusAgentId && agents.length > 0) {
+      setExpandedAgentId(focusAgentId);
+      setTimeout(() => {
+        const el = document.getElementById(`agent-row-${focusAgentId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          playSound("whoosh");
+        }
+      }, 500);
+    }
+  }, [focusAgentId, agents.length]);
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -602,7 +616,7 @@ export default function DashboardCRM() {
     try {
       const { data: currentAgent } = await supabase.from("agents").select("id").eq("user_id", user!.id).single();
       if (!currentAgent && !isAdmin) { setLoading(false); return; }
-      if (currentAgent) currentAgentIdRef[1](currentAgent.id);
+      if (currentAgent) setCurrentAgentId(currentAgent.id);
 
       let query = supabase.from("agents").select("*").eq("status", "active").order("sort_order", { ascending: true, nullsFirst: false });
       if (isManager && !isAdmin) query = query.eq("invited_by_manager_id", currentAgent?.id);
@@ -698,7 +712,6 @@ export default function DashboardCRM() {
         };
       });
 
-      // Fetch unlicensed applicants
       let appQuery = supabase.from("applications")
         .select("id, first_name, last_name, email, phone, license_status, license_progress, test_scheduled_date, status, instagram_handle, started_training")
         .is("terminated_at", null).neq("license_status", "licensed").in("status", ["approved", "contracting"]);
@@ -749,7 +762,6 @@ export default function DashboardCRM() {
     setAgents(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
   };
 
-  // Filtering
   const activeAgents = agents.filter(a => {
     if (!showDeactivated && a.isDeactivated) return false;
     if (!showInactive && a.isInactive) return false;
@@ -764,13 +776,11 @@ export default function DashboardCRM() {
 
   const getAgentsForSection = (section: typeof SECTIONS[number]) => {
     if (section.key === "needs_followup") {
-      // Agents who: completed onboarding but zero deals, OR no activity in 14+ days, OR released but never sold
       return filteredAgents.filter(a => {
         const isLive = a.onboardingStage === "evaluated";
         const completedOnboarding = ["evaluated", "in_field_training"].includes(a.onboardingStage);
         const hasNoDeals = a.weeklyDeals === 0 && a.monthlyDeals === 0;
         const daysSinceContact = a.lastContactedAt ? (Date.now() - new Date(a.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24) : 999;
-        // Show agents who are live with no deals, or haven't been contacted in 14+ days
         return (isLive && hasNoDeals) || (completedOnboarding && daysSinceContact >= 14 && hasNoDeals);
       }).sort((a, b) => {
         if (!a.lastContactedAt && !b.lastContactedAt) return a.sortOrder - b.sortOrder;
@@ -787,7 +797,6 @@ export default function DashboardCRM() {
     });
   };
 
-  // Unlicensed agents for the separate pipeline
   const unlicensedAgents = filteredAgents.filter(a => a.agentLicenseStatus !== "licensed");
   const getUnlicensedForColumn = (progressValues: string[]) =>
     unlicensedAgents.filter(a => progressValues.includes(a.licenseProgress || "unlicensed"));
@@ -800,7 +809,6 @@ export default function DashboardCRM() {
     return dupeIds;
   }, [activeAgents]);
 
-  // Stats — only count licensed agents in main sections
   const licensedAgents = filteredAgents.filter(a => a.agentLicenseStatus === "licensed");
   const onboardingCount = licensedAgents.filter(a => ["onboarding", "training_online"].includes(a.onboardingStage)).length;
   const trainingCount = licensedAgents.filter(a => a.onboardingStage === "in_field_training").length;
@@ -824,7 +832,6 @@ export default function DashboardCRM() {
     <DashboardLayout>
       <div className="space-y-4 page-enter relative">
         <BackgroundGlow accent="teal" intensity="subtle" />
-        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
           <div>
             <h1 className="text-2xl font-bold gradient-text">Recruiter HQ</h1>
@@ -850,7 +857,6 @@ export default function DashboardCRM() {
           </div>
         </div>
 
-        {/* Bulk Actions Bar */}
         {bulkMode && (
           <BulkStageActions
             agents={filteredAgents.map(a => ({ id: a.id, name: a.name, onboardingStage: a.onboardingStage }))}
@@ -862,7 +868,6 @@ export default function DashboardCRM() {
           />
         )}
 
-        {/* Quick Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           {[
             { label: "Onboarding", count: onboardingCount, icon: BookOpen, color: "text-primary", borderColor: "border-t-primary", bgGlow: "bg-primary/5" },
@@ -897,7 +902,6 @@ export default function DashboardCRM() {
           ))}
         </div>
 
-        {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-2 flex-wrap p-3 rounded-xl bg-card/50 backdrop-blur-sm border border-border/40">
           <div className="relative flex-1 min-w-[180px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -920,7 +924,6 @@ export default function DashboardCRM() {
           </Button>
         </div>
 
-        {/* Main Content */}
         {loading ? (
           <div className="flex items-center justify-center h-64"><RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" /></div>
         ) : (
@@ -933,7 +936,6 @@ export default function DashboardCRM() {
 
               return (
                 <div key={section.key} className={cn("rounded-xl border border-border overflow-hidden", section.accent, "border-l-4")}>
-                  {/* Section Header */}
                   <button
                     onClick={() => toggleSection(section.key)}
                     className={cn(
@@ -962,7 +964,6 @@ export default function DashboardCRM() {
                     </motion.div>
                   </button>
 
-                  {/* Section Table */}
                   <AnimatePresence>
                     {isOpen && (
                       <motion.div
@@ -987,7 +988,7 @@ export default function DashboardCRM() {
                                 <TableHead className="w-[220px]">Agent</TableHead>
                                 <TableHead className="w-[100px]">License</TableHead>
                                 <TableHead className="w-[90px]">Contact</TableHead>
-                                <TableHead className="w-[100px] text-right">Week AOP</TableHead>
+                                <TableHead className="w-[100px] text-right">Week ALP</TableHead>
                                 <TableHead className="w-[80px] text-right">Deals</TableHead>
                                 <TableHead className="w-[80px]">Attend.</TableHead>
                                 <TableHead className="w-8" />
@@ -1007,7 +1008,7 @@ export default function DashboardCRM() {
                                   : "bg-muted text-muted-foreground";
 
                                 return (
-                                  <motion.tbody key={agent.id} layout>
+                                  <motion.tbody key={agent.id} id={`agent-row-${agent.id}`} layout>
                                     <TableRow
                                       className={cn(
                                         "cursor-pointer transition-all duration-150 hover:bg-muted/40",
@@ -1058,7 +1059,7 @@ export default function DashboardCRM() {
                                             <div className="flex items-center gap-1">
                                               <p className="font-medium text-xs truncate">{agent.name}</p>
                                               {duplicateAgentIds.has(agent.id) && <Badge variant="outline" className="text-[8px] h-3.5 px-1 bg-amber-500/10 text-amber-500 border-amber-500/20">Dupe</Badge>}
-                                              {agent.managerId && agent.managerName && agent.managerId !== currentAgentIdRef[0] && (
+                                              {agent.managerId && agent.managerName && agent.managerId !== currentAgentId && (
                                                 <Badge variant="outline" className="text-[8px] h-3.5 px-1 bg-sky-500/10 text-sky-500 border-sky-500/20">
                                                   {agent.managerName.split(" ")[0]}
                                                 </Badge>
@@ -1110,7 +1111,7 @@ export default function DashboardCRM() {
                                               playSound={playSound}
                                               sendingCourseLogin={sendingCourseLogin}
                                               setSendingCourseLogin={setSendingCourseLogin}
-                                              currentAgentId={currentAgentIdRef[0]}
+                                              currentAgentId={currentAgentId}
                                             />
                                           </td>
                                         </tr>
@@ -1130,7 +1131,6 @@ export default function DashboardCRM() {
             })}
           </div>
 
-          {/* ── Unlicensed Pipeline ── */}
           {unlicensedAgents.length > 0 && (
             <div className="mt-6 space-y-3">
               <div className="flex items-center gap-2.5 px-1">
@@ -1186,7 +1186,6 @@ export default function DashboardCRM() {
         )}
       </div>
 
-      {/* Modals */}
       <ApplicationDetailSheet open={!!viewAppAgentId} onOpenChange={(o) => !o && setViewAppAgentId(null)} agentId={viewAppAgentId || undefined} />
       <DeactivateAgentDialog open={!!deactivateAgent} onOpenChange={(o) => !o && setDeactivateAgent(null)} agentId={deactivateAgent?.id || ""} agentName={deactivateAgent?.name || ""} currentManagerId={deactivateAgent?.managerId} onComplete={fetchAgents} />
       <InstagramPromptDialog open={!!instagramPromptAgent} onOpenChange={(o) => !o && setInstagramPromptAgent(null)} agentId={instagramPromptAgent?.id || ""} agentName={instagramPromptAgent?.name || ""} onComplete={fetchAgents} />

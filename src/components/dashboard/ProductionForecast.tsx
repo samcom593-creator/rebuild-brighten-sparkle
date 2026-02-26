@@ -11,25 +11,30 @@ interface ProductionForecastProps {
   agentId: string;
 }
 
-export function ProductionForecast({ agentId }: ProductionForecastProps) {
+export function ProductionForecast({ agentId: _agentId }: ProductionForecastProps) {
   const { data: production } = useQuery({
     queryKey: ["production-forecast-agency"],
     queryFn: async () => {
-      const thirtyDaysAgo = format(subDays(new Date(), 30), "yyyy-MM-dd");
+      const today = new Date();
+      const historyStartDate = subDays(today, 29);
+      const historyStart = format(historyStartDate, "yyyy-MM-dd");
+      const todayStr = format(today, "yyyy-MM-dd");
+
       const { data } = await supabase
         .from("daily_production")
         .select("production_date, aop, deals_closed, presentations")
-        .gte("production_date", thirtyDaysAgo)
+        .gte("production_date", historyStart)
+        .lte("production_date", todayStr)
         .order("production_date", { ascending: true });
-      
+
       // Aggregate all agents by date
       const byDate = new Map<string, { production_date: string; aop: number; deals_closed: number; presentations: number }>();
-      (data || []).forEach(row => {
+      (data || []).forEach((row) => {
         const existing = byDate.get(row.production_date);
         if (existing) {
           existing.aop += Number(row.aop || 0);
-          existing.deals_closed += (row.deals_closed || 0);
-          existing.presentations += (row.presentations || 0);
+          existing.deals_closed += row.deals_closed || 0;
+          existing.presentations += row.presentations || 0;
         } else {
           byDate.set(row.production_date, {
             production_date: row.production_date,
@@ -39,8 +44,17 @@ export function ProductionForecast({ agentId }: ProductionForecastProps) {
           });
         }
       });
-      
-      return Array.from(byDate.values()).sort((a, b) => a.production_date.localeCompare(b.production_date));
+
+      // Fill missing days with zeroes so 7d/30d math and regression are stable
+      return Array.from({ length: 30 }, (_, i) => {
+        const date = format(subDays(today, 29 - i), "yyyy-MM-dd");
+        return byDate.get(date) || {
+          production_date: date,
+          aop: 0,
+          deals_closed: 0,
+          presentations: 0,
+        };
+      });
     },
     staleTime: 120_000,
   });
@@ -51,7 +65,7 @@ export function ProductionForecast({ agentId }: ProductionForecastProps) {
     }
 
     const last7 = production
-      .filter((p) => new Date(p.production_date) >= subDays(new Date(), 7))
+      .slice(-7)
       .reduce((s, p) => s + Number(p.aop || 0), 0);
 
     const last30 = production.reduce((s, p) => s + Number(p.aop || 0), 0);

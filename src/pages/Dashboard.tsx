@@ -216,9 +216,9 @@ export default function Dashboard() {
   const [showConfetti, setShowConfetti] = useState(false);
 
   const { data } = useQuery({
-    queryKey: ["dashboard-stats", user?.id],
+    queryKey: ["dashboard-stats", user?.id, profile?.full_name, user?.email],
     queryFn: () => fetchDashboardData(user!.id, profile?.full_name, user!.email),
-    enabled: !!user,
+    enabled: !!user && !authLoading,
   });
 
   const stats = data?.stats ?? defaultStats;

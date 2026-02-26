@@ -109,9 +109,7 @@ export function BuildingLeaderboard({ currentAgentId, period }: BuildingLeaderbo
           profile_id,
           display_name,
           profile:profiles!agents_profile_id_fkey(full_name, avatar_url)
-        `)
-        .eq("is_deactivated", false)
-        .eq("is_inactive", false);
+        `);
 
       if (!allAgents) {
         setEntries([]);

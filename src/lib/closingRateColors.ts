@@ -1,9 +1,9 @@
 /**
  * Shared closing rate color logic
  * Thresholds:
- * - 0-40% = Red (poor)
- * - 40-60% = Yellow (needs improvement)
- * - 60-100% = Green (excellent)
+ * - <30% = Red
+ * - <60% = Yellow
+ * - >=60% = Green
  */
 
 export function getClosingRateColor(rate: number): {
@@ -11,23 +11,25 @@ export function getClosingRateColor(rate: number): {
   bgClass: string;
   tone: "red" | "yellow" | "green";
 } {
-  if (rate < 40) {
+  if (rate < 30) {
     return {
-      textClass: "text-red-500",
-      bgClass: "bg-red-500/10",
+      textClass: "text-destructive",
+      bgClass: "bg-destructive/10",
       tone: "red",
     };
   }
+
   if (rate < 60) {
     return {
-      textClass: "text-yellow-500",
-      bgClass: "bg-yellow-500/10",
+      textClass: "text-amber-500",
+      bgClass: "bg-amber-500/10",
       tone: "yellow",
     };
   }
+
   return {
-    textClass: "text-green-500",
-    bgClass: "bg-green-500/10",
+    textClass: "text-emerald-500",
+    bgClass: "bg-emerald-500/10",
     tone: "green",
   };
 }

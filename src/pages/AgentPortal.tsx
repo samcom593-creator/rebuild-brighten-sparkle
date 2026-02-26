@@ -187,8 +187,7 @@ export default function AgentPortal() {
         const { data: teamAgents } = await supabase
           .from("agents")
           .select("id")
-          .eq("invited_by_manager_id", currentAgentId)
-          .eq("is_deactivated", false);
+          .eq("invited_by_manager_id", currentAgentId);
         agentIds = [currentAgentId, ...(teamAgents?.map(a => a.id) || [])];
       }
       

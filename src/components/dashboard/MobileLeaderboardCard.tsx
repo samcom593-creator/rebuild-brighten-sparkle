@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Trophy, Medal, Award, Crown, Target, Percent, DollarSign } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getClosingRateColor } from "@/lib/closingRateColors";
 
 interface MobileLeaderboardEntry {
   rank: number;
@@ -43,6 +44,7 @@ const getInitials = (name: string) => {
 };
 
 export function MobileLeaderboardCard({ entry, index, onClick, leaders }: MobileLeaderboardCardProps) {
+  const closeRateColor = getClosingRateColor(entry.closingRate);
   const renderRankBadge = () => {
     if (entry.rank === 1) {
       return (
@@ -146,8 +148,7 @@ export function MobileLeaderboardCard({ entry, index, onClick, leaders }: Mobile
             </span>
             <span className={cn(
               "flex items-center gap-1",
-              entry.closingRate >= 30 && "text-emerald-500",
-              entry.closingRate >= 50 && "text-amber-400"
+              closeRateColor.textClass
             )}>
               <Percent className="h-3 w-3" />
               {entry.closingRate.toFixed(0)}%
@@ -166,7 +167,7 @@ export function MobileLeaderboardCard({ entry, index, onClick, leaders }: Mobile
           )}>
             ${entry.alp >= 1000 ? `${(entry.alp / 1000).toFixed(1)}k` : entry.alp.toLocaleString()}
           </div>
-          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">ALP</div>
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">AOP</div>
         </div>
       </div>
     </motion.div>

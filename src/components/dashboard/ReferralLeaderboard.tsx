@@ -110,10 +110,8 @@ export function ReferralLeaderboard({ currentAgentId, period = "week" }: Referra
       const agentIds = activeAgents.map(([id]) => id);
       const { data: agents } = await supabase
         .from("agents")
-        .select("id, user_id")
-        .in("id", agentIds)
-        .eq("is_deactivated", false)
-        .eq("is_inactive", false);
+        .select("id, user_id, display_name")
+        .in("id", agentIds);
 
       const userIds = agents?.map((a) => a.user_id).filter(Boolean) || [];
       const { data: profiles } = await supabase
@@ -145,7 +143,7 @@ export function ReferralLeaderboard({ currentAgentId, period = "week" }: Referra
         return {
           rank: 0,
           agentId,
-          name: profile?.full_name || "Unknown Agent",
+          name: profile?.full_name || agent?.display_name || "Unknown Agent",
           referralsCaught: totals.referralsCaught,
           referralPresentations: totals.referralPresentations,
           bookedInHome: totals.bookedInHome,

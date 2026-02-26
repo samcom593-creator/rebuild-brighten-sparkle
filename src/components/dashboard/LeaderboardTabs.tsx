@@ -20,6 +20,7 @@ import { format } from "date-fns";
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
 import { getTodayPST, getWeekStartPST, getMonthStartPST, getDateDaysAgoPST } from "@/lib/dateUtils";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
+import { getClosingRateColor } from "@/lib/closingRateColors";
 
 interface LeaderboardTabsProps {
   currentAgentId?: string;
@@ -190,9 +191,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
           is_inactive,
           profile:profiles!agents_profile_id_fkey(full_name, avatar_url)
         `)
-        .in("id", agentIds)
-        .eq("is_deactivated", false)
-        .eq("is_inactive", false);
+        .in("id", agentIds);
 
       if (!agents) {
         setEntries([]);
@@ -465,7 +464,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-popover">
-                    <SelectItem value="alp" className="text-xs">By ALP</SelectItem>
+                    <SelectItem value="alp" className="text-xs">By AOP</SelectItem>
                     <SelectItem value="presentations" className="text-xs">By Pres</SelectItem>
                     <SelectItem value="closingRate" className="text-xs">By Close %</SelectItem>
                     <SelectItem value="deals" className="text-xs">By Deals</SelectItem>
@@ -591,7 +590,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                       <div className={cn("col-span-1 text-center", sortBy === "deals" && "text-primary")}>Closes</div>
                       <div className="col-span-1 text-center">Refs</div>
                       <div className={cn("col-span-1 text-center whitespace-nowrap", sortBy === "closingRate" && "text-primary")}>Close %</div>
-                      <div className={cn("col-span-2 text-right", sortBy === "alp" && "text-primary")}>ALP</div>
+                      <div className={cn("col-span-2 text-right", sortBy === "alp" && "text-primary")}>AOP</div>
                     </div>
 
                     {/* Desktop Leaderboard Rows */}
@@ -714,8 +713,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                               <div className={cn("col-span-1 text-center", sortBy === "closingRate" && "text-primary")}>
                                 <span className={cn(
                                   "text-[10px] font-medium",
-                                  entry.closingRate >= 30 && "text-emerald-500",
-                                  entry.closingRate >= 50 && "text-amber-400"
+                                  getClosingRateColor(entry.closingRate).textClass
                                 )}>
                                   {entry.closingRate.toFixed(0)}%
                                 </span>

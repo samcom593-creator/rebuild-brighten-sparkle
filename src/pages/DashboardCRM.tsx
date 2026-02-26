@@ -66,6 +66,7 @@ import { DeactivateAgentDialog } from "@/components/dashboard/DeactivateAgentDia
 import { InstagramPromptDialog } from "@/components/dashboard/InstagramPromptDialog";
 import { BulkStageActions, AgentSelectCheckbox } from "@/components/crm/BulkStageActions";
 import { cn } from "@/lib/utils";
+import { BackgroundGlow } from "@/components/ui/BackgroundGlow";
 import { Database } from "@/integrations/supabase/types";
 import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
 import { InterviewRecorder } from "@/components/dashboard/InterviewRecorder";
@@ -224,7 +225,13 @@ function AgentExpandedRow({
       transition={{ duration: 0.2 }}
       className="overflow-hidden"
     >
-      <div className="px-4 py-3 bg-muted/30 border-t border-border space-y-3">
+      <div className={cn(
+        "px-4 py-3 border-t border-border space-y-3 rounded-b-lg",
+        "bg-card/80 backdrop-blur-sm shadow-inner",
+        isOnboarding && "border-l-2 border-l-primary",
+        agent.onboardingStage === "in_field_training" && "border-l-2 border-l-amber-500",
+        isLive && "border-l-2 border-l-emerald-500"
+      )}>
         {/* Top action bar */}
         <div className="flex items-center gap-2 flex-wrap">
           {agent.phone && (
@@ -725,13 +732,14 @@ export default function DashboardCRM() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-4 page-enter">
+      <div className="space-y-4 page-enter relative">
+        <BackgroundGlow accent="teal" intensity="subtle" />
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
           <div>
             <h1 className="text-2xl font-bold gradient-text">Recruiter HQ</h1>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {filteredAgents.length} agents · {staleCount > 0 && <span className="text-red-500">{staleCount} need follow-up</span>}
+              {filteredAgents.length} agents · {staleCount > 0 && <span className="text-red-500 font-medium">{staleCount} need follow-up</span>}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -765,25 +773,42 @@ export default function DashboardCRM() {
         )}
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           {[
-            { label: "Onboarding", count: onboardingCount, icon: BookOpen, color: "text-primary" },
-            { label: "In Training", count: trainingCount, icon: GraduationCap, color: "text-amber-500" },
-            { label: "Live", count: liveCount, icon: Briefcase, color: "text-emerald-500" },
-            { label: "Needs F/U", count: staleCount, icon: AlertTriangle, color: "text-red-500" },
+            { label: "Onboarding", count: onboardingCount, icon: BookOpen, color: "text-primary", borderColor: "border-t-primary", bgGlow: "bg-primary/5" },
+            { label: "In Training", count: trainingCount, icon: GraduationCap, color: "text-amber-500", borderColor: "border-t-amber-500", bgGlow: "bg-amber-500/5" },
+            { label: "Live", count: liveCount, icon: Briefcase, color: "text-emerald-500", borderColor: "border-t-emerald-500", bgGlow: "bg-emerald-500/5" },
+            { label: "Needs F/U", count: staleCount, icon: AlertTriangle, color: "text-red-500", borderColor: "border-t-red-500", bgGlow: "bg-red-500/5" },
           ].map(s => (
-            <div key={s.label} className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-card">
-              <s.icon className={cn("h-4 w-4", s.color)} />
-              <div>
-                <p className="text-lg font-bold leading-none">{s.count}</p>
-                <p className="text-[10px] text-muted-foreground">{s.label}</p>
+            <motion.div
+              key={s.label}
+              whileHover={{ y: -2 }}
+              transition={{ duration: 0.15 }}
+              className={cn(
+                "flex items-center gap-2.5 px-3.5 py-3 rounded-xl border border-border/60 bg-card/80 backdrop-blur-sm shadow-sm border-t-2",
+                s.borderColor, s.bgGlow
+              )}
+            >
+              <div className={cn("p-1.5 rounded-lg bg-background/60")}>
+                <s.icon className={cn("h-4 w-4", s.color)} />
               </div>
-            </div>
+              <div>
+                <p className="text-xl font-bold leading-none tabular-nums">{s.count}</p>
+                <p className="text-[10px] text-muted-foreground font-medium mt-0.5">{s.label}</p>
+              </div>
+              {filteredAgents.length > 0 && (
+                <div className="ml-auto">
+                  <div className="h-1 w-10 rounded-full bg-muted overflow-hidden">
+                    <div className={cn("h-full rounded-full transition-all", s.color.replace("text-", "bg-"))} style={{ width: `${Math.round((s.count / filteredAgents.length) * 100)}%` }} />
+                  </div>
+                </div>
+              )}
+            </motion.div>
           ))}
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-2 flex-wrap">
+        <div className="flex flex-col sm:flex-row gap-2 flex-wrap p-3 rounded-xl bg-card/50 backdrop-blur-sm border border-border/40">
           <div className="relative flex-1 min-w-[180px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input placeholder="Search agents..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-8 h-8 text-sm" />
@@ -820,14 +845,23 @@ export default function DashboardCRM() {
                   {/* Section Header */}
                   <button
                     onClick={() => toggleSection(section.key)}
-                    className={cn("w-full flex items-center justify-between px-4 py-2.5 transition-colors hover:bg-muted/50", section.headerBg)}
+                    className={cn(
+                      "w-full flex items-center justify-between px-4 py-3 transition-colors hover:bg-muted/30",
+                      "bg-gradient-to-r from-primary/8 via-primary/4 to-transparent",
+                      section.key === "in_training" && "from-amber-500/8 via-amber-500/4 to-transparent",
+                      section.key === "live" && "from-emerald-500/8 via-emerald-500/4 to-transparent"
+                    )}
                   >
                     <div className="flex items-center gap-2.5">
-                      <Icon className={cn("h-4 w-4", section.iconColor)} />
+                      <div className={cn("p-1 rounded-md", section.headerBg)}>
+                        <Icon className={cn("h-4 w-4", section.iconColor)} />
+                      </div>
                       <span className="font-semibold text-sm">{section.label}</span>
-                      <Badge variant="outline" className="text-xs">{sectionAgents.length}</Badge>
+                      <Badge variant="outline" className={cn("text-xs font-bold tabular-nums", section.headerBg, section.iconColor, "border-current/20")}>
+                        {sectionAgents.length}
+                      </Badge>
                       {sectionAgents.filter(isStaleAgent).length > 0 && (
-                        <Badge variant="outline" className="text-[10px] bg-red-500/10 text-red-500 border-red-500/20">
+                        <Badge variant="outline" className="text-[10px] bg-red-500/10 text-red-500 border-red-500/20 animate-pulse">
                           {sectionAgents.filter(isStaleAgent).length} stale
                         </Badge>
                       )}
@@ -848,7 +882,12 @@ export default function DashboardCRM() {
                         className="overflow-hidden"
                       >
                         {sectionAgents.length === 0 ? (
-                          <div className="text-center py-8 text-sm text-muted-foreground italic">No agents in this stage</div>
+                          <div className="flex flex-col items-center justify-center py-10 gap-2 bg-gradient-to-b from-muted/20 to-transparent">
+                            <div className={cn("p-3 rounded-full", section.headerBg)}>
+                              <Users className={cn("h-6 w-6", section.iconColor, "opacity-50")} />
+                            </div>
+                            <p className="text-sm text-muted-foreground">No agents in this stage yet</p>
+                          </div>
                         ) : (
                           <Table>
                             <TableHeader>
@@ -881,9 +920,16 @@ export default function DashboardCRM() {
                                   <motion.tbody key={agent.id} layout>
                                     <TableRow
                                       className={cn(
-                                        "cursor-pointer transition-colors",
+                                        "cursor-pointer transition-all duration-150 hover:bg-muted/40",
                                         isExpanded && "bg-muted/50",
-                                        isStaleAgent(agent) && !isExpanded && "bg-red-500/[0.03]",
+                                        !isExpanded && "even:bg-muted/15",
+                                        isStaleAgent(agent) && !isExpanded && "bg-red-500/[0.04] hover:bg-red-500/[0.08] border-l-2 border-l-red-500/40",
+                                        !isStaleAgent(agent) && !isExpanded && cn(
+                                          "hover:border-l-2",
+                                          section.key === "onboarding" && "hover:border-l-primary/60",
+                                          section.key === "in_training" && "hover:border-l-amber-500/60",
+                                          section.key === "live" && "hover:border-l-emerald-500/60"
+                                        ),
                                         agent.isDeactivated && "opacity-50"
                                       )}
                                       onClick={() => {
@@ -908,7 +954,10 @@ export default function DashboardCRM() {
                                       <TableCell className="py-2">
                                         <div className="flex items-center gap-2 min-w-0">
                                           <div className="relative shrink-0">
-                                            <div className={cn("h-7 w-7 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-xs font-bold", getAvatarColor(agent.name))}>
+                                          <div className={cn(
+                                              "h-7 w-7 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-xs font-bold ring-2 ring-background shadow-sm",
+                                              getAvatarColor(agent.name)
+                                            )}>
                                               {agent.name.charAt(0).toUpperCase()}
                                             </div>
                                             {isStaleAgent(agent) && (

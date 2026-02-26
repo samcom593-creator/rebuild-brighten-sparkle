@@ -82,6 +82,8 @@ interface Lead {
   contactedAt?: string;
   notes?: string;
   hasContactHistory?: boolean;
+  licenseProgress?: string;
+  hasNotes?: boolean;
 }
 
 interface Manager {
@@ -228,6 +230,8 @@ export default function LeadCenter() {
         contactedAt: app.contacted_at || undefined,
         notes: app.notes || undefined,
         hasContactHistory: contactedSet.has(app.id),
+        licenseProgress: app.license_progress || undefined,
+        hasNotes: !!app.notes,
       }));
 
       // Transform aged leads
@@ -317,9 +321,10 @@ export default function LeadCenter() {
       if (filterStatus === "all") {
         matchesStatus = true;
       } else if (filterStatus === "not_contacted") {
-        matchesStatus = !lead.contactedAt && !lead.hasContactHistory && lead.status === "new";
+        const hasBeenContacted = !!lead.contactedAt || !!lead.hasContactHistory || (lead.licenseProgress && lead.licenseProgress !== 'unlicensed') || lead.hasNotes;
+        matchesStatus = !hasBeenContacted && lead.status === "new";
       } else if (filterStatus === "has_contacted") {
-        matchesStatus = !!lead.contactedAt || !!lead.hasContactHistory || (lead.status !== "new" && lead.status !== "not_contacted");
+        matchesStatus = !!lead.contactedAt || !!lead.hasContactHistory || (lead.status !== "new" && lead.status !== "not_contacted") || !!(lead.licenseProgress && lead.licenseProgress !== 'unlicensed') || !!lead.hasNotes;
       } else if (filterStatus === "closed_all") {
         matchesStatus = lead.status === "hired" || lead.status === "contracted" || lead.status === "approved";
       } else {
@@ -340,7 +345,7 @@ export default function LeadCenter() {
   const stats = useMemo(() => {
     return {
       newDripIns: leads.filter((l) => l.source === "applications" && l.status === "new").length,
-      contacted: leads.filter((l) => !!l.contactedAt || !!l.hasContactHistory || (l.status !== "new" && l.status !== "not_contacted")).length,
+      contacted: leads.filter((l) => !!l.contactedAt || !!l.hasContactHistory || (l.status !== "new" && l.status !== "not_contacted") || !!(l.licenseProgress && l.licenseProgress !== 'unlicensed') || !!l.hasNotes).length,
       closed: leads.filter((l) => l.status === "hired" || l.status === "contracted" || l.status === "approved").length,
       licensed: leads.filter((l) => l.licenseStatus === "licensed").length,
     };

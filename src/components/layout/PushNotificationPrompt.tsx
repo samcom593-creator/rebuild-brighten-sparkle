@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
-const PROMPTED_KEY = "apex_push_prompted";
-const PROMPT_DELAY_MS = 5000; // Show after 5s
+const PROMPT_DELAY_MS = 3000; // Show after 3s
 
 export function PushNotificationPrompt() {
   const { user } = useAuth();
@@ -16,15 +15,8 @@ export function PushNotificationPrompt() {
 
   useEffect(() => {
     if (!user || !supported) return;
-    if (permission !== "default") return; // already asked
+    if (permission !== "default") return; // already accepted or denied
     if (isSubscribed) return;
-
-    const prompted = localStorage.getItem(PROMPTED_KEY);
-    if (prompted) {
-      // Don't re-prompt within 7 days
-      const days = (Date.now() - Number(prompted)) / (1000 * 60 * 60 * 24);
-      if (days < 7) return;
-    }
 
     const timer = setTimeout(() => setVisible(true), PROMPT_DELAY_MS);
     return () => clearTimeout(timer);
@@ -32,7 +24,6 @@ export function PushNotificationPrompt() {
 
   const handleEnable = async () => {
     const ok = await subscribe();
-    localStorage.setItem(PROMPTED_KEY, String(Date.now()));
     setVisible(false);
     if (ok) {
       toast.success("🔔 Push notifications enabled!");
@@ -42,7 +33,7 @@ export function PushNotificationPrompt() {
   };
 
   const handleDismiss = () => {
-    localStorage.setItem(PROMPTED_KEY, String(Date.now()));
+    // Only hide for this session — will reappear next visit
     setVisible(false);
   };
 

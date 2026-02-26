@@ -15,6 +15,7 @@ export default function Numbers() {
   const [agentName, setAgentName] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [noAgent, setNoAgent] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (authLoading || !user) return;
@@ -112,9 +113,10 @@ export default function Numbers() {
         <CompactProductionEntry 
           agentId={agentId} 
           agentName={agentName}
+          onSaved={() => setRefreshKey((k) => k + 1)}
         />
 
-        <CompactLeaderboard currentAgentId={agentId} />
+        <CompactLeaderboard currentAgentId={agentId} refreshKey={refreshKey} />
 
         <div className="text-center text-xs text-muted-foreground py-4 flex items-center justify-center gap-2">
           <Link2 className="h-3 w-3" />

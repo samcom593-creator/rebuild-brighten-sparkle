@@ -1,22 +1,24 @@
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
-import { DollarSign, TrendingUp } from "lucide-react";
+import { DollarSign, TrendingUp, Clock, CalendarDays, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
+import { DateRangePicker, useDateRange } from "@/components/ui/date-range-picker";
+import { format, differenceInCalendarDays } from "date-fns";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Props {
   currentAgentId: string;
 }
 
 export function EstimatedEarningsCard({ currentAgentId }: Props) {
-  const { data } = useQuery({
-    queryKey: ["estimated-earnings", currentAgentId],
-    queryFn: async () => {
-      // Get current month start
-      const now = new Date();
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+  const { period, setPeriod, range, setRange, startDate, endDate } = useDateRange("month");
 
-      // Get all agents
+  const { data } = useQuery({
+    queryKey: ["estimated-earnings", currentAgentId, startDate, endDate],
+    queryFn: async () => {
       const { data: agents } = await supabase
         .from("agents")
         .select("id");
@@ -25,66 +27,150 @@ export function EstimatedEarningsCard({ currentAgentId }: Props) {
 
       const agentIds = agents.map(a => a.id);
 
-      // Get monthly production
       const { data: prod } = await supabase
         .from("daily_production")
-        .select("agent_id, aop")
+        .select("agent_id, aop, hours_called")
         .in("agent_id", agentIds)
-        .gte("production_date", monthStart);
+        .gte("production_date", startDate)
+        .lte("production_date", endDate);
 
       if (!prod?.length) return null;
 
-      let adminAOP = 0;
-      let othersAOP = 0;
+      let personalALP = 0;
+      let teamALP = 0;
+      let personalHours = 0;
 
       for (const p of prod) {
         const alp = Number(p.aop) || 0;
         if (p.agent_id === currentAgentId) {
-          adminAOP += alp;
+          personalALP += alp;
+          personalHours += Number(p.hours_called) || 0;
         } else {
-          othersAOP += alp;
+          teamALP += alp;
         }
       }
 
-      const overrideEarnings = othersAOP * (9 / 12) * 0.5;
-      const personalEarnings = adminAOP * (9 / 12) * 1.2;
+      const overrideEarnings = teamALP * (9 / 12) * 0.5;
+      const personalEarnings = personalALP * (9 / 12) * 1.2;
       const total = overrideEarnings + personalEarnings;
 
-      return { adminAOP, othersAOP, overrideEarnings, personalEarnings, total };
+      return { personalALP, teamALP, overrideEarnings, personalEarnings, total, personalHours };
     },
     staleTime: 120_000,
   });
 
+  const daysInRange = useMemo(() => {
+    if (!range.from || !range.to) return 1;
+    return Math.max(1, differenceInCalendarDays(range.to, range.from) + 1);
+  }, [range]);
+
+  const perDay = data ? data.total / daysInRange : 0;
+  const perHour = data && data.personalHours > 0 ? data.total / data.personalHours : 0;
+
   if (!data || data.total === 0) return null;
 
   return (
-    <GlassCard className="p-5 border-primary/20 relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-emerald-500/5 pointer-events-none" />
-      <div className="relative z-10">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="p-1.5 rounded-lg bg-primary/15">
-            <DollarSign className="h-4 w-4 text-primary" />
+    <GlassCard className="relative overflow-hidden border-primary/20">
+      {/* Background decoration */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-transparent to-emerald-500/8 pointer-events-none" />
+      <div className="absolute -right-10 -bottom-10 h-36 w-36 rounded-full bg-gradient-to-br from-primary/15 to-emerald-500/10 blur-2xl pointer-events-none" />
+
+      <div className="relative z-10 p-5">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-xl bg-gradient-to-br from-primary/20 to-emerald-500/20 border border-primary/20">
+              <DollarSign className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold tracking-wide uppercase text-foreground">
+                Estimated Earnings
+              </h3>
+              {range.from && range.to && (
+                <p className="text-[10px] text-muted-foreground">
+                  {format(range.from, "MMM d")} – {format(range.to, "MMM d, yyyy")}
+                </p>
+              )}
+            </div>
           </div>
-          <h3 className="text-sm font-bold tracking-wide uppercase text-muted-foreground">
-            Estimated Earnings
-          </h3>
-          <TrendingUp className="h-3.5 w-3.5 text-emerald-500 ml-auto" />
+          <DateRangePicker
+            value={range}
+            onChange={setRange}
+            period={period}
+            onPeriodChange={setPeriod}
+          />
         </div>
 
-        <p className="text-3xl font-black bg-gradient-to-r from-primary to-emerald-500 bg-clip-text text-transparent mb-3">
-          ${Math.round(data.total).toLocaleString()}
-        </p>
-
-        <div className="grid grid-cols-2 gap-3 text-xs">
-          <div className="p-2.5 rounded-lg bg-muted/50">
-            <p className="text-muted-foreground">Personal</p>
-            <p className="font-bold text-foreground">${Math.round(data.personalEarnings).toLocaleString()}</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">AOP: ${data.adminAOP.toLocaleString()}</p>
+        {/* Total */}
+        <div className="mb-4">
+          <p className="text-4xl font-black bg-gradient-to-r from-primary to-emerald-500 bg-clip-text text-transparent leading-tight">
+            <AnimatedCounter value={Math.round(data.total)} prefix="$" formatOptions={{ maximumFractionDigits: 0 }} />
+          </p>
+          <div className="flex items-center gap-1.5 mt-1">
+            <TrendingUp className="h-3 w-3 text-emerald-500" />
+            <span className="text-xs text-emerald-500 font-medium">Total estimated</span>
           </div>
-          <div className="p-2.5 rounded-lg bg-muted/50">
-            <p className="text-muted-foreground">Override</p>
-            <p className="font-bold text-foreground">${Math.round(data.overrideEarnings).toLocaleString()}</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">Team AOP: ${data.othersAOP.toLocaleString()}</p>
+        </div>
+
+        {/* Breakdown */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="p-3 rounded-xl bg-primary/10 border border-primary/15 cursor-help transition-colors hover:bg-primary/15">
+                <div className="flex items-center gap-1 mb-1">
+                  <p className="text-[10px] text-muted-foreground font-medium">Personal</p>
+                  <Info className="h-2.5 w-2.5 text-muted-foreground/50" />
+                </div>
+                <p className="text-lg font-bold text-foreground">${Math.round(data.personalEarnings).toLocaleString()}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">ALP: ${data.personalALP.toLocaleString()}</p>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">Personal ALP × (9/12) × 1.2</TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/15 cursor-help transition-colors hover:bg-emerald-500/15">
+                <div className="flex items-center gap-1 mb-1">
+                  <p className="text-[10px] text-muted-foreground font-medium">Override</p>
+                  <Info className="h-2.5 w-2.5 text-muted-foreground/50" />
+                </div>
+                <p className="text-lg font-bold text-foreground">${Math.round(data.overrideEarnings).toLocaleString()}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Team ALP: ${data.teamALP.toLocaleString()}</p>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">Team ALP × (9/12) × 0.5</TooltipContent>
+          </Tooltip>
+        </div>
+
+        {/* Derived metrics */}
+        <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border border-border/50">
+          <div className="flex-1 text-center">
+            <div className="flex items-center justify-center gap-1 mb-0.5">
+              <CalendarDays className="h-3 w-3 text-primary" />
+              <span className="text-[10px] text-muted-foreground font-medium">$/Day</span>
+            </div>
+            <p className="text-sm font-bold text-foreground">${Math.round(perDay).toLocaleString()}</p>
+          </div>
+          <div className="w-px h-8 bg-border" />
+          <div className="flex-1 text-center">
+            <div className="flex items-center justify-center gap-1 mb-0.5">
+              <Clock className="h-3 w-3 text-emerald-500" />
+              <span className="text-[10px] text-muted-foreground font-medium">$/Hour</span>
+            </div>
+            <p className="text-sm font-bold text-foreground">
+              {perHour > 0 ? `$${Math.round(perHour).toLocaleString()}` : "—"}
+            </p>
+          </div>
+          <div className="w-px h-8 bg-border" />
+          <div className="flex-1 text-center">
+            <div className="flex items-center justify-center gap-1 mb-0.5">
+              <Clock className="h-3 w-3 text-amber-500" />
+              <span className="text-[10px] text-muted-foreground font-medium">Hours</span>
+            </div>
+            <p className="text-sm font-bold text-foreground">
+              {data.personalHours > 0 ? data.personalHours.toFixed(1) : "—"}
+            </p>
           </div>
         </div>
       </div>

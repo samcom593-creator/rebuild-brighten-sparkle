@@ -84,14 +84,22 @@ Deno.serve(async (req) => {
           {
             agent_id: agentId,
             production_date: date,
-            ...productionData,
-            hours_called: Number(productionData.hours_called),
-            aop: Number(productionData.aop),
+            presentations: Number(productionData.presentations) || 0,
+            deals_closed: Number(productionData.deals_closed) || 0,
+            hours_called: Number(productionData.hours_called) || 0,
+            referrals_caught: Number(productionData.referrals_caught) || 0,
+            referral_presentations: Number(productionData.referral_presentations) || 0,
+            aop: Number(productionData.aop) || 0,
+            passed_price: Number(productionData.passed_price) || 0,
+            booked_inhome_referrals: Number(productionData.booked_inhome_referrals) || 0,
           },
           { onConflict: "agent_id,production_date" }
         );
 
-      if (error) throw error;
+      if (error) {
+        console.error("Upsert error:", error);
+        throw error;
+      }
 
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

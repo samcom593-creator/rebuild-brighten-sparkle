@@ -231,6 +231,8 @@ export default function LogNumbers() {
     try {
       const today = getTodayPST();
 
+      console.log("Submitting production:", { agentId: selectedAgent.id, date: today, productionData });
+
       const res = await supabase.functions.invoke("log-production", {
         body: {
           action: "submit",
@@ -240,24 +242,18 @@ export default function LogNumbers() {
         }
       });
 
-      // Handle FunctionsHttpError — res.error is set when status >= 400
+      console.log("Production response:", res);
+
+      // Handle errors from the edge function
       if (res.error) {
-        // Try to extract error message from response body
-        let msg = "Failed to save numbers";
-        if (res.error?.context && typeof res.error.context.json === "function") {
-          try {
-            const body = await res.error.context.json();
-            msg = body?.error || msg;
-          } catch {}
-        } else if (res.error?.message) {
-          msg = res.error.message;
-        }
+        const msg = res.error?.message || "Failed to save numbers";
         throw new Error(msg);
       }
 
       if (res.data?.error) throw new Error(res.data.error);
 
-      // Show success INSTANTLY
+      // Show success feedback
+      toast.success("Numbers saved! 🎉");
       setShowConfetti(true);
       setStep("leaderboard");
 

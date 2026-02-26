@@ -81,6 +81,7 @@ interface Lead {
   referralSource?: string;
   contactedAt?: string;
   notes?: string;
+  hasContactHistory?: boolean;
 }
 
 interface Manager {
@@ -182,6 +183,12 @@ export default function LeadCenter() {
 
       if (agedError) throw agedError;
 
+      // Fetch contact history IDs for accurate "contacted" tracking
+      const { data: contactedAppIds } = await supabase
+        .from("contact_history")
+        .select("application_id");
+      const contactedSet = new Set(contactedAppIds?.map(c => c.application_id) || []);
+
       // Fetch all agents with profiles for name lookup (no status filter to resolve all names)
       const { data: agents } = await supabase
         .from("agents")
@@ -220,6 +227,7 @@ export default function LeadCenter() {
         referralSource: app.referral_source || undefined,
         contactedAt: app.contacted_at || undefined,
         notes: app.notes || undefined,
+        hasContactHistory: contactedSet.has(app.id),
       }));
 
       // Transform aged leads
@@ -309,11 +317,11 @@ export default function LeadCenter() {
       if (filterStatus === "all") {
         matchesStatus = true;
       } else if (filterStatus === "not_contacted") {
-        matchesStatus = !lead.contactedAt;
+        matchesStatus = !lead.contactedAt && !lead.hasContactHistory && lead.status === "new";
       } else if (filterStatus === "has_contacted") {
-        matchesStatus = !!lead.contactedAt;
+        matchesStatus = !!lead.contactedAt || !!lead.hasContactHistory || (lead.status !== "new" && lead.status !== "not_contacted");
       } else if (filterStatus === "closed_all") {
-        matchesStatus = lead.status === "hired" || lead.status === "contracted";
+        matchesStatus = lead.status === "hired" || lead.status === "contracted" || lead.status === "approved";
       } else {
         matchesStatus = lead.status === filterStatus;
       }
@@ -332,7 +340,7 @@ export default function LeadCenter() {
   const stats = useMemo(() => {
     return {
       newDripIns: leads.filter((l) => l.source === "applications" && l.status === "new").length,
-      contacted: leads.filter((l) => !!l.contactedAt || (l.status !== "new" && l.status !== "not_contacted")).length,
+      contacted: leads.filter((l) => !!l.contactedAt || !!l.hasContactHistory || (l.status !== "new" && l.status !== "not_contacted")).length,
       closed: leads.filter((l) => l.status === "hired" || l.status === "contracted" || l.status === "approved").length,
       licensed: leads.filter((l) => l.licenseStatus === "licensed").length,
     };

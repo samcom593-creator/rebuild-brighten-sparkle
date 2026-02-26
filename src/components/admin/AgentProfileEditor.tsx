@@ -315,7 +315,7 @@ export function AgentProfileEditor({ agent, open, onClose, onUpdate }: AgentProf
           <div className="grid grid-cols-3 gap-2">
             <div className="text-center p-2 bg-muted rounded-lg">
               <p className="text-sm font-bold">${Math.round(agent.totalAlp).toLocaleString()}</p>
-              <p className="text-[10px] text-muted-foreground">ALP</p>
+              <p className="text-[10px] text-muted-foreground">AOP</p>
             </div>
             <div className="text-center p-2 bg-muted rounded-lg">
               <p className="text-sm font-bold">{agent.totalDeals}</p>

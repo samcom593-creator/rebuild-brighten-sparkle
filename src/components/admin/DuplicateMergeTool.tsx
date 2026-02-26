@@ -553,7 +553,7 @@ export function DuplicateMergeTool({ open, onClose, onMergeComplete }: Duplicate
                 {manualSelectedAgents.length >= 2 && (
                   <div className="flex items-center justify-between pt-2 border-t">
                     <div className="text-sm">
-                      <span className="text-muted-foreground">Combined ALP: </span>
+                      <span className="text-muted-foreground">Combined AOP: </span>
                       <span className="font-bold">
                         ${Math.round(selectedAgentsForMerge.reduce((sum, a) => sum + a.totalAlp, 0)).toLocaleString()}
                       </span>

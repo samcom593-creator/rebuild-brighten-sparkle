@@ -115,7 +115,7 @@ function PodiumCard({ entry, position, maxALP }: { entry: LeaderboardEntry; posi
         "text-xs font-semibold truncate max-w-full text-center",
         entry.isCurrentUser && "text-primary"
       )}>
-        {entry.isCurrentUser ? "You" : firstName}
+        {firstName}{entry.isCurrentUser ? " (You)" : ""}
       </span>
       
       {/* Stats */}
@@ -175,7 +175,7 @@ function LeaderboardRow({ entry, index, maxALP }: { entry: LeaderboardEntry; ind
           "text-xs font-medium truncate",
           entry.isCurrentUser && "text-primary font-semibold"
         )}>
-          {entry.isCurrentUser ? "You" : firstName}
+          {firstName}{entry.isCurrentUser ? " (You)" : ""}
         </span>
       </div>
       
@@ -272,9 +272,8 @@ export function CompactLeaderboard({ currentAgentId, className, refreshKey }: Co
       const agentIds = Object.keys(agentTotals);
       const { data: agents } = await supabase
         .from("agents")
-        .select("id, user_id")
-        .in("id", agentIds)
-        .eq("is_deactivated", false);
+        .select("id, user_id, display_name")
+        .in("id", agentIds);
 
       if (!agents) {
         setEntries([]);
@@ -298,7 +297,7 @@ export function CompactLeaderboard({ currentAgentId, className, refreshKey }: Co
         return {
           rank: 0,
           agentId,
-          name: profile?.full_name || "Unknown",
+          name: profile?.full_name || agent?.display_name || "Unknown",
           avatarUrl: profile?.avatar_url,
           alp: totals.alp,
           deals: totals.deals,

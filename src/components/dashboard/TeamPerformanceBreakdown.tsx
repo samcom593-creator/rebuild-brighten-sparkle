@@ -66,23 +66,20 @@ export function TeamPerformanceBreakdown() {
       if (isAdmin) {
         const { data: allAgents } = await supabase
           .from("agents")
-          .select("id")
-          .eq("is_deactivated", false);
+          .select("id");
         agentIds = allAgents?.map(a => a.id) || [];
       } else if (isManager) {
         const { data: currentAgent } = await supabase
           .from("agents")
           .select("id")
           .eq("user_id", user.id)
-          .eq("is_deactivated", false)
           .maybeSingle();
 
         if (currentAgent) {
           const { data: downlineAgents } = await supabase
             .from("agents")
             .select("id")
-            .eq("invited_by_manager_id", currentAgent.id)
-            .eq("is_deactivated", false);
+            .eq("invited_by_manager_id", currentAgent.id);
 
           agentIds = [currentAgent.id, ...(downlineAgents?.map(a => a.id) || [])];
         }
@@ -185,8 +182,7 @@ export function TeamPerformanceBreakdown() {
       if (isAdmin) {
         const { data: allAgents } = await supabase
           .from("agents")
-          .select("id")
-          .eq("is_deactivated", false);
+          .select("id");
         agentIds = allAgents?.map(a => a.id) || [];
       } else if (isManager) {
         const { data: currentAgent } = await supabase
@@ -199,8 +195,7 @@ export function TeamPerformanceBreakdown() {
           const { data: downlineAgents } = await supabase
             .from("agents")
             .select("id")
-            .eq("invited_by_manager_id", currentAgent.id)
-            .eq("is_deactivated", false);
+            .eq("invited_by_manager_id", currentAgent.id);
 
           agentIds = [currentAgent.id, ...(downlineAgents?.map(a => a.id) || [])];
         }
@@ -369,7 +364,7 @@ export function TeamPerformanceBreakdown() {
                       <DollarSign className="h-3 w-3" />
                     </div>
                     <p className="text-lg font-bold">${week.totalALP.toLocaleString()}</p>
-                    <p className="text-[10px] text-muted-foreground">ALP</p>
+                    <p className="text-[10px] text-muted-foreground">AOP</p>
                   </div>
 
                   <div className="text-center p-2 rounded-lg bg-background/50">

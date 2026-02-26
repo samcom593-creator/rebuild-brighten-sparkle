@@ -106,13 +106,13 @@ export default function CallCenter() {
           .select("id, first_name, last_name, email, phone, instagram_handle, notes, motivation, license_status, created_at, status, contacted_at, last_contacted_at")
           .order("created_at", { ascending: sortOrder === "oldest_first" });
 
-        // Status filter
+        // Status filter (source-of-truth = contact timestamps)
         if (statusFilter === "new") {
-          query = query.in("status", ["new"]);
+          query = query.is("contacted_at", null);
         } else if (statusFilter === "no_pickup") {
           query = query.eq("status", "no_pickup");
         } else if (statusFilter === "contacted") {
-          query = query.eq("status", "contacted");
+          query = query.not("contacted_at", "is", null);
         }
 
         // Always exclude already-processed leads
@@ -160,13 +160,13 @@ export default function CallCenter() {
           .is("contracted_at", null)
           .order("created_at", { ascending: sortOrder === "oldest_first" });
 
-        // Status filter for applications
+        // Status filter for applications (source-of-truth = contact timestamps)
         if (statusFilter === "new") {
-          appQuery = appQuery.eq("status", "new");
+          appQuery = appQuery.is("contacted_at", null);
         } else if (statusFilter === "no_pickup") {
           appQuery = appQuery.eq("status", "no_pickup");
         } else if (statusFilter === "contacted") {
-          appQuery = appQuery.eq("status", "reviewing");
+          appQuery = appQuery.not("contacted_at", "is", null).neq("status", "no_pickup");
         }
 
         // License filter

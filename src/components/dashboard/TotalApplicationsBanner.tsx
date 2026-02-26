@@ -99,14 +99,8 @@ export function TotalApplicationsBanner() {
             </motion.span>
           </div>
 
-          {/* Breakdown */}
-          <p className="text-xs sm:text-sm text-muted-foreground mb-3">
-            <span className="font-semibold text-foreground">{newApps.toLocaleString()}</span>{" "}
-            New Applicants
-            <span className="mx-1.5 text-muted-foreground/50">•</span>
-            <span className="font-semibold text-foreground">{agedLeads.toLocaleString()}</span>{" "}
-            Aged Leads
-          </p>
+          {/* Spacer */}
+          <div className="mb-3" />
 
           {/* Today / This Week badges */}
           <div className="flex items-center gap-2 flex-wrap">

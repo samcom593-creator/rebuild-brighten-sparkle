@@ -180,6 +180,16 @@ const SECTIONS = [
   { key: "onboarding", label: "Onboarding", icon: BookOpen, stages: ["onboarding", "training_online"] as OnboardingStage[], accent: "border-l-primary", headerBg: "bg-primary/5", iconColor: "text-primary" },
   { key: "in_training", label: "In-Field Training", icon: GraduationCap, stages: ["in_field_training"] as OnboardingStage[], accent: "border-l-amber-500", headerBg: "bg-amber-500/5", iconColor: "text-amber-500" },
   { key: "live", label: "Live", icon: Briefcase, stages: ["evaluated"] as OnboardingStage[], accent: "border-l-emerald-500", headerBg: "bg-emerald-500/5", iconColor: "text-emerald-500" },
+  { key: "needs_followup", label: "Needs Follow-Up", icon: AlertTriangle, stages: [] as OnboardingStage[], accent: "border-l-red-500", headerBg: "bg-red-500/5", iconColor: "text-red-500" },
+];
+
+// Unlicensed pipeline columns
+const UNLICENSED_COLUMNS = [
+  { key: "unlicensed", label: "Course Not Purchased", progress: ["unlicensed"] },
+  { key: "course_purchased", label: "Course Purchased", progress: ["course_purchased"] },
+  { key: "finished_course", label: "Course Finished", progress: ["finished_course"] },
+  { key: "test_scheduled", label: "Test Scheduled", progress: ["test_scheduled", "passed_test"] },
+  { key: "waiting_on_license", label: "Waiting on License", progress: ["fingerprints_done", "waiting_on_license"] },
 ];
 
 // ── Expanded Agent Row Detail ──
@@ -508,7 +518,7 @@ export default function DashboardCRM() {
   const [recorderAgent, setRecorderAgent] = useState<AgentCRM | null>(null);
   const [viewAppAgentId, setViewAppAgentId] = useState<string | null>(null);
   const [expandedAgentId, setExpandedAgentId] = useState<string | null>(null);
-  const [openSections, setOpenSections] = useState<Set<string>>(new Set(["onboarding", "in_training", "live"]));
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set(["onboarding", "in_training", "live", "needs_followup"]));
   const currentAgentIdRef = useState<string | null>(null);
 
   useEffect(() => {
@@ -696,13 +706,35 @@ export default function DashboardCRM() {
     return matchesSearch && matchesManager;
   });
 
-  const getAgentsForSection = (stages: OnboardingStage[]) =>
-    filteredAgents.filter(a => stages.includes(a.onboardingStage)).sort((a, b) => {
+  const getAgentsForSection = (section: typeof SECTIONS[number]) => {
+    if (section.key === "needs_followup") {
+      // Agents who: completed onboarding but zero deals, OR no activity in 14+ days, OR released but never sold
+      return filteredAgents.filter(a => {
+        const isLive = a.onboardingStage === "evaluated";
+        const completedOnboarding = ["evaluated", "in_field_training"].includes(a.onboardingStage);
+        const hasNoDeals = a.weeklyDeals === 0 && a.monthlyDeals === 0;
+        const daysSinceContact = a.lastContactedAt ? (Date.now() - new Date(a.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24) : 999;
+        // Show agents who are live with no deals, or haven't been contacted in 14+ days
+        return (isLive && hasNoDeals) || (completedOnboarding && daysSinceContact >= 14 && hasNoDeals);
+      }).sort((a, b) => {
+        if (!a.lastContactedAt && !b.lastContactedAt) return a.sortOrder - b.sortOrder;
+        if (!a.lastContactedAt) return -1;
+        if (!b.lastContactedAt) return 1;
+        return new Date(a.lastContactedAt).getTime() - new Date(b.lastContactedAt).getTime();
+      });
+    }
+    return filteredAgents.filter(a => section.stages.includes(a.onboardingStage) && a.agentLicenseStatus === "licensed").sort((a, b) => {
       if (!a.lastContactedAt && !b.lastContactedAt) return a.sortOrder - b.sortOrder;
       if (!a.lastContactedAt) return -1;
       if (!b.lastContactedAt) return 1;
       return new Date(a.lastContactedAt).getTime() - new Date(b.lastContactedAt).getTime();
     });
+  };
+
+  // Unlicensed agents for the separate pipeline
+  const unlicensedAgents = filteredAgents.filter(a => a.agentLicenseStatus !== "licensed");
+  const getUnlicensedForColumn = (progressValues: string[]) =>
+    unlicensedAgents.filter(a => progressValues.includes(a.licenseProgress || "unlicensed"));
 
   const duplicateAgentIds = useMemo(() => {
     const emailCount = new Map<string, number>();
@@ -712,10 +744,12 @@ export default function DashboardCRM() {
     return dupeIds;
   }, [activeAgents]);
 
-  // Stats
-  const onboardingCount = filteredAgents.filter(a => ["onboarding", "training_online"].includes(a.onboardingStage)).length;
-  const trainingCount = filteredAgents.filter(a => a.onboardingStage === "in_field_training").length;
-  const liveCount = filteredAgents.filter(a => a.onboardingStage === "evaluated").length;
+  // Stats — only count licensed agents in main sections
+  const licensedAgents = filteredAgents.filter(a => a.agentLicenseStatus === "licensed");
+  const onboardingCount = licensedAgents.filter(a => ["onboarding", "training_online"].includes(a.onboardingStage)).length;
+  const trainingCount = licensedAgents.filter(a => a.onboardingStage === "in_field_training").length;
+  const liveCount = licensedAgents.filter(a => a.onboardingStage === "evaluated").length;
+  const needsFollowUpCount = getAgentsForSection(SECTIONS.find(s => s.key === "needs_followup")!).length;
   const staleCount = filteredAgents.filter(isStaleAgent).length;
 
   const toggleSection = (key: string) => {
@@ -778,7 +812,7 @@ export default function DashboardCRM() {
             { label: "Onboarding", count: onboardingCount, icon: BookOpen, color: "text-primary", borderColor: "border-t-primary", bgGlow: "bg-primary/5" },
             { label: "In Training", count: trainingCount, icon: GraduationCap, color: "text-amber-500", borderColor: "border-t-amber-500", bgGlow: "bg-amber-500/5" },
             { label: "Live", count: liveCount, icon: Briefcase, color: "text-emerald-500", borderColor: "border-t-emerald-500", bgGlow: "bg-emerald-500/5" },
-            { label: "Needs F/U", count: staleCount, icon: AlertTriangle, color: "text-red-500", borderColor: "border-t-red-500", bgGlow: "bg-red-500/5" },
+            { label: "Needs F/U", count: needsFollowUpCount, icon: AlertTriangle, color: "text-red-500", borderColor: "border-t-red-500", bgGlow: "bg-red-500/5" },
           ].map(s => (
             <motion.div
               key={s.label}
@@ -834,9 +868,10 @@ export default function DashboardCRM() {
         {loading ? (
           <div className="flex items-center justify-center h-64"><RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" /></div>
         ) : (
+          <>
           <div className="space-y-3">
             {SECTIONS.map(section => {
-              const sectionAgents = getAgentsForSection(section.stages);
+              const sectionAgents = getAgentsForSection(section);
               const isOpen = openSections.has(section.key);
               const Icon = section.icon;
 
@@ -1045,6 +1080,60 @@ export default function DashboardCRM() {
               );
             })}
           </div>
+
+          {/* ── Unlicensed Pipeline ── */}
+          {unlicensedAgents.length > 0 && (
+            <div className="mt-6 space-y-3">
+              <div className="flex items-center gap-2.5 px-1">
+                <div className="p-1.5 rounded-md bg-amber-500/10">
+                  <GraduationCap className="h-4 w-4 text-amber-500" />
+                </div>
+                <h2 className="font-bold text-sm">Unlicensed Pipeline</h2>
+                <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-500 border-amber-500/20">
+                  {unlicensedAgents.length}
+                </Badge>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                {UNLICENSED_COLUMNS.map(col => {
+                  const colAgents = getUnlicensedForColumn(col.progress);
+                  return (
+                    <div key={col.key} className="rounded-xl border border-border overflow-hidden">
+                      <div className="px-3 py-2 bg-amber-500/5 border-b border-border flex items-center justify-between">
+                        <span className="text-xs font-semibold">{col.label}</span>
+                        <Badge variant="outline" className="text-[10px] h-5">{colAgents.length}</Badge>
+                      </div>
+                      <div className="p-2 space-y-1.5 max-h-[300px] overflow-y-auto">
+                        {colAgents.length === 0 ? (
+                          <p className="text-xs text-muted-foreground text-center py-4">None</p>
+                        ) : colAgents.map(agent => (
+                          <div
+                            key={agent.id}
+                            className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/40 cursor-pointer transition-colors"
+                            onClick={() => {
+                              setExpandedAgentId(expandedAgentId === agent.id ? null : agent.id);
+                              playSound("click");
+                            }}
+                          >
+                            <div className={cn(
+                              "h-6 w-6 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-[10px] font-bold shrink-0",
+                              getAvatarColor(agent.name)
+                            )}>
+                              {agent.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-medium truncate">{agent.name}</p>
+                              <p className="text-[10px] text-muted-foreground truncate">{agent.email}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          </>
         )}
       </div>
 

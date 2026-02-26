@@ -19,9 +19,7 @@ export function EstimatedEarningsCard({ currentAgentId }: Props) {
       // Get all agents
       const { data: agents } = await supabase
         .from("agents")
-        .select("id")
-        .eq("is_deactivated", false)
-        .eq("status", "active");
+        .select("id");
 
       if (!agents?.length) return null;
 
@@ -81,12 +79,12 @@ export function EstimatedEarningsCard({ currentAgentId }: Props) {
           <div className="p-2.5 rounded-lg bg-muted/50">
             <p className="text-muted-foreground">Personal</p>
             <p className="font-bold text-foreground">${Math.round(data.personalEarnings).toLocaleString()}</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">ALP: ${data.adminAOP.toLocaleString()}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">AOP: ${data.adminAOP.toLocaleString()}</p>
           </div>
           <div className="p-2.5 rounded-lg bg-muted/50">
             <p className="text-muted-foreground">Override</p>
             <p className="font-bold text-foreground">${Math.round(data.overrideEarnings).toLocaleString()}</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">Team ALP: ${data.othersAOP.toLocaleString()}</p>
+            <p className="text-[10px] text-muted-foreground mt-0.5">Team AOP: ${data.othersAOP.toLocaleString()}</p>
           </div>
         </div>
       </div>

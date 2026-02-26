@@ -178,7 +178,7 @@ export function ScheduleBar() {
             playSound("click");
             setExpanded((v) => !v);
           }}
-          className="flex items-center gap-2 w-full px-4 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          className={cn("flex items-center gap-2 w-full px-4 text-xs text-muted-foreground hover:text-foreground transition-colors", isMobile ? "py-2.5" : "py-1.5")}
         >
           <Clock className="h-3.5 w-3.5" />
           <span className="font-medium">Schedule</span>
@@ -191,7 +191,7 @@ export function ScheduleBar() {
             </Badge>
           )}
           <span className="ml-auto">
-            {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className={cn("h-3 w-3", !expanded && "animate-bounce")} />}
           </span>
         </button>
 
@@ -213,7 +213,8 @@ export function ScheduleBar() {
                       whileTap={{ scale: 0.95 }}
                       onClick={() => setDetailItem(item)}
                       className={cn(
-                        "group relative flex items-center gap-1.5 shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-all hover:scale-[1.02]",
+                        "group relative flex items-center gap-1.5 shrink-0 rounded-full border text-xs font-medium transition-all hover:scale-[1.02]",
+                        isMobile ? "px-3 py-2" : "px-3 py-1",
                         colorMap[item.color],
                         item.color === "red" && "animate-pulse"
                       )}
@@ -228,11 +229,12 @@ export function ScheduleBar() {
                         role="button"
                         onClick={(e) => handleDismiss(item, e)}
                         className={cn(
-                          "ml-1 flex h-4 w-4 items-center justify-center rounded-full bg-background/60 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-background",
+                          "ml-1 flex items-center justify-center rounded-full bg-background/60 transition-opacity hover:bg-background",
+                          isMobile ? "h-6 w-6 opacity-100" : "h-4 w-4 opacity-0 group-hover:opacity-100",
                           dismissingId === item.id && "animate-spin opacity-100"
                         )}
                       >
-                        <X className="h-2.5 w-2.5" />
+                        <X className={isMobile ? "h-3.5 w-3.5" : "h-2.5 w-2.5"} />
                       </span>
                     </motion.button>
                   );

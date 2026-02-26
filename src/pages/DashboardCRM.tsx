@@ -164,12 +164,20 @@ const getTimeAgo = (dateString: string): string => {
 };
 
 const isStaleAgent = (agent: AgentCRM): boolean => {
-  if (!agent.lastContactedAt) return true;
+  if (!agent.lastContactedAt) {
+    // New agents with no production/deals aren't stale — they're just new
+    return (agent.weeklyDeals > 0 || agent.monthlyDeals > 0);
+  }
   return (Date.now() - new Date(agent.lastContactedAt).getTime()) / 3600000 >= 48;
 };
 
 const getContactInfo = (agent: AgentCRM) => {
-  if (!agent.lastContactedAt) return { label: "Never", color: "text-red-500 dark:text-red-400" };
+  if (!agent.lastContactedAt) {
+    // Differentiate "new" vs truly "never contacted"
+    const hasActivity = agent.weeklyDeals > 0 || agent.monthlyDeals > 0 || agent.weeklyALP > 0;
+    if (!hasActivity) return { label: "New", color: "text-muted-foreground" };
+    return { label: "Never", color: "text-red-500 dark:text-red-400" };
+  }
   const h = (Date.now() - new Date(agent.lastContactedAt).getTime()) / 3600000;
   if (h < 24) return { label: getTimeAgo(agent.lastContactedAt), color: "text-emerald-600 dark:text-emerald-400" };
   if (h < 48) return { label: getTimeAgo(agent.lastContactedAt), color: "text-amber-600 dark:text-amber-400" };
@@ -465,27 +473,75 @@ function AgentExpandedRow({
               </DropdownMenu>
             </div>
 
-            {/* Week + Month ALP for live agents */}
-            {isLive && (
-              <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/5 border border-primary/10">
-                <div>
-                  <p className="text-[10px] text-muted-foreground">Week ALP</p>
-                  <p className="text-sm font-bold text-primary">${agent.weeklyALP.toLocaleString()}</p>
+            {/* Production Summary — ALL stages */}
+            <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/5 border border-primary/10">
+              <div>
+                <p className="text-[10px] text-muted-foreground">Week AOP</p>
+                <p className="text-sm font-bold text-primary">${agent.weeklyALP.toLocaleString()}</p>
+              </div>
+              <div className="w-px h-8 bg-border" />
+              <div>
+                <p className="text-[10px] text-muted-foreground">Month AOP</p>
+                <p className="text-sm font-bold">${agent.monthlyALP.toLocaleString()}</p>
+              </div>
+              <div className="w-px h-8 bg-border" />
+              <div>
+                <p className="text-[10px] text-muted-foreground">Deals</p>
+                <p className="text-sm font-bold">{agent.monthlyDeals}</p>
+              </div>
+              {agent.weeklyClosingRate > 0 && (
+                <>
+                  <div className="w-px h-8 bg-border" />
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Close %</p>
+                    <p className={cn(
+                      "text-sm font-bold",
+                      agent.weeklyClosingRate < 30 ? "text-destructive" :
+                      agent.weeklyClosingRate < 60 ? "text-amber-500" :
+                      "text-emerald-500"
+                    )}>{agent.weeklyClosingRate}%</p>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Days Active / Training counter */}
+            {agent.startDate && (
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-xs">
+                  <Clock className="h-3 w-3 mr-1" />
+                  {differenceInDays(new Date(), new Date(agent.startDate))}d since joined
+                </Badge>
+              </div>
+            )}
+            {daysInTraining !== null && !isLive && (
+              <Badge variant="outline" className={cn("text-xs", daysInTraining >= 7 ? "bg-amber-500/10 text-amber-500 border-amber-500/20" : "")}>
+                <Clock className="h-3 w-3 mr-1" /> {daysInTraining}d in training
+              </Badge>
+            )}
+
+            {/* License Progress for onboarding */}
+            {isOnboarding && (
+              <div className="space-y-1">
+                <p className="text-[10px] text-muted-foreground font-medium">License Progress</p>
+                <div className="flex items-center gap-1">
+                  {["unlicensed", "course_purchased", "finished_course", "test_scheduled", "licensed"].map((step, i) => {
+                    const progress = agent.licenseProgress || "unlicensed";
+                    const steps = ["unlicensed", "course_purchased", "finished_course", "test_scheduled", "licensed"];
+                    const currentIdx = steps.indexOf(progress);
+                    const isComplete = i <= currentIdx;
+                    return (
+                      <div key={step} className="flex items-center gap-1">
+                        <div className={cn(
+                          "h-2.5 w-2.5 rounded-full border",
+                          isComplete ? "bg-primary border-primary" : "bg-muted border-border"
+                        )} />
+                        {i < 4 && <div className={cn("h-0.5 w-4", isComplete ? "bg-primary" : "bg-border")} />}
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="w-px h-8 bg-border" />
-                <div>
-                  <p className="text-[10px] text-muted-foreground">Month ALP</p>
-                  <p className="text-sm font-bold">${agent.monthlyALP.toLocaleString()}</p>
-                </div>
-                {agent.weeklyClosingRate > 0 && (
-                  <>
-                    <div className="w-px h-8 bg-border" />
-                    <div>
-                      <p className="text-[10px] text-muted-foreground">Close %</p>
-                      <p className={cn("text-sm font-bold", agent.weeklyClosingRate >= 30 ? "text-primary" : "text-foreground")}>{agent.weeklyClosingRate}%</p>
-                    </div>
-                  </>
-                )}
+                <p className="text-[10px] text-muted-foreground capitalize">{(agent.licenseProgress || "unlicensed").replace(/_/g, " ")}</p>
               </div>
             )}
 
@@ -931,9 +987,8 @@ export default function DashboardCRM() {
                                 <TableHead className="w-[220px]">Agent</TableHead>
                                 <TableHead className="w-[100px]">License</TableHead>
                                 <TableHead className="w-[90px]">Contact</TableHead>
-                                <TableHead className="w-[70px]">Course</TableHead>
-                                {section.key === "live" && <TableHead className="w-[100px] text-right">Week ALP</TableHead>}
-                                {section.key === "live" && <TableHead className="w-[80px] text-right">Deals</TableHead>}
+                                <TableHead className="w-[100px] text-right">Week AOP</TableHead>
+                                <TableHead className="w-[80px] text-right">Deals</TableHead>
                                 <TableHead className="w-[80px]">Attend.</TableHead>
                                 <TableHead className="w-8" />
                               </TableRow>
@@ -1021,19 +1076,13 @@ export default function DashboardCRM() {
                                       <TableCell className="py-2">
                                         <span className={cn("text-xs font-medium", contact.color)}>{contact.label}</span>
                                       </TableCell>
-                                      <TableCell className="py-2">
-                                        {agent.hasTrainingCourse ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <span className="text-xs text-muted-foreground">—</span>}
+                                      <TableCell className="py-2 text-right">
+                                        <span className="text-xs font-semibold">{agent.weeklyALP > 0 ? `$${agent.weeklyALP.toLocaleString()}` : "—"}</span>
+                                        {agent.hasTrainingCourse && <CheckCircle2 className="h-3 w-3 text-emerald-500 inline ml-1" />}
                                       </TableCell>
-                                      {section.key === "live" && (
-                                        <TableCell className="py-2 text-right">
-                                          <span className="text-xs font-semibold">{agent.weeklyALP > 0 ? `$${agent.weeklyALP.toLocaleString()}` : "—"}</span>
-                                        </TableCell>
-                                      )}
-                                      {section.key === "live" && (
-                                        <TableCell className="py-2 text-right">
-                                          <span className="text-xs">{agent.weeklyDeals > 0 ? agent.weeklyDeals : "—"}</span>
-                                        </TableCell>
-                                      )}
+                                      <TableCell className="py-2 text-right">
+                                        <span className="text-xs">{agent.weeklyDeals > 0 ? agent.weeklyDeals : "—"}</span>
+                                      </TableCell>
                                       <TableCell className="py-2">
                                         <Badge variant="outline" className={cn("text-[10px]", attendanceColors[agent.attendanceStatus])}>
                                           {attendanceLabels[agent.attendanceStatus]}

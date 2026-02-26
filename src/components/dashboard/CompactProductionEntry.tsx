@@ -177,7 +177,7 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
             Numbers Saved!
           </span>
           <span className="text-sm opacity-80">
-            {formData.deals_closed} deals • ${Number(formData.aop).toLocaleString()} ALP
+            {formData.deals_closed} deals • ${Number(formData.aop).toLocaleString()} AOP
           </span>
         </div>
       );

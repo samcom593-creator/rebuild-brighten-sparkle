@@ -87,9 +87,7 @@ export function LiveLeaderboard({ currentAgentId, showAISummary = true }: LiveLe
           display_name,
           profile:profiles!agents_profile_id_fkey(full_name, avatar_url)
         `)
-        .in("id", agentIds)
-        .eq("is_deactivated", false)
-        .eq("is_inactive", false);
+        .in("id", agentIds);
 
        // IMPORTANT: managers/agents may not have SELECT access to all agents returned by production.
        // Filter out any production rows whose agent record isn't visible (or was deleted).

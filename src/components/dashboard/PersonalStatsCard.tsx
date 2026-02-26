@@ -86,11 +86,10 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
           .maybeSingle();
 
         if (currentAgent) {
-          const { data: downlineAgents } = await supabase
-            .from("agents")
-            .select("id")
-            .eq("invited_by_manager_id", currentAgent.id)
-            .eq("is_deactivated", false);
+            const { data: downlineAgents } = await supabase
+              .from("agents")
+              .select("id")
+              .eq("invited_by_manager_id", currentAgent.id);
 
           targetAgentIds = [currentAgent.id, ...(downlineAgents?.map(a => a.id) || [])];
         }

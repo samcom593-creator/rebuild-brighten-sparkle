@@ -328,12 +328,12 @@ export default function LeadCenter() {
     });
   }, [leads, searchQuery, filterManager, filterStatus, filterLicense, filterSource]);
 
-  // Stats
+  // Stats — fixed accuracy: contacted = has contactedAt OR status beyond "new"; closed = hired/contracted/closed_at
   const stats = useMemo(() => {
     return {
       newDripIns: leads.filter((l) => l.source === "applications" && l.status === "new").length,
-      contacted: leads.filter((l) => !!l.contactedAt).length,
-      closed: leads.filter((l) => l.status === "hired" || l.status === "contracted").length,
+      contacted: leads.filter((l) => !!l.contactedAt || (l.status !== "new" && l.status !== "not_contacted")).length,
+      closed: leads.filter((l) => l.status === "hired" || l.status === "contracted" || l.status === "approved").length,
       licensed: leads.filter((l) => l.licenseStatus === "licensed").length,
     };
   }, [leads]);

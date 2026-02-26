@@ -40,6 +40,7 @@ import { Button } from "@/components/ui/button";
 import { SkeletonLoader } from "@/components/ui/skeleton-loader";
 import { AgencyGrowthCard } from "@/components/dashboard/AgencyGrowthCard";
 import { TotalApplicationsBanner } from "@/components/dashboard/TotalApplicationsBanner";
+import { EstimatedEarningsCard } from "@/components/dashboard/EstimatedEarningsCard";
 import { useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
@@ -353,6 +354,9 @@ export default function Dashboard() {
             <ClosingRateLeaderboard />
             <ReferralLeaderboard />
           </div>
+
+          {/* Estimated Earnings Card (Admin Only) */}
+          {isAdmin && currentAgentId && <EstimatedEarningsCard currentAgentId={currentAgentId} />}
 
         </div>
 

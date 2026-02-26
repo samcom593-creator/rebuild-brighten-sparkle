@@ -231,7 +231,7 @@ export default function LogNumbers() {
     try {
       const today = getTodayPST();
 
-      const { data, error } = await supabase.functions.invoke("log-production", {
+      const res = await supabase.functions.invoke("log-production", {
         body: {
           action: "submit",
           agentId: selectedAgent.id,
@@ -240,8 +240,22 @@ export default function LogNumbers() {
         }
       });
 
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      // Handle FunctionsHttpError — res.error is set when status >= 400
+      if (res.error) {
+        // Try to extract error message from response body
+        let msg = "Failed to save numbers";
+        if (res.error?.context && typeof res.error.context.json === "function") {
+          try {
+            const body = await res.error.context.json();
+            msg = body?.error || msg;
+          } catch {}
+        } else if (res.error?.message) {
+          msg = res.error.message;
+        }
+        throw new Error(msg);
+      }
+
+      if (res.data?.error) throw new Error(res.data.error);
 
       // Show success INSTANTLY
       setShowConfetti(true);
@@ -257,9 +271,9 @@ export default function LogNumbers() {
       }).catch(err => console.error("Notification error:", err));
 
       fetchLeaderboard().catch(err => console.error("Leaderboard fetch error:", err));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Save error:", error);
-      toast.error("Failed to save numbers");
+      toast.error(error.message || "Failed to save numbers");
     } finally {
       setSaving(false);
     }

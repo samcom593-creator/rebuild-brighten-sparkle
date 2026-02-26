@@ -1,36 +1,71 @@
 
 
-# Fix Schedule Bar Mobile Usability
+# Fix All Dashboard Production Numbers — Accurate Agency-Wide Data
 
-## Problem
-The Schedule Bar ("urgent" banner) at the top of all authenticated pages is too cramped on mobile. The tap targets are small, the dismiss X buttons are hidden behind hover states (which don't exist on touch), and the chevron arrow isn't obviously tappable.
+## Problems Found
+
+### 1. ProductionForecast shows only admin's personal numbers
+The 30-Day AOP Forecast on AgentPortal queries `daily_production` filtered by `agentId` (the admin's own ID). It shows only the admin's personal production instead of agency-wide totals.
+
+### 2. EstimatedEarningsCard excludes most agents
+Filters agents by `is_deactivated: false` AND `status: 'active'` — this misses all inactive/deactivated agents who have real production data (Bryan Ross, Codey Salazar, Joseph Sebasco, etc.).
+
+### 3. TeamSnapshotCard (Dashboard "Agency Production") excludes deactivated agents
+Filters `.eq("is_deactivated", false)` when fetching agent IDs, so deactivated agents' production is invisible.
+
+### 4. PersonalStatsCard ("Agency Performance") same issue
+Also filters `.eq("is_deactivated", false)` for admin view — missing production data.
+
+### 5. ManagerProductionStats excludes deactivated team members
+Same `is_deactivated: false` filter on team agents.
+
+### 6. Labels say "ALP" instead of "AOP"
+Multiple components display "ALP" when the database column is `aop` and the user wants "AOP":
+- PersonalStatsCard: line 247 `${periodLabels[timePeriod]} ALP` and line 389 `Avg ALP`
+- TeamSnapshotCard: line 354 `Total ALP` and line 294 `ALP Breakdown`
+- ManagerProductionStats: lines 178/186 `Today ALP` / `Week ALP`
+- EstimatedEarningsCard: lines 84/89 `ALP:` / `Team ALP:`
+
+---
 
 ## Changes
 
-### File: `src/components/layout/ScheduleBar.tsx`
+### File: `src/components/dashboard/ProductionForecast.tsx`
+- Remove `.eq("agent_id", agentId)` filter — query ALL production for last 30 days
+- Aggregate rows by date (sum all agents per day) for the linear regression forecast
+- Change queryKey to `"production-forecast-agency"` (no longer per-agent)
 
-**1. Increase mobile tap target size**
-- Change the collapsed bar height from `py-1.5` to `py-2.5` on mobile (min 44px tap target)
-- Make the chevron arrow animated (bouncing) so users know it's tappable
+### File: `src/components/dashboard/EstimatedEarningsCard.tsx`
+- Remove `.eq("is_deactivated", false).eq("status", "active")` — include all agents
+- Fix labels: "ALP:" → "AOP:" and "Team ALP:" → "Team AOP:"
 
-**2. Make dismiss X always visible on mobile**
-- The dismiss X currently uses `opacity-0 group-hover:opacity-100` which doesn't work on touch devices
-- Add logic: on mobile, always show the X button (opacity-100) instead of hiding it behind hover
+### File: `src/components/dashboard/TeamSnapshotCard.tsx`
+- Remove `.eq("is_deactivated", false)` from admin agent query (line 74)
+- Fix labels: "Total ALP" → "Total AOP", "ALP Breakdown" → "AOP Breakdown"
 
-**3. Increase pill tap targets on mobile**
-- Change the schedule item pills from `px-3 py-1` to `px-3 py-2` on mobile so they're easier to tap
-- Increase the X dismiss button from `h-4 w-4` to `h-6 w-6` on mobile
+### File: `src/components/dashboard/PersonalStatsCard.tsx`
+- Remove `.eq("is_deactivated", false)` from admin agent query (line 79)
+- Fix labels: `${periodLabels[timePeriod]} ALP` → `AOP`, `Avg ALP` → `Avg AOP`
 
-**4. Animate the chevron arrow**
-- Add a subtle bounce animation to the ChevronDown when collapsed, signaling it's interactive
+### File: `src/components/dashboard/ManagerProductionStats.tsx`
+- Remove `.eq("is_deactivated", false)` from team agent query (line 41)
+- Fix labels: "Today ALP" → "Today AOP", "Week ALP" → "Week AOP"
 
-### No other files need changes
-The ScheduleBar is rendered in `AuthenticatedShell.tsx` inside the `SidebarLayout`, which already handles mobile header spacing (`pt-16`). The banner itself just needs better touch targets.
+---
 
 ## Technical Details
 
-All changes are in `src/components/layout/ScheduleBar.tsx`:
-- Use the existing `isMobile` boolean to conditionally apply larger padding/sizing
-- Replace `group-hover:opacity-100` with always-visible on mobile using `isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"`
-- Add `animate-bounce` class to the chevron icon when `!expanded`
+| File | Line(s) | Change |
+|------|---------|--------|
+| `ProductionForecast.tsx` | 14-28 | Remove agent_id filter, aggregate all production by date |
+| `EstimatedEarningsCard.tsx` | 22-24 | Remove `is_deactivated` and `status` filters |
+| `EstimatedEarningsCard.tsx` | 84, 89 | "ALP" → "AOP" |
+| `TeamSnapshotCard.tsx` | 71-74 | Remove `is_deactivated` filter |
+| `TeamSnapshotCard.tsx` | 294, 354 | "ALP" → "AOP" |
+| `PersonalStatsCard.tsx` | 76-79 | Remove `is_deactivated` filter |
+| `PersonalStatsCard.tsx` | 247, 389 | "ALP" → "AOP" |
+| `ManagerProductionStats.tsx` | 37-41 | Remove `is_deactivated` filter |
+| `ManagerProductionStats.tsx` | 178, 186 | "ALP" → "AOP" |
+
+All changes are label fixes and filter removals — no schema changes needed.
 

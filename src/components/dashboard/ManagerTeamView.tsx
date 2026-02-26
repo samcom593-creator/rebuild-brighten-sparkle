@@ -676,11 +676,11 @@ export function ManagerTeamView() {
             <div className="hidden md:flex items-center gap-4 text-sm">
               <div className="text-center">
                 <span className="font-semibold text-primary">${member.weekALP.toLocaleString()}</span>
-                <p className="text-[10px] text-muted-foreground">Week ALP</p>
+                <p className="text-[10px] text-muted-foreground">Week AOP</p>
               </div>
               <div className="text-center">
                 <span className="font-semibold text-emerald-500">${member.monthALP.toLocaleString()}</span>
-                <p className="text-[10px] text-muted-foreground">Month ALP</p>
+                <p className="text-[10px] text-muted-foreground">Month AOP</p>
               </div>
               <div className="text-center">
                 <span className="font-semibold">{member.monthDeals}</span>
@@ -730,11 +730,11 @@ export function ManagerTeamView() {
           <div className="grid grid-cols-3 gap-4 mb-4 md:hidden">
             <div className="text-center">
               <p className="text-lg font-semibold text-primary">${member.weekALP.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground">Week ALP</p>
+              <p className="text-xs text-muted-foreground">Week AOP</p>
             </div>
             <div className="text-center">
               <p className="text-lg font-semibold text-emerald-500">${member.monthALP.toLocaleString()}</p>
-              <p className="text-xs text-muted-foreground">Month ALP</p>
+              <p className="text-xs text-muted-foreground">Month AOP</p>
             </div>
             <div className="text-center">
               <p className="text-lg font-semibold">{member.monthDeals}</p>

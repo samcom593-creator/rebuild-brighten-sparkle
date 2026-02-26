@@ -1,108 +1,65 @@
 
 
-# Fix: Log Numbers, Leaderboards, and Aggressive Push Prompts
+# 8:40 PM Auto-Reminder + "Paying for Leads" Auto-Mark
 
-## Issues Identified
+## What Will Be Done
 
-### 1. Log Numbers public page (`/apex-daily-numbers`) -- leaderboard shows everyone at $0
-The `log-production` edge function's `leaderboard` action pre-loads ALL 30 active agents into the map, then overlays production data. Agents with zero production still appear as entries with `weeklyALP: 0`, making the leaderboard look broken with 25+ agents showing $0. The fix is to filter out zero-ALP entries before returning.
+### 1. Update `notify-fill-numbers` edge function
+**File: `supabase/functions/notify-fill-numbers/index.ts`**
 
-### 2. Authenticated leaderboard not updating after save
-The `CompactProductionEntry` (used on `/numbers`) calls `onSaved` after submit, which triggers `fetchAgentData()` in `AgentPortal` -- but `CompactLeaderboard` only updates via realtime subscription (300ms debounce). After saving, the leaderboard should explicitly refetch. The `CompactLeaderboard` component doesn't expose a refresh mechanism and isn't connected to the save callback.
+- Add `"840pm"` as a new `reminderType` with:
+  - Subject: `"🚨 LOG YOUR NUMBERS NOW — or you're marked as paying for leads!"`
+  - Urgency message warning about the "paying for leads" consequence
+  - Red urgency color (`#ef4444`)
+  - A prominent red warning box in the email body explaining the consequence
+- Send **push notifications** alongside emails by calling the existing `send-push-notification` edge function for each agent who has a push subscription
+- For `"840pm"` and `"9pm"` reminders: **auto-upsert** into `lead_payment_tracking` table with `paid: false` for agents who haven't logged numbers, marking them as "paying for leads" for the current week
 
-Fix: Add a `refreshKey` prop to `CompactLeaderboard` that forces refetch when incremented after save.
+### 2. Set up 8:40 PM CST cron job
+**Database insert (cron.schedule)**
 
-### 3. `ProductionEntry` (used on Agent Portal for managers/admins) -- same leaderboard disconnect
-When managers save numbers for team members via `ProductionEntry`, the `LeaderboardTabs` only updates via realtime. The realtime subscription works but has 300ms debounce + potential RLS latency. Production Entry does call `onSaved` which triggers `fetchAgentData` and increments `refreshKey`, but `LeaderboardTabs` doesn't consume `refreshKey`.
+Schedule: `40 2 * * *` (2:40 AM UTC = 8:40 PM CST)
 
-Fix: Pass `refreshKey` to `LeaderboardTabs` so it refetches immediately after save.
+Calls `notify-fill-numbers` with `{"reminderType": "840pm"}`.
 
-### 4. Push notification prompt shows once then waits 7 days
-User wants it on EVERY page load until they accept. Current behavior: show once, store timestamp in localStorage, don't show again for 7 days.
+This fires every single day at 8:40 PM CST. Any live agent who hasn't logged their daily production numbers by that time will:
+1. Receive a push notification (if subscribed)
+2. Receive a red-urgency email with a warning about being marked as paying for leads
+3. Be automatically marked as `paid: false` in `lead_payment_tracking` for the current week
 
-Fix: Remove the 7-day cooldown entirely. Show the prompt on every page load (after 5s delay) until the user either grants or denies permission. Only stop prompting when `permission !== "default"` (meaning they made a choice) or `isSubscribed === true`.
-
-### 5. `LogNumbers` leaderboard only shows weekly data
-The public page leaderboard uses `getWeekStartPST()` for the start date, which is correct, but the data shown after save is the WEEKLY leaderboard -- not daily. This is fine but should be clearly labeled.
-
----
-
-## Implementation Plan
-
-### 1. Fix `log-production` edge function -- filter zero-ALP entries
-
-**File: `supabase/functions/log-production/index.ts`**
-
-In the `leaderboard` action, after building the entries array, filter out agents with `weeklyALP === 0` AND `weeklyDeals === 0` before sorting/ranking. This removes the noise of 25+ zero-production entries.
-
-### 2. Add `refreshKey` to `CompactLeaderboard`
-
-**File: `src/components/dashboard/CompactLeaderboard.tsx`**
-
-- Add optional `refreshKey?: number` prop
-- Add `refreshKey` to the `fetchLeaderboard` dependency array so it refetches when the parent increments it
-
-**File: `src/pages/Numbers.tsx`**
-
-- Add `refreshKey` state, pass it to `CompactLeaderboard`
-- Pass an `onSaved` callback to `CompactProductionEntry` that increments `refreshKey`
-
-### 3. Pass `refreshKey` to `LeaderboardTabs` in Agent Portal
-
-**File: `src/components/dashboard/LeaderboardTabs.tsx`**
-
-- Add optional `refreshKey?: number` prop
-- Include it in the `fetchLeaderboard` dependency array
-
-**File: `src/pages/AgentPortal.tsx`**
-
-- Already has `refreshKey` state and `handleSaved` incrementing it
-- Pass `refreshKey` to `LeaderboardTabs` component
-
-### 4. Make push prompt show on EVERY visit until accepted
-
-**File: `src/components/layout/PushNotificationPrompt.tsx`**
-
-- Remove the 7-day cooldown check entirely
-- Only skip if `permission !== "default"` (user already chose) or `isSubscribed === true`
-- On dismiss, do NOT store anything in localStorage -- just hide for this session (use session state only)
-- On enable (accept/deny), store the timestamp so we know they made a choice
-- This means: every time they open the site in a new tab/session, they see the prompt until they accept or deny via the browser
-
-### 5. Deploy updated edge function
-
-The `log-production` edge function will be auto-deployed after the code change.
+### 3. No schema changes needed
+The `lead_payment_tracking` table already exists with the right structure (`agent_id`, `week_start`, `tier`, `paid`).
 
 ---
 
 ## Technical Details
 
-### LeaderboardTabs refreshKey integration
 ```text
-AgentPortal
-  handleSaved() → refreshKey++
-  └── LeaderboardTabs refreshKey={refreshKey}
-        └── useEffect([fetchLeaderboard]) depends on refreshKey
-              → immediate refetch after save
+8:40 PM CST Daily Flow:
+┌─────────────────────────────────────────┐
+│ cron fires at 2:40 AM UTC (8:40PM CST)  │
+│ → POST notify-fill-numbers              │
+│   body: {"reminderType": "840pm"}       │
+└──────────────┬──────────────────────────┘
+               │
+     ┌─────────▼──────────┐
+     │ Get live agents    │
+     │ Check daily_prod   │
+     │ Filter: no entry   │
+     └─────────┬──────────┘
+               │
+     ┌─────────▼──────────────────────┐
+     │ 1. Auto-mark in                │
+     │    lead_payment_tracking       │
+     │    (paid=false, tier=standard) │
+     │ 2. Send push notification      │
+     │ 3. Send urgent email           │
+     └────────────────────────────────┘
 ```
 
-### CompactLeaderboard refreshKey integration
-```text
-Numbers page
-  onSaved() → refreshKey++
-  └── CompactLeaderboard refreshKey={refreshKey}
-        └── fetchLeaderboard re-runs
-```
-
-### Push prompt behavior change
-```text
-Before: Show once → store timestamp → wait 7 days
-After:  Show every session → hide on dismiss (session only) → never show again once permission !== "default"
-```
-
-### Edge function leaderboard fix
-```text
-Before: Returns 30 entries (25 with $0)
-After:  Returns only entries with weeklyALP > 0 OR weeklyDeals > 0
-```
+### Files Changed
+| File | Change |
+|------|--------|
+| `supabase/functions/notify-fill-numbers/index.ts` | Add "840pm" type, push notifications, auto-mark paying for leads |
+| Database (cron insert) | Schedule `40 2 * * *` cron job |
 

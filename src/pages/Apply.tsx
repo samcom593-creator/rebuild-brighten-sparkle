@@ -60,6 +60,7 @@ const applicationSchema = z.object({
   availability: z.string().min(1, "Please select your availability"),
   referralSource: z.string().optional(),
   whyJoin: z.string().optional(),
+  motivation: z.string().min(25, "Please share your motivation (minimum 25 characters)"),
   
   // Communication Consent
   smsConsent: z.boolean().refine(val => val === true, {
@@ -311,7 +312,7 @@ export default function Apply() {
         fieldsToValidate = ["licenseStatus"];
         break;
       case 4:
-        fieldsToValidate = ["availability", "smsConsent"];
+        fieldsToValidate = ["availability", "smsConsent", "motivation"];
         break;
     }
     
@@ -913,6 +914,23 @@ export default function Apply() {
                         </Select>
                         {errors.availability && (
                           <p className="text-sm text-destructive">{errors.availability.message}</p>
+                        )}
+                      </div>
+
+                      {/* Motivation - Required */}
+                      <div className="space-y-2">
+                        <Label htmlFor="motivation" className="flex items-center gap-2">
+                          <Heart className="h-4 w-4 text-primary" />
+                          What motivates you to join APEX? *
+                        </Label>
+                        <Textarea
+                          id="motivation"
+                          {...register("motivation")}
+                          placeholder="Tell us what drives you — your goals, your why, what excites you about this opportunity... (minimum 25 characters)"
+                          className="bg-input min-h-[100px]"
+                        />
+                        {errors.motivation && (
+                          <p className="text-sm text-destructive">{(errors.motivation as any).message}</p>
                         )}
                       </div>
 

@@ -1331,6 +1331,21 @@ export default function NotificationHub() {
     };
   }, [logs]);
 
+  // Blast History Section
+  const blastHistory = useMemo(() => {
+    const days = new Map<string, { date: string; push: number; sms: number; email: number; total: number }>();
+    logs.forEach(l => {
+      const day = l.created_at?.split("T")[0] || "unknown";
+      const entry = days.get(day) || { date: day, push: 0, sms: 0, email: 0, total: 0 };
+      entry.total++;
+      if (l.channel === "push") entry.push++;
+      else if (l.channel === "sms" || l.channel === "sms-auto") entry.sms++;
+      else if (l.channel === "email") entry.email++;
+      days.set(day, entry);
+    });
+    return Array.from(days.values()).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 14);
+  }, [logs]);
+
   return (
     <div className="space-y-6 p-4 md:p-6">
       {/* Premium Header */}
@@ -1380,6 +1395,7 @@ export default function NotificationHub() {
           </TabsTrigger>
           <TabsTrigger value="carriers">Carrier Assignment</TabsTrigger>
           <TabsTrigger value="blast">Bulk Blast</TabsTrigger>
+          <TabsTrigger value="history">Blast History</TabsTrigger>
         </TabsList>
 
         <TabsContent value="logs" className="space-y-4">
@@ -1435,6 +1451,38 @@ export default function NotificationHub() {
 
         <TabsContent value="blast">
           <BulkBlastSection onBoostLockChange={setBoostLocked} />
+        </TabsContent>
+
+        <TabsContent value="history">
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-muted-foreground">Recent Blast Activity (Last 14 Days)</h3>
+            <div className="rounded-xl border border-border overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead className="text-right">Push</TableHead>
+                    <TableHead className="text-right">SMS</TableHead>
+                    <TableHead className="text-right">Email</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {blastHistory.length === 0 ? (
+                    <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No blast history yet</TableCell></TableRow>
+                  ) : blastHistory.map(day => (
+                    <TableRow key={day.date}>
+                      <TableCell className="font-medium text-sm">{format(new Date(day.date + "T12:00:00"), "MMM d, yyyy")}</TableCell>
+                      <TableCell className="text-right text-sm">{day.push || "—"}</TableCell>
+                      <TableCell className="text-right text-sm">{day.sms || "—"}</TableCell>
+                      <TableCell className="text-right text-sm">{day.email || "—"}</TableCell>
+                      <TableCell className="text-right text-sm font-bold">{day.total}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

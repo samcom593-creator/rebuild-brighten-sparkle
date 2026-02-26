@@ -70,23 +70,20 @@ export function TeamSnapshotCard() {
       if (isAdmin) {
         const { data: allAgents } = await supabase
           .from("agents")
-          .select("id")
-          .eq("is_deactivated", false);
+          .select("id");
         agentIds = allAgents?.map(a => a.id) || [];
       } else if (isManager) {
         const { data: currentAgent } = await supabase
           .from("agents")
           .select("id")
           .eq("user_id", user.id)
-          .eq("is_deactivated", false)
           .maybeSingle();
 
         if (currentAgent) {
           const { data: downlineAgents } = await supabase
             .from("agents")
             .select("id")
-            .eq("invited_by_manager_id", currentAgent.id)
-            .eq("is_deactivated", false);
+            .eq("invited_by_manager_id", currentAgent.id);
 
           agentIds = [currentAgent.id, ...(downlineAgents?.map(a => a.id) || [])];
         }
@@ -95,7 +92,6 @@ export function TeamSnapshotCard() {
           .from("agents")
           .select("id")
           .eq("user_id", user.id)
-          .eq("is_deactivated", false)
           .maybeSingle();
           
         if (currentAgent) {
@@ -177,8 +173,7 @@ export function TeamSnapshotCard() {
       if (isAdmin) {
         const { data: allAgents } = await supabase
           .from("agents")
-          .select("id")
-          .eq("is_deactivated", false);
+          .select("id");
         agentIds = allAgents?.map(a => a.id) || [];
       } else if (isManager) {
         const { data: currentAgent } = await supabase
@@ -191,8 +186,7 @@ export function TeamSnapshotCard() {
           const { data: downlineAgents } = await supabase
             .from("agents")
             .select("id")
-            .eq("invited_by_manager_id", currentAgent.id)
-            .eq("is_deactivated", false);
+            .eq("invited_by_manager_id", currentAgent.id);
 
           agentIds = [currentAgent.id, ...(downlineAgents?.map(a => a.id) || [])];
         }
@@ -291,7 +285,7 @@ export function TeamSnapshotCard() {
 
   const getDrilldownTitle = () => {
     switch (drilldownType) {
-      case "alp": return "ALP Breakdown by Agent";
+      case "alp": return "AOP Breakdown by Agent";
       case "deals": return "Deals Breakdown by Agent";
       case "agents": return "Active Agents";
       case "closeRate": return "Close Rate by Agent";
@@ -351,7 +345,7 @@ export function TeamSnapshotCard() {
               >
                 <div className="flex items-center gap-2 text-primary mb-2">
                   <DollarSign className="h-5 w-5" />
-                  <span className="text-xs font-medium uppercase tracking-wide">Total ALP</span>
+                  <span className="text-xs font-medium uppercase tracking-wide">Total AOP</span>
                 </div>
                 <AnimatedCounter
                   value={stats.totalALP}

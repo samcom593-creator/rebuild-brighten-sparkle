@@ -75,8 +75,7 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
         // Admin sees all active agents
         const { data: allAgents } = await supabase
           .from("agents")
-          .select("id")
-          .eq("is_deactivated", false);
+          .select("id");
         targetAgentIds = allAgents?.map(a => a.id) || [agentId];
       } else if (isManager && user) {
         // Manager sees self + downline
@@ -244,7 +243,7 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
       highlight: myDeals >= 3,
     },
     {
-      label: `${periodLabels[timePeriod]} ALP`,
+      label: `${periodLabels[timePeriod]} AOP`,
       value: myAlp,
       formatAsCurrency: true,
       icon: Award,
@@ -386,7 +385,7 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
               <p className="text-xs text-muted-foreground text-center">
                 Agency {periodLabels[timePeriod]}: <span className="font-medium text-foreground">{agencyStats.totalAgents}</span> agents • 
                 Avg Close: <span className={cn("font-medium", isAboveAvgClosing ? "text-emerald-500" : "text-foreground")}>{agencyStats.avgClosingRate.toFixed(0)}%</span> • 
-                Avg ALP: <span className="font-medium text-foreground">${Math.round(agencyStats.avgAlp).toLocaleString()}</span>
+                Avg AOP: <span className="font-medium text-foreground">${Math.round(agencyStats.avgAlp).toLocaleString()}</span>
               </p>
             </motion.div>
         )}

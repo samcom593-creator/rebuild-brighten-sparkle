@@ -13,16 +13,34 @@ interface ProductionForecastProps {
 
 export function ProductionForecast({ agentId }: ProductionForecastProps) {
   const { data: production } = useQuery({
-    queryKey: ["production-forecast", agentId],
+    queryKey: ["production-forecast-agency"],
     queryFn: async () => {
       const thirtyDaysAgo = format(subDays(new Date(), 30), "yyyy-MM-dd");
       const { data } = await supabase
         .from("daily_production")
         .select("production_date, aop, deals_closed, presentations")
-        .eq("agent_id", agentId)
         .gte("production_date", thirtyDaysAgo)
         .order("production_date", { ascending: true });
-      return data || [];
+      
+      // Aggregate all agents by date
+      const byDate = new Map<string, { production_date: string; aop: number; deals_closed: number; presentations: number }>();
+      (data || []).forEach(row => {
+        const existing = byDate.get(row.production_date);
+        if (existing) {
+          existing.aop += Number(row.aop || 0);
+          existing.deals_closed += (row.deals_closed || 0);
+          existing.presentations += (row.presentations || 0);
+        } else {
+          byDate.set(row.production_date, {
+            production_date: row.production_date,
+            aop: Number(row.aop || 0),
+            deals_closed: row.deals_closed || 0,
+            presentations: row.presentations || 0,
+          });
+        }
+      });
+      
+      return Array.from(byDate.values()).sort((a, b) => a.production_date.localeCompare(b.production_date));
     },
     staleTime: 120_000,
   });

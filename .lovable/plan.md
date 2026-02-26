@@ -1,53 +1,36 @@
 
 
-# Fix Lead Contact Status — Data Accuracy Plan
+# Fix Schedule Bar Mobile Usability
 
-## Problem Identified
+## Problem
+The Schedule Bar ("urgent" banner) at the top of all authenticated pages is too cramped on mobile. The tap targets are small, the dismiss X buttons are hidden behind hover states (which don't exist on touch), and the chevron arrow isn't obviously tappable.
 
-After investigating the database, I found leads that clearly have been contacted (notes added, status changed, license progress updated) but have `contacted_at = NULL`, making them show up as "not contacted" in the Lead Center.
+## Changes
 
-### Applications with missing `contacted_at` (7 records):
+### File: `src/components/layout/ScheduleBar.tsx`
 
-| Name | Evidence of Contact | Status |
-|------|-------------------|--------|
-| Gavin Charles | license_progress = finished_course | contracting |
-| Jordan McClendon | XCEL course 100% complete notes | new |
-| Malik Tobias | XCEL course 100% complete notes | new |
-| Pierre Auguste | XCEL course 100% complete notes | new |
-| Marko Thompson | Has referral notes | rejected |
-| Johnivan Bush | Has referral notes | new |
-| Joshua Auguste | Has course progress notes | new |
+**1. Increase mobile tap target size**
+- Change the collapsed bar height from `py-1.5` to `py-2.5` on mobile (min 44px tap target)
+- Make the chevron arrow animated (bouncing) so users know it's tappable
 
-### What happened
+**2. Make dismiss X always visible on mobile**
+- The dismiss X currently uses `opacity-0 group-hover:opacity-100` which doesn't work on touch devices
+- Add logic: on mobile, always show the X button (opacity-100) instead of hiding it behind hover
 
-When notes were added (course progress updates, referral tags) or statuses were changed, the system did not automatically set `contacted_at`. The Lead Center filter logic already accounts for `hasContactHistory` and `status != 'new'`, but these leads slipped through because they have notes/license progress but still show `status = 'new'` with no `contacted_at`.
+**3. Increase pill tap targets on mobile**
+- Change the schedule item pills from `px-3 py-1` to `px-3 py-2` on mobile so they're easier to tap
+- Increase the X dismiss button from `h-4 w-4` to `h-6 w-6` on mobile
 
-## Fix
+**4. Animate the chevron arrow**
+- Add a subtle bounce animation to the ChevronDown when collapsed, signaling it's interactive
 
-### 1. Bulk data fix — Set `contacted_at` for all applications with evidence of contact
+### No other files need changes
+The ScheduleBar is rendered in `AuthenticatedShell.tsx` inside the `SidebarLayout`, which already handles mobile header spacing (`pt-16`). The banner itself just needs better touch targets.
 
-Run a data UPDATE on the `applications` table:
-- WHERE `contacted_at IS NULL` AND any of: `status != 'new'`, `notes IS NOT NULL`, `last_contacted_at IS NOT NULL`, or `license_progress` not `'unlicensed'`
-- SET `contacted_at = COALESCE(last_contacted_at, updated_at)`
+## Technical Details
 
-This fixes 7 application records.
-
-### 2. Prevent future drift — Add defensive logic
-
-In `src/pages/LeadCenter.tsx`, the stat and filter logic already handles `hasContactHistory`. But additionally, strengthen the "contacted" detection to include:
-- `license_progress` beyond `'unlicensed'` (e.g., `finished_course`, `test_scheduled`, `waiting_on_license`)
-- Presence of notes (as a signal of interaction)
-
-Update the Lead interface to include `licenseProgress` and `hasNotes`, and incorporate them into the contacted stat/filter logic.
-
-### 3. Aged leads
-
-The aged leads table has many records with notes but status `'new'` — these notes appear to be auto-imported data, not evidence of manual contact. These will NOT be bulk-updated to avoid false positives. The Recruiter HQ already filters aged leads correctly (only showing those marked as `contacted`).
-
-### Files to modify
-
-| File | Change |
-|------|--------|
-| Database (data update) | SET `contacted_at` for 7 application records with clear contact evidence |
-| `src/pages/LeadCenter.tsx` | Add `licenseProgress` and `hasNotes` to Lead interface; strengthen contacted detection in stats and filters |
+All changes are in `src/components/layout/ScheduleBar.tsx`:
+- Use the existing `isMobile` boolean to conditionally apply larger padding/sizing
+- Replace `group-hover:opacity-100` with always-visible on mobile using `isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"`
+- Add `animate-bounce` class to the chevron icon when `!expanded`
 

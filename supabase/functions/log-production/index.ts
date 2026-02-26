@@ -142,6 +142,7 @@ Deno.serve(async (req) => {
       }
 
       const entries = Array.from(agentMap.values())
+        .filter((e: any) => e.weeklyALP > 0 || e.weeklyDeals > 0)
         .map((e: any) => ({
           ...e,
           closingRate:

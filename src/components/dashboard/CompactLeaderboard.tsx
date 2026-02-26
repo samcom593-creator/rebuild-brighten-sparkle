@@ -12,6 +12,7 @@ import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 interface CompactLeaderboardProps {
   currentAgentId?: string;
   className?: string;
+  refreshKey?: number;
 }
 
 interface LeaderboardEntry {
@@ -210,7 +211,7 @@ function LeaderboardRow({ entry, index, maxALP }: { entry: LeaderboardEntry; ind
   );
 }
 
-export function CompactLeaderboard({ currentAgentId, className }: CompactLeaderboardProps) {
+export function CompactLeaderboard({ currentAgentId, className, refreshKey }: CompactLeaderboardProps) {
   const [period, setPeriod] = useState<Period>("day");
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -318,7 +319,7 @@ export function CompactLeaderboard({ currentAgentId, className }: CompactLeaderb
     } finally {
       setLoading(false);
     }
-  }, [period, currentAgentId, customRange]);
+  }, [period, currentAgentId, customRange, refreshKey]);
 
   useEffect(() => {
     fetchLeaderboard();

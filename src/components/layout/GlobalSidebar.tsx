@@ -14,6 +14,7 @@ import {
   Briefcase,
   Archive,
   BarChart3,
+  TrendingUp,
   Maximize2,
   Minimize2,
   Plus,
@@ -116,6 +117,10 @@ export function GlobalSidebar({
     // Recruiter HQ — Aisha only (+ admins)
     if (isAisha || isAdmin) {
       toolItems.push({ icon: Sparkles, label: "Recruiter HQ ✨", href: "/dashboard/recruiter", special: true });
+    }
+
+    if (isAdmin || isManager) {
+      toolItems.push({ icon: TrendingUp, label: "Growth", href: "/dashboard/growth" });
     }
 
     toolItems.push({ icon: ShoppingCart, label: "Purchase Leads", href: "/purchase-leads" });

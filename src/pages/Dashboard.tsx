@@ -201,11 +201,18 @@ async function fetchDashboardData(userId: string, profileName: string | null | u
   };
 }
 
+import { Shield, Settings } from "lucide-react";
+
 const quickActions = [
   { to: "/numbers", icon: Edit3, color: "primary", title: "Log Numbers", sub: "Enter today's stats" },
   { to: "/agent-portal", icon: BarChart3, color: "violet-500", title: "Agent Portal", sub: "View performance" },
   { to: "/dashboard/crm", icon: Users, color: "emerald-500", title: "CRM", sub: "Manage agents" },
   { to: "/dashboard/applicants", icon: Sparkles, color: "amber-500", title: "Pipeline", sub: "View applicants" },
+] as const;
+
+const adminQuickActions = [
+  { to: "/dashboard/command-center", icon: Shield, color: "red-500", title: "Command Center", sub: "Full admin control" },
+  { to: "/dashboard/accounts", icon: Settings, color: "indigo-500", title: "Accounts", sub: "Manage accounts" },
 ] as const;
 
 export default function Dashboard() {
@@ -284,6 +291,17 @@ export default function Dashboard() {
       {/* ====== QUICK ACTIONS ROW ====== */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         {quickActions.map((card) => (
+          <div key={card.to}>
+            <Link to={card.to} onClick={() => playSound("click")}>
+              <GlassCard className={`p-4 hover:border-${card.color}/50 hover:bg-${card.color}/5 cursor-pointer transition-all card-hover-lift group`}>
+                <card.icon className={`h-5 w-5 text-${card.color} mb-2 group-hover:scale-110 transition-transform`} />
+                <p className="font-semibold text-[13px] sm:text-sm">{card.title}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{card.sub}</p>
+              </GlassCard>
+            </Link>
+          </div>
+        ))}
+        {isAdmin && adminQuickActions.map((card) => (
           <div key={card.to}>
             <Link to={card.to} onClick={() => playSound("click")}>
               <GlassCard className={`p-4 hover:border-${card.color}/50 hover:bg-${card.color}/5 cursor-pointer transition-all card-hover-lift group`}>

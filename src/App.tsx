@@ -56,6 +56,8 @@ const RecruiterDashboard = lazy(() => import("./pages/RecruiterDashboard"));
 const AgentPipeline = lazy(() => import("./pages/AgentPipeline"));
 const CalendarPage = lazy(() => import("./pages/CalendarPage"));
 const NotificationHub = lazy(() => import("./pages/NotificationHub"));
+const LinksPage = lazy(() => import("./pages/LinksPage"));
+const GrowthDashboard = lazy(() => import("./pages/GrowthDashboard"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -112,6 +114,7 @@ const App = () => (
                   <Route path="/disclosures" element={<Disclosures />} />
                   <Route path="/install" element={<Install />} />
                   <Route path="/apex-daily-numbers" element={<LogNumbers />} />
+                  <Route path="/links" element={<LinksPage />} />
 
                   {/* Authenticated shell - sidebar mounted once */}
                   <Route element={<AuthenticatedShell />}>
@@ -137,6 +140,7 @@ const App = () => (
                      <Route path="/agent-pipeline" element={<AgentPipeline />} />
                      <Route path="/dashboard/calendar" element={<CalendarPage />} />
                      <Route path="/dashboard/notifications" element={<ProtectedRoute requireAdmin><NotificationHub /></ProtectedRoute>} />
+                     <Route path="/dashboard/growth" element={<GrowthDashboard />} />
                   </Route>
 
                   {/* Legacy redirect */}

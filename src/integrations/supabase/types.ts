@@ -1141,6 +1141,36 @@ export type Database = {
         }
         Relationships: []
       }
+      elite_circle_waitlist: {
+        Row: {
+          created_at: string
+          email: string
+          first_name: string
+          id: string
+          last_name: string
+          motivation: string | null
+          phone: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          first_name: string
+          id?: string
+          last_name: string
+          motivation?: string | null
+          phone?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          first_name?: string
+          id?: string
+          last_name?: string
+          motivation?: string | null
+          phone?: string | null
+        }
+        Relationships: []
+      }
       email_tracking: {
         Row: {
           agent_id: string | null
@@ -1447,6 +1477,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "magic_login_tokens_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      manager_growth_stats: {
+        Row: {
+          agent_id: string
+          applications_submitted: number
+          created_at: string
+          follower_count: number
+          followers_gained: number
+          id: string
+          instagram_views: number
+          stat_date: string
+        }
+        Insert: {
+          agent_id: string
+          applications_submitted?: number
+          created_at?: string
+          follower_count?: number
+          followers_gained?: number
+          id?: string
+          instagram_views?: number
+          stat_date?: string
+        }
+        Update: {
+          agent_id?: string
+          applications_submitted?: number
+          created_at?: string
+          follower_count?: number
+          followers_gained?: number
+          id?: string
+          instagram_views?: number
+          stat_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manager_growth_stats_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "agents"

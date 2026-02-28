@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { Badge } from "@/components/ui/badge";
 import { 
   Crown, 
   ArrowLeft, 
@@ -1038,9 +1039,15 @@ export default function Apply() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="none">I found APEX on my own</SelectItem>
-                              {activeAgents.map((agent) => (
+                             {activeAgents.map((agent) => (
                                 <SelectItem key={agent.id} value={agent.id}>
-                                  {agent.name}{agent.instagramHandle ? ` (@${agent.instagramHandle})` : ''}
+                                  <div className="flex items-center gap-2 py-0.5">
+                                    <span className="font-medium">{agent.name}</span>
+                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-primary/30 text-primary">Manager</Badge>
+                                    {agent.instagramHandle && (
+                                      <span className="text-xs text-muted-foreground">@{agent.instagramHandle}</span>
+                                    )}
+                                  </div>
                                 </SelectItem>
                               ))}
                               <SelectItem value="other">Someone else not listed</SelectItem>

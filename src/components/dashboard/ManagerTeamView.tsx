@@ -84,6 +84,8 @@ export function ManagerTeamView() {
   const [sortBy, setSortBy] = useState<SortOption>("production-desc");
   const [managerUserIds, setManagerUserIds] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   useEffect(() => {
     fetchTeamData();
@@ -367,6 +369,52 @@ export function ManagerTeamView() {
     setExpandedMember(expandedMember === memberId ? null : memberId);
   };
 
+  const toggleSelect = (memberId: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(memberId)) next.delete(memberId); else next.add(memberId);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    const realAgents = filteredAndSortedMembers.filter(m => !m.id.startsWith("app-"));
+    if (selectedIds.size === realAgents.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(realAgents.map(m => m.id)));
+    }
+  };
+
+  const bulkSendPortalLogins = async () => {
+    setBulkLoading(true);
+    const selected = teamMembers.filter(m => selectedIds.has(m.id) && !m.id.startsWith("app-"));
+    let success = 0;
+    for (const m of selected) {
+      try {
+        await supabase.functions.invoke("send-agent-portal-login", { body: { agentId: m.id, email: m.email } });
+        success++;
+      } catch {}
+    }
+    toast.success(`Portal logins sent to ${success} agent(s)`);
+    setBulkLoading(false);
+    setSelectedIds(new Set());
+  };
+
+  const bulkChangeStage = async (stage: string) => {
+    setBulkLoading(true);
+    const ids = Array.from(selectedIds).filter(id => !id.startsWith("app-"));
+    let success = 0;
+    for (const id of ids) {
+      const { error } = await supabase.from("agents").update({ onboarding_stage: stage as any }).eq("id", id);
+      if (!error) success++;
+    }
+    toast.success(`Stage updated for ${success} agent(s)`);
+    setBulkLoading(false);
+    setSelectedIds(new Set());
+    fetchTeamData();
+  };
+
   const filteredAndSortedMembers = useMemo(() => {
     let result = teamMembers;
 
@@ -389,6 +437,16 @@ export function ManagerTeamView() {
 
   return (
     <div className="space-y-4">
+      {/* Bulk select toggle */}
+      {isAdmin && (
+        <div className="flex items-center gap-3">
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={selectAll}>
+            {selectedIds.size > 0 ? `Deselect All (${selectedIds.size})` : "Select All"}
+          </Button>
+          {selectedIds.size > 0 && <span className="text-xs text-muted-foreground">{selectedIds.size} selected</span>}
+        </div>
+      )}
+
       <div className="space-y-3">
         {filteredAndSortedMembers.map((member, index) => (
           <motion.div
@@ -396,7 +454,7 @@ export function ManagerTeamView() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.03 }}
-            className="border border-border rounded-lg overflow-hidden"
+            className={cn("border rounded-lg overflow-hidden", selectedIds.has(member.id) ? "border-primary" : "border-border")}
           >
             <div
               className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
@@ -404,6 +462,16 @@ export function ManagerTeamView() {
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
+                  {/* Bulk checkbox */}
+                  {isAdmin && !member.id.startsWith("app-") && (
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(member.id)}
+                      onChange={(e) => { e.stopPropagation(); toggleSelect(member.id); }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="h-4 w-4 rounded border-border accent-primary"
+                    />
+                  )}
                   <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
                     <span className="text-sm font-semibold text-primary">
                       {member.name.charAt(0).toUpperCase()}
@@ -731,6 +799,42 @@ export function ManagerTeamView() {
           </motion.div>
         ))}
       </div>
+
+      {/* Floating Bulk Action Bar */}
+      {isAdmin && selectedIds.size > 0 && (
+        <motion.div
+          initial={{ y: 100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card border border-border rounded-xl shadow-lg px-6 py-3 flex items-center gap-4"
+        >
+          <span className="text-sm font-semibold">{selectedIds.size} selected</span>
+          <div className="h-6 w-px bg-border" />
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs gap-1.5"
+            disabled={bulkLoading}
+            onClick={bulkSendPortalLogins}
+          >
+            <Send className="h-3 w-3" /> Send Login Links
+          </Button>
+          <Select onValueChange={bulkChangeStage}>
+            <SelectTrigger className="h-8 w-[140px] text-xs" disabled={bulkLoading}>
+              <SelectValue placeholder="Change Stage" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="onboarding">Onboarding</SelectItem>
+              <SelectItem value="training_online">Training Online</SelectItem>
+              <SelectItem value="in_field_training">In-Field Training</SelectItem>
+              <SelectItem value="evaluated">Evaluated</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => setSelectedIds(new Set())}>
+            Cancel
+          </Button>
+        </motion.div>
+      )}
     </div>
   );
 }

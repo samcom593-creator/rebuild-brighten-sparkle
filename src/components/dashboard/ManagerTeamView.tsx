@@ -5,12 +5,24 @@ import {
   Clock,
   Search,
   ChevronRight,
+  Send,
+  Copy,
+  Shield,
+  ShieldOff,
+  UserX,
+  UserCheck,
+  ArrowRightLeft,
+  Mail,
+  FileText,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { LicenseProgressSelector } from "./LicenseProgressSelector";
+import { toast } from "sonner";
 
 type SortOption = "production-desc" | "production-asc" | "name" | "status";
 type RosterFilter = "all" | "licensed" | "unlicensed" | "training" | "training_online" | "in_field_training";
@@ -524,15 +536,238 @@ export function ManagerTeamView() {
                       onClick={(e) => e.stopPropagation()}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-muted text-muted-foreground hover:bg-accent transition-colors"
                     >
-                      Email
+                      <Mail className="h-3 w-3" /> Email
                     </a>
                   )}
                 </div>
+
+                {/* ====== ADMIN ACTIONS ====== */}
+                {isAdmin && !member.id.startsWith("app-") && (
+                  <div className="mt-3 pt-3 border-t border-border space-y-3">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Admin Actions</p>
+                    
+                    {/* Row 1: Login & Communication */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs gap-1.5"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          try {
+                            const { error } = await supabase.functions.invoke("send-agent-portal-login", {
+                              body: { agentId: member.id, email: member.email },
+                            });
+                            if (error) throw error;
+                            toast.success(`Portal login sent to ${member.email}`);
+                          } catch (err: any) {
+                            toast.error(err.message || "Failed to send login");
+                          }
+                        }}
+                      >
+                        <Send className="h-3 w-3" /> Send Portal Login
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs gap-1.5"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          try {
+                            const { data, error } = await supabase.functions.invoke("generate-magic-link", {
+                              body: { agentId: member.id, email: member.email, destination: "portal" },
+                            });
+                            if (error) throw error;
+                            await navigator.clipboard.writeText(data.magicLink);
+                            toast.success("Login link copied to clipboard!");
+                          } catch (err: any) {
+                            toast.error(err.message || "Failed to generate link");
+                          }
+                        }}
+                      >
+                        <Copy className="h-3 w-3" /> Copy Login Link
+                      </Button>
+                      {member.licenseStatus !== "licensed" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs gap-1.5"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            try {
+                              const { error } = await supabase.functions.invoke("send-licensing-instructions", {
+                                body: { email: member.email, firstName: member.name.split(" ")[0] },
+                              });
+                              if (error) throw error;
+                              toast.success("Licensing instructions sent!");
+                            } catch (err: any) {
+                              toast.error(err.message || "Failed to send");
+                            }
+                          }}
+                        >
+                          <FileText className="h-3 w-3" /> Send Licensing Info
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Row 2: License & Stage & Reassign */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs gap-1.5"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          const newStatus = member.licenseStatus === "licensed" ? "unlicensed" : "licensed";
+                          const { error } = await supabase
+                            .from("agents")
+                            .update({ license_status: newStatus })
+                            .eq("id", member.id);
+                          if (error) { toast.error("Failed to update license"); return; }
+                          toast.success(`License changed to ${newStatus}`);
+                          fetchTeamData();
+                        }}
+                      >
+                        {member.licenseStatus === "licensed" ? "Set Unlicensed" : "Set Licensed"}
+                      </Button>
+
+                      <Select
+                        value={member.onboardingStage}
+                        onValueChange={async (val) => {
+                          const { error } = await supabase
+                            .from("agents")
+                            .update({ onboarding_stage: val as any })
+                            .eq("id", member.id);
+                          if (error) { toast.error("Failed to update stage"); return; }
+                          toast.success(`Stage changed to ${val.replace(/_/g, " ")}`);
+                          fetchTeamData();
+                        }}
+                      >
+                        <SelectTrigger className="h-7 w-[150px] text-xs" onClick={(e) => e.stopPropagation()}>
+                          <SelectValue placeholder="Stage" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="onboarding">Onboarding</SelectItem>
+                          <SelectItem value="training_online">Training Online</SelectItem>
+                          <SelectItem value="in_field_training">In-Field Training</SelectItem>
+                          <SelectItem value="evaluated">Evaluated</SelectItem>
+                          <SelectItem value="active">Active</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      <ManagerReassignInline
+                        currentManagerId={member.invitedByManagerId}
+                        agentId={member.id}
+                        onReassigned={fetchTeamData}
+                      />
+                    </div>
+
+                    {/* Row 3: Role & Status */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {member.userId && (
+                        <Button
+                          size="sm"
+                          variant={managerUserIds.has(member.userId) ? "destructive" : "outline"}
+                          className="h-7 text-xs gap-1.5"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            const isCurrentlyManager = managerUserIds.has(member.userId);
+                            if (isCurrentlyManager) {
+                              const { error } = await supabase
+                                .from("user_roles")
+                                .delete()
+                                .eq("user_id", member.userId)
+                                .eq("role", "manager");
+                              if (error) { toast.error("Failed to remove manager role"); return; }
+                              toast.success(`${member.name} demoted from Manager`);
+                            } else {
+                              const { error } = await supabase
+                                .from("user_roles")
+                                .insert({ user_id: member.userId, role: "manager" });
+                              if (error) { toast.error("Failed to promote to manager"); return; }
+                              toast.success(`${member.name} promoted to Manager!`);
+                            }
+                            fetchManagerRoles();
+                            fetchTeamData();
+                          }}
+                        >
+                          {managerUserIds.has(member.userId) ? (
+                            <><ShieldOff className="h-3 w-3" /> Remove Manager</>
+                          ) : (
+                            <><Shield className="h-3 w-3" /> Promote to Manager</>
+                          )}
+                        </Button>
+                      )}
+
+                      <Button
+                        size="sm"
+                        variant={member.isDeactivated ? "outline" : "destructive"}
+                        className="h-7 text-xs gap-1.5"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          const { error } = await supabase
+                            .from("agents")
+                            .update({
+                              is_deactivated: !member.isDeactivated,
+                              is_inactive: !member.isDeactivated,
+                            })
+                            .eq("id", member.id);
+                          if (error) { toast.error("Failed to update status"); return; }
+                          toast.success(member.isDeactivated ? `${member.name} reactivated` : `${member.name} deactivated`);
+                          fetchTeamData();
+                        }}
+                      >
+                        {member.isDeactivated ? (
+                          <><UserCheck className="h-3 w-3" /> Reactivate</>
+                        ) : (
+                          <><UserX className="h-3 w-3" /> Deactivate</>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </motion.div>
             )}
           </motion.div>
         ))}
       </div>
     </div>
+  );
+}
+
+function ManagerReassignInline({ currentManagerId, agentId, onReassigned }: { currentManagerId: string | null; agentId: string; onReassigned: () => void }) {
+  const [managers, setManagers] = useState<{ id: string; name: string }[]>([]);
+  
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.functions.invoke("get-active-managers");
+      if (data?.managers) {
+        setManagers(data.managers.map((m: any) => ({ id: m.id, name: m.name })));
+      }
+    })();
+  }, []);
+
+  return (
+    <Select
+      value={currentManagerId || ""}
+      onValueChange={async (val) => {
+        const { error } = await supabase
+          .from("agents")
+          .update({ invited_by_manager_id: val, manager_id: val })
+          .eq("id", agentId);
+        if (error) { toast.error("Failed to reassign"); return; }
+        toast.success("Agent reassigned!");
+        onReassigned();
+      }}
+    >
+      <SelectTrigger className="h-7 w-[160px] text-xs" onClick={(e) => e.stopPropagation()}>
+        <SelectValue placeholder="Reassign Manager" />
+      </SelectTrigger>
+      <SelectContent>
+        {managers.map(m => (
+          <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }

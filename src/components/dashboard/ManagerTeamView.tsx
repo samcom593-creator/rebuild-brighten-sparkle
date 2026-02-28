@@ -462,6 +462,74 @@ export function ManagerTeamView() {
                 </div>
               </div>
             </div>
+
+            {expandedMember === member.id && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="border-t border-border px-4 pb-4 pt-3 bg-muted/30"
+              >
+                {/* Mobile production stats */}
+                <div className="flex items-center gap-4 text-sm mb-3 md:hidden">
+                  <div className="text-center">
+                    <span className="font-semibold text-primary">${member.weekALP.toLocaleString()}</span>
+                    <p className="text-[10px] text-muted-foreground">Week ALP</p>
+                  </div>
+                  <div className="text-center">
+                    <span className="font-semibold text-emerald-500">${member.monthALP.toLocaleString()}</span>
+                    <p className="text-[10px] text-muted-foreground">Month ALP</p>
+                  </div>
+                  <div className="text-center">
+                    <span className="font-semibold">{member.monthDeals}</span>
+                    <p className="text-[10px] text-muted-foreground">Deals</p>
+                  </div>
+                </div>
+
+                {/* Agent details */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs mb-3">
+                  <div className="bg-background/50 rounded-md p-2">
+                    <p className="text-muted-foreground">License</p>
+                    <p className="font-medium capitalize">{member.licenseStatus}</p>
+                  </div>
+                  <div className="bg-background/50 rounded-md p-2">
+                    <p className="text-muted-foreground">Stage</p>
+                    <p className="font-medium capitalize">{member.onboardingStage.replace(/_/g, " ")}</p>
+                  </div>
+                  <div className="bg-background/50 rounded-md p-2">
+                    <p className="text-muted-foreground">Joined</p>
+                    <p className="font-medium">{getTimeAgo(member.joinedAt)}</p>
+                  </div>
+                  {member.managerName && (
+                    <div className="bg-background/50 rounded-md p-2">
+                      <p className="text-muted-foreground">Manager</p>
+                      <p className="font-medium">{member.managerName}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Quick actions */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <a
+                    href={`/dashboard/crm?focusAgentId=${member.id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                  >
+                    View in CRM
+                  </a>
+                  {member.email && (
+                    <a
+                      href={`mailto:${member.email}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-muted text-muted-foreground hover:bg-accent transition-colors"
+                    >
+                      Email
+                    </a>
+                  )}
+                </div>
+              </motion.div>
+            )}
           </motion.div>
         ))}
       </div>

@@ -58,6 +58,9 @@ const CalendarPage = lazy(() => import("./pages/CalendarPage"));
 const NotificationHub = lazy(() => import("./pages/NotificationHub"));
 const LinksPage = lazy(() => import("./pages/LinksPage"));
 const GrowthDashboard = lazy(() => import("./pages/GrowthDashboard"));
+const AdminCalendar = lazy(() => import("./pages/AdminCalendar"));
+const SeminarPage = lazy(() => import("./pages/SeminarPage"));
+const SeminarAdmin = lazy(() => import("./pages/SeminarAdmin"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -115,7 +118,7 @@ const App = () => (
                   <Route path="/install" element={<Install />} />
                   <Route path="/apex-daily-numbers" element={<LogNumbers />} />
                   <Route path="/links" element={<LinksPage />} />
-
+                  <Route path="/seminar" element={<SeminarPage />} />
                   {/* Authenticated shell - sidebar mounted once */}
                   <Route element={<AuthenticatedShell />}>
                     <Route path="/dashboard" element={<Dashboard />} />
@@ -141,6 +144,8 @@ const App = () => (
                      <Route path="/dashboard/calendar" element={<CalendarPage />} />
                      <Route path="/dashboard/notifications" element={<ProtectedRoute requireAdmin><NotificationHub /></ProtectedRoute>} />
                      <Route path="/dashboard/growth" element={<GrowthDashboard />} />
+                     <Route path="/dashboard/planner" element={<ProtectedRoute requireAdmin><AdminCalendar /></ProtectedRoute>} />
+                     <Route path="/dashboard/seminar" element={<SeminarAdmin />} />
                   </Route>
 
                   {/* Legacy redirect */}

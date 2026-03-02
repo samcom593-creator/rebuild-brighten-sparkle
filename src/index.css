@@ -562,6 +562,11 @@ html, body, #root {
 }
 
 /* Page entrance */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .page-enter {
   animation: fade-in 0.3s ease-out;
 }
@@ -573,6 +578,97 @@ html, body, #root {
 .card-hover-lift:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 25px hsl(var(--primary) / 0.08);
+}
+
+/* ====== Phase 10: Premium Micro-Interactions ====== */
+
+/* Interactive card: scale + glow on hover */
+.card-interactive {
+  @apply transition-all duration-300 cursor-pointer;
+}
+.card-interactive:hover {
+  transform: translateY(-3px) scale(1.005);
+  box-shadow: 0 12px 35px hsl(var(--primary) / 0.12), 0 0 0 1px hsl(var(--primary) / 0.1);
+}
+.card-interactive:active {
+  transform: translateY(-1px) scale(0.995);
+}
+
+/* Button press effect */
+.btn-press {
+  @apply transition-transform duration-100;
+}
+.btn-press:active {
+  transform: scale(0.96);
+}
+
+/* Skeleton shimmer loading */
+@keyframes skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton-shimmer {
+  background: linear-gradient(90deg, hsl(var(--muted)) 25%, hsl(var(--muted-foreground) / 0.08) 50%, hsl(var(--muted)) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+/* Subtle border glow on focus-within for form groups */
+.form-group-glow:focus-within {
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.15);
+  border-color: hsl(var(--primary) / 0.4);
+}
+
+/* Badge pulse for notifications */
+@keyframes badge-pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 hsl(var(--primary) / 0.4); }
+  50% { transform: scale(1.1); box-shadow: 0 0 0 6px hsl(var(--primary) / 0); }
+}
+.badge-pulse {
+  animation: badge-pulse 2s ease-in-out infinite;
+}
+
+/* Smooth number counter transition */
+.number-transition {
+  @apply transition-all duration-500 ease-out;
+}
+
+/* Hover underline animation for links */
+.hover-underline {
+  @apply relative;
+}
+.hover-underline::after {
+  content: '';
+  @apply absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all duration-300;
+}
+.hover-underline:hover::after {
+  @apply w-full;
+}
+
+/* Ripple effect for buttons */
+@keyframes ripple {
+  to { transform: scale(4); opacity: 0; }
+}
+
+/* Glass card hover state enhancement */
+.glass-hover:hover {
+  background: hsl(var(--card) / 0.95);
+  border-color: hsl(var(--primary) / 0.2);
+  box-shadow: 0 8px 30px hsl(var(--primary) / 0.06);
+}
+
+/* Tooltip arrow glow */
+.tooltip-glow {
+  box-shadow: 0 4px 12px hsl(var(--primary) / 0.15);
+}
+
+/* Status dot animations */
+@keyframes status-online {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.status-dot-online {
+  animation: status-online 2s ease-in-out infinite;
 }
 
 /* iOS overscroll containment for fixed elements */

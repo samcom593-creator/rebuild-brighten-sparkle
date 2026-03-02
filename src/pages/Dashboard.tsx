@@ -41,6 +41,7 @@ import { SkeletonLoader } from "@/components/ui/skeleton-loader";
 import { AgencyGrowthCard } from "@/components/dashboard/AgencyGrowthCard";
 import { TotalApplicationsBanner } from "@/components/dashboard/TotalApplicationsBanner";
 import { EstimatedEarningsCard } from "@/components/dashboard/EstimatedEarningsCard";
+import { TeamOverviewDashboard } from "@/components/dashboard/TeamOverviewDashboard";
 import { useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
@@ -323,6 +324,13 @@ export default function Dashboard() {
       {(isAdmin || isManager) && (
         <div className="mb-6">
           <ActivationRiskBanner />
+        </div>
+      )}
+
+      {/* ====== TEAM OVERVIEW (Admin Only) ====== */}
+      {isAdmin && (
+        <div className="mb-6">
+          <TeamOverviewDashboard />
         </div>
       )}
 

@@ -74,6 +74,48 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_calendar_blocks: {
+        Row: {
+          block_date: string
+          category: string
+          completed: boolean
+          created_at: string
+          end_hour: number
+          id: string
+          notes: string | null
+          start_hour: number
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          block_date?: string
+          category?: string
+          completed?: boolean
+          created_at?: string
+          end_hour: number
+          id?: string
+          notes?: string | null
+          start_hour: number
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          block_date?: string
+          category?: string
+          completed?: boolean
+          created_at?: string
+          end_hour?: number
+          id?: string
+          notes?: string | null
+          start_hour?: number
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       aged_leads: {
         Row: {
           about_me: string | null
@@ -2017,6 +2059,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      seminar_registrations: {
+        Row: {
+          attended: boolean | null
+          created_at: string
+          email: string
+          first_name: string
+          follow_up_sent_at: string | null
+          id: string
+          last_name: string
+          license_status: string | null
+          notes: string | null
+          phone: string | null
+          registered_at: string
+          seminar_date: string | null
+          source: string | null
+        }
+        Insert: {
+          attended?: boolean | null
+          created_at?: string
+          email: string
+          first_name: string
+          follow_up_sent_at?: string | null
+          id?: string
+          last_name: string
+          license_status?: string | null
+          notes?: string | null
+          phone?: string | null
+          registered_at?: string
+          seminar_date?: string | null
+          source?: string | null
+        }
+        Update: {
+          attended?: boolean | null
+          created_at?: string
+          email?: string
+          first_name?: string
+          follow_up_sent_at?: string | null
+          id?: string
+          last_name?: string
+          license_status?: string | null
+          notes?: string | null
+          phone?: string | null
+          registered_at?: string
+          seminar_date?: string | null
+          source?: string | null
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {

@@ -1,45 +1,48 @@
 
 
-# Phase 3 — Pipeline Dashboard Rebuild (CRM-Style Kanban)
+# Phase 4 Enhanced: Admin Calendar with Drag-and-Drop + AI Screenshot-to-Schedule
 
 ## Current State
-- `DashboardApplicants.tsx` is a 992-line card-list view with filters, notes, recording, and actions
-- `KanbanBoard.tsx` exists with 5 columns (Needs Outreach → Licensed) but cards are minimal — only name, email, contact badge, and phone
-- Cards lack: lead score, assigned manager, next action, stage badge, timeline preview
+- `AdminCalendar.tsx` exists with basic hour grid, add/delete/complete blocks, category colors, and ICS export
+- `admin_calendar_blocks` table exists with `user_id`, `title`, `start_hour`, `end_hour`, `block_date`, `category`, `completed`, `notes`
+- `ai-assistant` edge function exists with Lovable AI integration — can add a new request type
+- `@dnd-kit/core` and `@dnd-kit/sortable` already installed
 
-## What Changes
+## What to Build
 
-### 1. Enhanced KanbanBoard columns (7 total)
-Add two new columns to `KANBAN_COLUMNS`:
-- **Applicants** (new leads, `status=new`, no `license_progress`) — first column
-- **Dormant** (no contact in 14+ days) — last column
+### 1. Drag-and-Drop Time Block Reordering
+- Use `@dnd-kit/core` with `DndContext`, `useDraggable`, `useDroppable` to allow blocks to be dragged between hour slots
+- Each hour row becomes a droppable zone; each block becomes draggable
+- On drop: update `start_hour`/`end_hour` in database, maintain block duration
+- Visual drag overlay showing the block being moved with category color
 
-Update `COLUMN_TARGET_STAGE` mapping accordingly.
+### 2. AI Screenshot-to-Schedule
+- Add a "Scan Schedule" button that opens a dialog with image upload (file input)
+- Convert uploaded image to base64, send to a new `parse-schedule-image` edge function
+- Edge function uses Lovable AI (`google/gemini-2.5-flash`) with vision to extract schedule items from the screenshot
+- Returns structured JSON: `[{title, start_hour, end_hour, category}]`
+- Auto-populate blocks from the parsed result with a preview/confirm step
 
-### 2. Richer pipeline cards (`KanbanBoard.tsx`)
-Each card will show:
-- **Lead score** badge (color-coded using `SCORE_THRESHOLDS`)
-- **Assigned manager** name (passed via props)
-- **Stage badge** (current `license_progress` label)
-- **Last contact** freshness (already exists, keep)
-- **Next action** indicator (from `next_action_type` field)
-- **Timeline preview** — last activity title from `lead_activity` (fetched in parent, passed as prop)
+### 3. Mobile-Optimized Layout
+- Stack header actions vertically on mobile
+- Touch-friendly block actions (always visible on mobile, not hover-only)
+- Swipe-to-complete gesture via touch event handlers
+- Larger tap targets for hour slots
 
-### 3. Activity logging on drag-and-drop
-In `DashboardApplicants.tsx` `onStageChange` handler, call `logLeadActivity()` after updating `license_progress` to log the stage transition to `lead_activity`.
+### 4. Block Editing
+- Tap/click a block to open an edit dialog (currently only add exists)
+- Edit title, category, start/end time, and notes
 
-### 4. Integration with DashboardApplicants
-Add a view toggle (List / Kanban) at the top of `DashboardApplicants.tsx`. When Kanban is selected, render the enhanced `KanbanBoard` with the full application data. The existing list view remains available.
+### Files to Create/Modify
 
-### Files Modified
-| File | Change |
+| File | Action |
 |------|--------|
-| `src/components/pipeline/KanbanBoard.tsx` | Add 2 columns, enrich card with score/manager/stage/next-action/timeline |
-| `src/pages/DashboardApplicants.tsx` | Add List/Kanban toggle, wire KanbanBoard with enriched data + activity logging |
+| `src/pages/AdminCalendar.tsx` | Add DnD context, edit dialog, AI scan button, mobile layout |
+| `supabase/functions/parse-schedule-image/index.ts` | New edge function for AI vision parsing |
+| `supabase/config.toml` | Add `parse-schedule-image` function config |
 
-### Technical Notes
-- `KanbanApplication` interface extended with `lead_score`, `next_action_type`, `assigned_manager_name`, `last_activity_title`
-- Manager names already fetched in `DashboardApplicants` — reuse `managerNames` map
-- Dormant detection: cards with `last_contacted_at` older than `FOLLOWUP_TIMING.dormantDays` auto-sort to Dormant column
-- No new DB tables needed — uses existing `applications`, `lead_activity`, `logLeadActivity()`
+### Technical Details
+- DnD: `DndContext` wraps hour grid. Each hour slot is a `useDroppable` with `id=hour-{n}`. Each block is `useDraggable`. `onDragEnd` calculates new start/end hours from the drop target and persists to DB.
+- AI parsing: Uses `google/gemini-2.5-flash` multimodal with image input. System prompt instructs extraction of time blocks with title, start/end times, and best-guess category. Returns via tool calling for structured output.
+- Mobile: `useIsMobile()` hook controls conditional rendering of touch-friendly controls.
 

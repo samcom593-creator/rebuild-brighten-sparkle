@@ -1,13 +1,13 @@
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
 import { DollarSign, TrendingUp, Clock, CalendarDays, Info } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { DateRangePicker, useDateRange } from "@/components/ui/date-range-picker";
 import { format, differenceInCalendarDays } from "date-fns";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { getTodayPST, getMonthStartPST } from "@/lib/dateUtils";
 
 interface Props {
   currentAgentId: string;

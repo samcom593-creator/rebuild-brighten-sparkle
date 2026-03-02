@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { format, addDays, subDays } from "date-fns";
+import { format, addDays, subDays, getDay } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   DndContext, DragOverlay, useDraggable, useDroppable,
@@ -8,7 +8,7 @@ import {
 } from "@dnd-kit/core";
 import {
   ChevronLeft, ChevronRight, Plus, Check, Trash2, Clock, Download,
-  Camera, Pencil, GripVertical, Loader2,
+  Camera, Pencil, GripVertical, Loader2, Repeat, RefreshCw,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -39,6 +40,8 @@ const CATEGORIES = [
 
 const HOURS = Array.from({ length: 17 }, (_, i) => i + 6);
 
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
 interface CalendarBlock {
   id: string;
   title: string;
@@ -48,6 +51,18 @@ interface CalendarBlock {
   category: string;
   completed: boolean;
   notes: string | null;
+}
+
+interface RecurringBlock {
+  id: string;
+  title: string;
+  start_hour: number;
+  end_hour: number;
+  category: string;
+  notes: string | null;
+  recurrence_type: string;
+  day_of_week: number | null;
+  is_active: boolean;
 }
 
 interface ParsedBlock {
@@ -80,8 +95,8 @@ function generateICS(blocks: CalendarBlock[], dateStr: string) {
 }
 
 // Draggable block component
-function DraggableBlock({ block, isMobile, onToggle, onDelete, onEdit }: {
-  block: CalendarBlock; isMobile: boolean;
+function DraggableBlock({ block, isMobile, onToggle, onDelete, onEdit, isRecurringOrigin }: {
+  block: CalendarBlock; isMobile: boolean; isRecurringOrigin?: boolean;
   onToggle: () => void; onDelete: () => void; onEdit: () => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: block.id, data: { block } });
@@ -110,6 +125,9 @@ function DraggableBlock({ block, isMobile, onToggle, onDelete, onEdit }: {
           <span className={cn("text-sm font-medium truncate", block.completed && "line-through text-muted-foreground")}>
             {block.title}
           </span>
+          {isRecurringOrigin && (
+            <Repeat className="h-3 w-3 text-muted-foreground/50 flex-shrink-0" />
+          )}
         </div>
         <div className={cn("flex items-center gap-0.5", isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100 transition-opacity")}>
           <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={onEdit}>
@@ -158,6 +176,7 @@ export default function AdminCalendar() {
   const [formEndHour, setFormEndHour] = useState(10);
   const [formCategory, setFormCategory] = useState("admin");
   const [formNotes, setFormNotes] = useState("");
+  const [formRepeat, setFormRepeat] = useState<"none" | "daily" | "weekly">("none");
 
   // AI scan state
   const [showScan, setShowScan] = useState(false);
@@ -173,7 +192,24 @@ export default function AdminCalendar() {
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
   );
 
+  // Recurring blocks state
+  const [recurringBlocks, setRecurringBlocks] = useState<RecurringBlock[]>([]);
+  const [showRecurring, setShowRecurring] = useState(false);
+  const [pendingRecurring, setPendingRecurring] = useState<RecurringBlock[]>([]);
+  const [recurringAppliedDates, setRecurringAppliedDates] = useState<Set<string>>(new Set());
+
   const dateStr = format(selectedDate, "yyyy-MM-dd");
+  const dayOfWeek = getDay(selectedDate); // 0=Sunday
+
+  const fetchRecurringBlocks = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("recurring_calendar_blocks")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("is_active", true) as any;
+    setRecurringBlocks(data || []);
+  }, [user?.id]);
 
   const fetchBlocks = useCallback(async () => {
     if (!user) return;
@@ -184,14 +220,49 @@ export default function AdminCalendar() {
       .eq("user_id", user.id)
       .eq("block_date", dateStr)
       .order("start_hour", { ascending: true }) as any;
-    setBlocks(data || []);
-    setLoading(false);
-  }, [user?.id, dateStr]);
+    const dayBlocks: CalendarBlock[] = data || [];
+    setBlocks(dayBlocks);
 
+    // Check for applicable recurring blocks if day is empty
+    if (dayBlocks.length === 0 && !recurringAppliedDates.has(dateStr)) {
+      const matching = recurringBlocks.filter(rb => {
+        if (rb.recurrence_type === "daily") return true;
+        if (rb.recurrence_type === "weekly" && rb.day_of_week === dayOfWeek) return true;
+        return false;
+      });
+      setPendingRecurring(matching);
+    } else {
+      setPendingRecurring([]);
+    }
+
+    setLoading(false);
+  }, [user?.id, dateStr, recurringBlocks, dayOfWeek, recurringAppliedDates]);
+
+  useEffect(() => { fetchRecurringBlocks(); }, [fetchRecurringBlocks]);
   useEffect(() => { fetchBlocks(); }, [fetchBlocks]);
 
   const completedCount = blocks.filter(b => b.completed).length;
   const completionPct = blocks.length > 0 ? Math.round((completedCount / blocks.length) * 100) : 0;
+
+  // Apply recurring blocks to current day
+  const applyRecurringBlocks = async () => {
+    if (!user || pendingRecurring.length === 0) return;
+    const inserts = pendingRecurring.map(rb => ({
+      user_id: user.id,
+      title: rb.title,
+      start_hour: rb.start_hour,
+      end_hour: rb.end_hour,
+      block_date: dateStr,
+      category: rb.category,
+      notes: rb.notes,
+    }));
+    const { error } = await supabase.from("admin_calendar_blocks").insert(inserts as any);
+    if (error) { toast.error("Failed to apply recurring blocks"); return; }
+    toast.success(`${pendingRecurring.length} recurring blocks applied!`);
+    setPendingRecurring([]);
+    setRecurringAppliedDates(prev => new Set(prev).add(dateStr));
+    fetchBlocks();
+  };
 
   // Open add dialog for a specific hour
   const openAddDialog = (hour?: number) => {
@@ -201,6 +272,7 @@ export default function AdminCalendar() {
     setFormEndHour((hour ?? 9) + 1);
     setFormCategory("admin");
     setFormNotes("");
+    setFormRepeat("none");
     setShowAdd(true);
   };
 
@@ -212,12 +284,37 @@ export default function AdminCalendar() {
     setFormEndHour(block.end_hour);
     setFormCategory(block.category);
     setFormNotes(block.notes || "");
+    setFormRepeat("none");
     setShowAdd(true);
   };
 
   const handleSaveBlock = async () => {
     if (!formTitle.trim() || !user) return;
-    if (editingBlock) {
+
+    // Save recurring block if repeat is set
+    if (formRepeat !== "none" && !editingBlock) {
+      const recurringInsert: any = {
+        user_id: user.id,
+        title: formTitle.trim(),
+        start_hour: formStartHour,
+        end_hour: formEndHour,
+        category: formCategory,
+        notes: formNotes || null,
+        recurrence_type: formRepeat,
+        day_of_week: formRepeat === "weekly" ? dayOfWeek : null,
+      };
+      const { error: recError } = await supabase.from("recurring_calendar_blocks").insert(recurringInsert);
+      if (recError) { toast.error("Failed to save recurring block"); return; }
+
+      // Also insert as a regular block for today
+      const { error } = await supabase.from("admin_calendar_blocks").insert({
+        user_id: user.id, title: formTitle.trim(), start_hour: formStartHour, end_hour: formEndHour,
+        block_date: dateStr, category: formCategory, notes: formNotes || null,
+      } as any);
+      if (error) { toast.error("Failed to add block"); return; }
+      toast.success(`Recurring ${formRepeat} block created!`);
+      fetchRecurringBlocks();
+    } else if (editingBlock) {
       const { error } = await supabase.from("admin_calendar_blocks")
         .update({ title: formTitle.trim(), start_hour: formStartHour, end_hour: formEndHour, category: formCategory, notes: formNotes || null } as any)
         .eq("id", editingBlock.id);
@@ -254,6 +351,19 @@ export default function AdminCalendar() {
     a.href = url; a.download = `apex-schedule-${dateStr}.ics`; a.click();
     URL.revokeObjectURL(url);
     toast.success("Calendar exported!");
+  };
+
+  // Recurring block management
+  const toggleRecurringBlock = async (id: string, isActive: boolean) => {
+    await supabase.from("recurring_calendar_blocks").update({ is_active: !isActive } as any).eq("id", id);
+    fetchRecurringBlocks();
+    toast.success(isActive ? "Recurring block paused" : "Recurring block activated");
+  };
+
+  const deleteRecurringBlock = async (id: string) => {
+    await supabase.from("recurring_calendar_blocks").delete().eq("id", id);
+    setRecurringBlocks(prev => prev.filter(b => b.id !== id));
+    toast.success("Recurring block deleted");
   };
 
   // DnD handlers
@@ -343,6 +453,13 @@ export default function AdminCalendar() {
     setParsedBlocks(prev => prev.filter((_, i) => i !== idx));
   };
 
+  // Check if a block title matches any recurring block (simple heuristic)
+  const isRecurringOrigin = (block: CalendarBlock) => {
+    return recurringBlocks.some(rb =>
+      rb.title === block.title && rb.start_hour === block.start_hour && rb.end_hour === block.end_hour
+    );
+  };
+
   return (
     <DashboardLayout>
       <div className="max-w-4xl mx-auto">
@@ -353,6 +470,9 @@ export default function AdminCalendar() {
             <p className="text-muted-foreground text-sm">Block your day for maximum productivity</p>
           </div>
           <div className={cn("flex items-center gap-2", isMobile && "w-full flex-wrap")}>
+            <Button variant="outline" size="sm" onClick={() => setShowRecurring(true)}>
+              <Repeat className="h-4 w-4 mr-1" /> Recurring
+            </Button>
             <Button variant="outline" size="sm" onClick={() => { setShowScan(true); }} disabled={scanning}>
               {scanning ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Camera className="h-4 w-4 mr-1" />}
               {scanning ? "Scanning…" : "AI Scan"}
@@ -379,6 +499,26 @@ export default function AdminCalendar() {
             <ChevronRight className="h-5 w-5" />
           </Button>
         </div>
+
+        {/* Recurring Blocks Banner */}
+        {pendingRecurring.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4 bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-center justify-between gap-3"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <RefreshCw className="h-4 w-4 text-primary flex-shrink-0" />
+              <p className="text-sm text-foreground">
+                <span className="font-medium">{pendingRecurring.length} recurring block{pendingRecurring.length !== 1 ? "s" : ""}</span>
+                {" "}available for {format(selectedDate, "EEEE")}
+              </p>
+            </div>
+            <Button size="sm" onClick={applyRecurringBlocks}>
+              Apply
+            </Button>
+          </motion.div>
+        )}
 
         {/* Day Progress */}
         <div className="mb-6 bg-card border border-border rounded-xl p-4">
@@ -418,6 +558,7 @@ export default function AdminCalendar() {
                           key={block.id}
                           block={block}
                           isMobile={isMobile}
+                          isRecurringOrigin={isRecurringOrigin(block)}
                           onToggle={() => toggleComplete(block)}
                           onDelete={() => deleteBlock(block.id)}
                           onEdit={() => openEditDialog(block)}
@@ -565,13 +706,75 @@ export default function AdminCalendar() {
               <label className="text-sm font-medium">Notes (optional)</label>
               <Textarea value={formNotes} onChange={e => setFormNotes(e.target.value)} placeholder="Any details…" className="mt-1" rows={2} />
             </div>
+            {/* Repeat Toggle - only for new blocks */}
+            {!editingBlock && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Repeat</label>
+                <Select value={formRepeat} onValueChange={v => setFormRepeat(v as any)}>
+                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="daily">Daily</SelectItem>
+                    <SelectItem value="weekly">Weekly ({DAY_NAMES[dayOfWeek]}s)</SelectItem>
+                  </SelectContent>
+                </Select>
+                {formRepeat !== "none" && (
+                  <p className="text-xs text-muted-foreground">
+                    This block will auto-populate on {formRepeat === "daily" ? "every day" : `every ${DAY_NAMES[dayOfWeek]}`} when the day is empty.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAdd(false)}>Cancel</Button>
             <Button onClick={handleSaveBlock} disabled={!formTitle.trim()}>
-              {editingBlock ? "Save Changes" : "Add Block"}
+              {editingBlock ? "Save Changes" : formRepeat !== "none" ? "Create Recurring" : "Add Block"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage Recurring Blocks Dialog */}
+      <Dialog open={showRecurring} onOpenChange={setShowRecurring}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Repeat className="h-5 w-5" /> Recurring Blocks
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 py-4 max-h-[50vh] overflow-y-auto">
+            {recurringBlocks.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No recurring blocks yet. Add a block with "Repeat" enabled to create one.
+              </p>
+            )}
+            {recurringBlocks.map(rb => {
+              const cat = getCategoryStyle(rb.category);
+              return (
+                <div key={rb.id} className={cn("flex items-center justify-between rounded-lg border p-3", cat.border, !rb.is_active && "opacity-50")}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className={cn("w-2 h-2 rounded-full flex-shrink-0", cat.color)} />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{rb.title}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {formatHour(rb.start_hour)} – {formatHour(rb.end_hour)} · {rb.recurrence_type === "daily" ? "Every day" : `Every ${DAY_NAMES[rb.day_of_week ?? 0]}`}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <Switch
+                      checked={rb.is_active}
+                      onCheckedChange={() => toggleRecurringBlock(rb.id, rb.is_active)}
+                    />
+                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-400" onClick={() => deleteRecurringBlock(rb.id)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </DialogContent>
       </Dialog>
     </DashboardLayout>

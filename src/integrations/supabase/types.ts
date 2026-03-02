@@ -2015,6 +2015,48 @@ export type Database = {
         }
         Relationships: []
       }
+      recurring_calendar_blocks: {
+        Row: {
+          category: string
+          created_at: string
+          day_of_week: number | null
+          end_hour: number
+          id: string
+          is_active: boolean
+          notes: string | null
+          recurrence_type: string
+          start_hour: number
+          title: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          day_of_week?: number | null
+          end_hour: number
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          recurrence_type?: string
+          start_hour: number
+          title: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          day_of_week?: number | null
+          end_hour?: number
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          recurrence_type?: string
+          start_hour?: number
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       resources: {
         Row: {
           category: string

@@ -123,6 +123,14 @@ export function GlobalSidebar({
       toolItems.push({ icon: TrendingUp, label: "Growth", href: "/dashboard/growth" });
     }
 
+    if (isAdmin) {
+      toolItems.push({ icon: CalendarDays, label: "Day Planner", href: "/dashboard/planner" });
+    }
+
+    if (isAdmin || isManager) {
+      toolItems.push({ icon: Users, label: "Seminar", href: "/dashboard/seminar" });
+    }
+
     toolItems.push({ icon: ShoppingCart, label: "Purchase Leads", href: "/purchase-leads" });
 
     if (toolItems.length > 0) {

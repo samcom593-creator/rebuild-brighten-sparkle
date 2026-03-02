@@ -1,48 +1,41 @@
 
 
-# Phase 4 Enhanced: Admin Calendar with Drag-and-Drop + AI Screenshot-to-Schedule
+# Add Recurring Blocks to the Day Planner
 
-## Current State
-- `AdminCalendar.tsx` exists with basic hour grid, add/delete/complete blocks, category colors, and ICS export
-- `admin_calendar_blocks` table exists with `user_id`, `title`, `start_hour`, `end_hour`, `block_date`, `category`, `completed`, `notes`
-- `ai-assistant` edge function exists with Lovable AI integration — can add a new request type
-- `@dnd-kit/core` and `@dnd-kit/sortable` already installed
+## Overview
+Add a recurring block system so users can create daily or weekly repeating time blocks. When navigating to a new date, recurring blocks auto-populate if no blocks exist for that day yet.
 
-## What to Build
+## Database Changes
 
-### 1. Drag-and-Drop Time Block Reordering
-- Use `@dnd-kit/core` with `DndContext`, `useDraggable`, `useDroppable` to allow blocks to be dragged between hour slots
-- Each hour row becomes a droppable zone; each block becomes draggable
-- On drop: update `start_hour`/`end_hour` in database, maintain block duration
-- Visual drag overlay showing the block being moved with category color
+**New table: `recurring_calendar_blocks`**
+- `id` UUID PK
+- `user_id` UUID NOT NULL
+- `title` TEXT NOT NULL
+- `start_hour` INT NOT NULL
+- `end_hour` INT NOT NULL
+- `category` TEXT DEFAULT 'admin'
+- `notes` TEXT
+- `recurrence_type` TEXT NOT NULL ('daily' | 'weekly')
+- `day_of_week` INT (0-6, only used when recurrence_type = 'weekly'; 0 = Sunday)
+- `is_active` BOOLEAN DEFAULT true
+- `created_at` TIMESTAMPTZ DEFAULT now()
 
-### 2. AI Screenshot-to-Schedule
-- Add a "Scan Schedule" button that opens a dialog with image upload (file input)
-- Convert uploaded image to base64, send to a new `parse-schedule-image` edge function
-- Edge function uses Lovable AI (`google/gemini-2.5-flash`) with vision to extract schedule items from the screenshot
-- Returns structured JSON: `[{title, start_hour, end_hour, category}]`
-- Auto-populate blocks from the parsed result with a preview/confirm step
+RLS: users can manage their own rows; admins can manage all.
 
-### 3. Mobile-Optimized Layout
-- Stack header actions vertically on mobile
-- Touch-friendly block actions (always visible on mobile, not hover-only)
-- Swipe-to-complete gesture via touch event handlers
-- Larger tap targets for hour slots
+## Frontend Changes (`AdminCalendar.tsx`)
 
-### 4. Block Editing
-- Tap/click a block to open an edit dialog (currently only add exists)
-- Edit title, category, start/end time, and notes
+1. **Add/Edit Dialog** — add a "Repeat" toggle with options: None, Daily, Weekly (auto-sets `day_of_week` from selected date). When repeat is chosen, insert into `recurring_calendar_blocks` instead of (or in addition to) `admin_calendar_blocks`.
 
-### Files to Create/Modify
+2. **Auto-populate logic** — on `fetchBlocks`, after loading the day's blocks, if the day has zero blocks, query `recurring_calendar_blocks` for matching recurrences (daily + weekly matching `day_of_week`). Show a banner: "Apply X recurring blocks?" with a confirm button that bulk-inserts them into `admin_calendar_blocks` for that date.
+
+3. **Manage Recurring Blocks** — add a small "Recurring" button in the header that opens a dialog listing all active recurring blocks with toggle/delete actions.
+
+4. **Visual indicator** — recurring-origin blocks get a small repeat icon badge so users know they came from a template.
+
+## Files to Modify/Create
 
 | File | Action |
 |------|--------|
-| `src/pages/AdminCalendar.tsx` | Add DnD context, edit dialog, AI scan button, mobile layout |
-| `supabase/functions/parse-schedule-image/index.ts` | New edge function for AI vision parsing |
-| `supabase/config.toml` | Add `parse-schedule-image` function config |
-
-### Technical Details
-- DnD: `DndContext` wraps hour grid. Each hour slot is a `useDroppable` with `id=hour-{n}`. Each block is `useDraggable`. `onDragEnd` calculates new start/end hours from the drop target and persists to DB.
-- AI parsing: Uses `google/gemini-2.5-flash` multimodal with image input. System prompt instructs extraction of time blocks with title, start/end times, and best-guess category. Returns via tool calling for structured output.
-- Mobile: `useIsMobile()` hook controls conditional rendering of touch-friendly controls.
+| New migration SQL | Create `recurring_calendar_blocks` table + RLS |
+| `src/pages/AdminCalendar.tsx` | Add recurrence toggle in form, auto-populate logic, manage recurring dialog |
 

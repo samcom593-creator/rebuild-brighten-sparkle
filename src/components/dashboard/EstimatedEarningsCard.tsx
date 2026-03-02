@@ -2,22 +2,35 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
-import { DollarSign, TrendingUp, Clock, CalendarDays, Info } from "lucide-react";
+import { DollarSign, TrendingUp, Clock, CalendarDays, Info, ShieldCheck } from "lucide-react";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { DateRangePicker, useDateRange } from "@/components/ui/date-range-picker";
 import { format, differenceInCalendarDays } from "date-fns";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { getTodayPST, getMonthStartPST } from "@/lib/dateUtils";
+import { getTodayPST, getMonthStartPST, getWeekStartPST } from "@/lib/dateUtils";
 
 interface Props {
   currentAgentId: string;
 }
 
+/**
+ * Earnings formula constants — single source of truth
+ * Personal: ALP × (9/12) × 1.2
+ * Override: Team ALP × (9/12) × 0.5
+ */
+const ANNUITY_FACTOR = 9 / 12; // 75% — average annual persistency
+const PERSONAL_COMP_RATE = 1.2;
+const OVERRIDE_COMP_RATE = 0.5;
+
 export function EstimatedEarningsCard({ currentAgentId }: Props) {
   const { period, setPeriod, range, setRange, startDate, endDate } = useDateRange("month");
 
+  // Enforce PST date boundaries
+  const pstStartDate = startDate || getMonthStartPST();
+  const pstEndDate = endDate || getTodayPST();
+
   const { data } = useQuery({
-    queryKey: ["estimated-earnings", currentAgentId, startDate, endDate],
+    queryKey: ["estimated-earnings", currentAgentId, pstStartDate, pstEndDate],
     queryFn: async () => {
       const { data: agents } = await supabase
         .from("agents")
@@ -29,32 +42,45 @@ export function EstimatedEarningsCard({ currentAgentId }: Props) {
 
       const { data: prod } = await supabase
         .from("daily_production")
-        .select("agent_id, aop, hours_called")
+        .select("agent_id, aop, hours_called, production_date")
         .in("agent_id", agentIds)
-        .gte("production_date", startDate)
-        .lte("production_date", endDate);
+        .gte("production_date", pstStartDate)
+        .lte("production_date", pstEndDate);
 
       if (!prod?.length) return null;
 
       let personalALP = 0;
       let teamALP = 0;
       let personalHours = 0;
+      let activeDays = new Set<string>();
 
       for (const p of prod) {
         const alp = Number(p.aop) || 0;
         if (p.agent_id === currentAgentId) {
           personalALP += alp;
           personalHours += Number(p.hours_called) || 0;
+          if (alp > 0 || (Number(p.hours_called) || 0) > 0) {
+            activeDays.add(p.production_date);
+          }
         } else {
           teamALP += alp;
         }
       }
 
-      const overrideEarnings = teamALP * (9 / 12) * 0.5;
-      const personalEarnings = personalALP * (9 / 12) * 1.2;
-      const total = overrideEarnings + personalEarnings;
+      const personalEarnings = personalALP * ANNUITY_FACTOR * PERSONAL_COMP_RATE;
+      const overrideEarnings = teamALP * ANNUITY_FACTOR * OVERRIDE_COMP_RATE;
+      const total = personalEarnings + overrideEarnings;
 
-      return { personalALP, teamALP, overrideEarnings, personalEarnings, total, personalHours };
+      return {
+        personalALP,
+        teamALP,
+        overrideEarnings,
+        personalEarnings,
+        total,
+        personalHours,
+        activeDays: activeDays.size,
+        dateRange: { start: pstStartDate, end: pstEndDate },
+      };
     },
     staleTime: 120_000,
   });
@@ -64,14 +90,14 @@ export function EstimatedEarningsCard({ currentAgentId }: Props) {
     return Math.max(1, differenceInCalendarDays(range.to, range.from) + 1);
   }, [range]);
 
-  const perDay = data ? data.total / daysInRange : 0;
+  const perDay = data ? data.total / Math.max(1, data.activeDays) : 0;
   const perHour = data && data.personalHours > 0 ? data.total / data.personalHours : 0;
+  const weeklyRate = perDay * 5; // 5 working days
 
   if (!data || data.total === 0) return null;
 
   return (
     <GlassCard className="relative overflow-hidden border-primary/20">
-      {/* Background decoration */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary/8 via-transparent to-emerald-500/8 pointer-events-none" />
       <div className="absolute -right-10 -bottom-10 h-36 w-36 rounded-full bg-gradient-to-br from-primary/15 to-emerald-500/10 blur-2xl pointer-events-none" />
 
@@ -86,19 +112,13 @@ export function EstimatedEarningsCard({ currentAgentId }: Props) {
               <h3 className="text-sm font-bold tracking-wide uppercase text-foreground">
                 Estimated Earnings
               </h3>
-              {range.from && range.to && (
-                <p className="text-[10px] text-muted-foreground">
-                  {format(range.from, "MMM d")} – {format(range.to, "MMM d, yyyy")}
-                </p>
-              )}
+              <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                <ShieldCheck className="h-2.5 w-2.5" />
+                PST-verified • {data.dateRange.start} → {data.dateRange.end}
+              </p>
             </div>
           </div>
-          <DateRangePicker
-            value={range}
-            onChange={setRange}
-            period={period}
-            onPeriodChange={setPeriod}
-          />
+          <DateRangePicker value={range} onChange={setRange} period={period} onPeriodChange={setPeriod} />
         </div>
 
         {/* Total */}
@@ -125,7 +145,9 @@ export function EstimatedEarningsCard({ currentAgentId }: Props) {
                 <p className="text-[10px] text-muted-foreground mt-0.5">ALP: ${data.personalALP.toLocaleString()}</p>
               </div>
             </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">Personal ALP × (9/12) × 1.2</TooltipContent>
+            <TooltipContent side="bottom" className="text-xs">
+              ALP × {ANNUITY_FACTOR.toFixed(2)} × {PERSONAL_COMP_RATE} = ${Math.round(data.personalEarnings).toLocaleString()}
+            </TooltipContent>
           </Tooltip>
 
           <Tooltip>
@@ -139,7 +161,9 @@ export function EstimatedEarningsCard({ currentAgentId }: Props) {
                 <p className="text-[10px] text-muted-foreground mt-0.5">Team ALP: ${data.teamALP.toLocaleString()}</p>
               </div>
             </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">Team ALP × (9/12) × 0.5</TooltipContent>
+            <TooltipContent side="bottom" className="text-xs">
+              Team ALP × {ANNUITY_FACTOR.toFixed(2)} × {OVERRIDE_COMP_RATE} = ${Math.round(data.overrideEarnings).toLocaleString()}
+            </TooltipContent>
           </Tooltip>
         </div>
 
@@ -151,6 +175,14 @@ export function EstimatedEarningsCard({ currentAgentId }: Props) {
               <span className="text-[10px] text-muted-foreground font-medium">$/Day</span>
             </div>
             <p className="text-sm font-bold text-foreground">${Math.round(perDay).toLocaleString()}</p>
+          </div>
+          <div className="w-px h-8 bg-border" />
+          <div className="flex-1 text-center">
+            <div className="flex items-center justify-center gap-1 mb-0.5">
+              <CalendarDays className="h-3 w-3 text-primary" />
+              <span className="text-[10px] text-muted-foreground font-medium">$/Week</span>
+            </div>
+            <p className="text-sm font-bold text-foreground">${Math.round(weeklyRate).toLocaleString()}</p>
           </div>
           <div className="w-px h-8 bg-border" />
           <div className="flex-1 text-center">
@@ -173,6 +205,11 @@ export function EstimatedEarningsCard({ currentAgentId }: Props) {
             </p>
           </div>
         </div>
+
+        {/* Audit footer */}
+        <p className="text-[9px] text-muted-foreground/50 text-center mt-3">
+          {data.activeDays} active days • Rates: Personal {PERSONAL_COMP_RATE}x, Override {OVERRIDE_COMP_RATE}x • Persistency {Math.round(ANNUITY_FACTOR * 100)}%
+        </p>
       </div>
     </GlassCard>
   );

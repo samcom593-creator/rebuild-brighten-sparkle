@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import {
   DndContext,
   DragEndEvent,
@@ -12,16 +12,13 @@ import {
   useDroppable,
   useDraggable,
 } from "@dnd-kit/core";
-import { Phone, Mail, Calendar, Clock, GraduationCap, AlertCircle, CheckCircle, Loader2, Eye } from "lucide-react";
-import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { formatDistanceToNow } from "date-fns";
+import { FOLLOWUP_TIMING } from "@/lib/apexConfig";
+import { PipelineCard, type PipelineCardData } from "./PipelineCard";
 
 export type KanbanStage =
+  | "new_applicant"
   | "unlicensed"
   | "course_purchased"
   | "finished_course"
@@ -29,31 +26,27 @@ export type KanbanStage =
   | "passed_test"
   | "fingerprints_done"
   | "waiting_on_license"
-  | "licensed";
+  | "licensed"
+  | "dormant";
 
-export interface KanbanApplication {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string;
-  license_progress: KanbanStage | null;
-  license_status: string;
-  last_contacted_at?: string | null;
-  contacted_at?: string | null;
-  created_at: string;
-  assigned_agent_id?: string | null;
-}
+export type { PipelineCardData as KanbanApplication };
 
 export interface KanbanColumn {
   id: string;
   label: string;
-  stages: KanbanStage[];
+  stages: string[];
   color: string;
   emoji: string;
 }
 
 export const KANBAN_COLUMNS: KanbanColumn[] = [
+  {
+    id: "applicants",
+    label: "Applicants",
+    stages: ["new_applicant"],
+    color: "border-sky-500/30 bg-sky-500/5",
+    emoji: "📥",
+  },
   {
     id: "needs_outreach",
     label: "Needs Outreach",
@@ -89,202 +82,82 @@ export const KANBAN_COLUMNS: KanbanColumn[] = [
     color: "border-emerald-500/30 bg-emerald-500/5",
     emoji: "🏆",
   },
+  {
+    id: "dormant",
+    label: "Dormant",
+    stages: ["dormant"],
+    color: "border-slate-500/30 bg-slate-500/5",
+    emoji: "💤",
+  },
 ];
 
-// Map any stage to its column id
-export function getColumnForStage(stage: KanbanStage | null | undefined): string {
-  if (!stage) return "needs_outreach";
+/** Determine if a lead is dormant based on last contact */
+function isDormant(app: PipelineCardData): boolean {
+  const last = app.last_contacted_at || app.contacted_at || app.created_at;
+  const daysSince = (Date.now() - new Date(last).getTime()) / (1000 * 60 * 60 * 24);
+  return daysSince >= FOLLOWUP_TIMING.dormantDays;
+}
+
+/** Backward-compat: map a stage string to column id */
+export function getColumnForStage(stage: string | null | undefined): string {
+  if (!stage) return "applicants";
+  if (stage === "licensed") return "licensed";
   for (const col of KANBAN_COLUMNS) {
-    if ((col.stages as string[]).includes(stage)) return col.id;
+    if (col.stages.includes(stage)) return col.id;
+  }
+  return "needs_outreach";
+}
+
+/** Map any application to its column id (uses dormant detection) */
+export function getColumnForApp(app: PipelineCardData): string {
+  // Dormant check first (except licensed)
+  if (app.license_progress === "licensed") return "licensed";
+  if (isDormant(app)) return "dormant";
+  
+  const stage = app.license_progress;
+  if (!stage || stage === "unlicensed") {
+    // New applicant: never contacted + no license progress
+    if (!app.contacted_at && !app.last_contacted_at) return "applicants";
+    return "needs_outreach";
+  }
+  
+  for (const col of KANBAN_COLUMNS) {
+    if (col.stages.includes(stage)) return col.id;
   }
   return "needs_outreach";
 }
 
 // Map column drop to a canonical target stage
 const COLUMN_TARGET_STAGE: Record<string, KanbanStage> = {
+  applicants: "new_applicant",
   needs_outreach: "unlicensed",
   course: "course_purchased",
   test_phase: "test_scheduled",
   final_steps: "fingerprints_done",
   licensed: "licensed",
+  dormant: "dormant",
 };
 
-// Contact freshness
-function getContactBadge(app: KanbanApplication) {
-  const last = app.last_contacted_at || app.contacted_at;
-  if (!last) {
-    return { label: "Never contacted", color: "bg-red-500/20 text-red-400 border-red-500/30 animate-pulse" };
-  }
-  const hoursAgo = (Date.now() - new Date(last).getTime()) / (1000 * 60 * 60);
-  if (hoursAgo > 48) {
-    return { label: `${Math.floor(hoursAgo / 24)}d ago`, color: "bg-amber-500/20 text-amber-400 border-amber-500/30" };
-  }
-  return {
-    label: formatDistanceToNow(new Date(last), { addSuffix: true }),
-    color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-  };
-}
-
-// ── Course Not Purchased Strip ───────────────────────────────────────────────
-function CourseSendStrip({ app }: { app: KanbanApplication }) {
-  const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
-
-  const handleSend = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setSending(true);
-    try {
-      const { error } = await supabase.functions.invoke("send-licensing-instructions", {
-        body: {
-          recipientEmail: app.email,
-          recipientName: `${app.first_name} ${app.last_name}`,
-          licenseStatus: app.license_status,
-        },
-      });
-      if (error) throw error;
-      setSent(true);
-      toast.success(`Course email sent to ${app.first_name}!`);
-      setTimeout(() => setSent(false), 4000);
-    } catch {
-      toast.error("Failed to send course email");
-    } finally {
-      setSending(false);
-    }
-  };
-
-  return (
-    <div className="mt-2 flex items-center justify-between rounded-lg bg-amber-500/10 border border-amber-500/20 px-2 py-1.5">
-      <span className="text-[10px] text-amber-400 flex items-center gap-1">
-        <AlertCircle className="h-3 w-3" />
-        Course not purchased
-      </span>
-      <button
-        onClick={handleSend}
-        disabled={sending || sent}
-        className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 transition-colors disabled:opacity-60"
-      >
-        {sending ? (
-          <Loader2 className="h-3 w-3 animate-spin" />
-        ) : sent ? (
-          <CheckCircle className="h-3 w-3 text-emerald-400" />
-        ) : (
-          <GraduationCap className="h-3 w-3" />
-        )}
-        {sent ? "Sent!" : "Send"}
-      </button>
-    </div>
-  );
-}
-
-// ── Draggable Card ──────────────────────────────────────────────────────────
+// ── Draggable Card Wrapper ──────────────────────────────────────────────────
 function DraggableCard({
   app,
   onClick,
   onSchedule,
 }: {
-  app: KanbanApplication;
-  onClick: (app: KanbanApplication) => void;
-  onSchedule?: (app: KanbanApplication) => void;
+  app: PipelineCardData;
+  onClick: (app: PipelineCardData) => void;
+  onSchedule?: (app: PipelineCardData) => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: app.id });
-  const contactBadge = getContactBadge(app);
-  const [showAppSheet, setShowAppSheet] = useState(false);
 
   return (
     <div
       ref={setNodeRef}
       {...attributes}
       {...listeners}
-      className={cn("cursor-grab active:cursor-grabbing", isDragging && "opacity-40")}
+      className={cn("cursor-grab active:cursor-grabbing")}
     >
-      <motion.div
-        layout
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-card border border-border rounded-xl p-3 shadow-sm hover:shadow-md hover:border-primary/30 transition-all"
-      >
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <div>
-            <p className="font-semibold text-sm text-foreground leading-tight">
-              {app.first_name} {app.last_name}
-            </p>
-            <Badge variant="outline" className={cn("text-[10px] mt-1", contactBadge.color)}>
-              <Clock className="h-2.5 w-2.5 mr-1" />
-              {contactBadge.label}
-            </Badge>
-          </div>
-          {app.license_status === "licensed" && (
-            <GraduationCap className="h-4 w-4 text-emerald-400 flex-shrink-0" />
-          )}
-        </div>
-
-        <div className="space-y-1 text-xs text-muted-foreground mb-3">
-          <div className="flex items-center gap-1.5 truncate">
-            <Mail className="h-3 w-3 flex-shrink-0" />
-            <span className="truncate">{app.email}</span>
-          </div>
-          {app.phone && (
-            <div className="flex items-center gap-1.5">
-              <Phone className="h-3 w-3 flex-shrink-0" />
-              <span>{app.phone}</span>
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 text-xs flex-1 text-muted-foreground hover:text-foreground"
-            onClick={(e) => { e.stopPropagation(); onClick(app); }}
-          >
-            View
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 w-7 p-0 text-primary hover:text-primary/80 hover:bg-primary/10"
-            onClick={(e) => { e.stopPropagation(); setShowAppSheet(true); }}
-            title="View Application"
-          >
-            <Eye className="h-3.5 w-3.5" />
-          </Button>
-          {onSchedule && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 w-7 p-0 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
-              onClick={(e) => { e.stopPropagation(); onSchedule(app); }}
-              title="Schedule Interview"
-            >
-              <Calendar className="h-3.5 w-3.5" />
-            </Button>
-          )}
-          {app.phone && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 w-7 p-0 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
-              asChild
-              onClick={(e) => e.stopPropagation()}
-            >
-              <a href={`tel:${app.phone}`}>
-                <Phone className="h-3.5 w-3.5" />
-              </a>
-            </Button>
-          )}
-        </div>
-
-        {/* Course not purchased strip */}
-        {(!app.license_progress || app.license_progress === "unlicensed") && (
-          <CourseSendStrip app={app} />
-        )}
-      </motion.div>
-      <ApplicationDetailSheet
-        open={showAppSheet}
-        onOpenChange={setShowAppSheet}
-        applicationId={app.id}
-      />
+      <PipelineCard app={app} onClick={onClick} onSchedule={onSchedule} isDragging={isDragging} />
     </div>
   );
 }
@@ -298,9 +171,9 @@ function DroppableColumn({
   isOver,
 }: {
   column: KanbanColumn;
-  apps: KanbanApplication[];
-  onCardClick: (app: KanbanApplication) => void;
-  onSchedule?: (app: KanbanApplication) => void;
+  apps: PipelineCardData[];
+  onCardClick: (app: PipelineCardData) => void;
+  onSchedule?: (app: PipelineCardData) => void;
   isOver: boolean;
 }) {
   const { setNodeRef } = useDroppable({ id: column.id });
@@ -314,7 +187,6 @@ function DroppableColumn({
         isOver && "border-primary/60 bg-primary/5"
       )}
     >
-      {/* Column Header */}
       <div className="flex items-center justify-between px-3 pt-3 pb-2">
         <div className="flex items-center gap-2">
           <span className="text-base">{column.emoji}</span>
@@ -325,7 +197,6 @@ function DroppableColumn({
         </Badge>
       </div>
 
-      {/* Cards */}
       <div className="flex-1 px-2 pb-3 space-y-2 overflow-y-auto max-h-[60vh]">
         <AnimatePresence>
           {apps.length === 0 ? (
@@ -350,10 +221,10 @@ function DroppableColumn({
 
 // ── Main KanbanBoard Component ──────────────────────────────────────────────
 interface KanbanBoardProps {
-  applications: KanbanApplication[];
+  applications: PipelineCardData[];
   onStageChange: (applicationId: string, newStage: KanbanStage) => Promise<void>;
-  onCardClick: (app: KanbanApplication) => void;
-  onScheduleInterview?: (app: KanbanApplication) => void;
+  onCardClick: (app: PipelineCardData) => void;
+  onScheduleInterview?: (app: PipelineCardData) => void;
   readOnly?: boolean;
 }
 
@@ -374,10 +245,10 @@ export function KanbanBoard({
   const activeApp = activeId ? applications.find((a) => a.id === activeId) : null;
 
   // Group applications by column
-  const columnApps = KANBAN_COLUMNS.reduce<Record<string, KanbanApplication[]>>(
+  const columnApps = KANBAN_COLUMNS.reduce<Record<string, PipelineCardData[]>>(
     (acc, col) => {
       acc[col.id] = applications.filter(
-        (app) => getColumnForStage(app.license_progress) === col.id
+        (app) => getColumnForApp(app) === col.id
       );
       return acc;
     },
@@ -389,8 +260,7 @@ export function KanbanBoard({
   };
 
   const handleDragOver = (event: DragOverEvent) => {
-    const overId = event.over?.id as string | null;
-    setOverColumnId(overId || null);
+    setOverColumnId((event.over?.id as string) || null);
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
@@ -407,7 +277,7 @@ export function KanbanBoard({
     const app = applications.find((a) => a.id === active.id);
     if (!app) return;
 
-    const currentColumnId = getColumnForStage(app.license_progress);
+    const currentColumnId = getColumnForApp(app);
     if (currentColumnId === columnId) return;
 
     await onStageChange(app.id, targetStage);
@@ -420,7 +290,7 @@ export function KanbanBoard({
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 min-h-[400px]">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 min-h-[400px]">
         {KANBAN_COLUMNS.map((col) => (
           <DroppableColumn
             key={col.id}
@@ -433,7 +303,6 @@ export function KanbanBoard({
         ))}
       </div>
 
-      {/* Drag overlay */}
       <DragOverlay>
         {activeApp && (
           <div className="bg-card border border-primary/40 rounded-xl p-3 shadow-xl opacity-95 w-52 rotate-1">

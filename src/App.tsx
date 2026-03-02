@@ -61,6 +61,7 @@ const GrowthDashboard = lazy(() => import("./pages/GrowthDashboard"));
 const AdminCalendar = lazy(() => import("./pages/AdminCalendar"));
 const SeminarPage = lazy(() => import("./pages/SeminarPage"));
 const SeminarAdmin = lazy(() => import("./pages/SeminarAdmin"));
+const ApplicantCheckin = lazy(() => import("./pages/ApplicantCheckin"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -119,6 +120,7 @@ const App = () => (
                   <Route path="/apex-daily-numbers" element={<LogNumbers />} />
                   <Route path="/links" element={<LinksPage />} />
                   <Route path="/seminar" element={<SeminarPage />} />
+                  <Route path="/checkin" element={<ApplicantCheckin />} />
                   {/* Authenticated shell - sidebar mounted once */}
                   <Route element={<AuthenticatedShell />}>
                     <Route path="/dashboard" element={<Dashboard />} />

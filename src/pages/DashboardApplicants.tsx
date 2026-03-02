@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -26,6 +26,8 @@ import {
   Send,
   FileCheck,
   Calendar,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -64,6 +66,9 @@ import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressS
 import { ContractedModal } from "@/components/dashboard/ContractedModal";
 import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
 import { InterviewScheduler } from "@/components/dashboard/InterviewScheduler";
+import { KanbanBoard, type KanbanStage } from "@/components/pipeline/KanbanBoard";
+import type { PipelineCardData } from "@/components/pipeline/PipelineCard";
+import { logLeadActivity } from "@/lib/logLeadActivity";
 
 interface Application {
   id: string;
@@ -141,6 +146,7 @@ export default function DashboardApplicants() {
   const [contractedApp, setContractedApp] = useState<Application | null>(null);
   const [schedulerApp, setSchedulerApp] = useState<Application | null>(null);
   const [schedulerOpen, setSchedulerOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"list" | "kanban">("list");
   
   // When deep linking, clear filters to ensure lead is visible
   useEffect(() => {
@@ -399,6 +405,32 @@ export default function DashboardApplicants() {
     }
   };
 
+  // Kanban stage change handler with activity logging
+  const handleKanbanStageChange = async (applicationId: string, newStage: KanbanStage) => {
+    const dbStage = newStage === "new_applicant" || newStage === "dormant" ? "unlicensed" : newStage;
+
+    const { error } = await supabase
+      .from("applications")
+      .update({ license_progress: dbStage as any })
+      .eq("id", applicationId);
+
+    if (error) {
+      toast.error("Failed to update stage");
+      return;
+    }
+
+    toast.success("Stage updated!");
+    logLeadActivity({
+      leadId: applicationId,
+      type: "stage_update",
+      title: `Stage changed to ${newStage}`,
+      details: { from: "kanban_drag", to: newStage },
+    });
+    fetchApplications();
+  };
+
+  
+
   const handleManualFollowup = async (applicationId: string) => {
     setSendingFollowupId(applicationId);
     try {
@@ -421,6 +453,27 @@ export default function DashboardApplicants() {
   // Split applications into active and terminated
   const activeApplications = applications.filter(app => !app.terminated_at);
   const terminatedApplications = applications.filter(app => app.terminated_at);
+
+  // Map applications to PipelineCardData for Kanban
+  const kanbanApps: PipelineCardData[] = useMemo(() =>
+    activeApplications.map((app) => ({
+      id: app.id,
+      first_name: app.first_name,
+      last_name: app.last_name,
+      email: app.email,
+      phone: app.phone,
+      license_progress: app.license_progress,
+      license_status: app.license_status,
+      last_contacted_at: (app as any).last_contacted_at || null,
+      contacted_at: app.contacted_at,
+      created_at: app.created_at,
+      assigned_agent_id: app.assigned_agent_id,
+      lead_score: (app as any).lead_score || null,
+      next_action_type: (app as any).next_action_type || null,
+      assigned_manager_name: app.assigned_agent_id ? managerNames.get(app.assigned_agent_id) || null : null,
+    })),
+    [activeApplications, managerNames]
+  );
 
   // When status filter is "terminated", filter from terminated list instead
   const baseApplications = statusFilter === "terminated" ? terminatedApplications : activeApplications;
@@ -751,15 +804,38 @@ export default function DashboardApplicants() {
         animate={{ opacity: 1, y: 0 }}
         className="mb-8"
       >
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-primary/10">
-            <Users className="h-5 w-5 text-primary" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-primary/10">
+              <Users className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold">Applicants</h1>
+              <p className="text-muted-foreground text-sm">
+                Manage and track your assigned applicants
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-3xl font-bold">Applicants</h1>
-            <p className="text-muted-foreground text-sm">
-              Manage and track your assigned applicants
-            </p>
+          {/* View Toggle */}
+          <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+            <Button
+              variant={viewMode === "list" ? "default" : "ghost"}
+              size="sm"
+              className="h-8 px-3"
+              onClick={() => setViewMode("list")}
+            >
+              <List className="h-4 w-4 mr-1" />
+              List
+            </Button>
+            <Button
+              variant={viewMode === "kanban" ? "default" : "ghost"}
+              size="sm"
+              className="h-8 px-3"
+              onClick={() => setViewMode("kanban")}
+            >
+              <LayoutGrid className="h-4 w-4 mr-1" />
+              Kanban
+            </Button>
           </div>
         </div>
       </motion.div>
@@ -851,25 +927,45 @@ export default function DashboardApplicants() {
         </Select>
       </motion.div>
 
-      {/* Applicants List - Shows terminated when that filter is active */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="space-y-4"
-      >
-        {filteredApplications.map((app, index) => renderApplicationCard(app, index, statusFilter === "terminated"))}
+      {/* Kanban View */}
+      {viewMode === "kanban" ? (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <KanbanBoard
+            applications={kanbanApps}
+            onStageChange={handleKanbanStageChange}
+            onCardClick={(app) => setNotesApp(applications.find(a => a.id === app.id) || null)}
+            onScheduleInterview={(app) => {
+              setSchedulerApp(applications.find(a => a.id === app.id) || null);
+              setSchedulerOpen(true);
+            }}
+            readOnly={!isAdmin && !isManager}
+          />
+        </motion.div>
+      ) : (
+        <>
+          {/* Applicants List - Shows terminated when that filter is active */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="space-y-4"
+          >
+            {filteredApplications.map((app, index) => renderApplicationCard(app, index, statusFilter === "terminated"))}
 
-        {filteredApplications.length === 0 && (
-          <GlassCard className="p-12 text-center">
-            <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No applicants found</h3>
-            <p className="text-muted-foreground">
-              {isLoading ? "Loading..." : "Try adjusting your search or filter criteria"}
-            </p>
-          </GlassCard>
-        )}
-      </motion.div>
+            {filteredApplications.length === 0 && (
+              <GlassCard className="p-12 text-center">
+                <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No applicants found</h3>
+                <p className="text-muted-foreground">
+                  {isLoading ? "Loading..." : "Try adjusting your search or filter criteria"}
+                </p>
+              </GlassCard>
+            )}
+          </motion.div>
 
       {/* Terminated Leads Section - Only show when not filtering by terminated */}
       {statusFilter !== "terminated" && terminatedApplications.length > 0 && (
@@ -910,6 +1006,8 @@ export default function DashboardApplicants() {
             )}
           </AnimatePresence>
         </motion.div>
+      )}
+        </>
       )}
 
       {/* Notes Modal */}

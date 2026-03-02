@@ -20,10 +20,10 @@ export const GlassCard = forwardRef<HTMLDivElement, GlassCardProps>(
       <motion.div
         ref={ref}
         className={cn(
-          "rounded-xl",
+          "rounded-xl glass-hover",
           variants[variant],
           glow && "glow-teal",
-          hoverEffect && "transition-all duration-300 hover:glow-teal hover:-translate-y-1",
+          hoverEffect && "card-interactive",
           className
         )}
         {...props}

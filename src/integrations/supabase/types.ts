@@ -769,6 +769,53 @@ export type Database = {
         }
         Relationships: []
       }
+      applicant_checkins: {
+        Row: {
+          application_id: string
+          blocker: string | null
+          checkin_date: string
+          created_at: string
+          id: string
+          license_progress: string | null
+          notes: string | null
+          study_hours: number | null
+          test_date: string | null
+          test_scheduled: boolean | null
+        }
+        Insert: {
+          application_id: string
+          blocker?: string | null
+          checkin_date?: string
+          created_at?: string
+          id?: string
+          license_progress?: string | null
+          notes?: string | null
+          study_hours?: number | null
+          test_date?: string | null
+          test_scheduled?: boolean | null
+        }
+        Update: {
+          application_id?: string
+          blocker?: string | null
+          checkin_date?: string
+          created_at?: string
+          id?: string
+          license_progress?: string | null
+          notes?: string | null
+          study_hours?: number | null
+          test_date?: string | null
+          test_scheduled?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "applicant_checkins_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       applications: {
         Row: {
           assigned_agent_id: string | null

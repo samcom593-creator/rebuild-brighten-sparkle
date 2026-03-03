@@ -1,37 +1,56 @@
 
+Goal: Make the CRM Unlicensed Pipeline behave correctly so clicking any unlicensed card opens the lead detail sheet (with its action buttons), instead of doing nothing.
 
-# Make ApplicationDetailSheet Editable Everywhere
+What I found:
+- In `src/pages/DashboardCRM.tsx`, unlicensed cards currently call `setExpandedAgentId(...)` on click.
+- Expanded rows only render in the licensed table section, so unlicensed cards have no visible expansion target.
+- The detail sheet is already wired (`ApplicationDetailSheet`), but CRM currently tracks only `agentId` for opening it.
+- Unlicensed cards can represent two record shapes:
+  1) true agent rows (need `agentId` lookup),
+  2) application-only rows (need direct `applicationId` lookup).
+  Without handling both, some cards won’t open usable details.
 
-## Problem
-The `ApplicationDetailSheet` component (used in CRM, Pipeline, Call Center, and Recruiting Quick View) is entirely read-only. When you click a name anywhere in the app, you can only view info — not edit it. The `LeadDetailSheet` (Recruiter HQ only) already has edit mode, but `ApplicationDetailSheet` does not.
+Implementation plan:
+1. Replace single-ID detail sheet state with a dual-target state
+- In `DashboardCRM`, replace `viewAppAgentId: string | null` with a state object like:
+  - `viewAppTarget: { agentId?: string; applicationId?: string } | null`
+- This lets one click open the same sheet for both agent-backed and application-only cards.
 
-## Changes (all in `src/components/dashboard/ApplicationDetailSheet.tsx`)
+2. Add application linkage to CRM row model
+- Extend `AgentCRM` with optional `applicationId`.
+- While building CRM data (`fetchAgents`), include the latest application `id` in the applications query used for agent enrichment.
+- Map:
+  - agent-backed rows: `applicationId` from latest assigned application (if present),
+  - application-only rows: `applicationId = app.id` directly.
 
-### 1. Add Edit Mode State
-- Add `isEditing`, `editForm`, `savingEdit` states
-- Initialize `editForm` from fetched `application` data whenever it changes
-- Editable fields: `first_name`, `last_name`, `email`, `phone`, `city`, `state`, `instagram_handle`, `referral_source`, `license_progress`, `test_scheduled_date`, `notes`, `carrier`, `nipr_number`
+3. Fix unlicensed card click behavior
+- In the unlicensed card `onClick`, stop toggling `expandedAgentId`.
+- Open detail sheet via `setViewAppTarget(...)` using:
+  - `applicationId` when available,
+  - otherwise `agentId`.
+- Keep click sound feedback.
 
-### 2. Add Edit/Cancel Toggle
-- Add an "Edit" button in the sheet header (next to the title)
-- Toggles to "Cancel" when editing; resets form on cancel
+4. Ensure “action buttons” path is always available
+- Pass both props to `ApplicationDetailSheet`:
+  - `applicationId={viewAppTarget?.applicationId}`
+  - `agentId={viewAppTarget?.agentId}`
+- This guarantees the sheet resolves correctly and shows its quick actions (Call/Email) whenever data exists.
+- If neither identifier can resolve an application, show a clear toast instead of silent failure.
 
-### 3. Replace Read-Only Sections with Inputs When Editing
-- Contact section: replace static text with compact input fields for email, phone, instagram, city/state
-- Experience section: keep read-only (rarely changes)
-- Notes section: replace static `<p>` with a `<Textarea>`
-- License progress: add a `<select>` dropdown
-- Test scheduled: add `<input type="date">`
-- NIPR/carrier: add text inputs
+5. Add lightweight card-level quick actions (optional but aligned with your request)
+- Add small action icons on unlicensed cards (Phone, Email, View, Record), with `stopPropagation()` so the card click still opens details cleanly.
+- Reuse existing handlers (`setRecorderAgent`) and existing links (`tel:`, `mailto:`).
 
-### 4. Save Handler
-- Update `applications` table with edited fields
-- Log activity via `logLeadActivity` (type: `note_added`, title: "Lead info updated")
-- Toast success/error, invalidate the query, exit edit mode
+6. Validation
+- Test in CRM Unlicensed Pipeline:
+  - Clicking card opens sheet for agent-backed records.
+  - Clicking card opens sheet for application-only records.
+  - Quick actions work and do not block opening behavior.
+  - Closing sheet resets state cleanly.
+- Regression check: licensed table expand/collapse still works as before.
 
-### 5. Add `onRefresh` Callback
-- Add optional `onRefresh` prop so parent pages (CRM, Pipeline, etc.) can refresh their lists after edits
-- Call `queryClient.invalidateQueries` for the detail query + call `onRefresh` on save
-
-No database changes needed — existing RLS policies already allow agents/managers to update their assigned applications.
-
+Technical details (concise):
+- File to update: `src/pages/DashboardCRM.tsx`
+- No backend schema/function changes required.
+- No auth/RLS changes required.
+- Existing `ApplicationDetailSheet` can already render action buttons; this fix focuses on correct routing/opening state and record targeting.

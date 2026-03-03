@@ -90,6 +90,7 @@ interface AgentCRM {
   id: string;
   userId: string;
   name: string;
+  applicationId?: string;
   email: string;
   phone?: string;
   avatarUrl?: string;
@@ -570,7 +571,7 @@ export default function DashboardCRM() {
   const [selectedAgents, setSelectedAgents] = useState<Set<string>>(new Set());
   const [sendingCourseLogin, setSendingCourseLogin] = useState<string | null>(null);
   const [recorderAgent, setRecorderAgent] = useState<AgentCRM | null>(null);
-  const [viewAppAgentId, setViewAppAgentId] = useState<string | null>(null);
+  const [viewAppTarget, setViewAppTarget] = useState<{ agentId?: string; applicationId?: string } | null>(null);
   const [expandedAgentId, setExpandedAgentId] = useState<string | null>(null);
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(["onboarding", "in_training", "live", "needs_followup"]));
   const [currentAgentId, setCurrentAgentId] = useState<string | null>(null);
@@ -722,7 +723,7 @@ export default function DashboardCRM() {
       const newApplicants: AgentCRM[] = (unlicensedApplicants || [])
         .filter(app => !existingEmails.has(app.email?.toLowerCase()))
         .map((app, index) => ({
-          id: app.id, userId: "", name: `${app.first_name} ${app.last_name}`.trim(), email: app.email || "",
+          id: app.id, userId: "", name: `${app.first_name} ${app.last_name}`.trim(), applicationId: app.id, email: app.email || "",
           phone: app.phone || undefined, avatarUrl: undefined, instagramHandle: app.instagram_handle || undefined,
           onboardingStage: "onboarding" as OnboardingStage, attendanceStatus: "good" as AttendanceStatus,
           performanceTier: "below_10k" as PerformanceTier, fieldTrainingStartedAt: undefined, startDate: undefined,
@@ -1105,7 +1106,7 @@ export default function DashboardCRM() {
                                               onStageUpdate={handleOptimisticStageUpdate}
                                               onGoLive={setInstagramPromptAgent}
                                               onDeactivate={setDeactivateAgent}
-                                              onViewApp={setViewAppAgentId}
+                                              onViewApp={(id) => setViewAppTarget({ agentId: id })}
                                               onRecord={setRecorderAgent}
                                               onAgentUpdate={onAgentUpdate}
                                               playSound={playSound}
@@ -1157,9 +1158,9 @@ export default function DashboardCRM() {
                         ) : colAgents.map(agent => (
                           <div
                             key={agent.id}
-                            className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/40 cursor-pointer transition-colors"
+                            className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/40 cursor-pointer transition-colors group"
                             onClick={() => {
-                              setExpandedAgentId(expandedAgentId === agent.id ? null : agent.id);
+                              setViewAppTarget({ agentId: agent.userId ? agent.id : undefined, applicationId: agent.applicationId || agent.id });
                               playSound("click");
                             }}
                           >
@@ -1172,6 +1173,16 @@ export default function DashboardCRM() {
                             <div className="min-w-0 flex-1">
                               <p className="text-xs font-medium truncate">{agent.name}</p>
                               <p className="text-[10px] text-muted-foreground truncate">{agent.email}</p>
+                            </div>
+                            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                              {agent.phone && (
+                                <a href={`tel:${agent.phone}`} onClick={e => e.stopPropagation()} className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors">
+                                  <Phone className="h-3 w-3" />
+                                </a>
+                              )}
+                              <a href={`mailto:${agent.email}`} onClick={e => e.stopPropagation()} className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors">
+                                <Mail className="h-3 w-3" />
+                              </a>
                             </div>
                           </div>
                         ))}
@@ -1186,7 +1197,7 @@ export default function DashboardCRM() {
         )}
       </div>
 
-      <ApplicationDetailSheet open={!!viewAppAgentId} onOpenChange={(o) => !o && setViewAppAgentId(null)} agentId={viewAppAgentId || undefined} />
+      <ApplicationDetailSheet open={!!viewAppTarget} onOpenChange={(o) => !o && setViewAppTarget(null)} applicationId={viewAppTarget?.applicationId} agentId={viewAppTarget?.agentId} onRefresh={fetchAgents} />
       <DeactivateAgentDialog open={!!deactivateAgent} onOpenChange={(o) => !o && setDeactivateAgent(null)} agentId={deactivateAgent?.id || ""} agentName={deactivateAgent?.name || ""} currentManagerId={deactivateAgent?.managerId} onComplete={fetchAgents} />
       <InstagramPromptDialog open={!!instagramPromptAgent} onOpenChange={(o) => !o && setInstagramPromptAgent(null)} agentId={instagramPromptAgent?.id || ""} agentName={instagramPromptAgent?.name || ""} onComplete={fetchAgents} />
       {recorderAgent && user && (

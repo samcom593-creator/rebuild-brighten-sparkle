@@ -9,7 +9,7 @@ const corsHeaders = {
 };
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-const BASE_URL = "https://apex-financial.org";
+const BASE_URL = "https://rebuild-brighten-sparkle.lovable.app";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const ADMIN_EMAIL = "info@apex-financial.org";
 

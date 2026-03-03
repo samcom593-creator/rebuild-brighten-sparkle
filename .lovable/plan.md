@@ -1,21 +1,34 @@
 
 
-# Add Visible Email & Notification Buttons to Recruiter Lead Cards
+# Make Lead Info Tab Editable
 
 ## Problem
-The email button (QuickEmailMenu) exists but is buried among 9 tiny `h-6 w-6` icon buttons with `gap-0.5` — nearly impossible to find or tap. There's also no push/SMS notification button on lead cards.
+The Info tab in LeadDetailSheet is read-only. Users need to edit lead details (name, email, phone, city, state, referral source, license progress, test date) directly from the sheet.
 
-## Changes (all in `src/pages/RecruiterDashboard.tsx`)
+## Changes (all in `src/components/recruiter/LeadDetailSheet.tsx`)
 
-### 1. Make Email Button Stand Out
-- Give `QuickEmailMenu` a colored border like the Phone button has (`border-amber-500/30 text-amber-400`) so it's visually distinct instead of blending in with ghost buttons.
+### 1. Add Edit Mode Toggle
+- Add `isEditing` state and an "Edit" / "Cancel" button at the top of the Info tab
+- When editing, replace static `InfoRow` values with `Input` fields pre-filled with current values
 
-### 2. Add Send Notification Button
-- Add a `Bell` icon button to the action row that invokes `send-push-notification` or `send-sms-auto-detect` edge function for that lead.
-- On click, show a small popover with options: "Send Push", "Send SMS", "Send Both".
-- Uses existing edge functions (`send-push-notification`, `send-sms-auto-detect`) — no new backend needed.
+### 2. Editable Fields State
+- Add `editForm` state initialized from the lead prop, containing: `first_name`, `last_name`, `email`, `phone`, `city`, `state`, `referral_source`, `license_progress`, `test_scheduled_date`
+- Reset `editForm` when lead changes (in the existing `useEffect`)
 
-### 3. Improve Button Visibility
-- Increase action row gap from `gap-0.5` to `gap-1` so buttons don't blur together.
-- Group related buttons visually: Contact group (Phone, Email, Bell) with colored borders vs utility group (Brain, Activity, Mic, Notes) as ghost buttons — separated by a thin divider.
+### 3. Save Handler
+- On "Save", update the `applications` table with the edited fields
+- Log a `note_added` activity: "Lead info updated"
+- Toast success/error, call `onRefresh()`, exit edit mode
+
+### 4. UI Layout
+- Non-editable rows (Created, Last Contacted) stay as static `InfoRow`
+- Editable rows become compact inputs: label on left, small input on right
+- License Progress uses a `<select>` dropdown with the existing enum values (unlicensed, pre_licensing, studying, scheduled, licensed)
+- Test Scheduled Date uses a date `<input type="date">`
+- Save + Cancel buttons at bottom
+
+### 5. InfoRow Component Update
+- Add optional `editing` / `onChange` / `type` props to `InfoRow` so it can render an input when in edit mode, keeping the component reusable
+
+No database changes needed -- the existing RLS policies already allow agents/managers to update their assigned applications.
 

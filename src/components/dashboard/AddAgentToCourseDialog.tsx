@@ -51,7 +51,6 @@ export function AddAgentToCourseDialog({ onSuccess }: AddAgentToCourseDialogProp
             email
           )
         `)
-        .eq("onboarding_stage", "onboarding")
         .eq("is_deactivated", false);
 
       if (!agents?.length) return [];
@@ -195,7 +194,7 @@ export function AddAgentToCourseDialog({ onSuccess }: AddAgentToCourseDialogProp
               <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                 <UserPlus className="h-8 w-8 mb-2 opacity-50" />
                 <p className="text-sm">No eligible agents found</p>
-                <p className="text-xs">Agents must be in "onboarding" stage</p>
+                <p className="text-xs">No active agents available</p>
               </div>
             ) : (
               <div className="p-2 space-y-1">

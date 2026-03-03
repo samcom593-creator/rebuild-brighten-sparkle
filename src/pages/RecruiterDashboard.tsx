@@ -272,21 +272,17 @@ function StatBubble({
 }) {
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.8, y: 20 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ delay, type: "spring", stiffness: 300, damping: 20 }}
-      whileHover={{ scale: 1.04 }}
+      initial={{ opacity: 0, x: -10 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay, type: "spring", stiffness: 300, damping: 25 }}
       className={cn(
-        "relative overflow-hidden rounded-2xl border p-4 text-center cursor-default",
+        "flex items-center gap-2 rounded-xl border px-3 py-1.5 cursor-default",
         color
       )}
     >
-      <div className="flex items-center justify-center mb-2">
-        <Icon className="h-5 w-5" />
-      </div>
-      <p className="text-2xl font-bold">{value}</p>
-      <p className="text-[11px] text-muted-foreground mt-0.5 leading-tight">{label}</p>
-      <div className="absolute -right-3 -top-3 h-10 w-10 rounded-full bg-current opacity-10 blur-xl" />
+      <Icon className="h-4 w-4 shrink-0" />
+      <span className="text-base font-bold leading-none">{value}</span>
+      <span className="text-[10px] text-muted-foreground leading-tight truncate">{label}</span>
     </motion.div>
   );
 }
@@ -440,7 +436,7 @@ const LeadCard = memo(function LeadCard({
         transition={{ type: "spring", stiffness: 300, damping: 25 }}
         className="bg-card border border-border rounded-xl overflow-hidden shadow-sm"
       >
-        <div className="p-2.5 space-y-1.5">
+        <div className="p-2 space-y-1">
           {/* ── Row 1: Name + score ── */}
           <div className="flex items-start justify-between gap-1">
             <p className="font-semibold text-sm leading-tight truncate min-w-0 flex-1 cursor-pointer hover:text-primary transition-colors" title={fullName} onClick={() => onDetailClick?.(lead)}>{fullName}</p>
@@ -494,7 +490,7 @@ const LeadCard = memo(function LeadCard({
           />
 
           {/* ── Row 3: Icon-only action buttons (fixed min-height to prevent jitter) ── */}
-          <div className="flex items-center gap-1 pt-0.5 min-h-[28px]">
+          <div className="flex items-center gap-0.5 min-h-[28px]">
             {/* Call with outcome popover */}
             <Popover open={callOutcomeOpen} onOpenChange={setCallOutcomeOpen}>
               <PopoverTrigger asChild>
@@ -971,7 +967,7 @@ function RecruiterDashboardInner() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-5 max-w-[1800px] mx-auto">
+    <div className="p-3 md:p-4 space-y-3 max-w-[1800px] mx-auto">
       <ConfettiCelebration trigger={confetti} onComplete={() => setConfetti(false)} />
 
       {/* XP toast */}
@@ -992,13 +988,13 @@ function RecruiterDashboardInner() {
       <motion.div
         initial={{ opacity: 0, y: -16 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-2xl border border-pink-500/20 bg-gradient-to-br from-pink-500/10 via-purple-500/5 to-transparent p-5"
+        className="relative overflow-hidden rounded-xl border border-pink-500/20 bg-gradient-to-br from-pink-500/10 via-purple-500/5 to-transparent p-3"
       >
         <div className="flex flex-col md:flex-row md:items-center gap-4">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-1">
-              <Sparkles className="h-6 w-6 text-pink-400" />
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">
+              <Sparkles className="h-5 w-5 text-pink-400" />
+              <h1 className="text-xl font-bold bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">
                 Aisha's Recruiter HQ
               </h1>
               {advancedToday > 0 && (
@@ -1054,13 +1050,10 @@ function RecruiterDashboardInner() {
           </div>
         </div>
 
-        {/* Background sparkle decoration */}
-        <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-pink-500/10 blur-3xl pointer-events-none" />
-        <div className="absolute -left-10 -bottom-10 h-32 w-32 rounded-full bg-purple-500/10 blur-3xl pointer-events-none" />
       </motion.div>
 
       {/* ── Stat bubbles ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-4 gap-2">
         <StatBubble icon={Users} label="Total Hired (Unlicensed)" value={totalLeads} color="border border-pink-500/20 bg-pink-500/5 text-pink-400" delay={0} />
         <StatBubble icon={AlertTriangle} label="Needs Contact" value={needsContact} color="border border-rose-500/20 bg-rose-500/5 text-rose-400" delay={0.06} />
         <StatBubble icon={TrendingUp} label="Actively In Progress" value={inProgress} color="border border-purple-500/20 bg-purple-500/5 text-purple-400" delay={0.12} />
@@ -1077,7 +1070,7 @@ function RecruiterDashboardInner() {
       <RecruiterAIPanel leads={leads} />
 
       {/* ── Search / Filter / Sort ── */}
-      <GlassCard className="p-3 space-y-2">
+      <GlassCard className="p-2 space-y-1">
         {/* Search bar */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -1237,8 +1230,8 @@ function RecruiterDashboardInner() {
           const col = columnLeads.find((c) => c.id === mobileColumn) || columnLeads[0];
           if (!col) return null;
           return (
-            <div className={cn("rounded-2xl border p-3 min-h-[200px]", col.color)}>
-              <div className={cn("flex items-center gap-2 mb-3 font-bold text-sm", col.headerColor)}>
+            <div className={cn("rounded-xl border p-2 min-h-[200px]", col.color)}>
+              <div className={cn("flex items-center gap-2 mb-2 font-bold text-sm", col.headerColor)}>
                 <span className="text-base">{col.emoji}</span>
                 <span>{col.label}</span>
                 {col.needsAttention > 0 && (
@@ -1251,7 +1244,7 @@ function RecruiterDashboardInner() {
                   {col.leads.length}
                 </Badge>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <AnimatePresence mode="popLayout">
                   {col.leads.length === 0 ? (
                     <motion.p key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xs text-muted-foreground text-center py-8">
@@ -1278,7 +1271,7 @@ function RecruiterDashboardInner() {
         })()
       ) : (
         // Desktop: full grid with scroll containers
-        <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-2">
           {columnLeads.map((col, ci) => {
             const isLargeList = col.leads.length >= ANIMATION_THRESHOLDS.disableHoverAboveCards;
             return (
@@ -1287,10 +1280,10 @@ function RecruiterDashboardInner() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: ci * 0.06 }}
-                className={cn("rounded-2xl border p-3 min-h-[200px] flex flex-col", col.color)}
+                className={cn("rounded-xl border p-2 min-h-[200px] flex flex-col", col.color)}
               >
                 {/* Column header */}
-                <div className={cn("flex items-center gap-2 mb-3 font-bold text-sm shrink-0", col.headerColor)}>
+                <div className={cn("flex items-center gap-2 mb-2 font-bold text-sm shrink-0", col.headerColor)}>
                   <span className="text-base">{col.emoji}</span>
                   <span>{col.label}</span>
                   {col.needsAttention > 0 && (
@@ -1305,7 +1298,7 @@ function RecruiterDashboardInner() {
                 </div>
 
                 {/* Lead cards with max height scroll */}
-                <div className="space-y-3 max-h-[65vh] overflow-y-auto flex-1 pr-0.5">
+                <div className="space-y-2 max-h-[65vh] overflow-y-auto flex-1 pr-0.5">
                   <AnimatePresence mode="popLayout">
                     {col.leads.length === 0 ? (
                       <motion.p

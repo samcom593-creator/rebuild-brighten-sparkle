@@ -56,19 +56,7 @@ export function AddAgentToCourseDialog({ onSuccess }: AddAgentToCourseDialogProp
 
       if (!agents?.length) return [];
 
-      // Get agents who already have progress
-      const agentIds = agents.map(a => a.id);
-      const { data: progressData } = await supabase
-        .from("onboarding_progress")
-        .select("agent_id")
-        .in("agent_id", agentIds);
-
-      const agentsWithProgress = new Set(progressData?.map(p => p.agent_id) || []);
-
-      // Filter to only those without progress and not already flagged for course
-      return agents
-        .filter(a => !agentsWithProgress.has(a.id) && !a.has_training_course)
-        .map(a => ({
+      return agents.map(a => ({
           id: a.id,
           name: a.profiles?.full_name || "Unknown",
           email: a.profiles?.email || "",

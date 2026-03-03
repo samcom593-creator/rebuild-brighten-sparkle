@@ -33,11 +33,52 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Resending course enrollment emails to ${agents.length} agents...`);
+    // Get count of active modules
+    const { data: activeModules, error: modError } = await supabase
+      .from("onboarding_modules")
+      .select("id")
+      .eq("is_active", true);
+
+    if (modError) throw modError;
+    const totalActiveModules = activeModules?.length || 0;
+
+    // Get agents who have passed ALL active modules
+    const { data: progressData, error: progError } = await supabase
+      .from("onboarding_progress")
+      .select("agent_id, module_id, passed")
+      .eq("passed", true);
+
+    if (progError) throw progError;
+
+    // Build set of agent IDs who passed all active modules
+    const activeModuleIds = new Set((activeModules || []).map((m: any) => m.id));
+    const agentPassedCounts: Record<string, number> = {};
+    for (const p of (progressData || [])) {
+      if (activeModuleIds.has(p.module_id)) {
+        agentPassedCounts[p.agent_id] = (agentPassedCounts[p.agent_id] || 0) + 1;
+      }
+    }
+    const completedAgentIds = new Set(
+      Object.entries(agentPassedCounts)
+        .filter(([_, count]) => count >= totalActiveModules)
+        .map(([agentId]) => agentId)
+    );
+
+    // Filter out completed agents
+    const eligibleAgents = agents.filter((a: any) => !completedAgentIds.has(a.id));
+
+    console.log(`Total agents with course: ${agents.length}, completed: ${completedAgentIds.size}, eligible: ${eligibleAgents.length}`);
+
+    if (!eligibleAgents.length) {
+      return new Response(
+        JSON.stringify({ success: true, sent: 0, message: "All agents have completed the course" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const results: { agentId: string; success: boolean; error?: string }[] = [];
 
-    for (const agent of agents) {
+    for (const agent of eligibleAgents) {
       // Rate limit: wait 600ms between sends (under 2/sec)
       await new Promise(resolve => setTimeout(resolve, 600));
 
@@ -68,10 +109,10 @@ serve(async (req) => {
     const sent = results.filter(r => r.success).length;
     const failed = results.filter(r => !r.success).length;
 
-    console.log(`Done: ${sent} sent, ${failed} failed out of ${agents.length}`);
+    console.log(`Done: ${sent} sent, ${failed} failed out of ${eligibleAgents.length}`);
 
     return new Response(
-      JSON.stringify({ success: true, total: agents.length, sent, failed, results }),
+      JSON.stringify({ success: true, total: eligibleAgents.length, sent, failed, skippedCompleted: completedAgentIds.size, results }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: any) {

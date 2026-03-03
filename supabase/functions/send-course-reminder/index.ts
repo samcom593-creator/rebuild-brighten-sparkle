@@ -9,6 +9,26 @@ const corsHeaders = {
 };
 
 const ADMIN_EMAIL = "sam@apex-financial.org";
+const BASE_URL = "https://rebuild-brighten-sparkle.lovable.app";
+
+async function generateMagicToken(
+  supabaseClient: any,
+  agentId: string,
+  email: string,
+  destination: string
+): Promise<string> {
+  const token = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
+
+  await supabaseClient.from("magic_login_tokens").insert({
+    agent_id: agentId,
+    email: email.toLowerCase().trim(),
+    token,
+    destination,
+    expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+  });
+
+  return `${BASE_URL}/magic-login?token=${token}`;
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -101,7 +121,9 @@ serve(async (req) => {
     const percentComplete = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;
 
     const firstName = profile.full_name?.split(" ")[0] || "Team Member";
-    const courseUrl = `${Deno.env.get("SUPABASE_URL")?.replace(".supabase.co", ".lovable.app") || "https://rebuild-brighten-sparkle.lovable.app"}/onboarding-course`;
+
+    // Generate magic link for one-tap access
+    const courseMagicLink = await generateMagicToken(supabase, agentId, profile.email, "course");
 
     const emailHtml = `
       <!DOCTYPE html>
@@ -140,10 +162,13 @@ serve(async (req) => {
                 Every module you complete brings you closer to becoming a licensed producer. Your success story starts with completing this course!
               </p>
               <div style="text-align: center; margin: 32px 0;">
-                <a href="${courseUrl}" style="display: inline-block; background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%); color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; padding: 16px 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);">
+                <a href="${courseMagicLink}" style="display: inline-block; background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%); color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; padding: 16px 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);">
                   Continue My Course →
                 </a>
               </div>
+              <p style="color: #64748b; font-size: 12px; text-align: center; margin: 0 0 24px 0;">
+                One-tap access • No password needed
+              </p>
               <p style="color: #666; font-size: 14px; text-align: center; margin-top: 32px;">
                 Need help? Reply to this email or reach out to your manager.
               </p>

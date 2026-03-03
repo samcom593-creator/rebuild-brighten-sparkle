@@ -1,22 +1,28 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import {
-  Phone, Mail, Instagram, MapPin, Clock, FileText,
-  Building2, GraduationCap, Calendar, CheckCircle, X,
+  Phone, Mail, Instagram, MapPin, FileText,
+  Building2, GraduationCap, Calendar, CheckCircle, Pencil, X, Loader2,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { logLeadActivity } from "@/lib/logLeadActivity";
+import { toast } from "@/hooks/use-toast";
 
 interface ApplicationDetailSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   applicationId?: string;
   agentId?: string;
+  onRefresh?: () => void;
 }
 
 const LICENSE_PROGRESS_LABELS: Record<string, string> = {
@@ -30,12 +36,54 @@ const LICENSE_PROGRESS_LABELS: Record<string, string> = {
   licensed: "Licensed",
 };
 
+const LICENSE_PROGRESS_OPTIONS = Object.entries(LICENSE_PROGRESS_LABELS);
+
+interface EditForm {
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  city: string;
+  state: string;
+  instagram_handle: string;
+  referral_source: string;
+  license_progress: string;
+  test_scheduled_date: string;
+  notes: string;
+  carrier: string;
+  nipr_number: string;
+}
+
+function initForm(app: any): EditForm {
+  return {
+    first_name: app?.first_name || "",
+    last_name: app?.last_name || "",
+    email: app?.email || "",
+    phone: app?.phone || "",
+    city: app?.city || "",
+    state: app?.state || "",
+    instagram_handle: app?.instagram_handle || "",
+    referral_source: app?.referral_source || "",
+    license_progress: app?.license_progress || "unlicensed",
+    test_scheduled_date: app?.test_scheduled_date || "",
+    notes: app?.notes || "",
+    carrier: app?.carrier || "",
+    nipr_number: app?.nipr_number || "",
+  };
+}
+
 export function ApplicationDetailSheet({
   open,
   onOpenChange,
   applicationId,
   agentId,
+  onRefresh,
 }: ApplicationDetailSheetProps) {
+  const queryClient = useQueryClient();
+  const [isEditing, setIsEditing] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editForm, setEditForm] = useState<EditForm>(initForm(null));
+
   const { data: application, isLoading } = useQuery({
     queryKey: ["application-detail", applicationId, agentId],
     queryFn: async () => {
@@ -51,13 +99,76 @@ export function ApplicationDetailSheet({
 
   const app = application;
 
+  useEffect(() => {
+    if (app) {
+      setEditForm(initForm(app));
+      setIsEditing(false);
+    }
+  }, [app]);
+
+  const handleCancel = () => {
+    setEditForm(initForm(app));
+    setIsEditing(false);
+  };
+
+  const handleSave = async () => {
+    if (!app) return;
+    setSavingEdit(true);
+    const { error } = await supabase
+      .from("applications")
+      .update({
+        first_name: editForm.first_name.trim(),
+        last_name: editForm.last_name.trim(),
+        email: editForm.email.trim(),
+        phone: editForm.phone.trim() || null,
+        city: editForm.city.trim() || null,
+        state: editForm.state.trim() || null,
+        instagram_handle: editForm.instagram_handle.trim() || null,
+        referral_source: editForm.referral_source.trim() || null,
+        license_progress: (editForm.license_progress || null) as any,
+        test_scheduled_date: editForm.test_scheduled_date || null,
+        notes: editForm.notes.trim() || null,
+        carrier: editForm.carrier.trim() || null,
+        nipr_number: editForm.nipr_number.trim() || null,
+      })
+      .eq("id", app.id);
+
+    if (error) {
+      toast({ title: "Error saving", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Lead info updated" });
+      logLeadActivity({ leadId: app.id, type: "note_added", title: "Lead info updated" });
+      queryClient.invalidateQueries({ queryKey: ["application-detail", applicationId, agentId] });
+      onRefresh?.();
+      setIsEditing(false);
+    }
+    setSavingEdit(false);
+  };
+
+  const setField = (key: keyof EditForm, value: string) =>
+    setEditForm((prev) => ({ ...prev, [key]: value }));
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-lg p-0">
-        <SheetHeader className="p-6 pb-4">
+        <SheetHeader className="p-6 pb-4 flex flex-row items-center justify-between gap-2">
           <SheetTitle className="text-lg">
             {isLoading ? "Loading…" : app ? `${app.first_name} ${app.last_name}` : "Application Not Found"}
           </SheetTitle>
+          {app && !isLoading && (
+            <Button
+              variant={isEditing ? "ghost" : "outline"}
+              size="sm"
+              onClick={isEditing ? handleCancel : () => setIsEditing(true)}
+              className="shrink-0"
+            >
+              {isEditing ? (
+                <><X className="h-3.5 w-3.5 mr-1" /> Cancel</>
+              ) : (
+                <><Pencil className="h-3.5 w-3.5 mr-1" /> Edit</>
+              )}
+            </Button>
+          )}
         </SheetHeader>
 
         {isLoading ? (
@@ -84,9 +195,7 @@ export function ApplicationDetailSheet({
                     {LICENSE_PROGRESS_LABELS[app.license_progress] || app.license_progress}
                   </Badge>
                 )}
-                <Badge variant="outline" className="text-xs">
-                  {app.status}
-                </Badge>
+                <Badge variant="outline" className="text-xs">{app.status}</Badge>
                 {app.started_training && (
                   <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/30">
                     <GraduationCap className="h-3 w-3 mr-1" /> In Training
@@ -99,38 +208,69 @@ export function ApplicationDetailSheet({
               {/* Contact Info */}
               <div className="space-y-2.5">
                 <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Contact</h4>
-                <div className="space-y-2">
-                  <a href={`mailto:${app.email}`} className="flex items-center gap-3 text-sm hover:text-primary transition-colors">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    {app.email}
-                  </a>
-                  {app.phone && (
-                    <a href={`tel:${app.phone}`} className="flex items-center gap-3 text-sm hover:text-primary transition-colors">
-                      <Phone className="h-4 w-4 text-muted-foreground" />
-                      {app.phone}
+                {isEditing ? (
+                  <div className="space-y-2">
+                    <EditRow label="First Name" value={editForm.first_name} onChange={(v) => setField("first_name", v)} />
+                    <EditRow label="Last Name" value={editForm.last_name} onChange={(v) => setField("last_name", v)} />
+                    <EditRow label="Email" value={editForm.email} onChange={(v) => setField("email", v)} type="email" />
+                    <EditRow label="Phone" value={editForm.phone} onChange={(v) => setField("phone", v)} type="tel" />
+                    <EditRow label="Instagram" value={editForm.instagram_handle} onChange={(v) => setField("instagram_handle", v)} />
+                    <EditRow label="City" value={editForm.city} onChange={(v) => setField("city", v)} />
+                    <EditRow label="State" value={editForm.state} onChange={(v) => setField("state", v)} />
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <a href={`mailto:${app.email}`} className="flex items-center gap-3 text-sm hover:text-primary transition-colors">
+                      <Mail className="h-4 w-4 text-muted-foreground" />{app.email}
                     </a>
-                  )}
-                  {app.instagram_handle && (
-                    <a
-                      href={`https://instagram.com/${app.instagram_handle.replace("@", "")}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-3 text-sm hover:text-primary transition-colors"
-                    >
-                      <Instagram className="h-4 w-4 text-pink-400" />
-                      @{app.instagram_handle.replace("@", "")}
-                    </a>
-                  )}
-                  {(app.city || app.state) && (
-                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                      <MapPin className="h-4 w-4" />
-                      {[app.city, app.state].filter(Boolean).join(", ")}
-                    </div>
-                  )}
-                </div>
+                    {app.phone && (
+                      <a href={`tel:${app.phone}`} className="flex items-center gap-3 text-sm hover:text-primary transition-colors">
+                        <Phone className="h-4 w-4 text-muted-foreground" />{app.phone}
+                      </a>
+                    )}
+                    {app.instagram_handle && (
+                      <a href={`https://instagram.com/${app.instagram_handle.replace("@", "")}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 text-sm hover:text-primary transition-colors">
+                        <Instagram className="h-4 w-4 text-pink-400" />@{app.instagram_handle.replace("@", "")}
+                      </a>
+                    )}
+                    {(app.city || app.state) && (
+                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                        <MapPin className="h-4 w-4" />{[app.city, app.state].filter(Boolean).join(", ")}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <Separator />
+
+              {/* License Progress & Test Date (editable) */}
+              {isEditing && (
+                <>
+                  <div className="space-y-2.5">
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">License</h4>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm text-muted-foreground w-28 shrink-0">Progress</span>
+                        <select
+                          className="flex-1 h-9 rounded-md border border-input bg-background px-2 text-sm"
+                          value={editForm.license_progress}
+                          onChange={(e) => setField("license_progress", e.target.value)}
+                        >
+                          {LICENSE_PROGRESS_OPTIONS.map(([val, label]) => (
+                            <option key={val} value={val}>{label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <EditRow label="Test Date" value={editForm.test_scheduled_date} onChange={(v) => setField("test_scheduled_date", v)} type="date" />
+                      <EditRow label="Carrier" value={editForm.carrier} onChange={(v) => setField("carrier", v)} />
+                      <EditRow label="NIPR" value={editForm.nipr_number} onChange={(v) => setField("nipr_number", v)} />
+                      <EditRow label="Referral Source" value={editForm.referral_source} onChange={(v) => setField("referral_source", v)} />
+                    </div>
+                  </div>
+                  <Separator />
+                </>
+              )}
 
               {/* Timeline */}
               <div className="space-y-2.5">
@@ -176,8 +316,8 @@ export function ApplicationDetailSheet({
                 </>
               )}
 
-              {/* NIPR / Licensed States */}
-              {(app.nipr_number || (app.licensed_states && app.licensed_states.length > 0)) && (
+              {/* NIPR / Licensed States (read-only view) */}
+              {!isEditing && (app.nipr_number || (app.licensed_states && app.licensed_states.length > 0)) && (
                 <>
                   <Separator />
                   <div className="space-y-2 text-sm">
@@ -198,39 +338,59 @@ export function ApplicationDetailSheet({
               )}
 
               {/* Notes */}
-              {app.notes && (
-                <>
-                  <Separator />
-                  <div className="space-y-2.5">
-                    <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Notes</h4>
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed bg-muted/30 rounded-lg p-3">
-                      {app.notes}
-                    </p>
-                  </div>
-                </>
-              )}
-
-              {/* Quick Actions */}
               <Separator />
-              <div className="flex flex-wrap gap-2">
-                {app.phone && (
-                  <Button variant="outline" size="sm" asChild>
-                    <a href={`tel:${app.phone}`}>
-                      <Phone className="h-3.5 w-3.5 mr-1.5" /> Call
-                    </a>
-                  </Button>
+              <div className="space-y-2.5">
+                <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Notes</h4>
+                {isEditing ? (
+                  <Textarea
+                    value={editForm.notes}
+                    onChange={(e) => setField("notes", e.target.value)}
+                    rows={4}
+                    placeholder="Add notes…"
+                    className="text-sm"
+                  />
+                ) : app.notes ? (
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed bg-muted/30 rounded-lg p-3">
+                    {app.notes}
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">No notes yet</p>
                 )}
-                <Button variant="outline" size="sm" asChild>
-                  <a href={`mailto:${app.email}`}>
-                    <Mail className="h-3.5 w-3.5 mr-1.5" /> Email
-                  </a>
-                </Button>
               </div>
+
+              {/* Save / Quick Actions */}
+              <Separator />
+              {isEditing ? (
+                <Button onClick={handleSave} disabled={savingEdit || !editForm.first_name.trim() || !editForm.email.trim()} className="w-full">
+                  {savingEdit && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Save Changes
+                </Button>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {app.phone && (
+                    <Button variant="outline" size="sm" asChild>
+                      <a href={`tel:${app.phone}`}><Phone className="h-3.5 w-3.5 mr-1.5" /> Call</a>
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={`mailto:${app.email}`}><Mail className="h-3.5 w-3.5 mr-1.5" /> Email</a>
+                  </Button>
+                </div>
+              )}
             </div>
           </ScrollArea>
         )}
       </SheetContent>
     </Sheet>
+  );
+}
+
+function EditRow({ label, value, onChange, type = "text" }: { label: string; value: string; onChange: (v: string) => void; type?: string }) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span className="text-sm text-muted-foreground w-28 shrink-0">{label}</span>
+      <Input className="flex-1 h-9 text-sm" type={type} value={value} onChange={(e) => onChange(e.target.value)} />
+    </div>
   );
 }
 

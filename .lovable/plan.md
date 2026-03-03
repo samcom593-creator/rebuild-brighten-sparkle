@@ -1,20 +1,32 @@
 
 
-# Fix "Add to Course" Dialog Filtering
+# Enroll Brandon Kenney & Luis Garcia in Course
 
-## Problem
-The dialog filters out agents who already have `has_training_course = true` or who have any `onboarding_progress` records. This means most agents in the "onboarding" stage are excluded, making it appear empty even when there are eligible agents.
+## Current State
+- **Luis Garcia** — Agent record exists (`f4daff0b`), stage: "onboarding", `has_training_course = false`. Ready to enroll.
+- **Brandon Kenney** — Only exists as an application/lead (`cabbd7f7`, email: bkenney899@gmail.com). No agent account yet. Needs account creation first.
 
-**Current data confirms this:** 4 agents are in "onboarding" stage, but the filter eliminates 3 of them (2 have `has_training_course=true`, 1 has progress records), leaving only 1 visible.
+## Steps
 
-## Fix (in `src/components/dashboard/AddAgentToCourseDialog.tsx`)
+### 1. Create Brandon Kenney's agent account
+Call the existing `add-agent` edge function with his application data:
+- Name: Brandon Kenney
+- Email: bkenney899@gmail.com
+- `hasTrainingCourse: true` (creates him directly in `training_online` stage)
+- He'll get default password `123456` and a welcome email
 
-**Loosen the eligibility filter on line 70:**
-- Remove the `!a.has_training_course` check — users should be able to re-enroll or enroll agents who were previously flagged
-- Remove the `!agentsWithProgress.has(a.id)` check — agents with partial progress should still be enrollable
-- This means we can also remove the entire `onboarding_progress` sub-query (lines 60-66) since it's no longer needed
+### 2. Enroll Luis Garcia
+Update his agent record:
+- Set `onboarding_stage` → `training_online`
+- Set `has_training_course` → `true`
+- Create initial `onboarding_progress` record for the first module
+- Send course enrollment email via `send-course-enrollment-email`
 
-**Result:** All non-deactivated agents in "onboarding" stage will appear in the dialog, regardless of prior course flags or progress.
+### 3. Create initial course progress for Brandon
+After his agent account is created, insert an `onboarding_progress` record for the first active module so the course page loads correctly.
 
-The enrollment mutation (which sets `has_training_course = true` and moves stage to `training_online`) remains unchanged and correct.
+### Implementation
+I'll add a small temporary handler in `DashboardCRM.tsx` or — more practically — I'll invoke the edge functions and DB updates directly from the existing `AddAgentToCourseDialog` enrollment mutation (which already handles step 2). For Brandon, I'll first call `add-agent`, then run the same enrollment flow.
+
+No code changes needed — I'll execute these as database operations using the existing edge functions and direct updates.
 

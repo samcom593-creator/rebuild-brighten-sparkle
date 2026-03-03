@@ -1,54 +1,36 @@
 
 
-# Fix Recruiter HQ Spacing & Layout
-
-## Problem
-Too much dead space, buttons hard to click, vertical stacking wastes screen real estate. Need tighter, row-based layout throughout.
+# Recruiter HQ: Spacing Polish + Record & Transcribe on Lead Cards
 
 ## Changes
 
-### 1. Header Section (lines 992-1060)
-- Reduce padding from `p-5` to `p-3`
-- Make header, XP bar, and scheduling links all in one tight row on desktop
-- Reduce title from `text-2xl` to `text-xl`
-- Remove decorative blur circles to save space
+### 1. Spacing Improvements (RecruiterDashboard.tsx)
 
-### 2. Stat Bubbles (lines 1062-1068)
-- Convert from large cards with centered text to a **single horizontal row of compact pills**
-- Remove the large icon centering, big `text-2xl` values, and `p-4` padding
-- Use inline `flex items-center gap-2 px-3 py-2` pill format like MetricsStrip already does
-- Always show 4 across on all screen sizes
+**Header section**: Tighten the gap between header row items from `gap-4` to `gap-2`, reduce XP bar width from `md:w-64` to `md:w-48`, and remove `mb-1` on title row.
 
-### 3. StatBubble Component (lines 260-292)
-- Rewrite to compact row format: icon + value + label all inline, no stacking
-- Remove the decorative blur circle overlay
-- Reduce from `p-4 rounded-2xl` to `p-2 rounded-xl`
+**Stat bubbles row**: Reduce `gap-2` to `gap-1.5`, reduce pill padding from `px-3 py-1.5` to `px-2 py-1`.
 
-### 4. Daily Challenge + AI Panel + Metrics Strip (lines 1070-1078)
-- These 3 sections stack vertically taking huge space before the Kanban
-- Combine Metrics Strip into the header area or make it always-visible inline instead of collapsible
-- Keep AI Panel and Daily Challenge as collapsible but reduce their internal padding
+**Search/Filter bar**: Already `p-2 space-y-1` -- tighten filter button row `gap-2` to `gap-1.5`.
 
-### 5. Search/Filter/Sort Bar (lines 1080-1144)
-- Already row-based, just reduce padding from `p-3` to `p-2`
-- Tighten `space-y-2` to `space-y-1`
+**Kanban columns**: Reduce empty-state padding from `py-8` to `py-4`. Reduce card-to-card `space-y-2` to `space-y-1.5`. Reduce column max-height scroll area from `65vh` to `70vh` to use more screen.
 
-### 6. LeadCard Component (lines 432-754)
-- Reduce card padding from `p-2.5` to `p-2`
-- Reduce `space-y-1.5` to `space-y-1`
-- **Action buttons row**: Already row-based with `h-7 w-7` buttons -- keep but reduce `gap-1` and `pt-0.5` to `pt-0`
-- Reduce Kanban column gap from `gap-4` to `gap-2` and card spacing from `space-y-3` to `space-y-2`
+**Lead cards**: Tighten main `p-2 space-y-1` to `p-1.5 space-y-0.5`. Reduce action button row `min-h-[28px]` to `min-h-[24px]` and button sizes from `h-7 w-7` to `h-6 w-6`.
 
-### 7. Kanban Grid (lines 1280-1338)
-- Reduce column padding from `p-3` to `p-2`
-- Reduce `gap-4` to `gap-2`
-- Reduce card-to-card spacing from `space-y-3` to `space-y-2`
-- Column header `mb-3` to `mb-2`
+**Overall page**: Reduce `space-y-3` to `space-y-2` on the main container.
 
-### 8. Page-level spacing
-- Reduce `space-y-5` to `space-y-3` on the main container (line 974)
-- Reduce page padding from `p-4 md:p-6` to `p-3 md:p-4`
+### 2. Add Record & Transcribe Button to Each Lead Card
 
-## Technical Details
-All changes are in `src/pages/RecruiterDashboard.tsx`. No database or backend changes needed. Roughly 15-20 line-level edits across the file to tighten spacing classes.
+Add a **Mic** icon button to the action button row on each lead card. When clicked, it opens the existing `InterviewRecorder` component inline for that lead -- recording audio via browser SpeechRecognition, transcribing in real-time, then auto-analyzing via the `analyze-call-transcript` edge function.
+
+**Implementation:**
+- Add `Mic` to the lucide imports (already imported at file top)
+- Add state `recordingLeadId` to track which lead card has the recorder open
+- Add a Mic button in the action row (after the AI Brain button) that toggles `InterviewRecorder` for that card's lead
+- The `InterviewRecorder` component already handles: recording, transcription, AI analysis, saving to `interview_recordings` table, and follow-up email
+- Render `InterviewRecorder` conditionally inside the lead card when `recordingLeadId === lead.id`
+
+**Files changed:**
+- `src/pages/RecruiterDashboard.tsx` -- spacing tweaks + add Mic button + recorder state in LeadCard
+
+No database or edge function changes needed -- the existing `InterviewRecorder` component and `analyze-call-transcript` edge function handle everything.
 

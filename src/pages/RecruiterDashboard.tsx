@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Star, Zap, Flame, Trophy, Phone, Mail, MapPin, Calendar,
+  Star, Zap, Flame, Trophy, Phone, Mail, MapPin, Calendar, Bell,
   Clock, Search, ChevronRight, GraduationCap, Mic,
   BookOpen, BookCheck, CalendarClock, FileCheck, Fingerprint,
   Award, Users, UserCheck, AlertTriangle, TrendingUp, Sparkles,
@@ -491,8 +491,10 @@ const LeadCard = memo(function LeadCard({
             className="text-[10px] h-6"
           />
 
-          {/* ── Row 3: Icon-only action buttons (fixed min-height to prevent jitter) ── */}
-          <div className="flex items-center gap-0.5 min-h-[24px] flex-wrap">
+          {/* ── Row 3: Icon-only action buttons ── */}
+          <div className="flex items-center gap-1 min-h-[24px] flex-wrap">
+            {/* ─ Contact group ─ */}
+            <div className="flex items-center gap-1">
             {/* Call with outcome popover */}
             <Popover open={callOutcomeOpen} onOpenChange={setCallOutcomeOpen}>
               <PopoverTrigger asChild>
@@ -539,9 +541,63 @@ const LeadCard = memo(function LeadCard({
                 onXP(XP_REWARDS.contact, "📧 Email sent!");
                 onRefresh();
               }}
-              className="text-xs h-6 w-6 px-0"
+              className="h-6 w-6 px-0 border border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
             />
 
+            {/* Send Notification (Push / SMS) */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-6 w-6 border-violet-500/30 text-violet-400 hover:bg-violet-500/10"
+                >
+                  <Bell className="h-3 w-3" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-44 p-1" side="bottom" align="start">
+                <p className="text-[10px] font-medium text-muted-foreground px-2 py-1">Send Notification</p>
+                <button
+                  onClick={async () => {
+                    try {
+                      await supabase.functions.invoke("send-push-notification", {
+                        body: { applicationId: lead.id, title: "Apex Financial", body: `Hey ${lead.first_name}, following up on your application!` },
+                      });
+                      toast.success("Push notification sent!");
+                      onXP(XP_REWARDS.contact, "🔔 Push sent!");
+                    } catch { toast.error("Failed to send push"); }
+                  }}
+                  className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded-md hover:bg-accent transition-colors"
+                >
+                  <Bell className="h-3 w-3 text-violet-400" />
+                  <span>Send Push</span>
+                </button>
+                {lead.phone && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await supabase.functions.invoke("send-sms-auto-detect", {
+                          body: { phone: lead.phone, message: `Hey ${lead.first_name}, just following up on your Apex Financial application! Reply or call us back.`, applicationId: lead.id },
+                        });
+                        toast.success("SMS sent!");
+                        onXP(XP_REWARDS.contact, "💬 SMS sent!");
+                      } catch { toast.error("Failed to send SMS"); }
+                    }}
+                    className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded-md hover:bg-accent transition-colors"
+                  >
+                    <MessageSquare className="h-3 w-3 text-blue-400" />
+                    <span>Send SMS</span>
+                  </button>
+                )}
+              </PopoverContent>
+            </Popover>
+            </div>
+
+            {/* Divider */}
+            <div className="h-4 w-px bg-border mx-0.5" />
+
+            {/* ─ Utility group ─ */}
+            <div className="flex items-center gap-1">
             {/* Send licensing instructions */}
             <ResendLicensingButton
               recipientEmail={lead.email}
@@ -632,6 +688,7 @@ const LeadCard = memo(function LeadCard({
               </TooltipTrigger>
               <TooltipContent><p>{showRecorder ? "Close recorder" : "Record & Transcribe"}</p></TooltipContent>
             </Tooltip>
+            </div>
 
             {/* Notes toggle */}
             <Tooltip>

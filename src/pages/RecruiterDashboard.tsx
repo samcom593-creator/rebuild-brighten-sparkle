@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Star, Zap, Flame, Trophy, Phone, Mail, MapPin, Calendar,
-  Clock, Search, ChevronRight, GraduationCap,
+  Clock, Search, ChevronRight, GraduationCap, Mic,
   BookOpen, BookCheck, CalendarClock, FileCheck, Fingerprint,
   Award, Users, UserCheck, AlertTriangle, TrendingUp, Sparkles,
   MessageSquare, ChevronDown, ChevronUp, Plus, ExternalLink, AlertCircle,
@@ -41,6 +41,7 @@ import { RecruiterAIPanel, LeadAISummary } from "@/components/recruiter/Recruite
 import { LeadDetailSheet } from "@/components/recruiter/LeadDetailSheet";
 import { DailyChallenge } from "@/components/recruiter/DailyChallenge";
 import { DormantBadge } from "@/components/recruiter/DormantBadge";
+import { InterviewRecorder } from "@/components/dashboard/InterviewRecorder";
 import { logLeadActivity } from "@/lib/logLeadActivity";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, addDays, addMinutes, subDays, differenceInDays } from "date-fns";
@@ -276,7 +277,7 @@ function StatBubble({
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay, type: "spring", stiffness: 300, damping: 25 }}
       className={cn(
-        "flex items-center gap-2 rounded-xl border px-3 py-1.5 cursor-default",
+        "flex items-center gap-1.5 rounded-xl border px-2 py-1 cursor-default",
         color
       )}
     >
@@ -348,6 +349,7 @@ const LeadCard = memo(function LeadCard({
   const [noteText, setNoteText] = useState(lead.notes || "");
   const [savingNote, setSavingNote] = useState(false);
   const [callOutcomeOpen, setCallOutcomeOpen] = useState(false);
+  const [showRecorder, setShowRecorder] = useState(false);
   const { playSound } = useSoundEffects();
 
   const [showTimeline, setShowTimeline] = useState(false);
@@ -436,7 +438,7 @@ const LeadCard = memo(function LeadCard({
         transition={{ type: "spring", stiffness: 300, damping: 25 }}
         className="bg-card border border-border rounded-xl overflow-hidden shadow-sm"
       >
-        <div className="p-2 space-y-1">
+        <div className="p-1.5 space-y-0.5">
           {/* ── Row 1: Name + score ── */}
           <div className="flex items-start justify-between gap-1">
             <p className="font-semibold text-sm leading-tight truncate min-w-0 flex-1 cursor-pointer hover:text-primary transition-colors" title={fullName} onClick={() => onDetailClick?.(lead)}>{fullName}</p>
@@ -490,14 +492,14 @@ const LeadCard = memo(function LeadCard({
           />
 
           {/* ── Row 3: Icon-only action buttons (fixed min-height to prevent jitter) ── */}
-          <div className="flex items-center gap-0.5 min-h-[28px]">
+          <div className="flex items-center gap-0.5 min-h-[24px] flex-wrap">
             {/* Call with outcome popover */}
             <Popover open={callOutcomeOpen} onOpenChange={setCallOutcomeOpen}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-7 w-7 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                  className="h-6 w-6 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
                 >
                   <Phone className="h-3 w-3" />
                 </Button>
@@ -537,7 +539,7 @@ const LeadCard = memo(function LeadCard({
                 onXP(XP_REWARDS.contact, "📧 Email sent!");
                 onRefresh();
               }}
-              className="text-xs h-7 w-7 px-0"
+              className="text-xs h-6 w-6 px-0"
             />
 
             {/* Send licensing instructions */}
@@ -553,7 +555,7 @@ const LeadCard = memo(function LeadCard({
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-7 w-7 border-pink-500/30 text-pink-400 hover:bg-pink-500/10"
+                  className="h-6 w-6 border-pink-500/30 text-pink-400 hover:bg-pink-500/10"
                   onClick={() => {
                     logLeadActivity({
                       leadId: lead.id,
@@ -576,7 +578,7 @@ const LeadCard = memo(function LeadCard({
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-7 w-7 border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+                  className="h-6 w-6 border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
                   onClick={() => setSchedulerOpen(true)}
                 >
                   <Calendar className="h-3 w-3" />
@@ -591,7 +593,7 @@ const LeadCard = memo(function LeadCard({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 text-pink-400 hover:text-pink-300 hover:bg-pink-500/10"
+                  className="h-6 w-6 text-pink-400 hover:text-pink-300 hover:bg-pink-500/10"
                 >
                   <Brain className="h-3 w-3" />
                 </Button>
@@ -608,12 +610,27 @@ const LeadCard = memo(function LeadCard({
                   variant="ghost"
                   size="icon"
                   onClick={() => setShowTimeline((v) => !v)}
-                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                  className="h-6 w-6 text-muted-foreground hover:text-foreground"
                 >
                   <Activity className="h-3 w-3" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent><p>{showTimeline ? "Hide activity" : "Activity"}</p></TooltipContent>
+            </Tooltip>
+
+            {/* Record & Transcribe */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowRecorder((v) => !v)}
+                  className={cn("h-6 w-6", showRecorder ? "text-red-400 bg-red-500/10" : "text-muted-foreground hover:text-foreground")}
+                >
+                  <Mic className="h-3 w-3" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent><p>{showRecorder ? "Close recorder" : "Record & Transcribe"}</p></TooltipContent>
             </Tooltip>
 
             {/* Notes toggle */}
@@ -623,7 +640,7 @@ const LeadCard = memo(function LeadCard({
                   variant="ghost"
                   size="icon"
                   onClick={() => setExpanded((v) => !v)}
-                  className="h-7 w-7 ml-auto text-muted-foreground hover:text-foreground"
+                  className="h-6 w-6 ml-auto text-muted-foreground hover:text-foreground"
                 >
                   <MessageSquare className="h-3 w-3" />
                 </Button>
@@ -632,6 +649,31 @@ const LeadCard = memo(function LeadCard({
             </Tooltip>
           </div>
         </div>
+
+
+        {/* ── Interview Recorder ── */}
+        <AnimatePresence>
+          {showRecorder && agentId && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <InterviewRecorder
+                applicationId={lead.id}
+                agentId={agentId}
+                applicantName={fullName}
+                onClose={() => setShowRecorder(false)}
+                onTranscriptionSaved={() => {
+                  onXP(XP_REWARDS.contact, "🎙️ Interview recorded!");
+                  onRefresh();
+                }}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
           {/* ── Auto-Stage Suggestion Chip ── */}
           {(() => {
             const suggestion = computeStageSuggestion(lead);
@@ -967,7 +1009,7 @@ function RecruiterDashboardInner() {
   }
 
   return (
-    <div className="p-3 md:p-4 space-y-3 max-w-[1800px] mx-auto">
+    <div className="p-3 md:p-4 space-y-2 max-w-[1800px] mx-auto">
       <ConfettiCelebration trigger={confetti} onComplete={() => setConfetti(false)} />
 
       {/* XP toast */}
@@ -990,9 +1032,9 @@ function RecruiterDashboardInner() {
         animate={{ opacity: 1, y: 0 }}
         className="relative overflow-hidden rounded-xl border border-pink-500/20 bg-gradient-to-br from-pink-500/10 via-purple-500/5 to-transparent p-3"
       >
-        <div className="flex flex-col md:flex-row md:items-center gap-4">
+        <div className="flex flex-col md:flex-row md:items-center gap-2">
           <div className="flex-1">
-            <div className="flex items-center gap-3 mb-1">
+            <div className="flex items-center gap-3">
               <Sparkles className="h-5 w-5 text-pink-400" />
               <h1 className="text-xl font-bold bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">
                 Aisha's Recruiter HQ
@@ -1016,7 +1058,7 @@ function RecruiterDashboardInner() {
 
           {/* XP Bar */}
           {isFeatureEnabled("xpSystem") && (
-            <div className="md:w-64 bg-background/60 rounded-xl p-3 border border-border/50">
+            <div className="md:w-48 bg-background/60 rounded-xl p-2 border border-border/50">
               <XPBar xp={xp} />
             </div>
           )}
@@ -1053,7 +1095,7 @@ function RecruiterDashboardInner() {
       </motion.div>
 
       {/* ── Stat bubbles ── */}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-4 gap-1.5">
         <StatBubble icon={Users} label="Total Hired (Unlicensed)" value={totalLeads} color="border border-pink-500/20 bg-pink-500/5 text-pink-400" delay={0} />
         <StatBubble icon={AlertTriangle} label="Needs Contact" value={needsContact} color="border border-rose-500/20 bg-rose-500/5 text-rose-400" delay={0.06} />
         <StatBubble icon={TrendingUp} label="Actively In Progress" value={inProgress} color="border border-purple-500/20 bg-purple-500/5 text-purple-400" delay={0.12} />
@@ -1083,7 +1125,7 @@ function RecruiterDashboardInner() {
         </div>
 
         {/* Filter by stage + Sort + Focus Mode in one scrollable row */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
           <span className="text-xs text-muted-foreground shrink-0 font-medium">Filter:</span>
           <Button
             variant={filterStage === "all" ? "default" : "outline"}
@@ -1244,10 +1286,10 @@ function RecruiterDashboardInner() {
                   {col.leads.length}
                 </Badge>
               </div>
-              <div className="space-y-2">
+                <div className="space-y-1.5">
                 <AnimatePresence mode="popLayout">
                   {col.leads.length === 0 ? (
-                    <motion.p key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xs text-muted-foreground text-center py-8">
+                    <motion.p key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xs text-muted-foreground text-center py-4">
                       No leads here yet ✨
                     </motion.p>
                   ) : (
@@ -1298,14 +1340,14 @@ function RecruiterDashboardInner() {
                 </div>
 
                 {/* Lead cards with max height scroll */}
-                <div className="space-y-2 max-h-[65vh] overflow-y-auto flex-1 pr-0.5">
+                <div className="space-y-1.5 max-h-[70vh] overflow-y-auto flex-1 pr-0.5">
                   <AnimatePresence mode="popLayout">
                     {col.leads.length === 0 ? (
                       <motion.p
                         key="empty"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="text-xs text-muted-foreground text-center py-8"
+                        className="text-xs text-muted-foreground text-center py-4"
                       >
                         No leads here yet ✨
                       </motion.p>

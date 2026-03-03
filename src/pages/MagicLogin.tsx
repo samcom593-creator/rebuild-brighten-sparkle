@@ -73,8 +73,7 @@ export default function MagicLogin() {
       // Use verifyOtp directly - no external redirect needed
       if (data.tokenHash && data.email) {
         const { error: verifyError } = await supabase.auth.verifyOtp({
-          email: data.email,
-          token: data.tokenHash,
+          token_hash: data.tokenHash,
           type: "magiclink",
         });
 
@@ -90,8 +89,7 @@ export default function MagicLogin() {
             
             if (!retryFnError && retryData?.success && retryData.tokenHash) {
               const { error: retryVerifyError } = await supabase.auth.verifyOtp({
-                email: retryData.email,
-                token: retryData.tokenHash,
+                token_hash: retryData.tokenHash,
                 type: "magiclink",
               });
               

@@ -87,9 +87,30 @@ export function LeadDetailSheet({ lead, open, onOpenChange, onRefresh }: LeadDet
   const [timelineSearch, setTimelineSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
 
-  // Reset note text when lead changes
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    first_name: "", last_name: "", email: "", phone: "",
+    city: "", state: "", referral_source: "", license_progress: "", test_scheduled_date: "",
+  });
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  // Reset note text and edit form when lead changes
   useEffect(() => {
-    if (lead) setNoteText(lead.notes || "");
+    if (lead) {
+      setNoteText(lead.notes || "");
+      setEditForm({
+        first_name: lead.first_name || "",
+        last_name: lead.last_name || "",
+        email: lead.email || "",
+        phone: lead.phone || "",
+        city: lead.city || "",
+        state: lead.state || "",
+        referral_source: lead.referral_source || "",
+        license_progress: lead.license_progress || "unlicensed",
+        test_scheduled_date: lead.test_scheduled_date || "",
+      });
+      setIsEditing(false);
+    }
   }, [lead?.id]);
 
   // Fetch full activity timeline
@@ -150,6 +171,41 @@ export function LeadDetailSheet({ lead, open, onOpenChange, onRefresh }: LeadDet
       toast.error("Failed to save note");
     } finally {
       setSavingNote(false);
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!lead) return;
+    setSavingEdit(true);
+    try {
+      const { error } = await supabase
+        .from("applications")
+        .update({
+          first_name: editForm.first_name,
+          last_name: editForm.last_name,
+          email: editForm.email,
+          phone: editForm.phone || null,
+          city: editForm.city || null,
+          state: editForm.state || null,
+          referral_source: editForm.referral_source || null,
+          license_progress: (editForm.license_progress || null) as any,
+          test_scheduled_date: editForm.test_scheduled_date || null,
+        })
+        .eq("id", lead.id);
+      if (error) throw error;
+      logLeadActivity({
+        leadId: lead.id,
+        type: "note_added",
+        title: "Lead info updated",
+        details: { fields_updated: Object.keys(editForm) },
+      });
+      toast.success("Lead info saved!");
+      setIsEditing(false);
+      onRefresh();
+    } catch {
+      toast.error("Failed to save changes");
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -277,24 +333,87 @@ export function LeadDetailSheet({ lead, open, onOpenChange, onRefresh }: LeadDet
           </TabsContent>
 
           {/* Info Tab */}
-          <TabsContent value="info" className="flex-1 px-4 pb-4">
-            <div className="space-y-3 text-xs">
-              <InfoRow label="Name" value={fullName} />
-              <InfoRow label="Email" value={lead.email} />
-              <InfoRow label="Phone" value={lead.phone} />
-              <InfoRow label="Location" value={location || "—"} />
-              <InfoRow label="License Status" value={lead.license_status} />
-              <InfoRow label="License Progress" value={lead.license_progress || "unlicensed"} />
-              <InfoRow label="Referral Source" value={lead.referral_source || "—"} />
-              <InfoRow label="Created" value={format(new Date(lead.created_at), "PPP")} />
-              <InfoRow
-                label="Last Contacted"
-                value={lastContact ? formatDistanceToNow(new Date(lastContact), { addSuffix: true }) : "Never"}
-              />
-              {lead.test_scheduled_date && (
-                <InfoRow label="Test Scheduled" value={format(new Date(lead.test_scheduled_date), "PPP")} />
+          <TabsContent value="info" className="flex-1 flex flex-col px-4 pb-4">
+            <div className="flex justify-end mb-2">
+              {!isEditing ? (
+                <Button variant="outline" size="sm" className="text-xs" onClick={() => setIsEditing(true)}>
+                  Edit
+                </Button>
+              ) : (
+                <Button variant="ghost" size="sm" className="text-xs" onClick={() => {
+                  setIsEditing(false);
+                  if (lead) setEditForm({
+                    first_name: lead.first_name || "", last_name: lead.last_name || "",
+                    email: lead.email || "", phone: lead.phone || "",
+                    city: lead.city || "", state: lead.state || "",
+                    referral_source: lead.referral_source || "",
+                    license_progress: lead.license_progress || "unlicensed",
+                    test_scheduled_date: lead.test_scheduled_date || "",
+                  });
+                }}>
+                  Cancel
+                </Button>
               )}
             </div>
+
+            <div className="space-y-3 text-xs flex-1">
+              {isEditing ? (
+                <>
+                  <EditRow label="First Name" value={editForm.first_name} onChange={(v) => setEditForm({ ...editForm, first_name: v })} />
+                  <EditRow label="Last Name" value={editForm.last_name} onChange={(v) => setEditForm({ ...editForm, last_name: v })} />
+                  <EditRow label="Email" value={editForm.email} onChange={(v) => setEditForm({ ...editForm, email: v })} />
+                  <EditRow label="Phone" value={editForm.phone} onChange={(v) => setEditForm({ ...editForm, phone: v })} />
+                  <EditRow label="City" value={editForm.city} onChange={(v) => setEditForm({ ...editForm, city: v })} />
+                  <EditRow label="State" value={editForm.state} onChange={(v) => setEditForm({ ...editForm, state: v })} />
+                  <EditRow label="Referral Source" value={editForm.referral_source} onChange={(v) => setEditForm({ ...editForm, referral_source: v })} />
+                  <div className="flex justify-between items-center py-1.5 border-b border-border/30">
+                    <span className="text-muted-foreground">License Progress</span>
+                    <select
+                      value={editForm.license_progress}
+                      onChange={(e) => setEditForm({ ...editForm, license_progress: e.target.value })}
+                      className="h-7 text-xs rounded-md border border-input bg-background px-2 text-foreground max-w-[180px]"
+                    >
+                      {["unlicensed","course_purchased","finished_course","test_scheduled","passed_test","fingerprints_done","waiting_on_license","licensed"].map((v) => (
+                        <option key={v} value={v}>{v.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex justify-between items-center py-1.5 border-b border-border/30">
+                    <span className="text-muted-foreground">Test Scheduled</span>
+                    <input
+                      type="date"
+                      value={editForm.test_scheduled_date}
+                      onChange={(e) => setEditForm({ ...editForm, test_scheduled_date: e.target.value })}
+                      className="h-7 text-xs rounded-md border border-input bg-background px-2 text-foreground"
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <InfoRow label="Name" value={fullName} />
+                  <InfoRow label="Email" value={lead.email} />
+                  <InfoRow label="Phone" value={lead.phone} />
+                  <InfoRow label="Location" value={location || "—"} />
+                  <InfoRow label="License Status" value={lead.license_status} />
+                  <InfoRow label="License Progress" value={lead.license_progress || "unlicensed"} />
+                  <InfoRow label="Referral Source" value={lead.referral_source || "—"} />
+                  <InfoRow label="Created" value={format(new Date(lead.created_at), "PPP")} />
+                  <InfoRow
+                    label="Last Contacted"
+                    value={lastContact ? formatDistanceToNow(new Date(lastContact), { addSuffix: true }) : "Never"}
+                  />
+                  {lead.test_scheduled_date && (
+                    <InfoRow label="Test Scheduled" value={format(new Date(lead.test_scheduled_date), "PPP")} />
+                  )}
+                </>
+              )}
+            </div>
+
+            {isEditing && (
+              <Button size="sm" onClick={handleSaveEdit} disabled={savingEdit} className="mt-3 text-xs w-full">
+                {savingEdit ? "Saving…" : "Save Changes"}
+              </Button>
+            )}
           </TabsContent>
         </Tabs>
       </SheetContent>
@@ -307,6 +426,19 @@ function InfoRow({ label, value }: { label: string; value: string }) {
     <div className="flex justify-between items-center py-1.5 border-b border-border/30">
       <span className="text-muted-foreground">{label}</span>
       <span className="font-medium text-right max-w-[200px] truncate">{value}</span>
+    </div>
+  );
+}
+
+function EditRow({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex justify-between items-center py-1.5 border-b border-border/30">
+      <span className="text-muted-foreground">{label}</span>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-7 text-xs rounded-md border border-input bg-background px-2 text-foreground max-w-[180px] w-full text-right"
+      />
     </div>
   );
 }

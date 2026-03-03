@@ -1,33 +1,35 @@
 
 
-# Fix: Course Email Links Not Working + Resend Emails
+# Fix: Course Emails Going to Wrong People + Magic Link Sign-In Broken
 
-## Root Cause
-The `send-course-enrollment-email` edge function (line 12) uses:
+## Two Issues
+
+### Issue 1: Emails sent to agents who already passed
+The `bulk-resend-course-emails` function sends to ALL agents with `has_training_course = true`, including those who already completed the course. It needs to exclude agents who have passed all modules.
+
+### Issue 2: Magic link sign-in fails (agents can't access course)
+The `MagicLogin.tsx` page calls `verifyOtp` incorrectly. It passes the hashed token as `token`, but it should use `token_hash`:
+
+```typescript
+// BROKEN (current)
+supabase.auth.verifyOtp({ email, token: data.tokenHash, type: "magiclink" })
+
+// FIXED
+supabase.auth.verifyOtp({ token_hash: data.tokenHash, type: "magiclink" })
 ```
-const BASE_URL = "https://apex-financial.org";
-```
 
-This generates magic links like `https://apex-financial.org/magic-login?token=...`. But `apex-financial.org` either doesn't serve this app or serves a different/old version. The actual app lives at `https://rebuild-brighten-sparkle.lovable.app`. The `verify-magic-link` function has **zero logs**, confirming agents never reach the app when clicking the link.
+The `token` parameter expects a raw 6-digit OTP code, not a hash. This explains why agents click the email link, the verify-magic-link function succeeds (logs show "tokenHash present: true"), but the frontend `verifyOtp` call fails and they see an error screen telling them to sign in manually — which they can't do because they don't know their password.
 
-The `send-course-reminder` function (line 104) has a similar but different issue — it links directly to `/onboarding-course` without magic login auth, so unauthenticated users would hit a login wall.
+## Fix Plan
 
-## Fix
+### 1. Fix `src/pages/MagicLogin.tsx`
+- Line 75: Change `verifyOtp({ email, token: data.tokenHash, type: "magiclink" })` to `verifyOtp({ token_hash: data.tokenHash, type: "magiclink" })`
+- Line 92 (retry): Same fix
 
-### 1. Fix `send-course-enrollment-email/index.ts`
-- Change line 12: `BASE_URL` from `"https://apex-financial.org"` to `"https://rebuild-brighten-sparkle.lovable.app"`
-- This ensures the magic link points to the correct app where `/magic-login` actually exists
+### 2. Fix `supabase/functions/bulk-resend-course-emails/index.ts`
+- After fetching agents with `has_training_course = true`, also fetch `onboarding_progress` to find agents who have passed ALL active modules
+- Exclude those fully-completed agents from the email list
 
-### 2. Fix `send-course-reminder/index.ts`
-- Line 104 constructs a direct `/onboarding-course` URL which won't work for unauthenticated users
-- Change it to generate a magic login token (like the enrollment email does) so agents get one-tap access
-- Import the same magic-token-generation pattern from the enrollment email
-
-### 3. Resend enrollment emails
-- After deploying the fixed functions, invoke `send-course-enrollment-email` for every agent currently in `training_online` stage so they get working links
-
-## Technical Details
-- Both edge functions need redeployment
-- The `send-course-reminder` will need a `generateMagicToken` helper added (copy from enrollment function) and will generate course-destination magic links instead of direct URLs
-- Resend will be done by querying `agents` with `onboarding_stage = 'training_online'` and calling the enrollment email function for each
+### 3. Resend emails
+- After deploying fixes, trigger `bulk-resend-course-emails` to send working links to all agents who haven't completed the course
 

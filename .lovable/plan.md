@@ -1,34 +1,37 @@
 
 
-# Make Lead Info Tab Editable
+# Make ApplicationDetailSheet Editable Everywhere
 
 ## Problem
-The Info tab in LeadDetailSheet is read-only. Users need to edit lead details (name, email, phone, city, state, referral source, license progress, test date) directly from the sheet.
+The `ApplicationDetailSheet` component (used in CRM, Pipeline, Call Center, and Recruiting Quick View) is entirely read-only. When you click a name anywhere in the app, you can only view info — not edit it. The `LeadDetailSheet` (Recruiter HQ only) already has edit mode, but `ApplicationDetailSheet` does not.
 
-## Changes (all in `src/components/recruiter/LeadDetailSheet.tsx`)
+## Changes (all in `src/components/dashboard/ApplicationDetailSheet.tsx`)
 
-### 1. Add Edit Mode Toggle
-- Add `isEditing` state and an "Edit" / "Cancel" button at the top of the Info tab
-- When editing, replace static `InfoRow` values with `Input` fields pre-filled with current values
+### 1. Add Edit Mode State
+- Add `isEditing`, `editForm`, `savingEdit` states
+- Initialize `editForm` from fetched `application` data whenever it changes
+- Editable fields: `first_name`, `last_name`, `email`, `phone`, `city`, `state`, `instagram_handle`, `referral_source`, `license_progress`, `test_scheduled_date`, `notes`, `carrier`, `nipr_number`
 
-### 2. Editable Fields State
-- Add `editForm` state initialized from the lead prop, containing: `first_name`, `last_name`, `email`, `phone`, `city`, `state`, `referral_source`, `license_progress`, `test_scheduled_date`
-- Reset `editForm` when lead changes (in the existing `useEffect`)
+### 2. Add Edit/Cancel Toggle
+- Add an "Edit" button in the sheet header (next to the title)
+- Toggles to "Cancel" when editing; resets form on cancel
 
-### 3. Save Handler
-- On "Save", update the `applications` table with the edited fields
-- Log a `note_added` activity: "Lead info updated"
-- Toast success/error, call `onRefresh()`, exit edit mode
+### 3. Replace Read-Only Sections with Inputs When Editing
+- Contact section: replace static text with compact input fields for email, phone, instagram, city/state
+- Experience section: keep read-only (rarely changes)
+- Notes section: replace static `<p>` with a `<Textarea>`
+- License progress: add a `<select>` dropdown
+- Test scheduled: add `<input type="date">`
+- NIPR/carrier: add text inputs
 
-### 4. UI Layout
-- Non-editable rows (Created, Last Contacted) stay as static `InfoRow`
-- Editable rows become compact inputs: label on left, small input on right
-- License Progress uses a `<select>` dropdown with the existing enum values (unlicensed, pre_licensing, studying, scheduled, licensed)
-- Test Scheduled Date uses a date `<input type="date">`
-- Save + Cancel buttons at bottom
+### 4. Save Handler
+- Update `applications` table with edited fields
+- Log activity via `logLeadActivity` (type: `note_added`, title: "Lead info updated")
+- Toast success/error, invalidate the query, exit edit mode
 
-### 5. InfoRow Component Update
-- Add optional `editing` / `onChange` / `type` props to `InfoRow` so it can render an input when in edit mode, keeping the component reusable
+### 5. Add `onRefresh` Callback
+- Add optional `onRefresh` prop so parent pages (CRM, Pipeline, etc.) can refresh their lists after edits
+- Call `queryClient.invalidateQueries` for the detail query + call `onRefresh` on save
 
-No database changes needed -- the existing RLS policies already allow agents/managers to update their assigned applications.
+No database changes needed — existing RLS policies already allow agents/managers to update their assigned applications.
 

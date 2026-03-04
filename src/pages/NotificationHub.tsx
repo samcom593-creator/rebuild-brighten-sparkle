@@ -482,6 +482,7 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
   const [textingCourse, setTextingCourse] = useState(false);
   const [sendingOptIn, setSendingOptIn] = useState(false);
   const [resendingFailed, setResendingFailed] = useState(false);
+  const [whatsappBlasting, setWhatsappBlasting] = useState(false);
   const [lastRetryResult, setLastRetryResult] = useState<{ message: string; type: "success" | "warning" | "info"; timestamp: Date } | null>(null);
   const queryClient = useQueryClient();
   const { playSound } = useSoundEffects();
@@ -765,6 +766,30 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
     }
   };
 
+  const handleWhatsappBlast = async () => {
+    setWhatsappBlasting(true);
+    playSound("whoosh");
+    try {
+      const { data, error } = await supabase.functions.invoke("send-whatsapp-onboarding-blast", {
+        method: "POST",
+        body: {},
+      });
+      if (error) throw error;
+      playSound("celebrate");
+      confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+      toast.success(
+        `WhatsApp Blast sent! 📧 ${data?.email || 0} emails, 📱 ${data?.sms || 0} SMS, 🔔 ${data?.push || 0} push — to ${data?.total || 0} applicants`,
+        { duration: 8000 }
+      );
+      queryClient.invalidateQueries({ queryKey: ["notification-logs"] });
+    } catch (err: any) {
+      playSound("error");
+      toast.error(err.message || "WhatsApp blast failed");
+    } finally {
+      setWhatsappBlasting(false);
+    }
+  };
+
   const actions = [
     {
       title: "Text All Applicants",
@@ -776,6 +801,17 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
       handler: handleTextAll,
       confirmTitle: "Text All Applicants",
       confirmDesc: "This sends push notifications, SMS, and email to every active applicant and aged lead.",
+    },
+    {
+      title: "WhatsApp + Check-In Blast",
+      desc: "All channels to unlicensed",
+      icon: Rocket,
+      gradient: "from-green-500/20 to-green-500/5 border-green-500/20",
+      color: "text-green-400",
+      loading: whatsappBlasting,
+      handler: handleWhatsappBlast,
+      confirmTitle: "WhatsApp + Check-In Blast",
+      confirmDesc: "Sends Email + SMS + Push to ALL unlicensed applicants with WhatsApp group invite, licensing steps, and daily check-in link.",
     },
     {
       title: "Course Progress Leads",
@@ -843,7 +879,7 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
           </motion.div>
         )}
       </AnimatePresence>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
       {actions.map((action, i) => (
         <motion.div
           key={action.title}

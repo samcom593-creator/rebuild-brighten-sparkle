@@ -162,7 +162,7 @@ const handler = async (req: Request): Promise<Response> => {
               Ready to log today's numbers?
             </p>
             
-            <a href="https://apex-financial.org/numbers" class="cta">
+            <a href="https://rebuild-brighten-sparkle.lovable.app/numbers" class="cta">
               📊 Log My Numbers
             </a>
           </div>

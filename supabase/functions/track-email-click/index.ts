@@ -8,7 +8,7 @@ const handler = async (req: Request): Promise<Response> => {
   const name = url.searchParams.get("name") || "Unknown";
   const source = url.searchParams.get("source") || "unknown";
 
-  const redirectUrl = "https://apex-financial.org/apply";
+  const redirectUrl = "https://rebuild-brighten-sparkle.lovable.app/apply";
 
   try {
     const supabaseClient = createClient(

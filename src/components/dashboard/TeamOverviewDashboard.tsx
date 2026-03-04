@@ -166,7 +166,7 @@ export function TeamOverviewDashboard() {
           .slice(0, 8),
       };
     },
-    staleTime: 120_000,
+    staleTime: 30_000,
   });
 
   if (isLoading) {

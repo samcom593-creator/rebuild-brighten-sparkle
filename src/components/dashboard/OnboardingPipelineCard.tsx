@@ -122,6 +122,7 @@ export function OnboardingPipelineCard() {
     queryKey: ["onboarding-pipeline", user?.id, isAdmin],
     queryFn: () => fetchPipeline(user!.id, isAdmin),
     enabled: !!user,
+    staleTime: 30_000,
   });
 
   const totalAgents = stages.reduce((sum, s) => sum + s.count, 0);

@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -66,289 +67,242 @@ interface TeamStats {
   trainingCount: number;
 }
 
-export function ManagerTeamView() {
-  const { user, isManager, isAdmin } = useAuth();
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
-  const [teamStats, setTeamStats] = useState<TeamStats>({
-    totalMembers: 0,
-    totalLeads: 0,
-    totalClosed: 0,
-    avgCloseRate: 0,
-    licensedCount: 0,
-    unlicensedCount: 0,
-    trainingCount: 0,
-  });
-  const [activeFilter, setActiveFilter] = useState<RosterFilter>("all");
-  const [loading, setLoading] = useState(true);
-  const [expandedMember, setExpandedMember] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<SortOption>("production-desc");
-  const [managerUserIds, setManagerUserIds] = useState<Set<string>>(new Set());
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [bulkLoading, setBulkLoading] = useState(false);
-
-  useEffect(() => {
-    fetchTeamData();
-    if (isAdmin) fetchManagerRoles();
-  }, [user?.id, isAdmin]);
-
-  const fetchManagerRoles = async () => {
+async function fetchTeamDataFn(userId: string, isAdmin: boolean): Promise<{ members: TeamMember[]; stats: TeamStats; managerUserIds: Set<string> }> {
+  // Fetch manager roles
+  let managerUserIds = new Set<string>();
+  if (isAdmin) {
     const { data } = await supabase
       .from("user_roles")
       .select("user_id")
       .eq("role", "manager");
-    setManagerUserIds(new Set((data || []).map(r => r.user_id)));
-  };
+    managerUserIds = new Set((data || []).map(r => r.user_id));
+  }
 
-  const fetchTeamData = async () => {
-    if (!user) return;
+  const { data: currentAgent } = await supabase
+    .from("agents")
+    .select("id")
+    .eq("user_id", userId)
+    .single();
 
-    try {
-      const { data: currentAgent } = await supabase
-        .from("agents")
-        .select("id")
-        .eq("user_id", user.id)
-        .single();
+  if (!currentAgent) return { members: [], stats: { totalMembers: 0, totalLeads: 0, totalClosed: 0, avgCloseRate: 0, licensedCount: 0, unlicensedCount: 0, trainingCount: 0 }, managerUserIds };
 
-      if (!currentAgent) {
-        setLoading(false);
-        return;
-      }
+  let teamAgents: any[] = [];
 
-      let teamAgents: any[] = [];
+  if (isAdmin) {
+    const { data: allAgents, error } = await supabase
+      .from("agents")
+      .select(`id, user_id, status, onboarding_stage, created_at, license_status, invited_by_manager_id, is_deactivated, is_inactive`);
+    if (error) throw error;
+    teamAgents = allAgents || [];
+  } else {
+    const { data: directReports, error } = await supabase
+      .from("agents")
+      .select(`id, user_id, status, onboarding_stage, created_at, license_status, invited_by_manager_id`)
+      .eq("invited_by_manager_id", currentAgent.id);
+    if (error) throw error;
+    teamAgents = directReports || [];
+  }
 
-      if (isAdmin) {
-        const { data: allAgents, error } = await supabase
-          .from("agents")
-          .select(`
-            id,
-            user_id,
-            status,
-            onboarding_stage,
-            created_at,
-            license_status,
-            invited_by_manager_id,
-            is_deactivated,
-            is_inactive
-          `);
+  // Also fetch unlicensed applicants
+  let pipelineApplicants: any[] = [];
+  const { data: apps } = await supabase
+    .from("applications")
+    .select("id, first_name, last_name, email, phone, license_status, status, created_at, assigned_agent_id")
+    .is("terminated_at", null)
+    .eq("license_status", "unlicensed")
+    .in("status", ["approved", "contracting"]);
 
-        if (error) {
-          console.error("Error fetching all agents:", error);
-          setLoading(false);
-          return;
-        }
+  if (isAdmin) {
+    pipelineApplicants = apps || [];
+  } else {
+    const teamAgentIds = new Set(teamAgents.map(a => a.id));
+    teamAgentIds.add(currentAgent.id);
+    pipelineApplicants = (apps || []).filter(app =>
+      app.assigned_agent_id && teamAgentIds.has(app.assigned_agent_id)
+    );
+  }
 
-        teamAgents = allAgents || [];
-      } else {
-        const { data: directReports, error } = await supabase
-          .from("agents")
-          .select(`
-            id,
-            user_id,
-            status,
-            onboarding_stage,
-            created_at,
-            license_status,
-            invited_by_manager_id
-          `)
-          .eq("invited_by_manager_id", currentAgent.id);
+  if (teamAgents.length === 0 && pipelineApplicants.length === 0) {
+    return { members: [], stats: { totalMembers: 0, totalLeads: 0, totalClosed: 0, avgCloseRate: 0, licensedCount: 0, unlicensedCount: 0, trainingCount: 0 }, managerUserIds };
+  }
 
-        if (error) {
-          console.error("Error fetching team:", error);
-          setLoading(false);
-          return;
-        }
+  // Get manager names
+  const managerIds = [...new Set(teamAgents.map(a => a.invited_by_manager_id).filter(Boolean))];
+  let managerProfiles: Record<string, string> = {};
 
-        teamAgents = directReports || [];
-      }
+  if (managerIds.length > 0) {
+    const { data: managerAgents } = await supabase
+      .from("agents")
+      .select("id, user_id")
+      .in("id", managerIds);
 
-      // Also fetch unlicensed applicants
-      let pipelineApplicants: any[] = [];
-      const { data: apps } = await supabase
-        .from("applications")
-        .select("id, first_name, last_name, email, phone, license_status, status, created_at, assigned_agent_id")
-        .is("terminated_at", null)
-        .eq("license_status", "unlicensed")
-        .in("status", ["approved", "contracting"]);
-      
-      // Filter applicants for managers (if not admin)
-      if (isAdmin) {
-        pipelineApplicants = apps || [];
-      } else {
-        const teamAgentIds = new Set(teamAgents.map(a => a.id));
-        teamAgentIds.add(currentAgent.id);
-        
-        pipelineApplicants = (apps || []).filter(app => 
-          app.assigned_agent_id && teamAgentIds.has(app.assigned_agent_id)
-        );
-      }
-
-      if (teamAgents.length === 0 && pipelineApplicants.length === 0) {
-        setLoading(false);
-        return;
-      }
-
-      // Get manager names
-      const managerIds = [...new Set(teamAgents.map(a => a.invited_by_manager_id).filter(Boolean))];
-      let managerProfiles: Record<string, string> = {};
-      
-      if (managerIds.length > 0) {
-        const { data: managerAgents } = await supabase
-          .from("agents")
-          .select("id, user_id")
-          .in("id", managerIds);
-
-        if (managerAgents && managerAgents.length > 0) {
-          const mUserIds = managerAgents.map(m => m.user_id).filter(Boolean);
-          const { data: profiles } = await supabase
-            .from("profiles")
-            .select("user_id, full_name")
-            .in("user_id", mUserIds);
-
-          managerAgents.forEach(manager => {
-            const profile = profiles?.find(p => p.user_id === manager.user_id);
-            if (profile) {
-              managerProfiles[manager.id] = profile.full_name || "Unknown Manager";
-            }
-          });
-        }
-      }
-
-      // Get profiles
-      const userIds = teamAgents.map(a => a.user_id).filter(Boolean);
+    if (managerAgents && managerAgents.length > 0) {
+      const mUserIds = managerAgents.map(m => m.user_id).filter(Boolean);
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("user_id, full_name, email")
-        .in("user_id", userIds);
+        .select("user_id, full_name")
+        .in("user_id", mUserIds);
 
-      const today = new Date();
-      const weekStartStr = new Date(today.setDate(today.getDate() - today.getDay())).toISOString().split('T')[0];
-      const monthStartStr = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
-
-      const agentIds = teamAgents.map(a => a.id);
-      const { data: production } = await supabase
-        .from("daily_production")
-        .select("agent_id, aop, deals_closed, production_date")
-        .in("agent_id", agentIds)
-        .gte("production_date", monthStartStr);
-
-      const productionMap = new Map();
-      production?.forEach(p => {
-        const existing = productionMap.get(p.agent_id) || { weekALP: 0, monthALP: 0, monthDeals: 0 };
-        const alp = Number(p.aop) || 0;
-        const deals = Number(p.deals_closed) || 0;
-        
-        existing.monthALP += alp;
-        existing.monthDeals += deals;
-        
-        if (p.production_date >= weekStartStr) {
-          existing.weekALP += alp;
+      managerAgents.forEach(manager => {
+        const profile = profiles?.find(p => p.user_id === manager.user_id);
+        if (profile) {
+          managerProfiles[manager.id] = profile.full_name || "Unknown Manager";
         }
-        productionMap.set(p.agent_id, existing);
       });
-
-      const filteredAgents = teamAgents.filter(a => a.user_id !== user.id); // Exclude self from list if needed
-
-      const members: TeamMember[] = filteredAgents.map(agent => {
-        const profile = profiles?.find(p => p.user_id === agent.user_id);
-        const prod = productionMap.get(agent.id) || { weekALP: 0, monthALP: 0, monthDeals: 0 };
-        
-        const isDirectReport = agent.invited_by_manager_id === currentAgent.id;
-        const managerName = agent.invited_by_manager_id ? managerProfiles[agent.invited_by_manager_id] : null;
-
-        return {
-          id: agent.id,
-          userId: agent.user_id || "",
-          name: profile?.full_name || "Unknown",
-          email: profile?.email || "",
-          status: agent.status,
-          onboardingStage: agent.onboarding_stage || "onboarding",
-          totalLeads: 0, 
-          contacted: 0,
-          closed: 0,
-          closeRate: 0,
-          joinedAt: agent.created_at,
-          weekALP: prod.weekALP,
-          monthALP: prod.monthALP,
-          monthDeals: prod.monthDeals,
-          licenseStatus: agent.license_status,
-          managerName,
-          isDirectReport,
-          isDeactivated: agent.is_deactivated || false,
-          isInactive: agent.is_inactive || false,
-          lastContactedAt: null,
-          invitedByManagerId: agent.invited_by_manager_id,
-          standardPaid: false,
-          premiumPaid: false,
-          applicationId: null,
-          licenseProgress: null,
-          testScheduledDate: null,
-        };
-      });
-
-      // Process pipeline applicants
-      const uniqueApplicants = pipelineApplicants.filter(app => 
-        !members.some(m => m.email.toLowerCase() === (app.email || "").toLowerCase())
-      );
-
-      const pipelineMembers: TeamMember[] = uniqueApplicants.map(app => {
-        // Resolve manager name for applicant
-        let applicantManagerName = null;
-        if (app.assigned_agent_id) {
-           if (app.assigned_agent_id === currentAgent.id) applicantManagerName = "You";
-           else applicantManagerName = managerProfiles[app.assigned_agent_id] || "Unknown";
-        }
-
-        return {
-          id: `app-${app.id}`,
-          userId: "",
-          name: `${app.first_name} ${app.last_name}`.trim(),
-          email: app.email || "",
-          status: "applicant",
-          onboardingStage: "onboarding",
-          totalLeads: 0,
-          contacted: 0,
-          closed: 0,
-          closeRate: 0,
-          joinedAt: app.created_at,
-          weekALP: 0,
-          monthALP: 0,
-          monthDeals: 0,
-          licenseStatus: "unlicensed",
-          managerName: applicantManagerName,
-          isDirectReport: app.assigned_agent_id === currentAgent.id,
-          isDeactivated: false,
-          isInactive: false,
-          lastContactedAt: null,
-          invitedByManagerId: app.assigned_agent_id,
-          standardPaid: false,
-          premiumPaid: false,
-          applicationId: app.id,
-          licenseProgress: null,
-          testScheduledDate: null,
-        };
-      });
-
-      const allMembers = [...members, ...pipelineMembers];
-      setTeamMembers(allMembers);
-
-      // Calc stats
-      const activeOnly = allMembers.filter(m => !m.isDeactivated && !m.isInactive);
-      setTeamStats({
-        totalMembers: activeOnly.length,
-        totalLeads: 0,
-        totalClosed: 0,
-        avgCloseRate: 0,
-        licensedCount: activeOnly.filter(m => m.licenseStatus === "licensed").length,
-        unlicensedCount: activeOnly.filter(m => m.licenseStatus !== "licensed").length,
-        trainingCount: activeOnly.filter(m => m.onboardingStage === "training_online" || m.onboardingStage === "in_field_training").length,
-      });
-
-    } catch (err) {
-      console.error("Error in fetchTeamData:", err);
-    } finally {
-      setLoading(false);
     }
+  }
+
+  // Get profiles
+  const userIds = teamAgents.map(a => a.user_id).filter(Boolean);
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("user_id, full_name, email")
+    .in("user_id", userIds);
+
+  const today = new Date();
+  const weekStartStr = new Date(today.setDate(today.getDate() - today.getDay())).toISOString().split('T')[0];
+  const monthStartStr = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+
+  const agentIds = teamAgents.map(a => a.id);
+  const { data: production } = await supabase
+    .from("daily_production")
+    .select("agent_id, aop, deals_closed, production_date")
+    .in("agent_id", agentIds)
+    .gte("production_date", monthStartStr);
+
+  const productionMap = new Map();
+  production?.forEach(p => {
+    const existing = productionMap.get(p.agent_id) || { weekALP: 0, monthALP: 0, monthDeals: 0 };
+    const alp = Number(p.aop) || 0;
+    const deals = Number(p.deals_closed) || 0;
+    existing.monthALP += alp;
+    existing.monthDeals += deals;
+    if (p.production_date >= weekStartStr) {
+      existing.weekALP += alp;
+    }
+    productionMap.set(p.agent_id, existing);
+  });
+
+  const filteredAgents = teamAgents.filter(a => a.user_id !== userId);
+
+  const members: TeamMember[] = filteredAgents.map(agent => {
+    const profile = profiles?.find(p => p.user_id === agent.user_id);
+    const prod = productionMap.get(agent.id) || { weekALP: 0, monthALP: 0, monthDeals: 0 };
+    const isDirectReport = agent.invited_by_manager_id === currentAgent.id;
+    const managerName = agent.invited_by_manager_id ? managerProfiles[agent.invited_by_manager_id] : null;
+
+    return {
+      id: agent.id,
+      userId: agent.user_id || "",
+      name: profile?.full_name || "Unknown",
+      email: profile?.email || "",
+      status: agent.status,
+      onboardingStage: agent.onboarding_stage || "onboarding",
+      totalLeads: 0,
+      contacted: 0,
+      closed: 0,
+      closeRate: 0,
+      joinedAt: agent.created_at,
+      weekALP: prod.weekALP,
+      monthALP: prod.monthALP,
+      monthDeals: prod.monthDeals,
+      licenseStatus: agent.license_status,
+      managerName,
+      isDirectReport,
+      isDeactivated: agent.is_deactivated || false,
+      isInactive: agent.is_inactive || false,
+      lastContactedAt: null,
+      invitedByManagerId: agent.invited_by_manager_id,
+      standardPaid: false,
+      premiumPaid: false,
+      applicationId: null,
+      licenseProgress: null,
+      testScheduledDate: null,
+    };
+  });
+
+  // Process pipeline applicants
+  const uniqueApplicants = pipelineApplicants.filter(app =>
+    !members.some(m => m.email.toLowerCase() === (app.email || "").toLowerCase())
+  );
+
+  const pipelineMembers: TeamMember[] = uniqueApplicants.map(app => {
+    let applicantManagerName = null;
+    if (app.assigned_agent_id) {
+      if (app.assigned_agent_id === currentAgent.id) applicantManagerName = "You";
+      else applicantManagerName = managerProfiles[app.assigned_agent_id] || "Unknown";
+    }
+
+    return {
+      id: `app-${app.id}`,
+      userId: "",
+      name: `${app.first_name} ${app.last_name}`.trim(),
+      email: app.email || "",
+      status: "applicant",
+      onboardingStage: "onboarding",
+      totalLeads: 0,
+      contacted: 0,
+      closed: 0,
+      closeRate: 0,
+      joinedAt: app.created_at,
+      weekALP: 0,
+      monthALP: 0,
+      monthDeals: 0,
+      licenseStatus: "unlicensed",
+      managerName: applicantManagerName,
+      isDirectReport: app.assigned_agent_id === currentAgent.id,
+      isDeactivated: false,
+      isInactive: false,
+      lastContactedAt: null,
+      invitedByManagerId: app.assigned_agent_id,
+      standardPaid: false,
+      premiumPaid: false,
+      applicationId: app.id,
+      licenseProgress: null,
+      testScheduledDate: null,
+    };
+  });
+
+  const allMembers = [...members, ...pipelineMembers];
+
+  // Calc stats
+  const activeOnly = allMembers.filter(m => !m.isDeactivated && !m.isInactive);
+  const stats: TeamStats = {
+    totalMembers: activeOnly.length,
+    totalLeads: 0,
+    totalClosed: 0,
+    avgCloseRate: 0,
+    licensedCount: activeOnly.filter(m => m.licenseStatus === "licensed").length,
+    unlicensedCount: activeOnly.filter(m => m.licenseStatus !== "licensed").length,
+    trainingCount: activeOnly.filter(m => m.onboardingStage === "training_online" || m.onboardingStage === "in_field_training").length,
+  };
+
+  return { members: allMembers, stats, managerUserIds };
+}
+
+export function ManagerTeamView() {
+  const { user, isManager, isAdmin } = useAuth();
+  const queryClient = useQueryClient();
+  const [activeFilter, setActiveFilter] = useState<RosterFilter>("all");
+  const [expandedMember, setExpandedMember] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<SortOption>("production-desc");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
+
+  const { data: teamData, isLoading: loading } = useQuery({
+    queryKey: ["manager-team-view", user?.id, isAdmin],
+    queryFn: () => fetchTeamDataFn(user!.id, isAdmin),
+    enabled: !!user,
+    staleTime: 0,
+  });
+
+  const teamMembers = teamData?.members ?? [];
+  const teamStats = teamData?.stats ?? { totalMembers: 0, totalLeads: 0, totalClosed: 0, avgCloseRate: 0, licensedCount: 0, unlicensedCount: 0, trainingCount: 0 };
+  const managerUserIds = teamData?.managerUserIds ?? new Set<string>();
+
+  const refetchTeamData = () => {
+    queryClient.invalidateQueries({ queryKey: ["manager-team-view"] });
   };
 
   const getTimeAgo = (dateString: string): string => {
@@ -412,7 +366,7 @@ export function ManagerTeamView() {
     toast.success(`Stage updated for ${success} agent(s)`);
     setBulkLoading(false);
     setSelectedIds(new Set());
-    fetchTeamData();
+    refetchTeamData();
   };
 
   const filteredAndSortedMembers = useMemo(() => {
@@ -524,7 +478,7 @@ export function ManagerTeamView() {
                       applicationId={member.applicationId.replace('app-', '')}
                       currentProgress={(member.licenseProgress || "unlicensed") as any}
                       testScheduledDate={member.testScheduledDate}
-                      onProgressUpdated={fetchTeamData}
+                      onProgressUpdated={refetchTeamData}
                       className="h-5 text-[10px]"
                     />
                   ) : (
@@ -693,7 +647,7 @@ export function ManagerTeamView() {
                             .eq("id", member.id);
                           if (error) { toast.error("Failed to update license"); return; }
                           toast.success(`License changed to ${newStatus}`);
-                          fetchTeamData();
+                          refetchTeamData();
                         }}
                       >
                         {member.licenseStatus === "licensed" ? "Set Unlicensed" : "Set Licensed"}
@@ -708,7 +662,7 @@ export function ManagerTeamView() {
                             .eq("id", member.id);
                           if (error) { toast.error("Failed to update stage"); return; }
                           toast.success(`Stage changed to ${val.replace(/_/g, " ")}`);
-                          fetchTeamData();
+                          refetchTeamData();
                         }}
                       >
                         <SelectTrigger className="h-7 w-[150px] text-xs" onClick={(e) => e.stopPropagation()}>
@@ -726,7 +680,7 @@ export function ManagerTeamView() {
                       <ManagerReassignInline
                         currentManagerId={member.invitedByManagerId}
                         agentId={member.id}
-                        onReassigned={fetchTeamData}
+                        onReassigned={refetchTeamData}
                       />
                     </div>
 
@@ -755,8 +709,7 @@ export function ManagerTeamView() {
                               if (error) { toast.error("Failed to promote to manager"); return; }
                               toast.success(`${member.name} promoted to Manager!`);
                             }
-                            fetchManagerRoles();
-                            fetchTeamData();
+                            refetchTeamData();
                           }}
                         >
                           {managerUserIds.has(member.userId) ? (
@@ -782,7 +735,7 @@ export function ManagerTeamView() {
                             .eq("id", member.id);
                           if (error) { toast.error("Failed to update status"); return; }
                           toast.success(member.isDeactivated ? `${member.name} reactivated` : `${member.name} deactivated`);
-                          fetchTeamData();
+                          refetchTeamData();
                         }}
                       >
                         {member.isDeactivated ? (

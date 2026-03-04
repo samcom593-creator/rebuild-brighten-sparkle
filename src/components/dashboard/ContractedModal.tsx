@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Loader2, Link as LinkIcon, CheckCircle, Save } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -40,6 +41,7 @@ export function ContractedModal({
   agentId,
   onSuccess,
 }: ContractedModalProps) {
+  const queryClient = useQueryClient();
   const [crmLink, setCrmLink] = useState("");
   const [savedLink, setSavedLink] = useState<string | null>(null);
   const [useSavedLink, setUseSavedLink] = useState(false);
@@ -230,6 +232,12 @@ export function ContractedModal({
         if (enrollErr) console.error("Failed to send course enrollment email:", enrollErr);
         else console.log("Course enrollment email sent for agent", newAgentId);
       }
+
+      // Invalidate dashboard queries so new agent appears immediately
+      queryClient.invalidateQueries({ queryKey: ["manager-team-view"] });
+      queryClient.invalidateQueries({ queryKey: ["recruiting-quick-view"] });
+      queryClient.invalidateQueries({ queryKey: ["onboarding-pipeline"] });
+      queryClient.invalidateQueries({ queryKey: ["team-overview"] });
 
       onOpenChange(false);
       onSuccess?.();

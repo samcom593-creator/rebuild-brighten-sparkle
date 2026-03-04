@@ -775,8 +775,10 @@ export type Database = {
           blocker: string | null
           checkin_date: string
           created_at: string
+          help_notified_at: string | null
           id: string
           license_progress: string | null
+          needs_help: boolean | null
           notes: string | null
           study_hours: number | null
           test_date: string | null
@@ -787,8 +789,10 @@ export type Database = {
           blocker?: string | null
           checkin_date?: string
           created_at?: string
+          help_notified_at?: string | null
           id?: string
           license_progress?: string | null
+          needs_help?: boolean | null
           notes?: string | null
           study_hours?: number | null
           test_date?: string | null
@@ -799,8 +803,10 @@ export type Database = {
           blocker?: string | null
           checkin_date?: string
           created_at?: string
+          help_notified_at?: string | null
           id?: string
           license_progress?: string | null
+          needs_help?: boolean | null
           notes?: string | null
           study_hours?: number | null
           test_date?: string | null
@@ -2286,6 +2292,7 @@ export type Database = {
         | "fingerprints_done"
         | "waiting_on_license"
         | "licensed"
+        | "waiting_fingerprints"
       license_status: "licensed" | "unlicensed" | "pending"
       onboarding_stage:
         | "onboarding"
@@ -2449,6 +2456,7 @@ export const Constants = {
         "fingerprints_done",
         "waiting_on_license",
         "licensed",
+        "waiting_fingerprints",
       ],
       license_status: ["licensed", "unlicensed", "pending"],
       onboarding_stage: [

@@ -92,6 +92,60 @@ const statusConfig: Record<string, { label: string; color: string; icon: typeof 
   contracted: { label: "Contracted", color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20", icon: FileText },
 };
 
+function QuickAssignPanel({ managers, unassignedCount, onAssign }: {
+  managers: Manager[];
+  unassignedCount: number;
+  onAssign: (managerId: string, count: number) => Promise<void>;
+}) {
+  const [selectedManager, setSelectedManager] = useState("");
+  const [count, setCount] = useState(5);
+  const [assigning, setAssigning] = useState(false);
+
+  if (unassignedCount === 0) return null;
+
+  return (
+    <GlassCard className="p-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <UserPlus className="h-4 w-4 text-primary" />
+          Quick Assign ({unassignedCount} unassigned)
+        </div>
+        <Select value={selectedManager} onValueChange={setSelectedManager}>
+          <SelectTrigger className="w-[180px] h-8 text-xs">
+            <SelectValue placeholder="Select manager..." />
+          </SelectTrigger>
+          <SelectContent>
+            {managers.map(m => (
+              <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Input
+          type="number"
+          min={1}
+          max={unassignedCount}
+          value={count}
+          onChange={e => setCount(Math.min(parseInt(e.target.value) || 1, unassignedCount))}
+          className="w-20 h-8 text-xs text-center"
+        />
+        <Button
+          size="sm"
+          disabled={!selectedManager || assigning}
+          onClick={async () => {
+            setAssigning(true);
+            await onAssign(selectedManager, count);
+            setAssigning(false);
+          }}
+          className="h-8 text-xs"
+        >
+          {assigning ? <RefreshCw className="h-3 w-3 animate-spin mr-1" /> : <UserPlus className="h-3 w-3 mr-1" />}
+          Send
+        </Button>
+      </div>
+    </GlassCard>
+  );
+}
+
 export default function DashboardAgedLeads() {
   const { user, isAdmin, isManager, isLoading: authLoading } = useAuth();
   const [leads, setLeads] = useState<AgedLead[]>([]);
@@ -575,6 +629,38 @@ export default function DashboardAgedLeads() {
           </SelectContent>
         </Select>
       </motion.div>
+
+      {/* Quick Assign Panel */}
+      {isAdmin && managers.length > 0 && (
+        <QuickAssignPanel
+          managers={managers}
+          unassignedCount={leads.filter(l => !l.assignedManagerId).length}
+          onAssign={async (managerId, count) => {
+            const unassigned = leads.filter(l => !l.assignedManagerId).slice(0, count);
+            if (unassigned.length === 0) {
+              toast.error("No unassigned leads available");
+              return;
+            }
+            const ids = unassigned.map(l => l.id);
+            const { error } = await supabase
+              .from("aged_leads")
+              .update({ assigned_manager_id: managerId, status: "new" })
+              .in("id", ids);
+            if (error) {
+              toast.error("Failed to assign leads");
+              return;
+            }
+            // Send consolidated notification
+            try {
+              await supabase.functions.invoke("notify-lead-assigned", {
+                body: { newAgentId: managerId, batchCount: ids.length, source: "aged_leads" },
+              });
+            } catch (e) { console.error("Notify error:", e); }
+            toast.success(`Assigned ${ids.length} leads!`);
+            fetchLeads();
+          }}
+        />
+      )}
 
       {/* Results Count */}
       <p className="text-xs text-muted-foreground">

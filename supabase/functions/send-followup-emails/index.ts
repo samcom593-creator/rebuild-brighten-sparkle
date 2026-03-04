@@ -27,7 +27,7 @@ const ADMIN_EMAIL = "info@apex-financial.org";
 // Calendly URLs
 const UNLICENSED_CALENDLY = "https://calendly.com/sam-com593/licensed-prospect-call-clone";
 const LICENSED_CALENDLY = "https://calendly.com/sam-com593/1on1-call-clone";
-const DASHBOARD_URL = "https://apex-financial.org/dashboard/applicants";
+const DASHBOARD_URL = "https://rebuild-brighten-sparkle.lovable.app/dashboard/applicants";
 
 async function getManagerEmailForApp(appId: string): Promise<string | null> {
   try {

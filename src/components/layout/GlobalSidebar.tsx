@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -25,10 +25,13 @@ import {
   Sparkles,
   CalendarDays,
   Bell,
+  Search,
+  X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { InviteTeamModal } from "@/components/dashboard/InviteTeamModal";
 import { cn } from "@/lib/utils";
@@ -71,8 +74,48 @@ export function GlobalSidebar({
   const AISHA_EMAIL = "kebbeh045@gmail.com";
   const isAisha = user?.email === AISHA_EMAIL;
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  const [showSearch, setShowSearch] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
   const isTouch = useIsTouchDevice();
   const { playSound } = useSoundEffects();
+
+  // Search agents
+  useEffect(() => {
+    if (!searchQuery.trim() || searchQuery.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    const timeout = setTimeout(async () => {
+      const { data } = await supabase
+        .from("agents")
+        .select("id, user_id, display_name")
+        .eq("is_deactivated", false)
+        .limit(10);
+      
+      if (!data) return;
+      
+      const userIds = data.map(a => a.user_id).filter(Boolean);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, full_name, email")
+        .in("user_id", userIds);
+      
+      const q = searchQuery.toLowerCase();
+      const results = data
+        .map(agent => {
+          const profile = profiles?.find(p => p.user_id === agent.user_id);
+          const name = agent.display_name || profile?.full_name || "Unknown";
+          return { id: agent.id, name, email: profile?.email || "" };
+        })
+        .filter(r => r.name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q))
+        .slice(0, 6);
+      
+      setSearchResults(results);
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [searchQuery]);
 
   const navSections = useMemo(() => {
     const sections: NavSection[] = [];
@@ -292,6 +335,67 @@ export function GlobalSidebar({
                   <Plus className="h-5 w-5" />
                 </Button>
               </ConditionalTooltip>
+            </div>
+          )}
+
+          {/* Agent Search */}
+          {(isAdmin || isManager) && (
+            <div className="px-2 py-2 border-b border-border" ref={searchRef}>
+              {isCollapsed ? (
+                <ConditionalTooltip label="Search Agents">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { onToggle(); setTimeout(() => setShowSearch(true), 200); }}
+                    className="w-full justify-center text-muted-foreground hover:text-foreground"
+                    style={{ touchAction: "manipulation" }}
+                  >
+                    <Search className="h-4 w-4" />
+                  </Button>
+                </ConditionalTooltip>
+              ) : (
+                <div className="relative">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      placeholder="Search agents..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onFocus={() => setShowSearch(true)}
+                      className="h-8 pl-8 pr-8 text-sm bg-muted/50 border-border/50"
+                    />
+                    {searchQuery && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => { setSearchQuery(""); setSearchResults([]); }}
+                        className="absolute right-0.5 top-1/2 -translate-y-1/2 h-7 w-7"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    )}
+                  </div>
+                  {showSearch && searchResults.length > 0 && (
+                    <div className="absolute z-50 left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {searchResults.map((result) => (
+                        <button
+                          key={result.id}
+                          onClick={() => {
+                            navigate(`/dashboard/applicants`);
+                            setSearchQuery("");
+                            setSearchResults([]);
+                            setShowSearch(false);
+                          }}
+                          className="w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors"
+                        >
+                          <p className="text-sm font-medium truncate">{result.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">{result.email}</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

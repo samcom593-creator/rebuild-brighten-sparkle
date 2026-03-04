@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-const PORTAL_URL = "https://apex-financial.org/agent-portal";
+const PORTAL_URL = "https://rebuild-brighten-sparkle.lovable.app/agent-portal";
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {

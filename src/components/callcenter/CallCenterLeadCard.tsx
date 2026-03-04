@@ -41,6 +41,7 @@ interface UnifiedLead {
   city?: string;
   state?: string;
   availability?: string;
+  referredBy?: string;
 }
 
 interface CallCenterLeadCardProps {
@@ -191,6 +192,16 @@ export function CallCenterLeadCard({
               >
                 {lead.licenseStatus === "licensed" ? "Licensed" : "Unlicensed"}
               </motion.span>
+              {lead.referredBy && (
+                <motion.span
+                  variants={badgeVariants}
+                  whileHover={{ scale: 1.05 }}
+                  className="text-xs px-3 py-1 rounded-full font-medium bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center gap-1"
+                >
+                  <User className="h-3 w-3" />
+                  {lead.referredBy}
+                </motion.span>
+              )}
             </motion.div>
 
             {/* Name with sparkle */}

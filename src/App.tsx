@@ -131,7 +131,7 @@ const App = () => (
                     <Route path="/dashboard/settings/deleted-leads" element={<ProtectedRoute requireAdmin><DeletedLeadsVault /></ProtectedRoute>} />
                     <Route path="/dashboard/team" element={<TeamDirectory />} />
                     <Route path="/dashboard/crm" element={<DashboardCRM />} />
-                    <Route path="/dashboard/aged-leads" element={<ProtectedRoute requireAdmin><DashboardAgedLeads /></ProtectedRoute>} />
+                    <Route path="/dashboard/aged-leads" element={<DashboardAgedLeads />} />
                     <Route path="/dashboard/command" element={<ProtectedRoute requireAdmin><DashboardCommandCenter /></ProtectedRoute>} />
                     <Route path="/agent-portal" element={<AgentPortal />} />
                     <Route path="/onboarding-course" element={<OnboardingCourse />} />

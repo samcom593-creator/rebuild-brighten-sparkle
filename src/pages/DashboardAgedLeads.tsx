@@ -173,13 +173,17 @@ export default function DashboardAgedLeads() {
   const [deleteTarget, setDeleteTarget] = useState<AgedLead | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  const canAccess = isAdmin || isManager;
+
   useEffect(() => {
-    if (!authLoading && user) {
+    if (!authLoading && user && canAccess) {
       fetchLeads();
       if (isAdmin) fetchManagers();
       fetchMyAgentId();
     }
-  }, [user?.id, authLoading]);
+  }, [user?.id, authLoading, canAccess]);
+
+  // Access guard moved below useMemo to avoid hooks-after-return violation
 
   const fetchMyAgentId = async () => {
     if (!user) return;
@@ -371,6 +375,15 @@ export default function DashboardAgedLeads() {
     });
     return dupeIds;
   }, [leads]);
+
+  // Block agents (non-admin, non-manager) — placed after all hooks
+  if (!authLoading && user && !canAccess) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">Admin or Manager access required</p>
+      </div>
+    );
+  }
 
   const filteredLeads = leads.filter(lead => {
     const q = searchTerm.toLowerCase();

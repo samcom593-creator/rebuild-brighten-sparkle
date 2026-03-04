@@ -105,6 +105,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     const firstName = profile.full_name?.split(" ")[0] || "Agent";
 
+    const whatsappLink = Deno.env.get("WHATSAPP_GROUP_LINK") || "";
+
     // Generate magic link with "course" destination
     const courseMagicLink = await generateMagicToken(supabaseClient, agentId, profile.email, "course");
 
@@ -179,6 +181,20 @@ const handler = async (req: Request): Promise<Response> => {
                 <p style="color: #64748b; font-size: 12px; text-align: center; margin: 0 0 24px 0;">
                   One-tap access • No password needed
                 </p>
+
+                ${whatsappLink ? `
+                <div style="background: rgba(37,211,102,0.1); border-radius: 12px; padding: 20px; margin: 24px 0; text-align: center;">
+                  <p style="color: #25D366; font-size: 14px; font-weight: bold; margin: 0 0 8px 0;">
+                    💬 Join Our WhatsApp Group
+                  </p>
+                  <p style="color: #94a3b8; font-size: 13px; margin: 0 0 12px 0;">
+                    Connect with other recruits and get real-time support:
+                  </p>
+                  <a href="${whatsappLink}" style="display: inline-block; background: #25D366; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 6px; font-weight: bold; font-size: 14px;">
+                    Join WhatsApp →
+                  </a>
+                </div>
+                ` : ''}
 
                 <div style="background: rgba(88, 101, 242, 0.1); border-radius: 12px; padding: 20px; margin: 24px 0; text-align: center;">
                   <p style="color: #5865F2; font-size: 14px; font-weight: bold; margin: 0 0 8px 0;">

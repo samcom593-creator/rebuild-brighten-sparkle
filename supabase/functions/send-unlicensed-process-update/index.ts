@@ -16,7 +16,8 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { whatsappLink } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const whatsappLink = body?.whatsappLink || Deno.env.get("WHATSAPP_GROUP_LINK") || "";
 
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",

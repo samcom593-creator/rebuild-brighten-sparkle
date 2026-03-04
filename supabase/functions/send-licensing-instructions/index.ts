@@ -70,6 +70,7 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     const { email, firstName, licenseStatus, managerEmail }: LicensingEmailRequest = await req.json();
+    const whatsappLink = Deno.env.get("WHATSAPP_GROUP_LINK") || "";
 
     console.log(`[send-licensing-instructions] Sending to ${email}, status: ${licenseStatus}`);
 
@@ -240,6 +241,18 @@ const handler = async (req: Request): Promise<Response> => {
                   </td>
                 </tr>
               </table>
+
+              ${whatsappLink ? `
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: rgba(37,211,102,0.1); border: 1px solid rgba(37,211,102,0.3); border-radius: 12px; margin-bottom: 15px;">
+                <tr>
+                  <td style="padding: 20px; text-align: center;">
+                    <p style="color: #25D366; font-weight: bold; font-size: 14px; margin: 0 0 8px;">💬 Join Our WhatsApp Group</p>
+                    <p style="color: #e0e0e0; font-size: 13px; margin: 0 0 12px;">Connect with other recruits and get real-time support.</p>
+                    <a href="${whatsappLink}" style="display: inline-block; background: #25D366; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: bold; font-size: 14px;">Join WhatsApp →</a>
+                  </td>
+                </tr>
+              </table>
+              ` : ''}
 
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>

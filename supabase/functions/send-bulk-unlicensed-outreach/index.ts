@@ -34,6 +34,7 @@ serve(async (req) => {
 
     if (error) throw error;
 
+    const whatsappLink = Deno.env.get("WHATSAPP_GROUP_LINK") || "";
     console.log(`[Bulk Outreach] Found ${applicants?.length || 0} unlicensed applicants`);
 
     let sentCount = 0;
@@ -90,6 +91,18 @@ Apply Now →
 </tr>
 </table>
 </td></tr>
+
+${whatsappLink ? `
+<tr><td style="padding:0 30px 20px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:rgba(37,211,102,0.1);border:1px solid rgba(37,211,102,0.3);border-radius:8px;">
+<tr><td style="padding:16px;text-align:center;">
+<p style="color:#25D366;font-weight:bold;font-size:14px;margin:0 0 8px;">💬 Join Our WhatsApp Group</p>
+<p style="color:#666;font-size:13px;margin:0 0 12px;">Connect with recruits &amp; get real-time support</p>
+<a href="${whatsappLink}" style="display:inline-block;background:#25D366;color:#fff;text-decoration:none;padding:10px 24px;border-radius:6px;font-weight:bold;font-size:14px;">Join WhatsApp →</a>
+</td></tr>
+</table>
+</td></tr>
+` : ''}
 
 <tr><td style="background-color:#1a1a1a;padding:20px;text-align:center;">
 <p style="margin:0;color:#888;font-size:12px;">Apex Financial Enterprises</p>

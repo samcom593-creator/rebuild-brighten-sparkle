@@ -16,6 +16,7 @@ serve(async (req: Request) => {
   }
 
   try {
+    const whatsappLink = Deno.env.get("WHATSAPP_GROUP_LINK") || "";
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
@@ -68,6 +69,13 @@ serve(async (req: Request) => {
                         Complete My Check-In →
                       </a>
                     </div>
+                    ${whatsappLink ? `
+                    <div style="background: rgba(37,211,102,0.1); border: 1px solid rgba(37,211,102,0.3); border-radius: 8px; padding: 16px; margin: 20px 0; text-align: center;">
+                      <p style="color: #25D366; font-weight: bold; font-size: 14px; margin: 0 0 8px;">💬 Join Our WhatsApp Group</p>
+                      <p style="color: #94a3b8; font-size: 13px; margin: 0 0 12px;">Connect with other recruits and get real-time support.</p>
+                      <a href="${whatsappLink}" style="display: inline-block; background: #25D366; color: white; text-decoration: none; padding: 10px 24px; border-radius: 6px; font-weight: bold; font-size: 14px;">Join WhatsApp →</a>
+                    </div>
+                    ` : ''}
                     <div style="border-top: 1px solid rgba(148,163,184,0.2); padding-top: 20px; margin-top: 20px;">
                       <p style="color: #64748b; font-size: 12px; text-align: center; margin: 0;">APEX Financial Empire</p>
                     </div>

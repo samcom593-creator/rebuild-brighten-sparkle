@@ -347,13 +347,20 @@ export default function LeadCenter() {
   }, [leads]);
 
   // Bulk / Delete / Ban handlers (omitted for brevity but assumed present or similar to previous)
-  const toggleSelectLead = useCallback((leadId: string) => {
+  // Use :: as separator so UUIDs (which contain -) are never truncated
+  const encodeLeadKey = (source: string, id: string) => `${source}::${id}`;
+  const decodeLeadKey = (key: string): { source: string; id: string } => {
+    const idx = key.indexOf("::");
+    return { source: key.slice(0, idx), id: key.slice(idx + 2) };
+  };
+
+  const toggleSelectLead = useCallback((leadKey: string) => {
     setSelectedLeads((prev) => {
       const next = new Set(prev);
-      if (next.has(leadId)) {
-        next.delete(leadId);
+      if (next.has(leadKey)) {
+        next.delete(leadKey);
       } else {
-        next.add(leadId);
+        next.add(leadKey);
       }
       return next;
     });
@@ -363,7 +370,7 @@ export default function LeadCenter() {
     if (selectedLeads.size === filteredLeads.length) {
       setSelectedLeads(new Set());
     } else {
-      setSelectedLeads(new Set(filteredLeads.map((l) => `${l.source}-${l.id}`)));
+      setSelectedLeads(new Set(filteredLeads.map((l) => encodeLeadKey(l.source, l.id))));
     }
   }, [selectedLeads.size, filteredLeads]);
 
@@ -382,7 +389,7 @@ export default function LeadCenter() {
       const applicationIds: string[] = [];
       const agedLeadIds: string[] = [];
       selectedLeads.forEach((key) => {
-        const [source, id] = key.split("-");
+        const { source, id } = decodeLeadKey(key);
         if (source === "applications") applicationIds.push(id);
         else agedLeadIds.push(id);
       });
@@ -414,7 +421,7 @@ export default function LeadCenter() {
     try {
       // Implementation same as previous (omitted for brevity)
       toast.success(`${selectedLeads.size} leads moved to vault`);
-      setLeads(prev => prev.filter(lead => !selectedLeads.has(`${lead.source}-${lead.id}`)));
+      setLeads(prev => prev.filter(lead => !selectedLeads.has(encodeLeadKey(lead.source, lead.id))));
       clearSelection();
     } catch (error) {
       toast.error("Failed to delete leads");
@@ -688,7 +695,7 @@ export default function LeadCenter() {
               </TableHeader>
               <TableBody>
                 {filteredLeads.map((lead) => {
-                  const leadKey = `${lead.source}-${lead.id}`;
+                  const leadKey = encodeLeadKey(lead.source, lead.id);
                   const isSelected = selectedLeads.has(leadKey);
                   
                   // Determine display status

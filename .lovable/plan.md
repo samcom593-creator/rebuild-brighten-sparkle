@@ -1,33 +1,37 @@
 
 
-# Fix: Aged Lead Assignment Not Working
+# Plan: Add Search Bar to Dashboard Team View + Deployment Guidance
 
-## Problem
-Two issues preventing aged leads from being moved/assigned:
+## What's Missing
 
-### Issue 1: QuickAssignMenu always updates `applications` table
-`QuickAssignMenu.tsx` (line 104-107) hardcodes `supabase.from("applications").update(...)`. When used on an aged lead row in the Lead Center, it tries to update a non-existent `applications` row — silently failing because no row matches the aged lead's ID.
+After reviewing the codebase, **7 of 8 requested changes are already implemented**. The one missing piece:
 
-### Issue 2: Lead Center bulk assign works, but per-row assign doesn't
-The Lead Center's bulk assign (floating bar) correctly splits by source and updates `aged_leads.assigned_manager_id` vs `applications.assigned_agent_id`. But the per-row `QuickAssignMenu` doesn't know the lead's source.
+**Dashboard "Your Team" search bar**: `ManagerTeamView.tsx` has `searchQuery` state (line 289) and filtering logic (line 375), but **never renders a search input field** in the UI. The search bar needs to be added to the component's JSX.
 
-## Fix
+## Implemented Changes (Confirmed)
 
-### 1. Update `QuickAssignMenu` to accept a `source` prop
-Add optional `source?: "applications" | "aged_leads"` prop. When `source === "aged_leads"`, update `aged_leads.assigned_manager_id` instead of `applications.assigned_agent_id`.
+1. **Check-in revamp** — `ApplicantCheckin.tsx` updated with new progress options
+2. **Daily check-in prompt** — `send-daily-checkin-prompt` edge function created
+3. **Unlicensed process email** — `send-unlicensed-process-update` edge function created  
+4. **Referral dropdown** — `get-active-managers` updated to include live agents
+5. **Contracted modal fix** — `ContractedModal.tsx` updated to skip CRM check
+6. **Admin daily summary** — `notify-fill-numbers` updated with admin email
+7. **Pipeline search** — `DashboardApplicants.tsx` already filters by name, email, AND phone
+8. **Aged leads assignment** — `QuickAssignMenu` now supports `source` prop; Lead Center has "Aged Leads" stat card
+9. **Call Center referrer** — "Referred by" badge added to `CallCenterLeadCard` and `CallModeInterface`
 
-**File**: `src/components/dashboard/QuickAssignMenu.tsx`
-- Add `source` to `QuickAssignMenuProps` (default: `"applications"`)
-- In `handleAssign`: branch on `source` to update the correct table/column
+## Fix Required
 
-### 2. Pass `source` from LeadCenter rows
-**File**: `src/pages/LeadCenter.tsx` (line 772-776)
-- Pass `lead.source` to `QuickAssignMenu` so aged leads update correctly
+**File**: `src/components/dashboard/ManagerTeamView.tsx`
 
-### 3. Add "Aged Leads" stat card to Lead Center
-Add a 5th clickable stat card showing the count of aged leads, which filters the view to aged leads only when clicked. This gives the admin a quick way to see and manage aged leads from the Lead Center.
+Add a search input + sort/filter controls row before the team member list (before line 392's `return`). Render an `<Input>` bound to the existing `searchQuery` state, with a search icon, so admins/managers can search for agents by name or email directly on the dashboard.
 
-**File**: `src/pages/LeadCenter.tsx`
-- Add `agedLeads` count to stats
-- Add new stat card that sets `filterSource` to `"aged_leads"`
+## Deployment Note
+
+All **backend changes** (edge functions, database migrations) deploy automatically and are already live. **Frontend changes** require the user to publish:
+- Click the **Publish** button (top-right on desktop, or `...` menu on mobile → "Publish")
+- Click **"Update"** in the publish dialog
+- Wait ~30 seconds for the new version to go live
+
+The delay the user noticed is because the preview shows the latest code, but the published site only updates when you explicitly publish.
 

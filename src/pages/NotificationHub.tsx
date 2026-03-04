@@ -14,7 +14,7 @@ import { Progress } from "@/components/ui/progress";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Bell, Mail, MessageSquare, Smartphone, AlertTriangle, Send, Search, RefreshCw, Zap, Phone, Radio, CheckCircle, ChevronLeft, ChevronRight, RotateCcw, Rocket } from "lucide-react";
+import { Bell, Mail, MessageSquare, Smartphone, AlertTriangle, Send, Search, RefreshCw, Zap, Phone, Radio, CheckCircle, ChevronLeft, ChevronRight, RotateCcw, Rocket, CalendarDays } from "lucide-react";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
 import { CARRIER_OPTIONS } from "@/lib/carrierOptions";
@@ -483,6 +483,7 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
   const [sendingOptIn, setSendingOptIn] = useState(false);
   const [resendingFailed, setResendingFailed] = useState(false);
   const [whatsappBlasting, setWhatsappBlasting] = useState(false);
+  const [seminarBlasting, setSeminarBlasting] = useState(false);
   const [lastRetryResult, setLastRetryResult] = useState<{ message: string; type: "success" | "warning" | "info"; timestamp: Date } | null>(null);
   const queryClient = useQueryClient();
   const { playSound } = useSoundEffects();
@@ -790,6 +791,28 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
     }
   };
 
+  const handleSeminarBlast = async () => {
+    setSeminarBlasting(true);
+    playSound("whoosh");
+    try {
+      const { data, error } = await supabase.functions.invoke("send-seminar-invite-blast", {
+        method: "POST",
+        body: {},
+      });
+      if (error) throw error;
+      confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+      toast.success(
+        `Seminar Invite sent! 📧 ${data?.email || 0} emails, 📱 ${data?.sms || 0} SMS, 🔔 ${data?.push || 0} push — to ${data?.total || 0} applicants`,
+        { duration: 8000 }
+      );
+      queryClient.invalidateQueries({ queryKey: ["notification-logs"] });
+    } catch (err: any) {
+      playSound("error");
+      toast.error(err.message || "Seminar blast failed");
+    } finally {
+      setSeminarBlasting(false);
+    }
+  };
   const actions = [
     {
       title: "Text All Applicants",
@@ -812,6 +835,17 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
       handler: handleWhatsappBlast,
       confirmTitle: "WhatsApp + Check-In Blast",
       confirmDesc: "Sends Email + SMS + Push to ALL unlicensed applicants with WhatsApp group invite, licensing steps, and daily check-in link.",
+    },
+    {
+      title: "📅 Seminar Invite Blast",
+      desc: "Thursday seminar invite",
+      icon: CalendarDays,
+      gradient: "from-indigo-500/20 to-indigo-500/5 border-indigo-500/20",
+      color: "text-indigo-400",
+      loading: seminarBlasting,
+      handler: handleSeminarBlast,
+      confirmTitle: "Seminar Invite Blast",
+      confirmDesc: "Sends Email + SMS + Push to ALL unlicensed applicants with a one-click registration link for the Thursday Career Seminar.",
     },
     {
       title: "Course Progress Leads",

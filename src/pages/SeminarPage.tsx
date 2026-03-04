@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { CalendarDays, Users, Mail, Phone, CheckCircle, Award, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,12 +10,24 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 export default function SeminarPage() {
+  const [searchParams] = useSearchParams();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [autoSubmitted, setAutoSubmitted] = useState(false);
+
+  // Pre-fill from URL params
+  useEffect(() => {
+    const fn = searchParams.get("first_name");
+    const ln = searchParams.get("last_name");
+    const em = searchParams.get("email");
+    if (fn) setFirstName(fn);
+    if (ln) setLastName(ln);
+    if (em) setEmail(em);
+  }, [searchParams]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -21,6 +21,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { LicenseProgressSelector } from "./LicenseProgressSelector";
 import { toast } from "sonner";
@@ -391,6 +392,29 @@ export function ManagerTeamView() {
 
   return (
     <div className="space-y-4">
+      {/* Search + Sort Controls */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search agents by name or email..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 h-9"
+          />
+        </div>
+        <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+          <SelectTrigger className="w-full sm:w-[180px] h-9">
+            <SelectValue placeholder="Sort by" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="production-desc">Production (High → Low)</SelectItem>
+            <SelectItem value="production-asc">Production (Low → High)</SelectItem>
+            <SelectItem value="name">Name (A → Z)</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Bulk select toggle */}
       {isAdmin && (
         <div className="flex items-center gap-3">

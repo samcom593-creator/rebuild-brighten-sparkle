@@ -1,40 +1,50 @@
 
 
-# Fix: Newly Contracted Agents Not Appearing on Dashboard
+# Fix: Can't Add Agents to Course
 
 ## Root Cause
 
-The dashboard components don't refresh after agents are created:
+The `onboarding_progress` table's INSERT RLS policy only allows agents to insert their **own** progress:
 
-1. **`ManagerTeamView`** uses raw `useState` + `useEffect([user?.id, isAdmin])` — it only fetches on initial mount. If the Dashboard was already loaded, navigating back won't trigger a refetch.
+```sql
+CREATE POLICY "Agents can insert own progress"
+ON public.onboarding_progress FOR INSERT
+WITH CHECK (agent_id = current_agent_id());
+```
 
-2. **`OnboardingPipelineCard`** and **`RecruitingQuickView`** use `useQuery` with `staleTime: 120_000` (2 minutes), so they serve cached data when navigating between pages.
+The "Admins can manage all progress" ALL policy covers admins, but there is **no INSERT policy for managers**. When a manager clicks "Add to Course" and tries to insert a progress record for another agent, RLS blocks it silently.
 
-3. **`TeamOverviewDashboard`** and **`TeamSnapshotCard`** similarly cache their queries.
-
-The agents ARE being created correctly in the database (verified). The dashboards just don't re-fetch to show them.
+Additionally, the `AddAgentToCourseDialog` enrollment mutation only updates the agent's stage and sends a portal login email — it **doesn't create an initial `onboarding_progress` record**, so the agent won't appear in the course even if the stage update succeeds.
 
 ## Fix Plan
 
-### 1. Convert `ManagerTeamView` to `useQuery`
-- Replace the manual `useState`/`useEffect` fetch pattern with `useQuery`
-- Use a query key like `["manager-team-view", user?.id]`
-- Set `staleTime: 0` so it always refetches on mount/focus
-- This ensures the team list is fresh every time the user navigates to the Dashboard
+### 1. Add missing RLS policy for manager INSERT on `onboarding_progress`
+Create a migration that allows managers to insert progress records for their team members:
 
-### 2. Set `refetchOnWindowFocus: true` on key dashboard queries
-- `OnboardingPipelineCard`, `RecruitingQuickView`, `TeamSnapshotCard`, `TeamOverviewDashboard` — reduce `staleTime` to `30_000` (30s) or set `refetchOnWindowFocus: true` (TanStack default) so data refreshes when switching tabs/pages
+```sql
+CREATE POLICY "Managers can insert team progress"
+ON public.onboarding_progress FOR INSERT
+WITH CHECK (
+  has_role(auth.uid(), 'manager'::app_role)
+  AND agent_id IN (
+    SELECT id FROM agents WHERE invited_by_manager_id = current_agent_id()
+  )
+);
+```
 
-### 3. Invalidate dashboard queries after contracting
-- In `ContractedModal` `onSuccess`, invalidate the relevant query keys (`manager-team-view`, `recruiting-quick-view`, `team-overview`, etc.) so the dashboard immediately shows the new agent
-- Same for `AddAgentModal`
+Also add manager UPDATE policy if missing (needed when re-enrolling).
 
-### 4. Fix duplicate agent records (data cleanup)
-- There are 2 agents with duplicate `user_id` values (non-deactivated). This can cause confusion. Add a note to the `add-agent` edge function to check for existing agent records by `user_id` before creating new ones, preventing duplicates.
+### 2. Fix `AddAgentToCourseDialog` enrollment mutation
+The bulk dialog currently only updates the agent's `onboarding_stage` and sends a portal login email. It needs to also:
+- Create an initial `onboarding_progress` record (like `AddToCourseButton` does)
+- Send the course enrollment email instead of the generic portal login email
+
+### 3. Fix `AddToCourseButton` error handling
+Add better error logging so silent RLS failures are surfaced to the user with actionable messages.
 
 ## Technical Details
 
-- `ManagerTeamView` refactor: extract the `fetchTeamData` function, wrap in `useQuery`, remove manual state management for `teamMembers`/`teamStats`
-- Query invalidation in `ContractedModal`: add `useQueryClient().invalidateQueries({ queryKey: ["manager-team-view"] })` etc. after successful contract
-- The `RecruitingQuickView` staleTime of `120_000` should be reduced to `30_000`
+- Migration: Add INSERT + UPDATE policies for managers on `onboarding_progress`
+- `AddAgentToCourseDialog.tsx`: Add progress record creation (fetch first active module, insert progress row) before sending email; switch from `send-agent-portal-login` to `send-course-enrollment-email`
+- Both components: Add explicit error checks on all Supabase calls and surface them via toast
 

@@ -121,7 +121,7 @@ export function RecruitingQuickView() {
     queryKey: ["recruiting-quick-view", user?.id, isAdmin],
     queryFn: () => fetchRecruitingData(user!.id, isAdmin),
     enabled: !!user,
-    staleTime: 120_000,
+    staleTime: 30_000,
   });
 
   const needsFollowUp = agents.filter(a => {

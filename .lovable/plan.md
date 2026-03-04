@@ -1,36 +1,33 @@
 
 
-# Show Referrer Info in Call Center
+# Fix: Aged Lead Assignment Not Working
 
 ## Problem
-When processing leads in the Call Center, you can't see who referred each applicant. This risks accidentally reassigning or processing someone else's lead.
+Two issues preventing aged leads from being moved/assigned:
 
-## Solution
-Add a "Referred By" field to the Call Center lead card showing the referring agent/manager name.
+### Issue 1: QuickAssignMenu always updates `applications` table
+`QuickAssignMenu.tsx` (line 104-107) hardcodes `supabase.from("applications").update(...)`. When used on an aged lead row in the Lead Center, it tries to update a non-existent `applications` row — silently failing because no row matches the aged lead's ID.
 
-### Changes
+### Issue 2: Lead Center bulk assign works, but per-row assign doesn't
+The Lead Center's bulk assign (floating bar) correctly splits by source and updates `aged_leads.assigned_manager_id` vs `applications.assigned_agent_id`. But the per-row `QuickAssignMenu` doesn't know the lead's source.
 
-**1. `src/pages/CallCenter.tsx`** — Fetch referrer name
-- For `applications`: include `assigned_agent_id` in the select, then join to get the agent's name via a second lookup or by selecting `agents!assigned_agent_id(first_name, last_name)` — but since `applications.assigned_agent_id` references `agents.id`, use a nested select: `.select("..., agents!assigned_agent_id(first_name, last_name)")`
-- For `aged_leads`: include `assigned_manager_id`, do a similar join or batch-resolve manager names from the agents table
-- Map the result into a new `referredBy` field on `UnifiedLead`
+## Fix
 
-**2. `UnifiedLead` interface** (in both `CallCenter.tsx` and `CallCenterLeadCard.tsx`)
-- Add `referredBy?: string` field
+### 1. Update `QuickAssignMenu` to accept a `source` prop
+Add optional `source?: "applications" | "aged_leads"` prop. When `source === "aged_leads"`, update `aged_leads.assigned_manager_id` instead of `applications.assigned_agent_id`.
 
-**3. `src/components/callcenter/CallCenterLeadCard.tsx`** — Display referrer
-- Add a badge/row in the header area showing "Referred by: [Agent Name]" with a `User` icon
-- Style it as a subtle info badge so it's immediately visible without cluttering the card
+**File**: `src/components/dashboard/QuickAssignMenu.tsx`
+- Add `source` to `QuickAssignMenuProps` (default: `"applications"`)
+- In `handleAssign`: branch on `source` to update the correct table/column
 
-**4. `src/components/dashboard/CallModeInterface.tsx`** — Same treatment
-- Add `referredBy` to the simpler `Lead` interface and display it in the lead card section
+### 2. Pass `source` from LeadCenter rows
+**File**: `src/pages/LeadCenter.tsx` (line 772-776)
+- Pass `lead.source` to `QuickAssignMenu` so aged leads update correctly
 
-### Technical Detail
-The `applications` table has `assigned_agent_id` referencing `agents.id`. Supabase PostgREST supports embedded selects:
-```ts
-.select("id, first_name, ..., assigned_agent_id, agents!applications_assigned_agent_id_fkey(first_name, last_name)")
-```
-If the FK name doesn't work cleanly, fall back to a separate batch query for agent names by collecting all unique `assigned_agent_id` values and fetching from `agents` in one call.
+### 3. Add "Aged Leads" stat card to Lead Center
+Add a 5th clickable stat card showing the count of aged leads, which filters the view to aged leads only when clicked. This gives the admin a quick way to see and manage aged leads from the Lead Center.
 
-For `aged_leads`, similarly resolve `assigned_manager_id` → agent name.
+**File**: `src/pages/LeadCenter.tsx`
+- Add `agedLeads` count to stats
+- Add new stat card that sets `filterSource` to `"aged_leads"`
 

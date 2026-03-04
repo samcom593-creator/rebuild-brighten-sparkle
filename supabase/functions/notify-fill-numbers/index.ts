@@ -266,6 +266,68 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Sent ${emailsSent.length} emails + ${pushSent} push notifications (${reminderType})`);
 
+    // ── ADMIN SUMMARY at 9PM ──────────────────────────────────────────
+    if (reminderType === "9pm" && agentsNeedingReminder.length > 0) {
+      try {
+        // Build list of agent names who didn't log
+        const missingNames = agentsNeedingReminder.map(a => {
+          const profile = profileMap.get(a.user_id);
+          return profile?.full_name || "Unknown Agent";
+        });
+
+        const adminEmail = "info@apex-financial.org";
+        const listHtml = missingNames.map(n => `<li style="color:#e2e8f0;font-size:14px;padding:4px 0;">${n}</li>`).join("");
+
+        await resend.emails.send({
+          from: "APEX Financial Empire <notifications@tx.apex-financial.org>",
+          to: [adminEmail],
+          subject: `🚨 ${missingNames.length} agents didn't log numbers today`,
+          html: `
+            <!DOCTYPE html>
+            <html><head><meta charset="utf-8"></head>
+            <body style="font-family:'Segoe UI',sans-serif;margin:0;padding:0;background:#0a0f1a;">
+              <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
+                <div style="background:linear-gradient(135deg,#0d1526,#1a2a4a);border-radius:16px;padding:32px;border:1px solid #ef444440;">
+                  <h1 style="color:#ef4444;font-size:20px;margin:0 0 16px;">Daily Numbers Report</h1>
+                  <p style="color:#e2e8f0;font-size:16px;margin:0 0 16px;">
+                    <strong>${missingNames.length} agent(s)</strong> did not submit their daily production numbers today:
+                  </p>
+                  <ul style="margin:0 0 24px;padding-left:20px;">${listHtml}</ul>
+                  <div style="text-align:center;">
+                    <a href="${PORTAL_URL}" style="display:inline-block;background:#ef4444;color:#fff;text-decoration:none;padding:12px 32px;border-radius:8px;font-weight:bold;font-size:14px;">View Dashboard →</a>
+                  </div>
+                  <div style="border-top:1px solid rgba(148,163,184,0.2);padding-top:16px;margin-top:24px;">
+                    <p style="color:#64748b;font-size:12px;text-align:center;margin:0;">APEX Financial Empire — Admin Summary</p>
+                  </div>
+                </div>
+              </div>
+            </body></html>
+          `,
+        });
+
+        // Also send SMS to admin
+        try {
+          await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-sms-auto-detect`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            },
+            body: JSON.stringify({
+              phone: "", // Admin phone would go here, but email is primary
+              message: `APEX: ${missingNames.length} agents didn't log numbers today: ${missingNames.slice(0, 5).join(", ")}${missingNames.length > 5 ? ` +${missingNames.length - 5} more` : ""}`,
+            }),
+          });
+        } catch (smsErr) {
+          console.error("Admin SMS failed:", smsErr);
+        }
+
+        console.log(`Admin summary sent: ${missingNames.length} agents missing numbers`);
+      } catch (adminErr) {
+        console.error("Failed to send admin summary:", adminErr);
+      }
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 

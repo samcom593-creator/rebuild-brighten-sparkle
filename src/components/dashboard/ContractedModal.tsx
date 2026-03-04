@@ -92,30 +92,49 @@ export function ContractedModal({
       let newAgentId: string | null = null;
 
       if (alreadyContracted) {
-        // Skip agent creation — just look up existing agent by email
-        const { data: existingProfile } = await supabase
-          .from("profiles")
-          .select("user_id")
-          .eq("email", application.email)
-          .maybeSingle();
+        // "Already Contracted" — create agent but skip CRM link requirement
+        const finalLicenseStatus = 
+          application.license_status === "licensed" || application.license_progress === "licensed" 
+            ? "licensed" 
+            : application.license_status;
 
-        if (!existingProfile?.user_id) {
-          toast.error("No existing agent found for this email. Uncheck 'Already contracted' to create one.");
-          return;
+        const { data: addResult, error: addErr } = await supabase.functions.invoke("add-agent", {
+          body: {
+            firstName: application.first_name,
+            lastName: application.last_name,
+            email: application.email,
+            phone: application.phone,
+            managerId: agentId,
+            licenseStatus: finalLicenseStatus,
+            hasTrainingCourse: true,
+          },
+        });
+
+        if (addErr || !addResult?.success) {
+          // If agent already exists, try to find them
+          const { data: existingProfile } = await supabase
+            .from("profiles")
+            .select("user_id")
+            .eq("email", application.email)
+            .maybeSingle();
+
+          if (existingProfile?.user_id) {
+            const { data: existingAgent } = await supabase
+              .from("agents")
+              .select("id")
+              .eq("user_id", existingProfile.user_id)
+              .maybeSingle();
+            newAgentId = existingAgent?.id || null;
+          }
+
+          if (!newAgentId) {
+            console.error("Add agent failed:", addErr || addResult?.error);
+            toast.error(addResult?.error || "Failed to create agent — please try again");
+            return;
+          }
+        } else {
+          newAgentId = addResult.agentId;
         }
-
-        const { data: existingAgent } = await supabase
-          .from("agents")
-          .select("id")
-          .eq("user_id", existingProfile.user_id)
-          .maybeSingle();
-
-        if (!existingAgent?.id) {
-          toast.error("No existing agent record found. Uncheck 'Already contracted' to create one.");
-          return;
-        }
-
-        newAgentId = existingAgent.id;
       } else {
         // Determine license status - check both license_status AND license_progress
         const finalLicenseStatus = 

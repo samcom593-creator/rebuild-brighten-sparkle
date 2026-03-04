@@ -480,9 +480,11 @@ export default function DashboardApplicants() {
 
   const filteredApplications = baseApplications
     .filter((app) => {
+      const q = searchQuery.toLowerCase();
       const name = `${app.first_name} ${app.last_name}`.toLowerCase();
-      const matchesSearch = name.includes(searchQuery.toLowerCase()) ||
-        app.email.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSearch = !q || name.includes(q) ||
+        app.email.toLowerCase().includes(q) ||
+        (app.phone && app.phone.includes(q));
       
       const appStatus = getApplicationStatus(app);
       const matchesStatus = statusFilter === "all" || statusFilter === "terminated" || appStatus === statusFilter;

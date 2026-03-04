@@ -192,7 +192,7 @@ serve(async (req: Request) => {
           
           <!-- CTA -->
           <div style="text-align:center;margin-bottom:32px;">
-            <a href="https://apex-financial.org/agent-portal" 
+            <a href="https://rebuild-brighten-sparkle.lovable.app/agent-portal" 
                style="display:inline-block;background:#14b8a6;color:#000;font-weight:600;padding:12px 28px;border-radius:4px;text-decoration:none;font-size:13px;">
               View Full Leaderboard
             </a>

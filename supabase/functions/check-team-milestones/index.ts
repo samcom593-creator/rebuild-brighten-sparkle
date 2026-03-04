@@ -183,7 +183,7 @@ serve(async (req: Request) => {
             
             <!-- CTA -->
             <div style="text-align:center;margin-top:32px;">
-              <a href="https://apex-financial.org/agent-portal" 
+              <a href="https://rebuild-brighten-sparkle.lovable.app/agent-portal" 
                  style="display:inline-block;background:${milestone.color};color:#000;font-weight:600;padding:14px 32px;border-radius:2px;text-decoration:none;font-size:13px;letter-spacing:0.5px;">
                 View Dashboard
               </a>

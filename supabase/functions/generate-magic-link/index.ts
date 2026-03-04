@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
-const BASE_URL = "https://apex-financial.org";
+const BASE_URL = "https://rebuild-brighten-sparkle.lovable.app";
 
 interface GenerateMagicLinkRequest {
   agentId: string;

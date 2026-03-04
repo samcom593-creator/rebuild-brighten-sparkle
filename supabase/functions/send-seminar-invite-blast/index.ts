@@ -20,7 +20,7 @@ const CARRIER_GATEWAYS: Record<string, string> = {
 
 const APP_URL = "https://rebuild-brighten-sparkle.lovable.app";
 
-function buildSeminarEmail(firstName: string, registrationUrl: string): string {
+function buildSeminarEmail(firstName: string, registrationUrl: string, whatsappLink: string): string {
   return `
 <!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
@@ -67,9 +67,22 @@ function buildSeminarEmail(firstName: string, registrationUrl: string): string {
   </td></tr>
   </table>
 
-  <p style="color:#94a3b8;font-size:14px;text-align:center;margin:16px 0 0;">
-    📍 Every Thursday • 7:00 PM CST • Virtual (link provided after registration)
-  </p>
+   <p style="color:#94a3b8;font-size:14px;text-align:center;margin:16px 0 0;">
+     📍 Every Thursday • 7:00 PM CST • Virtual (link provided after registration)
+   </p>
+
+   ${whatsappLink ? `
+   <!-- WhatsApp CTA -->
+   <table width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0;">
+   <tr><td align="center">
+     <a href="${whatsappLink}" style="display:inline-block;background:linear-gradient(135deg,#25D366,#128C7E);color:#ffffff;text-decoration:none;padding:14px 36px;border-radius:12px;font-size:16px;font-weight:700;">
+       💬 Join Our WhatsApp Group →
+     </a>
+   </td></tr>
+   <tr><td align="center" style="padding-top:8px;">
+     <p style="color:#94a3b8;font-size:13px;margin:0;">Connect with the team, get daily updates & support</p>
+   </td></tr>
+   </table>` : ""}
 </td></tr>
 
 <!-- Footer -->
@@ -91,6 +104,7 @@ serve(async (req: Request) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const resendKey = Deno.env.get("RESEND_API_KEY")!;
+    const whatsappLink = Deno.env.get("WHATSAPP_GROUP_LINK") || "";
 
     const sb = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
     const resend = new Resend(resendKey);
@@ -117,10 +131,10 @@ serve(async (req: Request) => {
       // --- EMAIL ---
       try {
         await resend.emails.send({
-          from: "Apex Financial <notifications@apex-financial.org>",
+          from: "APEX Financial Empire <notifications@tx.apex-financial.org>",
           to: [app.email],
           subject: "📅 You're Invited: Weekly Career Seminar — This Thursday!",
-          html: buildSeminarEmail(app.first_name, regUrl),
+          html: buildSeminarEmail(app.first_name, regUrl, whatsappLink),
         });
         emailsSent++;
         await sb.from("notification_log").insert({
@@ -146,7 +160,7 @@ serve(async (req: Request) => {
       if (app.phone) {
         const digits = app.phone.replace(/\D/g, "").slice(-10);
         if (digits.length === 10) {
-          const smsText = `Hey ${app.first_name}! 📅 You're invited to our FREE Weekly Career Seminar this Thursday at 7 PM CST. Get a full overview of the opportunity & get all your questions answered. Register here: ${regUrl}`;
+          const smsText = `${app.first_name}, free seminar Thu 7PM CST! Register: ${APP_URL}/seminar`;
           const carrier = app.carrier || null;
           const gateways = carrier && CARRIER_GATEWAYS[carrier]
             ? [CARRIER_GATEWAYS[carrier]]
@@ -156,7 +170,7 @@ serve(async (req: Request) => {
           for (const gw of gateways) {
             try {
               await resend.emails.send({
-                from: "Apex Financial <notifications@apex-financial.org>",
+                from: "APEX Financial Empire <notifications@tx.apex-financial.org>",
                 to: [`${digits}@${gw}`],
                 subject: "",
                 text: smsText,

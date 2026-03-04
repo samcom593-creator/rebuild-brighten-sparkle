@@ -24,6 +24,7 @@ interface QuickAssignMenuProps {
   currentAgentId: string | null;
   onAssigned?: () => void;
   className?: string;
+  source?: "applications" | "aged_leads";
 }
 
 // Shared cache so all instances reuse the same data
@@ -73,7 +74,7 @@ async function getManagers(): Promise<Manager[]> {
 }
 
 export const QuickAssignMenu = forwardRef<HTMLDivElement, QuickAssignMenuProps>(
-  ({ applicationId, currentAgentId, onAssigned, className }, ref) => {
+  ({ applicationId, currentAgentId, onAssigned, className, source = "applications" }, ref) => {
   const { playSound } = useSoundEffects();
   const [managers, setManagers] = useState<Manager[]>([]);
   const [loading, setLoading] = useState(false);
@@ -101,10 +102,15 @@ export const QuickAssignMenu = forwardRef<HTMLDivElement, QuickAssignMenuProps>(
 
     setAssigning(managerId);
     try {
-      const { error } = await supabase
-        .from("applications")
-        .update({ assigned_agent_id: managerId })
-        .eq("id", applicationId);
+      const { error } = source === "aged_leads"
+        ? await supabase
+            .from("aged_leads")
+            .update({ assigned_manager_id: managerId })
+            .eq("id", applicationId)
+        : await supabase
+            .from("applications")
+            .update({ assigned_agent_id: managerId })
+            .eq("id", applicationId);
 
       if (error) throw error;
 

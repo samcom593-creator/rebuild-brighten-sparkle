@@ -47,6 +47,7 @@ interface UnifiedLead {
   city?: string;
   state?: string;
   availability?: string;
+  referredBy?: string;
 }
 
 export default function CallCenter() {
@@ -103,7 +104,7 @@ export default function CallCenter() {
       if (sourceFilter === "all" || sourceFilter === "aged_leads") {
         let query = supabase
           .from("aged_leads")
-          .select("id, first_name, last_name, email, phone, instagram_handle, notes, motivation, license_status, created_at, status, contacted_at, last_contacted_at")
+          .select("id, first_name, last_name, email, phone, instagram_handle, notes, motivation, license_status, created_at, status, contacted_at, last_contacted_at, assigned_manager_id, agents!aged_leads_assigned_manager_id_fkey(display_name)")
           .order("created_at", { ascending: sortOrder === "oldest_first" });
 
         // Status filter (source-of-truth = contact timestamps)
@@ -131,7 +132,9 @@ export default function CallCenter() {
         const { data: agedData, error: agedError } = await query;
         if (agedError) throw agedError;
 
-        (agedData || []).forEach((lead) => {
+        (agedData || []).forEach((lead: any) => {
+          const agentData = lead.agents;
+          const referredBy = agentData?.display_name || undefined;
           allLeads.push({
             id: lead.id,
             source: "aged_leads",
@@ -147,6 +150,7 @@ export default function CallCenter() {
             status: lead.status || "new",
             contactedAt: lead.contacted_at || undefined,
             lastContactedAt: lead.last_contacted_at || undefined,
+            referredBy,
           });
         });
       }
@@ -155,7 +159,7 @@ export default function CallCenter() {
       if (sourceFilter === "all" || sourceFilter === "applications") {
         let appQuery = supabase
           .from("applications")
-          .select("id, first_name, last_name, email, phone, instagram_handle, notes, license_status, license_progress, test_scheduled_date, created_at, status, contacted_at, last_contacted_at, previous_company, nipr_number, licensed_states, city, state, availability")
+          .select("id, first_name, last_name, email, phone, instagram_handle, notes, license_status, license_progress, test_scheduled_date, created_at, status, contacted_at, last_contacted_at, previous_company, nipr_number, licensed_states, city, state, availability, assigned_agent_id, agents!applications_assigned_agent_id_fkey(display_name)")
           .is("terminated_at", null)
           .is("contracted_at", null)
           .order("created_at", { ascending: sortOrder === "oldest_first" });
@@ -187,7 +191,9 @@ export default function CallCenter() {
         const { data: appData, error: appError } = await appQuery;
         if (appError) throw appError;
 
-        (appData || []).forEach((app) => {
+        (appData || []).forEach((app: any) => {
+          const agentData = app.agents;
+          const referredBy = agentData?.display_name || undefined;
           allLeads.push({
             id: app.id,
             source: "applications",
@@ -211,6 +217,7 @@ export default function CallCenter() {
             city: app.city || undefined,
             state: app.state || undefined,
             availability: app.availability || undefined,
+            referredBy,
           });
         });
       }

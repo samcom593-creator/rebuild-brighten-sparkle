@@ -27,17 +27,18 @@ function formatPhoneDisplay(phone: string): string {
  import { toast } from "sonner";
  import { cn } from "@/lib/utils";
  
- interface Lead {
-   id: string;
-   firstName: string;
-   lastName?: string;
-   email: string;
-   phone?: string;
-   instagramHandle?: string;
-   notes?: string;
-   motivation?: string;
-   licenseStatus: string;
- }
+  interface Lead {
+    id: string;
+    firstName: string;
+    lastName?: string;
+    email: string;
+    phone?: string;
+    instagramHandle?: string;
+    notes?: string;
+    motivation?: string;
+    licenseStatus: string;
+    referredBy?: string;
+  }
  
  interface CallModeInterfaceProps {
    isOpen: boolean;
@@ -83,9 +84,9 @@ function formatPhoneDisplay(phone: string): string {
    const fetchLeads = async () => {
      setLoading(true);
      try {
-       let query = supabase
-         .from("aged_leads")
-         .select("id, first_name, last_name, email, phone, instagram_handle, notes, motivation, license_status")
+        let query = supabase
+          .from("aged_leads")
+          .select("id, first_name, last_name, email, phone, instagram_handle, notes, motivation, license_status, assigned_manager_id, agents!aged_leads_assigned_manager_id_fkey(display_name)")
          .eq("license_status", licenseFilter)
          .in("status", ["new", "contacted", "no_pickup"])
          .order("created_at", { ascending: true });
@@ -99,19 +100,20 @@ function formatPhoneDisplay(phone: string): string {
  
        if (error) throw error;
  
-       setLeads(
-         (data || []).map((lead) => ({
-           id: lead.id,
-           firstName: lead.first_name,
-           lastName: lead.last_name || undefined,
-           email: lead.email,
-           phone: lead.phone || undefined,
-           instagramHandle: lead.instagram_handle || undefined,
-           notes: lead.notes || undefined,
-           motivation: lead.motivation || undefined,
-           licenseStatus: lead.license_status || "unknown",
-         }))
-       );
+        setLeads(
+          (data || []).map((lead: any) => ({
+            id: lead.id,
+            firstName: lead.first_name,
+            lastName: lead.last_name || undefined,
+            email: lead.email,
+            phone: lead.phone || undefined,
+            instagramHandle: lead.instagram_handle || undefined,
+            notes: lead.notes || undefined,
+            motivation: lead.motivation || undefined,
+            licenseStatus: lead.license_status || "unknown",
+            referredBy: lead.agents?.display_name || undefined,
+          }))
+        );
        setCurrentIndex(0);
      } catch (error) {
        console.error("Error fetching leads for call mode:", error);
@@ -250,12 +252,18 @@ function formatPhoneDisplay(phone: string): string {
                {/* Lead Card */}
                <GlassCard className="flex-1 p-6 mb-4 overflow-y-auto">
                  <div className="space-y-4">
-                   {/* Name */}
-                   <div>
-                     <h3 className="text-2xl font-bold">
-                       {currentLead.firstName} {currentLead.lastName || ""}
-                     </h3>
-                   </div>
+                    {/* Name */}
+                    <div>
+                      <h3 className="text-2xl font-bold">
+                        {currentLead.firstName} {currentLead.lastName || ""}
+                      </h3>
+                      {currentLead.referredBy && (
+                        <p className="text-sm text-purple-400 mt-1 flex items-center gap-1.5">
+                          <span className="inline-block w-3 h-3 rounded-full bg-purple-500/20 text-center text-[10px] leading-3">👤</span>
+                          Referred by: {currentLead.referredBy}
+                        </p>
+                      )}
+                    </div>
  
                    {/* Contact Info */}
                    <div className="space-y-3">

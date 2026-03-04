@@ -312,8 +312,15 @@ export default function LeadCenter() {
       } else if (filterStatus === "has_contacted") {
         matchesStatus = !!lead.contactedAt || !!lead.hasContactHistory || (lead.status !== "new" && lead.status !== "not_contacted") || !!(lead.licenseProgress && lead.licenseProgress !== 'unlicensed') || !!lead.hasNotes;
       } else if (filterStatus === "contracting_only") {
-        // Strict definition of "Closed" as requested
         matchesStatus = lead.status === "contracting";
+      } else if (filterStatus === "hired") {
+        matchesStatus = lead.status === "hired" || lead.status === "approved";
+      } else if (filterStatus === "contracted") {
+        matchesStatus = lead.status === "contracted";
+      } else if (filterStatus === "interview") {
+        matchesStatus = lead.status === "interview";
+      } else if (filterStatus === "qualified") {
+        matchesStatus = lead.status === "qualified";
       } else {
         matchesStatus = lead.status === filterStatus;
       }
@@ -602,7 +609,11 @@ export default function LeadCenter() {
               <SelectItem value="all">All Statuses</SelectItem>
               <SelectItem value="new">New</SelectItem>
               <SelectItem value="not_contacted">Not Contacted</SelectItem>
-              <SelectItem value="contacted">Contacted</SelectItem>
+              <SelectItem value="has_contacted">Contacted</SelectItem>
+              <SelectItem value="interview">Interview</SelectItem>
+              <SelectItem value="qualified">Qualified</SelectItem>
+              <SelectItem value="hired">Hired</SelectItem>
+              <SelectItem value="contracted">Contracted</SelectItem>
               <SelectItem value="contracting_only">Closed (Contracting)</SelectItem>
               <SelectItem value="not_qualified">Not Qualified</SelectItem>
             </SelectContent>

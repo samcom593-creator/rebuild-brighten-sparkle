@@ -24,91 +24,84 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    console.log("Fetching active managers (batch mode)...");
+    console.log("Fetching active managers + live agents...");
 
-    // 1. Get all active agents with user_ids in ONE query
+    // 1. Get all active agents
     const { data: agents, error: agentsError } = await supabaseAdmin
       .from("agents")
-      .select("id, user_id")
+      .select("id, user_id, onboarding_stage")
       .eq("status", "active");
 
-    if (agentsError) {
-      console.error("Error fetching agents:", agentsError);
-      return new Response(
-        JSON.stringify({ error: "Failed to fetch agents", managers: [] }),
-        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
-
+    if (agentsError) throw agentsError;
     if (!agents || agents.length === 0) {
-      return new Response(
-        JSON.stringify({ managers: [] }),
-        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
+      return new Response(JSON.stringify({ managers: [] }), {
+        status: 200, headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
     }
 
     const userIds = agents.filter(a => a.user_id).map(a => a.user_id!);
 
-    // 2. Batch fetch ALL manager roles in ONE query
+    // 2. Batch fetch manager roles
     const { data: managerRoles, error: rolesError } = await supabaseAdmin
       .from("user_roles")
       .select("user_id")
       .eq("role", "manager")
       .in("user_id", userIds);
 
-    if (rolesError) {
-      console.error("Error fetching roles:", rolesError);
-      return new Response(
-        JSON.stringify({ error: "Failed to fetch roles", managers: [] }),
-        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
+    if (rolesError) throw rolesError;
 
     const managerUserIds = new Set((managerRoles || []).map(r => r.user_id));
 
-    if (managerUserIds.size === 0) {
-      return new Response(
-        JSON.stringify({ managers: [] }),
-        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
+    // 3. Also include live agents (evaluated) who are NOT managers
+    const liveAgentUserIds = new Set(
+      agents
+        .filter(a => a.user_id && a.onboarding_stage === "evaluated" && !managerUserIds.has(a.user_id!))
+        .map(a => a.user_id!)
+    );
+
+    const allUserIds = new Set([...managerUserIds, ...liveAgentUserIds]);
+
+    if (allUserIds.size === 0) {
+      return new Response(JSON.stringify({ managers: [] }), {
+        status: 200, headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
     }
 
-    // 3. Batch fetch ALL profiles for managers in ONE query
+    // 4. Batch fetch profiles
     const { data: profiles, error: profilesError } = await supabaseAdmin
       .from("profiles")
       .select("user_id, full_name, instagram_handle")
-      .in("user_id", Array.from(managerUserIds));
+      .in("user_id", Array.from(allUserIds));
 
-    if (profilesError) {
-      console.error("Error fetching profiles:", profilesError);
-      return new Response(
-        JSON.stringify({ error: "Failed to fetch profiles", managers: [] }),
-        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
+    if (profilesError) throw profilesError;
 
-    // Build lookup maps
-    const profileMap = new Map(
-      (profiles || []).map(p => [p.user_id, p])
-    );
+    const profileMap = new Map((profiles || []).map(p => [p.user_id, p]));
 
-    // Assemble managers list
-    const managers = agents
-      .filter(a => a.user_id && managerUserIds.has(a.user_id))
+    // Assemble list with role label
+    const result = agents
+      .filter(a => a.user_id && allUserIds.has(a.user_id))
       .map(a => {
         const profile = profileMap.get(a.user_id!);
+        const isManager = managerUserIds.has(a.user_id!);
         return {
           id: a.id,
           name: profile?.full_name || "Unknown",
           instagramHandle: profile?.instagram_handle || undefined,
+          role: isManager ? "manager" : "agent",
         };
       })
-      .filter(m => m.name !== "Unknown");
+      .filter(m => m.name !== "Unknown")
+      // Sort managers first, then agents
+      .sort((a, b) => {
+        if (a.role === "manager" && b.role !== "manager") return -1;
+        if (a.role !== "manager" && b.role === "manager") return 1;
+        return a.name.localeCompare(b.name);
+      });
 
-    console.log(`Total managers found: ${managers.length} (3 queries total)`);
+    console.log(`Found ${result.length} referral options (managers + live agents)`);
 
     return new Response(
-      JSON.stringify({ managers }),
+      JSON.stringify({ managers: result }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (error) {

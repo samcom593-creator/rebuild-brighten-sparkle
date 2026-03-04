@@ -146,8 +146,10 @@ serve(async (req: Request) => {
       const batch = applicants.slice(i, i + BATCH_SIZE);
       await Promise.allSettled(batch.map(async (app) => {
         const checkinUrl = `${APP_URL}/checkin?id=${app.id}`;
-        const smsText = `Hey ${app.first_name}! Update your licensing progress: ${checkinUrl}${whatsappLink ? ` | Join our WhatsApp group: ${whatsappLink}` : ""}`
-          .substring(0, 160);
+        // Send WhatsApp link as priority — no truncation
+        const smsText = whatsappLink
+          ? `Hey ${app.first_name}! Join our APEX WhatsApp group for daily updates & support: ${whatsappLink}`
+          : `Hey ${app.first_name}! Update your licensing progress: ${checkinUrl}`;
 
         // 1. EMAIL
         if (app.email) {

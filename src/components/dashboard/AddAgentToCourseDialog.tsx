@@ -68,39 +68,74 @@ export function AddAgentToCourseDialog({ onSuccess }: AddAgentToCourseDialogProp
   // Enrollment mutation
   const enrollMutation = useMutation({
     mutationFn: async (agentIds: string[]) => {
-      // Update all selected agents
-      const updates = agentIds.map(async (agentId) => {
-        // Update agent stage
-        const { error: agentError } = await supabase
-          .from("agents")
-          .update({
-            onboarding_stage: "training_online",
-            has_training_course: true,
-          })
-          .eq("id", agentId);
+      // Get the first active module (needed for progress record)
+      const { data: firstModule, error: moduleError } = await supabase
+        .from("onboarding_modules")
+        .select("id")
+        .eq("is_active", true)
+        .order("order_index", { ascending: true })
+        .limit(1)
+        .maybeSingle();
 
-        if (agentError) throw agentError;
+      if (moduleError || !firstModule) {
+        throw new Error("No active course modules found");
+      }
 
-        // Get agent email for sending login
-        const { data: agent } = await supabase
-          .from("agents")
-          .select("profiles!agents_profile_id_fkey(email, full_name)")
-          .eq("id", agentId)
-          .single();
+      const results = await Promise.allSettled(
+        agentIds.map(async (agentId) => {
+          // 1. Update agent stage
+          const { error: agentError } = await supabase
+            .from("agents")
+            .update({
+              onboarding_stage: "training_online",
+              has_training_course: true,
+            })
+            .eq("id", agentId);
 
-        if (agent?.profiles?.email) {
-          // Trigger portal login email
-          await supabase.functions.invoke("send-agent-portal-login", {
-            body: { 
-              agentId, 
-              email: agent.profiles.email,
-              agentName: agent.profiles.full_name || "Agent"
-            },
-          });
+          if (agentError) throw new Error(`Stage update failed for ${agentId}: ${agentError.message}`);
+
+          // 2. Check if progress already exists
+          const { data: existing } = await supabase
+            .from("onboarding_progress")
+            .select("id")
+            .eq("agent_id", agentId)
+            .limit(1);
+
+          // 3. Create initial progress record if none exists
+          if (!existing || existing.length === 0) {
+            const { error: progressError } = await supabase
+              .from("onboarding_progress")
+              .insert({
+                agent_id: agentId,
+                module_id: firstModule.id,
+                started_at: new Date().toISOString(),
+                video_watched_percent: 0,
+                passed: false,
+              });
+
+            if (progressError) throw new Error(`Progress creation failed for ${agentId}: ${progressError.message}`);
+          }
+
+          // 4. Send course enrollment email
+          const { error: emailError } = await supabase.functions.invoke(
+            "send-course-enrollment-email",
+            { body: { agentId } }
+          );
+
+          if (emailError) {
+            console.warn(`Course email failed for ${agentId}:`, emailError);
+          }
+        })
+      );
+
+      const failures = results.filter((r) => r.status === "rejected");
+      if (failures.length > 0) {
+        console.error("Some enrollments failed:", failures);
+        if (failures.length === agentIds.length) {
+          throw new Error("All enrollments failed");
         }
-      });
-
-      await Promise.all(updates);
+        toast.warning(`${agentIds.length - failures.length} enrolled, ${failures.length} failed`);
+      }
     },
     onSuccess: () => {
       toast.success(`${selectedAgents.length} agent(s) enrolled in course`);

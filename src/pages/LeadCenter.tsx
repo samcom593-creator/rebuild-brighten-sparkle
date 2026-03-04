@@ -342,6 +342,7 @@ export default function LeadCenter() {
       // "Closed" matches the status filter "contracting_only"
       closed: leads.filter((l) => l.status === "contracting").length,
       licensed: leads.filter((l) => l.licenseStatus === "licensed").length,
+      agedLeads: leads.filter((l) => l.source === "aged_leads").length,
     };
   }, [leads]);
 
@@ -514,7 +515,7 @@ export default function LeadCenter() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="grid grid-cols-2 md:grid-cols-4 gap-4"
+        className="grid grid-cols-2 md:grid-cols-5 gap-4"
       >
         {[
           {
@@ -552,6 +553,15 @@ export default function LeadCenter() {
             bgColor: "bg-emerald-500/10",
             onClick: () => { setFilterLicense("licensed"); setFilterManager("all"); setFilterStatus("all"); setFilterSource("all"); },
             active: filterLicense === "licensed",
+          },
+          {
+            label: "Aged Leads",
+            value: stats.agedLeads,
+            icon: UserX,
+            iconColor: "text-amber-500",
+            bgColor: "bg-amber-500/10",
+            onClick: () => { setFilterSource("aged_leads"); setFilterManager("all"); setFilterStatus("all"); setFilterLicense("all"); },
+            active: filterSource === "aged_leads" && filterStatus === "all" && filterLicense === "all",
           },
         ].map((card) => (
           <GlassCard
@@ -773,6 +783,7 @@ export default function LeadCenter() {
                             applicationId={lead.id}
                             currentAgentId={lead.assignedAgentId || null}
                             onAssigned={fetchLeads}
+                            source={lead.source}
                           />
                           <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
                             <a href={`tel:${lead.phone}`}>

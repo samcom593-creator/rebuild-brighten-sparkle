@@ -1,35 +1,40 @@
 
 
-# Fix: Course Emails Going to Wrong People + Magic Link Sign-In Broken
+# Fix: Newly Contracted Agents Not Appearing on Dashboard
 
-## Two Issues
+## Root Cause
 
-### Issue 1: Emails sent to agents who already passed
-The `bulk-resend-course-emails` function sends to ALL agents with `has_training_course = true`, including those who already completed the course. It needs to exclude agents who have passed all modules.
+The dashboard components don't refresh after agents are created:
 
-### Issue 2: Magic link sign-in fails (agents can't access course)
-The `MagicLogin.tsx` page calls `verifyOtp` incorrectly. It passes the hashed token as `token`, but it should use `token_hash`:
+1. **`ManagerTeamView`** uses raw `useState` + `useEffect([user?.id, isAdmin])` — it only fetches on initial mount. If the Dashboard was already loaded, navigating back won't trigger a refetch.
 
-```typescript
-// BROKEN (current)
-supabase.auth.verifyOtp({ email, token: data.tokenHash, type: "magiclink" })
+2. **`OnboardingPipelineCard`** and **`RecruitingQuickView`** use `useQuery` with `staleTime: 120_000` (2 minutes), so they serve cached data when navigating between pages.
 
-// FIXED
-supabase.auth.verifyOtp({ token_hash: data.tokenHash, type: "magiclink" })
-```
+3. **`TeamOverviewDashboard`** and **`TeamSnapshotCard`** similarly cache their queries.
 
-The `token` parameter expects a raw 6-digit OTP code, not a hash. This explains why agents click the email link, the verify-magic-link function succeeds (logs show "tokenHash present: true"), but the frontend `verifyOtp` call fails and they see an error screen telling them to sign in manually — which they can't do because they don't know their password.
+The agents ARE being created correctly in the database (verified). The dashboards just don't re-fetch to show them.
 
 ## Fix Plan
 
-### 1. Fix `src/pages/MagicLogin.tsx`
-- Line 75: Change `verifyOtp({ email, token: data.tokenHash, type: "magiclink" })` to `verifyOtp({ token_hash: data.tokenHash, type: "magiclink" })`
-- Line 92 (retry): Same fix
+### 1. Convert `ManagerTeamView` to `useQuery`
+- Replace the manual `useState`/`useEffect` fetch pattern with `useQuery`
+- Use a query key like `["manager-team-view", user?.id]`
+- Set `staleTime: 0` so it always refetches on mount/focus
+- This ensures the team list is fresh every time the user navigates to the Dashboard
 
-### 2. Fix `supabase/functions/bulk-resend-course-emails/index.ts`
-- After fetching agents with `has_training_course = true`, also fetch `onboarding_progress` to find agents who have passed ALL active modules
-- Exclude those fully-completed agents from the email list
+### 2. Set `refetchOnWindowFocus: true` on key dashboard queries
+- `OnboardingPipelineCard`, `RecruitingQuickView`, `TeamSnapshotCard`, `TeamOverviewDashboard` — reduce `staleTime` to `30_000` (30s) or set `refetchOnWindowFocus: true` (TanStack default) so data refreshes when switching tabs/pages
 
-### 3. Resend emails
-- After deploying fixes, trigger `bulk-resend-course-emails` to send working links to all agents who haven't completed the course
+### 3. Invalidate dashboard queries after contracting
+- In `ContractedModal` `onSuccess`, invalidate the relevant query keys (`manager-team-view`, `recruiting-quick-view`, `team-overview`, etc.) so the dashboard immediately shows the new agent
+- Same for `AddAgentModal`
+
+### 4. Fix duplicate agent records (data cleanup)
+- There are 2 agents with duplicate `user_id` values (non-deactivated). This can cause confusion. Add a note to the `add-agent` edge function to check for existing agent records by `user_id` before creating new ones, preventing duplicates.
+
+## Technical Details
+
+- `ManagerTeamView` refactor: extract the `fetchTeamData` function, wrap in `useQuery`, remove manual state management for `teamMembers`/`teamStats`
+- Query invalidation in `ContractedModal`: add `useQueryClient().invalidateQueries({ queryKey: ["manager-team-view"] })` etc. after successful contract
+- The `RecruitingQuickView` staleTime of `120_000` should be reduced to `30_000`
 

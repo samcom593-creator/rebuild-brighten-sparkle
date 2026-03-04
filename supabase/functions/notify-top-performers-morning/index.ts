@@ -145,7 +145,7 @@ serve(async (req) => {
           
           <!-- CTA -->
           <div style="text-align: center;">
-            <a href="https://apex-financial.org/apex-daily-numbers" 
+            <a href="https://rebuild-brighten-sparkle.lovable.app/apex-daily-numbers" 
                style="display: inline-block; background: #14b8a6; color: #0a0f1a; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
               Log Today's Numbers
             </a>

@@ -33,7 +33,6 @@ import { OnboardingPipelineCard } from "@/components/dashboard/OnboardingPipelin
 import { RecruitingQuickView } from "@/components/dashboard/RecruitingQuickView";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -221,7 +220,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { playSound } = useSoundEffects();
-  const [showConfetti, setShowConfetti] = useState(false);
+  // Confetti removed
 
   const { data } = useQuery({
     queryKey: ["dashboard-stats", user?.id, profile?.full_name, user?.email],
@@ -256,9 +255,6 @@ export default function Dashboard() {
 
   return (
     <>
-      {/* Confetti on first load */}
-      {showConfetti && <ConfettiCelebration trigger={showConfetti} />}
-      
       {/* Animated Welcome */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}

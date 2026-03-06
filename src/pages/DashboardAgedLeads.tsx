@@ -24,6 +24,8 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -147,6 +149,7 @@ function QuickAssignPanel({ managers, unassignedCount, onAssign }: {
 }
 
 export default function DashboardAgedLeads() {
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const { user, isAdmin, isManager, isLoading: authLoading } = useAuth();
   const [leads, setLeads] = useState<AgedLead[]>([]);
   const [managers, setManagers] = useState<Manager[]>([]);
@@ -685,7 +688,7 @@ export default function DashboardAgedLeads() {
         )}
       </p>
 
-      {/* Leads List */}
+      {/* Leads Table */}
       {loading ? (
         <div className="flex items-center justify-center h-48">
           <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -699,120 +702,110 @@ export default function DashboardAgedLeads() {
           </p>
         </GlassCard>
       ) : (
-        <div className="space-y-1.5">
-          {filteredLeads.map((lead, index) => {
-            const config = statusConfig[lead.status] || statusConfig.new;
-            const isDuplicate = duplicateMap.has(lead.id);
-            return (
-              <motion.div
-                key={lead.id}
-                initial={{ opacity: 0, x: -12 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: Math.min(index * 0.02, 0.5), duration: 0.25 }}
-              >
-                <GlassCard
-                  variant="subtle"
-                  className={cn(
-                    "px-4 py-3 hover:bg-card/80 transition-all duration-200 hover:shadow-md hover:shadow-primary/5 group",
-                    isDuplicate && "ring-1 ring-amber-500/30 bg-amber-500/5"
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    {/* Avatar */}
-                    <div className="shrink-0">
-                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 border border-primary/20 flex items-center justify-center">
-                        <span className="text-xs font-semibold text-primary">
-                          {getInitials(lead.firstName, lead.lastName)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Name + Motivation */}
-                    <div className="min-w-0 flex-1">
+        <div className="rounded-xl border border-border overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-10">
+                  <Checkbox
+                    checked={selectedIds.size === filteredLeads.length && filteredLeads.length > 0}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedIds(new Set(filteredLeads.map(l => l.id)));
+                      } else {
+                        setSelectedIds(new Set());
+                      }
+                    }}
+                  />
+                </TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead className="hidden sm:table-cell">Phone</TableHead>
+                <TableHead className="hidden md:table-cell">Email</TableHead>
+                <TableHead className="hidden lg:table-cell">Instagram</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="hidden md:table-cell">License</TableHead>
+                <TableHead className="hidden lg:table-cell">Source</TableHead>
+                <TableHead className="w-[60px]">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredLeads.map((lead) => {
+                const config = statusConfig[lead.status] || statusConfig.new;
+                const isDuplicate = duplicateMap.has(lead.id);
+                return (
+                  <TableRow
+                    key={lead.id}
+                    className={cn(
+                      "hover:bg-muted/30 transition-colors",
+                      isDuplicate && "bg-amber-500/5",
+                      selectedIds.has(lead.id) && "bg-primary/5"
+                    )}
+                  >
+                    <TableCell onClick={e => e.stopPropagation()}>
+                      <Checkbox
+                        checked={selectedIds.has(lead.id)}
+                        onCheckedChange={(checked) => {
+                          const next = new Set(selectedIds);
+                          if (checked) next.add(lead.id); else next.delete(lead.id);
+                          setSelectedIds(next);
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium truncate">
-                          {lead.firstName} {lead.lastName || ""}
-                        </p>
-                        {lead.leadSource === "new_drip" && (
-                          <Badge variant="outline" className="text-[10px] h-4 px-1.5 bg-cyan-500/10 text-cyan-400 border-cyan-500/20">
-                            Drip
-                          </Badge>
-                        )}
+                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                          <span className="text-[10px] font-semibold text-primary">
+                            {getInitials(lead.firstName, lead.lastName)}
+                          </span>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{lead.firstName} {lead.lastName || ""}</p>
+                          {lead.motivation && <p className="text-[10px] text-muted-foreground truncate">{lead.motivation}</p>}
+                        </div>
                         {isDuplicate && (
-                          <Badge variant="outline" className="text-[10px] h-4 px-1.5 bg-amber-500/10 text-amber-500 border-amber-500/20 gap-0.5">
-                            <AlertTriangle className="h-2.5 w-2.5" /> Dupe
+                          <Badge variant="outline" className="text-[9px] h-4 px-1 bg-amber-500/10 text-amber-500 border-amber-500/20 shrink-0">
+                            Dupe
                           </Badge>
                         )}
                       </div>
-                      {lead.motivation && (
-                        <p className="text-[11px] text-muted-foreground/70 italic truncate mt-0.5">{lead.motivation}</p>
-                      )}
-                      {lead.aboutMe && !lead.motivation && (
-                        <p className="text-[11px] text-muted-foreground/70 italic truncate mt-0.5">{lead.aboutMe}</p>
-                      )}
-                    </div>
-
-                    {/* Contact Chips */}
-                    <div className="hidden sm:flex items-center gap-1.5 shrink-0">
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       {lead.phone && (
-                        <a href={`tel:${lead.phone}`} className="flex items-center gap-1 px-2 py-1 rounded-md bg-muted/50 hover:bg-muted text-[11px] text-muted-foreground transition-colors">
-                          <Phone className="h-3 w-3" />
-                          <span className="hidden lg:inline">{lead.phone}</span>
-                        </a>
+                        <a href={`tel:${lead.phone}`} className="text-xs text-emerald-500 hover:underline">{lead.phone}</a>
                       )}
-                      {lead.email && (
-                        <a href={`mailto:${lead.email}`} className="flex items-center gap-1 px-2 py-1 rounded-md bg-muted/50 hover:bg-muted text-[11px] text-muted-foreground transition-colors">
-                          <Mail className="h-3 w-3" />
-                          <span className="hidden lg:inline truncate max-w-[120px]">{lead.email}</span>
-                        </a>
-                      )}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <span className="text-xs text-muted-foreground truncate block max-w-[160px]">{lead.email}</span>
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
                       {lead.instagramHandle && (
-                        <a
-                          href={`https://instagram.com/${lead.instagramHandle.replace("@", "")}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 px-2 py-1 rounded-md bg-muted/50 hover:bg-muted text-[11px] text-muted-foreground transition-colors"
-                        >
-                          <Instagram className="h-3 w-3" />
-                          <span className="hidden lg:inline truncate max-w-[100px]">@{lead.instagramHandle.replace("@", "")}</span>
+                        <a href={`https://instagram.com/${lead.instagramHandle.replace("@","")}`} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-foreground">
+                          @{lead.instagramHandle.replace("@","")}
                         </a>
                       )}
-                    </div>
-
-                    {/* Badges */}
-                    <div className="hidden md:flex items-center gap-1.5 shrink-0">
+                    </TableCell>
+                    <TableCell>
                       <Badge variant="outline" className={cn("text-[10px] h-5 px-2", config.color)}>
                         {config.label}
                       </Badge>
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "text-[10px] h-5 px-2",
-                          lead.licenseStatus === "licensed"
-                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                            : "bg-muted/50 text-muted-foreground border-border/50"
-                        )}
-                      >
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <Badge variant="outline" className={cn("text-[10px] h-5 px-2", lead.licenseStatus === "licensed" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-muted/50 text-muted-foreground border-border/50")}>
                         {lead.licenseStatus === "licensed" ? "Licensed" : "Unlicensed"}
                       </Badge>
-                    </div>
-
-                    {/* Licensing Button */}
-                    {lead.email && lead.licenseStatus !== "licensed" && (
-                      <div className="shrink-0">
-                        <ResendLicensingButton
-                          recipientEmail={lead.email}
-                          recipientName={lead.firstName}
-                          licenseStatus={lead.licenseStatus === "unlicensed" ? "unlicensed" : "pending"}
-                        />
-                      </div>
-                    )}
-
-                    {/* Actions */}
-                    <div className="shrink-0">
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      {lead.leadSource === "new_drip" && (
+                        <Badge variant="outline" className="text-[10px] h-4 px-1.5 bg-cyan-500/10 text-cyan-400 border-cyan-500/20">Drip</Badge>
+                      )}
+                      {lead.leadSource === "aged" && (
+                        <span className="text-[10px] text-muted-foreground">Aged</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 opacity-50 group-hover:opacity-100 transition-opacity">
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -832,61 +825,45 @@ export default function DashboardAgedLeads() {
                           <DropdownMenuItem onClick={() => handleStatusChange(lead.id, "not_qualified")} className="text-xs gap-2 text-destructive">
                             <XCircle className="h-3 w-3" /> Not Qualified
                           </DropdownMenuItem>
-                          {lead.phone && (
-                            <DropdownMenuItem asChild className="text-xs gap-2">
-                              <a href={`tel:${lead.phone}`}><PhoneCall className="h-3 w-3" /> Call</a>
-                            </DropdownMenuItem>
-                          )}
-                          {lead.instagramHandle && (
-                            <DropdownMenuItem asChild className="text-xs gap-2">
-                              <a href={`https://instagram.com/${lead.instagramHandle.replace("@","")}`} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="h-3 w-3" /> Instagram
-                              </a>
-                            </DropdownMenuItem>
-                          )}
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => setDeleteTarget(lead)}
-                            className="text-xs gap-2 text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="h-3 w-3" /> Delete Lead
+                          <DropdownMenuItem onClick={() => setDeleteTarget(lead)} className="text-xs gap-2 text-destructive focus:text-destructive">
+                            <Trash2 className="h-3 w-3" /> Delete
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => setBanTarget(lead)}
-                            className="text-xs gap-2 text-destructive focus:text-destructive"
-                          >
-                            <Ban className="h-3 w-3" /> Ban Prospect
+                          <DropdownMenuItem onClick={() => setBanTarget(lead)} className="text-xs gap-2 text-destructive focus:text-destructive">
+                            <Ban className="h-3 w-3" /> Ban
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
-                    </div>
-                  </div>
-
-                  {/* Mobile contact row */}
-                  <div className="flex sm:hidden items-center gap-2 mt-2 flex-wrap">
-                    {lead.phone && (
-                      <a href={`tel:${lead.phone}`} className="flex items-center gap-1 px-2 py-0.5 rounded bg-muted/50 text-[10px] text-muted-foreground">
-                        <Phone className="h-2.5 w-2.5" /> {lead.phone}
-                      </a>
-                    )}
-                    {lead.email && (
-                      <a href={`mailto:${lead.email}`} className="flex items-center gap-1 px-2 py-0.5 rounded bg-muted/50 text-[10px] text-muted-foreground truncate">
-                        <Mail className="h-2.5 w-2.5" /> {lead.email}
-                      </a>
-                    )}
-                    {lead.instagramHandle && (
-                      <a href={`https://instagram.com/${lead.instagramHandle.replace("@","")}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 px-2 py-0.5 rounded bg-muted/50 text-[10px] text-muted-foreground">
-                        <Instagram className="h-2.5 w-2.5" /> @{lead.instagramHandle.replace("@","")}
-                      </a>
-                    )}
-                    <Badge variant="outline" className={cn("text-[9px] h-4 px-1.5", config.color)}>
-                      {config.label}
-                    </Badge>
-                  </div>
-                </GlassCard>
-              </motion.div>
-            );
-          })}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-3 px-4 py-2.5 border-t border-border bg-muted/30">
+              <span className="text-xs font-medium">{selectedIds.size} selected</span>
+              <Button
+                size="sm"
+                variant="destructive"
+                className="h-7 text-xs"
+                onClick={() => {
+                  const first = filteredLeads.find(l => selectedIds.has(l.id));
+                  if (first) setDeleteTarget(first);
+                }}
+              >
+                <Trash2 className="h-3 w-3 mr-1" /> Delete Selected
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs"
+                onClick={() => setSelectedIds(new Set())}
+              >
+                Clear
+              </Button>
+            </div>
+          )}
         </div>
       )}
 

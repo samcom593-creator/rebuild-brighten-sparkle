@@ -242,14 +242,7 @@ export default function Dashboard() {
     { name: "Unlicensed", value: stats.unlicensed, color: "hsl(222, 47%, 40%)" },
   ], [stats.licensed, stats.unlicensed]);
 
-  useEffect(() => {
-    const hasSeenConfetti = sessionStorage.getItem('dashboard-confetti');
-    if (!hasSeenConfetti) {
-      setShowConfetti(true);
-      sessionStorage.setItem('dashboard-confetti', 'true');
-      setTimeout(() => setShowConfetti(false), 4000);
-    }
-  }, []);
+  // Confetti removed — was firing on every session start with no earned trigger
 
   // Determine what to show based on role
   const showAgencyStats = isAdmin;

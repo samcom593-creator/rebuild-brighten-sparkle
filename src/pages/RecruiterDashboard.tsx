@@ -541,9 +541,9 @@ const LeadCard = memo(function LeadCard({
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-6 w-6 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                  className="h-8 w-8 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
                 >
-                  <Phone className="h-3 w-3" />
+                  <Phone className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-48 p-1" side="bottom" align="start">
@@ -581,7 +581,7 @@ const LeadCard = memo(function LeadCard({
                 onXP(XP_REWARDS.contact, "📧 Email sent!");
                 onRefresh();
               }}
-              className="h-6 w-6 px-0 border border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+              className="h-8 w-8 px-0 border border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
             />
 
             {/* Send Notification (Push / SMS) */}
@@ -590,9 +590,9 @@ const LeadCard = memo(function LeadCard({
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-6 w-6 border-violet-500/30 text-violet-400 hover:bg-violet-500/10"
+                  className="h-8 w-8 border-violet-500/30 text-violet-400 hover:bg-violet-500/10"
                 >
-                  <Bell className="h-3 w-3" />
+                  <Bell className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-44 p-1" side="bottom" align="start">
@@ -634,10 +634,10 @@ const LeadCard = memo(function LeadCard({
             </div>
 
             {/* Divider */}
-            <div className="h-4 w-px bg-border mx-0.5" />
+            <div className="h-5 w-px bg-border mx-0.5" />
 
             {/* ─ Utility group ─ */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
             {/* Send licensing instructions */}
             <ResendLicensingButton
               recipientEmail={lead.email}
@@ -651,7 +651,7 @@ const LeadCard = memo(function LeadCard({
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-6 w-6 border-pink-500/30 text-pink-400 hover:bg-pink-500/10"
+                  className="h-8 w-8 border-pink-500/30 text-pink-400 hover:bg-pink-500/10"
                   onClick={() => {
                     logLeadActivity({
                       leadId: lead.id,
@@ -662,7 +662,7 @@ const LeadCard = memo(function LeadCard({
                     window.open(UNLICENSED_SCHEDULING_LINK, "_blank");
                   }}
                 >
-                  <CalendarClock className="h-3 w-3" />
+                  <CalendarClock className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent><p>Book a call (Calendly)</p></TooltipContent>
@@ -674,16 +674,14 @@ const LeadCard = memo(function LeadCard({
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-6 w-6 border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+                  className="h-8 w-8 border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
                   onClick={() => setSchedulerOpen(true)}
                 >
-                  <Calendar className="h-3 w-3" />
+                  <Calendar className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent><p>Schedule interview</p></TooltipContent>
             </Tooltip>
-
-
 
             {/* Activity timeline toggle */}
             <Tooltip>
@@ -692,9 +690,9 @@ const LeadCard = memo(function LeadCard({
                   variant="ghost"
                   size="icon"
                   onClick={() => setShowTimeline((v) => !v)}
-                  className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
                 >
-                  <Activity className="h-3 w-3" />
+                  <Activity className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent><p>{showTimeline ? "Hide activity" : "Activity"}</p></TooltipContent>
@@ -707,9 +705,9 @@ const LeadCard = memo(function LeadCard({
                   variant="ghost"
                   size="icon"
                   onClick={() => setShowRecorder((v) => !v)}
-                  className={cn("h-6 w-6", showRecorder ? "text-red-400 bg-red-500/10" : "text-muted-foreground hover:text-foreground")}
+                  className={cn("h-8 w-8", showRecorder ? "text-red-400 bg-red-500/10" : "text-muted-foreground hover:text-foreground")}
                 >
-                  <Mic className="h-3 w-3" />
+                  <Mic className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent><p>{showRecorder ? "Close recorder" : "Record & Transcribe"}</p></TooltipContent>
@@ -723,9 +721,9 @@ const LeadCard = memo(function LeadCard({
                   variant="ghost"
                   size="icon"
                   onClick={() => setExpanded((v) => !v)}
-                  className="h-6 w-6 ml-auto text-muted-foreground hover:text-foreground"
+                  className="h-8 w-8 ml-auto text-muted-foreground hover:text-foreground"
                 >
-                  <MessageSquare className="h-3 w-3" />
+                  <MessageSquare className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent><p>{expanded ? "Hide notes" : "Notes"}</p></TooltipContent>

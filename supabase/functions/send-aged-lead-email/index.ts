@@ -9,7 +9,7 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const ADMIN_EMAIL = "info@apex-financial.org";
+const ADMIN_EMAIL = "sam@apex-financial.org";
 
 const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
@@ -176,7 +176,7 @@ const handler = async (req: Request): Promise<Response> => {
     const ccList = [ADMIN_EMAIL, managerEmail].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i) as string[];
 
     const { error: emailError } = await resend.emails.send({
-      from: "APEX Financial <noreply@apex-financial.org>",
+      from: "APEX Financial <notifications@tx.apex-financial.org>",
       to: [email],
       cc: ccList.length > 0 ? ccList : undefined,
       subject: "We've Grown Since You Applied — See What's Changed",

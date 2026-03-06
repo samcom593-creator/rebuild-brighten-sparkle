@@ -24,7 +24,7 @@ const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
 const APPLY_URL = "https://apex-financial.org/apply";
 const CALENDLY_URL = "https://calendly.com/sam-com593/licensed-prospect-call-clone";
-const ADMIN_EMAIL = "info@apex-financial.org";
+const ADMIN_EMAIL = "sam@apex-financial.org";
 
 function sanitizeHtml(str: string | null | undefined): string {
   if (!str) return "";
@@ -87,7 +87,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send re-engagement email with admin CC
     await resend.emails.send({
-      from: "APEX Financial <applications@apex-financial.org>",
+      from: "APEX Financial <notifications@tx.apex-financial.org>",
       to: [lead.email],
       cc: [ADMIN_EMAIL],
       subject: `${sanitizeHtml(firstName)}, Still Interested in Joining APEX? 🚀`,

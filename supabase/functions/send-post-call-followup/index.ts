@@ -8,7 +8,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const ADMIN_EMAIL = "info@apex-financial.org";
+const ADMIN_EMAIL = "sam@apex-financial.org";
 
 interface PostCallFollowupRequest {
   firstName: string;
@@ -325,7 +325,7 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     const emailResponse = await resend.emails.send({
-      from: "APEX Financial <noreply@apex-financial.org>",
+      from: "APEX Financial <notifications@tx.apex-financial.org>",
       to: [email],
       cc: ccList.length > 0 ? ccList : undefined,
       subject: emailSubject,

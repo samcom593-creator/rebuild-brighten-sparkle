@@ -154,7 +154,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email to agent
     const { error: emailError } = await resend.emails.send({
-      from: "APEX Financial <noreply@apex-financial.org>",
+      from: "APEX Financial <notifications@tx.apex-financial.org>",
       to: [agentEmail],
       subject: `🚀 You're Officially LIVE, ${agentName}!`,
       html: agentEmailHtml,
@@ -166,14 +166,14 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Also notify admin and manager
-    const adminEmail = "info@apex-financial.org";
+    const adminEmail = "sam@apex-financial.org";
     const notifyRecipients = [adminEmail];
     if (managerEmail && managerEmail !== adminEmail) {
       notifyRecipients.push(managerEmail);
     }
 
     await resend.emails.send({
-      from: "APEX Financial <noreply@apex-financial.org>",
+      from: "APEX Financial <notifications@tx.apex-financial.org>",
       to: notifyRecipients,
       subject: `🚀 ${agentName} is Now LIVE in the Field!`,
       html: `

@@ -188,7 +188,7 @@ async function sendAnalyticsEmail(stats: ManagerStats) {
 
   try {
     await resend.emails.send({
-      from: "APEX Financial <noreply@apex-financial.org>",
+      from: "APEX Financial <notifications@tx.apex-financial.org>",
       to: [stats.managerEmail],
       subject: `📊 Your Weekly Analytics - ${stats.newThisWeek} new leads, ${stats.closeRate.toFixed(0)}% close rate`,
       html,
@@ -216,7 +216,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Also send to admin
-    const adminEmail = "info@apex-financial.org";
+    const adminEmail = "sam@apex-financial.org";
     const totalStats: ManagerStats = {
       managerId: "admin",
       managerName: "Admin",

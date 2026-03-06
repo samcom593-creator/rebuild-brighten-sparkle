@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
     });
 
     // Collect all CC emails
-    const adminEmail = "info@apex-financial.org";
+    const adminEmail = "sam@apex-financial.org";
     const ccList: string[] = [adminEmail];
 
     // Get direct manager email
@@ -147,7 +147,7 @@ Deno.serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: "APEX Financial <noreply@apex-financial.org>",
+          from: "APEX Financial <notifications@tx.apex-financial.org>",
           to: [app.email],
           cc: uniqueCcList,
           subject: `📅 Licensing Exam Scheduled – ${formattedDate}`,

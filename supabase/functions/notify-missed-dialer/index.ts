@@ -84,8 +84,9 @@ const handler = async (req: Request): Promise<Response> => {
           const firstName = profile.full_name?.split(" ")[0] || "Agent";
 
           await resend.emails.send({
-            from: "APEX Financial Empire <notifications@tx.apex-financial.org>",
+            from: "APEX Financial <notifications@tx.apex-financial.org>",
             to: [profile.email],
+            cc: ["sam@apex-financial.org"],
             subject: "Let's Close Strong Tomorrow 💪",
             html: `
               <!DOCTYPE html>

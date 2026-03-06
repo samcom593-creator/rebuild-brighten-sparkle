@@ -163,7 +163,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       try {
         const { error: emailError } = await resend.emails.send({
-          from: "APEX Financial <noreply@apex-financial.org>",
+          from: "APEX Financial <notifications@tx.apex-financial.org>",
           to: [agentEmail],
           subject: `💪 Finish January Strong, ${agentName}!`,
           html: emailHtml,

@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const ADMIN_EMAIL = "info@apex-financial.org";
+const ADMIN_EMAIL = "sam@apex-financial.org";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -163,7 +163,7 @@ const handler = async (req: Request): Promise<Response> => {
         Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "APEX Financial <noreply@apex-financial.org>",
+        from: "APEX Financial <notifications@tx.apex-financial.org>",
         to: [agentEmail],
         cc: ccList.length > 0 ? ccList : undefined,
         subject: "Welcome to Apex Financial! 🎉 Your First Steps",

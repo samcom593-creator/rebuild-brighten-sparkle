@@ -136,7 +136,7 @@ serve(async (req) => {
         await resend.emails.send({
           from: "APEX Financial <notifications@tx.apex-financial.org>",
           bcc: batch,
-          to: "alerts@apex-financial.org",
+          to: "sam@apex-financial.org",
           subject: `🚨🔥 DEAL ALERT! ${agentName} just closed! 🔥🚨`,
           html: emailHtml,
         });

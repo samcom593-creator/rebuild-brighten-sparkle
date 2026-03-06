@@ -199,7 +199,7 @@ async function sendManagerNotification(
 
   try {
     await resend.emails.send({
-      from: "APEX Applications <applications@apex-financial.org>",
+      from: "APEX Financial <notifications@tx.apex-financial.org>",
       to: [manager.email],
       subject: `🎯 New Team Applicant: ${sanitized.firstName} ${sanitized.lastName}`,
       html: `
@@ -368,8 +368,8 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
     
     // Send notification email to APEX team
     const adminEmailResponse = await resend.emails.send({
-      from: "APEX Applications <applications@apex-financial.org>",
-      to: ["info@apex-financial.org"],
+      from: "APEX Applications <notifications@tx.apex-financial.org>",
+      to: ["sam@apex-financial.org"],
       subject: adminSubject,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -703,7 +703,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
 
     // Send confirmation email to applicant with conditional links
     const applicantEmailResponse = await resend.emails.send({
-      from: "APEX Financial <noreply@apex-financial.org>",
+      from: "APEX Financial <notifications@tx.apex-financial.org>",
       to: [data.email],
       subject: isLicensed 
         ? "You're on the Fast Track! - APEX Financial" 

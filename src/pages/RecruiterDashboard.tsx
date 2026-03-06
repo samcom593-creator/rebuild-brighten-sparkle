@@ -7,7 +7,7 @@ import {
   Award, Users, UserCheck, AlertTriangle, TrendingUp, Sparkles,
   MessageSquare, ChevronDown, ChevronUp, Plus, ExternalLink, AlertCircle,
   Activity, PhoneOff, PhoneCall, PhoneForwarded, PhoneMissed, Ban,
-  BarChart3, Percent, Timer, Target, Eye, EyeOff, Lightbulb, Brain,
+  BarChart3, Percent, Timer, Target, Eye, EyeOff, Lightbulb,
 } from "lucide-react";
 import {
   Tooltip,
@@ -36,9 +36,7 @@ import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingBu
 import { QuickEmailMenu } from "@/components/dashboard/QuickEmailMenu";
 import { ActivityTimeline } from "@/components/recruiter/ActivityTimeline";
 import { InterviewScheduler } from "@/components/dashboard/InterviewScheduler";
-import { RecruiterAIPanel, LeadAISummary } from "@/components/recruiter/RecruiterAIPanel";
 import { LeadDetailSheet } from "@/components/recruiter/LeadDetailSheet";
-import { DailyChallenge } from "@/components/recruiter/DailyChallenge";
 import { DormantBadge } from "@/components/recruiter/DormantBadge";
 import { InterviewRecorder } from "@/components/dashboard/InterviewRecorder";
 import { logLeadActivity } from "@/lib/logLeadActivity";
@@ -642,21 +640,7 @@ const LeadCard = memo(function LeadCard({
               <TooltipContent><p>Schedule interview</p></TooltipContent>
             </Tooltip>
 
-            {/* AI Summary */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 text-pink-400 hover:text-pink-300 hover:bg-pink-500/10"
-                >
-                  <Brain className="h-3 w-3" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-2" side="bottom" align="start">
-                <LeadAISummary lead={lead} />
-              </PopoverContent>
-            </Popover>
+
 
             {/* Activity timeline toggle */}
             <Tooltip>
@@ -1157,19 +1141,8 @@ function RecruiterDashboardInner() {
       {/* ── Performance Metrics Strip ── */}
       {isFeatureEnabled("performanceMetrics") && <MetricsStrip leads={leads} />}
 
-      {/* ── Tools (collapsed by default) ── */}
-      <Collapsible>
-        <CollapsibleTrigger asChild>
-          <Button variant="outline" size="sm" className="w-full gap-2 text-xs">
-            <Sparkles className="h-3.5 w-3.5" /> AI Tools & Challenges
-            <ChevronDown className="h-3.5 w-3.5" />
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="space-y-2 mt-2">
-          <DailyChallenge leads={leads} onXP={addXP} />
-          <RecruiterAIPanel leads={leads} />
-        </CollapsibleContent>
-      </Collapsible>
+
+
 
       {/* ── Search / Filter / Sort ── */}
       <GlassCard className="p-2 space-y-1">

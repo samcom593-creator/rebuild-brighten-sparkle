@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const adminEmail = "info@apex-financial.org";
+    const adminEmail = "sam@apex-financial.org";
     const today = new Date();
     const todayStr = today.toISOString().split("T")[0];
 

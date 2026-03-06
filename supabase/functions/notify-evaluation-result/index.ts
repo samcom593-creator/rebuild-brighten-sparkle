@@ -147,8 +147,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email to admin
     await resend.emails.send({
-      from: "Apex Financial <notifications@apex-financial.org>",
-      to: ["info@apex-financial.org"],
+      from: "Apex Financial <notifications@tx.apex-financial.org>",
+      to: ["sam@apex-financial.org"],
       subject: `[Admin] Evaluation: ${agentName} - ${result.toUpperCase()}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

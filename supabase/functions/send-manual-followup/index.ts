@@ -9,7 +9,7 @@ const corsHeaders = {
 
 const UNLICENSED_CALENDLY = "https://calendly.com/sam-com593/licensed-prospect-call-clone";
 const LICENSED_CALENDLY = "https://calendly.com/sam-com593/1on1-call-clone";
-const ADMIN_EMAIL = "info@apex-financial.org";
+const ADMIN_EMAIL = "sam@apex-financial.org";
 
 async function getManagerEmail(supabase: any, agentId: string): Promise<string | null> {
   try {
@@ -158,7 +158,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log(`Sending ${isLicensed ? "licensed" : "unlicensed"} follow-up to ${application.email}, CC: ${ccList.join(", ")}`);
     
     const { error: emailError } = await resend.emails.send({
-      from: "Apex Financial <info@apex-financial.org>",
+      from: "Apex Financial <notifications@tx.apex-financial.org>",
       to: [application.email],
       cc: ccList.length > 0 ? ccList : undefined,
       subject,

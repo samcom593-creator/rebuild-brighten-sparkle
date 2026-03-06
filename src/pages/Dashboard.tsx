@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Users,
@@ -37,6 +37,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SkeletonLoader } from "@/components/ui/skeleton-loader";
+import { DatePeriodSelector, type DatePeriod } from "@/components/ui/date-period-selector";
 
 import { TotalApplicationsBanner } from "@/components/dashboard/TotalApplicationsBanner";
 import { EstimatedEarningsCard } from "@/components/dashboard/EstimatedEarningsCard";
@@ -220,7 +221,16 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const { playSound } = useSoundEffects();
-  // Confetti removed
+  const [datePeriod, setDatePeriod] = useState<DatePeriod>("month");
+  const [dateRange, setDateRange] = useState<{ start: Date; end: Date }>({
+    start: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+    end: new Date(),
+  });
+
+  const handleDatePeriodChange = useCallback((period: DatePeriod, range: { start: Date; end: Date }) => {
+    setDatePeriod(period);
+    setDateRange(range);
+  }, []);
 
   const { data } = useQuery({
     queryKey: ["dashboard-stats", user?.id, profile?.full_name, user?.email],
@@ -274,6 +284,11 @@ export default function Dashboard() {
           {isAdmin ? "Here's your agency overview" : isManager ? "Here's your team performance" : "Track your progress"}
         </p>
       </motion.div>
+
+      {/* ====== DATE PERIOD SELECTOR ====== */}
+      <div className="mb-4 flex items-center justify-between">
+        <DatePeriodSelector value={datePeriod} onChange={handleDatePeriodChange} />
+      </div>
 
       {/* ====== FOMO APPLICATIONS BANNER ====== */}
       <TotalApplicationsBanner />

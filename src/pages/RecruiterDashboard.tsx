@@ -34,7 +34,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressSelector";
 import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
 import { QuickEmailMenu } from "@/components/dashboard/QuickEmailMenu";
-import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration";
 import { ActivityTimeline } from "@/components/recruiter/ActivityTimeline";
 import { InterviewScheduler } from "@/components/dashboard/InterviewScheduler";
 import { RecruiterAIPanel, LeadAISummary } from "@/components/recruiter/RecruiterAIPanel";
@@ -881,7 +880,6 @@ function RecruiterDashboardInner() {
   const [filterStage, setFilterStage] = useState<string>("all");
   const [xp, setXp] = useState(0);
   const [xpToast, setXpToast] = useState<string | null>(null);
-  const [confetti, setConfetti] = useState(false);
   const [advancedToday, setAdvancedToday] = useState(0);
   const [focusMode, setFocusMode] = useState(false);
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
@@ -980,9 +978,7 @@ function RecruiterDashboardInner() {
   }, []);
 
   const triggerCelebrate = useCallback(() => {
-    setConfetti(true);
     playSound("celebrate");
-    setTimeout(() => setConfetti(false), 2000);
   }, [playSound]);
 
   // Computed stats
@@ -1066,8 +1062,6 @@ function RecruiterDashboardInner() {
 
   return (
     <div className="p-3 md:p-4 space-y-2">
-      <ConfettiCelebration trigger={confetti} onComplete={() => setConfetti(false)} />
-
       {/* XP toast */}
       <AnimatePresence>
         {xpToast && (

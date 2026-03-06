@@ -126,6 +126,7 @@ export default function DashboardApplicants() {
   const [sortOrder, setSortOrder] = useState<string>("newest");
   const [isLoading, setIsLoading] = useState(true);
   const [agentId, setAgentId] = useState<string | null>(null);
+  const [myDirectsOnly, setMyDirectsOnly] = useState(false);
   
   // Notes modal state
   const [notesApp, setNotesApp] = useState<Application | null>(null);
@@ -500,8 +501,9 @@ export default function DashboardApplicants() {
       const appStatus = getApplicationStatus(app);
       const matchesStatus = statusFilter === "all" || statusFilter === "terminated" || appStatus === statusFilter;
       const matchesLicense = licenseFilter === "all" || app.license_status === licenseFilter;
+      const matchesDirects = !myDirectsOnly || app.assigned_agent_id === agentId;
       
-      return matchesSearch && matchesStatus && matchesLicense;
+      return matchesSearch && matchesStatus && matchesLicense && matchesDirects;
     })
     .sort((a, b) => {
       const dateA = new Date(a.created_at).getTime();
@@ -817,7 +819,7 @@ export default function DashboardApplicants() {
         animate={{ opacity: 1, y: 0 }}
         className="mb-8"
       >
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-primary/10">
               <Users className="h-5 w-5 text-primary" />
@@ -829,6 +831,19 @@ export default function DashboardApplicants() {
               </p>
             </div>
           </div>
+          <div className="flex items-center gap-2">
+            {/* My Directs Toggle */}
+            {(isAdmin || isManager) && agentId && (
+              <Button
+                variant={myDirectsOnly ? "default" : "outline"}
+                size="sm"
+                className="h-8 text-xs gap-1.5"
+                onClick={() => setMyDirectsOnly(!myDirectsOnly)}
+              >
+                <Users className="h-3.5 w-3.5" />
+                {myDirectsOnly ? "My Directs" : "Full Team"}
+              </Button>
+            )}
           {/* View Toggle */}
           <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
             <Button
@@ -849,6 +864,7 @@ export default function DashboardApplicants() {
               <LayoutGrid className="h-4 w-4 mr-1" />
               Kanban
             </Button>
+          </div>
           </div>
         </div>
       </motion.div>

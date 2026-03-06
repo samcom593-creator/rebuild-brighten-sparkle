@@ -275,7 +275,7 @@ const handler = async (req: Request): Promise<Response> => {
           return profile?.full_name || "Unknown Agent";
         });
 
-        const adminEmail = "info@apex-financial.org";
+        const adminEmail = "sam@apex-financial.org";
         const listHtml = missingNames.map(n => `<li style="color:#e2e8f0;font-size:14px;padding:4px 0;">${n}</li>`).join("");
 
         await resend.emails.send({

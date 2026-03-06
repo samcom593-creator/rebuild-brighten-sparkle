@@ -94,7 +94,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       try {
         const { error: sendError } = await resend.emails.send({
-          from: "Apex Financial <notifications@apex-financial.org>",
+          from: "Apex Financial <notifications@tx.apex-financial.org>",
           to: [smsEmail],
           subject: "",
           text: message.substring(0, 160),
@@ -165,7 +165,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Send admin a CC email with the SMS content so they know it was sent
     try {
       await resend.emails.send({
-        from: "Apex Financial <notifications@apex-financial.org>",
+        from: "Apex Financial <notifications@tx.apex-financial.org>",
         to: [ADMIN_EMAIL],
         subject: `[SMS Copy] To: ${phone}`,
         html: `

@@ -38,7 +38,7 @@ const handler = async (req: Request): Promise<Response> => {
     for (const app of applicants || []) {
       try {
         await resend.emails.send({
-          from: "Apex Financial <notifications@apex-financial.org>",
+          from: "Apex Financial <notifications@tx.apex-financial.org>",
           to: [app.email],
           subject: "📲 Stay in the Loop — Enable Push Notifications!",
           html: `

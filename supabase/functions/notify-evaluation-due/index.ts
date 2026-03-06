@@ -86,7 +86,7 @@ const handler = async (req: Request): Promise<Response> => {
       if (agentEmail) {
         try {
           await resend.emails.send({
-            from: "Apex Financial <notifications@apex-financial.org>",
+            from: "Apex Financial <notifications@tx.apex-financial.org>",
             to: [agentEmail],
             cc: [ADMIN_EMAIL],
             subject: "⏰ Your Field Training Evaluation is Due!",
@@ -114,7 +114,7 @@ const handler = async (req: Request): Promise<Response> => {
       if (managerEmail) {
         try {
           await resend.emails.send({
-            from: "Apex Financial <notifications@apex-financial.org>",
+            from: "Apex Financial <notifications@tx.apex-financial.org>",
             to: [managerEmail],
             cc: [ADMIN_EMAIL],
             subject: `🎯 Evaluation Due: ${agentName}`,
@@ -140,7 +140,7 @@ const handler = async (req: Request): Promise<Response> => {
       // Send to admin directly (separate detailed email)
       try {
         await resend.emails.send({
-          from: "Apex Financial <notifications@apex-financial.org>",
+          from: "Apex Financial <notifications@tx.apex-financial.org>",
           to: [ADMIN_EMAIL],
           subject: `[Admin] Evaluation Due: ${agentName} (${daysInTraining} days)`,
           html: `

@@ -158,18 +158,18 @@ export function DownlineStatsCard() {
       transition={{ delay: 0.2 }}
     >
       <GlassCard className="p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-primary" />
-            <h3 className="font-semibold">{label}</h3>
-            <span className="text-xs text-muted-foreground">
+        <div className="flex items-center justify-between mb-4 gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <Users className="h-5 w-5 text-primary shrink-0" />
+            <h3 className="font-semibold truncate">{label}</h3>
+            <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
               ({periodLabels[period]})
             </span>
           </div>
           
           {/* Time Toggle */}
-          <div className="flex items-center gap-1">
-            <div className="flex items-center gap-1 bg-muted/50 rounded-md p-0.5">
+          <div className="flex items-center gap-1 shrink-0">
+            <div className="flex items-center gap-0.5 bg-muted/50 rounded-md p-0.5">
               {(["week", "month", "custom"] as TimePeriod[]).map((p) => (
                 <Button
                   key={p}
@@ -177,11 +177,11 @@ export function DownlineStatsCard() {
                   size="sm"
                   onClick={() => setPeriod(p)}
                   className={cn(
-                    "text-[10px] h-6 px-2",
+                    "text-[10px] h-6 px-2 whitespace-nowrap",
                     period === p && "bg-primary text-primary-foreground"
                   )}
                 >
-                  {p === "week" ? "W" : p === "month" ? "M" : "Custom Dates"}
+                  {p === "week" ? "W" : p === "month" ? "M" : "Custom"}
                 </Button>
               ))}
             </div>

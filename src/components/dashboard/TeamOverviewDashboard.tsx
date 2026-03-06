@@ -105,8 +105,9 @@ export function TeamOverviewDashboard() {
       const inFieldTraining = activeAgents.filter(a =>
         a.onboarding_stage === "in_field_training"
       ).length;
+      // Agents past field training (evaluated or no stage = live/producing)
       const liveInField = activeAgents.filter(a =>
-        a.onboarding_stage === "live_in_field" || a.onboarding_stage === "meeting_eligible"
+        a.onboarding_stage === "evaluated" || !a.onboarding_stage
       ).length;
 
       // 7-day AOP

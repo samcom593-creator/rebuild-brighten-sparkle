@@ -34,6 +34,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { InviteTeamModal } from "@/components/dashboard/InviteTeamModal";
+import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
 import { cn } from "@/lib/utils";
 import {
   Tooltip,

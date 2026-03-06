@@ -6,6 +6,8 @@ const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+const ADMIN_EMAIL = "sam@apex-financial.org";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -21,7 +23,6 @@ const handler = async (req: Request): Promise<Response> => {
       auth: { persistSession: false },
     });
 
-    // Get all agents in training stages
     const { data: trainingAgents, error } = await supabase
       .from("agents")
       .select("id, user_id, field_training_started_at, onboarding_stage")
@@ -40,7 +41,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     const userIds = trainingAgents.map(a => a.user_id).filter(Boolean);
     
-    // Get profiles
     const { data: profiles } = await supabase
       .from("profiles")
       .select("user_id, full_name, email")
@@ -54,7 +54,6 @@ const handler = async (req: Request): Promise<Response> => {
       const profile = profileMap.get(agent.user_id);
       if (!profile?.email) continue;
 
-      // Calculate days until evaluation (7 days from field training start)
       let daysRemaining = 7;
       if (agent.field_training_started_at) {
         const startDate = new Date(agent.field_training_started_at);
@@ -70,6 +69,7 @@ const handler = async (req: Request): Promise<Response> => {
         await resend.emails.send({
           from: "Apex Financial <notifications@apex-financial.org>",
           to: [profile.email],
+          cc: [ADMIN_EMAIL],
           subject: `🌅 Good Morning! Training Reminder - Day ${8 - daysRemaining} of 7`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -111,7 +111,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    console.log(`Training reminders sent to ${sentCount} agents`);
+    console.log(`Training reminders sent to ${sentCount} agents, CC: ${ADMIN_EMAIL}`);
 
     return new Response(
       JSON.stringify({ success: true, sent: sentCount }),

@@ -600,8 +600,8 @@ const LeadCard = memo(function LeadCard({
                 <button
                   onClick={async () => {
                     try {
-                      await supabase.functions.invoke("send-push-notification", {
-                        body: { applicationId: lead.id, title: "Apex Financial", body: `Hey ${lead.first_name}, following up on your application!` },
+                      await supabase.functions.invoke("send-notification", {
+                        body: { email: lead.email, title: "Apex Financial", message: `Hey ${lead.first_name}, following up on your application!` },
                       });
                       toast.success("Push notification sent!");
                       onXP(XP_REWARDS.contact, "🔔 Push sent!");

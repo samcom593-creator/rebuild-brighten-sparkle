@@ -399,7 +399,7 @@ serve(async (req: Request) => {
       
       try {
         await resend.emails.send({
-          from: "APEX Financial <noreply@apex-financial.org>",
+          from: "APEX Financial <notifications@tx.apex-financial.org>",
           to: [agentEmail],
           subject: `${milestone.badge} - Congratulations ${agentName}`,
           html: generateEmailHTML(agentName, milestone, date, false),
@@ -427,7 +427,7 @@ serve(async (req: Request) => {
           if (managerProfile?.email) {
             try {
               await resend.emails.send({
-                from: "APEX Financial <noreply@apex-financial.org>",
+                from: "APEX Financial <notifications@tx.apex-financial.org>",
                 to: [managerProfile.email],
                 subject: `Team Achievement: ${agentName} - ${milestone.badge}`,
                 html: generateEmailHTML(agentName, milestone, date, true),

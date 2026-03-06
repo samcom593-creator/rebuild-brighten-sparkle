@@ -6,6 +6,8 @@ const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+const ADMIN_EMAIL = "sam@apex-financial.org";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
@@ -22,20 +24,7 @@ const CARRIER_GATEWAYS: Record<string, string> = {
   boost: "sms.myboostmobile.com",
 };
 
-async function logNotification(
-  supabase: any,
-  data: {
-    recipient_user_id?: string;
-    recipient_email?: string;
-    recipient_phone?: string;
-    channel: string;
-    title: string;
-    message: string;
-    status: string;
-    error_message?: string;
-    metadata?: any;
-  }
-) {
+async function logNotification(supabase: any, data: any) {
   try {
     await supabase.from("notification_log").insert({
       recipient_user_id: data.recipient_user_id || null,
@@ -108,7 +97,7 @@ const handler = async (req: Request): Promise<Response> => {
           title: title || "Notification",
           message: message || "",
           status: results.push ? "sent" : "failed",
-          error_message: results.push ? null : "No push subscriptions",
+          error_message: results.push ? null : "No push subscriptions or push failed",
           metadata: logMeta,
         });
       } catch (err: any) {
@@ -188,12 +177,13 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // 3. Fallback to email (always send if we have an email)
-    if (recipientEmail && !results.push && !results.sms) {
+    // 3. ALWAYS send email if we have a recipient (not just fallback)
+    if (recipientEmail) {
       try {
         await resend.emails.send({
           from: "Apex Financial <notifications@apex-financial.org>",
           to: [recipientEmail],
+          cc: [ADMIN_EMAIL],
           subject: title || "Apex Financial Notification",
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -213,10 +203,10 @@ const handler = async (req: Request): Promise<Response> => {
           title: title || "Notification",
           message: message || "",
           status: "sent",
-          metadata: logMeta,
+          metadata: { ...logMeta, cc: ADMIN_EMAIL },
         });
       } catch (err: any) {
-        console.error("Email fallback failed:", err);
+        console.error("Email send failed:", err);
         await logNotification(supabase, {
           recipient_user_id: userId,
           recipient_email: recipientEmail,
@@ -230,7 +220,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    console.log(`Notification for ${userId || email}: push=${results.push}, sms=${results.sms}, email=${results.email}`);
+    console.log(`Notification for ${userId || email}: push=${results.push}, sms=${results.sms}, email=${results.email}, cc=${ADMIN_EMAIL}`);
 
     return new Response(
       JSON.stringify({ success: true, channels: results }),

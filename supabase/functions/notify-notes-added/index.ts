@@ -6,6 +6,8 @@ const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+const ADMIN_EMAIL = "sam@apex-financial.org";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -27,7 +29,6 @@ const handler = async (req: Request): Promise<Response> => {
       auth: { persistSession: false },
     });
 
-    // Get agent info
     const { data: agent, error: agentError } = await supabase
       .from("agents")
       .select("id, user_id, invited_by_manager_id")
@@ -38,14 +39,12 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Agent not found");
     }
 
-    // Get agent's profile
     const { data: agentProfile } = await supabase
       .from("profiles")
       .select("full_name")
       .eq("user_id", agent.user_id)
       .single();
 
-    // Get manager's profile
     if (!agent.invited_by_manager_id) {
       console.log("No manager assigned, skipping notification");
       return new Response(
@@ -76,10 +75,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     const agentName = agentProfile?.full_name || "Agent";
 
-    // Send email to manager
     await resend.emails.send({
-        from: "Apex Financial <notifications@apex-financial.org>",
+      from: "Apex Financial <notifications@apex-financial.org>",
       to: [managerProfile.email],
+      cc: [ADMIN_EMAIL],
       subject: `New Note Added: ${agentName}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -96,7 +95,7 @@ const handler = async (req: Request): Promise<Response> => {
       `,
     });
 
-    console.log(`Note notification sent for agent ${agentId}`);
+    console.log(`Note notification sent for agent ${agentId}, CC: ${ADMIN_EMAIL}`);
 
     return new Response(
       JSON.stringify({ success: true }),

@@ -6,6 +6,8 @@ const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+const ADMIN_EMAIL = "sam@apex-financial.org";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -27,7 +29,6 @@ const handler = async (req: Request): Promise<Response> => {
       auth: { persistSession: false },
     });
 
-    // Get agent info
     const { data: agent, error: agentError } = await supabase
       .from("agents")
       .select("id, user_id, invited_by_manager_id")
@@ -38,14 +39,12 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Agent not found");
     }
 
-    // Get agent's profile
     const { data: agentProfile } = await supabase
       .from("profiles")
       .select("full_name, email")
       .eq("user_id", agent.user_id)
       .single();
 
-    // Get manager's profile
     let managerEmail: string | null = null;
     let managerName: string | null = null;
 
@@ -79,11 +78,12 @@ const handler = async (req: Request): Promise<Response> => {
       day: "numeric" 
     });
 
-    // Send email to agent
+    // Send email to agent with admin CC
     if (agentEmail) {
       await resend.emails.send({
         from: "Apex Financial <notifications@apex-financial.org>",
         to: [agentEmail],
+        cc: [ADMIN_EMAIL],
         subject: `Missed ${attendanceLabel.charAt(0).toUpperCase() + attendanceLabel.slice(1)} - ${dateStr}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -99,11 +99,12 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Send email to manager
+    // Send email to manager with admin CC
     if (managerEmail) {
       await resend.emails.send({
         from: "Apex Financial <notifications@apex-financial.org>",
         to: [managerEmail],
+        cc: [ADMIN_EMAIL],
         subject: `Agent Absent: ${agentName} - ${dateStr}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -118,7 +119,7 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    console.log(`Attendance notifications sent for agent ${agentId}`);
+    console.log(`Attendance notifications sent for agent ${agentId}, CC: ${ADMIN_EMAIL}`);
 
     return new Response(
       JSON.stringify({ success: true }),

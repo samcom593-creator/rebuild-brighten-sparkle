@@ -482,19 +482,19 @@ export function ManagerTeamView() {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 shrink-0">
                   <div className="hidden md:flex items-center gap-4 text-sm">
                     <div className="text-center">
-                      <span className="font-semibold text-primary">${member.weekALP.toLocaleString()}</span>
-                      <p className="text-[10px] text-muted-foreground">Week ALP</p>
+                      <span className="font-semibold text-primary whitespace-nowrap">${member.weekALP.toLocaleString()}</span>
+                      <p className="text-[10px] text-muted-foreground whitespace-nowrap">Week ALP</p>
                     </div>
                     <div className="text-center">
-                      <span className="font-semibold text-emerald-500">${member.monthALP.toLocaleString()}</span>
-                      <p className="text-[10px] text-muted-foreground">Month ALP</p>
+                      <span className="font-semibold text-emerald-500 whitespace-nowrap">${member.monthALP.toLocaleString()}</span>
+                      <p className="text-[10px] text-muted-foreground whitespace-nowrap">Month ALP</p>
                     </div>
                     <div className="text-center">
                       <span className="font-semibold">{member.monthDeals}</span>
-                      <p className="text-[10px] text-muted-foreground">Deals</p>
+                      <p className="text-[10px] text-muted-foreground whitespace-nowrap">Deals</p>
                     </div>
                   </div>
                   {member.licenseStatus !== "licensed" && member.applicationId ? (
@@ -507,14 +507,14 @@ export function ManagerTeamView() {
                     />
                   ) : (
                     <Badge className={cn(
-                      "text-[10px] capitalize",
+                      "text-[10px] capitalize whitespace-nowrap shrink-0",
                       member.licenseStatus === "licensed" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-muted text-muted-foreground"
                     )}>
                       {member.licenseStatus}
                     </Badge>
                   )}
                   <ChevronRight className={cn(
-                    "h-4 w-4 text-muted-foreground transition-transform",
+                    "h-4 w-4 text-muted-foreground transition-transform shrink-0",
                     expandedMember === member.id && "rotate-90"
                   )} />
                 </div>

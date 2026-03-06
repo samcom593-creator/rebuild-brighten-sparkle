@@ -928,7 +928,7 @@ function RecruiterDashboardInner() {
 
       const query = supabase
         .from("applications")
-        .select("id, first_name, last_name, email, phone, city, state, created_at, last_contacted_at, contacted_at, license_status, license_progress, test_scheduled_date, notes, assigned_agent_id, referral_source")
+        .select("id, first_name, last_name, email, phone, city, state, created_at, last_contacted_at, contacted_at, license_status, license_progress, test_scheduled_date, notes, assigned_agent_id, referral_source, instagram_handle, lead_score")
         .is("terminated_at", null)
         .is("contracted_at", null)
         .in("status", ["reviewing", "contracting", "approved", "new"]);
@@ -960,6 +960,8 @@ function RecruiterDashboardInner() {
         notes: a.notes,
         assigned_agent_id: null,
         referral_source: "aged_lead",
+        instagram_handle: null,
+        lead_score: null,
       }));
 
       // Merge and deduplicate by email

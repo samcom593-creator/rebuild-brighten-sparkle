@@ -73,7 +73,7 @@ const handler = async (req: Request): Promise<Response> => {
     const firstName = application.first_name;
     
     const { error: emailError } = await resend.emails.send({
-      from: "APEX Financial <noreply@apex-financial.org>",
+      from: "APEX Financial <notifications@tx.apex-financial.org>",
       to: [application.email],
       cc: ccList.length > 0 ? ccList : undefined,
       subject: "🎉 Welcome to the Team! Set Up Your CRM Access",

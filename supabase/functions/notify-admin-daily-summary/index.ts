@@ -259,7 +259,7 @@ serve(async (req) => {
     for (const recipient of allRecipients) {
       try {
         await resend.emails.send({
-          from: "APEX Daily Summary <noreply@apex-financial.org>",
+          from: "APEX Financial <notifications@tx.apex-financial.org>",
           to: [recipient],
           subject: `📊 Daily Summary: $${todayTotalALP.toLocaleString()} ALP | ${dateStr}`,
           html: emailHtml,

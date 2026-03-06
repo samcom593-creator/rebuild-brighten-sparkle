@@ -438,8 +438,8 @@ export function ManagerTeamView() {
               className="p-4 cursor-pointer hover:bg-muted/50 transition-colors"
               onClick={() => toggleExpand(member.id)}
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
                   {/* Bulk checkbox */}
                   {isAdmin && !member.id.startsWith("app-") && (
                     <input
@@ -447,37 +447,37 @@ export function ManagerTeamView() {
                       checked={selectedIds.has(member.id)}
                       onChange={(e) => { e.stopPropagation(); toggleSelect(member.id); }}
                       onClick={(e) => e.stopPropagation()}
-                      className="h-4 w-4 rounded border-border accent-primary"
+                      className="h-4 w-4 rounded border-border accent-primary shrink-0"
                     />
                   )}
-                  <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center">
+                  <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
                     <span className="text-sm font-semibold text-primary">
                       {member.name.charAt(0).toUpperCase()}
                     </span>
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium">{member.name}</p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-medium truncate max-w-[180px] sm:max-w-[250px]">{member.name}</p>
                       {member.userId && managerUserIds.has(member.userId) && (
-                        <Badge className="text-[10px] px-1.5 py-0 bg-teal-500/20 text-teal-400 border-teal-500/30">
+                        <Badge className="text-[10px] px-1.5 py-0 bg-teal-500/20 text-teal-400 border-teal-500/30 shrink-0 whitespace-nowrap">
                           Manager
                         </Badge>
                       )}
                       {isAdmin && !member.isDirectReport && member.managerName && (
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0 whitespace-nowrap">
                           Under: {member.managerName}
                         </Badge>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-xs text-muted-foreground">{member.email}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-xs text-muted-foreground truncate max-w-[200px]">{member.email}</p>
                       {member.lastContactedAt ? (
-                        <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">
+                        <span className="flex items-center gap-1 text-[10px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded whitespace-nowrap shrink-0">
                           <Clock className="h-2.5 w-2.5" />
                           {getTimeAgo(member.lastContactedAt)}
                         </span>
                       ) : (
-                        <span className="text-[10px] text-muted-foreground/50">No contact yet</span>
+                        <span className="text-[10px] text-muted-foreground/50 whitespace-nowrap shrink-0">No contact yet</span>
                       )}
                     </div>
                   </div>

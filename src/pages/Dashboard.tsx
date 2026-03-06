@@ -232,8 +232,10 @@ export default function Dashboard() {
     setDateRange(range);
   }, []);
 
+  const [myDirectsOnly, setMyDirectsOnly] = useState(false);
+
   const { data } = useQuery({
-    queryKey: ["dashboard-stats", user?.id, profile?.full_name, user?.email],
+    queryKey: ["dashboard-stats", user?.id, profile?.full_name, user?.email, dateRange.start.toISOString(), dateRange.end.toISOString()],
     queryFn: () => fetchDashboardData(user!.id, profile?.full_name, user!.email),
     enabled: !!user && !authLoading,
   });
@@ -286,8 +288,19 @@ export default function Dashboard() {
       </motion.div>
 
       {/* ====== DATE PERIOD SELECTOR ====== */}
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
         <DatePeriodSelector value={datePeriod} onChange={handleDatePeriodChange} />
+        {(isAdmin || isManager) && currentAgentId && (
+          <Button
+            variant={myDirectsOnly ? "default" : "outline"}
+            size="sm"
+            className="h-8 text-xs gap-1.5"
+            onClick={() => setMyDirectsOnly(!myDirectsOnly)}
+          >
+            <Users className="h-3.5 w-3.5" />
+            {myDirectsOnly ? "My Directs" : "Full Team"}
+          </Button>
+        )}
       </div>
 
       {/* ====== FOMO APPLICATIONS BANNER ====== */}

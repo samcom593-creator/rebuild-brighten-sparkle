@@ -5,7 +5,7 @@ import {
   Users, Mail, Phone, Search, CheckCircle, XCircle, Plus, Send,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -86,7 +86,7 @@ export default function SeminarAdmin() {
   const showRate = totalRegs > 0 ? Math.round((attendedCount / totalRegs) * 100) : 0;
 
   return (
-    <DashboardLayout>
+    <>
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -201,6 +201,6 @@ export default function SeminarAdmin() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </DashboardLayout>
+    </>
   );
 }

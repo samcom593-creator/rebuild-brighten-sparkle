@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+
 import { GlassCard } from "@/components/ui/glass-card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -349,11 +349,11 @@ export default function DashboardAccounts() {
 
   if (authLoading) {
     return (
-      <DashboardLayout>
+      <>
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
-      </DashboardLayout>
+      </>
     );
   }
 
@@ -369,7 +369,7 @@ export default function DashboardAccounts() {
   ];
 
   return (
-    <DashboardLayout>
+    <>
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -650,6 +650,6 @@ export default function DashboardAccounts() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </DashboardLayout>
+    </>
   );
 }

@@ -12,7 +12,7 @@ import {
   ArrowLeft,
   Play
 } from "lucide-react";
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -88,7 +88,7 @@ const CourseContent = forwardRef<HTMLDivElement>((_, ref) => {
   const isLoading = loadingModules || loadingQuestions;
 
   return (
-    <DashboardLayout>
+    <>
       <div ref={ref} className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -351,7 +351,7 @@ const CourseContent = forwardRef<HTMLDivElement>((_, ref) => {
           </div>
         )}
       </div>
-    </DashboardLayout>
+    </>
   );
 });
 

@@ -199,7 +199,7 @@ async function sendManagerNotification(
 
   try {
     await resend.emails.send({
-      from: "APEX Applications <applications@apex-financial.org>",
+      from: "APEX Financial <notifications@tx.apex-financial.org>",
       to: [manager.email],
       subject: `🎯 New Team Applicant: ${sanitized.firstName} ${sanitized.lastName}`,
       html: `

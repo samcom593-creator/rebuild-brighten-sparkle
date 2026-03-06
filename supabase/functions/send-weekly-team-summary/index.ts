@@ -245,7 +245,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Send to all admins
     const emailPromises = (adminProfiles || []).map((admin) =>
       resend.emails.send({
-        from: "Apex Financial <team@apex-financial.org>",
+        from: "Apex Financial <notifications@tx.apex-financial.org>",
         to: [admin.email],
         subject: `📊 Weekly Team Summary - ${new Date().toLocaleDateString()}`,
         html: emailHtml,

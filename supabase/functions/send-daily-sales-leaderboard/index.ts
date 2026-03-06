@@ -419,7 +419,7 @@ serve(async (req) => {
       const results = await Promise.allSettled(
         batch.map(recipient =>
           resend.emails.send({
-            from: "APEX Financial <noreply@apex-financial.org>",
+            from: "APEX Financial <notifications@tx.apex-financial.org>",
             to: [recipient.email],
             subject: `🏆 Daily Sales Leaderboard - ${displayDate}`,
             html: buildEmailHtml(recipient.agentId, recipient.name, recipient.isManager),

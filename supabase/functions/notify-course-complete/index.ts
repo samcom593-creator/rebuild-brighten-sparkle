@@ -247,7 +247,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send admin/manager notification
     const { error: adminEmailError } = await resend.emails.send({
-      from: "APEX Financial <noreply@apex-financial.org>",
+      from: "APEX Financial <notifications@tx.apex-financial.org>",
       to: adminRecipients,
       subject: `🎓 ${finalAgentName} Completed Onboarding Course!`,
       html: adminEmailHtml,
@@ -262,7 +262,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Send congratulations to the agent
     if (finalAgentEmail) {
       const { error: agentEmailError } = await resend.emails.send({
-        from: "APEX Financial <noreply@apex-financial.org>",
+        from: "APEX Financial <notifications@tx.apex-financial.org>",
         to: [finalAgentEmail],
         subject: `🎉 Congratulations! You've Completed Your Training!`,
         html: agentCongratulationsHtml,

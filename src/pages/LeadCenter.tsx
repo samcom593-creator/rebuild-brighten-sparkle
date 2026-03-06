@@ -416,14 +416,62 @@ export default function LeadCenter() {
 
   const handleBulkDelete = async () => {
     if (selectedLeads.size === 0) return;
-    if (!window.confirm(`Delete ${selectedLeads.size} leads?`)) return;
+    if (!window.confirm(`Delete ${selectedLeads.size} leads? They will be moved to the vault.`)) return;
     setBulkDeleting(true);
     try {
-      // Implementation same as previous (omitted for brevity)
+      const applicationIds: string[] = [];
+      const agedLeadIds: string[] = [];
+      selectedLeads.forEach((key) => {
+        const { source, id } = decodeLeadKey(key);
+        if (source === "applications") applicationIds.push(id);
+        else agedLeadIds.push(id);
+      });
+
+      // Move applications to vault then soft-delete (terminate)
+      for (const id of applicationIds) {
+        const lead = leads.find(l => l.id === id && l.source === "applications");
+        if (!lead) continue;
+        await supabase.from("deleted_leads").insert({
+          original_id: id,
+          source: "applications",
+          first_name: lead.firstName,
+          last_name: lead.lastName || null,
+          email: lead.email,
+          phone: lead.phone || null,
+          license_status: lead.licenseStatus,
+          deleted_by: user!.id,
+          reason: "Bulk deleted via Lead Center",
+        });
+      }
+      if (applicationIds.length > 0) {
+        await supabase.from("applications").update({ terminated_at: new Date().toISOString(), termination_reason: "Bulk deleted via Lead Center" }).in("id", applicationIds);
+      }
+
+      // Move aged leads to vault then hard-delete
+      for (const id of agedLeadIds) {
+        const lead = leads.find(l => l.id === id && l.source === "aged_leads");
+        if (!lead) continue;
+        await supabase.from("deleted_leads").insert({
+          original_id: id,
+          source: "aged_leads",
+          first_name: lead.firstName,
+          last_name: lead.lastName || null,
+          email: lead.email,
+          phone: lead.phone || null,
+          license_status: lead.licenseStatus,
+          deleted_by: user!.id,
+          reason: "Bulk deleted via Lead Center",
+        });
+      }
+      if (agedLeadIds.length > 0) {
+        await supabase.from("aged_leads").delete().in("id", agedLeadIds);
+      }
+
       toast.success(`${selectedLeads.size} leads moved to vault`);
       setLeads(prev => prev.filter(lead => !selectedLeads.has(encodeLeadKey(lead.source, lead.id))));
       clearSelection();
     } catch (error) {
+      console.error("Bulk delete error:", error);
       toast.error("Failed to delete leads");
     } finally {
       setBulkDeleting(false);
@@ -434,11 +482,30 @@ export default function LeadCenter() {
     if (!deleteTarget || !user) return;
     setDeletingLead(true);
     try {
-      // Implementation same as previous
+      // Insert into vault
+      await supabase.from("deleted_leads").insert({
+        original_id: deleteTarget.id,
+        source: deleteTarget.source,
+        first_name: deleteTarget.firstName,
+        last_name: deleteTarget.lastName || null,
+        email: deleteTarget.email,
+        phone: deleteTarget.phone || null,
+        license_status: deleteTarget.licenseStatus,
+        deleted_by: user.id,
+        reason: "Deleted via Lead Center",
+      });
+
+      if (deleteTarget.source === "applications") {
+        await supabase.from("applications").update({ terminated_at: new Date().toISOString(), termination_reason: "Deleted via Lead Center" }).eq("id", deleteTarget.id);
+      } else {
+        await supabase.from("aged_leads").delete().eq("id", deleteTarget.id);
+      }
+
       toast.success("Lead deleted");
       setLeads(prev => prev.filter(l => l.id !== deleteTarget.id));
       setDeleteTarget(null);
     } catch (error) {
+      console.error("Delete error:", error);
       toast.error("Failed to delete lead");
     } finally {
       setDeletingLead(false);
@@ -449,11 +516,31 @@ export default function LeadCenter() {
     if (!banTarget || !user) return;
     setBanningLead(true);
     try {
-      // Implementation same as previous
+      const normalizedPhone = banTarget.phone ? banTarget.phone.replace(/\D/g, "").slice(-10) : null;
+
+      // Insert into banned_prospects
+      const { error: banError } = await supabase.from("banned_prospects" as any).insert({
+        email: banTarget.email?.toLowerCase().trim() || null,
+        phone: normalizedPhone || null,
+        first_name: banTarget.firstName?.toLowerCase().trim() || null,
+        last_name: banTarget.lastName?.toLowerCase().trim() || null,
+        reason: "Banned via Lead Center",
+        banned_by: user.id,
+      });
+      if (banError && !banError.message?.includes("duplicate")) throw banError;
+
+      // Delete the lead
+      if (banTarget.source === "applications") {
+        await supabase.from("applications").update({ terminated_at: new Date().toISOString(), termination_reason: "Banned" }).eq("id", banTarget.id);
+      } else {
+        await supabase.from("aged_leads").delete().eq("id", banTarget.id);
+      }
+
       toast.success("Prospect banned");
       setLeads(prev => prev.filter(l => l.id !== banTarget.id));
       setBanTarget(null);
     } catch (error) {
+      console.error("Ban error:", error);
       toast.error("Failed to ban");
     } finally {
       setBanningLead(false);
@@ -461,8 +548,17 @@ export default function LeadCenter() {
   };
 
   const handleExport = () => {
-    // CSV export logic same as previous
-    toast.success("Export started");
+    const headers = ["First Name", "Last Name", "Email", "Phone", "Status", "License", "Source", "Assigned To", "Created"];
+    const rows = filteredLeads.map(l => [l.firstName, l.lastName, l.email, l.phone, l.status, l.licenseStatus, l.source, l.assignedAgentName || "", l.createdAt]);
+    const csv = [headers.join(","), ...rows.map(r => r.map(v => `"${(v || "").replace(/"/g, '""')}"`).join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `lead-center-export-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("Export downloaded");
   };
 
   const isAllSelected = filteredLeads.length > 0 && selectedLeads.size === filteredLeads.length;

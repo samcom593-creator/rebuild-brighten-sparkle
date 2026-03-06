@@ -230,7 +230,7 @@ export default function CalendarPage() {
   const overdueCount = interviews?.filter((iv) => isBefore(new Date(iv.interview_date), now) && iv.status === "scheduled" && !isToday(new Date(iv.interview_date))).length || 0;
 
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-4xl mx-auto">
+    <div className="p-4 md:p-6 space-y-6">
       {/* Premium Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}

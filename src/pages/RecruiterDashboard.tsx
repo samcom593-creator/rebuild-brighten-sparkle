@@ -509,16 +509,15 @@ const LeadCard = memo(function LeadCard({
           {/* ── Row 3: Phone + Email (stacked) ── */}
           <div className="space-y-0.5">
             {lead.phone && (
-              <a
-                href={`tel:${lead.phone}`}
-                onClick={() => setCallOutcomeOpen(true)}
-                className="block text-[11px] text-emerald-400 hover:text-emerald-300 transition-colors font-medium truncate"
+              <span
+                className="block text-[11px] text-emerald-400 font-medium truncate select-all cursor-text"
+                title="Phone number — copy to dial"
               >
                 {lead.phone}
-              </a>
+              </span>
             )}
             {lead.email && (
-              <span className="block text-[11px] text-muted-foreground truncate">{lead.email}</span>
+              <span className="block text-[11px] text-muted-foreground truncate select-all cursor-text">{lead.email}</span>
             )}
           </div>
 

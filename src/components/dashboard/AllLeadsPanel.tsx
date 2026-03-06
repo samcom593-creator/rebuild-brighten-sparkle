@@ -253,6 +253,7 @@ export function AllLeadsPanel() {
             applicationId={lead.id}
             currentAgentId={lead.assignedAgentId || null}
             onAssigned={fetchAllLeads}
+            displayMode="icon"
           />
           <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
             <a href={`tel:${lead.phone}`}>

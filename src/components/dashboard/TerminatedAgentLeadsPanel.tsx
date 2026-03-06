@@ -254,6 +254,7 @@ export function TerminatedAgentLeadsPanel() {
                           applicationId={lead.id}
                           currentAgentId={lead.formerAgentId}
                           onAssigned={handleLeadReassigned}
+                          displayMode="icon"
                           className="text-orange-400 hover:text-orange-300 hover:bg-orange-500/10"
                         />
                       </TableCell>

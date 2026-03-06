@@ -581,7 +581,8 @@ const LeadCard = memo(function LeadCard({
                 onXP(XP_REWARDS.contact, "📧 Email sent!");
                 onRefresh();
               }}
-              className="h-8 w-8 px-0 border border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+              displayMode="icon"
+              className="h-8 w-8 border border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
             />
 
             {/* Send Notification (Push / SMS) */}

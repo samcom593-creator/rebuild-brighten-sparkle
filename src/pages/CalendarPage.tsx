@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { format, isToday, isBefore } from "date-fns";
+import { format, isToday, isBefore, startOfWeek, addDays, getHours, getMinutes } from "date-fns";
 import { motion } from "framer-motion";
 import {
   Calendar, Video, Phone, MapPin, Clock, Plus,
@@ -11,7 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { InterviewScheduler } from "@/components/dashboard/InterviewScheduler";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -131,6 +131,7 @@ export default function CalendarPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<"upcoming" | "past" | "all">("upcoming");
+  const [viewMode, setViewMode] = useState<"list" | "week">("list");
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<LeadResult[]>([]);
@@ -174,6 +175,24 @@ export default function CalendarPage() {
     }
     return groups;
   }, [filtered]);
+
+  // Week view data
+  const weekDays = useMemo(() => {
+    const weekStart = startOfWeek(new Date(), { weekStartsOn: 0 });
+    return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  }, []);
+
+  const weekInterviews = useMemo(() => {
+    if (!interviews) return new Map<string, InterviewRow[]>();
+    const map = new Map<string, InterviewRow[]>();
+    for (const iv of interviews) {
+      const dateKey = format(new Date(iv.interview_date), "yyyy-MM-dd");
+      if (!map.has(dateKey)) map.set(dateKey, []);
+      map.get(dateKey)!.push(iv);
+    }
+    return map;
+  }, [interviews]);
+
 
   const handleSearch = async (query: string) => {
     setSearchQuery(query);
@@ -270,122 +289,197 @@ export default function CalendarPage() {
         </div>
       </motion.div>
 
-      {/* Filters */}
-      <Tabs value={filter} onValueChange={(v) => setFilter(v as any)}>
-        <TabsList>
-          <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
-          <TabsTrigger value="past">Past</TabsTrigger>
-          <TabsTrigger value="all">All</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      {/* View Toggle + Filters */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)}>
+          <TabsList>
+            <TabsTrigger value="list">List</TabsTrigger>
+            <TabsTrigger value="week">Week</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        {viewMode === "list" && (
+          <Tabs value={filter} onValueChange={(v) => setFilter(v as any)}>
+            <TabsList>
+              <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
+              <TabsTrigger value="past">Past</TabsTrigger>
+              <TabsTrigger value="all">All</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        )}
+      </div>
 
-      {/* Interview List */}
-      {isLoading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
-        </div>
-      ) : Object.keys(grouped).length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Calendar className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground">No interviews found</p>
-            <Button variant="outline" size="sm" className="mt-3" onClick={() => setSearchOpen(true)}>
-              Schedule one now
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-6">
-          {Object.entries(grouped).map(([dateLabel, items]) => (
-            <div key={dateLabel}>
-              <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2">
-                <Clock className="h-3.5 w-3.5" />
-                {dateLabel}
-              </h3>
-              <div className="space-y-2">
-                {items.map((iv) => {
-                  const date = new Date(iv.interview_date);
-                  const isPast = isBefore(date, now) && !isToday(date);
-                  const isOverdue = isPast && iv.status === "scheduled";
-                  const TypeIcon = typeIcons[iv.interview_type] || Calendar;
-                  const name = iv.applications
-                    ? `${iv.applications.first_name} ${iv.applications.last_name}`
-                    : "Unknown";
-
-                  return (
-                    <Card
-                      key={iv.id}
-                      className={cn(
-                        "transition-all hover:shadow-md",
-                        isOverdue && "border-rose-500/30 bg-rose-500/5",
-                        iv.status === "completed" && "border-emerald-500/30 bg-emerald-500/5",
-                        iv.status === "no_show" && "border-amber-500/30 bg-amber-500/5 opacity-70"
-                      )}
-                    >
-                      <CardContent className="p-4 flex items-center gap-4">
-                        <div className={cn(
-                          "p-2 rounded-lg shrink-0",
-                          iv.interview_type === "video" && "bg-blue-500/10 text-blue-400",
-                          iv.interview_type === "phone" && "bg-emerald-500/10 text-emerald-400",
-                          iv.interview_type === "in_person" && "bg-violet-500/10 text-violet-400",
-                        )}>
-                          <TypeIcon className="h-5 w-5" />
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium truncate">{name}</span>
-                            {iv.status === "completed" && (
-                              <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
-                                <CheckCircle2 className="h-2.5 w-2.5 mr-0.5" /> Done
-                              </Badge>
-                            )}
-                            {iv.status === "no_show" && (
-                              <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-400 border-amber-500/30">
-                                No-Show
-                              </Badge>
-                            )}
-                            {isOverdue && (
-                              <Badge variant="outline" className="text-[10px] bg-rose-500/10 text-rose-400 border-rose-500/30">
-                                <AlertTriangle className="h-2.5 w-2.5 mr-0.5" /> Overdue
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
-                            <span>{format(date, "h:mm a")}</span>
-                            <span>{typeLabels[iv.interview_type] || iv.interview_type}</span>
-                            {iv.notes && <span className="truncate max-w-[150px]">{iv.notes}</span>}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          {iv.meeting_link && (
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => window.open(iv.meeting_link!, "_blank")}>
-                              <ExternalLink className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleCalendarLink(iv)}>
-                            <CalendarPlus className="h-3.5 w-3.5" />
-                          </Button>
-                          {isOverdue && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
-                              onClick={() => handleNoShow(iv)}
-                            >
-                              <AlertTriangle className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
+      {/* Week View */}
+      {viewMode === "week" ? (
+        <div className="border border-border rounded-xl overflow-hidden">
+          <div className="grid grid-cols-7 border-b border-border bg-muted/50">
+            {weekDays.map((day) => (
+              <div
+                key={day.toISOString()}
+                className={cn(
+                  "px-2 py-2.5 text-center text-xs font-medium",
+                  isToday(day) && "bg-primary/10 text-primary font-bold"
+                )}
+              >
+                <div>{format(day, "EEE")}</div>
+                <div className="text-lg font-bold">{format(day, "d")}</div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
+          <div className="grid grid-cols-7 min-h-[400px]">
+            {weekDays.map((day) => {
+              const dateKey = format(day, "yyyy-MM-dd");
+              const dayInterviews = weekInterviews.get(dateKey) || [];
+              return (
+                <div
+                  key={dateKey}
+                  className={cn(
+                    "border-r border-border last:border-r-0 p-1.5 space-y-1",
+                    isToday(day) && "bg-primary/5"
+                  )}
+                >
+                  {dayInterviews.map((iv) => {
+                    const date = new Date(iv.interview_date);
+                    const TypeIcon = typeIcons[iv.interview_type] || Calendar;
+                    const name = iv.applications
+                      ? `${iv.applications.first_name} ${iv.applications.last_name}`
+                      : "Unknown";
+                    return (
+                      <div
+                        key={iv.id}
+                        className={cn(
+                          "rounded-md px-1.5 py-1 text-[10px] border cursor-default",
+                          iv.status === "completed" && "bg-emerald-500/10 border-emerald-500/30",
+                          iv.status === "no_show" && "bg-amber-500/10 border-amber-500/30 opacity-70",
+                          iv.status === "scheduled" && "bg-primary/10 border-primary/30"
+                        )}
+                      >
+                        <div className="flex items-center gap-1">
+                          <TypeIcon className="h-3 w-3 shrink-0 text-muted-foreground" />
+                          <span className="font-medium truncate">{format(date, "h:mm a")}</span>
+                        </div>
+                        <p className="truncate text-muted-foreground">{name}</p>
+                      </div>
+                    );
+                  })}
+                  {dayInterviews.length === 0 && (
+                    <div className="h-full flex items-center justify-center text-[10px] text-muted-foreground opacity-50">—</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
+      ) : (
+        <>
+          {/* Interview List */}
+          {isLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-20 w-full rounded-xl" />)}
+            </div>
+          ) : Object.keys(grouped).length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Calendar className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                <p className="text-muted-foreground">No interviews found</p>
+                <Button variant="outline" size="sm" className="mt-3" onClick={() => setSearchOpen(true)}>
+                  Schedule one now
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-6">
+              {Object.entries(grouped).map(([dateLabel, items]) => (
+                <div key={dateLabel}>
+                  <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-2">
+                    <Clock className="h-3.5 w-3.5" />
+                    {dateLabel}
+                  </h3>
+                  <div className="space-y-2">
+                    {items.map((iv) => {
+                      const date = new Date(iv.interview_date);
+                      const isPast = isBefore(date, now) && !isToday(date);
+                      const isOverdue = isPast && iv.status === "scheduled";
+                      const TypeIcon = typeIcons[iv.interview_type] || Calendar;
+                      const name = iv.applications
+                        ? `${iv.applications.first_name} ${iv.applications.last_name}`
+                        : "Unknown";
+
+                      return (
+                        <Card
+                          key={iv.id}
+                          className={cn(
+                            "transition-all hover:shadow-md",
+                            isOverdue && "border-rose-500/30 bg-rose-500/5",
+                            iv.status === "completed" && "border-emerald-500/30 bg-emerald-500/5",
+                            iv.status === "no_show" && "border-amber-500/30 bg-amber-500/5 opacity-70"
+                          )}
+                        >
+                          <CardContent className="p-4 flex items-center gap-4">
+                            <div className={cn(
+                              "p-2 rounded-lg shrink-0",
+                              iv.interview_type === "video" && "bg-blue-500/10 text-blue-400",
+                              iv.interview_type === "phone" && "bg-emerald-500/10 text-emerald-400",
+                              iv.interview_type === "in_person" && "bg-violet-500/10 text-violet-400",
+                            )}>
+                              <TypeIcon className="h-5 w-5" />
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium truncate">{name}</span>
+                                {iv.status === "completed" && (
+                                  <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
+                                    <CheckCircle2 className="h-2.5 w-2.5 mr-0.5" /> Done
+                                  </Badge>
+                                )}
+                                {iv.status === "no_show" && (
+                                  <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-400 border-amber-500/30">
+                                    No-Show
+                                  </Badge>
+                                )}
+                                {isOverdue && (
+                                  <Badge variant="outline" className="text-[10px] bg-rose-500/10 text-rose-400 border-rose-500/30">
+                                    <AlertTriangle className="h-2.5 w-2.5 mr-0.5" /> Overdue
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+                                <span>{format(date, "h:mm a")}</span>
+                                <span>{typeLabels[iv.interview_type] || iv.interview_type}</span>
+                                {iv.notes && <span className="truncate max-w-[150px]">{iv.notes}</span>}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              {iv.meeting_link && (
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => window.open(iv.meeting_link!, "_blank")}>
+                                  <ExternalLink className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleCalendarLink(iv)}>
+                                <CalendarPlus className="h-3.5 w-3.5" />
+                              </Button>
+                              {isOverdue && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+                                  onClick={() => handleNoShow(iv)}
+                                >
+                                  <AlertTriangle className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {/* Lead Search Dialog */}

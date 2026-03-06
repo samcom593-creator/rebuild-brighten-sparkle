@@ -127,7 +127,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Send notification email to APEX team
     console.log("Sending admin notification email...");
     const adminEmailResponse = await resend.emails.send({
-      from: "APEX Applications <applications@apex-financial.org>",
+      from: "APEX Financial <notifications@tx.apex-financial.org>",
       to: ["sam@apex-financial.org"],
       subject: `New Application: ${sanitized.firstName} ${sanitized.lastName} (${licenseStatusDisplay})`,
       html: `

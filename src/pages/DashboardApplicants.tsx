@@ -949,23 +949,147 @@ export default function DashboardApplicants() {
         </motion.div>
       ) : (
         <>
-          {/* Applicants List - Shows terminated when that filter is active */}
+          {/* Applicants Table */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="space-y-4"
           >
-            {filteredApplications.map((app, index) => renderApplicationCard(app, index, statusFilter === "terminated"))}
-
-            {filteredApplications.length === 0 && (
-              <GlassCard className="p-12 text-center">
+            {filteredApplications.length > 0 ? (
+              <div className="relative w-full overflow-auto border border-border rounded-xl">
+                <table className="w-full caption-bottom text-sm">
+                  <thead className="[&_tr]:border-b">
+                    <tr className="border-b bg-muted/50">
+                      <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Name</th>
+                      <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground hidden md:table-cell">Email</th>
+                      <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground hidden md:table-cell">Phone</th>
+                      <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Status</th>
+                      <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground hidden lg:table-cell">License</th>
+                      <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground hidden lg:table-cell">Location</th>
+                      <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground hidden xl:table-cell">Manager</th>
+                      <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground hidden lg:table-cell">Created</th>
+                      <th className="h-10 px-4 text-right align-middle font-medium text-muted-foreground">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="[&_tr:last-child]:border-0">
+                    {filteredApplications.map((app) => {
+                      const status = getApplicationStatus(app);
+                      const isTerminated = statusFilter === "terminated";
+                      const isHighlighted = highlightedLeadId === app.id;
+                      return (
+                        <tr
+                          key={app.id}
+                          id={`lead-${app.id}`}
+                          className={cn(
+                            "border-b transition-colors hover:bg-muted/50",
+                            isTerminated && "opacity-60",
+                            isHighlighted && "ring-2 ring-primary bg-primary/5"
+                          )}
+                        >
+                          <td className="p-3 align-middle">
+                            <div className="flex items-center gap-2">
+                              <div className={cn(
+                                "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
+                                isTerminated ? "bg-destructive/20" : "bg-primary/20"
+                              )}>
+                                <Users className={cn("h-4 w-4", isTerminated ? "text-destructive" : "text-primary")} />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-medium truncate">{app.first_name} {app.last_name}</p>
+                                <p className="text-xs text-muted-foreground md:hidden">{app.email}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-3 align-middle hidden md:table-cell">
+                            <span className="text-muted-foreground">{app.email}</span>
+                          </td>
+                          <td className="p-3 align-middle hidden md:table-cell">
+                            <span className="text-muted-foreground">{app.phone || "—"}</span>
+                          </td>
+                          <td className="p-3 align-middle">
+                            <Badge variant="outline" className={cn("capitalize text-[10px]", statusColors[status])}>
+                              {status}
+                            </Badge>
+                          </td>
+                          <td className="p-3 align-middle hidden lg:table-cell">
+                            {!isTerminated && app.license_status !== "licensed" ? (
+                              <LicenseProgressSelector
+                                applicationId={app.id}
+                                currentProgress={app.license_progress}
+                                onProgressUpdated={fetchApplications}
+                              />
+                            ) : (
+                              <Badge variant="outline" className={cn("capitalize text-[10px]", licenseColors[app.license_status])}>
+                                {app.license_status}
+                              </Badge>
+                            )}
+                          </td>
+                          <td className="p-3 align-middle hidden lg:table-cell text-muted-foreground text-xs">
+                            {app.city && app.state ? `${app.city}, ${app.state}` : "—"}
+                          </td>
+                          <td className="p-3 align-middle hidden xl:table-cell text-xs">
+                            {app.assigned_agent_id ? (
+                              <Badge variant="outline" className="bg-violet-500/10 text-violet-400 border-violet-500/30 text-[10px]">
+                                {managerNames.get(app.assigned_agent_id) || "Manager"}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground">Unassigned</span>
+                            )}
+                          </td>
+                          <td className="p-3 align-middle hidden lg:table-cell text-muted-foreground text-xs">
+                            {getTimeAgo(app.created_at)}
+                          </td>
+                          <td className="p-3 align-middle text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              {!isTerminated && (
+                                <>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setNotesApp(app)} title="Notes">
+                                    <StickyNote className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setRecorderApp(app)} title="Record">
+                                    <Mic className="h-3.5 w-3.5" />
+                                  </Button>
+                                  {isAdmin && (
+                                    <QuickAssignMenu
+                                      applicationId={app.id}
+                                      currentAgentId={app.assigned_agent_id}
+                                      onAssigned={fetchApplications}
+                                      className="h-7 w-7"
+                                    />
+                                  )}
+                                  {status !== "hired" && status !== "contracted" && (
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-primary" onClick={() => handleMarkAsHired(app.id)} title="Hired">
+                                      <UserCheck className="h-3.5 w-3.5" />
+                                    </Button>
+                                  )}
+                                  {status !== "hired" && status !== "contracted" && (
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => setTerminateApp(app)} title="Terminate">
+                                      <XCircle className="h-3.5 w-3.5" />
+                                    </Button>
+                                  )}
+                                </>
+                              )}
+                              {isTerminated && (
+                                <Button variant="outline" size="sm" onClick={() => handleRestoreLead(app.id)} className="text-emerald-400 border-emerald-500/30 h-7 text-xs">
+                                  <RotateCcw className="h-3 w-3 mr-1" /> Restore
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="border border-border rounded-xl p-12 text-center">
                 <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No applicants found</h3>
                 <p className="text-muted-foreground">
                   {isLoading ? "Loading..." : "Try adjusting your search or filter criteria"}
                 </p>
-              </GlassCard>
+              </div>
             )}
           </motion.div>
 

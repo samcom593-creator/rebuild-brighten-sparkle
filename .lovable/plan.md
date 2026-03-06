@@ -1,71 +1,79 @@
 
 
-# Go-Live Final Remediation Plan
+# Fix: Managers Can't See Their Team's Applications
 
-## Issues Identified
+## Root Cause
 
-### 1. No "My Directs" Filter on Pipeline (DashboardApplicants), Dashboard, or RecruiterHQ
-Currently, admin/managers see ALL agents/applicants with no toggle to filter to only their directly-invited recruits. The AgentPipeline page has a "My Recruits" button, but DashboardApplicants, Dashboard, and RecruiterDashboard lack this.
+The RLS policy on the `applications` table has **no manager-level SELECT policy**. Managers are treated identically to agents — they can only see applications where `assigned_agent_id` matches their own agent ID.
 
-**Fix**: Add a "My Directs" / "Full Team" toggle to:
-- `DashboardApplicants.tsx` — filter `assigned_agent_id` to only the current manager's agent ID
-- `Dashboard.tsx` — the `fetchDashboardData` function currently filters to `assigned_agent_id = agentData.id` for non-admin, but admin sees everything; add a toggle for admin to scope to their directs
-- `RecruiterDashboard.tsx` — add a "My Directs" filter button alongside existing filters
+This means Obi (agent `136ee983`) can see applications assigned directly to him, but **cannot** see applications assigned to his sub-agents like Chukwudi (`a60e70c5`), Mitchell, or Brennan — even though those agents have `invited_by_manager_id = '136ee983'`.
 
-### 2. Aged Leads Missing a Visible "Distribute" Button
-The Aged Leads page has a `QuickAssignPanel` but it only appears when `isAdmin && managers.length > 0`. The per-row actions only have status changes + delete/ban via the DropdownMenu — no per-row assign button and no bulk distribute button at the bottom selection bar.
+The data confirms this: Obi has 3 sub-agents with applications assigned to them, but those applications are invisible to Obi because of the missing RLS policy.
 
-**Fix**:
-- Add a `QuickAssignMenu` to each row's actions dropdown (like LeadCenter has)
-- Add a bulk assign section to the bottom selection bar (currently only has "Delete Selected" and "Clear")
+Additionally, when applicants select a referral agent who is a sub-agent (not a manager), the application is correctly assigned to that sub-agent. But there's no RLS path for the manager above them to see it.
 
-### 3. Avg Leads/Day Inaccurate in Lead Center
-The calculation uses `Math.round(recentLeads / 30)` which rounds to zero for small counts. Should use more precise calculation.
+## Fix
 
-**Fix**: Change to `parseFloat((recentLeads / 30).toFixed(1))` to show one decimal place.
+### 1. Add Manager SELECT Policy on `applications`
 
-### 4. Lead Center Missing Pipeline Actions (Hired, Contracted, etc.)
-Lead Center per-row actions have: Assign, Phone, Email, Resend Licensing, Delete, Ban. But it's missing the stage-change actions that exist in DashboardApplicants (Mark as Hired, Contracted, Terminate).
+Add a new RLS policy that lets managers see all applications assigned to:
+- Themselves (their own agent ID)
+- Any agent in their team (`invited_by_manager_id = their agent ID`)
 
-**Fix**: Add a DropdownMenu with status-change actions (Contacted, Hired, Contracted, Terminate) to the Lead Center row actions for application-source leads.
+```sql
+CREATE POLICY "Managers can view team applications"
+ON public.applications
+FOR SELECT
+TO authenticated
+USING (
+  has_role(auth.uid(), 'manager'::app_role)
+  AND (
+    assigned_agent_id = get_agent_id(auth.uid())
+    OR assigned_agent_id IN (
+      SELECT id FROM agents 
+      WHERE invited_by_manager_id = get_agent_id(auth.uid())
+    )
+  )
+);
+```
 
-### 5. Dashboard Stats Not Filtering by DatePeriodSelector
-The `DatePeriodSelector` was added to Dashboard UI but `fetchDashboardData` doesn't use `dateRange` — it always queries all data.
+### 2. Add Manager UPDATE Policy on `applications`
 
-**Fix**: Pass `dateRange` into the query key and filter applications by `created_at` within the selected range.
+Managers also need to update their team's applications (mark as contacted, hired, etc.):
 
-### 6. OnboardingPipelineCard Dashboard Accuracy
-The card shows Course Purchased, Test Scheduled, etc. based on `agents` table fields (`has_training_course`, `onboarding_stage`). It only queries agents invited by the current manager (non-admin). For admin it queries ALL agents. This is correct. However, it doesn't cross-reference with `applications` table license_progress data.
+```sql
+CREATE POLICY "Managers can update team applications"
+ON public.applications
+FOR UPDATE
+TO authenticated
+USING (
+  has_role(auth.uid(), 'manager'::app_role)
+  AND (
+    assigned_agent_id = get_agent_id(auth.uid())
+    OR assigned_agent_id IN (
+      SELECT id FROM agents 
+      WHERE invited_by_manager_id = get_agent_id(auth.uid())
+    )
+  )
+)
+WITH CHECK (
+  has_role(auth.uid(), 'manager'::app_role)
+  AND (
+    assigned_agent_id = get_agent_id(auth.uid())
+    OR assigned_agent_id IN (
+      SELECT id FROM agents 
+      WHERE invited_by_manager_id = get_agent_id(auth.uid())
+    )
+  )
+);
+```
 
-**Fix**: Cross-reference with `applications.license_progress` to ensure counts include applicants at each stage (course_purchased, passed_test, waiting_on_license, etc.), not just agent records.
+### Summary
 
-### 7. Todoist Integration
-Todoist has an official REST API. This would require the user's Todoist API token as a secret, stored via the secrets tool. We can create an edge function that syncs planner blocks to/from Todoist tasks. However, Todoist is not available as a connector — the user would need to provide their API key manually.
+| Change | Detail |
+|--------|--------|
+| Database migration | Add 2 RLS policies (SELECT + UPDATE) for managers on `applications` table |
+| No code changes needed | The dashboard query already does `select *` for managers — the RLS was the only blocker |
 
-### 8. Google Calendar & Calendly Integration
-Google Calendar integration would require OAuth setup (not available as a connector). Calendly is already partially integrated (CalendlyEmbed component exists). For Google Calendar, we can generate `.ics` download links or `calendar.google.com` add-event URLs from scheduled interviews.
-
-**Fix**: Add "Add to Google Calendar" links on scheduled interviews in CalendarPage. For Calendly, it's already embedded — verify it's wired into scheduling flows.
-
----
-
-## Implementation Plan
-
-### Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/pages/DashboardApplicants.tsx` | Add "My Directs" / "Full Team" toggle button in filters; filter by `assigned_agent_id === agentId` when "My Directs" active |
-| `src/pages/Dashboard.tsx` | Pass `dateRange` to query; add "My Directs" toggle for admin; filter stats by date range |
-| `src/pages/RecruiterDashboard.tsx` | Add "My Directs" filter toggle |
-| `src/pages/DashboardAgedLeads.tsx` | Add per-row QuickAssignMenu; add bulk assign to selection bar |
-| `src/pages/LeadCenter.tsx` | Add status-change actions (Hired, Contracted, Terminate) to per-row dropdown; fix avg leads/day precision |
-| `src/components/dashboard/OnboardingPipelineCard.tsx` | Cross-reference applications table for accurate license_progress counts |
-
-### External Integrations
-- **Todoist**: Requires API key — will prompt user to provide it via secrets tool before implementing
-- **Google Calendar**: Add "Add to Google Calendar" URL links on CalendarPage interview entries (no API key needed, uses URL scheme)
-- **Calendly**: Already embedded via CalendlyEmbed component — verify wiring
-
-No database changes needed.
+This is a pure RLS fix. Once deployed, Obi and all managers will immediately see their full team's applications without any frontend changes.
 

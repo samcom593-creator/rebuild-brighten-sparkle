@@ -576,10 +576,12 @@ export default function DashboardApplicants() {
                   <Mail className="h-4 w-4" />
                   <span>{app.email}</span>
                 </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Phone className="h-4 w-4" />
-                  <span>{app.phone}</span>
-                </div>
+                {app.phone && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Phone className="h-4 w-4" />
+                    <span className="select-all cursor-text" title="Click to copy">{app.phone}</span>
+                  </div>
+                )}
                 {app.city && app.state && (
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <MapPin className="h-4 w-4" />

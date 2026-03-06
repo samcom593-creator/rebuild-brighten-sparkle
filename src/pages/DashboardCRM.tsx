@@ -644,7 +644,7 @@ export default function DashboardCRM() {
         managerIds.length > 0 ? supabase.from("agents").select("id, user_id").in("id", managerIds) : Promise.resolve({ data: [] as any[] }),
         liveAgentIds.length > 0 ? supabase.from("daily_production").select("agent_id, aop, presentations, deals_closed, production_date").in("agent_id", liveAgentIds).gte("production_date", monthStartStr) : Promise.resolve({ data: [] as any[] }),
         supabase.from("applications").select("assigned_agent_id, last_contacted_at").in("assigned_agent_id", allAgentIds).not("last_contacted_at", "is", null).order("last_contacted_at", { ascending: false }),
-        supabase.from("applications").select("assigned_agent_id, license_progress, test_scheduled_date").in("assigned_agent_id", allAgentIds).is("terminated_at", null),
+        supabase.from("applications").select("email, license_progress, test_scheduled_date").is("terminated_at", null),
         supabase.from("lead_payment_tracking").select("agent_id, tier, paid").eq("week_start", weekStartStr).eq("paid", true),
       ]);
 
@@ -676,9 +676,18 @@ export default function DashboardCRM() {
         if (app.assigned_agent_id && app.last_contacted_at && !lastContactMap.has(app.assigned_agent_id)) lastContactMap.set(app.assigned_agent_id, app.last_contacted_at);
       }
 
-      const licenseProgressMap = new Map<string, { progress: string | null; testDate: string | null }>();
+      // Build email→license progress map (matching agent's OWN application by email)
+      const progressOrder = ["unlicensed","course_purchased","finished_course","test_scheduled","passed_test","fingerprints_done","waiting_on_license","licensed"];
+      const emailLicenseMap = new Map<string, { progress: string | null; testDate: string | null }>();
       for (const app of appLicenseResult.data || []) {
-        if (app.assigned_agent_id && !licenseProgressMap.has(app.assigned_agent_id)) licenseProgressMap.set(app.assigned_agent_id, { progress: app.license_progress, testDate: app.test_scheduled_date });
+        const appEmail = app.email?.toLowerCase().trim();
+        if (!appEmail) continue;
+        const current = emailLicenseMap.get(appEmail);
+        const newIdx = progressOrder.indexOf(app.license_progress || "unlicensed");
+        const curIdx = current ? progressOrder.indexOf(current.progress || "unlicensed") : -1;
+        if (newIdx > curIdx) {
+          emailLicenseMap.set(appEmail, { progress: app.license_progress, testDate: app.test_scheduled_date });
+        }
       }
 
       const paymentMap = new Map<string, { standard: boolean; premium: boolean }>();
@@ -709,7 +718,7 @@ export default function DashboardCRM() {
           weeklyClosingRate: ws.presentations > 0 ? Math.round((ws.deals / ws.presentations) * 100) : 0,
           monthlyALP: monthlyProductionMap.get(agent.id) || 0, monthlyDeals: monthlyDealsMap.get(agent.id) || 0,
           lastContactedAt: lastContactMap.get(agent.id) || null, standardPaid: pay.standard, premiumPaid: pay.premium,
-          licenseProgress: licenseProgressMap.get(agent.id)?.progress || null, testScheduledDate: licenseProgressMap.get(agent.id)?.testDate || null,
+          licenseProgress: emailLicenseMap.get(profile?.email?.toLowerCase().trim() || "")?.progress || null, testScheduledDate: emailLicenseMap.get(profile?.email?.toLowerCase().trim() || "")?.testDate || null,
           agentLicenseStatus: agent.license_status || "unlicensed",
         };
       });

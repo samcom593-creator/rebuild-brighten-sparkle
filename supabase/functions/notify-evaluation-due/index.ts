@@ -6,6 +6,8 @@ const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+const ADMIN_EMAIL = "sam@apex-financial.org";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -24,7 +26,6 @@ const handler = async (req: Request): Promise<Response> => {
     const now = new Date();
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    // Get agents who started field training 7+ days ago and haven't been evaluated
     const { data: dueAgents, error } = await supabase
       .from("agents")
       .select("id, user_id, invited_by_manager_id, field_training_started_at")
@@ -46,14 +47,12 @@ const handler = async (req: Request): Promise<Response> => {
     let notifiedCount = 0;
 
     for (const agent of dueAgents) {
-      // Get agent profile
       const { data: agentProfile } = await supabase
         .from("profiles")
         .select("full_name, email")
         .eq("user_id", agent.user_id)
         .single();
 
-      // Get manager info
       let managerEmail: string | null = null;
       let managerName: string | null = null;
 
@@ -83,12 +82,13 @@ const handler = async (req: Request): Promise<Response> => {
       const startDate = new Date(agent.field_training_started_at!);
       const daysInTraining = Math.floor((now.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000));
 
-      // Send to agent
+      // Send to agent with admin CC
       if (agentEmail) {
         try {
           await resend.emails.send({
             from: "Apex Financial <notifications@apex-financial.org>",
             to: [agentEmail],
+            cc: [ADMIN_EMAIL],
             subject: "⏰ Your Field Training Evaluation is Due!",
             html: `
               <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -110,12 +110,13 @@ const handler = async (req: Request): Promise<Response> => {
         }
       }
 
-      // Send to manager
+      // Send to manager with admin CC
       if (managerEmail) {
         try {
           await resend.emails.send({
             from: "Apex Financial <notifications@apex-financial.org>",
             to: [managerEmail],
+            cc: [ADMIN_EMAIL],
             subject: `🎯 Evaluation Due: ${agentName}`,
             html: `
               <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -136,11 +137,11 @@ const handler = async (req: Request): Promise<Response> => {
         }
       }
 
-      // Send to admin
+      // Send to admin directly (separate detailed email)
       try {
         await resend.emails.send({
           from: "Apex Financial <notifications@apex-financial.org>",
-          to: ["info@apex-financial.org"],
+          to: [ADMIN_EMAIL],
           subject: `[Admin] Evaluation Due: ${agentName} (${daysInTraining} days)`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -169,7 +170,7 @@ const handler = async (req: Request): Promise<Response> => {
       notifiedCount++;
     }
 
-    console.log(`Evaluation due notifications sent for ${notifiedCount} agents`);
+    console.log(`Evaluation due notifications sent for ${notifiedCount} agents, CC: ${ADMIN_EMAIL}`);
 
     return new Response(
       JSON.stringify({ success: true, notified: notifiedCount }),

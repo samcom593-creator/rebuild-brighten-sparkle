@@ -5,6 +5,8 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+const ADMIN_EMAIL = "sam@apex-financial.org";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
@@ -21,7 +23,6 @@ const CARRIER_GATEWAYS: Record<string, string> = {
   boost: "sms.myboostmobile.com",
 };
 
-// Priority scoring for best-guess carrier selection
 const CARRIER_PRIORITY: Record<string, number> = {
   att: 100,
   verizon: 95,
@@ -129,16 +130,14 @@ const handler = async (req: Request): Promise<Response> => {
       await delay(1000);
     }
 
-    // ─── Auto-save best-guess carrier ───
+    // Auto-save best-guess carrier
     let carrierSelected: string | null = null;
 
     if (carrierSuccesses.length > 0) {
-      // Pick highest-priority carrier among successes
       carrierSelected = carrierSuccesses.sort(
         (a, b) => (CARRIER_PRIORITY[b] || 0) - (CARRIER_PRIORITY[a] || 0)
       )[0];
 
-      // Auto-save to application if applicable and carrier is currently null
       if (applicationId && carrierSelected) {
         try {
           const { data: app } = await supabase
@@ -158,6 +157,30 @@ const handler = async (req: Request): Promise<Response> => {
           console.error("Failed to auto-save carrier:", err.message);
         }
       }
+    }
+
+    // Send admin a CC email with the SMS content so they know it was sent
+    try {
+      await resend.emails.send({
+        from: "Apex Financial <notifications@apex-financial.org>",
+        to: [ADMIN_EMAIL],
+        subject: `[SMS Copy] To: ${phone}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h3 style="color: #3b82f6;">SMS Auto-Detect Copy</h3>
+            <p><strong>To:</strong> ${phone}</p>
+            <p><strong>Gateways attempted:</strong> ${CARRIER_KEYS.length}</p>
+            <p><strong>Accepted by:</strong> ${carrierSuccesses.join(", ") || "none"}</p>
+            <p><strong>Best guess carrier:</strong> ${carrierSelected || "unknown"}</p>
+            <div style="background: #f3f4f6; padding: 12px; border-radius: 8px; margin: 12px 0;">
+              <p style="margin: 0;">"${message.substring(0, 160)}"</p>
+            </div>
+            <p style="color: #9ca3af; font-size: 12px;">Powered by Apex Financial</p>
+          </div>
+        `,
+      });
+    } catch (e) {
+      console.error("Failed to send admin SMS copy email:", e);
     }
 
     console.log(`SMS auto-detect for ${phone}: ${successCount}/${CARRIER_KEYS.length} gateways accepted. Best guess: ${carrierSelected || "none"}`);

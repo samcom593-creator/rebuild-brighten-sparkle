@@ -7,7 +7,7 @@ import {
   Award, Users, UserCheck, AlertTriangle, TrendingUp, Sparkles,
   MessageSquare, ChevronDown, ChevronUp, Plus, ExternalLink, AlertCircle,
   Activity, PhoneOff, PhoneCall, PhoneForwarded, PhoneMissed, Ban,
-  BarChart3, Percent, Timer, Target, Eye, EyeOff, Lightbulb,
+  BarChart3, Percent, Timer, Target, Eye, EyeOff, Lightbulb, CheckCircle,
 } from "lucide-react";
 import {
   Tooltip,
@@ -166,6 +166,8 @@ interface Lead {
   notes: string | null;
   assigned_agent_id: string | null;
   referral_source: string | null;
+  instagram_handle: string | null;
+  lead_score: number | null;
 }
 
 // ─── Helper functions ──────────────────────────────────────────────────────────
@@ -438,13 +440,36 @@ const LeadCard = memo(function LeadCard({
         <div className="p-1.5 space-y-0.5">
           {/* ── Row 1: Name + score ── */}
           <div className="flex items-start justify-between gap-1">
-            <p className="font-semibold text-sm leading-tight truncate min-w-0 flex-1 cursor-pointer hover:text-primary transition-colors" title={fullName} onClick={() => onDetailClick?.(lead)}>{fullName}</p>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-sm leading-tight truncate cursor-pointer hover:text-primary transition-colors" title={fullName} onClick={() => onDetailClick?.(lead)}>{fullName}</p>
+              {lead.instagram_handle && (
+                <span className="text-[10px] text-muted-foreground truncate block">@{lead.instagram_handle.replace(/^@/, "")}</span>
+              )}
+            </div>
             <div className="flex items-center gap-1 shrink-0">
               <DormantBadge lastContactedAt={lead.last_contacted_at} contactedAt={lead.contacted_at} createdAt={lead.created_at} />
               {isFeatureEnabled("leadScoring") && (
-                <Badge className={cn("text-[9px] border whitespace-nowrap px-1.5 py-0 font-bold", scoreBadge.className)}>
-                  {scoreBadge.label}
-                </Badge>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className={cn("inline-flex items-center rounded-full border px-1.5 py-0 text-[9px] font-bold cursor-pointer hover:opacity-80 transition-opacity", scoreBadge.className)}>
+                      {scoreBadge.label}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-40 p-2" side="bottom" align="end">
+                    <p className="text-[10px] font-medium text-muted-foreground mb-1">Update Score</p>
+                    <form onSubmit={async (e) => {
+                      e.preventDefault();
+                      const val = parseInt((e.currentTarget.elements.namedItem("score") as HTMLInputElement).value);
+                      if (isNaN(val) || val < 0 || val > 100) return;
+                      await supabase.from("applications").update({ lead_score: val } as any).eq("id", lead.id);
+                      toast.success(`Score updated to ${val}`);
+                      onRefresh();
+                    }} className="flex items-center gap-1">
+                      <Input type="number" name="score" defaultValue={lead.lead_score ?? 50} min={0} max={100} className="h-7 text-xs w-16" />
+                      <Button type="submit" size="sm" className="h-7 text-xs px-2">Save</Button>
+                    </form>
+                  </PopoverContent>
+                </Popover>
               )}
             </div>
           </div>
@@ -457,10 +482,28 @@ const LeadCard = memo(function LeadCard({
                 <span className="truncate">{location}</span>
               </span>
             )}
-            <Badge className={cn("text-[9px] border shrink-0 whitespace-nowrap px-1.5 py-0", contactColor)}>
-              <Clock className="h-2 w-2 mr-0.5" />
-              {contactLabel}
-            </Badge>
+            <div className="flex items-center gap-1 shrink-0">
+              <Badge className={cn("text-[9px] border shrink-0 whitespace-nowrap px-1.5 py-0", contactColor)}>
+                <Clock className="h-2 w-2 mr-0.5" />
+                {contactLabel}
+              </Badge>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={async () => {
+                      await supabase.from("applications").update({ last_contacted_at: new Date().toISOString() } as any).eq("id", lead.id);
+                      logLeadActivity({ leadId: lead.id, type: "mark_contacted", title: "Marked as just contacted" });
+                      toast.success("Marked as contacted!");
+                      onRefresh();
+                    }}
+                    className="h-5 w-5 inline-flex items-center justify-center rounded-md text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                  >
+                    <CheckCircle className="h-3 w-3" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent><p>Mark just contacted</p></TooltipContent>
+              </Tooltip>
+            </div>
           </div>
 
           {/* ── Row 3: Phone + Email (stacked) ── */}
@@ -489,18 +532,18 @@ const LeadCard = memo(function LeadCard({
           />
 
           {/* ── Row 3: Icon-only action buttons ── */}
-          <div className="flex items-center gap-1 min-h-[24px] flex-wrap">
+          <div className="flex items-center gap-1.5 min-h-[32px] flex-wrap">
             {/* ─ Contact group ─ */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
             {/* Call with outcome popover */}
             <Popover open={callOutcomeOpen} onOpenChange={setCallOutcomeOpen}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-6 w-6 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                  className="h-8 w-8 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
                 >
-                  <Phone className="h-3 w-3" />
+                  <Phone className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-48 p-1" side="bottom" align="start">
@@ -538,7 +581,7 @@ const LeadCard = memo(function LeadCard({
                 onXP(XP_REWARDS.contact, "📧 Email sent!");
                 onRefresh();
               }}
-              className="h-6 w-6 px-0 border border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+              className="h-8 w-8 px-0 border border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
             />
 
             {/* Send Notification (Push / SMS) */}
@@ -547,9 +590,9 @@ const LeadCard = memo(function LeadCard({
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-6 w-6 border-violet-500/30 text-violet-400 hover:bg-violet-500/10"
+                  className="h-8 w-8 border-violet-500/30 text-violet-400 hover:bg-violet-500/10"
                 >
-                  <Bell className="h-3 w-3" />
+                  <Bell className="h-4 w-4" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-44 p-1" side="bottom" align="start">
@@ -591,10 +634,10 @@ const LeadCard = memo(function LeadCard({
             </div>
 
             {/* Divider */}
-            <div className="h-4 w-px bg-border mx-0.5" />
+            <div className="h-5 w-px bg-border mx-0.5" />
 
             {/* ─ Utility group ─ */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
             {/* Send licensing instructions */}
             <ResendLicensingButton
               recipientEmail={lead.email}
@@ -608,7 +651,7 @@ const LeadCard = memo(function LeadCard({
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-6 w-6 border-pink-500/30 text-pink-400 hover:bg-pink-500/10"
+                  className="h-8 w-8 border-pink-500/30 text-pink-400 hover:bg-pink-500/10"
                   onClick={() => {
                     logLeadActivity({
                       leadId: lead.id,
@@ -619,7 +662,7 @@ const LeadCard = memo(function LeadCard({
                     window.open(UNLICENSED_SCHEDULING_LINK, "_blank");
                   }}
                 >
-                  <CalendarClock className="h-3 w-3" />
+                  <CalendarClock className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent><p>Book a call (Calendly)</p></TooltipContent>
@@ -631,16 +674,14 @@ const LeadCard = memo(function LeadCard({
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-6 w-6 border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+                  className="h-8 w-8 border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
                   onClick={() => setSchedulerOpen(true)}
                 >
-                  <Calendar className="h-3 w-3" />
+                  <Calendar className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent><p>Schedule interview</p></TooltipContent>
             </Tooltip>
-
-
 
             {/* Activity timeline toggle */}
             <Tooltip>
@@ -649,9 +690,9 @@ const LeadCard = memo(function LeadCard({
                   variant="ghost"
                   size="icon"
                   onClick={() => setShowTimeline((v) => !v)}
-                  className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
                 >
-                  <Activity className="h-3 w-3" />
+                  <Activity className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent><p>{showTimeline ? "Hide activity" : "Activity"}</p></TooltipContent>
@@ -664,9 +705,9 @@ const LeadCard = memo(function LeadCard({
                   variant="ghost"
                   size="icon"
                   onClick={() => setShowRecorder((v) => !v)}
-                  className={cn("h-6 w-6", showRecorder ? "text-red-400 bg-red-500/10" : "text-muted-foreground hover:text-foreground")}
+                  className={cn("h-8 w-8", showRecorder ? "text-red-400 bg-red-500/10" : "text-muted-foreground hover:text-foreground")}
                 >
-                  <Mic className="h-3 w-3" />
+                  <Mic className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent><p>{showRecorder ? "Close recorder" : "Record & Transcribe"}</p></TooltipContent>
@@ -680,9 +721,9 @@ const LeadCard = memo(function LeadCard({
                   variant="ghost"
                   size="icon"
                   onClick={() => setExpanded((v) => !v)}
-                  className="h-6 w-6 ml-auto text-muted-foreground hover:text-foreground"
+                  className="h-8 w-8 ml-auto text-muted-foreground hover:text-foreground"
                 >
-                  <MessageSquare className="h-3 w-3" />
+                  <MessageSquare className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent><p>{expanded ? "Hide notes" : "Notes"}</p></TooltipContent>
@@ -885,7 +926,7 @@ function RecruiterDashboardInner() {
 
       const query = supabase
         .from("applications")
-        .select("id, first_name, last_name, email, phone, city, state, created_at, last_contacted_at, contacted_at, license_status, license_progress, test_scheduled_date, notes, assigned_agent_id, referral_source")
+        .select("id, first_name, last_name, email, phone, city, state, created_at, last_contacted_at, contacted_at, license_status, license_progress, test_scheduled_date, notes, assigned_agent_id, referral_source, instagram_handle, lead_score")
         .is("terminated_at", null)
         .is("contracted_at", null)
         .in("status", ["reviewing", "contracting", "approved", "new"]);
@@ -917,6 +958,8 @@ function RecruiterDashboardInner() {
         notes: a.notes,
         assigned_agent_id: null,
         referral_source: "aged_lead",
+        instagram_handle: null,
+        lead_score: null,
       }));
 
       // Merge and deduplicate by email

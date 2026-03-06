@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
 import { useAuth } from "@/hooks/useAuth";
-import { Bell, X } from "lucide-react";
+import { Bell, BellOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
-const PROMPT_DELAY_MS = 3000; // Show after 3s
+const NOT_NOW_KEY = "push_prompt_not_now_at";
+const RE_PROMPT_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 export function PushNotificationPrompt() {
   const { user } = useAuth();
@@ -15,25 +16,35 @@ export function PushNotificationPrompt() {
 
   useEffect(() => {
     if (!user || !supported) return;
-    if (permission !== "default") return; // already accepted or denied
-    if (isSubscribed) return;
+    // Already granted/denied or subscribed — don't show
+    if (permission === "granted" && isSubscribed) return;
+    if (permission === "denied") return;
 
-    const timer = setTimeout(() => setVisible(true), PROMPT_DELAY_MS);
+    // Check "Not Now" timestamp
+    const notNowAt = localStorage.getItem(NOT_NOW_KEY);
+    if (notNowAt) {
+      const elapsed = Date.now() - parseInt(notNowAt, 10);
+      if (elapsed < RE_PROMPT_MS) return; // Still within 24h cooldown
+    }
+
+    // Show immediately (small delay for page load)
+    const timer = setTimeout(() => setVisible(true), 1500);
     return () => clearTimeout(timer);
   }, [user, supported, permission, isSubscribed]);
 
   const handleEnable = async () => {
+    localStorage.removeItem(NOT_NOW_KEY);
     const ok = await subscribe();
-    setVisible(false);
     if (ok) {
+      setVisible(false);
       toast.success("🔔 Push notifications enabled!");
     } else {
-      toast.info("Push notifications were not enabled. You can turn them on in Settings.");
+      toast.info("Push notifications were not enabled. You can try again later.");
     }
   };
 
-  const handleDismiss = () => {
-    // Only hide for this session — will reappear next visit
+  const handleNotNow = () => {
+    localStorage.setItem(NOT_NOW_KEY, Date.now().toString());
     setVisible(false);
   };
 
@@ -41,32 +52,69 @@ export function PushNotificationPrompt() {
     <AnimatePresence>
       {visible && (
         <motion.div
-          initial={{ opacity: 0, y: -20, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -20, scale: 0.95 }}
-          transition={{ type: "spring", stiffness: 300, damping: 25 }}
-          className="fixed top-4 right-4 z-50 max-w-sm rounded-xl border border-primary/30 bg-card/95 backdrop-blur-md shadow-xl p-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm"
         >
-          <button
-            onClick={handleDismiss}
-            className="absolute top-2 right-2 text-muted-foreground hover:text-foreground"
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="mx-4 w-full max-w-md rounded-2xl border border-primary/30 bg-card shadow-2xl"
           >
-            <X className="h-4 w-4" />
-          </button>
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-              <Bell className="h-5 w-5 text-primary" />
-            </div>
-            <div className="space-y-2">
-              <p className="text-sm font-semibold">Enable Push Notifications</p>
-              <p className="text-xs text-muted-foreground">
-                Get instant alerts for new leads, team updates, and deals — right on your device.
+            {/* Header */}
+            <div className="flex flex-col items-center gap-3 p-6 pb-2 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                <Bell className="h-8 w-8 text-primary" />
+              </div>
+              <h2 className="text-xl font-bold text-foreground">
+                Enable Push Notifications
+              </h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Get instant alerts for new leads, deal closings, team updates, and important reminders — right on your device.
               </p>
-              <Button size="sm" onClick={handleEnable} disabled={loading} className="w-full">
-                {loading ? "Enabling..." : "Enable Notifications"}
+            </div>
+
+            {/* Benefits */}
+            <div className="px-6 py-3">
+              <div className="space-y-2 rounded-xl bg-muted/50 p-4">
+                {[
+                  "📥 New lead assignments",
+                  "🔥 Deal alerts from your team",
+                  "📊 Production reminders",
+                  "🎉 Milestone celebrations",
+                ].map((item) => (
+                  <div key={item} className="flex items-center gap-2 text-sm text-foreground">
+                    <span>{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col gap-2 p-6 pt-3">
+              <Button
+                size="lg"
+                onClick={handleEnable}
+                disabled={loading}
+                className="w-full text-base font-semibold"
+              >
+                {loading ? "Enabling..." : "🔔 Enable Notifications"}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleNotNow}
+                className="w-full text-muted-foreground hover:text-foreground"
+              >
+                <BellOff className="mr-2 h-4 w-4" />
+                Not Now (ask again in 24h)
               </Button>
             </div>
-          </div>
+          </motion.div>
         </motion.div>
       )}
     </AnimatePresence>

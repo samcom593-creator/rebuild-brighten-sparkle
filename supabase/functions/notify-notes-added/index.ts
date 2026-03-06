@@ -13,6 +13,20 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+async function sendPush(userIds: string[], title: string, body: string, url: string) {
+  try {
+    const validIds = userIds.filter(Boolean);
+    if (validIds.length === 0) return;
+    await fetch(`${supabaseUrl}/functions/v1/send-push-notification`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${serviceRoleKey}` },
+      body: JSON.stringify({ userIds: validIds, title, body, url }),
+    });
+  } catch (e) {
+    console.error("Push failed:", e);
+  }
+}
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -35,9 +49,7 @@ const handler = async (req: Request): Promise<Response> => {
       .eq("id", agentId)
       .single();
 
-    if (agentError || !agent) {
-      throw new Error("Agent not found");
-    }
+    if (agentError || !agent) throw new Error("Agent not found");
 
     const { data: agentProfile } = await supabase
       .from("profiles")
@@ -46,11 +58,7 @@ const handler = async (req: Request): Promise<Response> => {
       .single();
 
     if (!agent.invited_by_manager_id) {
-      console.log("No manager assigned, skipping notification");
-      return new Response(
-        JSON.stringify({ success: true, skipped: true }),
-        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
+      return new Response(JSON.stringify({ success: true, skipped: true }), { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } });
     }
 
     const { data: managerAgent } = await supabase
@@ -59,9 +67,7 @@ const handler = async (req: Request): Promise<Response> => {
       .eq("id", agent.invited_by_manager_id)
       .single();
 
-    if (!managerAgent) {
-      throw new Error("Manager not found");
-    }
+    if (!managerAgent) throw new Error("Manager not found");
 
     const { data: managerProfile } = await supabase
       .from("profiles")
@@ -69,14 +75,20 @@ const handler = async (req: Request): Promise<Response> => {
       .eq("user_id", managerAgent.user_id)
       .single();
 
-    if (!managerProfile?.email) {
-      throw new Error("Manager email not found");
-    }
+    if (!managerProfile?.email) throw new Error("Manager email not found");
 
     const agentName = agentProfile?.full_name || "Agent";
 
+    // Send push to manager
+    await sendPush(
+      [managerAgent.user_id],
+      `📝 New Note: ${agentName}`,
+      note.substring(0, 100),
+      "/dashboard/applicants"
+    );
+
     await resend.emails.send({
-      from: "Apex Financial <notifications@apex-financial.org>",
+      from: "Apex Financial <notifications@tx.apex-financial.org>",
       to: [managerProfile.email],
       cc: [ADMIN_EMAIL],
       subject: `New Note Added: ${agentName}`,
@@ -96,17 +108,10 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     console.log(`Note notification sent for agent ${agentId}, CC: ${ADMIN_EMAIL}`);
-
-    return new Response(
-      JSON.stringify({ success: true }),
-      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-    );
+    return new Response(JSON.stringify({ success: true }), { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } });
   } catch (error: any) {
     console.error("Error in notify-notes-added:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-    );
+    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } });
   }
 };
 

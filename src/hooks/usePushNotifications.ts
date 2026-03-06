@@ -26,18 +26,76 @@ export function usePushNotifications() {
     setSupported(isSupported);
 
     if (isSupported && user) {
-      checkExistingSubscription();
+      checkAndAutoResubscribe();
     }
   }, [user]);
 
-  const checkExistingSubscription = async () => {
+  const checkAndAutoResubscribe = async () => {
     try {
       const registration = await navigator.serviceWorker.ready;
       const pushManager = (registration as any).pushManager;
       const subscription = await pushManager?.getSubscription();
-      setIsSubscribed(!!subscription);
+
+      if (subscription) {
+        // Has local subscription — make sure it's in DB
+        const subJson = subscription.toJSON();
+        await supabase.from("push_subscriptions").upsert(
+          {
+            user_id: user!.id,
+            endpoint: subJson.endpoint!,
+            p256dh: subJson.keys!.p256dh,
+            auth: subJson.keys!.auth,
+          },
+          { onConflict: "user_id,endpoint" }
+        );
+        setIsSubscribed(true);
+        return;
+      }
+
+      // No local subscription but permission is granted — auto-resubscribe
+      if (Notification.permission === "granted") {
+        console.log("[Push] Permission granted but no subscription — auto-resubscribing");
+        await autoResubscribe();
+      } else {
+        setIsSubscribed(false);
+      }
     } catch {
       setIsSubscribed(false);
+    }
+  };
+
+  const autoResubscribe = async () => {
+    try {
+      const { data: vapidData, error: vapidError } = await supabase.functions.invoke(
+        "get-vapid-public-key"
+      );
+      if (vapidError || !vapidData?.publicKey) {
+        console.error("Failed to get VAPID key for auto-resubscribe:", vapidError);
+        return;
+      }
+
+      const registration = await navigator.serviceWorker.ready;
+      const pushManager = (registration as any).pushManager;
+      const subscription = await pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidData.publicKey),
+      });
+
+      const subJson = subscription.toJSON();
+      await supabase.from("push_subscriptions").upsert(
+        {
+          user_id: user!.id,
+          endpoint: subJson.endpoint!,
+          p256dh: subJson.keys!.p256dh,
+          auth: subJson.keys!.auth,
+        },
+        { onConflict: "user_id,endpoint" }
+      );
+
+      setIsSubscribed(true);
+      console.log("[Push] Auto-resubscribed successfully");
+    } catch (err) {
+      console.error("[Push] Auto-resubscribe failed:", err);
     }
   };
 
@@ -46,7 +104,6 @@ export function usePushNotifications() {
 
     setLoading(true);
     try {
-      // Request permission
       const perm = await Notification.requestPermission();
       setPermission(perm);
       if (perm !== "granted") {
@@ -54,7 +111,6 @@ export function usePushNotifications() {
         return false;
       }
 
-      // Get VAPID key
       const { data: vapidData, error: vapidError } = await supabase.functions.invoke(
         "get-vapid-public-key"
       );
@@ -64,7 +120,6 @@ export function usePushNotifications() {
         return false;
       }
 
-      // Subscribe via service worker
       const registration = await navigator.serviceWorker.ready;
       const pushManager = (registration as any).pushManager;
       const subscription = await pushManager.subscribe({
@@ -74,7 +129,6 @@ export function usePushNotifications() {
 
       const subJson = subscription.toJSON();
 
-      // Save to database
       const { error: dbError } = await supabase.from("push_subscriptions").upsert(
         {
           user_id: user.id,

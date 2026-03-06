@@ -887,7 +887,7 @@ function RecruiterDashboardInner() {
         .from("applications")
         .select("id, first_name, last_name, email, phone, city, state, created_at, last_contacted_at, contacted_at, license_status, license_progress, test_scheduled_date, notes, assigned_agent_id, referral_source")
         .is("terminated_at", null)
-        .neq("license_status", "licensed")
+        .is("contracted_at", null)
         .in("status", ["reviewing", "contracting", "approved", "new"]);
 
       // Show ALL unlicensed leads (no agent filter) — Recruiter HQ is access-restricted

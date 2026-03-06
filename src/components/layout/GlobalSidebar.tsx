@@ -418,6 +418,12 @@ export function GlobalSidebar({
                     return <NavItemComponent key={item.href} item={item} isActive={isActive} />;
                   })}
                 </div>
+                {/* Add Agent button after NAVIGATION section */}
+                {section.label === "NAVIGATION" && isAdmin && (
+                  <div className={cn("mt-1", isCollapsed ? "px-1" : "px-1")}>
+                    <AddAgentModal />
+                  </div>
+                )}
               </div>
             ))}
             {/* Gradient fade at bottom when content overflows */}

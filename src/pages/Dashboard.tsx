@@ -37,7 +37,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SkeletonLoader } from "@/components/ui/skeleton-loader";
-import { AgencyGrowthCard } from "@/components/dashboard/AgencyGrowthCard";
+
 import { TotalApplicationsBanner } from "@/components/dashboard/TotalApplicationsBanner";
 import { EstimatedEarningsCard } from "@/components/dashboard/EstimatedEarningsCard";
 import { TeamOverviewDashboard } from "@/components/dashboard/TeamOverviewDashboard";
@@ -323,12 +323,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ====== Agency Growth Stats (Admin/Manager) ====== */}
-      {(isAdmin || isManager) && (
-        <div className="mb-6">
-          <AgencyGrowthCard />
-        </div>
-      )}
 
       {/* ====== 1.5. WEEKLY PERFORMANCE BREAKDOWN (Managers/Admins) ====== */}
       {(isManager || isAdmin) && (

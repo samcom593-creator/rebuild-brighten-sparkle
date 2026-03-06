@@ -36,6 +36,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 // DashboardLayout removed — AuthenticatedShell already provides SidebarLayout
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -573,7 +574,7 @@ export default function DashboardCRM() {
   const [recorderAgent, setRecorderAgent] = useState<AgentCRM | null>(null);
   const [viewAppTarget, setViewAppTarget] = useState<{ agentId?: string; applicationId?: string } | null>(null);
   const [expandedAgentId, setExpandedAgentId] = useState<string | null>(null);
-  const [openSections, setOpenSections] = useState<Set<string>>(new Set(["onboarding", "in_training", "live", "needs_followup"]));
+  const [activeStageTab, setActiveStageTab] = useState<string>("onboarding");
   const [currentAgentId, setCurrentAgentId] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
 
@@ -817,13 +818,6 @@ export default function DashboardCRM() {
   const needsFollowUpCount = getAgentsForSection(SECTIONS.find(s => s.key === "needs_followup")!).length;
   const staleCount = filteredAgents.filter(isStaleAgent).length;
 
-  const toggleSection = (key: string) => {
-    setOpenSections(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) { next.delete(key); playSound("click"); } else { next.add(key); playSound("whoosh"); }
-      return next;
-    });
-  };
 
   if (authLoading) {
     return <div className="flex items-center justify-center h-64"><RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
@@ -929,208 +923,183 @@ export default function DashboardCRM() {
           <div className="flex items-center justify-center h-64"><RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" /></div>
         ) : (
           <>
-          <div className="space-y-3">
+          <Tabs value={activeStageTab} onValueChange={(v) => { setActiveStageTab(v); playSound("click"); }} className="space-y-3">
+            <TabsList className="w-full justify-start flex-wrap h-auto gap-1 p-1">
+              {SECTIONS.map(section => {
+                const count = getAgentsForSection(section).length;
+                const stale = getAgentsForSection(section).filter(isStaleAgent).length;
+                const Icon = section.icon;
+                return (
+                  <TabsTrigger key={section.key} value={section.key} className="gap-1.5 text-xs">
+                    <Icon className={cn("h-3.5 w-3.5", section.iconColor)} />
+                    {section.label}
+                    <Badge variant="outline" className={cn("text-[10px] h-4 px-1", section.headerBg, section.iconColor, "border-current/20")}>
+                      {count}
+                    </Badge>
+                    {stale > 0 && (
+                      <Badge variant="outline" className="text-[10px] h-4 px-1 bg-red-500/10 text-red-500 border-red-500/20">
+                        {stale}
+                      </Badge>
+                    )}
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+
             {SECTIONS.map(section => {
               const sectionAgents = getAgentsForSection(section);
-              const isOpen = openSections.has(section.key);
-              const Icon = section.icon;
-
               return (
-                <div key={section.key} className={cn("rounded-xl border border-border overflow-hidden", section.accent, "border-l-4")}>
-                  <button
-                    onClick={() => toggleSection(section.key)}
-                    className={cn(
-                      "w-full flex items-center justify-between px-4 py-3 transition-colors hover:bg-muted/30",
-                      "bg-gradient-to-r from-primary/8 via-primary/4 to-transparent",
-                      section.key === "in_training" && "from-amber-500/8 via-amber-500/4 to-transparent",
-                      section.key === "live" && "from-emerald-500/8 via-emerald-500/4 to-transparent"
-                    )}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className={cn("p-1 rounded-md", section.headerBg)}>
-                        <Icon className={cn("h-4 w-4", section.iconColor)} />
+                <TabsContent key={section.key} value={section.key}>
+                  {sectionAgents.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-10 gap-2">
+                      <div className={cn("p-3 rounded-full", section.headerBg)}>
+                        <Users className={cn("h-6 w-6", section.iconColor, "opacity-50")} />
                       </div>
-                      <span className="font-semibold text-sm">{section.label}</span>
-                      <Badge variant="outline" className={cn("text-xs font-bold tabular-nums", section.headerBg, section.iconColor, "border-current/20")}>
-                        {sectionAgents.length}
-                      </Badge>
-                      {sectionAgents.filter(isStaleAgent).length > 0 && (
-                        <Badge variant="outline" className="text-[10px] bg-red-500/10 text-red-500 border-red-500/20 animate-pulse">
-                          {sectionAgents.filter(isStaleAgent).length} stale
-                        </Badge>
-                      )}
+                      <p className="text-sm text-muted-foreground">No agents in this stage yet</p>
                     </div>
-                    <motion.div animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.15 }}>
-                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                    </motion.div>
-                  </button>
+                  ) : (
+                    <div className={cn("rounded-xl border border-border overflow-hidden", section.accent, "border-l-4")}>
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="hover:bg-transparent">
+                            {bulkMode && <TableHead className="w-8" />}
+                            <TableHead className="w-[220px]">Agent</TableHead>
+                            <TableHead className="w-[100px]">License</TableHead>
+                            <TableHead className="w-[90px]">Contact</TableHead>
+                            <TableHead className="w-[100px] text-right">Week ALP</TableHead>
+                            <TableHead className="w-[80px] text-right">Deals</TableHead>
+                            <TableHead className="w-[80px]">Attend.</TableHead>
+                            <TableHead className="w-8" />
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {sectionAgents.map(agent => {
+                            const contact = getContactInfo(agent);
+                            const isExpanded = expandedAgentId === agent.id;
+                            const licenseLabel = agent.agentLicenseStatus === "licensed" ? "Licensed"
+                              : agent.licenseProgress === "course_purchased" ? "Course"
+                              : agent.licenseProgress === "passed_test" ? "Passed"
+                              : agent.licenseProgress === "waiting_on_license" ? "Waiting"
+                              : "Unlicensed";
+                            const licenseColor = agent.agentLicenseStatus === "licensed"
+                              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                              : "bg-muted text-muted-foreground";
 
-                  <AnimatePresence>
-                    {isOpen && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="overflow-hidden"
-                      >
-                        {sectionAgents.length === 0 ? (
-                          <div className="flex flex-col items-center justify-center py-10 gap-2 bg-gradient-to-b from-muted/20 to-transparent">
-                            <div className={cn("p-3 rounded-full", section.headerBg)}>
-                              <Users className={cn("h-6 w-6", section.iconColor, "opacity-50")} />
-                            </div>
-                            <p className="text-sm text-muted-foreground">No agents in this stage yet</p>
-                          </div>
-                        ) : (
-                          <Table>
-                            <TableHeader>
-                              <TableRow className="hover:bg-transparent">
-                                {bulkMode && <TableHead className="w-8" />}
-                                <TableHead className="w-[220px]">Agent</TableHead>
-                                <TableHead className="w-[100px]">License</TableHead>
-                                <TableHead className="w-[90px]">Contact</TableHead>
-                                <TableHead className="w-[100px] text-right">Week ALP</TableHead>
-                                <TableHead className="w-[80px] text-right">Deals</TableHead>
-                                <TableHead className="w-[80px]">Attend.</TableHead>
-                                <TableHead className="w-8" />
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {sectionAgents.map(agent => {
-                                const contact = getContactInfo(agent);
-                                const isExpanded = expandedAgentId === agent.id;
-                                const licenseLabel = agent.agentLicenseStatus === "licensed" ? "Licensed"
-                                  : agent.licenseProgress === "course_purchased" ? "Course"
-                                  : agent.licenseProgress === "passed_test" ? "Passed"
-                                  : agent.licenseProgress === "waiting_on_license" ? "Waiting"
-                                  : "Unlicensed";
-                                const licenseColor = agent.agentLicenseStatus === "licensed"
-                                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                                  : "bg-muted text-muted-foreground";
-
-                                return (
-                                  <motion.tbody key={agent.id} id={`agent-row-${agent.id}`} layout>
-                                    <TableRow
-                                      className={cn(
-                                        "cursor-pointer transition-all duration-150 hover:bg-muted/40",
-                                        isExpanded && "bg-muted/50",
-                                        !isExpanded && "even:bg-muted/15",
-                                        isStaleAgent(agent) && !isExpanded && "bg-red-500/[0.04] hover:bg-red-500/[0.08] border-l-2 border-l-red-500/40",
-                                        !isStaleAgent(agent) && !isExpanded && cn(
-                                          "hover:border-l-2",
-                                          section.key === "onboarding" && "hover:border-l-primary/60",
-                                          section.key === "in_training" && "hover:border-l-amber-500/60",
-                                          section.key === "live" && "hover:border-l-emerald-500/60"
-                                        ),
-                                        agent.isDeactivated && "opacity-50"
-                                      )}
-                                      onClick={() => {
-                                        setExpandedAgentId(isExpanded ? null : agent.id);
-                                        playSound(isExpanded ? "click" : "whoosh");
-                                      }}
-                                    >
-                                      {bulkMode && (
-                                        <TableCell className="py-2" onClick={e => e.stopPropagation()}>
-                                          <AgentSelectCheckbox
-                                            agentId={agent.id}
-                                            isSelected={selectedAgents.has(agent.id)}
-                                            onToggle={(id) => {
-                                              const s = new Set(selectedAgents);
-                                              s.has(id) ? s.delete(id) : s.add(id);
-                                              setSelectedAgents(s);
-                                            }}
-                                            isEnabled={bulkMode}
-                                          />
-                                        </TableCell>
-                                      )}
-                                      <TableCell className="py-2">
-                                        <div className="flex items-center gap-2 min-w-0">
-                                          <div className="relative shrink-0">
-                                          <div className={cn(
-                                              "h-7 w-7 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-xs font-bold ring-2 ring-background shadow-sm",
-                                              getAvatarColor(agent.name)
-                                            )}>
-                                              {agent.name.charAt(0).toUpperCase()}
-                                            </div>
-                                            {isStaleAgent(agent) && (
-                                              <div className={cn("absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background", !agent.lastContactedAt ? "bg-red-500" : "bg-amber-500")} />
-                                            )}
-                                          </div>
-                                          <div className="min-w-0">
-                                            <div className="flex items-center gap-1">
-                                              <p className="font-medium text-xs truncate">{agent.name}</p>
-                                              {duplicateAgentIds.has(agent.id) && <Badge variant="outline" className="text-[8px] h-3.5 px-1 bg-amber-500/10 text-amber-500 border-amber-500/20">Dupe</Badge>}
-                                              {agent.managerId && agent.managerName && agent.managerId !== currentAgentId && (
-                                                <Badge variant="outline" className="text-[8px] h-3.5 px-1 bg-sky-500/10 text-sky-500 border-sky-500/20">
-                                                  {agent.managerName.split(" ")[0]}
-                                                </Badge>
-                                              )}
-                                              {agent.premiumPaid && <Badge className="text-[8px] h-3.5 px-1 bg-emerald-500/10 text-emerald-500 border-emerald-500/20">$1K</Badge>}
-                                              {agent.standardPaid && !agent.premiumPaid && <Badge className="text-[8px] h-3.5 px-1 bg-emerald-500/10 text-emerald-500 border-emerald-500/20">$250</Badge>}
-                                            </div>
-                                            <p className="text-[10px] text-muted-foreground truncate">{agent.email}</p>
-                                          </div>
+                            return (
+                              <motion.tbody key={agent.id} id={`agent-row-${agent.id}`} layout>
+                                <TableRow
+                                  className={cn(
+                                    "cursor-pointer transition-all duration-150 hover:bg-muted/40",
+                                    isExpanded && "bg-muted/50",
+                                    !isExpanded && "even:bg-muted/15",
+                                    isStaleAgent(agent) && !isExpanded && "bg-red-500/[0.04] hover:bg-red-500/[0.08] border-l-2 border-l-red-500/40",
+                                    agent.isDeactivated && "opacity-50"
+                                  )}
+                                  onClick={() => {
+                                    setExpandedAgentId(isExpanded ? null : agent.id);
+                                    playSound(isExpanded ? "click" : "whoosh");
+                                  }}
+                                >
+                                  {bulkMode && (
+                                    <TableCell className="py-2" onClick={e => e.stopPropagation()}>
+                                      <AgentSelectCheckbox
+                                        agentId={agent.id}
+                                        isSelected={selectedAgents.has(agent.id)}
+                                        onToggle={(id) => {
+                                          const s = new Set(selectedAgents);
+                                          s.has(id) ? s.delete(id) : s.add(id);
+                                          setSelectedAgents(s);
+                                        }}
+                                        isEnabled={bulkMode}
+                                      />
+                                    </TableCell>
+                                  )}
+                                  <TableCell className="py-2">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <div className="relative shrink-0">
+                                        <div className={cn(
+                                          "h-7 w-7 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-xs font-bold ring-2 ring-background shadow-sm",
+                                          getAvatarColor(agent.name)
+                                        )}>
+                                          {agent.name.charAt(0).toUpperCase()}
                                         </div>
-                                      </TableCell>
-                                      <TableCell className="py-2">
-                                        <Badge variant="outline" className={cn("text-[10px]", licenseColor)}>{licenseLabel}</Badge>
-                                      </TableCell>
-                                      <TableCell className="py-2">
-                                        <span className={cn("text-xs font-medium", contact.color)}>{contact.label}</span>
-                                      </TableCell>
-                                      <TableCell className="py-2 text-right">
-                                        <span className="text-xs font-semibold">{agent.weeklyALP > 0 ? `$${agent.weeklyALP.toLocaleString()}` : "—"}</span>
-                                        {agent.hasTrainingCourse && <CheckCircle2 className="h-3 w-3 text-emerald-500 inline ml-1" />}
-                                      </TableCell>
-                                      <TableCell className="py-2 text-right">
-                                        <span className="text-xs">{agent.weeklyDeals > 0 ? agent.weeklyDeals : "—"}</span>
-                                      </TableCell>
-                                      <TableCell className="py-2">
-                                        <Badge variant="outline" className={cn("text-[10px]", attendanceColors[agent.attendanceStatus])}>
-                                          {attendanceLabels[agent.attendanceStatus]}
-                                        </Badge>
-                                      </TableCell>
-                                      <TableCell className="py-2">
-                                        <motion.div animate={{ rotate: isExpanded ? 90 : 0 }} transition={{ duration: 0.15 }}>
-                                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                                        </motion.div>
-                                      </TableCell>
-                                    </TableRow>
-                                    <AnimatePresence>
-                                      {isExpanded && (
-                                        <tr>
-                                          <td colSpan={bulkMode ? 9 : 8} className="p-0">
-                                            <AgentExpandedRow
-                                              agent={agent}
-                                              onRefresh={fetchAgents}
-                                              onStageUpdate={handleOptimisticStageUpdate}
-                                              onGoLive={setInstagramPromptAgent}
-                                              onDeactivate={setDeactivateAgent}
-                                              onViewApp={(id) => setViewAppTarget({ agentId: id })}
-                                              onRecord={setRecorderAgent}
-                                              onAgentUpdate={onAgentUpdate}
-                                              playSound={playSound}
-                                              sendingCourseLogin={sendingCourseLogin}
-                                              setSendingCourseLogin={setSendingCourseLogin}
-                                              currentAgentId={currentAgentId}
-                                            />
-                                          </td>
-                                        </tr>
-                                      )}
-                                    </AnimatePresence>
-                                  </motion.tbody>
-                                );
-                              })}
-                            </TableBody>
-                          </Table>
-                        )}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+                                        {isStaleAgent(agent) && (
+                                          <div className={cn("absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background", !agent.lastContactedAt ? "bg-red-500" : "bg-amber-500")} />
+                                        )}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <div className="flex items-center gap-1">
+                                          <p className="font-medium text-xs truncate">{agent.name}</p>
+                                          {duplicateAgentIds.has(agent.id) && <Badge variant="outline" className="text-[8px] h-3.5 px-1 bg-amber-500/10 text-amber-500 border-amber-500/20">Dupe</Badge>}
+                                          {agent.managerId && agent.managerName && agent.managerId !== currentAgentId && (
+                                            <Badge variant="outline" className="text-[8px] h-3.5 px-1 bg-sky-500/10 text-sky-500 border-sky-500/20">
+                                              {agent.managerName.split(" ")[0]}
+                                            </Badge>
+                                          )}
+                                          {agent.premiumPaid && <Badge className="text-[8px] h-3.5 px-1 bg-emerald-500/10 text-emerald-500 border-emerald-500/20">$1K</Badge>}
+                                          {agent.standardPaid && !agent.premiumPaid && <Badge className="text-[8px] h-3.5 px-1 bg-emerald-500/10 text-emerald-500 border-emerald-500/20">$250</Badge>}
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground truncate">{agent.email}</p>
+                                      </div>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="py-2">
+                                    <Badge variant="outline" className={cn("text-[10px]", licenseColor)}>{licenseLabel}</Badge>
+                                  </TableCell>
+                                  <TableCell className="py-2">
+                                    <span className={cn("text-xs font-medium", contact.color)}>{contact.label}</span>
+                                  </TableCell>
+                                  <TableCell className="py-2 text-right">
+                                    <span className="text-xs font-semibold">{agent.weeklyALP > 0 ? `$${agent.weeklyALP.toLocaleString()}` : "—"}</span>
+                                    {agent.hasTrainingCourse && <CheckCircle2 className="h-3 w-3 text-emerald-500 inline ml-1" />}
+                                  </TableCell>
+                                  <TableCell className="py-2 text-right">
+                                    <span className="text-xs">{agent.weeklyDeals > 0 ? agent.weeklyDeals : "—"}</span>
+                                  </TableCell>
+                                  <TableCell className="py-2">
+                                    <Badge variant="outline" className={cn("text-[10px]", attendanceColors[agent.attendanceStatus])}>
+                                      {attendanceLabels[agent.attendanceStatus]}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="py-2">
+                                    <motion.div animate={{ rotate: isExpanded ? 90 : 0 }} transition={{ duration: 0.15 }}>
+                                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                    </motion.div>
+                                  </TableCell>
+                                </TableRow>
+                                <AnimatePresence>
+                                  {isExpanded && (
+                                    <tr>
+                                      <td colSpan={bulkMode ? 9 : 8} className="p-0">
+                                        <AgentExpandedRow
+                                          agent={agent}
+                                          onRefresh={fetchAgents}
+                                          onStageUpdate={handleOptimisticStageUpdate}
+                                          onGoLive={setInstagramPromptAgent}
+                                          onDeactivate={setDeactivateAgent}
+                                          onViewApp={(id) => setViewAppTarget({ agentId: id })}
+                                          onRecord={setRecorderAgent}
+                                          onAgentUpdate={onAgentUpdate}
+                                          playSound={playSound}
+                                          sendingCourseLogin={sendingCourseLogin}
+                                          setSendingCourseLogin={setSendingCourseLogin}
+                                          currentAgentId={currentAgentId}
+                                        />
+                                      </td>
+                                    </tr>
+                                  )}
+                                </AnimatePresence>
+                              </motion.tbody>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </TabsContent>
               );
             })}
-          </div>
+          </Tabs>
 
           {unlicensedAgents.length > 0 && (
             <div className="mt-6 space-y-3">

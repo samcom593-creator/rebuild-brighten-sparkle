@@ -124,7 +124,7 @@ const handler = async (req: Request): Promise<Response> => {
           try {
             const smsEmail = `${cleanedPhone}@${gateway}`;
             await resend.emails.send({
-              from: "Apex Financial <notifications@apex-financial.org>",
+              from: "Apex Financial <notifications@tx.apex-financial.org>",
               to: [smsEmail],
               subject: "",
               text: `${title}: ${message}`.substring(0, 160),
@@ -181,7 +181,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (recipientEmail) {
       try {
         await resend.emails.send({
-          from: "Apex Financial <notifications@apex-financial.org>",
+          from: "Apex Financial <notifications@tx.apex-financial.org>",
           to: [recipientEmail],
           cc: [ADMIN_EMAIL],
           subject: title || "Apex Financial Notification",

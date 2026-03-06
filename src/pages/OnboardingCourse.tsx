@@ -11,7 +11,7 @@ import { useOnboardingCourse } from "@/hooks/useOnboardingCourse";
 import { CourseModuleSidebar } from "@/components/course/CourseModuleSidebar";
 import { CourseVideoPlayer } from "@/components/course/CourseVideoPlayer";
 import { CourseQuiz } from "@/components/course/CourseQuiz";
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+
 import { supabase } from "@/integrations/supabase/client";
 
 export default function OnboardingCourse() {
@@ -94,7 +94,7 @@ export default function OnboardingCourse() {
 
   if (agentNotFound) {
     return (
-      <DashboardLayout>
+      <>
         <div className="max-w-4xl mx-auto text-center py-20">
           <BookOpen className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
           <h1 className="text-2xl font-bold mb-2">Course Access Required</h1>
@@ -102,13 +102,13 @@ export default function OnboardingCourse() {
             Your account isn't linked to an agent profile yet. Please contact your manager or admin to get enrolled in the course.
           </p>
         </div>
-      </DashboardLayout>
+      </>
     );
   }
 
   if (modules.length === 0) {
     return (
-      <DashboardLayout>
+      <>
         <div className="max-w-4xl mx-auto text-center py-20">
           <BookOpen className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
           <h1 className="text-2xl font-bold mb-2">Course Coming Soon</h1>
@@ -116,12 +116,12 @@ export default function OnboardingCourse() {
             The onboarding course is being prepared. Check back soon!
           </p>
         </div>
-      </DashboardLayout>
+      </>
     );
   }
 
   return (
-    <DashboardLayout>
+    <>
       <div className="max-w-7xl mx-auto">
         {/* Course Complete Badge */}
         {isCourseComplete() && (
@@ -247,6 +247,6 @@ export default function OnboardingCourse() {
           </div>
         </div>
       </div>
-    </DashboardLayout>
+    </>
   );
 }

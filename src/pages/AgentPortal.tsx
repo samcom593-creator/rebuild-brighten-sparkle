@@ -33,7 +33,7 @@ import { WeeklyBadgesCard } from "@/components/dashboard/WeeklyBadges";
 import { YearPerformanceCard } from "@/components/dashboard/YearPerformanceCard";
 import { AccountLinkForm } from "@/components/dashboard/AccountLinkForm";
 import { AgentRankBadge } from "@/components/dashboard/AgentRankBadge";
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";

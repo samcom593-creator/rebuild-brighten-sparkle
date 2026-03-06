@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+
 import { GlassCard } from "@/components/ui/glass-card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -336,7 +336,7 @@ export default function AgentPipeline() {
   };
 
   return (
-    <DashboardLayout>
+    <>
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -573,6 +573,6 @@ export default function AgentPipeline() {
           onScheduled={fetchApplications}
         />
       )}
-    </DashboardLayout>
+    </>
   );
 }

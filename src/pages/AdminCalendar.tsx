@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -461,7 +461,7 @@ export default function AdminCalendar() {
   };
 
   return (
-    <DashboardLayout>
+    <>
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className={cn("flex items-center justify-between mb-6", isMobile && "flex-col items-start gap-3")}>
@@ -777,6 +777,6 @@ export default function AdminCalendar() {
           </div>
         </DialogContent>
       </Dialog>
-    </DashboardLayout>
+    </>
   );
 }

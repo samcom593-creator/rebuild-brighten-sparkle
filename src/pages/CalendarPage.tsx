@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 type InterviewRow = {
   id: string;
@@ -130,6 +131,7 @@ function AddNewApplicantForm({ onCreated }: { onCreated: (lead: LeadResult) => v
 export default function CalendarPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { playSound } = useSoundEffects();
   const [filter, setFilter] = useState<"upcoming" | "past" | "all">("upcoming");
   const [viewMode, setViewMode] = useState<"list" | "week">("list");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -230,6 +232,7 @@ export default function CalendarPage() {
       });
     } catch {}
     toast.success("Marked as no-show");
+    playSound("error");
     queryClient.invalidateQueries({ queryKey: ["calendar-interviews"] });
   };
 

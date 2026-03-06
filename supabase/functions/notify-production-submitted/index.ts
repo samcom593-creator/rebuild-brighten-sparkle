@@ -3,6 +3,8 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -26,28 +28,41 @@ interface RequestBody {
   productionData: ProductionData;
 }
 
+async function sendPush(userIds: string[], title: string, body: string, url: string) {
+  try {
+    const validIds = userIds.filter(Boolean);
+    if (validIds.length === 0) return;
+    await fetch(`${supabaseUrl}/functions/v1/send-push-notification`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${serviceRoleKey}` },
+      body: JSON.stringify({ userIds: validIds, title, body, url }),
+    });
+  } catch (e) {
+    console.error("Push failed:", e);
+  }
+}
+
 serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const { agentId, agentName, productionData }: RequestBody = await req.json();
-
     console.log("Production submitted notification for:", agentName);
 
-    // Create Supabase client
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Get agent's manager for CC
+    // Get agent's user_id and manager
     const { data: agentRecord } = await supabase
       .from("agents")
-      .select("invited_by_manager_id")
+      .select("user_id, invited_by_manager_id")
       .eq("id", agentId)
       .maybeSingle();
+
+    // Send push to agent + manager
+    const pushTargets: string[] = [];
+    if (agentRecord?.user_id) pushTargets.push(agentRecord.user_id);
 
     let managerEmail: string | null = null;
     if (agentRecord?.invited_by_manager_id) {
@@ -58,19 +73,24 @@ serve(async (req) => {
         .maybeSingle();
 
       if (managerAgent?.user_id) {
+        pushTargets.push(managerAgent.user_id);
         const { data: managerProfile } = await supabase
           .from("profiles")
           .select("email")
           .eq("user_id", managerAgent.user_id)
           .maybeSingle();
-
         managerEmail = managerProfile?.email || null;
       }
     }
 
-    console.log("Manager email for CC:", managerEmail);
+    await sendPush(
+      pushTargets,
+      `📊 Production Submitted`,
+      `${agentName}: ${productionData.deals_closed} deals, $${productionData.aop.toLocaleString()} ALP`,
+      "/numbers"
+    );
 
-    // Get weekly totals for this agent
+    // Get weekly totals
     const today = new Date();
     const dayOfWeek = today.getDay();
     const weekStart = new Date(today);
@@ -86,38 +106,23 @@ serve(async (req) => {
     const weeklyALP = (weeklyData || []).reduce((sum, d) => sum + (Number(d.aop) || 0), 0);
     const weeklyDeals = (weeklyData || []).reduce((sum, d) => sum + (d.deals_closed || 0), 0);
     const weeklyPresentations = (weeklyData || []).reduce((sum, d) => sum + (d.presentations || 0), 0);
-    const weeklyCloseRate = weeklyPresentations > 0 
-      ? Math.round((weeklyDeals / weeklyPresentations) * 100) 
-      : 0;
+    const weeklyCloseRate = weeklyPresentations > 0 ? Math.round((weeklyDeals / weeklyPresentations) * 100) : 0;
+    const todayCloseRate = productionData.presentations > 0 ? Math.round((productionData.deals_closed / productionData.presentations) * 100) : 0;
 
-    // Calculate today's close rate
-    const todayCloseRate = productionData.presentations > 0
-      ? Math.round((productionData.deals_closed / productionData.presentations) * 100)
-      : 0;
-
-    // Admin email + CC manager if available
-    const adminEmail = "info@apex-financial.org";
-    const recipients = managerEmail && managerEmail !== adminEmail 
+    const adminEmail = "sam@apex-financial.org";
+    const recipients = managerEmail && managerEmail !== adminEmail
       ? [adminEmail, managerEmail]
       : [adminEmail];
-    
-    const timestamp = new Date().toLocaleString("en-US", { 
-      timeZone: "America/Chicago",
-      dateStyle: "short",
-      timeStyle: "short"
-    });
 
-    console.log("Sending production email to:", recipients);
+    const timestamp = new Date().toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "short", timeStyle: "short" });
 
-    // Send notification email with story-worthy design
     const emailResponse = await resend.emails.send({
-      from: "APEX Production <noreply@apex-financial.org>",
+      from: "APEX Production <notifications@tx.apex-financial.org>",
       to: recipients,
       subject: `🔥 ${agentName} | ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} Production Report`,
       html: `
         <!DOCTYPE html>
-        <html>
-        <head>
+        <html><head>
           <style>
             body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #0f172a; color: #e2e8f0; margin: 0; padding: 20px; }
             .container { max-width: 400px; margin: 0 auto; background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-radius: 20px; padding: 28px; border: 1px solid #334155; }
@@ -142,86 +147,37 @@ serve(async (req) => {
             .motivation-text { font-size: 16px; color: #fbbf24; font-weight: 600; }
             .motivation-sub { font-size: 12px; color: #94a3b8; margin-top: 8px; }
             .footer { text-align: center; margin-top: 24px; font-size: 11px; color: #475569; }
-            .share-hint { text-align: center; margin-top: 16px; padding: 12px; background: #1e293b; border-radius: 8px; }
-            .share-hint-text { font-size: 11px; color: #64748b; }
           </style>
         </head>
         <body>
           <div class="container">
-            <div class="header">
-              <h1>🔥 PRODUCTION REPORT</h1>
-              <div class="date">${timestamp} CST</div>
-            </div>
-            
+            <div class="header"><h1>🔥 PRODUCTION REPORT</h1><div class="date">${timestamp} CST</div></div>
             <div class="agent-name">${agentName}</div>
-            
-            <div class="hero-stat">
-              <div class="hero-value">$${productionData.aop.toLocaleString()}</div>
-              <div class="hero-label">Today's ALP</div>
-            </div>
-            
+            <div class="hero-stat"><div class="hero-value">$${productionData.aop.toLocaleString()}</div><div class="hero-label">Today's ALP</div></div>
             <div class="stats-grid">
-              <div class="stat-box">
-                <div class="stat-value">${productionData.deals_closed}</div>
-                <div class="stat-label">Deals</div>
-              </div>
-              <div class="stat-box">
-                <div class="stat-value">${productionData.presentations}</div>
-                <div class="stat-label">Presents</div>
-              </div>
-              <div class="stat-box">
-                <div class="stat-value">${todayCloseRate}%</div>
-                <div class="stat-label">Close Rate</div>
-              </div>
+              <div class="stat-box"><div class="stat-value">${productionData.deals_closed}</div><div class="stat-label">Deals</div></div>
+              <div class="stat-box"><div class="stat-value">${productionData.presentations}</div><div class="stat-label">Presents</div></div>
+              <div class="stat-box"><div class="stat-value">${todayCloseRate}%</div><div class="stat-label">Close Rate</div></div>
             </div>
-            
             <div class="weekly-section">
               <div class="weekly-title">📈 Week Running Total</div>
               <div class="weekly-stats">
-                <div class="weekly-stat">
-                  <div class="weekly-value">$${weeklyALP.toLocaleString()}</div>
-                  <div class="weekly-label">Week ALP</div>
-                </div>
-                <div class="weekly-stat">
-                  <div class="weekly-value">${weeklyDeals}</div>
-                  <div class="weekly-label">Deals</div>
-                </div>
-                <div class="weekly-stat">
-                  <div class="weekly-value">${weeklyCloseRate}%</div>
-                  <div class="weekly-label">Close %</div>
-                </div>
+                <div class="weekly-stat"><div class="weekly-value">$${weeklyALP.toLocaleString()}</div><div class="weekly-label">Week ALP</div></div>
+                <div class="weekly-stat"><div class="weekly-value">${weeklyDeals}</div><div class="weekly-label">Deals</div></div>
+                <div class="weekly-stat"><div class="weekly-value">${weeklyCloseRate}%</div><div class="weekly-label">Close %</div></div>
               </div>
             </div>
-            
-            <div class="motivation">
-              <div class="motivation-text">Great work today! Keep crushing it! 🚀</div>
-              <div class="motivation-sub">Every day you show up is a day closer to your goals.</div>
-            </div>
-            
-            <div class="share-hint">
-              <div class="share-hint-text">📱 Screenshot this and share it on your story!</div>
-            </div>
-            
-            <div class="footer">
-              APEX Financial Group | Production Tracker
-            </div>
+            <div class="motivation"><div class="motivation-text">Great work today! Keep crushing it! 🚀</div><div class="motivation-sub">Every day you show up is a day closer to your goals.</div></div>
+            <div class="footer">APEX Financial Group | Production Tracker</div>
           </div>
-        </body>
-        </html>
+        </body></html>
       `,
     });
 
     console.log("Notification sent:", emailResponse);
-
-    return new Response(JSON.stringify({ success: true }), {
-      status: 200,
-      headers: { "Content-Type": "application/json", ...corsHeaders },
-    });
+    return new Response(JSON.stringify({ success: true }), { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } });
   } catch (error: any) {
     console.error("Error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json", ...corsHeaders },
-    });
+    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } });
   }
 });

@@ -77,11 +77,12 @@ export function ResendLicensingButton({
             size="icon"
             onClick={handleSend}
             disabled={isSending}
-            className={
+            className={cn(
+              "h-8 w-8",
               justSent
                 ? "border-green-500/50 text-green-400 hover:text-green-300"
                 : "border-primary/30 text-primary hover:text-primary hover:border-primary/50"
-            }
+            )}
           >
             {isSending ? (
               <Loader2 className="h-4 w-4 animate-spin" />

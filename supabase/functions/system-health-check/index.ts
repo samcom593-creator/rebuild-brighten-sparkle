@@ -21,9 +21,10 @@ const supabaseAnon = createClient(supabaseUrl, anonKey, {
   auth: { persistSession: false },
 });
 
-const ALERT_EMAIL = "info@apex-financial.org";
+const ALERT_EMAIL = "sam@apex-financial.org";
 const DASHBOARD_URL = "https://apex-financial.org";
 const COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
+const FAILURE_RATE_THRESHOLD = 0.3; // 30%
 
 interface CheckResult {
   check_name: string;
@@ -42,7 +43,7 @@ async function runCheck(name: string, fn: () => Promise<void>): Promise<CheckRes
   }
 }
 
-// ── Individual checks ──
+// ── Infrastructure checks ──
 
 async function checkDbConnectivity() {
   const { error } = await supabaseAdmin.from("lead_counter").select("id").limit(1);
@@ -51,20 +52,17 @@ async function checkDbConnectivity() {
 
 async function checkPartialAppsRls() {
   const testSession = `health_check_${Date.now()}`;
-  // INSERT via anon client (simulates anonymous visitor)
   const { error: insertErr } = await supabaseAnon
     .from("partial_applications")
     .insert({ session_id: testSession, step_completed: 1 });
   if (insertErr) throw new Error(`Anonymous INSERT blocked: ${insertErr.message}`);
 
-  // UPDATE via anon client
   const { error: updateErr } = await supabaseAnon
     .from("partial_applications")
     .update({ step_completed: 2 })
     .eq("session_id", testSession);
   if (updateErr) throw new Error(`Anonymous UPDATE blocked: ${updateErr.message}`);
 
-  // Cleanup via service role
   await supabaseAdmin.from("partial_applications").delete().eq("session_id", testSession);
 }
 
@@ -126,9 +124,7 @@ async function checkApplicationsTable() {
 
 async function checkCronJobsActive() {
   const { data, error } = await supabaseAdmin.rpc("get_cron_jobs_count" as any);
-  // If the RPC doesn't exist, skip gracefully
   if (error) {
-    // Try direct query via service role
     const res = await fetch(`${supabaseUrl}/rest/v1/rpc/get_cron_jobs_count`, {
       method: "POST",
       headers: {
@@ -137,14 +133,187 @@ async function checkCronJobsActive() {
         "apikey": serviceRoleKey,
       },
     });
-    // If RPC doesn't exist, just verify we can reach the DB (non-critical)
     if (!res.ok) {
       console.log("Cron job check skipped (RPC not available)");
-      await res.text();
-    } else {
-      await res.text();
+    }
+    await res.text();
+  }
+}
+
+// ── Notification delivery checks ──
+
+async function checkNotificationDeliveryRate() {
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+
+  const { data: logs, error } = await supabaseAdmin
+    .from("notification_log")
+    .select("channel, status")
+    .gte("created_at", twentyFourHoursAgo);
+
+  if (error) throw new Error(`Failed to query notification_log: ${error.message}`);
+  if (!logs || logs.length === 0) {
+    // No notifications in 24h — not necessarily a failure, just note it
+    console.log("[HealthCheck] No notifications sent in last 24h");
+    return;
+  }
+
+  // Calculate failure rate per channel
+  const channels: Record<string, { total: number; failed: number }> = {};
+  for (const log of logs) {
+    if (!channels[log.channel]) channels[log.channel] = { total: 0, failed: 0 };
+    channels[log.channel].total++;
+    if (log.status === "failed") channels[log.channel].failed++;
+  }
+
+  const failures: string[] = [];
+  for (const [channel, stats] of Object.entries(channels)) {
+    const rate = stats.failed / stats.total;
+    console.log(`[HealthCheck] Channel "${channel}": ${stats.failed}/${stats.total} failed (${(rate * 100).toFixed(1)}%)`);
+    if (rate > FAILURE_RATE_THRESHOLD && stats.total >= 3) {
+      failures.push(`${channel}: ${(rate * 100).toFixed(0)}% failure rate (${stats.failed}/${stats.total})`);
     }
   }
+
+  if (failures.length > 0) {
+    throw new Error(`High failure rates: ${failures.join("; ")}`);
+  }
+}
+
+async function checkPushSubscriptionsHealth() {
+  const { data, error } = await supabaseAdmin
+    .from("push_subscriptions")
+    .select("id")
+    .limit(1);
+
+  if (error) {
+    // Table might not exist — skip gracefully
+    console.log("[HealthCheck] push_subscriptions check skipped:", error.message);
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    throw new Error("Zero push subscriptions — push notifications will not deliver to anyone");
+  }
+}
+
+async function checkSyntheticEmail() {
+  if (!resendApiKey) throw new Error("Cannot run synthetic test — RESEND_API_KEY missing");
+
+  const resend = new Resend(resendApiKey);
+  const timestamp = new Date().toLocaleString("en-US", { timeZone: "America/New_York" });
+
+  const { error: sendError } = await resend.emails.send({
+    from: "APEX System Monitor <alerts@apex-financial.org>",
+    to: [ALERT_EMAIL],
+    subject: `[Health] Synthetic Email Test — ${timestamp}`,
+    html: `<p style="font-family:Arial;color:#64748b;font-size:13px;">
+      ✅ This is an automated synthetic email test from the APEX system health check.<br>
+      Sent at: ${timestamp} ET<br>
+      If you're receiving this, email delivery via Resend is working.
+    </p>`,
+  });
+
+  if (sendError) {
+    throw new Error(`Synthetic email rejected by Resend: ${(sendError as any).message || JSON.stringify(sendError)}`);
+  }
+}
+
+async function checkSyntheticPush() {
+  // Verify push function is reachable (OPTIONS ping)
+  const res = await fetch(`${supabaseUrl}/functions/v1/send-push-notification`, {
+    method: "OPTIONS",
+    headers: { "Content-Type": "application/json" },
+  });
+  if (!res.ok && res.status !== 204) {
+    throw new Error(`send-push-notification OPTIONS returned ${res.status}`);
+  }
+  await res.text();
+}
+
+async function checkSyntheticSms() {
+  // Verify SMS function is reachable (OPTIONS ping)
+  const res = await fetch(`${supabaseUrl}/functions/v1/send-sms-auto-detect`, {
+    method: "OPTIONS",
+    headers: { "Content-Type": "application/json" },
+  });
+  if (!res.ok && res.status !== 204) {
+    throw new Error(`send-sms-auto-detect OPTIONS returned ${res.status}`);
+  }
+  await res.text();
+}
+
+// ── Auto-retry failed notifications ──
+
+async function autoRetryFailedNotifications(): Promise<string> {
+  const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
+
+  const { data: failed, error } = await supabaseAdmin
+    .from("notification_log")
+    .select("id, recipient_email, title, message, channel, error_message")
+    .eq("status", "failed")
+    .eq("channel", "email")
+    .gte("created_at", sixHoursAgo)
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  if (error) {
+    console.error("[HealthCheck] Failed to query failed notifications:", error.message);
+    return "query_error";
+  }
+
+  if (!failed || failed.length === 0) {
+    return "no_failures";
+  }
+
+  // Skip rate-limit errors — those will resolve on their own
+  const retryable = failed.filter(
+    (f) => !f.error_message?.toLowerCase().includes("rate limit") &&
+           !f.error_message?.toLowerCase().includes("too many requests")
+  );
+
+  if (retryable.length === 0) {
+    console.log("[HealthCheck] All failures are rate-limit related — skipping retry");
+    return "rate_limit_only";
+  }
+
+  let retried = 0;
+  for (const entry of retryable) {
+    if (!entry.recipient_email) continue;
+
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/send-notification`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${serviceRoleKey}`,
+        },
+        body: JSON.stringify({
+          email: entry.recipient_email,
+          title: entry.title || "Apex Financial Notification",
+          message: entry.message,
+          channels: ["email"],
+        }),
+      });
+
+      if (res.ok) {
+        retried++;
+        // Mark original as retried
+        await supabaseAdmin
+          .from("notification_log")
+          .update({ status: "retried" })
+          .eq("id", entry.id);
+      }
+      await res.text();
+    } catch (e) {
+      console.error(`[HealthCheck] Retry failed for ${entry.recipient_email}:`, e);
+    }
+
+    // Small delay between retries
+    await new Promise((r) => setTimeout(r, 500));
+  }
+
+  console.log(`[HealthCheck] Auto-retried ${retried}/${retryable.length} failed notifications`);
+  return `retried_${retried}_of_${retryable.length}`;
 }
 
 // ── Main handler ──
@@ -159,7 +328,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const results: CheckResult[] = [];
 
-    // Run all checks
+    // Infrastructure checks
     results.push(await runCheck("db_connections", checkDbConnectivity));
     results.push(await runCheck("partial_apps_rls", checkPartialAppsRls));
     results.push(await runCheck("submit_app_ping", checkSubmitAppPing));
@@ -170,6 +339,19 @@ const handler = async (req: Request): Promise<Response> => {
     results.push(await runCheck("agents_table", checkAgentsTable));
     results.push(await runCheck("applications_table", checkApplicationsTable));
     results.push(await runCheck("cron_jobs_active", checkCronJobsActive));
+
+    // Notification delivery checks
+    results.push(await runCheck("notification_delivery_rate", checkNotificationDeliveryRate));
+    results.push(await runCheck("push_subscriptions_health", checkPushSubscriptionsHealth));
+
+    // Synthetic tests — verify channels can actually send
+    results.push(await runCheck("synthetic_email_test", checkSyntheticEmail));
+    results.push(await runCheck("synthetic_push_ping", checkSyntheticPush));
+    results.push(await runCheck("synthetic_sms_ping", checkSyntheticSms));
+
+    // Auto-retry failed notifications
+    const retryResult = await autoRetryFailedNotifications();
+    console.log(`[HealthCheck] Auto-retry result: ${retryResult}`);
 
     const failures = results.filter(r => r.status === "fail");
     const passed = results.filter(r => r.status === "pass");
@@ -194,7 +376,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send alert email if there are failures
     if (failures.length > 0 && resendApiKey) {
-      // Check cooldown: was an alert sent in the last hour?
       const oneHourAgo = new Date(Date.now() - COOLDOWN_MS).toISOString();
       const { data: recentAlerts } = await supabaseAdmin
         .from("health_check_log")
@@ -235,6 +416,9 @@ const handler = async (req: Request): Promise<Response> => {
                 <p style="color:rgba(255,255,255,0.9);margin:8px 0 0;font-size:14px;">
                   ${failures.length} of ${results.length} checks failed at ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })} ET
                 </p>
+                <p style="color:rgba(255,255,255,0.7);margin:4px 0 0;font-size:12px;">
+                  Auto-retry status: ${retryResult}
+                </p>
               </div>
               <div style="background:#f9fafb;padding:24px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 10px 10px;">
                 <div style="background:#fef2f2;border-left:4px solid #dc2626;padding:12px 16px;margin-bottom:20px;border-radius:0 6px 6px 0;">
@@ -259,7 +443,7 @@ const handler = async (req: Request): Promise<Response> => {
                   </a>
                 </div>
                 <p style="color:#9ca3af;font-size:11px;text-align:center;margin-top:16px;">
-                  This alert has a 1-hour cooldown per failure type. Next check in 15 minutes.
+                  This alert has a 1-hour cooldown. Next check in 15 minutes.
                 </p>
               </div>
             </div>
@@ -268,7 +452,6 @@ const handler = async (req: Request): Promise<Response> => {
 
         console.log("[HealthCheck] Alert email sent");
 
-        // Log that we sent an alert (for cooldown tracking)
         await supabaseAdmin.from("health_check_log").insert({
           check_name: "alert_sent",
           status: "fail",
@@ -290,6 +473,7 @@ const handler = async (req: Request): Promise<Response> => {
         total: results.length,
         passed: passed.length,
         failed: failures.length,
+        retryResult,
         results,
       }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }

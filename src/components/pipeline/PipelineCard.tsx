@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { SCORE_THRESHOLDS } from "@/lib/apexConfig";
 import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
+import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -59,56 +60,6 @@ const STAGE_LABELS: Record<string, string> = {
   waiting_on_license: "Waiting on License",
   licensed: "Licensed",
 };
-
-function CourseSendStrip({ app }: { app: PipelineCardData }) {
-  const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(false);
-
-  const handleSend = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setSending(true);
-    try {
-      const { error } = await supabase.functions.invoke("send-licensing-instructions", {
-        body: {
-          recipientEmail: app.email,
-          recipientName: `${app.first_name} ${app.last_name}`,
-          licenseStatus: app.license_status,
-        },
-      });
-      if (error) throw error;
-      setSent(true);
-      toast.success(`Course email sent to ${app.first_name}!`);
-      setTimeout(() => setSent(false), 4000);
-    } catch {
-      toast.error("Failed to send course email");
-    } finally {
-      setSending(false);
-    }
-  };
-
-  return (
-    <div className="mt-2 flex items-center justify-between rounded-lg bg-amber-500/10 border border-amber-500/20 px-2 py-1.5">
-      <span className="text-[10px] text-amber-400 flex items-center gap-1">
-        <AlertCircle className="h-3 w-3" />
-        Course not purchased
-      </span>
-      <button
-        onClick={handleSend}
-        disabled={sending || sent}
-        className="flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 transition-colors disabled:opacity-60"
-      >
-        {sending ? (
-          <Loader2 className="h-3 w-3 animate-spin" />
-        ) : sent ? (
-          <CheckCircle className="h-3 w-3 text-emerald-400" />
-        ) : (
-          <GraduationCap className="h-3 w-3" />
-        )}
-        {sent ? "Sent!" : "Send"}
-      </button>
-    </div>
-  );
-}
 
 interface PipelineCardProps {
   app: PipelineCardData;
@@ -191,55 +142,72 @@ export function PipelineCard({ app, onClick, onSchedule, isDragging }: PipelineC
           </div>
         )}
 
-        {/* Actions */}
-        <div className="flex items-center gap-1">
+        {/* Actions — standardised h-8 w-8 touch targets */}
+        <div className="flex items-center gap-1.5 flex-wrap">
           <Button
             variant="ghost"
             size="sm"
-            className="h-7 text-xs flex-1 text-muted-foreground hover:text-foreground"
+            className="h-8 text-xs flex-1 min-w-[48px] text-muted-foreground hover:text-foreground"
             onClick={(e) => { e.stopPropagation(); onClick(app); }}
           >
             View
           </Button>
           <Button
             variant="ghost"
-            size="sm"
-            className="h-7 w-7 p-0 text-primary hover:text-primary/80 hover:bg-primary/10"
+            size="icon"
+            className="h-8 w-8 text-primary hover:text-primary/80 hover:bg-primary/10"
             onClick={(e) => { e.stopPropagation(); setShowAppSheet(true); }}
             title="View Application"
           >
-            <Eye className="h-3.5 w-3.5" />
+            <Eye className="h-4 w-4" />
           </Button>
           {onSchedule && (
             <Button
               variant="ghost"
-              size="sm"
-              className="h-7 w-7 p-0 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+              size="icon"
+              className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
               onClick={(e) => { e.stopPropagation(); onSchedule(app); }}
               title="Schedule Interview"
             >
-              <Calendar className="h-3.5 w-3.5" />
+              <Calendar className="h-4 w-4" />
             </Button>
           )}
           {app.phone && (
             <Button
               variant="ghost"
-              size="sm"
-              className="h-7 w-7 p-0 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+              size="icon"
+              className="h-8 w-8 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
               asChild
               onClick={(e) => e.stopPropagation()}
             >
               <a href={`tel:${app.phone}`}>
-                <Phone className="h-3.5 w-3.5" />
+                <Phone className="h-4 w-4" />
               </a>
             </Button>
           )}
+          {/* Email button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-sky-400 hover:text-sky-300 hover:bg-sky-500/10"
+            asChild
+            onClick={(e) => e.stopPropagation()}
+          >
+            <a href={`mailto:${app.email}`}>
+              <Mail className="h-4 w-4" />
+            </a>
+          </Button>
+          {/* Send coursework / licensing button */}
+          {app.license_status !== "licensed" && (
+            <div onClick={(e) => e.stopPropagation()}>
+              <ResendLicensingButton
+                recipientEmail={app.email}
+                recipientName={`${app.first_name} ${app.last_name}`}
+                licenseStatus={app.license_status as "licensed" | "unlicensed" | "pending"}
+              />
+            </div>
+          )}
         </div>
-
-        {/* Course not purchased strip */}
-        {(!app.license_progress || app.license_progress === "unlicensed") && (
-          <CourseSendStrip app={app} />
-        )}
       </div>
 
       <ApplicationDetailSheet

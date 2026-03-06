@@ -154,7 +154,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email to agent
     const { error: emailError } = await resend.emails.send({
-      from: "APEX Financial <noreply@apex-financial.org>",
+      from: "APEX Financial <notifications@tx.apex-financial.org>",
       to: [agentEmail],
       subject: `🚀 You're Officially LIVE, ${agentName}!`,
       html: agentEmailHtml,

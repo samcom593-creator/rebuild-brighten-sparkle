@@ -227,7 +227,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send confirmation email to applicant
     const applicantEmailResponse = await resend.emails.send({
-      from: "APEX Financial <noreply@apex-financial.org>",
+      from: "APEX Financial <notifications@tx.apex-financial.org>",
       to: [data.email],
       subject: "Application Received - APEX Financial",
       html: `

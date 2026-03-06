@@ -901,6 +901,7 @@ export default function LeadCenter() {
                             currentAgentId={lead.assignedAgentId || null}
                             onAssigned={fetchLeads}
                             source={lead.source}
+                            displayMode="icon"
                           />
                           <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
                             <a href={`tel:${lead.phone}`}>
@@ -914,6 +915,7 @@ export default function LeadCenter() {
                             recipientEmail={lead.email}
                             recipientName={`${lead.firstName} ${lead.lastName}`}
                             leadSource={lead.source}
+                            displayMode="icon"
                           />
                           {lead.licenseStatus !== "licensed" && (
                             <ResendLicensingButton

@@ -1,4 +1,5 @@
 import { useState, useRef, forwardRef } from "react";
+import { cn } from "@/lib/utils";
 import { UserPlus, Loader2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +26,8 @@ interface QuickAssignMenuProps {
   onAssigned?: () => void;
   className?: string;
   source?: "applications" | "aged_leads";
+  /** "full" shows icon+label; "icon" shows icon-only with fixed target size */
+  displayMode?: "full" | "icon";
 }
 
 // Shared cache so all instances reuse the same data
@@ -74,7 +77,7 @@ async function getManagers(): Promise<Manager[]> {
 }
 
 export const QuickAssignMenu = forwardRef<HTMLDivElement, QuickAssignMenuProps>(
-  ({ applicationId, currentAgentId, onAssigned, className, source = "applications" }, ref) => {
+  ({ applicationId, currentAgentId, onAssigned, className, source = "applications", displayMode = "full" }, ref) => {
   const { playSound } = useSoundEffects();
   const [managers, setManagers] = useState<Manager[]>([]);
   const [loading, setLoading] = useState(false);
@@ -137,11 +140,13 @@ export const QuickAssignMenu = forwardRef<HTMLDivElement, QuickAssignMenuProps>(
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              size="sm"
-              className={className}
+              size={displayMode === "icon" ? "icon" : "sm"}
+              className={cn(displayMode === "icon" && "h-8 w-8", className)}
+              aria-label="Assign to manager"
+              title="Assign to manager"
             >
-              <UserPlus className="h-4 w-4 mr-1" />
-              Assign
+              <UserPlus className={cn("h-4 w-4", displayMode === "full" && "mr-1")} />
+              {displayMode === "full" && "Assign"}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64 bg-popover border-border z-50">

@@ -285,17 +285,17 @@ export default function AgentPipeline() {
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             <LastContactedBadge applicationId={app.id} />
 
             <Button
               variant="ghost"
-              size="sm"
-              className="h-7 w-7 p-0 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+              size="icon"
+              className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
               onClick={() => openScheduler(app)}
               title="Schedule Interview"
             >
-              <Calendar className="h-3.5 w-3.5" />
+              <Calendar className="h-4 w-4" />
             </Button>
 
             {agentId && (
@@ -306,6 +306,7 @@ export default function AgentPipeline() {
                 recipientEmail={app.email}
                 recipientName={`${app.first_name} ${app.last_name}`}
                 onEmailSent={fetchApplications}
+                displayMode="icon"
               />
             )}
 
@@ -320,12 +321,12 @@ export default function AgentPipeline() {
             {app.phone && (
               <Button
                 variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+                size="icon"
+                className="h-8 w-8 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
                 asChild
               >
                 <a href={`tel:${app.phone}`}>
-                  <Phone className="h-3.5 w-3.5" />
+                  <Phone className="h-4 w-4" />
                 </a>
               </Button>
             )}

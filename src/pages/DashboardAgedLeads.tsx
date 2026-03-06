@@ -822,7 +822,8 @@ export default function DashboardAgedLeads() {
                             currentAgentId={lead.assignedManagerId || null}
                             onAssigned={fetchLeads}
                             source="aged_leads"
-                            className="h-7 text-xs"
+                            displayMode="icon"
+                            className="h-7 w-7"
                           />
                         )}
                         <DropdownMenu>

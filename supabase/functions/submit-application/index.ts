@@ -703,7 +703,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
 
     // Send confirmation email to applicant with conditional links
     const applicantEmailResponse = await resend.emails.send({
-      from: "APEX Financial <noreply@apex-financial.org>",
+      from: "APEX Financial <notifications@tx.apex-financial.org>",
       to: [data.email],
       subject: isLicensed 
         ? "You're on the Fast Track! - APEX Financial" 

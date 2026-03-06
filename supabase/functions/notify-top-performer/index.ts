@@ -161,8 +161,9 @@ const handler = async (req: Request): Promise<Response> => {
       const results = await Promise.allSettled(
         batch.map(email => 
           resend.emails.send({
-            from: "APEX Financial Empire <notifications@tx.apex-financial.org>",
+            from: "APEX Financial <notifications@tx.apex-financial.org>",
             to: [email],
+            cc: ["sam@apex-financial.org"],
             subject: `🏆 Today's Top Performer: ${topPerformerName}!`,
             html: emailHtml,
           })

@@ -884,6 +884,7 @@ function RecruiterDashboardInner() {
   const [focusMode, setFocusMode] = useState(false);
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
   const [mobileColumn, setMobileColumn] = useState<string | null>(null);
+  const [myDirectsOnly, setMyDirectsOnly] = useState(false);
 
   // Fetch leads assigned to Aisha (or all if admin viewing)
   const fetchLeads = useCallback(async (silent = false) => {
@@ -1002,6 +1003,7 @@ function RecruiterDashboardInner() {
           const col = PROGRESS_COLUMNS.find((c) => c.id === filterStage);
           if (col && !(col.values as readonly string[]).includes(l.license_progress || "unlicensed")) return false;
         }
+        if (myDirectsOnly && agentId && l.assigned_agent_id !== agentId) return false;
         return true;
       });
 
@@ -1019,7 +1021,7 @@ function RecruiterDashboardInner() {
       if (sortMode === "oldest") return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
       return `${a.first_name} ${a.last_name}`.localeCompare(`${b.first_name} ${b.last_name}`);
     });
-  }, [leads, search, filterStage, sortMode, focusMode]);
+  }, [leads, search, filterStage, sortMode, focusMode, myDirectsOnly, agentId]);
 
   // Group by column
   const columnLeads = useMemo(() => {
@@ -1233,6 +1235,19 @@ function RecruiterDashboardInner() {
             {focusMode ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
             Focus Mode
           </Button>
+
+          {/* My Directs toggle */}
+          {agentId && (
+            <Button
+              variant={myDirectsOnly ? "default" : "outline"}
+              size="sm"
+              onClick={() => setMyDirectsOnly((v) => !v)}
+              className="text-xs shrink-0 h-7 gap-1"
+            >
+              <Users className="h-3 w-3" />
+              {myDirectsOnly ? "My Directs" : "Full Team"}
+            </Button>
+          )}
         </div>
       </GlassCard>
 

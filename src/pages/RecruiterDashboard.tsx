@@ -860,10 +860,9 @@ const LeadCard = memo(function LeadCard({
 
 // ─── Main page ─────────────────────────────────────────────────────────────────
 export default function RecruiterDashboard() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isManager } = useAuth();
 
-  const isAisha = user?.email === AISHA_EMAIL;
-  const allowed = isAisha || isAdmin;
+  const allowed = isAdmin || isManager;
 
   if (!allowed) return <Navigate to="/dashboard" replace />;
   return <RecruiterDashboardInner />;
@@ -1066,7 +1065,7 @@ function RecruiterDashboardInner() {
   }
 
   return (
-    <div className="p-3 md:p-4 space-y-2 max-w-[1800px] mx-auto">
+    <div className="p-3 md:p-4 space-y-2">
       <ConfettiCelebration trigger={confetti} onComplete={() => setConfetti(false)} />
 
       {/* XP toast */}
@@ -1094,7 +1093,7 @@ function RecruiterDashboardInner() {
             <div className="flex items-center gap-3">
               <Sparkles className="h-5 w-5 text-pink-400" />
               <h1 className="text-xl font-bold bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">
-                Aisha's Recruiter HQ
+                Recruiter HQ
               </h1>
               {advancedToday > 0 && (
                 <motion.div
@@ -1162,11 +1161,19 @@ function RecruiterDashboardInner() {
       {/* ── Performance Metrics Strip ── */}
       {isFeatureEnabled("performanceMetrics") && <MetricsStrip leads={leads} />}
 
-      {/* ── Daily Challenges ── */}
-      <DailyChallenge leads={leads} onXP={addXP} />
-
-      {/* ── AI Intelligence Panel ── */}
-      <RecruiterAIPanel leads={leads} />
+      {/* ── Tools (collapsed by default) ── */}
+      <Collapsible>
+        <CollapsibleTrigger asChild>
+          <Button variant="outline" size="sm" className="w-full gap-2 text-xs">
+            <Sparkles className="h-3.5 w-3.5" /> AI Tools & Challenges
+            <ChevronDown className="h-3.5 w-3.5" />
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="space-y-2 mt-2">
+          <DailyChallenge leads={leads} onXP={addXP} />
+          <RecruiterAIPanel leads={leads} />
+        </CollapsibleContent>
+      </Collapsible>
 
       {/* ── Search / Filter / Sort ── */}
       <GlassCard className="p-2 space-y-1">
@@ -1322,125 +1329,136 @@ function RecruiterDashboardInner() {
         </div>
       )}
 
-      {/* ── Kanban columns ── */}
+      {/* ── Full-Width Table View ── */}
       {isMobile ? (
-        // Mobile: show only selected column
-        (() => {
-          const col = columnLeads.find((c) => c.id === mobileColumn) || columnLeads[0];
-          if (!col) return null;
-          return (
-            <div className={cn("rounded-xl border p-2 min-h-[200px]", col.color)}>
-              <div className={cn("flex items-center gap-2 mb-2 font-bold text-sm", col.headerColor)}>
-                <span className="text-base">{col.emoji}</span>
-                <span>{col.label}</span>
-                {col.needsAttention > 0 && (
-                  <span className="flex items-center gap-0.5 text-[10px] font-medium text-rose-400 bg-rose-500/15 border border-rose-500/30 rounded-full px-1.5 py-0">
-                    <AlertCircle className="h-2.5 w-2.5" />
-                    {col.needsAttention}
-                  </span>
-                )}
-                <Badge variant="outline" className={cn("ml-auto text-xs border", col.headerColor.replace("text-", "border-").replace("-400", "-400/40"))}>
-                  {col.leads.length}
-                </Badge>
-              </div>
-                <div className="space-y-1.5">
-                <AnimatePresence mode="popLayout">
-                  {col.leads.length === 0 ? (
-                    <motion.p key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xs text-muted-foreground text-center py-4">
-                      No leads here yet ✨
-                    </motion.p>
-                  ) : (
-                    col.leads.map((lead) => (
-                      <LeadCard
-                        key={lead.id}
-                        lead={lead}
-                        agentId={agentId}
-                        onRefresh={() => fetchLeads(true)}
-                        onXP={addXP}
-                        onCelebrate={triggerCelebrate}
-                        onDetailClick={setDetailLead}
-                        disableHover
-                      />
-                    ))
-                  )}
-                </AnimatePresence>
-              </div>
+        // Mobile: scrollable card list
+        <div className="space-y-1.5">
+          {filtered.length === 0 ? (
+            <div className="text-center py-16 text-muted-foreground">
+              <Sparkles className="h-12 w-12 mx-auto mb-4 text-pink-400/50" />
+              <p className="text-lg font-medium">No leads match your search</p>
+              <p className="text-sm mt-1">Try adjusting your filters</p>
             </div>
-          );
-        })()
-      ) : (
-        // Desktop: full grid with scroll containers
-        <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-2">
-          {columnLeads.map((col, ci) => {
-            const isLargeList = col.leads.length >= ANIMATION_THRESHOLDS.disableHoverAboveCards;
-            return (
-              <motion.div
-                key={col.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: ci * 0.06 }}
-                className={cn("rounded-xl border p-2 min-h-[200px] flex flex-col", col.color)}
-              >
-                {/* Column header */}
-                <div className={cn("flex items-center gap-2 mb-2 font-bold text-sm shrink-0", col.headerColor)}>
-                  <span className="text-base">{col.emoji}</span>
-                  <span>{col.label}</span>
-                  {col.needsAttention > 0 && (
-                    <span className="flex items-center gap-0.5 text-[10px] font-medium text-rose-400 bg-rose-500/15 border border-rose-500/30 rounded-full px-1.5 py-0">
-                      <AlertCircle className="h-2.5 w-2.5" />
-                      {col.needsAttention}
-                    </span>
-                  )}
-                  <Badge variant="outline" className={cn("ml-auto text-xs border", col.headerColor.replace("text-", "border-").replace("-400", "-400/40"))}>
-                    {col.leads.length}
-                  </Badge>
-                </div>
-
-                {/* Lead cards with max height scroll */}
-                <div className="space-y-1.5 max-h-[70vh] overflow-y-auto flex-1 pr-0.5">
-                  <AnimatePresence mode="popLayout">
-                    {col.leads.length === 0 ? (
-                      <motion.p
-                        key="empty"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="text-xs text-muted-foreground text-center py-4"
-                      >
-                        No leads here yet ✨
-                      </motion.p>
-                    ) : (
-                      col.leads.map((lead) => (
-                        <LeadCard
-                          key={lead.id}
-                          lead={lead}
-                          agentId={agentId}
-                          onRefresh={() => fetchLeads(true)}
-                          onXP={addXP}
-                          onCelebrate={triggerCelebrate}
-                          onDetailClick={setDetailLead}
-                          disableHover={isLargeList}
-                        />
-                      ))
-                    )}
-                  </AnimatePresence>
-                </div>
-              </motion.div>
-            );
-          })}
+          ) : (
+            filtered.map((lead) => (
+              <LeadCard
+                key={lead.id}
+                lead={lead}
+                agentId={agentId}
+                onRefresh={() => fetchLeads(true)}
+                onXP={addXP}
+                onCelebrate={triggerCelebrate}
+                onDetailClick={setDetailLead}
+                disableHover
+              />
+            ))
+          )}
         </div>
-      )}
-
-      {/* Empty state */}
-      {filtered.length === 0 && !loading && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-center py-16 text-muted-foreground"
-        >
-          <Sparkles className="h-12 w-12 mx-auto mb-4 text-pink-400/50" />
-          <p className="text-lg font-medium">No leads match your search</p>
-          <p className="text-sm mt-1">Try adjusting your filters</p>
-        </motion.div>
+      ) : (
+        // Desktop: full-width sortable table
+        <div className="rounded-xl border border-border overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/30">
+                <th className="text-left px-3 py-2.5 font-medium text-muted-foreground w-[200px]">Name</th>
+                <th className="text-left px-3 py-2.5 font-medium text-muted-foreground w-[120px]">Phone</th>
+                <th className="text-left px-3 py-2.5 font-medium text-muted-foreground hidden lg:table-cell">Email</th>
+                <th className="text-left px-3 py-2.5 font-medium text-muted-foreground w-[120px] hidden md:table-cell">Location</th>
+                <th className="text-left px-3 py-2.5 font-medium text-muted-foreground w-[160px]">License Progress</th>
+                <th className="text-left px-3 py-2.5 font-medium text-muted-foreground w-[130px]">Last Contact</th>
+                <th className="text-center px-3 py-2.5 font-medium text-muted-foreground w-[60px]">Score</th>
+                <th className="text-right px-3 py-2.5 font-medium text-muted-foreground w-[80px]">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="text-center py-16 text-muted-foreground">
+                    <Sparkles className="h-8 w-8 mx-auto mb-2 text-pink-400/50" />
+                    <p className="font-medium">No leads match your search</p>
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((lead) => {
+                  const score = computeLeadScore(lead);
+                  const badge = getScoreBadge(score);
+                  const cColor = contactBadgeColor(lead);
+                  const cLabel = contactBadgeLabel(lead);
+                  const fullName = `${lead.first_name} ${lead.last_name}`.trim();
+                  const location = [lead.city, lead.state].filter(Boolean).join(", ");
+                  return (
+                    <tr
+                      key={lead.id}
+                      className="border-b border-border/50 hover:bg-muted/30 cursor-pointer transition-colors"
+                      onClick={() => setDetailLead(lead)}
+                    >
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <DormantBadge lastContactedAt={lead.last_contacted_at} contactedAt={lead.contacted_at} createdAt={lead.created_at} />
+                          <span className="font-medium truncate">{fullName}</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        {lead.phone && (
+                          <a href={`tel:${lead.phone}`} className="text-emerald-500 hover:underline text-xs" onClick={e => e.stopPropagation()}>
+                            {lead.phone}
+                          </a>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 hidden lg:table-cell">
+                        <span className="text-muted-foreground text-xs truncate block max-w-[200px]">{lead.email}</span>
+                      </td>
+                      <td className="px-3 py-2 hidden md:table-cell">
+                        <span className="text-muted-foreground text-xs">{location || "—"}</span>
+                      </td>
+                      <td className="px-3 py-2" onClick={e => e.stopPropagation()}>
+                        <LicenseProgressSelector
+                          applicationId={lead.id}
+                          currentProgress={lead.license_progress as any}
+                          testScheduledDate={lead.test_scheduled_date}
+                          onProgressUpdated={() => {
+                            playSound("success");
+                            fetchLeads(true);
+                          }}
+                          className="text-[10px] h-6"
+                        />
+                      </td>
+                      <td className="px-3 py-2">
+                        <Badge className={cn("text-[10px] border whitespace-nowrap px-1.5 py-0", cColor)}>
+                          <Clock className="h-2 w-2 mr-0.5" />
+                          {cLabel}
+                        </Badge>
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <Badge className={cn("text-[10px] border px-1.5 py-0 font-bold", badge.className)}>
+                          {badge.label}
+                        </Badge>
+                      </td>
+                      <td className="px-3 py-2 text-right" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1">
+                          {lead.phone && (
+                            <Button variant="ghost" size="icon" className="h-6 w-6" asChild>
+                              <a href={`tel:${lead.phone}`}><Phone className="h-3 w-3" /></a>
+                            </Button>
+                          )}
+                          <QuickEmailMenu
+                            applicationId={lead.id}
+                            agentId={agentId}
+                            licenseStatus={lead.license_status as any}
+                            recipientEmail={lead.email}
+                            recipientName={fullName}
+                            onEmailSent={() => fetchLeads(true)}
+                            className="h-6 w-6 px-0"
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {/* ── Lead Detail Sheet (Communication Hub) ── */}

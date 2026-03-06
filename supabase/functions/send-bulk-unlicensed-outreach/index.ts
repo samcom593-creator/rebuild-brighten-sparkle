@@ -163,7 +163,7 @@ ${whatsappLink ? `
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: "APEX Financial <noreply@apex-financial.org>",
+            from: "APEX Financial <notifications@tx.apex-financial.org>",
             to: [app.email],
             cc: [ADMIN_EMAIL],
             subject: `${safeFirst}, Your $20K/Month Opportunity Awaits 🚀`,

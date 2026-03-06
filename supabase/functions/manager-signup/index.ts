@@ -211,7 +211,7 @@ serve(async (req) => {
           const adminName = adminProfile.full_name || "Admin";
 
           await resend.emails.send({
-            from: "APEX Financial <noreply@apex-financial.org>",
+            from: "APEX Financial <notifications@tx.apex-financial.org>",
             to: [adminProfile.email],
             subject: "🎉 New Manager Account Created",
             html: `

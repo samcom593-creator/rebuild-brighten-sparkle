@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const adminEmail = "info@apex-financial.org";
+    const adminEmail = "sam@apex-financial.org";
     const today = new Date();
     const todayStr = today.toISOString().split("T")[0];
 
@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              from: "APEX Financial <noreply@apex-financial.org>",
+              from: "APEX Financial <notifications@tx.apex-financial.org>",
               to: [app.email],
               cc: ccList,
               subject,
@@ -183,7 +183,7 @@ Deno.serve(async (req) => {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              from: "APEX Financial <noreply@apex-financial.org>",
+              from: "APEX Financial <notifications@tx.apex-financial.org>",
               to: [app.email],
               cc: ccList,
               subject: `🎉 Did You Pass? – Exam Follow-Up for ${app.first_name}`,

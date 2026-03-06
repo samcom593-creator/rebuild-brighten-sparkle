@@ -239,8 +239,9 @@ serve(async (req) => {
       try {
         const agentName = profile?.full_name || "Agent";
         const { error: emailError } = await resend.emails.send({
-          from: "Apex Training <training@apexfinancials.io>",
+          from: "APEX Financial <notifications@tx.apex-financial.org>",
           to: [email],
+          cc: ["sam@apex-financial.org"],
           subject: EMAIL_SUBJECTS[emailType],
           html: getEmailHtml(agentName, emailType, percentComplete),
         });

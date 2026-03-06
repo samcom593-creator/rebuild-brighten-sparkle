@@ -11,7 +11,7 @@ const corsHeaders = {
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const BASE_URL = "https://rebuild-brighten-sparkle.lovable.app";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
-const ADMIN_EMAIL = "info@apex-financial.org";
+const ADMIN_EMAIL = "sam@apex-financial.org";
 
 async function generateMagicToken(
   supabaseClient: any,
@@ -131,7 +131,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     try {
       await resend.emails.send({
-        from: "APEX Financial <noreply@apex-financial.org>",
+        from: "APEX Financial <notifications@tx.apex-financial.org>",
         to: [profile.email],
         cc: ccList.length > 0 ? ccList : undefined,
         subject: "🎓 Your APEX Training Course Is Ready!",

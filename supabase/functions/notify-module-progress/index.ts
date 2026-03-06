@@ -148,7 +148,7 @@ const handler = async (req: Request): Promise<Response> => {
     `;
 
     const { error: emailError } = await resend.emails.send({
-      from: "Apex Financial <team@apex-financial.org>",
+      from: "Apex Financial <notifications@tx.apex-financial.org>",
       to: [managerProfile.email],
       subject: isComplete 
         ? `🎉 ${agentName} completed the onboarding course!`

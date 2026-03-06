@@ -90,7 +90,7 @@ export function ApplicationDetailSheet({
       let query = supabase.from("applications").select("*");
       if (applicationId) query = query.eq("id", applicationId);
       else if (agentId) query = query.eq("assigned_agent_id", agentId);
-      const { data } = await query.is("terminated_at", null).order("created_at", { ascending: false }).limit(1).maybeSingle();
+      const { data } = await query.order("created_at", { ascending: false }).limit(1).maybeSingle();
       return data;
     },
     enabled: open && !!(applicationId || agentId),

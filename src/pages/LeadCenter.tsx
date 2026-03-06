@@ -837,7 +837,7 @@ export default function LeadCenter() {
                           )}
                         </div>
                       </TableCell>
-                      <TableCell>{lead.phone || "-"}</TableCell>
+                      <TableCell><span className="select-all cursor-text">{lead.phone || "-"}</span></TableCell>
                       <TableCell>
                         {lead.city && lead.state ? `${lead.city}, ${lead.state}` : "-"}
                       </TableCell>

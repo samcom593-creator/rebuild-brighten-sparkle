@@ -20,7 +20,7 @@ import {
   UserPlus,
   Trophy,
 } from "lucide-react";
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -446,7 +446,7 @@ export default function CourseProgress() {
   }, [stats]);
 
   return (
-    <DashboardLayout>
+    <>
       <div className="space-y-4 page-enter">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -851,6 +851,6 @@ export default function CourseProgress() {
           onClose={() => setShowContentViewer(false)}
         />
       </div>
-    </DashboardLayout>
+    </>
   );
 }

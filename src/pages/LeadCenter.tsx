@@ -63,6 +63,7 @@ import { QuickAssignMenu } from "@/components/dashboard/QuickAssignMenu";
 import { QuickEmailMenu } from "@/components/dashboard/QuickEmailMenu";
 import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
 import { useAuth } from "@/hooks/useAuth";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 interface Lead {
   id: string;
@@ -127,6 +128,7 @@ const formatStatus = (status: string): string => {
 
 export default function LeadCenter() {
   const { isAdmin, user } = useAuth();
+  const { playSound } = useSoundEffects();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [managers, setManagers] = useState<Manager[]>([]);
   const [loading, setLoading] = useState(false);
@@ -405,10 +407,12 @@ export default function LeadCenter() {
         if (agedError) throw agedError;
       }
       toast.success(`${selectedLeads.size} leads assigned`);
+      playSound("celebrate");
       clearSelection();
       fetchLeads();
     } catch (error) {
       toast.error("Failed to assign leads");
+      playSound("error");
     } finally {
       setBulkAssigning(false);
     }
@@ -468,11 +472,13 @@ export default function LeadCenter() {
       }
 
       toast.success(`${selectedLeads.size} leads moved to vault`);
+      playSound("success");
       setLeads(prev => prev.filter(lead => !selectedLeads.has(encodeLeadKey(lead.source, lead.id))));
       clearSelection();
     } catch (error) {
       console.error("Bulk delete error:", error);
       toast.error("Failed to delete leads");
+      playSound("error");
     } finally {
       setBulkDeleting(false);
     }
@@ -502,11 +508,13 @@ export default function LeadCenter() {
       }
 
       toast.success("Lead deleted");
+      playSound("success");
       setLeads(prev => prev.filter(l => l.id !== deleteTarget.id));
       setDeleteTarget(null);
     } catch (error) {
       console.error("Delete error:", error);
       toast.error("Failed to delete lead");
+      playSound("error");
     } finally {
       setDeletingLead(false);
     }
@@ -537,11 +545,13 @@ export default function LeadCenter() {
       }
 
       toast.success("Prospect banned");
+      playSound("success");
       setLeads(prev => prev.filter(l => l.id !== banTarget.id));
       setBanTarget(null);
     } catch (error) {
       console.error("Ban error:", error);
       toast.error("Failed to ban");
+      playSound("error");
     } finally {
       setBanningLead(false);
     }

@@ -32,6 +32,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 // DashboardLayout removed — AuthenticatedShell already provides SidebarLayout
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -112,6 +113,7 @@ const licenseColors: Record<string, string> = {
 
 export default function DashboardApplicants() {
   const { user, isAdmin, isManager } = useAuth();
+  const { playSound } = useSoundEffects();
   const [searchParams, setSearchParams] = useSearchParams();
   const highlightedLeadId = searchParams.get("lead");
   const managerFilter = searchParams.get("manager");
@@ -299,10 +301,12 @@ export default function DashboardApplicants() {
 
     if (error) {
       toast.error("Failed to mark as hired");
+      playSound("error");
       return;
     }
     
     toast.success("Marked as hired!");
+    playSound("celebrate");
     fetchApplications();
     
     // Send hire email to recruit (fire and forget)
@@ -358,8 +362,10 @@ export default function DashboardApplicants() {
 
     if (error) {
       toast.error("Failed to terminate lead");
+      playSound("error");
     } else if (!data || data.length === 0) {
       toast.error("Could not terminate this lead — you may not have permission");
+      playSound("error");
     } else {
       // Optimistic UI: immediately remove from active list
       setApplications(prev => prev.map(app => 
@@ -368,6 +374,7 @@ export default function DashboardApplicants() {
           : app
       ));
       toast.success("Lead terminated");
+      playSound("success");
       setTerminateApp(null);
       setTerminateReason("");
       fetchApplications();
@@ -386,8 +393,10 @@ export default function DashboardApplicants() {
 
     if (error) {
       toast.error("Failed to restore lead");
+      playSound("error");
     } else {
       toast.success("Lead restored");
+      playSound("success");
       fetchApplications();
     }
   };
@@ -416,10 +425,12 @@ export default function DashboardApplicants() {
 
     if (error) {
       toast.error("Failed to update stage");
+      playSound("error");
       return;
     }
 
     toast.success("Stage updated!");
+    playSound("success");
     logLeadActivity({
       leadId: applicationId,
       type: "stage_update",

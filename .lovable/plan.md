@@ -1,71 +1,84 @@
 
 
-# Go-Live Final Remediation Plan
+# Fix: CRM License Progress Showing Wrong Data
 
-## Issues Identified
+## Root Cause
 
-### 1. No "My Directs" Filter on Pipeline (DashboardApplicants), Dashboard, or RecruiterHQ
-Currently, admin/managers see ALL agents/applicants with no toggle to filter to only their directly-invited recruits. The AgentPipeline page has a "My Recruits" button, but DashboardApplicants, Dashboard, and RecruiterDashboard lack this.
+The CRM's `fetchAgents` function looks up each agent's `license_progress` from the `applications` table using `assigned_agent_id` — which is the **recruiter/manager** who owns the lead, NOT the applicant. This means:
 
-**Fix**: Add a "My Directs" / "Full Team" toggle to:
-- `DashboardApplicants.tsx` — filter `assigned_agent_id` to only the current manager's agent ID
-- `Dashboard.tsx` — the `fetchDashboardData` function currently filters to `assigned_agent_id = agentData.id` for non-admin, but admin sees everything; add a toggle for admin to scope to their directs
-- `RecruiterDashboard.tsx` — add a "My Directs" filter button alongside existing filters
+- Agent A's license progress shows **their recruit's** progress instead of their own
+- Most agents show as "Course Not Purchased" even when they've completed courses, scheduled tests, etc.
+- The Unlicensed tab columns (Course Purchased, Course Finished, Test Scheduled, Waiting on License) are mostly empty or misattributed
 
-### 2. Aged Leads Missing a Visible "Distribute" Button
-The Aged Leads page has a `QuickAssignPanel` but it only appears when `isAdmin && managers.length > 0`. The per-row actions only have status changes + delete/ban via the DropdownMenu — no per-row assign button and no bulk distribute button at the bottom selection bar.
+## Fix
 
-**Fix**:
-- Add a `QuickAssignMenu` to each row's actions dropdown (like LeadCenter has)
-- Add a bulk assign section to the bottom selection bar (currently only has "Delete Selected" and "Clear")
+### 1. `src/pages/DashboardCRM.tsx` — Fix license progress lookup
 
-### 3. Avg Leads/Day Inaccurate in Lead Center
-The calculation uses `Math.round(recentLeads / 30)` which rounds to zero for small counts. Should use more precise calculation.
+**Current (broken):** Line 647 queries `applications` by `assigned_agent_id` (recruiter ID), then maps that to the agent.
 
-**Fix**: Change to `parseFloat((recentLeads / 30).toFixed(1))` to show one decimal place.
+**Fix:** After fetching agents and profiles, query applications by **email match** against the agent's profile email to find each agent's OWN application and its `license_progress`.
 
-### 4. Lead Center Missing Pipeline Actions (Hired, Contracted, etc.)
-Lead Center per-row actions have: Assign, Phone, Email, Resend Licensing, Delete, Ban. But it's missing the stage-change actions that exist in DashboardApplicants (Mark as Hired, Contracted, Terminate).
+Replace the `appLicenseResult` query and `licenseProgressMap` construction:
 
-**Fix**: Add a DropdownMenu with status-change actions (Contacted, Hired, Contracted, Terminate) to the Lead Center row actions for application-source leads.
+```typescript
+// Fetch each agent's OWN application by email match
+const agentEmails = [...profileMap.values()]
+  .map(p => p.email?.toLowerCase().trim())
+  .filter(Boolean);
 
-### 5. Dashboard Stats Not Filtering by DatePeriodSelector
-The `DatePeriodSelector` was added to Dashboard UI but `fetchDashboardData` doesn't use `dateRange` — it always queries all data.
+const { data: ownApps } = agentEmails.length > 0
+  ? await supabase.from("applications")
+      .select("email, license_progress, test_scheduled_date")
+      .is("terminated_at", null)
+  : { data: [] };
 
-**Fix**: Pass `dateRange` into the query key and filter applications by `created_at` within the selected range.
+// Build email→progress map, keeping most advanced progress
+const progressOrder = ["unlicensed","course_purchased","finished_course",
+  "test_scheduled","passed_test","fingerprints_done","waiting_on_license","licensed"];
 
-### 6. OnboardingPipelineCard Dashboard Accuracy
-The card shows Course Purchased, Test Scheduled, etc. based on `agents` table fields (`has_training_course`, `onboarding_stage`). It only queries agents invited by the current manager (non-admin). For admin it queries ALL agents. This is correct. However, it doesn't cross-reference with `applications` table license_progress data.
+const emailProgressMap = new Map<string, { progress: string; testDate: string | null }>();
+for (const app of ownApps || []) {
+  const email = app.email?.toLowerCase().trim();
+  if (!email) continue;
+  const current = emailProgressMap.get(email);
+  const newIdx = progressOrder.indexOf(app.license_progress || "unlicensed");
+  const curIdx = current ? progressOrder.indexOf(current.progress) : -1;
+  if (newIdx > curIdx) {
+    emailProgressMap.set(email, {
+      progress: app.license_progress || "unlicensed",
+      testDate: app.test_scheduled_date
+    });
+  }
+}
+```
 
-**Fix**: Cross-reference with `applications.license_progress` to ensure counts include applicants at each stage (course_purchased, passed_test, waiting_on_license, etc.), not just agent records.
+Then when building `crmAgents`, look up by `profile.email` instead of `agent.id`:
 
-### 7. Todoist Integration
-Todoist has an official REST API. This would require the user's Todoist API token as a secret, stored via the secrets tool. We can create an edge function that syncs planner blocks to/from Todoist tasks. However, Todoist is not available as a connector — the user would need to provide their API key manually.
+```typescript
+const agentEmail = profile?.email?.toLowerCase().trim();
+const ownProgress = agentEmail ? emailProgressMap.get(agentEmail) : null;
+// ...
+licenseProgress: ownProgress?.progress || null,
+testScheduledDate: ownProgress?.testDate || null,
+```
 
-### 8. Google Calendar & Calendly Integration
-Google Calendar integration would require OAuth setup (not available as a connector). Calendly is already partially integrated (CalendlyEmbed component exists). For Google Calendar, we can generate `.ics` download links or `calendar.google.com` add-event URLs from scheduled interviews.
+### 2. Same file — Fix the separate unlicensed applicants query (lines 717-738)
 
-**Fix**: Add "Add to Google Calendar" links on scheduled interviews in CalendarPage. For Calendly, it's already embedded — verify it's wired into scheduling flows.
+The `newApplicants` merge already works correctly since it reads `license_progress` directly from the application row. No change needed there, but ensure deduplication uses the same email-matching logic.
 
----
+### 3. `src/components/dashboard/OnboardingPipelineCard.tsx` — Already fixed
 
-## Implementation Plan
+This component already uses email-based cross-referencing (lines 69-82). No changes needed.
 
-### Files to Modify
+## Files to modify
 
-| File | Changes |
-|------|---------|
-| `src/pages/DashboardApplicants.tsx` | Add "My Directs" / "Full Team" toggle button in filters; filter by `assigned_agent_id === agentId` when "My Directs" active |
-| `src/pages/Dashboard.tsx` | Pass `dateRange` to query; add "My Directs" toggle for admin; filter stats by date range |
-| `src/pages/RecruiterDashboard.tsx` | Add "My Directs" filter toggle |
-| `src/pages/DashboardAgedLeads.tsx` | Add per-row QuickAssignMenu; add bulk assign to selection bar |
-| `src/pages/LeadCenter.tsx` | Add status-change actions (Hired, Contracted, Terminate) to per-row dropdown; fix avg leads/day precision |
-| `src/components/dashboard/OnboardingPipelineCard.tsx` | Cross-reference applications table for accurate license_progress counts |
+| File | Change |
+|------|--------|
+| `src/pages/DashboardCRM.tsx` | Replace `assigned_agent_id`-based license progress lookup with email-based matching; use most-advanced progress when multiple applications exist |
 
-### External Integrations
-- **Todoist**: Requires API key — will prompt user to provide it via secrets tool before implementing
-- **Google Calendar**: Add "Add to Google Calendar" URL links on CalendarPage interview entries (no API key needed, uses URL scheme)
-- **Calendly**: Already embedded via CalendlyEmbed component — verify wiring
+## Impact
 
-No database changes needed.
+- All unlicensed agents will correctly appear in their actual license stage columns
+- "Course Purchased", "Course Finished", "Test Scheduled", "Waiting on License" will show accurate counts
+- No database changes needed
 

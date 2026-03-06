@@ -36,7 +36,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+// DashboardLayout removed — AuthenticatedShell already provides SidebarLayout
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -826,11 +826,11 @@ export default function DashboardCRM() {
   };
 
   if (authLoading) {
-    return <DashboardLayout><div className="flex items-center justify-center h-64"><RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" /></div></DashboardLayout>;
+    return <div className="flex items-center justify-center h-64"><RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
   }
 
   return (
-    <DashboardLayout>
+    <>
       <div className="space-y-4 page-enter relative">
         <BackgroundGlow accent="teal" intensity="subtle" />
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
@@ -1203,6 +1203,6 @@ export default function DashboardCRM() {
       {recorderAgent && user && (
         <InterviewRecorder applicationId={recorderAgent.id} agentId={recorderAgent.id} applicantName={recorderAgent.name} onClose={() => setRecorderAgent(null)} onTranscriptionSaved={fetchAgents} />
       )}
-    </DashboardLayout>
+    </>
   );
 }

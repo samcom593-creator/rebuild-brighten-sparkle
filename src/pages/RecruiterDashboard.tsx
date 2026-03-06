@@ -7,7 +7,7 @@ import {
   Award, Users, UserCheck, AlertTriangle, TrendingUp, Sparkles,
   MessageSquare, ChevronDown, ChevronUp, Plus, ExternalLink, AlertCircle,
   Activity, PhoneOff, PhoneCall, PhoneForwarded, PhoneMissed, Ban,
-  BarChart3, Percent, Timer, Target, Eye, EyeOff, Lightbulb,
+  BarChart3, Percent, Timer, Target, Eye, EyeOff, Lightbulb, CheckCircle,
 } from "lucide-react";
 import {
   Tooltip,
@@ -166,6 +166,8 @@ interface Lead {
   notes: string | null;
   assigned_agent_id: string | null;
   referral_source: string | null;
+  instagram_handle: string | null;
+  lead_score: number | null;
 }
 
 // ─── Helper functions ──────────────────────────────────────────────────────────

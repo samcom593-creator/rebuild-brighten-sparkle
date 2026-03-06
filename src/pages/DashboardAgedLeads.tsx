@@ -62,6 +62,7 @@ import { AgedLeadImporter } from "@/components/dashboard/AgedLeadImporter";
 import { AnimatedNumber } from "@/components/dashboard/AnimatedNumber";
 import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { QuickAssignMenu } from "@/components/dashboard/QuickAssignMenu";
 
 interface AgedLead {
   id: string;
@@ -814,37 +815,48 @@ export default function DashboardAgedLeads() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-44">
-                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, "contacted")} className="text-xs gap-2">
-                            <Phone className="h-3 w-3" /> Mark Contacted
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, "hired")} className="text-xs gap-2">
-                            <CheckCircle2 className="h-3 w-3 text-emerald-400" /> Hired
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, "licensing")} className="text-xs gap-2">
-                            <GraduationCap className="h-3 w-3 text-amber-400" /> Start Licensing
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, "contracted")} className="text-xs gap-2">
-                            <FileText className="h-3 w-3 text-emerald-400" /> Contracted
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, "not_qualified")} className="text-xs gap-2 text-destructive">
-                            <XCircle className="h-3 w-3" /> Not Qualified
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => setDeleteTarget(lead)} className="text-xs gap-2 text-destructive focus:text-destructive">
-                            <Trash2 className="h-3 w-3" /> Delete
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setBanTarget(lead)} className="text-xs gap-2 text-destructive focus:text-destructive">
-                            <Ban className="h-3 w-3" /> Ban
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <div className="flex items-center gap-1">
+                        {isAdmin && (
+                          <QuickAssignMenu
+                            applicationId={lead.id}
+                            currentAgentId={lead.assignedManagerId || null}
+                            onAssigned={fetchLeads}
+                            source="aged_leads"
+                            className="h-7 text-xs"
+                          />
+                        )}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-44">
+                            <DropdownMenuItem onClick={() => handleStatusChange(lead.id, "contacted")} className="text-xs gap-2">
+                              <Phone className="h-3 w-3" /> Mark Contacted
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange(lead.id, "hired")} className="text-xs gap-2">
+                              <CheckCircle2 className="h-3 w-3 text-emerald-400" /> Hired
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange(lead.id, "licensing")} className="text-xs gap-2">
+                              <GraduationCap className="h-3 w-3 text-amber-400" /> Start Licensing
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange(lead.id, "contracted")} className="text-xs gap-2">
+                              <FileText className="h-3 w-3 text-emerald-400" /> Contracted
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange(lead.id, "not_qualified")} className="text-xs gap-2 text-destructive">
+                              <XCircle className="h-3 w-3" /> Not Qualified
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => setDeleteTarget(lead)} className="text-xs gap-2 text-destructive focus:text-destructive">
+                              <Trash2 className="h-3 w-3" /> Delete
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setBanTarget(lead)} className="text-xs gap-2 text-destructive focus:text-destructive">
+                              <Ban className="h-3 w-3" /> Ban
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -854,6 +866,40 @@ export default function DashboardAgedLeads() {
           {selectedIds.size > 0 && (
             <div className="flex items-center gap-3 px-4 py-2.5 border-t border-border bg-muted/30">
               <span className="text-xs font-medium">{selectedIds.size} selected</span>
+              {isAdmin && managers.length > 0 && (
+                <>
+                  <Select onValueChange={async (managerId) => {
+                    const ids = Array.from(selectedIds);
+                    const { error } = await supabase
+                      .from("aged_leads")
+                      .update({ assigned_manager_id: managerId, status: "new" })
+                      .in("id", ids);
+                    if (error) {
+                      toast.error("Failed to assign");
+                      playSound("error");
+                      return;
+                    }
+                    try {
+                      await supabase.functions.invoke("notify-lead-assigned", {
+                        body: { newAgentId: managerId, batchCount: ids.length, source: "aged_leads" },
+                      });
+                    } catch {}
+                    toast.success(`${ids.length} leads assigned!`);
+                    playSound("celebrate");
+                    setSelectedIds(new Set());
+                    fetchLeads();
+                  }}>
+                    <SelectTrigger className="w-[160px] h-7 text-xs">
+                      <SelectValue placeholder="Assign to..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {managers.map(m => (
+                        <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </>
+              )}
               <Button
                 size="sm"
                 variant="destructive"

@@ -18,6 +18,9 @@ import {
   Ban,
   MoreHorizontal,
   ChevronRight,
+  CheckCircle,
+  FileCheck,
+  XCircle,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -54,6 +57,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
@@ -246,7 +250,7 @@ export default function LeadCenter() {
       // Calc 30-day average (using allLeads creation date)
       const cutoff = subDays(new Date(), 30);
       const recentLeads = allLeads.filter(l => new Date(l.createdAt) >= cutoff).length;
-      setAvgLeadsPerDay(Math.round(recentLeads / 30));
+      setAvgLeadsPerDay(parseFloat((recentLeads / 30).toFixed(1)));
 
       // Build manager list
       const managerCounts: Record<string, number> = {};
@@ -924,7 +928,62 @@ export default function LeadCenter() {
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-44">
+                            <DropdownMenuContent align="end" className="w-48">
+                              {lead.source === "applications" && (
+                                <>
+                                  {lead.status !== "contacted" && lead.status !== "hired" && lead.status !== "contracted" && (
+                                    <DropdownMenuItem
+                                      onClick={async () => {
+                                        await supabase.from("applications").update({ contacted_at: new Date().toISOString(), last_contacted_at: new Date().toISOString() }).eq("id", lead.id);
+                                        playSound("success");
+                                        toast.success("Marked as contacted");
+                                        fetchLeads();
+                                      }}
+                                      className="text-xs gap-2"
+                                    >
+                                      <Phone className="h-3 w-3" /> Mark Contacted
+                                    </DropdownMenuItem>
+                                  )}
+                                  {lead.status !== "hired" && lead.status !== "contracted" && (
+                                    <DropdownMenuItem
+                                      onClick={async () => {
+                                        await supabase.from("applications").update({ closed_at: new Date().toISOString(), contacted_at: new Date().toISOString() }).eq("id", lead.id);
+                                        playSound("celebrate");
+                                        toast.success("Marked as hired!");
+                                        fetchLeads();
+                                      }}
+                                      className="text-xs gap-2"
+                                    >
+                                      <CheckCircle className="h-3 w-3 text-emerald-400" /> Mark Hired
+                                    </DropdownMenuItem>
+                                  )}
+                                  {lead.status !== "contracted" && (
+                                    <DropdownMenuItem
+                                      onClick={async () => {
+                                        await supabase.from("applications").update({ contracted_at: new Date().toISOString() }).eq("id", lead.id);
+                                        playSound("celebrate");
+                                        toast.success("Marked as contracted!");
+                                        fetchLeads();
+                                      }}
+                                      className="text-xs gap-2"
+                                    >
+                                      <FileCheck className="h-3 w-3 text-violet-400" /> Contracted
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuItem
+                                    onClick={async () => {
+                                      await supabase.from("applications").update({ terminated_at: new Date().toISOString(), termination_reason: "Terminated via Lead Center" }).eq("id", lead.id);
+                                      playSound("error");
+                                      toast.success("Lead terminated");
+                                      fetchLeads();
+                                    }}
+                                    className="text-xs gap-2 text-destructive focus:text-destructive"
+                                  >
+                                    <XCircle className="h-3 w-3" /> Terminate
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                </>
+                              )}
                               <DropdownMenuItem
                                 onClick={() => setDeleteTarget(lead)}
                                 className="text-xs gap-2 text-destructive focus:text-destructive"

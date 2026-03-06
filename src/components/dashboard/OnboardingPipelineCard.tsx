@@ -62,12 +62,22 @@ async function fetchPipeline(userId: string, isAdmin: boolean): Promise<Pipeline
 
   const agentIds = agents.map(a => a.id);
   const { data: apps } = agentIds.length > 0
-    ? await supabase.from("applications").select("assigned_agent_id, last_contacted_at").in("assigned_agent_id", agentIds).is("terminated_at", null).order("last_contacted_at", { ascending: false, nullsFirst: false })
+    ? await supabase.from("applications").select("assigned_agent_id, last_contacted_at, license_progress").in("assigned_agent_id", agentIds).is("terminated_at", null).order("last_contacted_at", { ascending: false, nullsFirst: false })
     : { data: null };
   const contactMap = new Map<string, string | null>();
+  // Build license_progress map from applications for agents that don't have agent-level data
+  const appLicenseProgressMap = new Map<string, string>();
   apps?.forEach(a => {
     if (a.assigned_agent_id && !contactMap.has(a.assigned_agent_id)) {
       contactMap.set(a.assigned_agent_id, a.last_contacted_at);
+    }
+    // Track the most advanced license_progress per agent from applications
+    if (a.assigned_agent_id && a.license_progress) {
+      const progressOrder = ["unlicensed", "course_purchased", "finished_course", "test_scheduled", "passed_test", "fingerprints_done", "waiting_on_license", "licensed"];
+      const current = appLicenseProgressMap.get(a.assigned_agent_id) || "unlicensed";
+      if (progressOrder.indexOf(a.license_progress) > progressOrder.indexOf(current)) {
+        appLicenseProgressMap.set(a.assigned_agent_id, a.license_progress);
+      }
     }
   });
 
@@ -81,7 +91,14 @@ async function fetchPipeline(userId: string, isAdmin: boolean): Promise<Pipeline
     const peek: AgentPeek = { id: agent.id, name, lastContactedAt: contactMap.get(agent.id) ?? null };
     const stage = agent.onboarding_stage || "onboarding";
     if (stageAgents[stage]) stageAgents[stage].push(peek);
-    if (agent.license_status !== "licensed" && agent.has_training_course === true) {
+    
+    // Cross-reference: check both agent-level and application-level license data
+    const appProgress = appLicenseProgressMap.get(agent.id);
+    const isPreLicensing = agent.license_status !== "licensed" && (
+      agent.has_training_course === true ||
+      (appProgress && appProgress !== "unlicensed" && appProgress !== "licensed")
+    );
+    if (isPreLicensing) {
       preLicensingAgents.push(peek);
     }
   });

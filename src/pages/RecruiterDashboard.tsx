@@ -532,9 +532,9 @@ const LeadCard = memo(function LeadCard({
           />
 
           {/* ── Row 3: Icon-only action buttons ── */}
-          <div className="flex items-center gap-1 min-h-[24px] flex-wrap">
+          <div className="flex items-center gap-1.5 min-h-[32px] flex-wrap">
             {/* ─ Contact group ─ */}
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
             {/* Call with outcome popover */}
             <Popover open={callOutcomeOpen} onOpenChange={setCallOutcomeOpen}>
               <PopoverTrigger asChild>

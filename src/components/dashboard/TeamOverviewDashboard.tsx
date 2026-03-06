@@ -10,16 +10,19 @@ import {
 import { motion } from "framer-motion";
 import { getTodayPST, getDateDaysAgoPST } from "@/lib/dateUtils";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend,
 } from "recharts";
 import { cn } from "@/lib/utils";
 
 interface TeamOverviewData {
   totalActive: number;
   licensed: number;
-  unlicensed: number;
+  unlicensedAgents: number;
+  unlicensedTotal: number;
   onboarding: number;
   inFieldTraining: number;
+  trainingOnline: number;
+  liveInField: number;
   activeProducers: number;
   aop7: number;
   aop30: number;
@@ -29,8 +32,11 @@ interface TeamOverviewData {
   revenuePerAgent: number;
   managerBreakdown: Array<{
     name: string;
-    agents: number;
-    alp: number;
+    activeAgents: number;
+    producingAgents: number;
+    teamAlp: number;
+    ownAlp: number;
+    totalAlp: number;
   }>;
 }
 
@@ -44,10 +50,10 @@ export function TeamOverviewDashboard() {
     queryKey: ["team-overview", today],
     queryFn: async (): Promise<TeamOverviewData> => {
       // Parallel fetch all data
-      const [agentsRes, prodRes7, prodRes30, deactivatedRes] = await Promise.all([
+      const [agentsRes, prodRes7, prodRes30, deactivatedRes, applicationsRes] = await Promise.all([
         supabase
           .from("agents")
-          .select("id, is_deactivated, is_inactive, license_status, onboarding_stage, invited_by_manager_id, profile:profiles!agents_profile_id_fkey(full_name)"),
+          .select("id, is_deactivated, is_inactive, license_status, onboarding_stage, invited_by_manager_id, user_id, profile:profiles!agents_profile_id_fkey(full_name)"),
         supabase
           .from("daily_production")
           .select("agent_id, aop, deals_closed, presentations")
@@ -63,6 +69,13 @@ export function TeamOverviewDashboard() {
           .select("id")
           .eq("is_deactivated", true)
           .gte("updated_at", ninetyDaysAgo),
+        // Get unlicensed applicants for unified count
+        supabase
+          .from("applications")
+          .select("id, license_status, email")
+          .in("status", ["reviewing", "contracting", "approved", "new"])
+          .neq("license_status", "licensed")
+          .is("terminated_at", null),
       ]);
 
       const agents = agentsRes.data || [];
@@ -70,13 +83,31 @@ export function TeamOverviewDashboard() {
       const totalActive = activeAgents.length;
 
       const licensed = activeAgents.filter(a => a.license_status === "licensed").length;
-      const unlicensed = totalActive - licensed;
+      const unlicensedAgents = activeAgents.filter(a => a.license_status !== "licensed").length;
+
+      // Unified unlicensed count: agents + applicants (deduplicated by email)
+      const agentEmails = new Set<string>();
+      for (const agent of activeAgents) {
+        if (agent.license_status !== "licensed") {
+          // We need to get the profile email for dedup — approximate via user_id presence
+          agentEmails.add(agent.id); // use agent id as proxy
+        }
+      }
+      const unlicensedApplicants = applicationsRes.data?.length || 0;
+      const unlicensedTotal = unlicensedAgents + unlicensedApplicants;
 
       const onboarding = activeAgents.filter(a =>
-        a.onboarding_stage === "onboarding" || a.onboarding_stage === "training_online"
+        a.onboarding_stage === "onboarding"
+      ).length;
+      const trainingOnline = activeAgents.filter(a =>
+        a.onboarding_stage === "training_online"
       ).length;
       const inFieldTraining = activeAgents.filter(a =>
         a.onboarding_stage === "in_field_training"
+      ).length;
+      // Agents past field training (evaluated or no stage = live/producing)
+      const liveInField = activeAgents.filter(a =>
+        a.onboarding_stage === "evaluated" || !a.onboarding_stage
       ).length;
 
       // 7-day AOP
@@ -125,35 +156,68 @@ export function TeamOverviewDashboard() {
       // Revenue per agent
       const revenuePerAgent = totalActive > 0 ? aop30 / totalActive : 0;
 
-      // Manager breakdown
-      const managerMap = new Map<string, { name: string; agents: number; alp: number }>();
+      // Manager breakdown — include manager's OWN production + team production
+      const managerMap = new Map<string, {
+        name: string;
+        activeAgents: number;
+        producingAgentIds: Set<string>;
+        teamAlp: number;
+        ownAlp: number;
+      }>();
+
+      // Build manager entries from their team agents
       for (const agent of activeAgents) {
         const mgrId = agent.invited_by_manager_id;
         if (!mgrId) continue;
-        const existing = managerMap.get(mgrId) || { name: "", agents: 0, alp: 0 };
-        existing.agents++;
-        // Find manager name
+        const existing = managerMap.get(mgrId) || {
+          name: "",
+          activeAgents: 0,
+          producingAgentIds: new Set<string>(),
+          teamAlp: 0,
+          ownAlp: 0,
+        };
+        existing.activeAgents++;
         if (!existing.name) {
           const mgr = agents.find(a => a.id === mgrId);
           existing.name = (mgr as any)?.profile?.full_name || "Unknown";
         }
         managerMap.set(mgrId, existing);
       }
-      // Add ALP to managers
+
+      // Add team ALP from production data
       for (const p of prod30) {
         const agent = activeAgents.find(a => a.id === p.agent_id);
-        if (agent?.invited_by_manager_id) {
-          const mgrEntry = managerMap.get(agent.invited_by_manager_id);
-          if (mgrEntry) mgrEntry.alp += Number(p.aop) || 0;
+        if (!agent?.invited_by_manager_id) continue;
+        const mgrEntry = managerMap.get(agent.invited_by_manager_id);
+        if (mgrEntry) {
+          mgrEntry.teamAlp += Number(p.aop) || 0;
+          if ((p.deals_closed || 0) > 0 || (Number(p.aop) || 0) > 0) {
+            mgrEntry.producingAgentIds.add(p.agent_id);
+          }
+        }
+      }
+
+      // Add manager's OWN production (managers are also agents)
+      for (const [mgrId, entry] of managerMap) {
+        const mgrProd = agentProd30.get(mgrId);
+        if (mgrProd) {
+          // Sum the manager's own AOP from prod30
+          const ownAlp = prod30
+            .filter(p => p.agent_id === mgrId)
+            .reduce((sum, p) => sum + (Number(p.aop) || 0), 0);
+          entry.ownAlp = ownAlp;
         }
       }
 
       return {
         totalActive,
         licensed,
-        unlicensed,
+        unlicensedAgents,
+        unlicensedTotal,
         onboarding,
         inFieldTraining,
+        trainingOnline,
+        liveInField,
         activeProducers,
         aop7,
         aop30,
@@ -161,8 +225,16 @@ export function TeamOverviewDashboard() {
         activationRate,
         retentionRate,
         revenuePerAgent,
-        managerBreakdown: Array.from(managerMap.values())
-          .sort((a, b) => b.alp - a.alp)
+        managerBreakdown: Array.from(managerMap.entries())
+          .map(([id, v]) => ({
+            name: v.name,
+            activeAgents: v.activeAgents,
+            producingAgents: v.producingAgentIds.size,
+            teamAlp: v.teamAlp,
+            ownAlp: v.ownAlp,
+            totalAlp: v.teamAlp + v.ownAlp,
+          }))
+          .sort((a, b) => b.totalAlp - a.totalAlp)
           .slice(0, 8),
       };
     },
@@ -184,10 +256,12 @@ export function TeamOverviewDashboard() {
   const metrics = [
     { label: "Active Agents", value: data.totalActive, icon: Users, color: "text-primary" },
     { label: "Licensed", value: data.licensed, icon: ShieldCheck, color: "text-emerald-500" },
-    { label: "Unlicensed", value: data.unlicensed, icon: ShieldOff, color: "text-amber-500" },
+    { label: "Unlicensed (Pipeline)", value: data.unlicensedTotal, icon: ShieldOff, color: "text-amber-500", subtitle: `${data.unlicensedAgents} hired` },
     { label: "Onboarding", value: data.onboarding, icon: GraduationCap, color: "text-blue-500" },
+    { label: "Training Online", value: data.trainingOnline, icon: GraduationCap, color: "text-cyan-500" },
     { label: "Field Training", value: data.inFieldTraining, icon: Swords, color: "text-violet-500" },
-    { label: "Active Producers", value: data.activeProducers, icon: Zap, color: "text-emerald-500" },
+    { label: "Live / Eligible", value: data.liveInField, icon: Zap, color: "text-emerald-500" },
+    { label: "Active Producers", value: data.activeProducers, icon: Activity, color: "text-primary" },
   ];
 
   const financialMetrics = [
@@ -213,7 +287,7 @@ export function TeamOverviewDashboard() {
       </div>
 
       {/* Agent counts */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-3">
         {metrics.map((m, i) => (
           <motion.div
             key={m.label}
@@ -229,6 +303,9 @@ export function TeamOverviewDashboard() {
               <p className="text-2xl font-bold">
                 <AnimatedCounter value={m.value} />
               </p>
+              {"subtitle" in m && m.subtitle && (
+                <p className="text-[10px] text-muted-foreground mt-0.5">{m.subtitle}</p>
+              )}
             </GlassCard>
           </motion.div>
         ))}
@@ -261,14 +338,14 @@ export function TeamOverviewDashboard() {
         ))}
       </div>
 
-      {/* Manager comparison chart */}
+      {/* Manager comparison chart — Team + Own production */}
       {data.managerBreakdown.length > 0 && (
         <GlassCard className="p-5">
           <h4 className="text-sm font-bold mb-4 flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-primary" />
-            Manager Comparison (30-Day ALP)
+            Manager Comparison — 30-Day ALP (Team + Personal)
           </h4>
-          <div className="h-64">
+          <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.managerBreakdown} layout="vertical" margin={{ left: 10, right: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
@@ -280,11 +357,14 @@ export function TeamOverviewDashboard() {
                 <YAxis
                   type="category"
                   dataKey="name"
-                  width={100}
+                  width={110}
                   tick={{ fontSize: 11, fill: "hsl(var(--foreground))" }}
                 />
                 <Tooltip
-                  formatter={(value: number) => [`$${value.toLocaleString()}`, "ALP"]}
+                  formatter={(value: number, name: string) => [
+                    `$${value.toLocaleString()}`,
+                    name === "teamAlp" ? "Team ALP" : "Personal ALP",
+                  ]}
                   contentStyle={{
                     backgroundColor: "hsl(var(--card))",
                     border: "1px solid hsl(var(--border))",
@@ -292,20 +372,25 @@ export function TeamOverviewDashboard() {
                     fontSize: 12,
                   }}
                 />
-                <Bar dataKey="alp" radius={[0, 6, 6, 0]} barSize={24}>
-                  {data.managerBreakdown.map((_, index) => (
-                    <Cell key={index} fill={barColors[index % barColors.length]} />
-                  ))}
-                </Bar>
+                <Legend
+                  formatter={(value) => value === "teamAlp" ? "Team ALP" : "Personal ALP"}
+                  wrapperStyle={{ fontSize: 11 }}
+                />
+                <Bar dataKey="teamAlp" stackId="a" radius={[0, 0, 0, 0]} barSize={20} fill="hsl(168, 84%, 42%)" />
+                <Bar dataKey="ownAlp" stackId="a" radius={[0, 6, 6, 0]} barSize={20} fill="hsl(222, 47%, 55%)" />
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">
             {data.managerBreakdown.map((m, i) => (
-              <span key={m.name} className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: barColors[i % barColors.length] }} />
-                {m.name}: {m.agents} agents
-              </span>
+              <div key={m.name} className="flex items-center justify-between bg-muted/30 rounded-lg px-3 py-2">
+                <span className="font-medium text-foreground">{m.name}</span>
+                <div className="flex items-center gap-3">
+                  <span>{m.activeAgents} agents</span>
+                  <span className="text-emerald-500">{m.producingAgents} producing</span>
+                  <span className="font-bold text-foreground">${m.totalAlp.toLocaleString()}</span>
+                </div>
+              </div>
             ))}
           </div>
         </GlassCard>

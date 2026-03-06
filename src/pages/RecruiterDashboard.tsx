@@ -438,13 +438,36 @@ const LeadCard = memo(function LeadCard({
         <div className="p-1.5 space-y-0.5">
           {/* ── Row 1: Name + score ── */}
           <div className="flex items-start justify-between gap-1">
-            <p className="font-semibold text-sm leading-tight truncate min-w-0 flex-1 cursor-pointer hover:text-primary transition-colors" title={fullName} onClick={() => onDetailClick?.(lead)}>{fullName}</p>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-sm leading-tight truncate cursor-pointer hover:text-primary transition-colors" title={fullName} onClick={() => onDetailClick?.(lead)}>{fullName}</p>
+              {lead.instagram_handle && (
+                <span className="text-[10px] text-muted-foreground truncate block">@{lead.instagram_handle.replace(/^@/, "")}</span>
+              )}
+            </div>
             <div className="flex items-center gap-1 shrink-0">
               <DormantBadge lastContactedAt={lead.last_contacted_at} contactedAt={lead.contacted_at} createdAt={lead.created_at} />
               {isFeatureEnabled("leadScoring") && (
-                <Badge className={cn("text-[9px] border whitespace-nowrap px-1.5 py-0 font-bold", scoreBadge.className)}>
-                  {scoreBadge.label}
-                </Badge>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className={cn("inline-flex items-center rounded-full border px-1.5 py-0 text-[9px] font-bold cursor-pointer hover:opacity-80 transition-opacity", scoreBadge.className)}>
+                      {scoreBadge.label}
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-40 p-2" side="bottom" align="end">
+                    <p className="text-[10px] font-medium text-muted-foreground mb-1">Update Score</p>
+                    <form onSubmit={async (e) => {
+                      e.preventDefault();
+                      const val = parseInt((e.currentTarget.elements.namedItem("score") as HTMLInputElement).value);
+                      if (isNaN(val) || val < 0 || val > 100) return;
+                      await supabase.from("applications").update({ lead_score: val } as any).eq("id", lead.id);
+                      toast.success(`Score updated to ${val}`);
+                      onRefresh();
+                    }} className="flex items-center gap-1">
+                      <Input type="number" name="score" defaultValue={lead.lead_score ?? 50} min={0} max={100} className="h-7 text-xs w-16" />
+                      <Button type="submit" size="sm" className="h-7 text-xs px-2">Save</Button>
+                    </form>
+                  </PopoverContent>
+                </Popover>
               )}
             </div>
           </div>
@@ -457,10 +480,28 @@ const LeadCard = memo(function LeadCard({
                 <span className="truncate">{location}</span>
               </span>
             )}
-            <Badge className={cn("text-[9px] border shrink-0 whitespace-nowrap px-1.5 py-0", contactColor)}>
-              <Clock className="h-2 w-2 mr-0.5" />
-              {contactLabel}
-            </Badge>
+            <div className="flex items-center gap-1 shrink-0">
+              <Badge className={cn("text-[9px] border shrink-0 whitespace-nowrap px-1.5 py-0", contactColor)}>
+                <Clock className="h-2 w-2 mr-0.5" />
+                {contactLabel}
+              </Badge>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={async () => {
+                      await supabase.from("applications").update({ last_contacted_at: new Date().toISOString() } as any).eq("id", lead.id);
+                      logLeadActivity({ leadId: lead.id, type: "mark_contacted", title: "Marked as just contacted" });
+                      toast.success("Marked as contacted!");
+                      onRefresh();
+                    }}
+                    className="h-5 w-5 inline-flex items-center justify-center rounded-md text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                  >
+                    <CheckCircle className="h-3 w-3" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent><p>Mark just contacted</p></TooltipContent>
+              </Tooltip>
+            </div>
           </div>
 
           {/* ── Row 3: Phone + Email (stacked) ── */}

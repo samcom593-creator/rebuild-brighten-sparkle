@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import { Mail, Loader2, ChevronDown, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +23,8 @@ interface QuickEmailMenuProps {
   leadSource?: "aged_leads" | "applications";
   onEmailSent?: () => void;
   className?: string;
+  /** "full" shows icon+label; "icon" shows icon-only with fixed target size */
+  displayMode?: "full" | "icon";
 }
 
 type EmailTemplate = 
@@ -114,6 +117,7 @@ export function QuickEmailMenu({
   leadSource = "applications",
   onEmailSent,
   className,
+  displayMode = "full",
 }: QuickEmailMenuProps) {
   const [sendingTemplate, setSendingTemplate] = useState<EmailTemplate | null>(null);
   const [showAllTemplates, setShowAllTemplates] = useState(false);
@@ -187,17 +191,19 @@ export function QuickEmailMenu({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            variant="ghost"
-            size="sm"
-            className={className}
+            variant={displayMode === "icon" ? "ghost" : "ghost"}
+            size={displayMode === "icon" ? "icon" : "sm"}
+            className={cn(displayMode === "icon" && "h-8 w-8", className)}
             disabled={sendingTemplate !== null}
+            aria-label="Email templates"
+            title="Email templates"
           >
             {sendingTemplate ? (
-              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              <Loader2 className={cn("h-4 w-4 animate-spin", displayMode === "full" && "mr-1")} />
             ) : (
-              <Mail className="h-4 w-4 mr-1" />
+              <Mail className={cn("h-4 w-4", displayMode === "full" && "mr-1")} />
             )}
-            Email
+            {displayMode === "full" && "Email"}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-64">

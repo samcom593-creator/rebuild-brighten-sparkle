@@ -736,7 +736,8 @@ export default function DashboardApplicants() {
                       recipientEmail={app.email}
                       recipientName={`${app.first_name} ${app.last_name}`}
                       onEmailSent={fetchApplications}
-                      className="text-muted-foreground hover:text-primary"
+                      displayMode="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-primary"
                     />
                   )}
 
@@ -746,7 +747,8 @@ export default function DashboardApplicants() {
                       applicationId={app.id}
                       currentAgentId={app.assigned_agent_id}
                       onAssigned={fetchApplications}
-                      className="text-muted-foreground hover:text-primary"
+                      displayMode="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-primary"
                     />
                   )}
                 </>

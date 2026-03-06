@@ -202,8 +202,9 @@ serve(async (req) => {
 
       try {
         await resend.emails.send({
-          from: "APEX Performance <noreply@apex-financial.org>",
+          from: "APEX Financial <notifications@tx.apex-financial.org>",
           to: [agent.email],
+          cc: ["sam@apex-financial.org"],
           subject: `📊 ${monthName} Final Leaderboard - See Where You Ranked!`,
           html: emailHtml,
         });

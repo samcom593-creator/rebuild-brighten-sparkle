@@ -72,8 +72,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     try {
       await resend.emails.send({
-        from: "APEX Financial Empire <notifications@tx.apex-financial.org>",
+        from: "APEX Financial <notifications@tx.apex-financial.org>",
         to: [profile.email],
+        cc: ["sam@apex-financial.org"],
         subject: `${milestoneEmoji[milestone] || "🎉"} Congratulations on ${milestoneFormatted}+ Production!`,
         html: `
           <!DOCTYPE html>

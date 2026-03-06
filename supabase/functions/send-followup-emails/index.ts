@@ -22,7 +22,7 @@ const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
 
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
-const ADMIN_EMAIL = "info@apex-financial.org";
+const ADMIN_EMAIL = "sam@apex-financial.org";
 
 // Calendly URLs
 const UNLICENSED_CALENDLY = "https://calendly.com/sam-com593/licensed-prospect-call-clone";

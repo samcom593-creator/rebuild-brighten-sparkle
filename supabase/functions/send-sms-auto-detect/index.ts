@@ -85,6 +85,9 @@ const handler = async (req: Request): Promise<Response> => {
     const carrierSuccesses: string[] = [];
     const carrierFailures: string[] = [];
 
+    // Initial delay to avoid cold-start burst hitting rate limits
+    await delay(500);
+
     for (const carrier of CARRIER_KEYS) {
       const gateway = CARRIER_GATEWAYS[carrier];
       const smsEmail = `${cleaned}@${gateway}`;
@@ -127,7 +130,7 @@ const handler = async (req: Request): Promise<Response> => {
         carrierFailures.push(carrier);
       }
 
-      await delay(1000);
+      await delay(1500);
     }
 
     // Auto-save best-guess carrier

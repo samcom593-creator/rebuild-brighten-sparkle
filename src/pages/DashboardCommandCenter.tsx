@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -507,7 +507,7 @@ export default function DashboardCommandCenter() {
 
   if (!isAdmin) {
     return (
-      <DashboardLayout>
+      <>
         <div className="flex items-center justify-center h-[60vh]">
           <Card className="p-8 text-center">
             <Shield className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -515,12 +515,12 @@ export default function DashboardCommandCenter() {
             <p className="text-muted-foreground">This command center is only accessible to administrators.</p>
           </Card>
         </div>
-      </DashboardLayout>
+      </>
     );
   }
 
   return (
-    <DashboardLayout>
+    <>
       <div className="space-y-6 page-enter">
         {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -1084,6 +1084,6 @@ export default function DashboardCommandCenter() {
         agents={agentsData || []}
         timePeriod={timePeriod}
       />
-    </DashboardLayout>
+    </>
   );
 }

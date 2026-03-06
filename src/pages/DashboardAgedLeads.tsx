@@ -61,6 +61,7 @@ import { CallModeInterface } from "@/components/dashboard/CallModeInterface";
 import { AgedLeadImporter } from "@/components/dashboard/AgedLeadImporter";
 import { AnimatedNumber } from "@/components/dashboard/AnimatedNumber";
 import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 interface AgedLead {
   id: string;
@@ -151,6 +152,7 @@ function QuickAssignPanel({ managers, unassignedCount, onAssign }: {
 export default function DashboardAgedLeads() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const { user, isAdmin, isManager, isLoading: authLoading } = useAuth();
+  const { playSound } = useSoundEffects();
   const [leads, setLeads] = useState<AgedLead[]>([]);
   const [managers, setManagers] = useState<Manager[]>([]);
   const [loading, setLoading] = useState(true);
@@ -261,12 +263,14 @@ export default function DashboardAgedLeads() {
       if (error) throw error;
       setLeads(prev => prev.map(l => (l.id === leadId ? { ...l, status } : l)));
       toast.success(`Lead marked as ${status.replace("_", " ")}`);
+      playSound("success");
       if (status === "hired" || status === "contracted") {
         toast.info("Lead ready to be added to your CRM");
       }
     } catch (error) {
       console.error("Error updating lead status:", error);
       toast.error("Failed to update status");
+      playSound("error");
     }
   };
 
@@ -306,10 +310,12 @@ export default function DashboardAgedLeads() {
       // Remove from local state
       setLeads(prev => prev.filter(l => l.id !== banTarget.id));
       toast.success(`${banTarget.firstName} ${banTarget.lastName || ""} has been banned`);
+      playSound("success");
       setBanTarget(null);
     } catch (error: any) {
       console.error("Error banning prospect:", error);
       toast.error("Failed to ban prospect: " + (error.message || "Unknown error"));
+      playSound("error");
     } finally {
       setBanning(false);
     }
@@ -340,10 +346,12 @@ export default function DashboardAgedLeads() {
 
       setLeads(prev => prev.filter(l => l.id !== deleteTarget.id));
       toast.success(`${deleteTarget.firstName} ${deleteTarget.lastName || ""} deleted`);
+      playSound("success");
       setDeleteTarget(null);
     } catch (error: any) {
       console.error("Error deleting lead:", error);
       toast.error("Failed to delete lead: " + (error.message || "Unknown error"));
+      playSound("error");
     } finally {
       setDeleting(false);
     }
@@ -431,11 +439,13 @@ export default function DashboardAgedLeads() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       toast.success(data?.message || `Merged ${data?.merged || 0} groups, removed ${data?.deleted || 0} duplicates`);
+      playSound("celebrate");
       setShowMergeConfirm(false);
       fetchLeads();
     } catch (error: any) {
       console.error("Error merging duplicates:", error);
       toast.error("Failed to merge duplicates: " + (error.message || "Unknown error"));
+      playSound("error");
     } finally {
       setMerging(false);
     }
@@ -673,6 +683,7 @@ export default function DashboardAgedLeads() {
               });
             } catch (e) { console.error("Notify error:", e); }
             toast.success(`Assigned ${ids.length} leads!`);
+            playSound("celebrate");
             fetchLeads();
           }}
         />

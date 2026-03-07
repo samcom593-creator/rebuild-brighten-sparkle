@@ -28,6 +28,7 @@ import {
   Calendar,
   LayoutGrid,
   List,
+  Copy,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -1028,6 +1029,9 @@ export default function DashboardApplicants() {
                               <div className="min-w-0">
                                 <p className="font-medium truncate">{app.first_name} {app.last_name}</p>
                                 <p className="text-xs text-muted-foreground md:hidden">{app.email}</p>
+                                {app.phone && (
+                                  <p className="text-[10px] text-muted-foreground md:hidden select-all cursor-text" onClick={(e) => e.stopPropagation()}>{app.phone}</p>
+                                )}
                               </div>
                             </div>
                           </td>
@@ -1035,7 +1039,11 @@ export default function DashboardApplicants() {
                             <span className="text-muted-foreground">{app.email}</span>
                           </td>
                           <td className="p-3 align-middle hidden md:table-cell">
-                            <span className="text-muted-foreground">{app.phone || "—"}</span>
+                            {app.phone ? (
+                              <span className="text-muted-foreground select-all cursor-text" onClick={(e) => e.stopPropagation()}>{app.phone}</span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
                           </td>
                           <td className="p-3 align-middle">
                             <Badge variant="outline" className={cn("capitalize text-[10px]", statusColors[status])}>
@@ -1074,6 +1082,22 @@ export default function DashboardApplicants() {
                             <div className="flex items-center justify-end gap-1">
                               {!isTerminated && (
                                 <>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    title={app.phone ? `Copy ${app.phone}` : "No phone number"}
+                                    onClick={() => {
+                                      if (app.phone) {
+                                        navigator.clipboard.writeText(app.phone);
+                                        toast.success(`Copied ${app.phone}`);
+                                      } else {
+                                        toast.error("No phone number on file");
+                                      }
+                                    }}
+                                  >
+                                    <Phone className="h-3.5 w-3.5" />
+                                  </Button>
                                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setNotesApp(app)} title="Notes">
                                     <StickyNote className="h-3.5 w-3.5" />
                                   </Button>

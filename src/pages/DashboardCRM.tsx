@@ -648,7 +648,7 @@ export default function DashboardCRM() {
         managerIds.length > 0 ? supabase.from("agents").select("id, user_id").in("id", managerIds) : Promise.resolve({ data: [] as any[] }),
         liveAgentIds.length > 0 ? supabase.from("daily_production").select("agent_id, aop, presentations, deals_closed, production_date").in("agent_id", liveAgentIds).gte("production_date", monthStartStr) : Promise.resolve({ data: [] as any[] }),
         supabase.from("applications").select("assigned_agent_id, last_contacted_at").in("assigned_agent_id", allAgentIds).not("last_contacted_at", "is", null).order("last_contacted_at", { ascending: false }),
-        supabase.from("applications").select("email, license_progress, test_scheduled_date").is("terminated_at", null),
+        supabase.from("applications").select("id, email, license_progress, test_scheduled_date").is("terminated_at", null),
         supabase.from("lead_payment_tracking").select("agent_id, tier, paid").eq("week_start", weekStartStr).eq("paid", true),
       ]);
 
@@ -680,9 +680,9 @@ export default function DashboardCRM() {
         if (app.assigned_agent_id && app.last_contacted_at && !lastContactMap.has(app.assigned_agent_id)) lastContactMap.set(app.assigned_agent_id, app.last_contacted_at);
       }
 
-      // Build email→license progress map (matching agent's OWN application by email)
+      // Build email→license progress map AND email→applicationId map (matching agent's OWN application by email)
       const progressOrder = ["unlicensed","course_purchased","finished_course","test_scheduled","passed_test","fingerprints_done","waiting_on_license","licensed"];
-      const emailLicenseMap = new Map<string, { progress: string | null; testDate: string | null }>();
+      const emailLicenseMap = new Map<string, { progress: string | null; testDate: string | null; appId: string }>();
       for (const app of appLicenseResult.data || []) {
         const appEmail = app.email?.toLowerCase().trim();
         if (!appEmail) continue;
@@ -690,7 +690,7 @@ export default function DashboardCRM() {
         const newIdx = progressOrder.indexOf(app.license_progress || "unlicensed");
         const curIdx = current ? progressOrder.indexOf(current.progress || "unlicensed") : -1;
         if (newIdx > curIdx) {
-          emailLicenseMap.set(appEmail, { progress: app.license_progress, testDate: app.test_scheduled_date });
+          emailLicenseMap.set(appEmail, { progress: app.license_progress, testDate: app.test_scheduled_date, appId: app.id });
         }
       }
 

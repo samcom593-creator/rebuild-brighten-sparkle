@@ -1382,8 +1382,8 @@ function RecruiterDashboardInner() {
         </div>
       ) : (
         // Desktop: full-width sortable table
-        <div className="rounded-xl border border-border overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="rounded-xl border border-border overflow-x-auto">
+          <table className="w-full text-sm min-w-[1100px]">
             <thead>
               <tr className="border-b bg-muted/30">
                 <th className="text-left px-3 py-2.5 font-medium text-muted-foreground w-[200px]">Name</th>

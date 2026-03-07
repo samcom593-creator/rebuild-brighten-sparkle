@@ -971,8 +971,8 @@ export default function DashboardCRM() {
                       <p className="text-sm text-muted-foreground">No agents in this stage yet</p>
                     </div>
                   ) : (
-                    <div className={cn("rounded-xl border border-border overflow-hidden", section.accent, "border-l-4")}>
-                      <Table>
+                    <div className={cn("rounded-xl border border-border overflow-x-auto", section.accent, "border-l-4")}>
+                      <Table className="min-w-[800px]">
                         <TableHeader>
                           <TableRow className="hover:bg-transparent">
                             {bulkMode && <TableHead className="w-8" />}
@@ -1090,7 +1090,10 @@ export default function DashboardCRM() {
                                           onStageUpdate={handleOptimisticStageUpdate}
                                           onGoLive={setInstagramPromptAgent}
                                           onDeactivate={setDeactivateAgent}
-                                          onViewApp={(id) => setViewAppTarget({ agentId: id })}
+                          onViewApp={(id) => {
+                            const a = agents.find(ag => ag.id === id);
+                            setViewAppTarget({ agentId: id, applicationId: a?.applicationId });
+                          }}
                                           onRecord={setRecorderAgent}
                                           onAgentUpdate={onAgentUpdate}
                                           playSound={playSound}

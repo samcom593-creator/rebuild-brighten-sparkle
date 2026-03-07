@@ -1,71 +1,122 @@
 
+Goal: “Head-to-toe” verify every approved prompt is actually done, and close the remaining gaps that still make recruiting/notifications feel unreliable.
 
-# Go-Live Final Remediation Plan
+## What I already verified in your code + backend (current state)
+1) **Manager visibility (RLS)**
+- `applications` now has manager SELECT/UPDATE policies allowing managers to see/update apps assigned to themselves OR their sub-agents. Confirmed via live policies list.
 
-## Issues Identified
+2) **Dashboard date + “My Directs”**
+- `src/pages/Dashboard.tsx` now passes `dateRange` + `myDirectsOnly` into `fetchDashboardData()` and filters results.
 
-### 1. No "My Directs" Filter on Pipeline (DashboardApplicants), Dashboard, or RecruiterHQ
-Currently, admin/managers see ALL agents/applicants with no toggle to filter to only their directly-invited recruits. The AgentPipeline page has a "My Recruits" button, but DashboardApplicants, Dashboard, and RecruiterDashboard lack this.
+3) **Aged Leads horizontal scrolling**
+- `src/pages/DashboardAgedLeads.tsx` table is wrapped with `overflow-x-auto` and has `min-w-[1000px]`.
 
-**Fix**: Add a "My Directs" / "Full Team" toggle to:
-- `DashboardApplicants.tsx` — filter `assigned_agent_id` to only the current manager's agent ID
-- `Dashboard.tsx` — the `fetchDashboardData` function currently filters to `assigned_agent_id = agentData.id` for non-admin, but admin sees everything; add a toggle for admin to scope to their directs
-- `RecruiterDashboard.tsx` — add a "My Directs" filter button alongside existing filters
+4) **Email sending guardrails**
+- `src/components/dashboard/QuickEmailMenu.tsx` uses `invokeEdge("send-outreach-email")` and blocks send if `applicationId` is missing.
+- `supabase/functions/send-outreach-email/index.ts` returns structured 400s for missing fields.
 
-### 2. Aged Leads Missing a Visible "Distribute" Button
-The Aged Leads page has a `QuickAssignPanel` but it only appears when `isAdmin && managers.length > 0`. The per-row actions only have status changes + delete/ban via the DropdownMenu — no per-row assign button and no bulk distribute button at the bottom selection bar.
+5) **Truthful multi-channel UI behavior (partial)**
+- `src/lib/edgeInvoke.ts` correctly throws on `data.success === false` and throws if `channels` indicates all failed.
+- `supabase/functions/send-notification/index.ts` sets `success:false` when all channels fail (but see “Remaining gaps” below about HTTP status + broader usage).
 
-**Fix**:
-- Add a `QuickAssignMenu` to each row's actions dropdown (like LeadCenter has)
-- Add a bulk assign section to the bottom selection bar (currently only has "Delete Selected" and "Clear")
+## Remaining gaps I found (these are why it can still “feel broken”)
+### A) Unreferred applications are STILL being auto-assigned to a single default agent
+- DB trigger `trg_auto_assign_application` calls `public.auto_assign_unassigned_application()` which forces:
+  - `NEW.assigned_agent_id := '7c3c5581-3544-437f-bfe2-91391afb217d'` when null.
+- Even though `submit-application` now passes `null` when no referral is selected, the DB trigger still funnels them to that same agent.
 
-### 3. Avg Leads/Day Inaccurate in Lead Center
-The calculation uses `Math.round(recentLeads / 30)` which rounds to zero for small counts. Should use more precise calculation.
+**Fix depends on your decision (still unanswered):**
+- Option 1: Leave truly unassigned (no automatic assignment)
+- Option 2: Round-robin auto-assign across active managers
 
-**Fix**: Change to `parseFloat((recentLeads / 30).toFixed(1))` to show one decimal place.
+### B) Push looks “dead” in logs because pushes are being attempted/logged in the wrong place
+What the backend shows:
+- `push_subscriptions` has **9** rows (so push enrollment exists for some internal users).
+- But `notification_log` shows **push_sent = 0** in last 30 days, **push_failed = 31**, all with `recipient_user_id = null`.
+- Those “push failed” entries are coming from `send-batch-blast` which tries to resolve a push target by matching lead email to a profile user. Most leads don’t have accounts, so it logs “No push subscriptions” even though it never had a real user to target.
 
-### 4. Lead Center Missing Pipeline Actions (Hired, Contracted, etc.)
-Lead Center per-row actions have: Assign, Phone, Email, Resend Licensing, Delete, Ban. But it's missing the stage-change actions that exist in DashboardApplicants (Mark as Hired, Contracted, Terminate).
+So there are two separate issues:
+1) Bulk blasts are logging misleading push failures for non-users.
+2) Internal push sending (to agents/managers/admin) is not consistently logged into `notification_log`, so you don’t get a clean audit trail of real push deliveries.
 
-**Fix**: Add a DropdownMenu with status-change actions (Contacted, Hired, Contracted, Terminate) to the Lead Center row actions for application-source leads.
+### C) NotificationHub still uses raw `supabase.functions.invoke()` in many paths
+- NotificationHub has many loops using `supabase.functions.invoke()` without standardizing “truthful success” checks (some do, some don’t).
+- It also calls SMS auto-detect in loops; your `notification_log` shows fresh **429 rate-limit failures** (“2 requests/sec”), which creates “it said it sent but didn’t” moments during bursts.
 
-### 5. Dashboard Stats Not Filtering by DatePeriodSelector
-The `DatePeriodSelector` was added to Dashboard UI but `fetchDashboardData` doesn't use `dateRange` — it always queries all data.
+### D) `send-notification` still returns HTTP 207 on total failure
+- It returns `{ success:false }` (good), but uses status **207** (still treated as “OK-ish” by many clients).
+- Your `invokeEdge` wrapper catches `success:false`, but any place calling `supabase.functions.invoke("send-notification")` directly (now or in the future) can mis-handle 207.
 
-**Fix**: Pass `dateRange` into the query key and filter applications by `created_at` within the selected range.
+## Plan to make this “done for real” (implementation steps)
+### 1) Finalize lead routing behavior (DB)
+**You choose one:**
+- **Leave unassigned:** Update `public.auto_assign_unassigned_application()` so it does not overwrite `assigned_agent_id` when null.
+- **Round-robin:** Replace `public.auto_assign_unassigned_application()` with logic that selects the next active manager (or least-loaded manager) and assigns `assigned_agent_id` accordingly. (This likely requires a small helper table like `assignment_rotation_state` OR a deterministic “least open leads” query.)
 
-### 6. OnboardingPipelineCard Dashboard Accuracy
-The card shows Course Purchased, Test Scheduled, etc. based on `agents` table fields (`has_training_course`, `onboarding_stage`). It only queries agents invited by the current manager (non-admin). For admin it queries ALL agents. This is correct. However, it doesn't cross-reference with `applications` table license_progress data.
+Deliverable:
+- A DB migration updating the function (and possibly adding a small state table if round-robin).
 
-**Fix**: Cross-reference with `applications.license_progress` to ensure counts include applicants at each stage (course_purchased, passed_test, waiting_on_license, etc.), not just agent records.
+### 2) Make push reporting truthful + useful (backend)
+A. **Stop logging fake push failures for non-auth users**
+- Update `supabase/functions/send-batch-blast/index.ts`:
+  - Only attempt push if you can resolve a real `recipient_user_id`.
+  - If no user_id exists, do not write a push row to `notification_log` (or log as `skipped` with explicit reason if you want visibility).
 
-### 7. Todoist Integration
-Todoist has an official REST API. This would require the user's Todoist API token as a secret, stored via the secrets tool. We can create an edge function that syncs planner blocks to/from Todoist tasks. However, Todoist is not available as a connector — the user would need to provide their API key manually.
+B. **Centralize push logging**
+- Update `supabase/functions/send-push-notification/index.ts` to optionally:
+  - Write to `notification_log` with `recipient_user_id`, `status`, and an error reason per user when it fails.
+  - Return a structured result like:
+    - `sent`, `total`, `failedUserIds`, and optional failure reasons.
+This makes push auditable the same way email/SMS is.
 
-### 8. Google Calendar & Calendly Integration
-Google Calendar integration would require OAuth setup (not available as a connector). Calendly is already partially integrated (CalendlyEmbed component exists). For Google Calendar, we can generate `.ics` download links or `calendar.google.com` add-event URLs from scheduled interviews.
+### 3) Fix `send-notification` to follow the “truthful status code” standard
+- Update `supabase/functions/send-notification/index.ts`:
+  - If all channels fail: return **HTTP 500** (or 424) with `{ success:false, channels, errors }`.
+  - If any channel succeeds: return **200** with `{ success:true, channels, errors }`.
+- Keep the current per-channel logging into `notification_log`.
 
-**Fix**: Add "Add to Google Calendar" links on scheduled interviews in CalendarPage. For Calendly, it's already embedded — verify it's wired into scheduling flows.
+### 4) Remove false-success behavior in NotificationHub + reduce rate-limit failures
+In `src/pages/NotificationHub.tsx`:
+- Replace the remaining `supabase.functions.invoke(...)` “blast loops” with:
+  - `invokeEdge(...)` where appropriate, OR
+  - explicit checks on returned `data` (e.g., `successCount > 0`) before counting as success.
+- Add pacing/backoff in client loops:
+  - hard delay between sends (and/or batch size reduction)
+  - on rate-limit error, pause longer (e.g., 2–5s) and retry once, then skip to next.
+- Ensure all toasts reflect “any channel succeeds” (you selected this) and show channel breakdown when available.
 
----
+### 5) End-to-end verification checklist (this is the “make sure it’s done” pass)
+After implementing the above, we’ll validate with real actions and confirm both delivery + logs:
 
-## Implementation Plan
+1) **Lead routing**
+- Submit an application with no referral:
+  - Confirm `assigned_agent_id` matches your chosen behavior (null OR round-robin), and does not silently funnel to the old default.
 
-### Files to Modify
+2) **Email**
+- From Pipeline / Recruiter HQ: send an outreach email via QuickEmailMenu
+  - Confirm: email arrives
+  - Confirm: `notification_log` has `email: sent` row
+  - Confirm: UI toast success matches backend result
 
-| File | Changes |
-|------|---------|
-| `src/pages/DashboardApplicants.tsx` | Add "My Directs" / "Full Team" toggle button in filters; filter by `assigned_agent_id === agentId` when "My Directs" active |
-| `src/pages/Dashboard.tsx` | Pass `dateRange` to query; add "My Directs" toggle for admin; filter stats by date range |
-| `src/pages/RecruiterDashboard.tsx` | Add "My Directs" filter toggle |
-| `src/pages/DashboardAgedLeads.tsx` | Add per-row QuickAssignMenu; add bulk assign to selection bar |
-| `src/pages/LeadCenter.tsx` | Add status-change actions (Hired, Contracted, Terminate) to per-row dropdown; fix avg leads/day precision |
-| `src/components/dashboard/OnboardingPipelineCard.tsx` | Cross-reference applications table for accurate license_progress counts |
+3) **Push**
+- From an internal user workflow that targets real users (agent/manager/admin), trigger a push:
+  - Confirm: a push is delivered to at least one subscribed test user
+  - Confirm: `notification_log` records `push: sent` with a real `recipient_user_id` (not null)
 
-### External Integrations
-- **Todoist**: Requires API key — will prompt user to provide it via secrets tool before implementing
-- **Google Calendar**: Add "Add to Google Calendar" URL links on CalendarPage interview entries (no API key needed, uses URL scheme)
-- **Calendly**: Already embedded via CalendlyEmbed component — verify wiring
+4) **SMS Auto**
+- Trigger SMS auto-detect for 1–2 leads:
+  - Confirm: no immediate 429 spam
+  - Confirm: `notification_log` reflects sent vs failed accurately
 
-No database changes needed.
+## Files / areas that will change (next implementation pass)
+Backend:
+- `supabase/functions/send-notification/index.ts` (status codes + error payload detail)
+- `supabase/functions/send-push-notification/index.ts` (optional logging + per-user failure reporting)
+- `supabase/functions/send-batch-blast/index.ts` (skip fake push attempts; only log meaningful push)
+Database:
+- Migration updating `public.auto_assign_unassigned_application()` (and possibly adding a small helper table if round-robin)
+Frontend:
+- `src/pages/NotificationHub.tsx` (standardize success detection + backoff/pacing)
 
+## One missing input from you (required to finish “done”)
+- Lead routing choice for unreferred applications: **Leave unassigned** vs **Round-robin auto-assign**.

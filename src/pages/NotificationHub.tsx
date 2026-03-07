@@ -694,12 +694,16 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
           } else if (log.channel === "email" && log.recipient_email) {
             attempted++;
             channelSummary.email.attempted++;
-            const { data, error } = await supabase.functions.invoke("send-notification", {
-              body: { email: log.recipient_email, title: log.title, message: log.message },
-            });
-            if (!error && (data?.channels?.email || data?.success)) {
-              resent++;
-              channelSummary.email.resent++;
+            try {
+              const result = await invokeEdge("send-notification", {
+                email: log.recipient_email, title: log.title, message: log.message,
+              });
+              if (result.success) {
+                resent++;
+                channelSummary.email.resent++;
+              }
+            } catch {
+              // individual retry failed
             }
           } else if ((log.channel === "sms-auto" || log.channel === "sms") && log.recipient_phone) {
             attempted++;

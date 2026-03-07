@@ -288,6 +288,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     let sent = 0;
     const expiredEndpoints: string[] = [];
+    const failedUserIds: string[] = [];
 
     for (const sub of subscriptions) {
       const success = await sendWebPush(
@@ -299,6 +300,7 @@ const handler = async (req: Request): Promise<Response> => {
         sent++;
       } else {
         expiredEndpoints.push(sub.endpoint);
+        if (sub.user_id) failedUserIds.push(sub.user_id);
       }
     }
 
@@ -310,10 +312,28 @@ const handler = async (req: Request): Promise<Response> => {
       console.log(`[Push] Cleaned up ${expiredEndpoints.length} expired subscriptions`);
     }
 
+    // Log push delivery to notification_log for audit trail
+    for (const uid of targetUserIds) {
+      const userSent = subscriptions.some((s: any) => s.user_id === uid && !expiredEndpoints.includes(s.endpoint));
+      try {
+        await supabase.from("notification_log").insert({
+          recipient_user_id: uid,
+          channel: "push",
+          title: title || "Push Notification",
+          message: body || "",
+          status: userSent ? "sent" : "failed",
+          error_message: userSent ? null : "Push delivery failed or subscription expired",
+          metadata: { trigger: "send-push-notification", url },
+        });
+      } catch (e) {
+        console.error(`[Push] Log write failed for ${uid}:`, e);
+      }
+    }
+
     console.log(`[Push] Results: ${sent}/${subscriptions.length} sent successfully`);
 
     return new Response(
-      JSON.stringify({ success: true, sent, total: subscriptions.length, expired: expiredEndpoints.length }),
+      JSON.stringify({ success: true, sent, total: subscriptions.length, expired: expiredEndpoints.length, failedUserIds }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (error: any) {

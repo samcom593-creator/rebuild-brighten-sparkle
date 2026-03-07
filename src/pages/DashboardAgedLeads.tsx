@@ -928,8 +928,19 @@ export default function DashboardAgedLeads() {
             </TableBody>
           </Table>
           {selectedIds.size > 0 && (
-            <div className="flex items-center gap-3 px-4 py-2.5 border-t border-border bg-muted/30">
+            <div className="flex items-center gap-3 px-4 py-2.5 border-t border-border bg-muted/30 flex-wrap">
               <span className="text-xs font-medium">{selectedIds.size} selected</span>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs"
+                onClick={() => {
+                  const first100 = filteredLeads.slice(0, 100);
+                  setSelectedIds(new Set(first100.map(l => l.id)));
+                }}
+              >
+                Select 100
+              </Button>
               {isAdmin && managers.length > 0 && (
                 <>
                   <Select onValueChange={async (managerId) => {

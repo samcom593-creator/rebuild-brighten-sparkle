@@ -1108,11 +1108,7 @@ function RecruiterDashboardInner() {
       </AnimatePresence>
 
       {/* ── Header ── */}
-      <motion.div
-        initial={{ opacity: 0, y: -16 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative overflow-hidden rounded-xl border border-pink-500/20 bg-gradient-to-br from-pink-500/10 via-purple-500/5 to-transparent p-3"
-      >
+      <div className="relative overflow-hidden rounded-xl border border-pink-500/20 bg-gradient-to-br from-pink-500/10 via-purple-500/5 to-transparent p-3">
         <div className="flex flex-col md:flex-row md:items-center gap-2">
           <div className="flex-1">
             <div className="flex items-center gap-3">
@@ -1121,15 +1117,10 @@ function RecruiterDashboardInner() {
                 Recruiter HQ
               </h1>
               {advancedToday > 0 && (
-                <motion.div
-                  initial={{ scale: 0.9 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                  className="flex items-center gap-1 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-full px-3 py-0.5 text-xs font-bold"
-                >
+                <Badge variant="outline" className="flex items-center gap-1 bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs font-bold">
                   <Zap className="h-3 w-3" />
                   {advancedToday} boosts today
-                </motion.div>
+                </Badge>
               )}
             </div>
             <p className="text-sm text-muted-foreground">
@@ -1173,7 +1164,7 @@ function RecruiterDashboardInner() {
           </div>
         </div>
 
-      </motion.div>
+      </div>
 
       {/* ── Stat bubbles ── */}
       <div className="grid grid-cols-4 gap-1.5">

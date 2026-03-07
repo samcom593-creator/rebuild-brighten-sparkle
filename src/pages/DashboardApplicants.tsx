@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Users,
   Phone,
@@ -681,20 +681,20 @@ export default function DashboardApplicants() {
             )}
 
             {/* Actions Row */}
-            <div className="flex items-center gap-2 flex-wrap pt-2 border-t border-border/50">
+            <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-border/50">
               {/* Last contacted badge */}
               <LastContactedBadge applicationId={app.id} />
               
               {app.instagram_handle && (
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="icon"
+                  className="h-8 w-8 shrink-0 text-pink-400 hover:text-pink-300 hover:bg-pink-500/10"
                   onClick={() => openInstagram(app.instagram_handle!)}
-                  className="text-pink-400 hover:text-pink-300 hover:bg-pink-500/10"
+                  title={`@${app.instagram_handle}`}
+                  aria-label="Open Instagram"
                 >
-                  <Instagram className="h-4 w-4 mr-1" />
-                  <span className="hidden sm:inline">@{app.instagram_handle}</span>
-                  <ExternalLink className="h-3 w-3 ml-1" />
+                  <Instagram className="h-4 w-4" />
                 </Button>
               )}
               
@@ -702,25 +702,27 @@ export default function DashboardApplicants() {
                 <>
                   <Button
                     variant="ghost"
-                    size="sm"
-                    onClick={() => setNotesApp(app)}
+                    size="icon"
                     className={cn(
-                      "text-muted-foreground hover:text-foreground",
+                      "h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground",
                       app.notes && "text-primary"
                     )}
+                    onClick={() => setNotesApp(app)}
+                    title="Notes"
+                    aria-label="Notes"
                   >
-                    <StickyNote className="h-4 w-4 mr-1" />
-                    Notes
+                    <StickyNote className="h-4 w-4" />
                   </Button>
 
                   <Button
                     variant="ghost"
-                    size="sm"
+                    size="icon"
+                    className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
                     onClick={() => setRecorderApp(app)}
-                    className="text-muted-foreground hover:text-foreground"
+                    title="Record"
+                    aria-label="Record"
                   >
-                    <Mic className="h-4 w-4 mr-1" />
-                    Record
+                    <Mic className="h-4 w-4" />
                   </Button>
 
                   {app.license_status !== "licensed" && (
@@ -771,40 +773,44 @@ export default function DashboardApplicants() {
                 </Button>
               ) : (
                 <>
-                  {/* Hired button - available for any non-hired, non-contracted lead */}
+                  {/* Hired button */}
                   {status !== "hired" && status !== "contracted" && (
                     <Button
-                      variant="default"
-                      size="sm"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0 text-emerald-400 hover:bg-emerald-500/10"
                       onClick={() => handleMarkAsHired(app.id)}
+                      title="Mark as Hired"
+                      aria-label="Hired"
                     >
-                      <UserCheck className="h-4 w-4 mr-1" />
-                      Hired
+                      <UserCheck className="h-4 w-4" />
                     </Button>
                   )}
 
-                  {/* Contracted button - available for any non-contracted lead */}
+                  {/* Contracted button */}
                   {!app.contracted_at && (
                     <Button
-                      variant="outline"
-                      size="sm"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0 text-violet-400 hover:bg-violet-500/10"
                       onClick={() => setContractedApp(app)}
-                      className="text-violet-400 border-violet-500/30 hover:bg-violet-500/10"
+                      title="Contract"
+                      aria-label="Contracted"
                     >
-                      <FileCheck className="h-4 w-4 mr-1" />
-                      Contracted
+                      <FileCheck className="h-4 w-4" />
                     </Button>
                   )}
 
                   {status !== "hired" && status !== "contracted" && (
                     <Button
                       variant="ghost"
-                      size="sm"
+                      size="icon"
+                      className="h-8 w-8 shrink-0 text-red-400 hover:bg-red-500/10"
                       onClick={() => setTerminateApp(app)}
-                      className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                      title="Terminate"
+                      aria-label="Terminate"
                     >
-                      <XCircle className="h-4 w-4 mr-1" />
-                      Terminate
+                      <XCircle className="h-4 w-4" />
                     </Button>
                   )}
                 </>
@@ -819,11 +825,7 @@ export default function DashboardApplicants() {
   return (
     <>
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-8"
-      >
+      <div className="mb-8">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-primary/10">
@@ -872,15 +874,10 @@ export default function DashboardApplicants() {
           </div>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Stats - Clickable to filter */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"
-      >
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {[
           { label: "Total Leads", value: totalLeads, icon: Users, color: "text-primary", filter: "all" },
           { label: "Hired", value: hired, icon: UserCheck, color: "text-emerald-400", filter: "hired" },
@@ -906,15 +903,9 @@ export default function DashboardApplicants() {
             </div>
           </GlassCard>
         ))}
-      </motion.div>
+      </div>
 
-      {/* Filters */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="flex flex-col sm:flex-row gap-4 mb-6"
-      >
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -959,15 +950,11 @@ export default function DashboardApplicants() {
             <SelectItem value="oldest">Oldest First</SelectItem>
           </SelectContent>
         </Select>
-      </motion.div>
+      </div>
 
       {/* Kanban View */}
       {viewMode === "kanban" ? (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
+        <div>
           <KanbanBoard
             applications={kanbanApps}
             onStageChange={handleKanbanStageChange}
@@ -978,15 +965,11 @@ export default function DashboardApplicants() {
             }}
             readOnly={!isAdmin && !isManager}
           />
-        </motion.div>
+        </div>
       ) : (
         <>
           {/* Applicants Table */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
+          <div>
             {filteredApplications.length > 0 ? (
               <div className="relative w-full overflow-auto border border-border rounded-xl">
                 <table className="w-full caption-bottom text-sm">
@@ -1154,16 +1137,11 @@ export default function DashboardApplicants() {
                 </p>
               </div>
             )}
-          </motion.div>
+          </div>
 
       {/* Terminated Leads Section - Only show when not filtering by terminated */}
       {statusFilter !== "terminated" && terminatedApplications.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="mt-8"
-        >
+        <div className="mt-8">
           <button
             onClick={() => setShowTerminated(!showTerminated)}
             className="w-full flex items-center justify-between p-4 rounded-lg bg-red-500/10 border border-red-500/20 hover:bg-red-500/15 transition-colors"
@@ -1194,7 +1172,7 @@ export default function DashboardApplicants() {
               </motion.div>
             )}
           </AnimatePresence>
-        </motion.div>
+        </div>
       )}
         </>
       )}

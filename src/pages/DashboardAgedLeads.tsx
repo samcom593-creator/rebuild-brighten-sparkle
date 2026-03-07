@@ -607,8 +607,7 @@ export default function DashboardAgedLeads() {
           { icon: CheckCircle2, label: "Hired", value: hiredLeads, gradient: "from-emerald-500/20 to-emerald-500/5" },
           { icon: AlertTriangle, label: "Duplicates", value: duplicateMap.size, gradient: "from-amber-500/20 to-amber-500/5" },
         ].map((stat, i) => (
-          <div>
-          >
+          <div key={stat.label}>
             <GlassCard variant="subtle" className="p-3.5">
               <div className="flex items-center gap-3">
                 <div className={cn("p-2 rounded-lg bg-gradient-to-br", stat.gradient)}>
@@ -626,7 +625,6 @@ export default function DashboardAgedLeads() {
 
       {/* Merge Duplicates Banner */}
       <div>
-      >
         {duplicateMap.size > 0 ? (
           <button
             onClick={handleAutoMergeDuplicates}
@@ -711,7 +709,7 @@ export default function DashboardAgedLeads() {
             <SelectItem value="new_drip">New Drip</SelectItem>
           </SelectContent>
         </Select>
-      </motion.div>
+      </div>
 
       {/* Quick Assign Panel */}
       {isAdmin && managers.length > 0 && (

@@ -714,8 +714,8 @@ export default function DashboardAgedLeads() {
           </p>
         </GlassCard>
       ) : (
-        <div className="rounded-xl border border-border overflow-hidden">
-          <Table>
+        <div className="rounded-xl border border-border overflow-hidden overflow-x-auto">
+          <Table className="min-w-[1000px]">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-10">

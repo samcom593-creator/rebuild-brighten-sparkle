@@ -607,11 +607,7 @@ export default function DashboardAgedLeads() {
           { icon: CheckCircle2, label: "Hired", value: hiredLeads, gradient: "from-emerald-500/20 to-emerald-500/5" },
           { icon: AlertTriangle, label: "Duplicates", value: duplicateMap.size, gradient: "from-amber-500/20 to-amber-500/5" },
         ].map((stat, i) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05, duration: 0.3 }}
+          <div>
           >
             <GlassCard variant="subtle" className="p-3.5">
               <div className="flex items-center gap-3">
@@ -624,15 +620,12 @@ export default function DashboardAgedLeads() {
                 </div>
               </div>
             </GlassCard>
-          </motion.div>
+          </div>
         ))}
       </div>
 
       {/* Merge Duplicates Banner */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15 }}
+      <div>
       >
         {duplicateMap.size > 0 ? (
           <button
@@ -663,7 +656,7 @@ export default function DashboardAgedLeads() {
             <p className="text-sm text-muted-foreground">No duplicates detected</p>
           </div>
         )}
-      </motion.div>
+      </div>
 
       {/* Filters Bar */}
       <motion.div

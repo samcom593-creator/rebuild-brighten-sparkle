@@ -604,11 +604,7 @@ export default function LeadCenter() {
   return (
     <div className="space-y-6 p-4 md:p-6 page-enter">
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col md:flex-row md:items-center justify-between gap-4"
-      >
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/30">
             <Target className="h-6 w-6 text-primary" />
@@ -633,15 +629,10 @@ export default function LeadCenter() {
             <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} /> Refresh
           </Button>
         </div>
-      </motion.div>
+      </div>
 
       {/* Stats Cards */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="grid grid-cols-2 md:grid-cols-5 gap-4"
-      >
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
           {
             label: "New Drip-Ins",
@@ -708,7 +699,7 @@ export default function LeadCenter() {
             </div>
           </GlassCard>
         ))}
-      </motion.div>
+      </div>
 
       {/* Filters */}
       <GlassCard className="p-4 sticky-filter-bar">

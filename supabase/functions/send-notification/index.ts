@@ -226,7 +226,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (!anyDelivered) {
       return new Response(
         JSON.stringify({ success: false, error: "All notification channels failed", channels: results }),
-        { status: 207, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 

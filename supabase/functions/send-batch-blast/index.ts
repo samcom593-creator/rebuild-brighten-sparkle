@@ -41,6 +41,7 @@ async function trySendPush(supabaseUrl: string, serviceRoleKey: string, supabase
       .ilike("email", lead.email)
       .maybeSingle();
 
+    // Skip push entirely for non-auth users — don't log fake failures
     if (!profile?.user_id) return false;
 
     const pushResponse = await fetch(`${supabaseUrl}/functions/v1/send-push-notification`, {
@@ -59,13 +60,15 @@ async function trySendPush(supabaseUrl: string, serviceRoleKey: string, supabase
     const pushResult = await pushResponse.json();
     const success = pushResult.sent > 0;
 
+    // Only log push if we actually had a real user to target
     await logNotification(supabase, {
       recipient_email: lead.email,
+      recipient_user_id: profile.user_id,
       channel: "push",
       title: "Batch Blast Push",
       message: `Push to ${lead.first_name} ${lead.last_name || ""}`,
       status: success ? "sent" : "failed",
-      error_message: success ? null : "No push subscriptions",
+      error_message: success ? null : (pushResult.message || "No push subscriptions"),
       metadata: { trigger: "batch-blast", type: "push" },
     });
 

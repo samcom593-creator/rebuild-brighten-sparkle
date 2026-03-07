@@ -102,51 +102,114 @@ function QuickAssignPanel({ managers, unassignedCount, onAssign }: {
   onAssign: (managerId: string, count: number) => Promise<void>;
 }) {
   const [selectedManager, setSelectedManager] = useState("");
-  const [count, setCount] = useState(5);
+  const [count, setCount] = useState(100);
   const [assigning, setAssigning] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const presets = [25, 50, 100];
 
   if (unassignedCount === 0) return null;
 
+  const effectiveCount = Math.min(count, unassignedCount);
+  const selectedManagerName = managers.find(m => m.id === selectedManager)?.name || "";
+
+  const handleAssign = async () => {
+    setConfirmOpen(false);
+    setAssigning(true);
+    await onAssign(selectedManager, effectiveCount);
+    setAssigning(false);
+  };
+
+  const triggerAssign = () => {
+    if (effectiveCount >= 50) {
+      setConfirmOpen(true);
+    } else {
+      handleAssign();
+    }
+  };
+
   return (
-    <GlassCard className="p-4">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-        <div className="flex items-center gap-2 text-sm font-medium">
-          <UserPlus className="h-4 w-4 text-primary" />
-          Quick Assign ({unassignedCount} unassigned)
+    <>
+      <GlassCard className="p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <UserPlus className="h-5 w-5 text-primary" />
+          <span className="font-semibold text-sm">Bulk Assign</span>
+          <Badge variant="outline" className="ml-1 bg-primary/15 text-primary border-primary/25 text-xs">
+            {unassignedCount} unassigned
+          </Badge>
         </div>
-        <Select value={selectedManager} onValueChange={setSelectedManager}>
-          <SelectTrigger className="w-[180px] h-8 text-xs">
-            <SelectValue placeholder="Select manager..." />
-          </SelectTrigger>
-          <SelectContent>
-            {managers.map(m => (
-              <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <Select value={selectedManager} onValueChange={setSelectedManager}>
+            <SelectTrigger className="w-[200px] h-9 text-sm">
+              <SelectValue placeholder="Select manager..." />
+            </SelectTrigger>
+            <SelectContent>
+              {managers.map(m => (
+                <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex items-center gap-1.5">
+            {presets.map(p => (
+              <Button
+                key={p}
+                size="sm"
+                variant={count === p ? "default" : "outline"}
+                className={cn("h-8 px-3 text-xs font-semibold", count === p && "shadow-sm")}
+                onClick={() => setCount(Math.min(p, unassignedCount))}
+                disabled={p > unassignedCount}
+              >
+                {p}
+              </Button>
             ))}
-          </SelectContent>
-        </Select>
-        <Input
-          type="number"
-          min={1}
-          max={unassignedCount}
-          value={count}
-          onChange={e => setCount(Math.min(parseInt(e.target.value) || 1, unassignedCount))}
-          className="w-20 h-8 text-xs text-center"
-        />
-        <Button
-          size="sm"
-          disabled={!selectedManager || assigning}
-          onClick={async () => {
-            setAssigning(true);
-            await onAssign(selectedManager, count);
-            setAssigning(false);
-          }}
-          className="h-8 text-xs"
-        >
-          {assigning ? <RefreshCw className="h-3 w-3 animate-spin mr-1" /> : <UserPlus className="h-3 w-3 mr-1" />}
-          Send
-        </Button>
-      </div>
-    </GlassCard>
+            <Button
+              size="sm"
+              variant={count === unassignedCount ? "default" : "outline"}
+              className={cn("h-8 px-3 text-xs font-semibold", count === unassignedCount && "shadow-sm")}
+              onClick={() => setCount(unassignedCount)}
+            >
+              All ({unassignedCount})
+            </Button>
+          </div>
+          <Input
+            type="number"
+            min={1}
+            max={unassignedCount}
+            value={count}
+            onChange={e => setCount(Math.min(parseInt(e.target.value) || 1, unassignedCount))}
+            className="w-20 h-8 text-xs text-center"
+            placeholder="Custom"
+          />
+          <Button
+            disabled={!selectedManager || assigning || effectiveCount === 0}
+            onClick={triggerAssign}
+            className="h-9 px-5 text-sm font-semibold"
+          >
+            {assigning ? <RefreshCw className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <UserPlus className="h-3.5 w-3.5 mr-1.5" />}
+            Send {effectiveCount} Leads
+          </Button>
+        </div>
+      </GlassCard>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5 text-primary" />
+              Confirm Bulk Assignment
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              You are about to assign <strong>{effectiveCount}</strong> aged leads to <strong>{selectedManagerName}</strong>. The manager will receive an email notification. This action can be undone by reassigning leads individually.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleAssign}>
+              Assign {effectiveCount} Leads
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
@@ -865,8 +928,19 @@ export default function DashboardAgedLeads() {
             </TableBody>
           </Table>
           {selectedIds.size > 0 && (
-            <div className="flex items-center gap-3 px-4 py-2.5 border-t border-border bg-muted/30">
+            <div className="flex items-center gap-3 px-4 py-2.5 border-t border-border bg-muted/30 flex-wrap">
               <span className="text-xs font-medium">{selectedIds.size} selected</span>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs"
+                onClick={() => {
+                  const first100 = filteredLeads.slice(0, 100);
+                  setSelectedIds(new Set(first100.map(l => l.id)));
+                }}
+              >
+                Select 100
+              </Button>
               {isAdmin && managers.length > 0 && (
                 <>
                   <Select onValueChange={async (managerId) => {

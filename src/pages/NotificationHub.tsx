@@ -323,14 +323,18 @@ function CarrierAssignmentTool() {
     try {
       for (const lead of leads) {
         if (!lead.phone) continue;
-        const { error } = await supabase.functions.invoke("send-sms-auto-detect", {
-          body: {
+        try {
+          await invokeEdge("send-sms-auto-detect", {
             phone: lead.phone,
             message: `Hey ${lead.first_name}! Apex Financial has an opportunity for you — check your email! 🚀`.substring(0, 160),
             applicationId: lead.id,
-          },
-        });
-        if (!error) sent++;
+          });
+          sent++;
+        } catch {
+          // individual send failed, continue
+        }
+        // Pace to avoid rate limits
+        await new Promise(r => setTimeout(r, 600));
       }
       playSound("celebrate");
       toast.success(`Auto-blast sent to ${sent} leads across all carriers`);
@@ -540,20 +544,20 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
         return;
       }
 
-      let sent = 0;
+    let sent = 0;
       for (const app of apps) {
         try {
-          await supabase.functions.invoke("send-sms-auto-detect", {
-            body: {
-              phone: app.phone,
-              message: `Hey ${app.first_name}! You're making great progress on your course. Let's schedule a call to discuss next steps! 📞`,
-              applicationId: app.id,
-            },
+          await invokeEdge("send-sms-auto-detect", {
+            phone: app.phone,
+            message: `Hey ${app.first_name}! You're making great progress on your course. Let's schedule a call to discuss next steps! 📞`,
+            applicationId: app.id,
           });
           sent++;
         } catch {
           // continue
         }
+        // Pace to avoid rate limits
+        await new Promise(r => setTimeout(r, 600));
       }
       playSound("celebrate");
       toast.success(`Sent scheduling SMS to ${sent} applicants with course progress`);

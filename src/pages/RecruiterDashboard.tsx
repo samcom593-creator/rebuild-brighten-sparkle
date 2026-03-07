@@ -617,12 +617,12 @@ const LeadCard = memo(function LeadCard({
                   <button
                     onClick={async () => {
                       try {
-                        await supabase.functions.invoke("send-sms-auto-detect", {
-                          body: { phone: lead.phone, message: `Hey ${lead.first_name}, just following up on your Apex Financial application! Reply or call us back.`, applicationId: lead.id },
+                        await invokeEdge("send-sms-auto-detect", {
+                          phone: lead.phone, message: `Hey ${lead.first_name}, just following up on your Apex Financial application! Reply or call us back.`, applicationId: lead.id,
                         });
                         toast.success("SMS sent!");
                         onXP(XP_REWARDS.contact, "💬 SMS sent!");
-                      } catch { toast.error("Failed to send SMS"); }
+                      } catch (err: any) { toast.error(err.message || "Failed to send SMS"); }
                     }}
                     className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded-md hover:bg-accent transition-colors"
                   >

@@ -45,6 +45,7 @@ export default function ApplicantCheckin() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [helpNotified, setHelpNotified] = useState(false);
 
   const [progress, setProgress] = useState("");
   const [testDate, setTestDate] = useState("");

@@ -1474,8 +1474,18 @@ function RecruiterDashboardInner() {
                             recipientEmail={lead.email}
                             recipientName={fullName}
                             onEmailSent={() => fetchLeads(true)}
+                            displayMode="icon"
                             className="h-6 w-6 px-0"
                           />
+                          {isAdmin && (
+                            <QuickAssignMenu
+                              applicationId={lead.id}
+                              currentAgentId={lead.assigned_agent_id}
+                              onAssigned={() => fetchLeads(true)}
+                              displayMode="icon"
+                              className="h-6 w-6 text-muted-foreground hover:text-primary"
+                            />
+                          )}
                         </div>
                       </td>
                     </tr>

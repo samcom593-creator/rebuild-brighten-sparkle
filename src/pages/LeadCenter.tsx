@@ -85,6 +85,9 @@ interface Lead {
   createdAt: string;
   referralSource?: string;
   contactedAt?: string;
+  contractedAt?: string;
+  closedAt?: string;
+  terminatedAt?: string;
   notes?: string;
   hasContactHistory?: boolean;
   licenseProgress?: string;
@@ -106,7 +109,8 @@ const statusColors: Record<string, string> = {
   contracting: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30",
   approved: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
   hired: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-  contracted: "bg-teal-500/20 text-teal-400 border-teal-500/30",
+  contracted: "bg-violet-500/20 text-violet-400 border-violet-500/30",
+  terminated: "bg-red-500/20 text-red-400 border-red-500/30",
   rejected: "bg-red-500/20 text-red-400 border-red-500/30",
   not_qualified: "bg-red-500/20 text-red-400 border-red-500/30",
   not_contacted: "bg-gray-500/20 text-gray-400 border-gray-500/30",
@@ -218,6 +222,9 @@ export default function LeadCenter() {
         createdAt: app.created_at,
         referralSource: app.referral_source || undefined,
         contactedAt: app.contacted_at || undefined,
+        contractedAt: app.contracted_at || undefined,
+        closedAt: app.closed_at || undefined,
+        terminatedAt: app.terminated_at || undefined,
         notes: app.notes || undefined,
         hasContactHistory: contactedSet.has(app.id),
         licenseProgress: app.license_progress || undefined,
@@ -808,9 +815,14 @@ export default function LeadCenter() {
                   const leadKey = encodeLeadKey(lead.source, lead.id);
                   const isSelected = selectedLeads.has(leadKey);
                   
-                  // Determine display status
-                  const displayStatus = !lead.contactedAt ? "Not Contacted" : formatStatus(lead.status);
-                  const statusColorKey = !lead.contactedAt ? "not_contacted" : lead.status;
+                   // Derive status from timestamps (like Pipeline does) for accuracy
+                   const derivedStatus = lead.terminatedAt ? "terminated"
+                     : lead.contractedAt ? "contracted"
+                     : lead.closedAt ? "hired"
+                     : !lead.contactedAt ? "not_contacted"
+                     : lead.status;
+                   const displayStatus = derivedStatus === "not_contacted" ? "Not Contacted" : formatStatus(derivedStatus);
+                   const statusColorKey = derivedStatus;
 
                   return (
                     <TableRow
@@ -962,10 +974,14 @@ export default function LeadCenter() {
                                   {lead.status !== "contracted" && (
                                     <DropdownMenuItem
                                       onClick={async () => {
-                                        await supabase.from("applications").update({ contracted_at: new Date().toISOString() }).eq("id", lead.id);
-                                        playSound("celebrate");
-                                        toast.success("Marked as contracted!");
-                                        fetchLeads();
+                                         await supabase.from("applications").update({ 
+                                           contracted_at: new Date().toISOString(),
+                                           status: "contracting" as any,
+                                           closed_at: new Date().toISOString(),
+                                         }).eq("id", lead.id);
+                                         playSound("celebrate");
+                                         toast.success("Marked as contracted!");
+                                         fetchLeads();
                                       }}
                                       className="text-xs gap-2"
                                     >

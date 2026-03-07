@@ -706,8 +706,11 @@ export default function DashboardCRM() {
         const profile = profileMap.get(agent.user_id);
         const ws = weeklyProductionMap.get(agent.id) || { aop: 0, presentations: 0, deals: 0 };
         const pay = paymentMap.get(agent.id) || { standard: false, premium: false };
+        const emailKey = profile?.email?.toLowerCase().trim() || "";
+        const licenseEntry = emailLicenseMap.get(emailKey);
         return {
           id: agent.id, userId: agent.user_id || "", name: profile?.full_name || agent.display_name || "Unknown Agent",
+          applicationId: licenseEntry?.appId || undefined,
           email: profile?.email || "", phone: profile?.phone || undefined, avatarUrl: profile?.avatar_url || undefined,
           instagramHandle: profile?.instagram_handle || undefined, onboardingStage: agent.onboarding_stage || "onboarding",
           attendanceStatus: agent.attendance_status || "good", performanceTier: agent.performance_tier || "below_10k",
@@ -722,7 +725,7 @@ export default function DashboardCRM() {
           weeklyClosingRate: ws.presentations > 0 ? Math.round((ws.deals / ws.presentations) * 100) : 0,
           monthlyALP: monthlyProductionMap.get(agent.id) || 0, monthlyDeals: monthlyDealsMap.get(agent.id) || 0,
           lastContactedAt: lastContactMap.get(agent.id) || null, standardPaid: pay.standard, premiumPaid: pay.premium,
-          licenseProgress: emailLicenseMap.get(profile?.email?.toLowerCase().trim() || "")?.progress || null, testScheduledDate: emailLicenseMap.get(profile?.email?.toLowerCase().trim() || "")?.testDate || null,
+          licenseProgress: licenseEntry?.progress || null, testScheduledDate: licenseEntry?.testDate || null,
           agentLicenseStatus: agent.license_status || "unlicensed",
         };
       });

@@ -120,12 +120,13 @@ export default function ApplicantCheckin() {
       // If they need help, notify admin + manager
       if (needsHelp) {
         try {
+          const applicantName = applicant ? `${applicant.first_name} ${applicant.last_name}` : "Applicant";
           await supabase.functions.invoke("send-notification", {
             body: {
-              type: "checkin_help_request",
-              applicationId: appId,
-              applicantName: applicant ? `${applicant.first_name} ${applicant.last_name}` : "Applicant",
-              progress,
+              email: "sam@apex-financial.org",
+              title: "🆘 Applicant Needs Help",
+              message: `${applicantName} submitted a check-in and flagged that they need help. Progress: ${progress}. ${blocker ? `Blocker: ${blocker}` : ""}`,
+              url: `${window.location.origin}/applicants?search=${encodeURIComponent(applicant?.email || "")}`,
             },
           });
         } catch (e) {

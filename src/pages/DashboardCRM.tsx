@@ -1056,6 +1056,7 @@ export default function DashboardCRM() {
                                           {agent.standardPaid && !agent.premiumPaid && <Badge className="text-[8px] h-3.5 px-1 bg-emerald-500/10 text-emerald-500 border-emerald-500/20">$250</Badge>}
                                         </div>
                                         <p className="text-[10px] text-muted-foreground truncate">{agent.email}</p>
+                                        {agent.phone && <p className="text-[10px] text-muted-foreground select-all cursor-text" onClick={e => e.stopPropagation()}>{agent.phone}</p>}
                                       </div>
                                     </div>
                                   </TableCell>
@@ -1161,6 +1162,7 @@ export default function DashboardCRM() {
                             <div className="min-w-0 flex-1">
                               <p className="text-xs font-medium truncate">{agent.name}</p>
                               <p className="text-[10px] text-muted-foreground truncate">{agent.email}</p>
+                              {agent.phone && <p className="text-[10px] text-muted-foreground select-all cursor-text" onClick={e => e.stopPropagation()}>{agent.phone}</p>}
                             </div>
                             <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                               {agent.phone && (

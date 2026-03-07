@@ -626,11 +626,7 @@ export default function CallCenter() {
   return (
     <div className="flex flex-col h-full w-full max-w-6xl mx-auto p-2 md:p-8 page-enter">
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between mb-6"
-      >
+      <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/30">
             <Phone className="h-5 w-5 text-primary" />
@@ -652,7 +648,7 @@ export default function CallCenter() {
             Exit
           </Button>
         </div>
-      </motion.div>
+      </div>
 
       {/* Content */}
       {loading ? (

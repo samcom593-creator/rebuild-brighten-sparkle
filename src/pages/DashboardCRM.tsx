@@ -886,12 +886,10 @@ export default function DashboardCRM() {
             { label: "Live", count: liveCount, icon: Briefcase, color: "text-emerald-500", borderColor: "border-t-emerald-500", bgGlow: "bg-emerald-500/5" },
             { label: "Needs F/U", count: needsFollowUpCount, icon: AlertTriangle, color: "text-red-500", borderColor: "border-t-red-500", bgGlow: "bg-red-500/5" },
           ].map(s => (
-            <motion.div
+            <div
               key={s.label}
-              whileHover={{ y: -2 }}
-              transition={{ duration: 0.15 }}
               className={cn(
-                "flex items-center gap-2.5 px-3.5 py-3 rounded-xl border border-border/60 bg-card/80 backdrop-blur-sm shadow-sm border-t-2",
+                "flex items-center gap-2.5 px-3.5 py-3 rounded-xl border border-border/60 bg-card/80 backdrop-blur-sm shadow-sm border-t-2 transition-transform hover:-translate-y-0.5",
                 s.borderColor, s.bgGlow
               )}
             >
@@ -909,7 +907,7 @@ export default function DashboardCRM() {
                   </div>
                 </div>
               )}
-            </motion.div>
+            </div>
           ))}
         </div>
 

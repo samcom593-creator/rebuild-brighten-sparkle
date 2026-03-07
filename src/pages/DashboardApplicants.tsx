@@ -825,10 +825,7 @@ export default function DashboardApplicants() {
   return (
     <>
       {/* Header */}
-      <div
-        className="mb-8"
-      >
-      >
+      <div className="mb-8">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-primary/10">

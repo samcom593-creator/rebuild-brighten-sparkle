@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, Fragment } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdge } from "@/lib/edgeInvoke";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -693,12 +694,16 @@ function QuickActionCards({ boostLocked }: { boostLocked?: boolean }) {
           } else if (log.channel === "email" && log.recipient_email) {
             attempted++;
             channelSummary.email.attempted++;
-            const { data, error } = await supabase.functions.invoke("send-notification", {
-              body: { email: log.recipient_email, title: log.title, message: log.message },
-            });
-            if (!error && (data?.channels?.email || data?.success)) {
-              resent++;
-              channelSummary.email.resent++;
+            try {
+              const result = await invokeEdge("send-notification", {
+                email: log.recipient_email, title: log.title, message: log.message,
+              });
+              if (result.success) {
+                resent++;
+                channelSummary.email.resent++;
+              }
+            } catch {
+              // individual retry failed
             }
           } else if ((log.channel === "sms-auto" || log.channel === "sms") && log.recipient_phone) {
             attempted++;

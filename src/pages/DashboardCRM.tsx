@@ -648,7 +648,7 @@ export default function DashboardCRM() {
         managerIds.length > 0 ? supabase.from("agents").select("id, user_id").in("id", managerIds) : Promise.resolve({ data: [] as any[] }),
         liveAgentIds.length > 0 ? supabase.from("daily_production").select("agent_id, aop, presentations, deals_closed, production_date").in("agent_id", liveAgentIds).gte("production_date", monthStartStr) : Promise.resolve({ data: [] as any[] }),
         supabase.from("applications").select("assigned_agent_id, last_contacted_at").in("assigned_agent_id", allAgentIds).not("last_contacted_at", "is", null).order("last_contacted_at", { ascending: false }),
-        supabase.from("applications").select("email, license_progress, test_scheduled_date").is("terminated_at", null),
+        supabase.from("applications").select("id, email, license_progress, test_scheduled_date").is("terminated_at", null),
         supabase.from("lead_payment_tracking").select("agent_id, tier, paid").eq("week_start", weekStartStr).eq("paid", true),
       ]);
 
@@ -680,9 +680,9 @@ export default function DashboardCRM() {
         if (app.assigned_agent_id && app.last_contacted_at && !lastContactMap.has(app.assigned_agent_id)) lastContactMap.set(app.assigned_agent_id, app.last_contacted_at);
       }
 
-      // Build email→license progress map (matching agent's OWN application by email)
+      // Build email→license progress map AND email→applicationId map (matching agent's OWN application by email)
       const progressOrder = ["unlicensed","course_purchased","finished_course","test_scheduled","passed_test","fingerprints_done","waiting_on_license","licensed"];
-      const emailLicenseMap = new Map<string, { progress: string | null; testDate: string | null }>();
+      const emailLicenseMap = new Map<string, { progress: string | null; testDate: string | null; appId: string }>();
       for (const app of appLicenseResult.data || []) {
         const appEmail = app.email?.toLowerCase().trim();
         if (!appEmail) continue;
@@ -690,7 +690,7 @@ export default function DashboardCRM() {
         const newIdx = progressOrder.indexOf(app.license_progress || "unlicensed");
         const curIdx = current ? progressOrder.indexOf(current.progress || "unlicensed") : -1;
         if (newIdx > curIdx) {
-          emailLicenseMap.set(appEmail, { progress: app.license_progress, testDate: app.test_scheduled_date });
+          emailLicenseMap.set(appEmail, { progress: app.license_progress, testDate: app.test_scheduled_date, appId: app.id });
         }
       }
 
@@ -706,8 +706,11 @@ export default function DashboardCRM() {
         const profile = profileMap.get(agent.user_id);
         const ws = weeklyProductionMap.get(agent.id) || { aop: 0, presentations: 0, deals: 0 };
         const pay = paymentMap.get(agent.id) || { standard: false, premium: false };
+        const emailKey = profile?.email?.toLowerCase().trim() || "";
+        const licenseEntry = emailLicenseMap.get(emailKey);
         return {
           id: agent.id, userId: agent.user_id || "", name: profile?.full_name || agent.display_name || "Unknown Agent",
+          applicationId: licenseEntry?.appId || undefined,
           email: profile?.email || "", phone: profile?.phone || undefined, avatarUrl: profile?.avatar_url || undefined,
           instagramHandle: profile?.instagram_handle || undefined, onboardingStage: agent.onboarding_stage || "onboarding",
           attendanceStatus: agent.attendance_status || "good", performanceTier: agent.performance_tier || "below_10k",
@@ -722,7 +725,7 @@ export default function DashboardCRM() {
           weeklyClosingRate: ws.presentations > 0 ? Math.round((ws.deals / ws.presentations) * 100) : 0,
           monthlyALP: monthlyProductionMap.get(agent.id) || 0, monthlyDeals: monthlyDealsMap.get(agent.id) || 0,
           lastContactedAt: lastContactMap.get(agent.id) || null, standardPaid: pay.standard, premiumPaid: pay.premium,
-          licenseProgress: emailLicenseMap.get(profile?.email?.toLowerCase().trim() || "")?.progress || null, testScheduledDate: emailLicenseMap.get(profile?.email?.toLowerCase().trim() || "")?.testDate || null,
+          licenseProgress: licenseEntry?.progress || null, testScheduledDate: licenseEntry?.testDate || null,
           agentLicenseStatus: agent.license_status || "unlicensed",
         };
       });
@@ -971,8 +974,8 @@ export default function DashboardCRM() {
                       <p className="text-sm text-muted-foreground">No agents in this stage yet</p>
                     </div>
                   ) : (
-                    <div className={cn("rounded-xl border border-border overflow-hidden", section.accent, "border-l-4")}>
-                      <Table>
+                    <div className={cn("rounded-xl border border-border overflow-x-auto", section.accent, "border-l-4")}>
+                      <Table className="min-w-[800px]">
                         <TableHeader>
                           <TableRow className="hover:bg-transparent">
                             {bulkMode && <TableHead className="w-8" />}
@@ -1090,7 +1093,10 @@ export default function DashboardCRM() {
                                           onStageUpdate={handleOptimisticStageUpdate}
                                           onGoLive={setInstagramPromptAgent}
                                           onDeactivate={setDeactivateAgent}
-                                          onViewApp={(id) => setViewAppTarget({ agentId: id })}
+                          onViewApp={(id) => {
+                            const a = agents.find(ag => ag.id === id);
+                            setViewAppTarget({ agentId: id, applicationId: a?.applicationId });
+                          }}
                                           onRecord={setRecorderAgent}
                                           onAgentUpdate={onAgentUpdate}
                                           playSound={playSound}

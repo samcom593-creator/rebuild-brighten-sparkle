@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdge } from "@/lib/edgeInvoke";
 import { toast } from "sonner";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Input } from "@/components/ui/input";
@@ -44,6 +45,7 @@ export default function ApplicantCheckin() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [helpNotified, setHelpNotified] = useState(false);
 
   const [progress, setProgress] = useState("");
   const [testDate, setTestDate] = useState("");
@@ -118,22 +120,23 @@ export default function ApplicantCheckin() {
         .eq("id", appId);
 
       // If they need help, notify admin + manager
+      let helpSent = false;
       if (needsHelp) {
         try {
           const applicantName = applicant ? `${applicant.first_name} ${applicant.last_name}` : "Applicant";
-          await supabase.functions.invoke("send-notification", {
-            body: {
-              email: "sam@apex-financial.org",
-              title: "🆘 Applicant Needs Help",
-              message: `${applicantName} submitted a check-in and flagged that they need help. Progress: ${progress}. ${blocker ? `Blocker: ${blocker}` : ""}`,
-              url: `${window.location.origin}/applicants?search=${encodeURIComponent(applicant?.email || "")}`,
-            },
+          const result = await invokeEdge("send-notification", {
+            email: "sam@apex-financial.org",
+            title: "🆘 Applicant Needs Help",
+            message: `${applicantName} submitted a check-in and flagged that they need help. Progress: ${progress}. ${blocker ? `Blocker: ${blocker}` : ""}`,
+            url: `${window.location.origin}/applicants?search=${encodeURIComponent(applicant?.email || "")}`,
           });
+          helpSent = result.success;
         } catch (e) {
           console.error("Failed to send help notification:", e);
         }
       }
 
+      if (needsHelp) setHelpNotified(helpSent);
       setSubmitted(true);
       toast.success("Check-in submitted! 🎉");
     } catch (err) {
@@ -175,9 +178,14 @@ export default function ApplicantCheckin() {
           <p className="text-sm text-muted-foreground">
             Thanks {applicant?.first_name}! Your progress has been recorded. Keep pushing forward! 💪
           </p>
-          {needsHelp && (
+          {needsHelp && helpNotified && (
             <p className="text-sm text-primary font-medium">
               📞 Your manager and admin have been notified — someone will reach out to you soon!
+            </p>
+          )}
+          {needsHelp && !helpNotified && (
+            <p className="text-sm text-amber-500 font-medium">
+              ⚠️ We couldn't send the notification right now, but your request has been saved. Please call your manager directly.
             </p>
           )}
           <Badge variant="outline" className="text-xs">{todayPST}</Badge>

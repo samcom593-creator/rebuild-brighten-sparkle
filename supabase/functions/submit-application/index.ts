@@ -906,8 +906,9 @@ const handler = async (req: Request): Promise<Response> => {
       referral_source: data.referralSource ?? null,
       notes: null,
       
-      // Assign to the selected referral agent, or default to admin
-      assigned_agent_id: data.selectedReferralAgentId ?? "7c3c5581-3544-437f-bfe2-91391afb217d",
+      // Assign to the selected referral agent, or leave null for manual routing
+      // (DB trigger auto_assign_unassigned_application will assign to admin if still null)
+      assigned_agent_id: data.selectedReferralAgentId || null,
 
       status: "new",
       reviewed_at: null,

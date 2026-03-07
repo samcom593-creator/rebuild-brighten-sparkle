@@ -264,7 +264,7 @@ export function GlobalSidebar({
       <aside
         className={cn(
           "fixed top-0 left-0 z-40 h-full glass-strong border-r border-border overflow-hidden",
-          "transition-all duration-200 ease-in-out",
+          "transition-all duration-150 ease-in-out",
           isFullscreen && "pointer-events-none opacity-0"
         )}
         style={{ width: sidebarWidth }}
@@ -502,26 +502,19 @@ export function GlobalSidebar({
       </aside>
 
       {/* Floating toggle when fullscreen */}
-      <AnimatePresence>
-        {isFullscreen && (
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="fixed top-4 left-4 z-50"
+      {isFullscreen && (
+        <div className="fixed top-4 left-4 z-50 animate-fade-in">
+          <Button
+            variant="secondary"
+            size="icon"
+            onClick={onFullscreenToggle}
+            className="shadow-lg"
+            style={{ touchAction: "manipulation" }}
           >
-            <Button
-              variant="secondary"
-              size="icon"
-              onClick={onFullscreenToggle}
-              className="shadow-lg"
-              style={{ touchAction: "manipulation" }}
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <Menu className="h-5 w-5" />
+          </Button>
+        </div>
+      )}
 
       <InviteTeamModal
         open={showInviteModal}

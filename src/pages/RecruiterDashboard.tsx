@@ -600,12 +600,12 @@ const LeadCard = memo(function LeadCard({
                 <button
                   onClick={async () => {
                     try {
-                      await supabase.functions.invoke("send-notification", {
-                        body: { email: lead.email, title: "Apex Financial", message: `Hey ${lead.first_name}, following up on your application!` },
+                      const result = await invokeEdge("send-notification", {
+                        email: lead.email, title: "Apex Financial", message: `Hey ${lead.first_name}, following up on your application!`,
                       });
-                      toast.success("Push notification sent!");
+                      toast.success(`Notification sent! ${result.channelSummary || ""}`);
                       onXP(XP_REWARDS.contact, "🔔 Push sent!");
-                    } catch { toast.error("Failed to send push"); }
+                    } catch (err: any) { toast.error(err.message || "Failed to send"); }
                   }}
                   className="flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded-md hover:bg-accent transition-colors"
                 >
@@ -1025,7 +1025,7 @@ function RecruiterDashboardInner() {
       .filter((l) => {
         const q = search.toLowerCase();
         const name = `${l.first_name} ${l.last_name}`.toLowerCase();
-        if (q && !name.includes(q) && !l.email.toLowerCase().includes(q) && !l.phone.includes(q)) return false;
+        if (q && !name.includes(q) && !(l.email || "").toLowerCase().includes(q) && !(l.phone || "").includes(q)) return false;
         if (filterStage !== "all") {
           const col = PROGRESS_COLUMNS.find((c) => c.id === filterStage);
           if (col && !(col.values as readonly string[]).includes(l.license_progress || "unlicensed")) return false;

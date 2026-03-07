@@ -220,7 +220,15 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    console.log(`Notification for ${userId || email}: push=${results.push}, sms=${results.sms}, email=${results.email}, cc=${ADMIN_EMAIL}`);
+    const anyDelivered = results.push || results.sms || results.email;
+    console.log(`Notification for ${userId || email}: push=${results.push}, sms=${results.sms}, email=${results.email}, cc=${ADMIN_EMAIL}, anyDelivered=${anyDelivered}`);
+
+    if (!anyDelivered) {
+      return new Response(
+        JSON.stringify({ success: false, error: "All notification channels failed", channels: results }),
+        { status: 207, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
 
     return new Response(
       JSON.stringify({ success: true, channels: results }),

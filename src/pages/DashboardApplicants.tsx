@@ -877,10 +877,7 @@ export default function DashboardApplicants() {
       </div>
 
       {/* Stats - Clickable to filter */}
-      <div
-        className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8"
-      >
-      >
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {[
           { label: "Total Leads", value: totalLeads, icon: Users, color: "text-primary", filter: "all" },
           { label: "Hired", value: hired, icon: UserCheck, color: "text-emerald-400", filter: "hired" },
@@ -908,11 +905,7 @@ export default function DashboardApplicants() {
         ))}
       </div>
 
-      {/* Filters */}
-      <div
-        className="flex flex-col sm:flex-row gap-4 mb-6"
-      >
-      >
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -1148,10 +1141,7 @@ export default function DashboardApplicants() {
 
       {/* Terminated Leads Section - Only show when not filtering by terminated */}
       {statusFilter !== "terminated" && terminatedApplications.length > 0 && (
-        <div
-          className="mt-8"
-        >
-        >
+        <div className="mt-8">
           <button
             onClick={() => setShowTerminated(!showTerminated)}
             className="w-full flex items-center justify-between p-4 rounded-lg bg-red-500/10 border border-red-500/20 hover:bg-red-500/15 transition-colors"

@@ -1,71 +1,53 @@
 
+Root cause found:
+- The right-side “Actions” bunching is real in Pipeline (`/dashboard/applicants`): `QuickAssignMenu` is rendered without `displayMode="icon"` in table rows, so it shows “Assign” text inside a tiny icon slot.
+- Manager dropdowns show “everyone” because `get-active-managers` currently returns managers + evaluated live agents by design.
+- Similar compact-action regressions exist in other dense table/card action bars (not just one page).
 
-# Go-Live Final Remediation Plan
+Implementation plan
 
-## Issues Identified
+1) Fix manager list source globally (so every reassignment menu is correct)
+- Update `supabase/functions/get-active-managers/index.ts` to return only active users with manager role.
+- Remove the “live non-manager agents” branch.
+- Keep response shape as `{ managers: [...] }` so existing callers continue to work.
+- Result: all menus using this function (Pipeline assign, Command Center reassign, Team reassign, importer, add-agent manager picker, etc.) stop showing non-managers.
 
-### 1. No "My Directs" Filter on Pipeline (DashboardApplicants), Dashboard, or RecruiterHQ
-Currently, admin/managers see ALL agents/applicants with no toggle to filter to only their directly-invited recruits. The AgentPipeline page has a "My Recruits" button, but DashboardApplicants, Dashboard, and RecruiterDashboard lack this.
+2) Fix Pipeline action-column overlap and keep reassignment usable
+- File: `src/pages/DashboardApplicants.tsx`
+- In table row actions:
+  - Set `QuickAssignMenu` to `displayMode="icon"` (critical fix for “Assig” overlap).
+  - Normalize action buttons to fixed icon sizing and no shrink collisions.
+  - Add wrapping/spacing safety in the actions container (`flex-wrap` + `shrink-0` icons).
+- Table layout hardening:
+  - Keep horizontal scroll behavior but enforce a minimum table width so action controls don’t collapse into contact cells.
+- Keep reassignment in the Pipeline actions cluster and make it visually consistent with other icons.
 
-**Fix**: Add a "My Directs" / "Full Team" toggle to:
-- `DashboardApplicants.tsx` — filter `assigned_agent_id` to only the current manager's agent ID
-- `Dashboard.tsx` — the `fetchDashboardData` function currently filters to `assigned_agent_id = agentData.id` for non-admin, but admin sees everything; add a toggle for admin to scope to their directs
-- `RecruiterDashboard.tsx` — add a "My Directs" filter button alongside existing filters
+3) Add/standardize reassignment in the “report” table action area
+- File: `src/pages/RecruiterDashboard.tsx`
+- In desktop table row actions (right-most column):
+  - Add reassign control (`QuickAssignMenu`) so leads can be reassigned from that report too.
+  - Ensure it targets the correct source table (`applications` vs `aged_leads`).
+  - Set all compact quick actions (including `QuickEmailMenu`) to icon mode to prevent text collision in narrow action cells.
+  - Widen action column slightly if needed to prevent compression at common desktop widths.
 
-### 2. Aged Leads Missing a Visible "Distribute" Button
-The Aged Leads page has a `QuickAssignPanel` but it only appears when `isAdmin && managers.length > 0`. The per-row actions only have status changes + delete/ban via the DropdownMenu — no per-row assign button and no bulk distribute button at the bottom selection bar.
+4) Remove compact-action regressions in other dense dashboards
+- File: `src/components/callcenter/CallCenterLeadCard.tsx`
+  - Force `QuickEmailMenu` icon mode in compact action rows.
+- File: `src/components/callcenter/LeadReassignButton.tsx`
+  - Add icon-only display variant for tight action groups (keep existing full button variant where space allows).
 
-**Fix**:
-- Add a `QuickAssignMenu` to each row's actions dropdown (like LeadCenter has)
-- Add a bulk assign section to the bottom selection bar (currently only has "Delete Selected" and "Clear")
+5) Ensure “manager-only reassignment” is consistent in non-shared reassignment UI
+- File: `src/components/dashboard/LeadReassignment.tsx`
+- Replace current “all active agents” fetch logic with manager-only sourcing (aligned with the same manager criteria as other menus), so this panel no longer lists non-managers.
 
-### 3. Avg Leads/Day Inaccurate in Lead Center
-The calculation uses `Math.round(recentLeads / 30)` which rounds to zero for small counts. Should use more precise calculation.
+Technical details (implementation boundaries)
+- No database schema or policy migration required.
+- Main changes are UI behavior + one backend function logic update.
+- Existing RLS protections remain in place; this is list filtering + UX consistency, not access broadening.
 
-**Fix**: Change to `parseFloat((recentLeads / 30).toFixed(1))` to show one decimal place.
-
-### 4. Lead Center Missing Pipeline Actions (Hired, Contracted, etc.)
-Lead Center per-row actions have: Assign, Phone, Email, Resend Licensing, Delete, Ban. But it's missing the stage-change actions that exist in DashboardApplicants (Mark as Hired, Contracted, Terminate).
-
-**Fix**: Add a DropdownMenu with status-change actions (Contacted, Hired, Contracted, Terminate) to the Lead Center row actions for application-source leads.
-
-### 5. Dashboard Stats Not Filtering by DatePeriodSelector
-The `DatePeriodSelector` was added to Dashboard UI but `fetchDashboardData` doesn't use `dateRange` — it always queries all data.
-
-**Fix**: Pass `dateRange` into the query key and filter applications by `created_at` within the selected range.
-
-### 6. OnboardingPipelineCard Dashboard Accuracy
-The card shows Course Purchased, Test Scheduled, etc. based on `agents` table fields (`has_training_course`, `onboarding_stage`). It only queries agents invited by the current manager (non-admin). For admin it queries ALL agents. This is correct. However, it doesn't cross-reference with `applications` table license_progress data.
-
-**Fix**: Cross-reference with `applications.license_progress` to ensure counts include applicants at each stage (course_purchased, passed_test, waiting_on_license, etc.), not just agent records.
-
-### 7. Todoist Integration
-Todoist has an official REST API. This would require the user's Todoist API token as a secret, stored via the secrets tool. We can create an edge function that syncs planner blocks to/from Todoist tasks. However, Todoist is not available as a connector — the user would need to provide their API key manually.
-
-### 8. Google Calendar & Calendly Integration
-Google Calendar integration would require OAuth setup (not available as a connector). Calendly is already partially integrated (CalendlyEmbed component exists). For Google Calendar, we can generate `.ics` download links or `calendar.google.com` add-event URLs from scheduled interviews.
-
-**Fix**: Add "Add to Google Calendar" links on scheduled interviews in CalendarPage. For Calendly, it's already embedded — verify it's wired into scheduling flows.
-
----
-
-## Implementation Plan
-
-### Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/pages/DashboardApplicants.tsx` | Add "My Directs" / "Full Team" toggle button in filters; filter by `assigned_agent_id === agentId` when "My Directs" active |
-| `src/pages/Dashboard.tsx` | Pass `dateRange` to query; add "My Directs" toggle for admin; filter stats by date range |
-| `src/pages/RecruiterDashboard.tsx` | Add "My Directs" filter toggle |
-| `src/pages/DashboardAgedLeads.tsx` | Add per-row QuickAssignMenu; add bulk assign to selection bar |
-| `src/pages/LeadCenter.tsx` | Add status-change actions (Hired, Contracted, Terminate) to per-row dropdown; fix avg leads/day precision |
-| `src/components/dashboard/OnboardingPipelineCard.tsx` | Cross-reference applications table for accurate license_progress counts |
-
-### External Integrations
-- **Todoist**: Requires API key — will prompt user to provide it via secrets tool before implementing
-- **Google Calendar**: Add "Add to Google Calendar" URL links on CalendarPage interview entries (no API key needed, uses URL scheme)
-- **Calendly**: Already embedded via CalendlyEmbed component — verify wiring
-
-No database changes needed.
-
+Validation checklist
+- Pipeline table: no overlap in Actions column; icons remain clickable at multiple widths.
+- Reassignment menus: only managers appear, and current manager is included.
+- Recruiter report table: reassignment available from right-side action column and no button collision.
+- Call-center compact action bars: no text/button stacking.
+- Regression check: existing actions (notes, record, licensing, hire/terminate, email) still work after layout hardening.

@@ -895,7 +895,7 @@ export default function RecruiterDashboard() {
 }
 
 function RecruiterDashboardInner() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { playSound } = useSoundEffects();
   const isMobile = useIsMobile();
 

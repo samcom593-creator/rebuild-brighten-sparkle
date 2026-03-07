@@ -34,6 +34,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressSelector";
 import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
 import { QuickEmailMenu } from "@/components/dashboard/QuickEmailMenu";
+import { QuickAssignMenu } from "@/components/dashboard/QuickAssignMenu";
 import { ActivityTimeline } from "@/components/recruiter/ActivityTimeline";
 import { InterviewScheduler } from "@/components/dashboard/InterviewScheduler";
 import { LeadDetailSheet } from "@/components/recruiter/LeadDetailSheet";

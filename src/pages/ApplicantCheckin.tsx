@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeEdge } from "@/lib/edgeInvoke";
 import { toast } from "sonner";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Input } from "@/components/ui/input";
@@ -118,17 +119,17 @@ export default function ApplicantCheckin() {
         .eq("id", appId);
 
       // If they need help, notify admin + manager
+      let helpSent = false;
       if (needsHelp) {
         try {
           const applicantName = applicant ? `${applicant.first_name} ${applicant.last_name}` : "Applicant";
-          await supabase.functions.invoke("send-notification", {
-            body: {
-              email: "sam@apex-financial.org",
-              title: "🆘 Applicant Needs Help",
-              message: `${applicantName} submitted a check-in and flagged that they need help. Progress: ${progress}. ${blocker ? `Blocker: ${blocker}` : ""}`,
-              url: `${window.location.origin}/applicants?search=${encodeURIComponent(applicant?.email || "")}`,
-            },
+          const result = await invokeEdge("send-notification", {
+            email: "sam@apex-financial.org",
+            title: "🆘 Applicant Needs Help",
+            message: `${applicantName} submitted a check-in and flagged that they need help. Progress: ${progress}. ${blocker ? `Blocker: ${blocker}` : ""}`,
+            url: `${window.location.origin}/applicants?search=${encodeURIComponent(applicant?.email || "")}`,
           });
+          helpSent = result.success;
         } catch (e) {
           console.error("Failed to send help notification:", e);
         }

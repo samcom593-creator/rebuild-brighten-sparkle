@@ -1109,7 +1109,6 @@ function RecruiterDashboardInner() {
 
       {/* ── Header ── */}
       <div className="relative overflow-hidden rounded-xl border border-pink-500/20 bg-gradient-to-br from-pink-500/10 via-purple-500/5 to-transparent p-3">
-      >
         <div className="flex flex-col md:flex-row md:items-center gap-2">
           <div className="flex-1">
             <div className="flex items-center gap-3">

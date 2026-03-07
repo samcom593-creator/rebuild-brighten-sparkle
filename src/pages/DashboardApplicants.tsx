@@ -1116,7 +1116,8 @@ export default function DashboardApplicants() {
                                       applicationId={app.id}
                                       currentAgentId={app.assigned_agent_id}
                                       onAssigned={fetchApplications}
-                                      className="h-7 w-7"
+                                      displayMode="icon"
+                                      className="h-7 w-7 text-muted-foreground hover:text-primary"
                                     />
                                   )}
                                   {status !== "hired" && status !== "contracted" && (

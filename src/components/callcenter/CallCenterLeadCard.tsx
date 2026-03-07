@@ -479,6 +479,8 @@ export function CallCenterLeadCard({
               recipientEmail={lead.email}
               recipientName={lead.firstName + (lead.lastName ? ` ${lead.lastName}` : "")}
               leadSource={lead.source}
+              displayMode="icon"
+              className="p-2.5 rounded-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 transition-colors border border-amber-500/30"
             />
               {lead.licenseStatus !== "licensed" && (
                 <ResendLicensingButton

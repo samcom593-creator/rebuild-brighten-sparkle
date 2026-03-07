@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import { supabase } from "@/integrations/supabase/client";
+import { invokeEdge } from "@/lib/edgeInvoke";
 import { toast } from "sonner";
 import { EmailPreviewModal } from "./EmailPreviewModal";
 
@@ -134,28 +134,29 @@ export function QuickEmailMenu({
 
   const handleSendEmail = async (customSubject?: string, customBody?: string) => {
     if (!selectedTemplate) return;
+
+    if (!applicationId) {
+      toast.error("Cannot send email: no lead ID found. Try refreshing the page.");
+      return;
+    }
     
     setSendingTemplate(selectedTemplate);
     try {
-      const { error } = await supabase.functions.invoke("send-outreach-email", {
-        body: { 
-          applicationId, 
-          agentId, 
-          templateType: selectedTemplate,
-          customSubject,
-          customBody,
-          leadSource,
-        },
+      await invokeEdge("send-outreach-email", {
+        applicationId, 
+        agentId, 
+        templateType: selectedTemplate,
+        customSubject,
+        customBody,
+        leadSource,
       });
-
-      if (error) throw error;
 
       toast.success(`${emailTemplateLabels[selectedTemplate]} email sent!`);
       setPreviewOpen(false);
       onEmailSent?.();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to send email:", err);
-      toast.error("Failed to send email");
+      toast.error(err.message || "Failed to send email");
     } finally {
       setSendingTemplate(null);
     }

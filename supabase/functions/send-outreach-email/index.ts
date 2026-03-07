@@ -632,8 +632,15 @@ const handler = async (req: Request): Promise<Response> => {
       leadSource?: "aged_leads" | "applications";
     };
 
-    if (!applicationId || !templateType) {
-      throw new Error("Missing required fields: applicationId and templateType");
+    const missingFields = [];
+    if (!applicationId) missingFields.push("applicationId");
+    if (!templateType) missingFields.push("templateType");
+    if (missingFields.length > 0) {
+      console.error(`Missing fields: ${missingFields.join(", ")}. Received payload:`, JSON.stringify({ applicationId, agentId, templateType, leadSource }));
+      return new Response(
+        JSON.stringify({ success: false, error: `Missing required fields: ${missingFields.join(", ")}` }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
     }
 
     // Validate template type

@@ -975,7 +975,7 @@ export default function DashboardCRM() {
                     </div>
                   ) : (
                     <div className={cn("rounded-xl border border-border overflow-x-auto", section.accent, "border-l-4")}>
-                      <Table className="min-w-[800px]">
+                      <Table className="min-w-[1100px]">
                         <TableHeader>
                           <TableRow className="hover:bg-transparent">
                             {bulkMode && <TableHead className="w-8" />}

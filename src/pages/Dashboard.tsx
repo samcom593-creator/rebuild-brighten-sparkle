@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { motion } from "framer-motion";
+
 import {
   Users,
   Phone,
@@ -284,25 +284,16 @@ export default function Dashboard() {
 
   return (
     <>
-      {/* Animated Welcome */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-6"
-      >
-        <motion.h2 
-          className="text-xl font-bold"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-        >
+      {/* Welcome */}
+      <div className="mb-6">
+        <h2 className="text-xl font-bold">
           Welcome back, <span className="text-primary">{userName}</span>! 👋
-        </motion.h2>
+        </h2>
         <div className="h-0.5 w-24 mt-1 bg-gradient-to-r from-primary to-emerald-400 rounded-full" />
         <p className="text-sm text-muted-foreground mt-2">
           {isAdmin ? "Here's your agency overview" : isManager ? "Here's your team performance" : "Track your progress"}
         </p>
-      </motion.div>
+      </div>
 
       {/* ====== DATE PERIOD SELECTOR ====== */}
       <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">

@@ -85,7 +85,7 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
           "fixed inset-0 z-30 bg-background/80 backdrop-blur-sm lg:hidden",
           mobileOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         )}
-        style={{ transition: "opacity 150ms ease-out" }}
+        style={{ transition: "opacity 100ms ease-out" }}
         onClick={() => setMobileOpen(false)}
       />
       
@@ -96,7 +96,7 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
         )}
         style={{ 
           transform: mobileOpen ? "translateX(0) scale(1)" : "translateX(-100%) scale(0.98)",
-          transition: "transform 200ms ease-out"
+          transition: "transform 120ms ease-out"
         }}
       >
         <GlobalSidebar

@@ -207,7 +207,7 @@ export function QuickEmailMenu({
             {displayMode === "full" && "Email"}
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-64">
+        <DropdownMenuContent align="end" className="w-64 z-50">
           <DropdownMenuLabel className="text-xs text-muted-foreground">
             Quick Email Templates (Preview & Edit)
           </DropdownMenuLabel>

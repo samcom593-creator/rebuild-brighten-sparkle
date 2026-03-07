@@ -1080,6 +1080,13 @@ export default function DashboardApplicants() {
                                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setRecorderApp(app)} title="Record">
                                     <Mic className="h-3.5 w-3.5" />
                                   </Button>
+                                  {app.license_status !== "licensed" && (
+                                    <ResendLicensingButton
+                                      recipientEmail={app.email}
+                                      recipientName={`${app.first_name} ${app.last_name}`}
+                                      licenseStatus={app.license_status as "licensed" | "unlicensed" | "pending"}
+                                    />
+                                  )}
                                   {isAdmin && (
                                     <QuickAssignMenu
                                       applicationId={app.id}

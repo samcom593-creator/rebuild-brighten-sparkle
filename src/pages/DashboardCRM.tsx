@@ -387,7 +387,9 @@ function AgentExpandedRow({
                 onClick={async () => {
                   setSendingCourseLogin(agent.id);
                   try {
-                    await supabase.functions.invoke("send-course-enrollment-email", { body: { agentId: agent.id } });
+                    const { data, error } = await supabase.functions.invoke("send-course-enrollment-email", { body: { agentId: agent.id } });
+                    if (error) throw error;
+                    if (data?.success === false) throw new Error(data.error || "Failed");
                     toast.success(`Course login sent to ${agent.name}`);
                     playSound("success");
                   } catch { toast.error("Failed to send"); }

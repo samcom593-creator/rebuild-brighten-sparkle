@@ -34,6 +34,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressSelector";
 import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
 import { QuickEmailMenu } from "@/components/dashboard/QuickEmailMenu";
+import { QuickAssignMenu } from "@/components/dashboard/QuickAssignMenu";
 import { ActivityTimeline } from "@/components/recruiter/ActivityTimeline";
 import { InterviewScheduler } from "@/components/dashboard/InterviewScheduler";
 import { LeadDetailSheet } from "@/components/recruiter/LeadDetailSheet";
@@ -894,7 +895,7 @@ export default function RecruiterDashboard() {
 }
 
 function RecruiterDashboardInner() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { playSound } = useSoundEffects();
   const isMobile = useIsMobile();
 
@@ -1474,8 +1475,18 @@ function RecruiterDashboardInner() {
                             recipientEmail={lead.email}
                             recipientName={fullName}
                             onEmailSent={() => fetchLeads(true)}
+                            displayMode="icon"
                             className="h-6 w-6 px-0"
                           />
+                          {isAdmin && (
+                            <QuickAssignMenu
+                              applicationId={lead.id}
+                              currentAgentId={lead.assigned_agent_id}
+                              onAssigned={() => fetchLeads(true)}
+                              displayMode="icon"
+                              className="h-6 w-6 text-muted-foreground hover:text-primary"
+                            />
+                          )}
                         </div>
                       </td>
                     </tr>

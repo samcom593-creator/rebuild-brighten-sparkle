@@ -283,9 +283,11 @@ function AgentExpandedRow({
               className="h-7 text-xs gap-1.5"
               onClick={async () => {
                 try {
-                  await supabase.functions.invoke("send-agent-portal-login", { body: { agentId: agent.id } });
+                  const { data, error } = await supabase.functions.invoke("send-agent-portal-login", { body: { agentId: agent.id } });
+                  if (error) throw error;
+                  if (data?.success === false) throw new Error(data.error || "Failed");
                   toast.success(`Portal login sent to ${agent.email}`);
-                } catch { toast.error("Failed to send"); }
+                } catch (err: any) { toast.error(err.message || "Failed to send"); }
               }}
             >
               <Send className="h-3 w-3" /> Portal Login

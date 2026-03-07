@@ -128,6 +128,7 @@ const formatStatus = (status: string): string => {
     approved: "Approved",
     hired: "Hired",
     contracted: "Contracted",
+    terminated: "Terminated",
     rejected: "Rejected",
     not_qualified: "Not Qualified",
   };

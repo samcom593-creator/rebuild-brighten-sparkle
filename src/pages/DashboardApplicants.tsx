@@ -1268,7 +1268,17 @@ export default function DashboardApplicants() {
           onOpenChange={(open) => !open && setContractedApp(null)}
           application={contractedApp}
           agentId={agentId}
-          onSuccess={fetchApplications}
+          onSuccess={() => {
+            // Optimistic update: immediately reflect contracted status
+            if (contractedApp) {
+              setApplications(prev => prev.map(app => 
+                app.id === contractedApp.id 
+                  ? { ...app, contracted_at: new Date().toISOString(), closed_at: new Date().toISOString(), status: "contracting" as any }
+                  : app
+              ));
+            }
+            fetchApplications();
+          }}
         />
       )}
 

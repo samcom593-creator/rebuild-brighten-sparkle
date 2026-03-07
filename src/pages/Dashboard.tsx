@@ -73,7 +73,13 @@ const defaultStats: DashboardStats = {
 const emptyChartData: Array<{ label: string; leads: number; closed: number }> = [];
 const emptySourceData: Array<{ name: string; value: number; color: string }> = [];
 
-async function fetchDashboardData(userId: string, profileName: string | null | undefined, userEmail: string | undefined) {
+async function fetchDashboardData(
+  userId: string,
+  profileName: string | null | undefined,
+  userEmail: string | undefined,
+  dateRange: { start: Date; end: Date },
+  myDirectsOnly: boolean,
+) {
   const userName = profileName || userEmail?.split("@")[0] || "Agent";
 
   const { data: agentData } = await supabase
@@ -86,14 +92,25 @@ async function fetchDashboardData(userId: string, profileName: string | null | u
     return { stats: defaultStats, dailyData: emptyChartData, weeklyData: emptyChartData, monthlyData: emptyChartData, sourceData: emptySourceData, userName, currentAgentId: undefined };
   }
 
-  const { data: applications } = await supabase
+  let query = supabase
     .from("applications")
-    .select("*")
-    .eq("assigned_agent_id", agentData.id);
+    .select("*");
 
-  if (!applications || applications.length === 0) {
+  if (myDirectsOnly) {
+    query = query.eq("assigned_agent_id", agentData.id);
+  }
+
+  const { data: allApplications } = await query;
+
+  if (!allApplications || allApplications.length === 0) {
     return { stats: defaultStats, dailyData: emptyChartData, weeklyData: emptyChartData, monthlyData: emptyChartData, sourceData: emptySourceData, userName, currentAgentId: agentData.id };
   }
+
+  // Filter by selected date range for stats
+  const applications = allApplications.filter(a => {
+    const d = new Date(a.created_at);
+    return d >= dateRange.start && d <= dateRange.end;
+  });
 
   const totalLeads = applications.length;
   const contacted = applications.filter(a => a.contacted_at).length;
@@ -119,15 +136,15 @@ async function fetchDashboardData(userId: string, profileName: string | null | u
       countWithContact++;
     });
 
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  const sixtyDaysAgo = new Date();
-  sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+  // Growth comparison: current period vs same-length previous period
+  const periodLength = dateRange.end.getTime() - dateRange.start.getTime();
+  const prevStart = new Date(dateRange.start.getTime() - periodLength);
+  const prevEnd = new Date(dateRange.start.getTime());
 
-  const currentPeriodLeads = applications.filter(a => new Date(a.created_at) >= thirtyDaysAgo).length;
-  const previousPeriodLeads = applications.filter(a => {
+  const currentPeriodLeads = applications.length;
+  const previousPeriodLeads = allApplications.filter(a => {
     const date = new Date(a.created_at);
-    return date >= sixtyDaysAgo && date < thirtyDaysAgo;
+    return date >= prevStart && date < prevEnd;
   }).length;
 
   const growthPercent = previousPeriodLeads > 0
@@ -235,8 +252,8 @@ export default function Dashboard() {
   const [myDirectsOnly, setMyDirectsOnly] = useState(false);
 
   const { data } = useQuery({
-    queryKey: ["dashboard-stats", user?.id, profile?.full_name, user?.email, dateRange.start.toISOString(), dateRange.end.toISOString()],
-    queryFn: () => fetchDashboardData(user!.id, profile?.full_name, user!.email),
+    queryKey: ["dashboard-stats", user?.id, profile?.full_name, user?.email, dateRange.start.toISOString(), dateRange.end.toISOString(), myDirectsOnly],
+    queryFn: () => fetchDashboardData(user!.id, profile?.full_name, user!.email, dateRange, myDirectsOnly),
     enabled: !!user && !authLoading,
   });
 

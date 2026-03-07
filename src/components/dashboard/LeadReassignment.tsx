@@ -61,32 +61,38 @@ export function LeadReassignment() {
 
   const fetchAgents = async () => {
     try {
-      const { data: agentsData, error } = await supabase
+      const { data, error } = await supabase.functions.invoke("get-active-managers");
+      if (error || !data?.managers) throw error || new Error("No data");
+
+      const agentIds = data.managers.map((m: { id: string }) => m.id);
+      const { data: agentsData } = await supabase
         .from("agents")
         .select("id, user_id")
-        .eq("status", "active");
+        .in("id", agentIds);
 
-      if (error) throw error;
+      const userIds = (agentsData || []).filter(a => a.user_id).map(a => a.user_id!);
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, email")
+        .in("user_id", userIds);
 
-      const agentsWithNames = await Promise.all(
-        (agentsData || []).map(async (agent) => {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("full_name, email")
-            .eq("user_id", agent.user_id)
-            .single();
+      const emailMap = new Map<string, string>();
+      for (const a of agentsData || []) {
+        if (a.user_id) {
+          const p = profiles?.find(pr => pr.user_id === a.user_id);
+          if (p) emailMap.set(a.id, p.email);
+        }
+      }
 
-          return {
-            id: agent.id,
-            name: profile?.full_name || "Unknown",
-            email: profile?.email || "",
-          };
-        })
+      setAgents(
+        data.managers.map((m: { id: string; name: string }) => ({
+          id: m.id,
+          name: m.name,
+          email: emailMap.get(m.id) || "",
+        }))
       );
-
-      setAgents(agentsWithNames.filter((a) => a.name !== "Unknown"));
     } catch (error) {
-      console.error("Error fetching agents:", error);
+      console.error("Error fetching managers:", error);
     }
   };
 

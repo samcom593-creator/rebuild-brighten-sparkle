@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -6,13 +6,34 @@ import { AnimatedCounter } from "@/components/ui/animated-counter";
 import {
   Users, ShieldCheck, ShieldOff, GraduationCap, Swords, Zap,
   TrendingUp, TrendingDown, DollarSign, Percent, Activity, UserCheck,
+  ChevronDown, ChevronUp,
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { getTodayPST, getDateDaysAgoPST } from "@/lib/dateUtils";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+
+interface ManagerAgent {
+  id: string;
+  name: string;
+  onboardingStage: string | null;
+  aop30: number;
+  deals30: number;
+}
+
+interface ManagerBreakdownEntry {
+  id: string;
+  name: string;
+  activeAgents: number;
+  producingAgents: number;
+  teamAlp: number;
+  ownAlp: number;
+  totalAlp: number;
+  agents: ManagerAgent[];
+}
 
 interface TeamOverviewData {
   totalActive: number;
@@ -30,26 +51,26 @@ interface TeamOverviewData {
   activationRate: number;
   retentionRate: number;
   revenuePerAgent: number;
-  managerBreakdown: Array<{
-    name: string;
-    activeAgents: number;
-    producingAgents: number;
-    teamAlp: number;
-    ownAlp: number;
-    totalAlp: number;
-  }>;
+  managerBreakdown: ManagerBreakdownEntry[];
 }
+
+const STAGE_LABELS: Record<string, string> = {
+  onboarding: "Onboarding",
+  training_online: "Training",
+  in_field_training: "Field Training",
+  evaluated: "Live",
+};
 
 export function TeamOverviewDashboard() {
   const today = getTodayPST();
   const sevenDaysAgo = getDateDaysAgoPST(7);
   const thirtyDaysAgo = getDateDaysAgoPST(30);
   const ninetyDaysAgo = getDateDaysAgoPST(90);
+  const [expandedManager, setExpandedManager] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["team-overview", today],
     queryFn: async (): Promise<TeamOverviewData> => {
-      // Parallel fetch all data
       const [agentsRes, prodRes7, prodRes30, deactivatedRes, applicationsRes] = await Promise.all([
         supabase
           .from("agents")
@@ -69,7 +90,6 @@ export function TeamOverviewDashboard() {
           .select("id")
           .eq("is_deactivated", true)
           .gte("updated_at", ninetyDaysAgo),
-        // Get unlicensed applicants for unified count
         supabase
           .from("applications")
           .select("id, license_status, email")
@@ -84,49 +104,30 @@ export function TeamOverviewDashboard() {
 
       const licensed = activeAgents.filter(a => a.license_status === "licensed").length;
       const unlicensedAgents = activeAgents.filter(a => a.license_status !== "licensed").length;
-
-      // Unified unlicensed count: agents + applicants (deduplicated by email)
-      const agentEmails = new Set<string>();
-      for (const agent of activeAgents) {
-        if (agent.license_status !== "licensed") {
-          // We need to get the profile email for dedup — approximate via user_id presence
-          agentEmails.add(agent.id); // use agent id as proxy
-        }
-      }
       const unlicensedApplicants = applicationsRes.data?.length || 0;
       const unlicensedTotal = unlicensedAgents + unlicensedApplicants;
 
-      const onboarding = activeAgents.filter(a =>
-        a.onboarding_stage === "onboarding"
-      ).length;
-      const trainingOnline = activeAgents.filter(a =>
-        a.onboarding_stage === "training_online"
-      ).length;
-      const inFieldTraining = activeAgents.filter(a =>
-        a.onboarding_stage === "in_field_training"
-      ).length;
-      // Agents past field training (evaluated or no stage = live/producing)
-      const liveInField = activeAgents.filter(a =>
-        a.onboarding_stage === "evaluated" || !a.onboarding_stage
-      ).length;
+      const onboarding = activeAgents.filter(a => a.onboarding_stage === "onboarding").length;
+      const trainingOnline = activeAgents.filter(a => a.onboarding_stage === "training_online").length;
+      const inFieldTraining = activeAgents.filter(a => a.onboarding_stage === "in_field_training").length;
+      const liveInField = activeAgents.filter(a => a.onboarding_stage === "evaluated" || !a.onboarding_stage).length;
 
-      // 7-day AOP
       const prod7 = prodRes7.data || [];
       const aop7 = prod7.reduce((sum, p) => sum + (Number(p.aop) || 0), 0);
 
-      // 30-day AOP
       const prod30 = prodRes30.data || [];
       const aop30 = prod30.reduce((sum, p) => sum + (Number(p.aop) || 0), 0);
 
-      // Avg close rate (30-day, per agent)
-      const agentProd30 = new Map<string, { deals: number; presentations: number }>();
+      const agentProd30 = new Map<string, { deals: number; presentations: number; aop: number }>();
       for (const p of prod30) {
-        const existing = agentProd30.get(p.agent_id) || { deals: 0, presentations: 0 };
+        const existing = agentProd30.get(p.agent_id) || { deals: 0, presentations: 0, aop: 0 };
         agentProd30.set(p.agent_id, {
           deals: existing.deals + (p.deals_closed || 0),
           presentations: existing.presentations + (p.presentations || 0),
+          aop: existing.aop + (Number(p.aop) || 0),
         });
       }
+
       let totalCloseRate = 0;
       let closeRateCount = 0;
       agentProd30.forEach(v => {
@@ -137,35 +138,29 @@ export function TeamOverviewDashboard() {
       });
       const avgCloseRate = closeRateCount > 0 ? totalCloseRate / closeRateCount : 0;
 
-      // Active producers (agents with at least 1 deal in 30 days)
       const activeProducerIds = new Set<string>();
       for (const p of prod30) {
         if ((p.deals_closed || 0) > 0) activeProducerIds.add(p.agent_id);
       }
       const activeProducers = activeProducerIds.size;
-
-      // Activation rate
       const activationRate = totalActive > 0 ? (activeProducers / totalActive) * 100 : 0;
 
-      // Retention rate
       const deactivatedLast90 = deactivatedRes.data?.length || 0;
       const retentionRate = (totalActive + deactivatedLast90) > 0
         ? (totalActive / (totalActive + deactivatedLast90)) * 100
         : 100;
-
-      // Revenue per agent
       const revenuePerAgent = totalActive > 0 ? aop30 / totalActive : 0;
 
-      // Manager breakdown — include manager's OWN production + team production
+      // Manager breakdown with agent roster
       const managerMap = new Map<string, {
         name: string;
         activeAgents: number;
         producingAgentIds: Set<string>;
         teamAlp: number;
         ownAlp: number;
+        agents: ManagerAgent[];
       }>();
 
-      // Build manager entries from their team agents
       for (const agent of activeAgents) {
         const mgrId = agent.invited_by_manager_id;
         if (!mgrId) continue;
@@ -175,16 +170,25 @@ export function TeamOverviewDashboard() {
           producingAgentIds: new Set<string>(),
           teamAlp: 0,
           ownAlp: 0,
+          agents: [],
         };
         existing.activeAgents++;
         if (!existing.name) {
           const mgr = agents.find(a => a.id === mgrId);
           existing.name = (mgr as any)?.profile?.full_name || "Unknown";
         }
+        const agentName = (agent as any)?.profile?.full_name || "Unknown";
+        const agentProdData = agentProd30.get(agent.id);
+        existing.agents.push({
+          id: agent.id,
+          name: agentName,
+          onboardingStage: agent.onboarding_stage,
+          aop30: agentProdData?.aop || 0,
+          deals30: agentProdData?.deals || 0,
+        });
         managerMap.set(mgrId, existing);
       }
 
-      // Add team ALP from production data
       for (const p of prod30) {
         const agent = activeAgents.find(a => a.id === p.agent_id);
         if (!agent?.invited_by_manager_id) continue;
@@ -197,16 +201,11 @@ export function TeamOverviewDashboard() {
         }
       }
 
-      // Add manager's OWN production (managers are also agents)
       for (const [mgrId, entry] of managerMap) {
-        const mgrProd = agentProd30.get(mgrId);
-        if (mgrProd) {
-          // Sum the manager's own AOP from prod30
-          const ownAlp = prod30
-            .filter(p => p.agent_id === mgrId)
-            .reduce((sum, p) => sum + (Number(p.aop) || 0), 0);
-          entry.ownAlp = ownAlp;
-        }
+        const ownAlp = prod30
+          .filter(p => p.agent_id === mgrId)
+          .reduce((sum, p) => sum + (Number(p.aop) || 0), 0);
+        entry.ownAlp = ownAlp;
       }
 
       return {
@@ -227,15 +226,17 @@ export function TeamOverviewDashboard() {
         revenuePerAgent,
         managerBreakdown: Array.from(managerMap.entries())
           .map(([id, v]) => ({
+            id,
             name: v.name,
             activeAgents: v.activeAgents,
             producingAgents: v.producingAgentIds.size,
             teamAlp: v.teamAlp,
             ownAlp: v.ownAlp,
             totalAlp: v.teamAlp + v.ownAlp,
+            agents: v.agents.sort((a, b) => b.aop30 - a.aop30),
           }))
           .sort((a, b) => b.totalAlp - a.totalAlp)
-          .slice(0, 8),
+          .slice(0, 10),
       };
     },
     staleTime: 30_000,
@@ -271,12 +272,6 @@ export function TeamOverviewDashboard() {
     { label: "Activation Rate", value: data.activationRate, suffix: "%", icon: Activity, color: "text-violet-500" },
     { label: "Retention Rate", value: data.retentionRate, suffix: "%", icon: UserCheck, color: "text-emerald-500" },
     { label: "Rev / Agent", value: data.revenuePerAgent, currency: true, icon: TrendingUp, color: "text-primary" },
-  ];
-
-  const barColors = [
-    "hsl(168, 84%, 42%)", "hsl(222, 47%, 55%)", "hsl(262, 52%, 55%)",
-    "hsl(45, 93%, 58%)", "hsl(340, 65%, 55%)", "hsl(200, 70%, 50%)",
-    "hsl(15, 75%, 55%)", "hsl(120, 45%, 45%)",
   ];
 
   return (
@@ -338,7 +333,7 @@ export function TeamOverviewDashboard() {
         ))}
       </div>
 
-      {/* Manager comparison chart — Team + Own production */}
+      {/* Manager comparison chart + drillable roster */}
       {data.managerBreakdown.length > 0 && (
         <GlassCard className="p-5">
           <h4 className="text-sm font-bold mb-4 flex items-center gap-2">
@@ -381,17 +376,87 @@ export function TeamOverviewDashboard() {
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-muted-foreground">
-            {data.managerBreakdown.map((m, i) => (
-              <div key={m.name} className="flex items-center justify-between bg-muted/30 rounded-lg px-3 py-2">
-                <span className="font-medium text-foreground">{m.name}</span>
-                <div className="flex items-center gap-3">
-                  <span>{m.activeAgents} agents</span>
-                  <span className="text-emerald-500">{m.producingAgents} producing</span>
-                  <span className="font-bold text-foreground">${m.totalAlp.toLocaleString()}</span>
+
+          {/* Clickable manager rows with expandable agent roster */}
+          <div className="mt-3 space-y-1">
+            {data.managerBreakdown.map((m) => {
+              const isExpanded = expandedManager === m.id;
+              return (
+                <div key={m.id}>
+                  <button
+                    onClick={() => setExpandedManager(isExpanded ? null : m.id)}
+                    className={cn(
+                      "w-full flex items-center justify-between rounded-lg px-3 py-2.5 text-left transition-colors",
+                      isExpanded ? "bg-primary/10 border border-primary/20" : "bg-muted/30 hover:bg-muted/50"
+                    )}
+                  >
+                    <div className="flex items-center gap-2">
+                      {isExpanded ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+                      <span className="font-medium text-sm text-foreground">{m.name}</span>
+                      <Badge variant="outline" className="text-[10px] h-5">{m.activeAgents} agents</Badge>
+                      <Badge variant="outline" className="text-[10px] h-5 bg-emerald-500/10 text-emerald-500 border-emerald-500/20">{m.producingAgents} producing</Badge>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs">
+                      <div className="text-right">
+                        <span className="text-muted-foreground">Personal</span>
+                        <span className="font-bold text-foreground ml-1.5">${m.ownAlp.toLocaleString()}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-muted-foreground">Team</span>
+                        <span className="font-bold text-foreground ml-1.5">${m.teamAlp.toLocaleString()}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-muted-foreground">Total</span>
+                        <span className="font-bold text-primary ml-1.5">${m.totalAlp.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </button>
+
+                  <AnimatePresence>
+                    {isExpanded && m.agents.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="ml-6 mt-1 mb-2 rounded-lg border border-border overflow-hidden">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="bg-muted/30 border-b">
+                                <th className="text-left px-3 py-1.5 font-medium text-muted-foreground">Agent</th>
+                                <th className="text-left px-3 py-1.5 font-medium text-muted-foreground">Stage</th>
+                                <th className="text-right px-3 py-1.5 font-medium text-muted-foreground">30-Day AOP</th>
+                                <th className="text-right px-3 py-1.5 font-medium text-muted-foreground">Deals</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {m.agents.map((agent) => (
+                                <tr key={agent.id} className="border-b border-border/50 hover:bg-muted/20">
+                                  <td className="px-3 py-1.5 font-medium">{agent.name}</td>
+                                  <td className="px-3 py-1.5">
+                                    <Badge variant="outline" className="text-[10px] h-4 px-1.5">
+                                      {STAGE_LABELS[agent.onboardingStage || ""] || agent.onboardingStage || "—"}
+                                    </Badge>
+                                  </td>
+                                  <td className="px-3 py-1.5 text-right font-semibold">
+                                    {agent.aop30 > 0 ? `$${agent.aop30.toLocaleString()}` : "—"}
+                                  </td>
+                                  <td className="px-3 py-1.5 text-right">
+                                    {agent.deals30 > 0 ? agent.deals30 : "—"}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </GlassCard>
       )}

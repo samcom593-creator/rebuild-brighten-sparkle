@@ -959,7 +959,7 @@ export default function LeadCenter() {
                                       <Phone className="h-3 w-3" /> Mark Contacted
                                     </DropdownMenuItem>
                                   )}
-                                  {lead.status !== "hired" && lead.status !== "contracted" && (
+                                  {!lead.closedAt && !lead.contractedAt && (
                                     <DropdownMenuItem
                                       onClick={async () => {
                                         await supabase.from("applications").update({ closed_at: new Date().toISOString(), contacted_at: new Date().toISOString() }).eq("id", lead.id);
@@ -972,7 +972,7 @@ export default function LeadCenter() {
                                       <CheckCircle className="h-3 w-3 text-emerald-400" /> Mark Hired
                                     </DropdownMenuItem>
                                   )}
-                                  {lead.status !== "contracted" && (
+                                  {!lead.contractedAt && (
                                     <DropdownMenuItem
                                       onClick={async () => {
                                          await supabase.from("applications").update({ 

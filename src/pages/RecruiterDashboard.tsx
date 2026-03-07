@@ -40,6 +40,7 @@ import { LeadDetailSheet } from "@/components/recruiter/LeadDetailSheet";
 import { DormantBadge } from "@/components/recruiter/DormantBadge";
 import { InterviewRecorder } from "@/components/dashboard/InterviewRecorder";
 import { logLeadActivity } from "@/lib/logLeadActivity";
+import { invokeEdge } from "@/lib/edgeInvoke";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, addDays, addMinutes, subDays, differenceInDays } from "date-fns";
 import { toast } from "sonner";

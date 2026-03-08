@@ -1099,6 +1099,33 @@ export default function DashboardAgedLeads() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Lead Detail Sheet */}
+      {detailLead && (
+        <LeadDetailSheet
+          lead={{
+            id: detailLead.id,
+            first_name: detailLead.firstName,
+            last_name: detailLead.lastName || "",
+            email: detailLead.email,
+            phone: detailLead.phone || "",
+            city: null,
+            state: null,
+            created_at: detailLead.createdAt,
+            last_contacted_at: null,
+            contacted_at: null,
+            license_status: detailLead.licenseStatus,
+            license_progress: null,
+            test_scheduled_date: null,
+            notes: detailLead.notes || null,
+            assigned_agent_id: detailLead.assignedManagerId || null,
+            referral_source: detailLead.leadSource || null,
+          }}
+          open={!!detailLead}
+          onOpenChange={(open) => !open && setDetailLead(null)}
+          onRefresh={fetchLeads}
+        />
+      )}
     </div>
   );
 }

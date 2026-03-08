@@ -15,6 +15,7 @@ interface LicensingEmailRequest {
   firstName: string;
   licenseStatus: "licensed" | "unlicensed" | "pending";
   managerEmail?: string;
+  phone?: string;
 }
 
 function buildStepCard(
@@ -69,7 +70,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { email, firstName, licenseStatus, managerEmail }: LicensingEmailRequest = await req.json();
+    const { email, firstName, licenseStatus, managerEmail, phone }: LicensingEmailRequest = await req.json();
     const whatsappLink = Deno.env.get("WHATSAPP_GROUP_LINK") || "";
 
     console.log(`[send-licensing-instructions] Sending to ${email}, status: ${licenseStatus}`);
@@ -291,7 +292,49 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`[send-licensing-instructions] Email sent successfully, CC: ${ccList.join(", ")}:`, emailResponse);
 
-    return new Response(JSON.stringify({ success: true, data: emailResponse }), {
+    const channels: { email: boolean; push?: boolean; sms?: boolean } = { email: true };
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    // Send push notification if applicant has an account
+    try {
+      const pushMsg = licenseStatus === "licensed"
+        ? `Hey ${firstName}! Schedule your onboarding call to get started 🚀`
+        : `Hey ${firstName}! Your licensing resources are ready – check your email 📚`;
+
+      const pushRes = await fetch(`${supabaseUrl}/functions/v1/send-push-notification`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${supabaseServiceKey}` },
+        body: JSON.stringify({ email, title: "Apex Financial – Licensing", body: pushMsg }),
+      });
+      channels.push = pushRes.ok;
+      console.log(`[send-licensing-instructions] Push: ${pushRes.ok}`);
+    } catch (e) {
+      channels.push = false;
+      console.error("[send-licensing-instructions] Push failed:", e);
+    }
+
+    // Send SMS if phone provided
+    if (phone) {
+      try {
+        const smsMsg = licenseStatus === "licensed"
+          ? `Hey ${firstName}, welcome to Apex! Check your email for onboarding steps or schedule here: https://calendly.com/apexfinancialmarketing/apex-financial-onboarding`
+          : `Hey ${firstName}, your licensing resources are in your email! Start here: https://partners.xcelsolutions.com/afe`;
+
+        const smsRes = await fetch(`${supabaseUrl}/functions/v1/send-sms-auto-detect`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${supabaseServiceKey}` },
+          body: JSON.stringify({ phone, message: smsMsg }),
+        });
+        channels.sms = smsRes.ok;
+        console.log(`[send-licensing-instructions] SMS: ${smsRes.ok}`);
+      } catch (e) {
+        channels.sms = false;
+        console.error("[send-licensing-instructions] SMS failed:", e);
+      }
+    }
+
+    return new Response(JSON.stringify({ success: true, data: emailResponse, channels }), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });

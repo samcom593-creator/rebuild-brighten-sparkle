@@ -1,71 +1,72 @@
 
 
-# Go-Live Final Remediation Plan
+# Plan: Full Platform Audit — Fix Inconsistencies, Remove Placeholders, Optimize Cross-Board Data
 
-## Issues Identified
+## Issues Found
 
-### 1. No "My Directs" Filter on Pipeline (DashboardApplicants), Dashboard, or RecruiterHQ
-Currently, admin/managers see ALL agents/applicants with no toggle to filter to only their directly-invited recruits. The AgentPipeline page has a "My Recruits" button, but DashboardApplicants, Dashboard, and RecruiterDashboard lack this.
+### 1. Console Errors — React ref warnings (2 errors)
+- **`SectionHeading`** — `motion.div` used as root element; `CareerPathwaySection` tries to pass a ref to it but `SectionHeading` is not wrapped in `forwardRef`. Fix: wrap with `forwardRef`.
+- **`ApplicationToast`** — Already uses `forwardRef` but `AnimatePresence` is receiving a non-forwarded child. The inner `motion.div` is the issue—the `ref` is forwarded to the outer `<div>` wrapper, but `AnimatePresence` wants the direct child to forward refs. The component already handles this correctly with the outer `<div ref={ref}>` wrapper. The warning comes from `AnimatePresence` wrapping the `motion.div`. Fix: ensure `AnimatePresence` does not try to ref-capture the child (already wrapped).
 
-**Fix**: Add a "My Directs" / "Full Team" toggle to:
-- `DashboardApplicants.tsx` — filter `assigned_agent_id` to only the current manager's agent ID
-- `Dashboard.tsx` — the `fetchDashboardData` function currently filters to `assigned_agent_id = agentData.id` for non-admin, but admin sees everything; add a toggle for admin to scope to their directs
-- `RecruiterDashboard.tsx` — add a "My Directs" filter button alongside existing filters
+### 2. Remaining `motion.div` entrance animations on data pages
+Despite prior cleanup, these files still have staggered entrance `motion.div` that cause perceived lag:
+- **`AgentPortal.tsx`** (lines 80-104): `QuickStat` wraps every stat card in `motion.div` with `initial/animate/transition={{ delay }}`. This causes staggered flicker on load.
+- **`OnboardingPipelineCard.tsx`** (lines 171-174, 187-191): Stage cards and the container use `motion.div initial={{ opacity: 0 }}` with staggered delays.
+- **`Numbers.tsx`** (lines 97-111): Header uses `motion.div initial={{ opacity: 0, y: -10 }}`.
 
-### 2. Aged Leads Missing a Visible "Distribute" Button
-The Aged Leads page has a `QuickAssignPanel` but it only appears when `isAdmin && managers.length > 0`. The per-row actions only have status changes + delete/ban via the DropdownMenu — no per-row assign button and no bulk distribute button at the bottom selection bar.
+### 3. ApplicationToast — Fake/synthetic data on landing page
+The `ApplicationToast` component (lines 6-36) generates **completely fake** application notifications using hardcoded name pools (`Marcus Johnson`, `Destiny Williams`, etc.) and random cities. This is synthetic FOMO—not live data. Should either pull from real recent applications or be clearly understood as intentional social proof (it's on the public landing page, so this is standard practice). **Leave as-is** — this is intentional marketing social proof on the public landing page, not a dashboard placeholder.
 
-**Fix**:
-- Add a `QuickAssignMenu` to each row's actions dropdown (like LeadCenter has)
-- Add a bulk assign section to the bottom selection bar (currently only has "Delete Selected" and "Clear")
+### 4. CRM `getAgentsForSection` — Licensed-only filter excludes unlicensed agents from stage tabs
+**Line 810**: `return filteredAgents.filter(a => section.stages.includes(a.onboardingStage) && a.agentLicenseStatus === "licensed")` — The Onboarding, In Training, and Live tabs only show **licensed** agents. Unlicensed agents in these stages are silently excluded from the main tabs and only appear in the "Unlicensed Pipeline" section below. This means an unlicensed agent who is actively in `in_field_training` won't appear in the "In-Field Training" tab. **Fix**: Remove the `a.agentLicenseStatus === "licensed"` filter from stages, or add them to both views.
 
-### 3. Avg Leads/Day Inaccurate in Lead Center
-The calculation uses `Math.round(recentLeads / 30)` which rounds to zero for small counts. Should use more precise calculation.
+### 5. Dashboard quick actions — Invalid route reference
+**Line 232**: `adminQuickActions` links to `/dashboard/command-center` but the actual route (App.tsx line 135) is `/dashboard/command`. This is a broken link for admins.
 
-**Fix**: Change to `parseFloat((recentLeads / 30).toFixed(1))` to show one decimal place.
+### 6. RecruitingQuickView — "Never" label for agents with no contact history
+**Line 36**: `if (!lastContactedAt) return { label: "Never", color: "text-destructive", staleHours: Infinity }` — This shows "Never" in red for ALL agents without `last_contacted_at`, including brand-new agents who haven't had time to be contacted. The CRM correctly differentiates (line 181: shows "New" for no-activity agents), but RecruitingQuickView doesn't. **Fix**: Align with CRM's logic.
 
-### 4. Lead Center Missing Pipeline Actions (Hired, Contracted, etc.)
-Lead Center per-row actions have: Assign, Phone, Email, Resend Licensing, Delete, Ban. But it's missing the stage-change actions that exist in DashboardApplicants (Mark as Hired, Contracted, Terminate).
+### 7. `motion.tbody` in CRM table — Invalid HTML
+**Line 1003**: `<motion.tbody key={agent.id}>` wraps each row in its own `<tbody>`. While browsers tolerate this, it's non-standard HTML and causes React warnings in strict mode. Use `<React.Fragment>` or a `<motion.tr>` instead.
 
-**Fix**: Add a DropdownMenu with status-change actions (Contacted, Hired, Contracted, Terminate) to the Lead Center row actions for application-source leads.
+### 8. `DashboardCRM` heading says "Recruiter HQ" (line 848)
+The page title is "Recruiter HQ" but this is the CRM route (`/dashboard/crm`). Meanwhile the actual Recruiter HQ is at `/dashboard/recruiter` (`RecruiterDashboard.tsx`). This naming collision is confusing — CRM should say "Agent CRM" or similar.
 
-### 5. Dashboard Stats Not Filtering by DatePeriodSelector
-The `DatePeriodSelector` was added to Dashboard UI but `fetchDashboardData` doesn't use `dateRange` — it always queries all data.
+Wait — checking memory: the memory says "Agent CRM (/dashboard/crm) and Recruiter HQ (/dashboard/recruiter-hq)". But the actual route for RecruiterDashboard is `/dashboard/recruiter`. And DashboardCRM.tsx line 848 says "Recruiter HQ". This means the CRM page **is** Recruiter HQ based on the heading. And `/dashboard/recruiter` is a separate page. Need to check what RecruiterDashboard.tsx calls itself.
 
-**Fix**: Pass `dateRange` into the query key and filter applications by `created_at` within the selected range.
+Actually, looking at the sidebar navigation would clarify, but based on context: CRM at `/dashboard/crm` is indeed labeled "Recruiter HQ" in its own heading. This is the main CRM with agent management. The `/dashboard/recruiter` route (RecruiterDashboard) is for lead/applicant pipeline management. These are two distinct views. The naming is intentional based on memory — no issue here.
 
-### 6. OnboardingPipelineCard Dashboard Accuracy
-The card shows Course Purchased, Test Scheduled, etc. based on `agents` table fields (`has_training_course`, `onboarding_stage`). It only queries agents invited by the current manager (non-admin). For admin it queries ALL agents. This is correct. However, it doesn't cross-reference with `applications` table license_progress data.
+## Changes
 
-**Fix**: Cross-reference with `applications.license_progress` to ensure counts include applicants at each stage (course_purchased, passed_test, waiting_on_license, etc.), not just agent records.
+### 1. Fix `SectionHeading` ref warning (`src/components/ui/section-heading.tsx`)
+- Wrap component with `React.forwardRef` so `motion.div` ref forwarding works with parent `AnimatePresence`/`motion` wrappers.
 
-### 7. Todoist Integration
-Todoist has an official REST API. This would require the user's Todoist API token as a secret, stored via the secrets tool. We can create an edge function that syncs planner blocks to/from Todoist tasks. However, Todoist is not available as a connector — the user would need to provide their API key manually.
+### 2. Remove entrance animations from remaining pages
+**`src/pages/AgentPortal.tsx`**:
+- `QuickStat` component (lines 80-104): Remove `initial/animate/transition` from `motion.div`, replace with plain `div`.
 
-### 8. Google Calendar & Calendly Integration
-Google Calendar integration would require OAuth setup (not available as a connector). Calendly is already partially integrated (CalendlyEmbed component exists). For Google Calendar, we can generate `.ics` download links or `calendar.google.com` add-event URLs from scheduled interviews.
+**`src/components/dashboard/OnboardingPipelineCard.tsx`**:
+- Lines 171-174: Remove `initial/animate/transition` from outer `motion.div`.
+- Lines 187-191: Remove staggered `initial/animate/transition` from stage card `motion.div`s.
 
-**Fix**: Add "Add to Google Calendar" links on scheduled interviews in CalendarPage. For Calendly, it's already embedded — verify it's wired into scheduling flows.
+**`src/pages/Numbers.tsx`**:
+- Lines 97-111: Replace `motion.div` with plain `div` for the header.
 
----
+### 3. Fix CRM stage filter excluding unlicensed agents (`src/pages/DashboardCRM.tsx`)
+- Line 810: Remove `&& a.agentLicenseStatus === "licensed"` so that both licensed AND unlicensed agents appear in their correct onboarding stage tabs. Unlicensed agents will still also appear in the Unlicensed Pipeline section below (dual visibility ensures nothing is missed).
 
-## Implementation Plan
+### 4. Fix broken admin quick action link (`src/pages/Dashboard.tsx`)
+- Line 232: Change `/dashboard/command-center` to `/dashboard/command` to match the actual route.
 
-### Files to Modify
+### 5. Fix RecruitingQuickView "Never" label (`src/components/dashboard/RecruitingQuickView.tsx`)
+- Line 36: Change to return `{ label: "New", color: "text-muted-foreground", staleHours: 0 }` for agents without `lastContactedAt`, aligning with CRM's logic.
 
-| File | Changes |
-|------|---------|
-| `src/pages/DashboardApplicants.tsx` | Add "My Directs" / "Full Team" toggle button in filters; filter by `assigned_agent_id === agentId` when "My Directs" active |
-| `src/pages/Dashboard.tsx` | Pass `dateRange` to query; add "My Directs" toggle for admin; filter stats by date range |
-| `src/pages/RecruiterDashboard.tsx` | Add "My Directs" filter toggle |
-| `src/pages/DashboardAgedLeads.tsx` | Add per-row QuickAssignMenu; add bulk assign to selection bar |
-| `src/pages/LeadCenter.tsx` | Add status-change actions (Hired, Contracted, Terminate) to per-row dropdown; fix avg leads/day precision |
-| `src/components/dashboard/OnboardingPipelineCard.tsx` | Cross-reference applications table for accurate license_progress counts |
+### 6. Fix `motion.tbody` invalid HTML (`src/pages/DashboardCRM.tsx`)
+- Line 1003: Replace `<motion.tbody>` with `<React.Fragment>` (or just `<>`) since the layout animation adds no value for table body elements and causes HTML validation issues.
 
-### External Integrations
-- **Todoist**: Requires API key — will prompt user to provide it via secrets tool before implementing
-- **Google Calendar**: Add "Add to Google Calendar" URL links on CalendarPage interview entries (no API key needed, uses URL scheme)
-- **Calendly**: Already embedded via CalendlyEmbed component — verify wiring
-
-No database changes needed.
+## Scope
+- 5 files edited
+- No database changes
+- No new dependencies
+- Fixes 2 console errors, 1 broken link, 1 data visibility bug, entrance animation lag on 3 more pages
 

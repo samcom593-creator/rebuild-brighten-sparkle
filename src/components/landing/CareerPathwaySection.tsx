@@ -630,4 +630,4 @@ export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathw
       </div>
     </section>
   );
-}
+});

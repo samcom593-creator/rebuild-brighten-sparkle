@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Users,
   Phone,
@@ -119,14 +119,11 @@ export default function DashboardApplicants() {
   const highlightedLeadId = searchParams.get("lead");
   const managerFilter = searchParams.get("manager");
   
-  const [applications, setApplications] = useState<Application[]>([]);
-  const [managerNames, setManagerNames] = useState<Map<string, string>>(new Map());
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [licenseFilter, setLicenseFilter] = useState<string>("all");
   const [sortOrder, setSortOrder] = useState<string>("newest");
-  const [isLoading, setIsLoading] = useState(true);
-  const [agentId, setAgentId] = useState<string | null>(null);
   const [myDirectsOnly, setMyDirectsOnly] = useState(false);
   
   // Notes modal state
@@ -161,55 +158,17 @@ export default function DashboardApplicants() {
     }
   }, [highlightedLeadId]);
   
-  // Scroll to highlighted lead when data loads
-  useEffect(() => {
-    if (highlightedLeadId && applications.length > 0) {
-      const timer = setTimeout(() => {
-        const leadElement = document.getElementById(`lead-${highlightedLeadId}`);
-        if (leadElement) {
-          leadElement.scrollIntoView({ behavior: "smooth", block: "center" });
-          // Clear the URL param after scrolling
-          setTimeout(() => setSearchParams({}), 2000);
-        } else {
-          // Check if it's in terminated section and show it
-          const isTerminatedLead = applications.find(
-            app => app.id === highlightedLeadId && app.terminated_at
-          );
-          if (isTerminatedLead) {
-            setShowTerminated(true);
-            setTimeout(() => {
-              const leadEl = document.getElementById(`lead-${highlightedLeadId}`);
-              if (leadEl) {
-                leadEl.scrollIntoView({ behavior: "smooth", block: "center" });
-                setTimeout(() => setSearchParams({}), 2000);
-              }
-            }, 300);
-          }
-        }
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [highlightedLeadId, applications, setSearchParams]);
+  // Scroll to highlighted lead — moved after applications declaration
 
-  useEffect(() => {
-    fetchApplications();
-  }, [user?.id, highlightedLeadId, isAdmin, isManager, managerFilter]);
+  const fetchApplicationsQuery = useCallback(async () => {
+    if (!user) return { apps: [] as Application[], names: new Map<string, string>(), myAgentId: null as string | null };
 
-  const fetchApplications = async () => {
-    if (!user) return;
-
-    setIsLoading(true);
-    
     // Get agent ID
     const { data: agentData } = await supabase
       .from("agents")
       .select("id")
       .eq("user_id", user.id)
       .single();
-
-    if (agentData) {
-      setAgentId(agentData.id);
-    }
 
     let fetchedApps: Application[] = [];
 
@@ -248,24 +207,64 @@ export default function DashboardApplicants() {
       }
     }
 
-    setApplications(fetchedApps);
-
     // Batch fetch manager names for all assigned agents
+    let nameMap = new Map<string, string>();
     const assignedIds = [...new Set(fetchedApps.map(a => a.assigned_agent_id).filter(Boolean))] as string[];
     if (assignedIds.length > 0) {
       const { data: assignedAgents } = await supabase
         .from("agents")
         .select("id, profiles!agents_profile_id_fkey(full_name)")
         .in("id", assignedIds);
-      const nameMap = new Map<string, string>();
       assignedAgents?.forEach((a: any) => {
         nameMap.set(a.id, a.profiles?.full_name || "Unknown");
       });
-      setManagerNames(nameMap);
     }
-    
-    setIsLoading(false);
-  };
+
+    return { apps: fetchedApps, names: nameMap, myAgentId: agentData?.id || null };
+  }, [user?.id, isAdmin, isManager, managerFilter]);
+
+  const { data: queryData, isLoading } = useQuery({
+    queryKey: ["applicants", user?.id, isAdmin, isManager, managerFilter],
+    queryFn: fetchApplicationsQuery,
+    enabled: !!user,
+    staleTime: 60000,
+  });
+
+  const applications = queryData?.apps || [];
+  const managerNames = queryData?.names || new Map<string, string>();
+  const agentId = queryData?.myAgentId || null;
+
+  const fetchApplications = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["applicants"] });
+  }, [queryClient]);
+
+  // Scroll to highlighted lead when data loads
+  useEffect(() => {
+    if (highlightedLeadId && applications.length > 0) {
+      const timer = setTimeout(() => {
+        const leadElement = document.getElementById(`lead-${highlightedLeadId}`);
+        if (leadElement) {
+          leadElement.scrollIntoView({ behavior: "smooth", block: "center" });
+          setTimeout(() => setSearchParams({}), 2000);
+        } else {
+          const isTerminatedLead = applications.find(
+            app => app.id === highlightedLeadId && app.terminated_at
+          );
+          if (isTerminatedLead) {
+            setShowTerminated(true);
+            setTimeout(() => {
+              const leadEl = document.getElementById(`lead-${highlightedLeadId}`);
+              if (leadEl) {
+                leadEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                setTimeout(() => setSearchParams({}), 2000);
+              }
+            }, 300);
+          }
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightedLeadId, applications, setSearchParams]);
 
   const getApplicationStatus = (app: Application): string => {
     if (app.terminated_at) return "terminated";
@@ -369,12 +368,8 @@ export default function DashboardApplicants() {
       toast.error("Could not terminate this lead — you may not have permission");
       playSound("error");
     } else {
-      // Optimistic UI: immediately remove from active list
-      setApplications(prev => prev.map(app => 
-        app.id === terminatedId 
-          ? { ...app, terminated_at: new Date().toISOString(), termination_reason: terminateReason.trim() || null }
-          : app
-      ));
+      // Optimistic — just refetch
+      fetchApplications();
       toast.success("Lead terminated");
       playSound("success");
       setTerminateApp(null);
@@ -409,9 +404,7 @@ export default function DashboardApplicants() {
 
   const handleNotesSave = (notes: string) => {
     if (notesApp) {
-      setApplications(apps => 
-        apps.map(a => a.id === notesApp.id ? { ...a, notes } : a)
-      );
+      fetchApplications();
       setNotesApp(null);
     }
   };
@@ -1167,19 +1160,11 @@ export default function DashboardApplicants() {
             )}
           </button>
 
-          <AnimatePresence>
-            {showTerminated && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.2 }}
-                className="space-y-4 mt-4 overflow-hidden"
-              >
-                {terminatedApplications.map((app, index) => renderApplicationCard(app, index, true))}
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {showTerminated && (
+            <div className="space-y-4 mt-4 animate-in fade-in-0 slide-in-from-top-1 duration-200">
+              {terminatedApplications.map((app, index) => renderApplicationCard(app, index, true))}
+            </div>
+          )}
         </div>
       )}
         </>
@@ -1255,14 +1240,6 @@ export default function DashboardApplicants() {
           application={contractedApp}
           agentId={agentId}
           onSuccess={() => {
-            // Optimistic update: immediately reflect contracted status
-            if (contractedApp) {
-              setApplications(prev => prev.map(app => 
-                app.id === contractedApp.id 
-                  ? { ...app, contracted_at: new Date().toISOString(), closed_at: new Date().toISOString(), status: "contracting" as any }
-                  : app
-              ));
-            }
             fetchApplications();
           }}
         />

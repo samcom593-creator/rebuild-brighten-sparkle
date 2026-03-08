@@ -152,10 +152,17 @@ const handler = async (req: Request): Promise<Response> => {
 </html>
     `;
 
+    // Build CC list for agent email
+    const agentCcList: string[] = [adminEmail];
+    if (managerEmail && managerEmail !== adminEmail) {
+      agentCcList.push(managerEmail);
+    }
+
     // Send email to agent
     const { error: emailError } = await resend.emails.send({
       from: "APEX Financial <notifications@tx.apex-financial.org>",
       to: [agentEmail],
+      cc: agentCcList,
       subject: `🚀 You're Officially LIVE, ${agentName}!`,
       html: agentEmailHtml,
     });

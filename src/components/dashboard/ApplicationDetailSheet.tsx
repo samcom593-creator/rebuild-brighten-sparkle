@@ -188,6 +188,78 @@ export function ApplicationDetailSheet({
   const setField = (key: keyof EditForm, value: string) =>
     setEditForm((prev) => ({ ...prev, [key]: value }));
 
+  const acctBusy = acctUpdatingEmail || acctResettingPw || acctSendingLogin || acctSendingToMgr;
+
+  const handleAcctUpdateEmail = async () => {
+    if (!acctNewEmail.trim() || !acctNewEmail.includes("@") || !linkedAgent?.user_id) return;
+    setAcctUpdatingEmail(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("update-user-email", {
+        body: { newEmail: acctNewEmail.trim(), targetUserId: linkedAgent.user_id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({ title: "Email updated ✅", description: `Email changed to ${acctNewEmail.trim()}.` });
+      setAcctNewEmail("");
+      queryClient.invalidateQueries({ queryKey: ["linked-agent-for-acct"] });
+    } catch (err: any) {
+      toast({ title: "Email update failed", description: err.message, variant: "destructive" });
+    } finally {
+      setAcctUpdatingEmail(false);
+    }
+  };
+
+  const handleAcctResetPassword = async () => {
+    if (!acctNewPassword.trim() || acctNewPassword.length < 6 || !linkedAgent?.user_id) return;
+    setAcctResettingPw(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("reset-agent-password", {
+        body: { targetUserId: linkedAgent.user_id, newPassword: acctNewPassword.trim() },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({ title: "Password reset ✅", description: "New password set for this agent." });
+      setAcctNewPassword("");
+    } catch (err: any) {
+      toast({ title: "Password reset failed", description: err.message, variant: "destructive" });
+    } finally {
+      setAcctResettingPw(false);
+    }
+  };
+
+  const handleAcctSendLogin = async () => {
+    if (!linkedAgent?.id) return;
+    setAcctSendingLogin(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-agent-portal-login", {
+        body: { agentId: linkedAgent.id },
+      });
+      if (error) throw error;
+      toast({ title: "Login sent ✅", description: "Portal login email sent to agent." });
+    } catch (err: any) {
+      toast({ title: "Send failed", description: err.message, variant: "destructive" });
+    } finally {
+      setAcctSendingLogin(false);
+    }
+  };
+
+  const handleAcctSendToManager = async () => {
+    if (!linkedAgent?.id) return;
+    setAcctSendingToMgr(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-login-to-manager", {
+        body: { agentId: linkedAgent.id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({ title: "Link sent to manager ✅", description: data?.message || "Login link forwarded to manager." });
+    } catch (err: any) {
+      toast({ title: "Send failed", description: err.message, variant: "destructive" });
+    } finally {
+      setAcctSendingToMgr(false);
+    }
+  };
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full sm:max-w-lg p-0">

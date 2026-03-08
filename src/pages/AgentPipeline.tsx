@@ -454,11 +454,7 @@ export default function AgentPipeline() {
       </div>
 
       {/* Content */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-      >
+      <div>
         {loading ? (
           <div className="text-center py-16 text-muted-foreground">Loading pipeline...</div>
         ) : filteredApps.length === 0 ? (

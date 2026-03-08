@@ -63,6 +63,7 @@ import { AnimatedNumber } from "@/components/dashboard/AnimatedNumber";
 import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { QuickAssignMenu } from "@/components/dashboard/QuickAssignMenu";
+import { LeadDetailSheet } from "@/components/recruiter/LeadDetailSheet";
 
 interface AgedLead {
   id: string;
@@ -241,6 +242,7 @@ export default function DashboardAgedLeads() {
   // Delete state
   const [deleteTarget, setDeleteTarget] = useState<AgedLead | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [detailLead, setDetailLead] = useState<AgedLead | null>(null);
 
   const canAccess = isAdmin || isManager;
 

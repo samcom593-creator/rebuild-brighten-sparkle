@@ -168,11 +168,7 @@ export function OnboardingPipelineCard() {
 
   return (
     <>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-      >
+      <div>
         <GlassCard className="p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-sm flex items-center gap-2">
@@ -184,11 +180,8 @@ export function OnboardingPipelineCard() {
 
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             {stages.map((stage, index) => (
-              <motion.div
+              <div
                 key={stage.stage}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: index * 0.1 }}
                 className="relative cursor-pointer"
                 onClick={() => stage.count > 0 && setSelectedStage(stage)}
               >

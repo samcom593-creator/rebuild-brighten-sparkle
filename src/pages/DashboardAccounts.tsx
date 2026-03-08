@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+
 import {
   Users,
   UserPlus,
@@ -371,9 +371,7 @@ export default function DashboardAccounts() {
   return (
     <>
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+      <div
         className="mb-8"
       >
         <div className="flex items-center gap-2 mb-2">
@@ -398,16 +396,13 @@ export default function DashboardAccounts() {
             Refresh
           </Button>
         </div>
-      </motion.div>
+      </div>
 
       {/* Animated Stat Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {statCards.map((stat, i) => (
-          <motion.div
+          <div
             key={stat.label}
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ delay: i * 0.05, type: "spring", stiffness: 200 }}
           >
             <div className={cn(
               "relative overflow-hidden rounded-xl border bg-gradient-to-br p-4 backdrop-blur-sm transition-all hover:scale-[1.02] hover:shadow-lg",
@@ -426,15 +421,12 @@ export default function DashboardAccounts() {
               </div>
               <div className="absolute -right-4 -top-4 h-16 w-16 rounded-full bg-current opacity-10 blur-xl" />
             </div>
-          </motion.div>
+          </div>
         ))}
       </div>
 
       {/* Search */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.15 }}
+      <div
         className="mb-6"
       >
         <div className="relative max-w-md">
@@ -446,7 +438,7 @@ export default function DashboardAccounts() {
             className="pl-10 bg-input"
           />
         </div>
-      </motion.div>
+      </div>
 
       {/* Accounts Table */}
       <motion.div
@@ -577,7 +569,7 @@ export default function DashboardAccounts() {
             </div>
           )}
         </GlassCard>
-      </motion.div>
+      </div>
 
       {/* Edit Account Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>

@@ -380,7 +380,7 @@ export default function TeamDirectory() {
                     </div>
                   )}
                 </GlassCard>
-              </motion.div>
+              </div>
             ))}
 
             {hierarchy.length === 0 && (
@@ -401,10 +401,7 @@ export default function TeamDirectory() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="max-w-2xl mx-auto space-y-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
+        <div>
           <div className="flex items-center gap-3 mb-2">
             <Users className="h-8 w-8 text-primary" />
             <h1 className="text-3xl font-bold">Team Directory</h1>
@@ -412,7 +409,7 @@ export default function TeamDirectory() {
           <p className="text-muted-foreground">
             Connect with your manager and get support
           </p>
-        </motion.div>
+        </div>
 
         {error ? (
           <GlassCard className="p-8 text-center">
@@ -423,11 +420,7 @@ export default function TeamDirectory() {
             <p className="text-muted-foreground">{error}</p>
           </GlassCard>
         ) : manager ? (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
+          <div>
             <GlassCard className="p-8">
               <div className="flex flex-col items-center text-center mb-8">
                 <Avatar className="h-24 w-24 mb-4 border-4 border-primary/20">
@@ -543,7 +536,7 @@ export default function TeamDirectory() {
                 </div>
               </div>
             </GlassCard>
-          </motion.div>
+          </div>
         ) : null}
       </div>
     </div>

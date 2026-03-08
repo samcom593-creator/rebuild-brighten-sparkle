@@ -483,6 +483,7 @@ export default function CallCenter() {
     if (currentIndex < leads.length - 1) {
       setCurrentIndex((prev) => prev + 1);
       playSound("whoosh");
+    } else {
       toast.info("You've reached the last lead");
     }
   }, [currentIndex, leads.length, currentLead, currentTranscription]);

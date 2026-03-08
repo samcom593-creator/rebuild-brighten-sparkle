@@ -33,7 +33,7 @@ const stageLabels: Record<string, string> = {
 };
 
 function getContactFreshness(lastContactedAt: string | null): { label: string; color: string; staleHours: number } {
-  if (!lastContactedAt) return { label: "Never", color: "text-destructive", staleHours: Infinity };
+  if (!lastContactedAt) return { label: "New", color: "text-muted-foreground", staleHours: 0 };
   const hours = (Date.now() - new Date(lastContactedAt).getTime()) / (1000 * 60 * 60);
   if (hours < 24) return { label: `${Math.round(hours)}h ago`, color: "text-emerald-400", staleHours: hours };
   if (hours < 48) return { label: "Yesterday", color: "text-amber-400", staleHours: hours };

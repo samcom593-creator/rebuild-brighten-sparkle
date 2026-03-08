@@ -231,11 +231,8 @@ export default function AgentPipeline() {
       : "Never contacted";
 
     return (
-      <motion.div
+      <div
         key={app.id}
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: idx * 0.02 }}
         className="px-3 py-2 border-b border-border/50 last:border-b-0 hover:bg-muted/30 transition-colors"
       >
         <div className="flex flex-col md:flex-row md:items-center gap-3">
@@ -332,16 +329,14 @@ export default function AgentPipeline() {
             )}
           </div>
         </div>
-      </motion.div>
+      </div>
     );
   };
 
   return (
     <>
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+      <div
         className="mb-6"
       >
         <div className="flex items-center justify-between flex-wrap gap-4">
@@ -403,13 +398,10 @@ export default function AgentPipeline() {
             </div>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Stats */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
+      <div
         className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6"
       >
         {stats.map((stat) => (
@@ -432,13 +424,10 @@ export default function AgentPipeline() {
             </div>
           </GlassCard>
         ))}
-      </motion.div>
+      </div>
 
       {/* Filters */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
+      <div
         className="flex flex-col sm:flex-row gap-3 mb-6"
       >
         <div className="relative flex-1">
@@ -462,14 +451,10 @@ export default function AgentPipeline() {
             <SelectItem value="licensed">Licensed</SelectItem>
           </SelectContent>
         </Select>
-      </motion.div>
+      </div>
 
       {/* Content */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-      >
+      <div>
         {loading ? (
           <div className="text-center py-16 text-muted-foreground">Loading pipeline...</div>
         ) : filteredApps.length === 0 ? (
@@ -497,11 +482,8 @@ export default function AgentPipeline() {
               const isOpen = expandedSection === col.id;
 
               return (
-                <motion.div
+                <div
                   key={col.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: colIdx * 0.05 }}
                 >
                   <div
                     className={cn(
@@ -553,12 +535,12 @@ export default function AgentPipeline() {
                       )}
                     </AnimatePresence>
                   </div>
-                </motion.div>
+                </div>
               );
             })}
           </div>
         )}
-      </motion.div>
+      </div>
 
       {/* Interview Scheduler Modal */}
       {schedulerApp && (

@@ -762,6 +762,23 @@ export function AgentQuickEditDialog({
                   <><Send className="h-3.5 w-3.5 mr-2" />Send Portal Login (+ Discord)</>
                 )}
               </Button>
+
+              {/* Send Login to Manager Button */}
+              {agentData?.invited_by_manager_id && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleSendLoginToManager}
+                  disabled={isBusy}
+                  className="w-full"
+                >
+                  {sendingLoginToManager ? (
+                    <><Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />Sending to Manager...</>
+                  ) : (
+                    <><Mail className="h-3.5 w-3.5 mr-2" />Send Login Link to Manager</>
+                  )}
+                </Button>
+              )}
             </div>
           )}
 

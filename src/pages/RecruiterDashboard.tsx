@@ -932,7 +932,6 @@ function RecruiterDashboardInner() {
         .from("applications")
         .select("id, first_name, last_name, email, phone, city, state, created_at, last_contacted_at, contacted_at, license_status, license_progress, test_scheduled_date, notes, assigned_agent_id, referral_source, instagram_handle, lead_score")
         .is("terminated_at", null)
-        .is("contracted_at", null)
         .in("status", ["reviewing", "contracting", "approved", "new"]);
 
       // Show ALL unlicensed leads (no agent filter) — Recruiter HQ is access-restricted
@@ -1457,16 +1456,23 @@ function RecruiterDashboardInner() {
                         <span className="text-muted-foreground text-xs">{location || "—"}</span>
                       </td>
                       <td className="px-3 py-2" onClick={e => e.stopPropagation()}>
-                        <LicenseProgressSelector
-                          applicationId={lead.id}
-                          currentProgress={lead.license_progress as any}
-                          testScheduledDate={lead.test_scheduled_date}
-                          onProgressUpdated={() => {
-                            playSound("success");
-                            fetchLeads(true);
-                          }}
-                          className="text-[10px] h-6"
-                        />
+                        <div className="flex items-center gap-1.5">
+                          <LicenseProgressSelector
+                            applicationId={lead.id}
+                            currentProgress={lead.license_progress as any}
+                            testScheduledDate={lead.test_scheduled_date}
+                            onProgressUpdated={() => {
+                              playSound("success");
+                              fetchLeads(true);
+                            }}
+                            className="text-[10px] h-6"
+                          />
+                          {lead.test_scheduled_date && (
+                            <span className="text-[9px] bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded px-1 py-0.5 whitespace-nowrap">
+                              📅 {new Date(lead.test_scheduled_date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-3 py-2">
                         <Badge className={cn("text-[10px] border whitespace-nowrap px-1.5 py-0", cColor)}>

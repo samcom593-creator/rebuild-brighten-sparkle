@@ -534,6 +534,81 @@ export default function DashboardAgedLeads() {
     return `${first.charAt(0)}${last ? last.charAt(0) : ""}`.toUpperCase();
   };
 
+  // Bulk assign handler with confirmation
+  const handleBulkAssignConfirm = async () => {
+    if (!bulkAssignManagerId || selectedIds.size === 0) return;
+    setBulkAssigning(true);
+    try {
+      const ids = Array.from(selectedIds);
+      const { error } = await supabase
+        .from("aged_leads")
+        .update({ assigned_manager_id: bulkAssignManagerId, status: "new" })
+        .in("id", ids);
+      if (error) throw error;
+      try {
+        await supabase.functions.invoke("notify-lead-assigned", {
+          body: { newAgentId: bulkAssignManagerId, batchCount: ids.length, source: "aged_leads" },
+        });
+      } catch {}
+      toast.success(`${ids.length} leads assigned!`);
+      playSound("celebrate");
+      setSelectedIds(new Set());
+      setBulkAssignManagerId("");
+      setBulkAssignConfirmOpen(false);
+      fetchLeads();
+    } catch (error) {
+      console.error("Bulk assign error:", error);
+      toast.error("Failed to assign leads");
+      playSound("error");
+    } finally {
+      setBulkAssigning(false);
+    }
+  };
+
+  // Bulk delete handler — vaults + deletes ALL selected
+  const handleBulkDeleteConfirm = async () => {
+    if (selectedIds.size === 0 || !user) return;
+    setBulkDeleting(true);
+    try {
+      const leadsToDelete = leads.filter(l => selectedIds.has(l.id));
+      // Vault all selected leads
+      const vaultRows = leadsToDelete.map(l => ({
+        original_id: l.id,
+        source: "aged_leads" as const,
+        first_name: l.firstName,
+        last_name: l.lastName || null,
+        email: l.email,
+        phone: l.phone || null,
+        license_status: l.licenseStatus,
+        deleted_by: user.id,
+        reason: "Bulk deleted via Aged Leads",
+      }));
+      // Insert in batches of 50 to avoid payload limits
+      for (let i = 0; i < vaultRows.length; i += 50) {
+        const batch = vaultRows.slice(i, i + 50);
+        await supabase.from("deleted_leads").insert(batch);
+      }
+      // Hard delete all
+      const ids = Array.from(selectedIds);
+      for (let i = 0; i < ids.length; i += 50) {
+        const batch = ids.slice(i, i + 50);
+        const { error } = await supabase.from("aged_leads").delete().in("id", batch);
+        if (error) throw error;
+      }
+      toast.success(`${ids.length} leads deleted`);
+      playSound("success");
+      setSelectedIds(new Set());
+      setBulkDeleteConfirmOpen(false);
+      setLeads(prev => prev.filter(l => !selectedIds.has(l.id)));
+    } catch (error: any) {
+      console.error("Bulk delete error:", error);
+      toast.error("Failed to delete leads: " + (error.message || "Unknown error"));
+      playSound("error");
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -715,37 +790,85 @@ export default function DashboardAgedLeads() {
         </Select>
       </div>
 
-      {/* Quick Assign Panel */}
+      {/* Persistent Bulk Action Toolbar */}
       {isAdmin && managers.length > 0 && (
-        <QuickAssignPanel
-          managers={managers}
-          unassignedCount={leads.filter(l => !l.assignedManagerId).length}
-          onAssign={async (managerId, count) => {
-            const unassigned = leads.filter(l => !l.assignedManagerId).slice(0, count);
-            if (unassigned.length === 0) {
-              toast.error("No unassigned leads available");
-              return;
-            }
-            const ids = unassigned.map(l => l.id);
-            const { error } = await supabase
-              .from("aged_leads")
-              .update({ assigned_manager_id: managerId, status: "new" })
-              .in("id", ids);
-            if (error) {
-              toast.error("Failed to assign leads");
-              return;
-            }
-            // Send consolidated notification
-            try {
-              await supabase.functions.invoke("notify-lead-assigned", {
-                body: { newAgentId: managerId, batchCount: ids.length, source: "aged_leads" },
-              });
-            } catch (e) { console.error("Notify error:", e); }
-            toast.success(`Assigned ${ids.length} leads!`);
-            playSound("celebrate");
-            fetchLeads();
-          }}
-        />
+        <GlassCard className="p-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <UserPlus className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold">Bulk Actions</span>
+              {selectedIds.size > 0 && (
+                <Badge variant="outline" className="bg-primary/15 text-primary border-primary/25 text-xs">
+                  {selectedIds.size} selected
+                </Badge>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs"
+                onClick={() => {
+                  const first100 = filteredLeads.slice(0, 100);
+                  setSelectedIds(new Set(first100.map(l => l.id)));
+                }}
+              >
+                Select 100
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs"
+                onClick={() => setSelectedIds(new Set(filteredLeads.map(l => l.id)))}
+              >
+                Select All ({filteredLeads.length})
+              </Button>
+              {selectedIds.size > 0 && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-xs"
+                  onClick={() => setSelectedIds(new Set())}
+                >
+                  Clear
+                </Button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 ml-auto">
+              <Select value={bulkAssignManagerId} onValueChange={setBulkAssignManagerId}>
+                <SelectTrigger className="w-[180px] h-8 text-xs">
+                  <SelectValue placeholder="Select manager..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {managers.map(m => (
+                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                size="sm"
+                className="h-8 text-xs"
+                disabled={selectedIds.size === 0 || !bulkAssignManagerId}
+                onClick={() => setBulkAssignConfirmOpen(true)}
+              >
+                <UserPlus className="h-3.5 w-3.5 mr-1" />
+                Assign ({selectedIds.size})
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                className="h-8 text-xs"
+                disabled={selectedIds.size === 0}
+                onClick={() => setBulkDeleteConfirmOpen(true)}
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                Delete ({selectedIds.size})
+              </Button>
+            </div>
+          </div>
+        </GlassCard>
       )}
 
       {/* Results Count */}
@@ -941,72 +1064,8 @@ export default function DashboardAgedLeads() {
             </TableBody>
           </Table>
           {selectedIds.size > 0 && (
-            <div className="flex items-center gap-3 px-4 py-2.5 border-t border-border bg-muted/30 flex-wrap">
-              <span className="text-xs font-medium">{selectedIds.size} selected</span>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 text-xs"
-                onClick={() => {
-                  const first100 = filteredLeads.slice(0, 100);
-                  setSelectedIds(new Set(first100.map(l => l.id)));
-                }}
-              >
-                Select 100
-              </Button>
-              {isAdmin && managers.length > 0 && (
-                <>
-                  <Select onValueChange={async (managerId) => {
-                    const ids = Array.from(selectedIds);
-                    const { error } = await supabase
-                      .from("aged_leads")
-                      .update({ assigned_manager_id: managerId, status: "new" })
-                      .in("id", ids);
-                    if (error) {
-                      toast.error("Failed to assign");
-                      playSound("error");
-                      return;
-                    }
-                    try {
-                      await supabase.functions.invoke("notify-lead-assigned", {
-                        body: { newAgentId: managerId, batchCount: ids.length, source: "aged_leads" },
-                      });
-                    } catch {}
-                    toast.success(`${ids.length} leads assigned!`);
-                    playSound("celebrate");
-                    setSelectedIds(new Set());
-                    fetchLeads();
-                  }}>
-                    <SelectTrigger className="w-[160px] h-7 text-xs">
-                      <SelectValue placeholder="Assign to..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {managers.map(m => (
-                        <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </>
-              )}
-              <Button
-                size="sm"
-                variant="destructive"
-                className="h-7 text-xs"
-                onClick={() => {
-                  const first = filteredLeads.find(l => selectedIds.has(l.id));
-                  if (first) setDeleteTarget(first);
-                }}
-              >
-                <Trash2 className="h-3 w-3 mr-1" /> Delete Selected
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 text-xs"
-                onClick={() => setSelectedIds(new Set())}
-              >
-                Clear
-              </Button>
+            <div className="flex items-center gap-3 px-4 py-2.5 border-t border-border bg-muted/30">
+              <span className="text-xs font-medium text-muted-foreground">{selectedIds.size} selected — use toolbar above to assign or delete</span>
             </div>
           )}
         </div>

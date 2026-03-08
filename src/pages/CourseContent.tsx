@@ -1,4 +1,4 @@
-import { useState, forwardRef } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -25,7 +25,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import type { CourseModule, CourseQuestion } from "@/types/course";
 
-const CourseContent = forwardRef<HTMLDivElement>((_, ref) => {
+export default function CourseContent() {
   const navigate = useNavigate();
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [activeVideo, setActiveVideo] = useState<string | null>(null);
@@ -353,8 +353,4 @@ const CourseContent = forwardRef<HTMLDivElement>((_, ref) => {
       </div>
     </>
   );
-});
-
-CourseContent.displayName = "CourseContent";
-
-export default CourseContent;
+}

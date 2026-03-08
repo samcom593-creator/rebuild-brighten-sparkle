@@ -450,6 +450,30 @@ export function AgentQuickEditDialog({
     }
   };
 
+  const handleSendLoginToManager = async () => {
+    setSendingLoginToManager(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-login-to-manager", {
+        body: { agentId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({
+        title: "Link sent to manager ✅",
+        description: data?.message || "Login link forwarded to the agent's manager.",
+      });
+    } catch (error: any) {
+      console.error("Error sending login to manager:", error);
+      toast({
+        title: "Send failed",
+        description: error.message || "Failed to send login link to manager.",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingLoginToManager(false);
+    }
+  };
+
   const handleMerge = async () => {
     if (!selectedMergeId) {
       toast({ title: "Select an agent", description: "Please select an agent to merge with.", variant: "destructive" });

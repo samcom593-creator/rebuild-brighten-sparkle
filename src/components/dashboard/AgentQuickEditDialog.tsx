@@ -61,6 +61,7 @@ interface AgentData {
   user_id: string | null;
   profile_id: string | null;
   display_name: string | null;
+  invited_by_manager_id: string | null;
 }
 
 export function AgentQuickEditDialog({
@@ -99,6 +100,7 @@ export function AgentQuickEditDialog({
   const [updatingEmail, setUpdatingEmail] = useState(false);
   const [resettingPassword, setResettingPassword] = useState(false);
   const [sendingLogin, setSendingLogin] = useState(false);
+  const [sendingLoginToManager, setSendingLoginToManager] = useState(false);
 
   useEffect(() => {
     if (open && agentId) {
@@ -127,6 +129,7 @@ export function AgentQuickEditDialog({
           user_id,
           profile_id,
           display_name,
+          invited_by_manager_id,
           profile:profiles!agents_profile_id_fkey(full_name, email, phone, instagram_handle)
         `)
         .eq("id", agentId)
@@ -137,6 +140,7 @@ export function AgentQuickEditDialog({
           user_id: agent.user_id,
           profile_id: agent.profile_id,
           display_name: agent.display_name,
+          invited_by_manager_id: agent.invited_by_manager_id,
         });
 
         if (agent.profile) {

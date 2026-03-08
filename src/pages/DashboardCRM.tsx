@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
-import { motion } from "framer-motion";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Users,
   Search,
@@ -241,13 +241,7 @@ function AgentExpandedRow({
   const isOnboarding = ["onboarding", "training_online"].includes(agent.onboardingStage);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: "auto" }}
-      exit={{ opacity: 0, height: 0 }}
-      transition={{ duration: 0.2 }}
-      className="overflow-hidden"
-    >
+    <div className="overflow-hidden animate-in fade-in-0 slide-in-from-top-1 duration-200">
       <div className={cn(
         "px-4 py-3 border-t border-border space-y-3 rounded-b-lg",
         "bg-card/80 backdrop-blur-sm shadow-inner",
@@ -569,16 +563,16 @@ function AgentExpandedRow({
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
 export default function DashboardCRM() {
   const { user, isAdmin, isManager, isLoading: authLoading } = useAuth();
   const { playSound } = useSoundEffects();
+  const queryClient = useQueryClient();
   const [agents, setAgents] = useState<AgentCRM[]>([]);
   const [managers, setManagers] = useState<Manager[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [managerFilter, setManagerFilter] = useState<string>("all");
   const [showDeactivated, setShowDeactivated] = useState(false);
@@ -612,14 +606,7 @@ export default function DashboardCRM() {
     }
   }, [focusAgentId, agents.length]);
 
-  useEffect(() => {
-    if (!authLoading && user) {
-      fetchAgents();
-      if (isAdmin) fetchManagers();
-    }
-  }, [user?.id, authLoading, isAdmin]);
-
-  const fetchManagers = async () => {
+  const fetchAgentsQuery = useCallback(async () => {
     try {
       const { data: managerRoles } = await supabase.from("user_roles").select("user_id").eq("role", "manager");
       if (!managerRoles?.length) return;
@@ -630,10 +617,6 @@ export default function DashboardCRM() {
       const profileMap = new Map(profiles?.map(p => [p.user_id, p.full_name]) || []);
       setManagers(managerAgents.map(a => ({ id: a.id, name: profileMap.get(a.user_id) || "Unknown" })));
     } catch (error) { console.error("Error fetching managers:", error); }
-  };
-
-  const fetchAgents = async () => {
-    setLoading(true);
     try {
       const { data: currentAgent } = await supabase.from("agents").select("id").eq("user_id", user!.id).single();
       if (!currentAgent && !isAdmin) { setLoading(false); return; }
@@ -768,10 +751,51 @@ export default function DashboardCRM() {
           agentLicenseStatus: app.license_status || "unlicensed",
         }));
 
-      setAgents([...crmAgents, ...newApplicants]);
-    } catch (error) { console.error("Error fetching CRM agents:", error); toast.error("Failed to load agents"); }
-    finally { setLoading(false); }
-  };
+      return [...crmAgents, ...newApplicants];
+    } catch (error) { console.error("Error fetching CRM agents:", error); toast.error("Failed to load agents"); return []; }
+  }, [user?.id, isAdmin, isManager]);
+
+  const fetchManagersQuery = useCallback(async () => {
+    try {
+      const { data: managerRoles } = await supabase.from("user_roles").select("user_id").eq("role", "manager");
+      if (!managerRoles?.length) return [];
+      const managerUserIds = managerRoles.map(r => r.user_id);
+      const { data: managerAgents } = await supabase.from("agents").select("id, user_id").in("user_id", managerUserIds).eq("status", "active");
+      if (!managerAgents?.length) return [];
+      const { data: profiles } = await supabase.from("profiles").select("user_id, full_name").in("user_id", managerUserIds);
+      const profileMap = new Map(profiles?.map(p => [p.user_id, p.full_name]) || []);
+      return managerAgents.map(a => ({ id: a.id, name: profileMap.get(a.user_id) || "Unknown" }));
+    } catch (error) { console.error("Error fetching managers:", error); return []; }
+  }, []);
+
+  const { data: agentsData, isLoading: agentsLoading } = useQuery({
+    queryKey: ["crm-agents", user?.id, isAdmin, isManager],
+    queryFn: fetchAgentsQuery,
+    enabled: !authLoading && !!user,
+    staleTime: 60000,
+  });
+
+  const { data: managersData } = useQuery({
+    queryKey: ["crm-managers"],
+    queryFn: fetchManagersQuery,
+    enabled: !authLoading && !!user && isAdmin,
+    staleTime: 120000,
+  });
+
+  // Sync query data to local state for optimistic updates
+  useEffect(() => {
+    if (agentsData) setAgents(agentsData);
+  }, [agentsData]);
+
+  useEffect(() => {
+    if (managersData) setManagers(managersData);
+  }, [managersData]);
+
+  const loading = agentsLoading;
+
+  const fetchAgents = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["crm-agents"] });
+  }, [queryClient]);
 
   const handleOptimisticStageUpdate = async (agentId: string) => {
     try {

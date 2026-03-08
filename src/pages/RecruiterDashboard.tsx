@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, memo } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Star, Zap, Flame, Trophy, Phone, Mail, MapPin, Calendar, Bell,
@@ -901,9 +902,8 @@ function RecruiterDashboardInner() {
   const { playSound } = useSoundEffects();
   const isMobile = useIsMobile();
 
-  const [leads, setLeads] = useState<Lead[]>([]);
+  const queryClient = useQueryClient();
   const [agentId, setAgentId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("stale");
   const [filterStage, setFilterStage] = useState<string>("all");
@@ -915,76 +915,82 @@ function RecruiterDashboardInner() {
   const [mobileColumn, setMobileColumn] = useState<string | null>(null);
   const [myDirectsOnly, setMyDirectsOnly] = useState(false);
 
-  // Fetch leads assigned to Aisha (or all if admin viewing)
-  const fetchLeads = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true);
-    try {
-      const { data: agentData } = await supabase
-        .from("agents")
-        .select("id")
-        .eq("user_id", user?.id || "")
-        .single();
+  // Fetch leads
+  const fetchLeadsQuery = useCallback(async () => {
+    const { data: agentData } = await supabase
+      .from("agents")
+      .select("id")
+      .eq("user_id", user?.id || "")
+      .single();
 
-      const myAgentId = agentData?.id || null;
-      setAgentId(myAgentId);
+    const myAgentId = agentData?.id || null;
 
-      const query = supabase
-        .from("applications")
-        .select("id, first_name, last_name, email, phone, city, state, created_at, last_contacted_at, contacted_at, license_status, license_progress, test_scheduled_date, notes, assigned_agent_id, referral_source, instagram_handle, lead_score")
-        .is("terminated_at", null)
-        .in("status", ["reviewing", "contracting", "approved", "new"]);
+    const query = supabase
+      .from("applications")
+      .select("id, first_name, last_name, email, phone, city, state, created_at, last_contacted_at, contacted_at, license_status, license_progress, test_scheduled_date, notes, assigned_agent_id, referral_source, instagram_handle, lead_score")
+      .is("terminated_at", null)
+      .in("status", ["reviewing", "contracting", "approved", "new"]);
 
-      // Show ALL unlicensed leads (no agent filter) — Recruiter HQ is access-restricted
-      const { data, error } = await query.order("created_at", { ascending: false });
-      if (error) throw error;
+    const { data, error } = await query.order("created_at", { ascending: false });
+    if (error) throw error;
 
-      // Also fetch contacted aged leads
-      const { data: agedData } = await supabase
-        .from("aged_leads")
-        .select("id, first_name, last_name, email, phone, contacted_at, last_contacted_at, created_at, license_status, notes, instagram_handle, motivation")
-        .eq("status", "contacted");
+    // Also fetch contacted aged leads
+    const { data: agedData } = await supabase
+      .from("aged_leads")
+      .select("id, first_name, last_name, email, phone, contacted_at, last_contacted_at, created_at, license_status, notes, instagram_handle, motivation")
+      .eq("status", "contacted");
 
-      const normalizedAged: Lead[] = (agedData || []).map((a) => ({
-        id: a.id,
-        first_name: a.first_name,
-        last_name: a.last_name || "",
-        email: a.email || "",
-        phone: a.phone || "",
-        city: null,
-        state: null,
-        created_at: a.created_at || new Date().toISOString(),
-        last_contacted_at: a.last_contacted_at,
-        contacted_at: a.contacted_at,
-        license_status: a.license_status || "unlicensed",
-        license_progress: "unlicensed",
-        test_scheduled_date: null,
-        notes: a.notes,
-        assigned_agent_id: null,
-        referral_source: "aged_lead",
-        instagram_handle: a.instagram_handle || null,
-        lead_score: null,
-        motivation: a.motivation || null,
-      }));
+    const normalizedAged: Lead[] = (agedData || []).map((a) => ({
+      id: a.id,
+      first_name: a.first_name,
+      last_name: a.last_name || "",
+      email: a.email || "",
+      phone: a.phone || "",
+      city: null,
+      state: null,
+      created_at: a.created_at || new Date().toISOString(),
+      last_contacted_at: a.last_contacted_at,
+      contacted_at: a.contacted_at,
+      license_status: a.license_status || "unlicensed",
+      license_progress: "unlicensed",
+      test_scheduled_date: null,
+      notes: a.notes,
+      assigned_agent_id: null,
+      referral_source: "aged_lead",
+      instagram_handle: a.instagram_handle || null,
+      lead_score: null,
+      motivation: a.motivation || null,
+    }));
 
-      // Merge and deduplicate by email
-      const allLeads: Lead[] = [...(data || []).map((d) => ({ ...d, license_progress: d.license_progress as string | null }))];
-      const existingEmails = new Set(allLeads.map((l) => l.email?.toLowerCase()).filter(Boolean));
-      for (const aged of normalizedAged) {
-        if (aged.email && !existingEmails.has(aged.email.toLowerCase())) {
-          allLeads.push(aged);
-          existingEmails.add(aged.email.toLowerCase());
-        }
+    // Merge and deduplicate by email
+    const allLeads: Lead[] = [...(data || []).map((d) => ({ ...d, license_progress: d.license_progress as string | null }))];
+    const existingEmails = new Set(allLeads.map((l) => l.email?.toLowerCase()).filter(Boolean));
+    for (const aged of normalizedAged) {
+      if (aged.email && !existingEmails.has(aged.email.toLowerCase())) {
+        allLeads.push(aged);
+        existingEmails.add(aged.email.toLowerCase());
       }
-
-      setLeads(allLeads);
-    } catch (err) {
-      console.error("RecruiterDashboard fetch error:", err);
-    } finally {
-      setLoading(false);
     }
+
+    return { leads: allLeads, myAgentId };
   }, [user?.id]);
 
-  useEffect(() => { fetchLeads(); }, [fetchLeads]);
+  const { data: leadsData, isLoading: loading } = useQuery({
+    queryKey: ["recruiter-leads", user?.id],
+    queryFn: fetchLeadsQuery,
+    enabled: !!user,
+    staleTime: 60000,
+  });
+
+  const leads = leadsData?.leads || [];
+
+  useEffect(() => {
+    if (leadsData?.myAgentId !== undefined) setAgentId(leadsData.myAgentId);
+  }, [leadsData?.myAgentId]);
+
+  const fetchLeads = useCallback((silent?: boolean) => {
+    queryClient.invalidateQueries({ queryKey: ["recruiter-leads"] });
+  }, [queryClient]);
 
   // XP system
   useEffect(() => {

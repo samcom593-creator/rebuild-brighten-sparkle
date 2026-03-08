@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Users,
   Phone,
@@ -119,14 +119,11 @@ export default function DashboardApplicants() {
   const highlightedLeadId = searchParams.get("lead");
   const managerFilter = searchParams.get("manager");
   
-  const [applications, setApplications] = useState<Application[]>([]);
-  const [managerNames, setManagerNames] = useState<Map<string, string>>(new Map());
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [licenseFilter, setLicenseFilter] = useState<string>("all");
   const [sortOrder, setSortOrder] = useState<string>("newest");
-  const [isLoading, setIsLoading] = useState(true);
-  const [agentId, setAgentId] = useState<string | null>(null);
   const [myDirectsOnly, setMyDirectsOnly] = useState(false);
   
   // Notes modal state
@@ -191,25 +188,15 @@ export default function DashboardApplicants() {
     }
   }, [highlightedLeadId, applications, setSearchParams]);
 
-  useEffect(() => {
-    fetchApplications();
-  }, [user?.id, highlightedLeadId, isAdmin, isManager, managerFilter]);
+  const fetchApplicationsQuery = useCallback(async () => {
+    if (!user) return { apps: [] as Application[], names: new Map<string, string>(), myAgentId: null as string | null };
 
-  const fetchApplications = async () => {
-    if (!user) return;
-
-    setIsLoading(true);
-    
     // Get agent ID
     const { data: agentData } = await supabase
       .from("agents")
       .select("id")
       .eq("user_id", user.id)
       .single();
-
-    if (agentData) {
-      setAgentId(agentData.id);
-    }
 
     let fetchedApps: Application[] = [];
 
@@ -248,24 +235,36 @@ export default function DashboardApplicants() {
       }
     }
 
-    setApplications(fetchedApps);
-
     // Batch fetch manager names for all assigned agents
+    let nameMap = new Map<string, string>();
     const assignedIds = [...new Set(fetchedApps.map(a => a.assigned_agent_id).filter(Boolean))] as string[];
     if (assignedIds.length > 0) {
       const { data: assignedAgents } = await supabase
         .from("agents")
         .select("id, profiles!agents_profile_id_fkey(full_name)")
         .in("id", assignedIds);
-      const nameMap = new Map<string, string>();
       assignedAgents?.forEach((a: any) => {
         nameMap.set(a.id, a.profiles?.full_name || "Unknown");
       });
-      setManagerNames(nameMap);
     }
-    
-    setIsLoading(false);
-  };
+
+    return { apps: fetchedApps, names: nameMap, myAgentId: agentData?.id || null };
+  }, [user?.id, isAdmin, isManager, managerFilter]);
+
+  const { data: queryData, isLoading } = useQuery({
+    queryKey: ["applicants", user?.id, isAdmin, isManager, managerFilter],
+    queryFn: fetchApplicationsQuery,
+    enabled: !!user,
+    staleTime: 60000,
+  });
+
+  const applications = queryData?.apps || [];
+  const managerNames = queryData?.names || new Map<string, string>();
+  const agentId = queryData?.myAgentId || null;
+
+  const fetchApplications = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["applicants"] });
+  }, [queryClient]);
 
   const getApplicationStatus = (app: Application): string => {
     if (app.terminated_at) return "terminated";

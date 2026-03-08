@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Star, Zap, Flame, Trophy, Phone, Mail, MapPin, Calendar, Bell,
-  Clock, Search, ChevronRight, GraduationCap, Mic,
+  Clock, Search, ChevronRight, GraduationCap, Mic, Instagram,
   BookOpen, BookCheck, CalendarClock, FileCheck, Fingerprint,
   Award, Users, UserCheck, AlertTriangle, TrendingUp, Sparkles,
   MessageSquare, ChevronDown, ChevronUp, Plus, ExternalLink, AlertCircle,

@@ -244,6 +244,13 @@ export default function DashboardAgedLeads() {
   const [deleting, setDeleting] = useState(false);
   const [detailLead, setDetailLead] = useState<AgedLead | null>(null);
 
+  // Bulk action state
+  const [bulkAssignManagerId, setBulkAssignManagerId] = useState("");
+  const [bulkAssignConfirmOpen, setBulkAssignConfirmOpen] = useState(false);
+  const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false);
+  const [bulkAssigning, setBulkAssigning] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+
   const canAccess = isAdmin || isManager;
 
   useEffect(() => {

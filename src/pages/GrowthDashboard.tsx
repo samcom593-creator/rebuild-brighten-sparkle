@@ -34,6 +34,7 @@ interface GrowthStat {
 
 export default function GrowthDashboard() {
   const { user, isAdmin, isManager } = useAuth();
+  const { playSound } = useSoundEffects();
   const [managers, setManagers] = useState<ManagerProfile[]>([]);
   const [weekStats, setWeekStats] = useState<GrowthStat[]>([]);
   const [prevWeekStats, setPrevWeekStats] = useState<GrowthStat[]>([]);
@@ -103,8 +104,9 @@ export default function GrowthDashboard() {
       }, { onConflict: "agent_id,stat_date" });
       if (error) throw error;
       toast.success("Growth numbers saved!");
+      playSound("success");
       fetchData();
-    } catch (err) { console.error(err); toast.error("Failed to save."); }
+    } catch (err) { console.error(err); toast.error("Failed to save."); playSound("error"); }
     finally { setSaving(false); }
   };
 

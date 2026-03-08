@@ -27,6 +27,7 @@ import {
   Eye,
   FileText,
   CheckCircle2,
+  KeyRound,
 } from "lucide-react";
 import {
   Table,
@@ -75,6 +76,7 @@ import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingBu
 import { InterviewRecorder } from "@/components/dashboard/InterviewRecorder";
 import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressSelector";
 import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
+import { AgentQuickEditDialog } from "@/components/dashboard/AgentQuickEditDialog";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { differenceInDays } from "date-fns";
 
@@ -210,6 +212,7 @@ function AgentExpandedRow({
   onDeactivate,
   onViewApp,
   onRecord,
+  onEditLogin,
   onAgentUpdate,
   playSound,
   sendingCourseLogin,
@@ -223,6 +226,7 @@ function AgentExpandedRow({
   onDeactivate: (a: AgentCRM) => void;
   onViewApp: (id: string) => void;
   onRecord: (a: AgentCRM) => void;
+  onEditLogin: (a: AgentCRM) => void;
   onAgentUpdate: (id: string, updates: Partial<AgentCRM>) => void;
   playSound: (s: "success" | "error" | "whoosh" | "click" | "celebrate") => void;
   sendingCourseLogin: string | null;
@@ -277,21 +281,31 @@ function AgentExpandedRow({
             <FileText className="h-3 w-3" /> Application
           </Button>
           {agent.userId && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 text-xs gap-1.5"
-              onClick={async () => {
-                try {
-                  const { data, error } = await supabase.functions.invoke("send-agent-portal-login", { body: { agentId: agent.id } });
-                  if (error) throw error;
-                  if (data?.success === false) throw new Error(data.error || "Failed");
-                  toast.success(`Portal login sent to ${agent.email}`);
-                } catch (err: any) { toast.error(err.message || "Failed to send"); }
-              }}
-            >
-              <Send className="h-3 w-3" /> Portal Login
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs gap-1.5"
+                onClick={async () => {
+                  try {
+                    const { data, error } = await supabase.functions.invoke("send-agent-portal-login", { body: { agentId: agent.id } });
+                    if (error) throw error;
+                    if (data?.success === false) throw new Error(data.error || "Failed");
+                    toast.success(`Portal login sent to ${agent.email}`);
+                  } catch (err: any) { toast.error(err.message || "Failed to send"); }
+                }}
+              >
+                <Send className="h-3 w-3" /> Portal Login
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs gap-1.5 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
+                onClick={() => onEditLogin(agent)}
+              >
+                <KeyRound className="h-3 w-3" /> Change Login
+              </Button>
+            </>
           )}
           <div className="flex-1" />
           <Button
@@ -578,6 +592,7 @@ export default function DashboardCRM() {
   const [recorderAgent, setRecorderAgent] = useState<AgentCRM | null>(null);
   const [viewAppTarget, setViewAppTarget] = useState<{ agentId?: string; applicationId?: string } | null>(null);
   const [expandedAgentId, setExpandedAgentId] = useState<string | null>(null);
+  const [editLoginAgent, setEditLoginAgent] = useState<AgentCRM | null>(null);
   const [activeStageTab, setActiveStageTab] = useState<string>("onboarding");
   const [currentAgentId, setCurrentAgentId] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
@@ -1096,6 +1111,7 @@ export default function DashboardCRM() {
                                           setViewAppTarget({ agentId: id, applicationId: a?.applicationId });
                                         }}
                                         onRecord={setRecorderAgent}
+                                        onEditLogin={setEditLoginAgent}
                                         onAgentUpdate={onAgentUpdate}
                                         playSound={playSound}
                                         sendingCourseLogin={sendingCourseLogin}
@@ -1188,6 +1204,15 @@ export default function DashboardCRM() {
       <InstagramPromptDialog open={!!instagramPromptAgent} onOpenChange={(o) => !o && setInstagramPromptAgent(null)} agentId={instagramPromptAgent?.id || ""} agentName={instagramPromptAgent?.name || ""} onComplete={fetchAgents} />
       {recorderAgent && user && (
         <InterviewRecorder applicationId={recorderAgent.id} agentId={recorderAgent.id} applicantName={recorderAgent.name} onClose={() => setRecorderAgent(null)} onTranscriptionSaved={fetchAgents} />
+      )}
+      {editLoginAgent && (
+        <AgentQuickEditDialog
+          open={!!editLoginAgent}
+          onOpenChange={(o) => !o && setEditLoginAgent(null)}
+          agentId={editLoginAgent.id}
+          currentName={editLoginAgent.name}
+          onUpdate={fetchAgents}
+        />
       )}
     </>
   );

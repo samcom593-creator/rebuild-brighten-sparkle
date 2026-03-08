@@ -77,31 +77,25 @@ function QuickStat({
   };
   
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ delay, duration: 0.3, type: "spring", stiffness: 200 }}
-    >
-      <div className={cn(
-        "relative overflow-hidden rounded-xl border bg-gradient-to-br p-4 backdrop-blur-sm transition-all hover:scale-[1.02] hover:shadow-lg",
-        colorClasses[color]
-      )}>
-        <div className="flex items-center gap-3">
-          <div className={cn(
-            "flex h-10 w-10 items-center justify-center rounded-lg bg-background/50",
-            colorClasses[color]
-          )}>
-            <Icon className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-xs font-medium text-muted-foreground">{label}</p>
-            <p className="text-xl font-bold text-foreground">{value}</p>
-          </div>
+    <div className={cn(
+      "relative overflow-hidden rounded-xl border bg-gradient-to-br p-4 backdrop-blur-sm transition-all hover:scale-[1.02] hover:shadow-lg",
+      colorClasses[color]
+    )}>
+      <div className="flex items-center gap-3">
+        <div className={cn(
+          "flex h-10 w-10 items-center justify-center rounded-lg bg-background/50",
+          colorClasses[color]
+        )}>
+          <Icon className="h-5 w-5" />
         </div>
-        {/* Decorative glow */}
-        <div className="absolute -right-4 -top-4 h-16 w-16 rounded-full bg-current opacity-10 blur-xl" />
+        <div>
+          <p className="text-xs font-medium text-muted-foreground">{label}</p>
+          <p className="text-xl font-bold text-foreground">{value}</p>
+        </div>
       </div>
-    </motion.div>
+      {/* Decorative glow */}
+      <div className="absolute -right-4 -top-4 h-16 w-16 rounded-full bg-current opacity-10 blur-xl" />
+    </div>
   );
 }
 

@@ -82,10 +82,19 @@ export function ApplicationDetailSheet({
   agentId,
   onRefresh,
 }: ApplicationDetailSheetProps) {
+  const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
   const [editForm, setEditForm] = useState<EditForm>(initForm(null));
+
+  // Account management state
+  const [acctNewEmail, setAcctNewEmail] = useState("");
+  const [acctNewPassword, setAcctNewPassword] = useState("");
+  const [acctUpdatingEmail, setAcctUpdatingEmail] = useState(false);
+  const [acctResettingPw, setAcctResettingPw] = useState(false);
+  const [acctSendingLogin, setAcctSendingLogin] = useState(false);
+  const [acctSendingToMgr, setAcctSendingToMgr] = useState(false);
 
   const { data: application, isLoading } = useQuery({
     queryKey: ["application-detail", applicationId, agentId],

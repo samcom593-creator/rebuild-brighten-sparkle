@@ -42,6 +42,7 @@ interface UnifiedLead {
   state?: string;
   availability?: string;
   referredBy?: string;
+  assignedManagerName?: string;
 }
 
 interface CallCenterLeadCardProps {
@@ -192,6 +193,16 @@ export function CallCenterLeadCard({
               >
                 {lead.licenseStatus === "licensed" ? "Licensed" : "Unlicensed"}
               </motion.span>
+              {lead.assignedManagerName && (
+                <motion.span
+                  variants={badgeVariants}
+                  whileHover={{ scale: 1.05 }}
+                  className="text-xs px-3 py-1 rounded-full font-medium bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center gap-1"
+                >
+                  <Building2 className="h-3 w-3" />
+                  Manager: {lead.assignedManagerName}
+                </motion.span>
+              )}
               {lead.referredBy && (
                 <motion.span
                   variants={badgeVariants}

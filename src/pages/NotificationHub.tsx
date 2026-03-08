@@ -477,7 +477,7 @@ function CarrierAssignmentTool() {
         </div>
         <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-emerald-500 opacity-5 blur-2xl" />
       </div>
-    </motion.div>
+    </div>
   );
 }
 

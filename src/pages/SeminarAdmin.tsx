@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { motion } from "framer-motion";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 import {
   Users, Mail, Phone, Search, CheckCircle, XCircle, Plus, Send,
 } from "lucide-react";
@@ -37,6 +37,7 @@ export default function SeminarAdmin() {
   const [newLast, setNewLast] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [newPhone, setNewPhone] = useState("");
+  const { playSound } = useSoundEffects();
 
   const fetchRegistrations = async () => {
     setLoading(true);
@@ -68,8 +69,8 @@ export default function SeminarAdmin() {
       phone: newPhone.trim() || null,
       source: "manual_add",
     } as any);
-    if (error) { toast.error("Failed to add"); return; }
-    toast.success("Registrant added!");
+    if (error) { toast.error("Failed to add"); playSound("error"); return; }
+    toast.success("Registrant added!"); playSound("success");
     setNewFirst(""); setNewLast(""); setNewEmail(""); setNewPhone("");
     setShowAdd(false);
     fetchRegistrations();
@@ -130,10 +131,8 @@ export default function SeminarAdmin() {
         {/* Registrant List */}
         <div className="space-y-2">
           {filtered.map(reg => (
-            <motion.div
+            <div
               key={reg.id}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
               className="bg-card border border-border rounded-xl p-4 flex items-center gap-4"
             >
               <button
@@ -170,7 +169,7 @@ export default function SeminarAdmin() {
                   {format(new Date(reg.registered_at), "MMM d")}
                 </span>
               </div>
-            </motion.div>
+            </div>
           ))}
           {filtered.length === 0 && !loading && (
             <div className="text-center py-12 text-muted-foreground">

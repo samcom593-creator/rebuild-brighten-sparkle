@@ -403,11 +403,7 @@ export default function AgentPortal() {
         {/* Hero Section with Quick Stats */}
         <section className="space-y-4">
           {/* Agent Info Bar */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-wrap items-center gap-3"
-          >
+          <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-3">
               <div className="relative h-12 w-12 rounded-full bg-gradient-to-br from-primary to-violet-500 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-primary/20">
                 {profile?.full_name?.charAt(0).toUpperCase() || "A"}
@@ -423,13 +419,9 @@ export default function AgentPortal() {
                 </p>
               </div>
             </div>
-          </motion.div>
+          </div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center sm:text-left"
-          >
+          <div className="text-center sm:text-left">
             <h2 className="text-2xl sm:text-3xl font-bold">
               <span className="bg-gradient-to-r from-primary via-violet-500 to-amber-500 bg-clip-text text-transparent">
                 Performance Dashboard
@@ -438,15 +430,11 @@ export default function AgentPortal() {
             <p className="text-muted-foreground mt-1 text-sm sm:text-base">
               Track your numbers, compete with the team, and crush your goals
             </p>
-          </motion.div>
+          </div>
 
           {/* Time Range Toggle for Admin */}
           {isAdmin && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex gap-2 flex-wrap"
-            >
+            <div className="flex gap-2 flex-wrap">
               {(["week", "month", "custom"] as const).map((range) => (
                 <Button
                   key={range}
@@ -465,7 +453,7 @@ export default function AgentPortal() {
                   simpleMode
                 />
               )}
-            </motion.div>
+            </div>
           )}
 
           {/* Quick Stats Grid */}
@@ -515,12 +503,7 @@ export default function AgentPortal() {
         </section>
 
         {/* Tab Navigation for Mobile */}
-        <motion.div 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="flex gap-2 overflow-x-auto pb-2 sm:hidden"
-        >
+        <div className="flex gap-2 overflow-x-auto pb-2 sm:hidden">
           {[
             { key: "leaderboard", label: "Leaderboard", icon: Trophy },
             { key: "numbers", label: "Log Numbers", icon: Sparkles },
@@ -537,17 +520,13 @@ export default function AgentPortal() {
               {tab.label}
             </Button>
           ))}
-        </motion.div>
+        </div>
 
         {/* ── Production Forecast (Admin Only) ── */}
         {agentId && isAdmin && (
-          <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
-          >
+          <section>
             <ProductionForecast agentId={agentId} />
-          </motion.section>
+          </section>
         )}
 
         {/* Main Leaderboard - FIRST so agents see their rank immediately */}
@@ -625,61 +604,32 @@ export default function AgentPortal() {
 
         {/* Year Performance Card - ADMIN ONLY */}
         {agentId && isAdmin && (
-          <motion.section
-            id="year-performance"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.32 }}
-            className="hidden sm:block"
-          >
+          <section id="year-performance" className="hidden sm:block">
             <YearPerformanceCard key={`year-${refreshKey}`} agentId={agentId} isAdmin={isAdmin} isManager={isManager} />
-          </motion.section>
+          </section>
         )}
 
         {/* Production History Chart */}
         {agentId && (
-          <motion.section
-            id="production-history"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35 }}
-            className="hidden sm:block"
-          >
+          <section id="production-history" className="hidden sm:block">
             <ProductionHistoryChart key={`history-${refreshKey}`} agentId={agentId} showAgencyWide={isAdmin} />
-          </motion.section>
+          </section>
         )}
 
         {/* Income Goal Tracker */}
         {agentId && (
-          <motion.section
-            id="income-goals"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.38 }}
-            className="hidden sm:block"
-          >
+          <section id="income-goals" className="hidden sm:block">
             <IncomeGoalTracker key={`income-goal-${refreshKey}`} agentId={agentId} />
-          </motion.section>
+          </section>
         )}
 
         {/* Team Goals */}
-        <motion.section
-          id="team-goals"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.42 }}
-          className="hidden sm:block"
-        >
+        <section id="team-goals" className="hidden sm:block">
           <TeamGoalsTracker key={`goals-${refreshKey}`} />
-        </motion.section>
+        </section>
 
         {/* Additional Leaderboards */}
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.45 }}
-          className="hidden sm:block"
-        >
+        <section className="hidden sm:block">
           <div className="grid md:grid-cols-2 gap-4">
             <ClosingRateLeaderboard 
               key={`closing-${refreshKey}`}
@@ -692,15 +642,10 @@ export default function AgentPortal() {
               period="week" 
             />
           </div>
-        </motion.section>
+        </section>
 
         {/* Referral & Sharing Section */}
-        <motion.section
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.48 }}
-          className="grid gap-4"
-        >
+        <section className="grid gap-4">
           {/* Agent Referral Link */}
           <GlassCard className="p-4">
             <div className="flex items-center gap-2 mb-3">
@@ -721,7 +666,7 @@ export default function AgentPortal() {
                 onClick={() => {
                   const refLink = `${window.location.origin}/apply?ref=${profile?.full_name?.replace(/\s+/g, '-').toLowerCase() || 'agent'}`;
                   navigator.clipboard.writeText(refLink);
-                  toast.success("Referral link copied!");
+                  toast.success("Referral link copied!"); playSound("click");
                 }}
               >
                 <Copy className="h-4 w-4" />
@@ -757,34 +702,24 @@ export default function AgentPortal() {
               onClick={() => {
                 const logLink = "https://apex-financial.org/agent-portal";
                 navigator.clipboard.writeText(logLink);
-                toast.success("Link copied to clipboard!");
+                toast.success("Link copied to clipboard!"); playSound("click");
               }}
             >
               <Copy className="h-4 w-4" />
               Copy Link
             </Button>
           </GlassCard>
-        </motion.section>
+        </section>
 
         {/* Weekly Badges Card - MOVED TO BOTTOM */}
         {agentId && (
-          <motion.section
-            id="weekly-badges"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.52 }}
-            className="hidden sm:block"
-          >
+          <section id="weekly-badges" className="hidden sm:block">
             <WeeklyBadgesCard key={`badges-${refreshKey}`} agentId={agentId} />
-          </motion.section>
+          </section>
         )}
 
         {/* Motivational Footer */}
-        <motion.section
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.55 }}
-        >
+        <section>
           <GlassCard className="p-6 text-center relative overflow-hidden">
             {/* Gradient background */}
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-violet-500/5" />
@@ -802,7 +737,7 @@ export default function AgentPortal() {
               </div>
             </div>
           </GlassCard>
-        </motion.section>
+        </section>
       </div>
     </div>
   );

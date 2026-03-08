@@ -592,6 +592,7 @@ export default function DashboardCRM() {
   const [recorderAgent, setRecorderAgent] = useState<AgentCRM | null>(null);
   const [viewAppTarget, setViewAppTarget] = useState<{ agentId?: string; applicationId?: string } | null>(null);
   const [expandedAgentId, setExpandedAgentId] = useState<string | null>(null);
+  const [editLoginAgent, setEditLoginAgent] = useState<AgentCRM | null>(null);
   const [activeStageTab, setActiveStageTab] = useState<string>("onboarding");
   const [currentAgentId, setCurrentAgentId] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
@@ -1110,6 +1111,7 @@ export default function DashboardCRM() {
                                           setViewAppTarget({ agentId: id, applicationId: a?.applicationId });
                                         }}
                                         onRecord={setRecorderAgent}
+                                        onEditLogin={setEditLoginAgent}
                                         onAgentUpdate={onAgentUpdate}
                                         playSound={playSound}
                                         sendingCourseLogin={sendingCourseLogin}
@@ -1202,6 +1204,15 @@ export default function DashboardCRM() {
       <InstagramPromptDialog open={!!instagramPromptAgent} onOpenChange={(o) => !o && setInstagramPromptAgent(null)} agentId={instagramPromptAgent?.id || ""} agentName={instagramPromptAgent?.name || ""} onComplete={fetchAgents} />
       {recorderAgent && user && (
         <InterviewRecorder applicationId={recorderAgent.id} agentId={recorderAgent.id} applicantName={recorderAgent.name} onClose={() => setRecorderAgent(null)} onTranscriptionSaved={fetchAgents} />
+      )}
+      {editLoginAgent && (
+        <AgentQuickEditDialog
+          open={!!editLoginAgent}
+          onOpenChange={(o) => !o && setEditLoginAgent(null)}
+          agentId={editLoginAgent.id}
+          currentName={editLoginAgent.name}
+          onUpdate={fetchAgents}
+        />
       )}
     </>
   );

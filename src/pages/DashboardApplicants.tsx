@@ -158,35 +158,7 @@ export default function DashboardApplicants() {
     }
   }, [highlightedLeadId]);
   
-  // Scroll to highlighted lead when data loads
-  useEffect(() => {
-    if (highlightedLeadId && applications.length > 0) {
-      const timer = setTimeout(() => {
-        const leadElement = document.getElementById(`lead-${highlightedLeadId}`);
-        if (leadElement) {
-          leadElement.scrollIntoView({ behavior: "smooth", block: "center" });
-          // Clear the URL param after scrolling
-          setTimeout(() => setSearchParams({}), 2000);
-        } else {
-          // Check if it's in terminated section and show it
-          const isTerminatedLead = applications.find(
-            app => app.id === highlightedLeadId && app.terminated_at
-          );
-          if (isTerminatedLead) {
-            setShowTerminated(true);
-            setTimeout(() => {
-              const leadEl = document.getElementById(`lead-${highlightedLeadId}`);
-              if (leadEl) {
-                leadEl.scrollIntoView({ behavior: "smooth", block: "center" });
-                setTimeout(() => setSearchParams({}), 2000);
-              }
-            }, 300);
-          }
-        }
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [highlightedLeadId, applications, setSearchParams]);
+  // Scroll to highlighted lead — moved after applications declaration
 
   const fetchApplicationsQuery = useCallback(async () => {
     if (!user) return { apps: [] as Application[], names: new Map<string, string>(), myAgentId: null as string | null };

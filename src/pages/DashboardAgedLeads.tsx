@@ -63,6 +63,7 @@ import { AnimatedNumber } from "@/components/dashboard/AnimatedNumber";
 import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { QuickAssignMenu } from "@/components/dashboard/QuickAssignMenu";
+import { LeadDetailSheet } from "@/components/recruiter/LeadDetailSheet";
 
 interface AgedLead {
   id: string;
@@ -105,7 +106,7 @@ function QuickAssignPanel({ managers, unassignedCount, onAssign }: {
   const [count, setCount] = useState(100);
   const [assigning, setAssigning] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const presets = [25, 50, 100];
+  const presets = [30, 50, 100];
 
   if (unassignedCount === 0) return null;
 
@@ -241,6 +242,7 @@ export default function DashboardAgedLeads() {
   // Delete state
   const [deleteTarget, setDeleteTarget] = useState<AgedLead | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [detailLead, setDetailLead] = useState<AgedLead | null>(null);
 
   const canAccess = isAdmin || isManager;
 
@@ -763,8 +765,8 @@ export default function DashboardAgedLeads() {
           </p>
         </GlassCard>
       ) : (
-        <div className="rounded-xl border border-border overflow-hidden overflow-x-auto">
-          <Table className="min-w-[1000px]">
+        <div className="rounded-xl border border-border overflow-hidden overflow-x-auto max-h-[calc(100vh-280px)] overflow-y-auto">
+          <Table className="min-w-[1100px]">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-10">
@@ -780,13 +782,13 @@ export default function DashboardAgedLeads() {
                   />
                 </TableHead>
                 <TableHead>Name</TableHead>
-                <TableHead className="hidden sm:table-cell">Phone</TableHead>
-                <TableHead className="hidden md:table-cell">Email</TableHead>
-                <TableHead className="hidden lg:table-cell">Instagram</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Instagram</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="hidden md:table-cell">License</TableHead>
-                <TableHead className="hidden lg:table-cell">Source</TableHead>
-                <TableHead className="w-[60px]">Actions</TableHead>
+                <TableHead>License</TableHead>
+                <TableHead>Source</TableHead>
+                <TableHead className="w-[140px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -813,15 +815,15 @@ export default function DashboardAgedLeads() {
                       />
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 cursor-pointer" onClick={() => setDetailLead(lead)}>
                         <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
                           <span className="text-[10px] font-semibold text-primary">
                             {getInitials(lead.firstName, lead.lastName)}
                           </span>
                         </div>
                         <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">{lead.firstName} {lead.lastName || ""}</p>
-                          {lead.motivation && <p className="text-[10px] text-muted-foreground truncate">{lead.motivation}</p>}
+                          <p className="text-sm font-medium truncate hover:text-primary transition-colors">{lead.firstName} {lead.lastName || ""}</p>
+                          {lead.motivation && <p className="text-[10px] text-muted-foreground truncate max-w-[140px]">{lead.motivation}</p>}
                         </div>
                         {isDuplicate && (
                           <Badge variant="outline" className="text-[9px] h-4 px-1 bg-amber-500/10 text-amber-500 border-amber-500/20 shrink-0">
@@ -830,32 +832,35 @@ export default function DashboardAgedLeads() {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="hidden sm:table-cell">
-                      {lead.phone && (
+                    <TableCell>
+                      {lead.phone ? (
                         <a href={`tel:${lead.phone}`} className="text-xs text-emerald-500 hover:underline">{lead.phone}</a>
-                      )}
+                      ) : <span className="text-xs text-muted-foreground">—</span>}
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      <span className="text-xs text-muted-foreground truncate block max-w-[160px]">{lead.email}</span>
+                    <TableCell>
+                      {lead.email ? (
+                        <a href={`mailto:${lead.email}`} className="text-xs text-muted-foreground hover:text-foreground truncate block max-w-[160px]">{lead.email}</a>
+                      ) : <span className="text-xs text-muted-foreground">—</span>}
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      {lead.instagramHandle && (
-                        <a href={`https://instagram.com/${lead.instagramHandle.replace("@","")}`} target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-foreground">
+                    <TableCell>
+                      {lead.instagramHandle ? (
+                        <a href={`https://instagram.com/${lead.instagramHandle.replace("@","")}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-pink-400 hover:text-pink-300">
+                          <Instagram className="h-3 w-3" />
                           @{lead.instagramHandle.replace("@","")}
                         </a>
-                      )}
+                      ) : <span className="text-xs text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className={cn("text-[10px] h-5 px-2", config.color)}>
                         {config.label}
                       </Badge>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">
+                    <TableCell>
                       <Badge variant="outline" className={cn("text-[10px] h-5 px-2", lead.licenseStatus === "licensed" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-muted/50 text-muted-foreground border-border/50")}>
                         {lead.licenseStatus === "licensed" ? "Licensed" : "Unlicensed"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell">
+                    <TableCell>
                       {lead.leadSource === "new_drip" && (
                         <Badge variant="outline" className="text-[10px] h-4 px-1.5 bg-cyan-500/10 text-cyan-400 border-cyan-500/20">Drip</Badge>
                       )}
@@ -865,6 +870,21 @@ export default function DashboardAgedLeads() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
+                        {lead.phone && (
+                          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" asChild title="Call">
+                            <a href={`tel:${lead.phone}`}><PhoneCall className="h-3.5 w-3.5 text-emerald-400" /></a>
+                          </Button>
+                        )}
+                        {lead.email && (
+                          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" asChild title="Email">
+                            <a href={`mailto:${lead.email}`}><Mail className="h-3.5 w-3.5 text-blue-400" /></a>
+                          </Button>
+                        )}
+                        <ResendLicensingButton
+                          recipientEmail={lead.email}
+                          recipientName={lead.firstName}
+                          licenseStatus={lead.licenseStatus === "licensed" ? "licensed" : "unlicensed"}
+                        />
                         {isAdmin && (
                           <QuickAssignMenu
                             applicationId={lead.id}
@@ -1079,6 +1099,33 @@ export default function DashboardAgedLeads() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Lead Detail Sheet */}
+      {detailLead && (
+        <LeadDetailSheet
+          lead={{
+            id: detailLead.id,
+            first_name: detailLead.firstName,
+            last_name: detailLead.lastName || "",
+            email: detailLead.email,
+            phone: detailLead.phone || "",
+            city: null,
+            state: null,
+            created_at: detailLead.createdAt,
+            last_contacted_at: null,
+            contacted_at: null,
+            license_status: detailLead.licenseStatus,
+            license_progress: null,
+            test_scheduled_date: null,
+            notes: detailLead.notes || null,
+            assigned_agent_id: detailLead.assignedManagerId || null,
+            referral_source: detailLead.leadSource || null,
+          }}
+          open={!!detailLead}
+          onOpenChange={(open) => !open && setDetailLead(null)}
+          onRefresh={fetchLeads}
+        />
+      )}
     </div>
   );
 }

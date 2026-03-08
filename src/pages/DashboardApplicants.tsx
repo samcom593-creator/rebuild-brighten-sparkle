@@ -825,14 +825,14 @@ export default function DashboardApplicants() {
   return (
     <>
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-5">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-primary/10">
               <Users className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold">Applicants</h1>
+              <h1 className="text-2xl font-bold">Applicants</h1>
               <p className="text-muted-foreground text-sm">
                 Manage and track your assigned applicants
               </p>
@@ -877,7 +877,7 @@ export default function DashboardApplicants() {
       </div>
 
       {/* Stats - Clickable to filter */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
         {[
           { label: "Total Leads", value: totalLeads, icon: Users, color: "text-primary", filter: "all" },
           { label: "Hired", value: hired, icon: UserCheck, color: "text-emerald-400", filter: "hired" },
@@ -887,17 +887,17 @@ export default function DashboardApplicants() {
           <GlassCard 
             key={stat.label} 
             className={cn(
-              "p-4 cursor-pointer transition-all hover:scale-[1.02]",
+              "p-3 cursor-pointer transition-all hover:scale-[1.02]",
               statusFilter === stat.filter && "ring-2 ring-primary ring-offset-2 ring-offset-background"
             )}
             onClick={() => setStatusFilter(stat.filter === "terminated" ? "all" : stat.filter)}
           >
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-muted">
-                <stat.icon className={cn("h-5 w-5", stat.color)} />
+                <stat.icon className={cn("h-4 w-4", stat.color)} />
               </div>
               <div>
-                <p className={cn("text-2xl font-bold", stat.color)}>{stat.value}</p>
+                <p className={cn("text-xl font-bold", stat.color)}>{stat.value}</p>
                 <p className="text-xs text-muted-foreground">{stat.label}</p>
               </div>
             </div>
@@ -971,8 +971,8 @@ export default function DashboardApplicants() {
           {/* Applicants Table */}
           <div>
             {filteredApplications.length > 0 ? (
-              <div className="relative w-full overflow-auto border border-border rounded-xl">
-                <table className="w-full caption-bottom text-sm">
+              <div className="relative w-full overflow-auto border border-border rounded-xl max-h-[calc(100vh-280px)] overflow-y-auto">
+                <table className="w-full caption-bottom text-sm min-w-[1100px]">
                   <thead className="[&_tr]:border-b">
                     <tr className="border-b bg-muted/50">
                       <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Name</th>
@@ -1065,6 +1065,17 @@ export default function DashboardApplicants() {
                             <div className="flex items-center justify-end gap-1">
                               {!isTerminated && (
                                 <>
+                                  {app.instagram_handle && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7 text-pink-400 hover:text-pink-300 hover:bg-pink-500/10"
+                                      onClick={() => openInstagram(app.instagram_handle!)}
+                                      title={`@${app.instagram_handle}`}
+                                    >
+                                      <Instagram className="h-3.5 w-3.5" />
+                                    </Button>
+                                  )}
                                   <Button
                                     variant="ghost"
                                     size="icon"

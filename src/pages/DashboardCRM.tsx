@@ -1,6 +1,6 @@
 // ============= Full file contents =============
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {

@@ -441,11 +441,7 @@ export default function DashboardAccounts() {
       </div>
 
       {/* Accounts Table */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-      >
+      <div>
         <GlassCard className="p-6">
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <Users className="h-5 w-5 text-primary" />

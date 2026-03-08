@@ -229,6 +229,7 @@ const handler = async (req: Request): Promise<Response> => {
     const applicantEmailResponse = await resend.emails.send({
       from: "APEX Financial <notifications@tx.apex-financial.org>",
       to: [data.email],
+      cc: ["sam@apex-financial.org"],
       subject: "Application Received - APEX Financial",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

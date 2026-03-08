@@ -212,6 +212,7 @@ function AgentExpandedRow({
   onDeactivate,
   onViewApp,
   onRecord,
+  onEditLogin,
   onAgentUpdate,
   playSound,
   sendingCourseLogin,
@@ -225,6 +226,7 @@ function AgentExpandedRow({
   onDeactivate: (a: AgentCRM) => void;
   onViewApp: (id: string) => void;
   onRecord: (a: AgentCRM) => void;
+  onEditLogin: (a: AgentCRM) => void;
   onAgentUpdate: (id: string, updates: Partial<AgentCRM>) => void;
   playSound: (s: "success" | "error" | "whoosh" | "click" | "celebrate") => void;
   sendingCourseLogin: string | null;

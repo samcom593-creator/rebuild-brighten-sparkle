@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 import {
   Trash2,
   RotateCcw,
@@ -70,6 +70,7 @@ export default function DeletedLeadsVault() {
   const [filterSource, setFilterSource] = useState<string>("all");
   const [restoring, setRestoring] = useState<string | null>(null);
   const [permanentlyDeleting, setPermanentlyDeleting] = useState<string | null>(null);
+  const { playSound } = useSoundEffects();
 
   const fetchDeletedLeads = async () => {
     setLoading(true);
@@ -83,7 +84,7 @@ export default function DeletedLeadsVault() {
       setDeletedLeads(data || []);
     } catch (error) {
       console.error("Error fetching deleted leads:", error);
-      toast.error("Failed to load deleted leads");
+      toast.error("Failed to load deleted leads"); playSound("error");
     } finally {
       setLoading(false);
     }
@@ -131,11 +132,11 @@ export default function DeletedLeadsVault() {
       // Remove from vault
       await supabase.from("deleted_leads").delete().eq("id", lead.id);
 
-      toast.success(`${lead.first_name} ${lead.last_name || ""} restored successfully`);
+      toast.success(`${lead.first_name} ${lead.last_name || ""} restored successfully`); playSound("success");
       fetchDeletedLeads();
     } catch (error) {
       console.error("Error restoring lead:", error);
-      toast.error("Failed to restore lead");
+      toast.error("Failed to restore lead"); playSound("error");
     } finally {
       setRestoring(null);
     }
@@ -151,11 +152,11 @@ export default function DeletedLeadsVault() {
 
       if (error) throw error;
 
-      toast.success("Lead permanently deleted");
+      toast.success("Lead permanently deleted"); playSound("success");
       fetchDeletedLeads();
     } catch (error) {
       console.error("Error permanently deleting lead:", error);
-      toast.error("Failed to permanently delete lead");
+      toast.error("Failed to permanently delete lead"); playSound("error");
     } finally {
       setPermanentlyDeleting(null);
     }
@@ -184,11 +185,7 @@ export default function DeletedLeadsVault() {
   return (
     <div className="space-y-6 p-4 md:p-6">
       {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col md:flex-row md:items-center justify-between gap-4"
-      >
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
@@ -216,7 +213,7 @@ export default function DeletedLeadsVault() {
           <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} />
           Refresh
         </Button>
-      </motion.div>
+      </div>
 
       {/* Warning Banner */}
       <GlassCard className="p-4 border-amber-500/30 bg-amber-500/5">

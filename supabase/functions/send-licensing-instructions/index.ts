@@ -330,8 +330,8 @@ const handler = async (req: Request): Promise<Response> => {
     if (phone) {
       try {
         const smsMsg = licenseStatus === "licensed"
-          ? `Hey ${firstName}, welcome to Apex! Check your email for onboarding steps or schedule here: https://calendly.com/apexfinancialmarketing/apex-financial-onboarding`
-          : `Hey ${firstName}, your licensing resources are in your email! Start here: https://partners.xcelsolutions.com/afe`;
+          ? `Hey ${firstName}, welcome to Apex! Check your email for onboarding steps or schedule here: https://calendly.com/apexfinancialmarketing/apex-financial-onboarding${whatsappLink ? `\n\nJoin our WhatsApp group: ${whatsappLink}` : ''}`
+          : `Hey ${firstName}, your licensing resources are in your email! Start here: https://partners.xcelsolutions.com/afe${whatsappLink ? `\n\nJoin our WhatsApp group: ${whatsappLink}` : ''}`;
 
         const smsRes = await fetch(`${supabaseUrl}/functions/v1/send-sms-auto-detect`, {
           method: "POST",

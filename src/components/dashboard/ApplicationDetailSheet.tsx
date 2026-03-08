@@ -470,6 +470,81 @@ export function ApplicationDetailSheet({
                 )}
               </div>
 
+              {/* ═══ ACCOUNT MANAGEMENT (Admin only) ═══ */}
+              {isAdmin && linkedAgent && !isEditing && (
+                <>
+                  <Separator />
+                  <div className="space-y-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                    <Label className="flex items-center gap-2 text-primary">
+                      <KeyRound className="h-4 w-4" />
+                      Account Management
+                    </Label>
+
+                    {linkedAgent.user_id ? (
+                      <>
+                        {/* Current email */}
+                        <div className="space-y-1.5">
+                          <p className="text-xs text-muted-foreground">
+                            Login email: <span className="font-medium text-foreground">{linkedAgent.profileEmail || "—"}</span>
+                          </p>
+                          <div className="flex gap-2">
+                            <Input
+                              value={acctNewEmail}
+                              onChange={(e) => setAcctNewEmail(e.target.value)}
+                              placeholder="New email address"
+                              type="email"
+                              className="text-sm"
+                            />
+                            <Button size="sm" variant="outline" onClick={handleAcctUpdateEmail} disabled={acctBusy || !acctNewEmail.trim()}>
+                              {acctUpdatingEmail ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Password reset */}
+                        <div className="space-y-1.5">
+                          <p className="text-xs text-muted-foreground">Reset password:</p>
+                          <div className="flex gap-2">
+                            <Input
+                              value={acctNewPassword}
+                              onChange={(e) => setAcctNewPassword(e.target.value)}
+                              placeholder="New password (min 6 chars)"
+                              type="password"
+                              className="text-sm"
+                            />
+                            <Button size="sm" variant="outline" onClick={handleAcctResetPassword} disabled={acctBusy || acctNewPassword.length < 6}>
+                              {acctResettingPw ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <KeyRound className="h-3.5 w-3.5" />}
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Send portal login */}
+                        <Button size="sm" variant="secondary" onClick={handleAcctSendLogin} disabled={acctBusy} className="w-full">
+                          {acctSendingLogin ? (
+                            <><Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />Sending...</>
+                          ) : (
+                            <><Send className="h-3.5 w-3.5 mr-2" />Send Portal Login</>
+                          )}
+                        </Button>
+                      </>
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic">No login account created yet. Use Send Login to Manager to share a sign-in link.</p>
+                    )}
+
+                    {/* Send login to manager */}
+                    {linkedAgent.invited_by_manager_id && (
+                      <Button size="sm" variant="outline" onClick={handleAcctSendToManager} disabled={acctBusy} className="w-full">
+                        {acctSendingToMgr ? (
+                          <><Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />Sending to Manager...</>
+                        ) : (
+                          <><Mail className="h-3.5 w-3.5 mr-2" />Send Login Link to Manager</>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                </>
+              )}
+
               {/* Save / Quick Actions */}
               <Separator />
               {isEditing ? (

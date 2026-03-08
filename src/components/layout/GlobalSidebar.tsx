@@ -158,8 +158,8 @@ export function GlobalSidebar({
       toolItems.push({ icon: CalendarDays, label: "Calendar", href: "/dashboard/calendar" });
     }
 
-    // Recruiter HQ — Aisha only (+ admins)
-    if (isAisha || isAdmin) {
+    // Recruiter HQ — managers + admins
+    if (isAdmin || isManager) {
       toolItems.push({ icon: Sparkles, label: "Recruiter HQ ✨", href: "/dashboard/recruiter", special: true });
     }
 

@@ -61,6 +61,7 @@ interface AgentData {
   user_id: string | null;
   profile_id: string | null;
   display_name: string | null;
+  invited_by_manager_id: string | null;
 }
 
 export function AgentQuickEditDialog({
@@ -99,6 +100,7 @@ export function AgentQuickEditDialog({
   const [updatingEmail, setUpdatingEmail] = useState(false);
   const [resettingPassword, setResettingPassword] = useState(false);
   const [sendingLogin, setSendingLogin] = useState(false);
+  const [sendingLoginToManager, setSendingLoginToManager] = useState(false);
 
   useEffect(() => {
     if (open && agentId) {
@@ -127,6 +129,7 @@ export function AgentQuickEditDialog({
           user_id,
           profile_id,
           display_name,
+          invited_by_manager_id,
           profile:profiles!agents_profile_id_fkey(full_name, email, phone, instagram_handle)
         `)
         .eq("id", agentId)
@@ -137,6 +140,7 @@ export function AgentQuickEditDialog({
           user_id: agent.user_id,
           profile_id: agent.profile_id,
           display_name: agent.display_name,
+          invited_by_manager_id: agent.invited_by_manager_id,
         });
 
         if (agent.profile) {
@@ -446,6 +450,30 @@ export function AgentQuickEditDialog({
     }
   };
 
+  const handleSendLoginToManager = async () => {
+    setSendingLoginToManager(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-login-to-manager", {
+        body: { agentId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({
+        title: "Link sent to manager ✅",
+        description: data?.message || "Login link forwarded to the agent's manager.",
+      });
+    } catch (error: any) {
+      console.error("Error sending login to manager:", error);
+      toast({
+        title: "Send failed",
+        description: error.message || "Failed to send login link to manager.",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingLoginToManager(false);
+    }
+  };
+
   const handleMerge = async () => {
     if (!selectedMergeId) {
       toast({ title: "Select an agent", description: "Please select an agent to merge with.", variant: "destructive" });
@@ -580,7 +608,7 @@ export function AgentQuickEditDialog({
   };
 
   const hasExistingLogin = !!agentData?.user_id;
-  const isBusy = saving || merging || creating || deleting || updatingEmail || resettingPassword || sendingLogin;
+  const isBusy = saving || merging || creating || deleting || updatingEmail || resettingPassword || sendingLogin || sendingLoginToManager;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -734,6 +762,23 @@ export function AgentQuickEditDialog({
                   <><Send className="h-3.5 w-3.5 mr-2" />Send Portal Login (+ Discord)</>
                 )}
               </Button>
+
+              {/* Send Login to Manager Button */}
+              {agentData?.invited_by_manager_id && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleSendLoginToManager}
+                  disabled={isBusy}
+                  className="w-full"
+                >
+                  {sendingLoginToManager ? (
+                    <><Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />Sending to Manager...</>
+                  ) : (
+                    <><Mail className="h-3.5 w-3.5 mr-2" />Send Login Link to Manager</>
+                  )}
+                </Button>
+              )}
             </div>
           )}
 

@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import {
   Phone, Mail, Instagram, MapPin, FileText,
   Building2, GraduationCap, Calendar, CheckCircle, Pencil, X, Loader2,
+  KeyRound, Send, RefreshCw, UserPlus,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
@@ -11,11 +12,13 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { logLeadActivity } from "@/lib/logLeadActivity";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ApplicationDetailSheetProps {
   open: boolean;
@@ -79,10 +82,19 @@ export function ApplicationDetailSheet({
   agentId,
   onRefresh,
 }: ApplicationDetailSheetProps) {
+  const { isAdmin } = useAuth();
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
   const [editForm, setEditForm] = useState<EditForm>(initForm(null));
+
+  // Account management state
+  const [acctNewEmail, setAcctNewEmail] = useState("");
+  const [acctNewPassword, setAcctNewPassword] = useState("");
+  const [acctUpdatingEmail, setAcctUpdatingEmail] = useState(false);
+  const [acctResettingPw, setAcctResettingPw] = useState(false);
+  const [acctSendingLogin, setAcctSendingLogin] = useState(false);
+  const [acctSendingToMgr, setAcctSendingToMgr] = useState(false);
 
   const { data: application, isLoading } = useQuery({
     queryKey: ["application-detail", applicationId, agentId],
@@ -98,11 +110,39 @@ export function ApplicationDetailSheet({
   });
 
   const app = application;
+  const linkedAgentId = app?.assigned_agent_id;
+
+  // Fetch agent record for account management
+  const { data: linkedAgent } = useQuery({
+    queryKey: ["linked-agent-for-acct", linkedAgentId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("agents")
+        .select("id, user_id, profile_id, invited_by_manager_id, portal_password_set")
+        .eq("id", linkedAgentId!)
+        .maybeSingle();
+      if (!data) return null;
+      // Also get the profile email
+      let profileEmail = "";
+      if (data.user_id) {
+        const { data: p } = await supabase.from("profiles").select("email").eq("user_id", data.user_id).maybeSingle();
+        profileEmail = p?.email || "";
+      } else if (data.profile_id) {
+        const { data: p } = await supabase.from("profiles").select("email").eq("id", data.profile_id).maybeSingle();
+        profileEmail = p?.email || "";
+      }
+      return { ...data, profileEmail };
+    },
+    enabled: open && isAdmin && !!linkedAgentId,
+    staleTime: 30_000,
+  });
 
   useEffect(() => {
     if (app) {
       setEditForm(initForm(app));
       setIsEditing(false);
+      setAcctNewEmail("");
+      setAcctNewPassword("");
     }
   }, [app]);
 
@@ -147,6 +187,78 @@ export function ApplicationDetailSheet({
 
   const setField = (key: keyof EditForm, value: string) =>
     setEditForm((prev) => ({ ...prev, [key]: value }));
+
+  const acctBusy = acctUpdatingEmail || acctResettingPw || acctSendingLogin || acctSendingToMgr;
+
+  const handleAcctUpdateEmail = async () => {
+    if (!acctNewEmail.trim() || !acctNewEmail.includes("@") || !linkedAgent?.user_id) return;
+    setAcctUpdatingEmail(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("update-user-email", {
+        body: { newEmail: acctNewEmail.trim(), targetUserId: linkedAgent.user_id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({ title: "Email updated ✅", description: `Email changed to ${acctNewEmail.trim()}.` });
+      setAcctNewEmail("");
+      queryClient.invalidateQueries({ queryKey: ["linked-agent-for-acct"] });
+    } catch (err: any) {
+      toast({ title: "Email update failed", description: err.message, variant: "destructive" });
+    } finally {
+      setAcctUpdatingEmail(false);
+    }
+  };
+
+  const handleAcctResetPassword = async () => {
+    if (!acctNewPassword.trim() || acctNewPassword.length < 6 || !linkedAgent?.user_id) return;
+    setAcctResettingPw(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("reset-agent-password", {
+        body: { targetUserId: linkedAgent.user_id, newPassword: acctNewPassword.trim() },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({ title: "Password reset ✅", description: "New password set for this agent." });
+      setAcctNewPassword("");
+    } catch (err: any) {
+      toast({ title: "Password reset failed", description: err.message, variant: "destructive" });
+    } finally {
+      setAcctResettingPw(false);
+    }
+  };
+
+  const handleAcctSendLogin = async () => {
+    if (!linkedAgent?.id) return;
+    setAcctSendingLogin(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-agent-portal-login", {
+        body: { agentId: linkedAgent.id },
+      });
+      if (error) throw error;
+      toast({ title: "Login sent ✅", description: "Portal login email sent to agent." });
+    } catch (err: any) {
+      toast({ title: "Send failed", description: err.message, variant: "destructive" });
+    } finally {
+      setAcctSendingLogin(false);
+    }
+  };
+
+  const handleAcctSendToManager = async () => {
+    if (!linkedAgent?.id) return;
+    setAcctSendingToMgr(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-login-to-manager", {
+        body: { agentId: linkedAgent.id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast({ title: "Link sent to manager ✅", description: data?.message || "Login link forwarded to manager." });
+    } catch (err: any) {
+      toast({ title: "Send failed", description: err.message, variant: "destructive" });
+    } finally {
+      setAcctSendingToMgr(false);
+    }
+  };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -357,6 +469,81 @@ export function ApplicationDetailSheet({
                   <p className="text-sm text-muted-foreground italic">No notes yet</p>
                 )}
               </div>
+
+              {/* ═══ ACCOUNT MANAGEMENT (Admin only) ═══ */}
+              {isAdmin && linkedAgent && !isEditing && (
+                <>
+                  <Separator />
+                  <div className="space-y-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                    <Label className="flex items-center gap-2 text-primary">
+                      <KeyRound className="h-4 w-4" />
+                      Account Management
+                    </Label>
+
+                    {linkedAgent.user_id ? (
+                      <>
+                        {/* Current email */}
+                        <div className="space-y-1.5">
+                          <p className="text-xs text-muted-foreground">
+                            Login email: <span className="font-medium text-foreground">{linkedAgent.profileEmail || "—"}</span>
+                          </p>
+                          <div className="flex gap-2">
+                            <Input
+                              value={acctNewEmail}
+                              onChange={(e) => setAcctNewEmail(e.target.value)}
+                              placeholder="New email address"
+                              type="email"
+                              className="text-sm"
+                            />
+                            <Button size="sm" variant="outline" onClick={handleAcctUpdateEmail} disabled={acctBusy || !acctNewEmail.trim()}>
+                              {acctUpdatingEmail ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Password reset */}
+                        <div className="space-y-1.5">
+                          <p className="text-xs text-muted-foreground">Reset password:</p>
+                          <div className="flex gap-2">
+                            <Input
+                              value={acctNewPassword}
+                              onChange={(e) => setAcctNewPassword(e.target.value)}
+                              placeholder="New password (min 6 chars)"
+                              type="password"
+                              className="text-sm"
+                            />
+                            <Button size="sm" variant="outline" onClick={handleAcctResetPassword} disabled={acctBusy || acctNewPassword.length < 6}>
+                              {acctResettingPw ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <KeyRound className="h-3.5 w-3.5" />}
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Send portal login */}
+                        <Button size="sm" variant="secondary" onClick={handleAcctSendLogin} disabled={acctBusy} className="w-full">
+                          {acctSendingLogin ? (
+                            <><Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />Sending...</>
+                          ) : (
+                            <><Send className="h-3.5 w-3.5 mr-2" />Send Portal Login</>
+                          )}
+                        </Button>
+                      </>
+                    ) : (
+                      <p className="text-xs text-muted-foreground italic">No login account created yet. Use Send Login to Manager to share a sign-in link.</p>
+                    )}
+
+                    {/* Send login to manager */}
+                    {linkedAgent.invited_by_manager_id && (
+                      <Button size="sm" variant="outline" onClick={handleAcctSendToManager} disabled={acctBusy} className="w-full">
+                        {acctSendingToMgr ? (
+                          <><Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />Sending to Manager...</>
+                        ) : (
+                          <><Mail className="h-3.5 w-3.5 mr-2" />Send Login Link to Manager</>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                </>
+              )}
 
               {/* Save / Quick Actions */}
               <Separator />

@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
 import { getTodayPST } from "@/lib/dateUtils";
 import { startOfWeek, subWeeks, format } from "date-fns";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { GrowthLeaderboard } from "@/components/growth/GrowthLeaderboard";
 import { GrowthInputForm } from "@/components/growth/GrowthInputForm";
 import { GrowthDeltaCards } from "@/components/growth/GrowthDeltaCards";
@@ -33,6 +34,7 @@ interface GrowthStat {
 
 export default function GrowthDashboard() {
   const { user, isAdmin, isManager } = useAuth();
+  const { playSound } = useSoundEffects();
   const [managers, setManagers] = useState<ManagerProfile[]>([]);
   const [weekStats, setWeekStats] = useState<GrowthStat[]>([]);
   const [prevWeekStats, setPrevWeekStats] = useState<GrowthStat[]>([]);
@@ -102,8 +104,9 @@ export default function GrowthDashboard() {
       }, { onConflict: "agent_id,stat_date" });
       if (error) throw error;
       toast.success("Growth numbers saved!");
+      playSound("success");
       fetchData();
-    } catch (err) { console.error(err); toast.error("Failed to save."); }
+    } catch (err) { console.error(err); toast.error("Failed to save."); playSound("error"); }
     finally { setSaving(false); }
   };
 

@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -116,7 +117,8 @@ interface PaymentDialogState {
 
 export default function PurchaseLeads() {
    const { user, isAdmin, profile } = useAuth();
-  const [leadCount, setLeadCount] = useState(800); // Default to sensible value for instant render
+  const { playSound } = useSoundEffects();
+  const [leadCount, setLeadCount] = useState(800);
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
   const [paymentDialog, setPaymentDialog] = useState<PaymentDialogState>({
@@ -167,11 +169,13 @@ export default function PurchaseLeads() {
 
     if (error) {
       toast.error("Failed to update lead count");
+      playSound("error");
       console.error(error);
     } else {
       setLeadCount(newCount);
       setIsEditing(false);
       toast.success("Lead count updated!");
+      playSound("success");
     }
   };
 
@@ -187,6 +191,7 @@ export default function PurchaseLeads() {
   const handleCopyNote = () => {
     navigator.clipboard.writeText("leads");
     toast.success("Copied 'leads' to clipboard!");
+    playSound("click");
   };
 
    const handleContinueToPayment = async () => {
@@ -217,6 +222,7 @@ export default function PurchaseLeads() {
        });
  
        toast.success("Your manager has been notified!");
+       playSound("success");
      } catch (error) {
        console.error("Error sending notification:", error);
        // Don't block payment if notification fails

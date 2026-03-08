@@ -362,7 +362,7 @@ function CarrierAssignmentTool() {
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+    <div>
       <div className={cn(
         "relative overflow-hidden rounded-xl border bg-gradient-to-br p-6 backdrop-blur-sm",
         "from-emerald-500/10 to-emerald-500/5 border-emerald-500/20"
@@ -477,7 +477,7 @@ function CarrierAssignmentTool() {
         </div>
         <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-emerald-500 opacity-5 blur-2xl" />
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -1172,7 +1172,7 @@ function BulkBlastSection({ onBoostLockChange }: { onBoostLockChange?: (locked: 
 
       {/* Resume Blast Card */}
       {savedProgress && !blasting && (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+        <div>
           <div className={cn(
             "relative overflow-hidden rounded-xl border bg-gradient-to-br p-6 backdrop-blur-sm",
             "from-blue-500/10 to-blue-500/5 border-blue-500/20"
@@ -1220,10 +1220,10 @@ function BulkBlastSection({ onBoostLockChange }: { onBoostLockChange?: (locked: 
               </Button>
             </div>
           </div>
-        </motion.div>
+        </div>
       )}
 
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+      <div>
         <div className={cn(
           "relative overflow-hidden rounded-xl border bg-gradient-to-br p-6 backdrop-blur-sm",
           "from-amber-500/10 to-amber-500/5 border-amber-500/20"
@@ -1337,7 +1337,7 @@ function BulkBlastSection({ onBoostLockChange }: { onBoostLockChange?: (locked: 
 
           <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-amber-500 opacity-5 blur-2xl" />
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }

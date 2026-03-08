@@ -368,12 +368,8 @@ export default function DashboardApplicants() {
       toast.error("Could not terminate this lead — you may not have permission");
       playSound("error");
     } else {
-      // Optimistic UI: immediately remove from active list
-      setApplications(prev => prev.map(app => 
-        app.id === terminatedId 
-          ? { ...app, terminated_at: new Date().toISOString(), termination_reason: terminateReason.trim() || null }
-          : app
-      ));
+      // Optimistic — just refetch
+      fetchApplications();
       toast.success("Lead terminated");
       playSound("success");
       setTerminateApp(null);
@@ -408,9 +404,7 @@ export default function DashboardApplicants() {
 
   const handleNotesSave = (notes: string) => {
     if (notesApp) {
-      setApplications(apps => 
-        apps.map(a => a.id === notesApp.id ? { ...a, notes } : a)
-      );
+      fetchApplications();
       setNotesApp(null);
     }
   };
@@ -1254,14 +1248,6 @@ export default function DashboardApplicants() {
           application={contractedApp}
           agentId={agentId}
           onSuccess={() => {
-            // Optimistic update: immediately reflect contracted status
-            if (contractedApp) {
-              setApplications(prev => prev.map(app => 
-                app.id === contractedApp.id 
-                  ? { ...app, contracted_at: new Date().toISOString(), closed_at: new Date().toISOString(), status: "contracting" as any }
-                  : app
-              ));
-            }
             fetchApplications();
           }}
         />

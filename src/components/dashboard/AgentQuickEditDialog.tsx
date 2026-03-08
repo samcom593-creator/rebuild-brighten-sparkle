@@ -608,7 +608,7 @@ export function AgentQuickEditDialog({
   };
 
   const hasExistingLogin = !!agentData?.user_id;
-  const isBusy = saving || merging || creating || deleting || updatingEmail || resettingPassword || sendingLogin;
+  const isBusy = saving || merging || creating || deleting || updatingEmail || resettingPassword || sendingLogin || sendingLoginToManager;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

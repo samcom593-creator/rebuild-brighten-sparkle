@@ -619,7 +619,7 @@ export default function DashboardCRM() {
     } catch (error) { console.error("Error fetching managers:", error); }
     try {
       const { data: currentAgent } = await supabase.from("agents").select("id").eq("user_id", user!.id).single();
-      if (!currentAgent && !isAdmin) { setLoading(false); return; }
+      if (!currentAgent && !isAdmin) { return []; }
       if (currentAgent) setCurrentAgentId(currentAgent.id);
 
       let query = supabase.from("agents").select("*").eq("status", "active").order("sort_order", { ascending: true, nullsFirst: false });
@@ -627,7 +627,7 @@ export default function DashboardCRM() {
 
       const { data: agentData, error } = await query;
       if (error) throw error;
-      if (!agentData?.length) { setAgents([]); setLoading(false); return; }
+      if (!agentData?.length) { return []; }
 
       const userIds = agentData.map(a => a.user_id).filter(Boolean);
       const managerIds = [...new Set(agentData.map(a => a.invited_by_manager_id).filter(Boolean))];
@@ -1121,9 +1121,9 @@ export default function DashboardCRM() {
                                     </Badge>
                                   </TableCell>
                                   <TableCell className="py-2">
-                                    <motion.div animate={{ rotate: isExpanded ? 90 : 0 }} transition={{ duration: 0.15 }}>
+                                    <div className={`transition-transform duration-150 ${isExpanded ? 'rotate-90' : ''}`}>
                                       <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                                    </motion.div>
+                                    </div>
                                   </TableCell>
                                 </TableRow>
                                 {isExpanded && (

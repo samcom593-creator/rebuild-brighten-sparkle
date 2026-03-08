@@ -807,7 +807,7 @@ export default function DashboardCRM() {
         return new Date(a.lastContactedAt).getTime() - new Date(b.lastContactedAt).getTime();
       });
     }
-    return filteredAgents.filter(a => section.stages.includes(a.onboardingStage) && a.agentLicenseStatus === "licensed").sort((a, b) => {
+    return filteredAgents.filter(a => section.stages.includes(a.onboardingStage)).sort((a, b) => {
       if (!a.lastContactedAt && !b.lastContactedAt) return a.sortOrder - b.sortOrder;
       if (!a.lastContactedAt) return -1;
       if (!b.lastContactedAt) return 1;
@@ -1000,7 +1000,7 @@ export default function DashboardCRM() {
                               : "bg-muted text-muted-foreground";
 
                             return (
-                              <motion.tbody key={agent.id} id={`agent-row-${agent.id}`} layout>
+                              <tbody key={agent.id} id={`agent-row-${agent.id}`}>
                                 <TableRow
                                   className={cn(
                                     "cursor-pointer transition-all duration-150 hover:bg-muted/40",
@@ -1107,7 +1107,7 @@ export default function DashboardCRM() {
                                     </tr>
                                   )}
                                 </AnimatePresence>
-                              </motion.tbody>
+                              </tbody>
                             );
                           })}
                         </TableBody>

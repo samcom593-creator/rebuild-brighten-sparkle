@@ -229,7 +229,7 @@ const quickActions = [
 ] as const;
 
 const adminQuickActions = [
-  { to: "/dashboard/command-center", icon: Shield, color: "red-500", title: "Command Center", sub: "Full admin control" },
+  { to: "/dashboard/command", icon: Shield, color: "red-500", title: "Command Center", sub: "Full admin control" },
   { to: "/dashboard/accounts", icon: Settings, color: "indigo-500", title: "Accounts", sub: "Manage accounts" },
 ] as const;
 

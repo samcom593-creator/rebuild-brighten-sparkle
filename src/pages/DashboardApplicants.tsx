@@ -238,6 +238,34 @@ export default function DashboardApplicants() {
     queryClient.invalidateQueries({ queryKey: ["applicants"] });
   }, [queryClient]);
 
+  // Scroll to highlighted lead when data loads
+  useEffect(() => {
+    if (highlightedLeadId && applications.length > 0) {
+      const timer = setTimeout(() => {
+        const leadElement = document.getElementById(`lead-${highlightedLeadId}`);
+        if (leadElement) {
+          leadElement.scrollIntoView({ behavior: "smooth", block: "center" });
+          setTimeout(() => setSearchParams({}), 2000);
+        } else {
+          const isTerminatedLead = applications.find(
+            app => app.id === highlightedLeadId && app.terminated_at
+          );
+          if (isTerminatedLead) {
+            setShowTerminated(true);
+            setTimeout(() => {
+              const leadEl = document.getElementById(`lead-${highlightedLeadId}`);
+              if (leadEl) {
+                leadEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                setTimeout(() => setSearchParams({}), 2000);
+              }
+            }, 300);
+          }
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [highlightedLeadId, applications, setSearchParams]);
+
   const getApplicationStatus = (app: Application): string => {
     if (app.terminated_at) return "terminated";
     if (app.contracted_at) return "contracted";
@@ -1132,19 +1160,11 @@ export default function DashboardApplicants() {
             )}
           </button>
 
-          <AnimatePresence>
-            {showTerminated && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.2 }}
-                className="space-y-4 mt-4 overflow-hidden"
-              >
-                {terminatedApplications.map((app, index) => renderApplicationCard(app, index, true))}
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {showTerminated && (
+            <div className="space-y-4 mt-4 animate-in fade-in-0 slide-in-from-top-1 duration-200">
+              {terminatedApplications.map((app, index) => renderApplicationCard(app, index, true))}
+            </div>
+          )}
         </div>
       )}
         </>

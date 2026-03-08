@@ -58,6 +58,7 @@ interface LeaderboardEntry {
 type Step = "search" | "select" | "new-agent" | "production" | "leaderboard";
 
 export default function LogNumbers() {
+  const { playSound } = useSoundEffects();
   const [step, setStep] = useState<Step>("search");
   const [searchQuery, setSearchQuery] = useState("");
   const [searching, setSearching] = useState(false);

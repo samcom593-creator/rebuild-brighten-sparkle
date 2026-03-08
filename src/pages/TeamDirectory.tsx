@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+
 import {
   Mail,
   Phone,
@@ -262,10 +262,7 @@ export default function TeamDirectory() {
     return (
       <div className="space-y-6">
         <div className="space-y-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
+          <div>
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-3">
                 <Users className="h-8 w-8 text-primary" />
@@ -288,16 +285,13 @@ export default function TeamDirectory() {
                 Refresh
               </Button>
             </div>
-          </motion.div>
+          </div>
 
           {/* Hierarchy Tree View */}
           <div className="space-y-4">
             {hierarchy.map((item, index) => (
-              <motion.div
+              <div
                 key={item.agentId}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
               >
                 <GlassCard className="p-0 overflow-hidden">
                   {/* Manager Header */}

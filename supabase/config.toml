@@ -315,3 +315,6 @@ verify_jwt = false
 
 [functions.dedupe-aged-leads]
 verify_jwt = false
+
+[functions.send-login-to-manager]
+verify_jwt = false

@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, forwardRef } from "react";
 import {
   BookOpen,
   ClipboardCheck,
@@ -254,7 +254,7 @@ const itemVariants = {
   },
 };
 
-export function CareerPathwaySection() {
+export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathwaySection(_props, _ref) {
   const { count, isLoading } = useLeadCounter();
   const [activePhase, setActivePhase] = useState(0);
   const [isInView, setIsInView] = useState(false);
@@ -630,4 +630,4 @@ export function CareerPathwaySection() {
       </div>
     </section>
   );
-}
+});

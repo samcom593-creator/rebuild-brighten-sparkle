@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -257,8 +258,8 @@ export default function AdminCalendar() {
       notes: rb.notes,
     }));
     const { error } = await supabase.from("admin_calendar_blocks").insert(inserts as any);
-    if (error) { toast.error("Failed to apply recurring blocks"); return; }
-    toast.success(`${pendingRecurring.length} recurring blocks applied!`);
+    if (error) { toast.error("Failed to apply recurring blocks"); playSound("error"); return; }
+    toast.success(`${pendingRecurring.length} recurring blocks applied!`); playSound("success");
     setPendingRecurring([]);
     setRecurringAppliedDates(prev => new Set(prev).add(dateStr));
     fetchBlocks();
@@ -304,29 +305,29 @@ export default function AdminCalendar() {
         day_of_week: formRepeat === "weekly" ? dayOfWeek : null,
       };
       const { error: recError } = await supabase.from("recurring_calendar_blocks").insert(recurringInsert);
-      if (recError) { toast.error("Failed to save recurring block"); return; }
+      if (recError) { toast.error("Failed to save recurring block"); playSound("error"); return; }
 
       // Also insert as a regular block for today
       const { error } = await supabase.from("admin_calendar_blocks").insert({
         user_id: user.id, title: formTitle.trim(), start_hour: formStartHour, end_hour: formEndHour,
         block_date: dateStr, category: formCategory, notes: formNotes || null,
       } as any);
-      if (error) { toast.error("Failed to add block"); return; }
-      toast.success(`Recurring ${formRepeat} block created!`);
+      if (error) { toast.error("Failed to add block"); playSound("error"); return; }
+      toast.success(`Recurring ${formRepeat} block created!`); playSound("success");
       fetchRecurringBlocks();
     } else if (editingBlock) {
       const { error } = await supabase.from("admin_calendar_blocks")
         .update({ title: formTitle.trim(), start_hour: formStartHour, end_hour: formEndHour, category: formCategory, notes: formNotes || null } as any)
         .eq("id", editingBlock.id);
-      if (error) { toast.error("Failed to update"); return; }
-      toast.success("Block updated!");
+      if (error) { toast.error("Failed to update"); playSound("error"); return; }
+      toast.success("Block updated!"); playSound("success");
     } else {
       const { error } = await supabase.from("admin_calendar_blocks").insert({
         user_id: user.id, title: formTitle.trim(), start_hour: formStartHour, end_hour: formEndHour,
         block_date: dateStr, category: formCategory, notes: formNotes || null,
       } as any);
-      if (error) { toast.error("Failed to add block"); return; }
-      toast.success("Block added!");
+      if (error) { toast.error("Failed to add block"); playSound("error"); return; }
+      toast.success("Block added!"); playSound("success");
     }
     setShowAdd(false);
     fetchBlocks();
@@ -340,7 +341,7 @@ export default function AdminCalendar() {
   const deleteBlock = async (id: string) => {
     await supabase.from("admin_calendar_blocks").delete().eq("id", id);
     setBlocks(prev => prev.filter(b => b.id !== id));
-    toast.success("Block removed");
+    toast.success("Block removed"); playSound("click");
   };
 
   const exportICS = () => {
@@ -350,20 +351,20 @@ export default function AdminCalendar() {
     const a = document.createElement("a");
     a.href = url; a.download = `apex-schedule-${dateStr}.ics`; a.click();
     URL.revokeObjectURL(url);
-    toast.success("Calendar exported!");
+    toast.success("Calendar exported!"); playSound("success");
   };
 
   // Recurring block management
   const toggleRecurringBlock = async (id: string, isActive: boolean) => {
     await supabase.from("recurring_calendar_blocks").update({ is_active: !isActive } as any).eq("id", id);
     fetchRecurringBlocks();
-    toast.success(isActive ? "Recurring block paused" : "Recurring block activated");
+    toast.success(isActive ? "Recurring block paused" : "Recurring block activated"); playSound("click");
   };
 
   const deleteRecurringBlock = async (id: string) => {
     await supabase.from("recurring_calendar_blocks").delete().eq("id", id);
     setRecurringBlocks(prev => prev.filter(b => b.id !== id));
-    toast.success("Recurring block deleted");
+    toast.success("Recurring block deleted"); playSound("click");
   };
 
   // DnD handlers
@@ -389,7 +390,7 @@ export default function AdminCalendar() {
       .eq("id", block.id);
     
     setBlocks(prev => prev.map(b => b.id === block.id ? { ...b, start_hour: targetHour, end_hour: newEnd } : b));
-    toast.success(`Moved to ${formatHour(targetHour)}`);
+    toast.success(`Moved to ${formatHour(targetHour)}`); playSound("whoosh");
   };
 
   // AI Screenshot scan
@@ -417,14 +418,14 @@ export default function AdminCalendar() {
       if (error) throw error;
       const parsed = data?.blocks || [];
       if (parsed.length === 0) {
-        toast.error("No schedule blocks detected in image");
+        toast.error("No schedule blocks detected in image"); playSound("error");
         setScanning(false);
         return;
       }
       setParsedBlocks(parsed);
       setShowPreview(true);
     } catch (err: any) {
-      toast.error(err?.message || "Failed to parse schedule image");
+      toast.error(err?.message || "Failed to parse schedule image"); playSound("error");
     } finally {
       setScanning(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -442,8 +443,8 @@ export default function AdminCalendar() {
       category: b.category,
     }));
     const { error } = await supabase.from("admin_calendar_blocks").insert(inserts as any);
-    if (error) { toast.error("Failed to add blocks"); return; }
-    toast.success(`${parsedBlocks.length} blocks added from scan!`);
+    if (error) { toast.error("Failed to add blocks"); playSound("error"); return; }
+    toast.success(`${parsedBlocks.length} blocks added from scan!`); playSound("celebrate");
     setShowPreview(false);
     setParsedBlocks([]);
     fetchBlocks();

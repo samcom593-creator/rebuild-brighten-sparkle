@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { cn } from "@/lib/utils";
 import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration";
 import { BubbleDealEntry } from "@/components/dashboard/BubbleDealEntry";
@@ -142,7 +143,7 @@ export default function LogNumbers() {
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
-      toast.error("Please enter a name or email");
+      toast.error("Please enter a name or email"); playSound("error");
       return;
     }
 
@@ -173,7 +174,7 @@ export default function LogNumbers() {
       }
     } catch (error) {
       console.error("Search error:", error);
-      toast.error("Failed to search for agent");
+      toast.error("Failed to search for agent"); playSound("error");
     } finally {
       setSearching(false);
     }
@@ -186,7 +187,7 @@ export default function LogNumbers() {
 
   const handleCreateAgent = async () => {
     if (!newAgentForm.fullName.trim() || !newAgentForm.email.trim() || !newAgentForm.phone.trim()) {
-      toast.error("Please fill in all fields");
+      toast.error("Please fill in all fields"); playSound("error");
       return;
     }
 
@@ -214,11 +215,11 @@ export default function LogNumbers() {
         onboardingStage: "onboarding"
       });
 
-      toast.success("Agent added to CRM!");
+      toast.success("Agent added to CRM!"); playSound("success");
       setStep("production");
     } catch (error: any) {
       console.error("Create agent error:", error);
-      toast.error(error.message || "Failed to create agent");
+      toast.error(error.message || "Failed to create agent"); playSound("error");
     } finally {
       setCreatingAgent(false);
     }
@@ -253,7 +254,7 @@ export default function LogNumbers() {
       if (res.data?.error) throw new Error(res.data.error);
 
       // Show success feedback
-      toast.success("Numbers saved! 🎉");
+      toast.success("Numbers saved! 🎉"); playSound("celebrate");
       setShowConfetti(true);
       setStep("leaderboard");
 
@@ -269,7 +270,7 @@ export default function LogNumbers() {
       fetchLeaderboard().catch(err => console.error("Leaderboard fetch error:", err));
     } catch (error: any) {
       console.error("Save error:", error);
-      toast.error(error.message || "Failed to save numbers");
+      toast.error(error.message || "Failed to save numbers"); playSound("error");
     } finally {
       setSaving(false);
     }

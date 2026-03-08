@@ -1380,20 +1380,19 @@ function RecruiterDashboardInner() {
           <table className="w-full text-sm min-w-[1100px]">
             <thead>
               <tr className="border-b bg-muted/30">
-                <th className="text-left px-3 py-2.5 font-medium text-muted-foreground w-[200px]">Name</th>
+                <th className="text-left px-3 py-2.5 font-medium text-muted-foreground w-[220px]">Name</th>
                 <th className="text-left px-3 py-2.5 font-medium text-muted-foreground w-[120px]">Phone</th>
                 <th className="text-left px-3 py-2.5 font-medium text-muted-foreground hidden lg:table-cell">Email</th>
                 <th className="text-left px-3 py-2.5 font-medium text-muted-foreground w-[120px] hidden md:table-cell">Location</th>
                 <th className="text-left px-3 py-2.5 font-medium text-muted-foreground w-[160px]">License Progress</th>
                 <th className="text-left px-3 py-2.5 font-medium text-muted-foreground w-[130px]">Last Contact</th>
-                <th className="text-center px-3 py-2.5 font-medium text-muted-foreground w-[60px]">Score</th>
-                <th className="text-right px-3 py-2.5 font-medium text-muted-foreground w-[80px]">Actions</th>
+                <th className="text-right px-3 py-2.5 font-medium text-muted-foreground w-[160px]">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-16 text-muted-foreground">
+                  <td colSpan={7} className="text-center py-16 text-muted-foreground">
                     <Sparkles className="h-8 w-8 mx-auto mb-2 text-pink-400/50" />
                     <p className="font-medium">No leads match your search</p>
                   </td>
@@ -1406,6 +1405,7 @@ function RecruiterDashboardInner() {
                   const cLabel = contactBadgeLabel(lead);
                   const fullName = `${lead.first_name} ${lead.last_name}`.trim();
                   const location = [lead.city, lead.state].filter(Boolean).join(", ");
+                  const showScore = ["test_scheduled", "passed_test", "fingerprints_done", "waiting_on_license"].includes(lead.license_progress || "");
                   return (
                     <tr
                       key={lead.id}
@@ -1415,7 +1415,31 @@ function RecruiterDashboardInner() {
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-2">
                           <DormantBadge lastContactedAt={lead.last_contacted_at} contactedAt={lead.contacted_at} createdAt={lead.created_at} />
-                          <span className="font-medium truncate">{fullName}</span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1">
+                              <span className="font-medium truncate">{fullName}</span>
+                              {lead.instagram_handle && (
+                                <a
+                                  href={`https://instagram.com/${lead.instagram_handle.replace(/^@/, "")}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={e => e.stopPropagation()}
+                                  className="text-pink-400 hover:text-pink-300 shrink-0"
+                                  title={`@${lead.instagram_handle.replace(/^@/, "")}`}
+                                >
+                                  <Instagram className="h-3.5 w-3.5" />
+                                </a>
+                              )}
+                              {showScore && (
+                                <Badge className={cn("text-[9px] border px-1 py-0 font-bold ml-0.5", badge.className)}>
+                                  {badge.label}
+                                </Badge>
+                              )}
+                            </div>
+                            {(lead as any).motivation && (
+                              <p className="text-[10px] text-muted-foreground truncate max-w-[180px]">{(lead as any).motivation}</p>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td className="px-3 py-2">
@@ -1449,13 +1473,27 @@ function RecruiterDashboardInner() {
                           {cLabel}
                         </Badge>
                       </td>
-                      <td className="px-3 py-2 text-center">
-                        <Badge className={cn("text-[10px] border px-1.5 py-0 font-bold", badge.className)}>
-                          {badge.label}
-                        </Badge>
-                      </td>
                       <td className="px-3 py-2 text-right" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1">
+                          {/* Mark Contacted */}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-emerald-400 hover:bg-emerald-500/10"
+                                onClick={async () => {
+                                  await supabase.from("applications").update({ last_contacted_at: new Date().toISOString() } as any).eq("id", lead.id);
+                                  logLeadActivity({ leadId: lead.id, type: "mark_contacted", title: "Marked as just contacted" });
+                                  toast.success("Marked as contacted!");
+                                  fetchLeads(true);
+                                }}
+                              >
+                                <CheckCircle className="h-3 w-3" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent><p>Mark contacted</p></TooltipContent>
+                          </Tooltip>
                           {lead.phone && (
                             <Button variant="ghost" size="icon" className="h-6 w-6" asChild>
                               <a href={`tel:${lead.phone}`}><Phone className="h-3 w-3" /></a>
@@ -1470,6 +1508,11 @@ function RecruiterDashboardInner() {
                             onEmailSent={() => fetchLeads(true)}
                             displayMode="icon"
                             className="h-6 w-6 px-0"
+                          />
+                          <ResendLicensingButton
+                            recipientEmail={lead.email}
+                            recipientName={lead.first_name}
+                            licenseStatus={lead.license_status as any}
                           />
                           {isAdmin && (
                             <QuickAssignMenu

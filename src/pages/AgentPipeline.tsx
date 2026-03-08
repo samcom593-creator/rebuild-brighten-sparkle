@@ -329,7 +329,7 @@ export default function AgentPipeline() {
             )}
           </div>
         </div>
-      </motion.div>
+      </div>
     );
   };
 

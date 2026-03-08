@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import {
   Phone, Mail, Instagram, MapPin, FileText,
   Building2, GraduationCap, Calendar, CheckCircle, Pencil, X, Loader2,
+  KeyRound, Send, RefreshCw, UserPlus,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
@@ -11,11 +12,13 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { logLeadActivity } from "@/lib/logLeadActivity";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 interface ApplicationDetailSheetProps {
   open: boolean;

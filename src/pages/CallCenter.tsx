@@ -49,6 +49,7 @@ interface UnifiedLead {
   state?: string;
   availability?: string;
   referredBy?: string;
+  assignedManagerName?: string;
 }
 
 export default function CallCenter() {
@@ -136,7 +137,7 @@ export default function CallCenter() {
 
         (agedData || []).forEach((lead: any) => {
           const agentData = lead.agents;
-          const referredBy = agentData?.display_name || undefined;
+          const managerName = agentData?.display_name || undefined;
           allLeads.push({
             id: lead.id,
             source: "aged_leads",
@@ -152,7 +153,7 @@ export default function CallCenter() {
             status: lead.status || "new",
             contactedAt: lead.contacted_at || undefined,
             lastContactedAt: lead.last_contacted_at || undefined,
-            referredBy,
+            assignedManagerName: managerName,
           });
         });
       }
@@ -195,7 +196,7 @@ export default function CallCenter() {
 
         (appData || []).forEach((app: any) => {
           const agentData = app.agents;
-          const referredBy = agentData?.display_name || undefined;
+          const managerName = agentData?.display_name || undefined;
           allLeads.push({
             id: app.id,
             source: "applications",
@@ -219,7 +220,7 @@ export default function CallCenter() {
             city: app.city || undefined,
             state: app.state || undefined,
             availability: app.availability || undefined,
-            referredBy,
+            assignedManagerName: managerName,
           });
         });
       }

@@ -332,9 +332,19 @@ const handler = async (req: Request): Promise<Response> => {
       html: emailHtml,
     });
 
+    // Check if Resend returned an error (e.g. domain not verified)
+    if (emailResponse.error) {
+      console.error("Resend API error:", emailResponse.error);
+      // Still return 200 so the frontend doesn't break — the email just didn't send
+      return new Response(JSON.stringify({ success: true, emailSent: false, reason: emailResponse.error.message }), {
+        status: 200,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
     console.log("Post-call followup email sent successfully:", emailResponse, "CC:", ccList.join(", "));
 
-    return new Response(JSON.stringify({ success: true, emailId: emailResponse.id }), {
+    return new Response(JSON.stringify({ success: true, emailSent: true, emailId: emailResponse.data?.id }), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });

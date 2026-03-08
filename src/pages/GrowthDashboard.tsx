@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
 import { getTodayPST } from "@/lib/dateUtils";
 import { startOfWeek, subWeeks, format } from "date-fns";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { GrowthLeaderboard } from "@/components/growth/GrowthLeaderboard";
 import { GrowthInputForm } from "@/components/growth/GrowthInputForm";
 import { GrowthDeltaCards } from "@/components/growth/GrowthDeltaCards";

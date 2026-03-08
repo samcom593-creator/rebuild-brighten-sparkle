@@ -110,11 +110,39 @@ export function ApplicationDetailSheet({
   });
 
   const app = application;
+  const linkedAgentId = app?.assigned_agent_id;
+
+  // Fetch agent record for account management
+  const { data: linkedAgent } = useQuery({
+    queryKey: ["linked-agent-for-acct", linkedAgentId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("agents")
+        .select("id, user_id, profile_id, invited_by_manager_id, portal_password_set")
+        .eq("id", linkedAgentId!)
+        .maybeSingle();
+      if (!data) return null;
+      // Also get the profile email
+      let profileEmail = "";
+      if (data.user_id) {
+        const { data: p } = await supabase.from("profiles").select("email").eq("user_id", data.user_id).maybeSingle();
+        profileEmail = p?.email || "";
+      } else if (data.profile_id) {
+        const { data: p } = await supabase.from("profiles").select("email").eq("id", data.profile_id).maybeSingle();
+        profileEmail = p?.email || "";
+      }
+      return { ...data, profileEmail };
+    },
+    enabled: open && isAdmin && !!linkedAgentId,
+    staleTime: 30_000,
+  });
 
   useEffect(() => {
     if (app) {
       setEditForm(initForm(app));
       setIsEditing(false);
+      setAcctNewEmail("");
+      setAcctNewPassword("");
     }
   }, [app]);
 

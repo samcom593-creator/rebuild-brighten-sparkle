@@ -1,6 +1,6 @@
 // ============= Full file contents =============
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -1000,7 +1000,7 @@ export default function DashboardCRM() {
                               : "bg-muted text-muted-foreground";
 
                             return (
-                              <tbody key={agent.id} id={`agent-row-${agent.id}`}>
+                              <React.Fragment key={agent.id}>
                                 <TableRow
                                   className={cn(
                                     "cursor-pointer transition-all duration-150 hover:bg-muted/40",
@@ -1105,7 +1105,7 @@ export default function DashboardCRM() {
                                     </td>
                                   </tr>
                                 )}
-                              </tbody>
+                              </React.Fragment>
                             );
                           })}
                         </TableBody>

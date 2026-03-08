@@ -1,83 +1,71 @@
 
 
-# Plan: Platform-Wide Optimization Audit — Round 3
+# Go-Live Final Remediation Plan
 
-## Critical Issues Found
+## Issues Identified
 
-### 1. RUNTIME CRASH: `CourseContent.tsx` wrapped in `forwardRef` breaks lazy loading
-**File:** `src/pages/CourseContent.tsx` line 28  
-The page component is wrapped in `forwardRef` but loaded via `React.lazy()` in `App.tsx`. When React renders a lazy component, it calls the default export as a function component. `forwardRef` returns an object, not a function, causing: `TypeError: Component is not a function`. This is the active runtime error shown in the diagnostics.
+### 1. No "My Directs" Filter on Pipeline (DashboardApplicants), Dashboard, or RecruiterHQ
+Currently, admin/managers see ALL agents/applicants with no toggle to filter to only their directly-invited recruits. The AgentPipeline page has a "My Recruits" button, but DashboardApplicants, Dashboard, and RecruiterDashboard lack this.
 
-**Fix:** Remove the `forwardRef` wrapper — page components inside `<Suspense>` don't receive refs. Change to a standard function component with `export default function CourseContent()`.
+**Fix**: Add a "My Directs" / "Full Team" toggle to:
+- `DashboardApplicants.tsx` — filter `assigned_agent_id` to only the current manager's agent ID
+- `Dashboard.tsx` — the `fetchDashboardData` function currently filters to `assigned_agent_id = agentData.id` for non-admin, but admin sees everything; add a toggle for admin to scope to their directs
+- `RecruiterDashboard.tsx` — add a "My Directs" filter button alongside existing filters
 
-### 2. Unused `motion` import in OnboardingPipelineCard
-**File:** `src/components/dashboard/OnboardingPipelineCard.tsx` line 2  
-`motion` is imported from framer-motion but never used in the rendered output (all entrance animations were removed in prior audit). Dead import increases bundle.
+### 2. Aged Leads Missing a Visible "Distribute" Button
+The Aged Leads page has a `QuickAssignPanel` but it only appears when `isAdmin && managers.length > 0`. The per-row actions only have status changes + delete/ban via the DropdownMenu — no per-row assign button and no bulk distribute button at the bottom selection bar.
 
-**Fix:** Remove the unused `import { motion } from "framer-motion"` line.
+**Fix**:
+- Add a `QuickAssignMenu` to each row's actions dropdown (like LeadCenter has)
+- Add a bulk assign section to the bottom selection bar (currently only has "Delete Selected" and "Clear")
 
-### 3. Pipeline table hides Email/Phone columns on mobile despite scroll container
-**File:** `src/pages/DashboardApplicants.tsx` lines 979-980  
-Email and Phone columns have `hidden md:table-cell`, hiding them on smaller screens even though the table has `min-w-[1100px]` with overflow scroll. This is inconsistent with the "always visible" standard applied to Aged Leads and Recruiter HQ.
+### 3. Avg Leads/Day Inaccurate in Lead Center
+The calculation uses `Math.round(recentLeads / 30)` which rounds to zero for small counts. Should use more precise calculation.
 
-**Fix:** Remove `hidden md:table-cell` from Email, Phone, License, Location, Manager, and Created columns in the Pipeline table view. The `min-w-[1100px]` constraint already ensures horizontal scroll handles the layout.
+**Fix**: Change to `parseFloat((recentLeads / 30).toFixed(1))` to show one decimal place.
 
-### 4. CRM uses nested `<tbody>` per agent row — invalid HTML
-**File:** `src/pages/DashboardCRM.tsx` line 1003  
-Each agent row + expanded row is wrapped in `<tbody key={agent.id}>`, creating multiple `<tbody>` elements inside the `<TableBody>` wrapper. This was flagged in the previous audit plan but the fix replaced `<motion.tbody>` with `<tbody>` — it should be `<React.Fragment>` instead to avoid nesting tbody inside TableBody.
+### 4. Lead Center Missing Pipeline Actions (Hired, Contracted, etc.)
+Lead Center per-row actions have: Assign, Phone, Email, Resend Licensing, Delete, Ban. But it's missing the stage-change actions that exist in DashboardApplicants (Mark as Hired, Contracted, Terminate).
 
-**Fix:** Change `<tbody key={agent.id}>` to `<React.Fragment key={agent.id}>` (and closing tag), since `<TableBody>` already renders a `<tbody>`.
+**Fix**: Add a DropdownMenu with status-change actions (Contacted, Hired, Contracted, Terminate) to the Lead Center row actions for application-source leads.
 
-### 5. Pipeline ResendLicensingButton missing `recipientPhone` prop
-**File:** `src/pages/DashboardApplicants.tsx` line 1102-1106  
-The table view passes `recipientEmail` and `recipientName` but not `recipientPhone`, meaning the Green Hat button won't trigger SMS in the Pipeline. This was added to Recruiter HQ but not Pipeline.
+### 5. Dashboard Stats Not Filtering by DatePeriodSelector
+The `DatePeriodSelector` was added to Dashboard UI but `fetchDashboardData` doesn't use `dateRange` — it always queries all data.
 
-**Fix:** Add `recipientPhone={app.phone || undefined}` to the `ResendLicensingButton` in the Pipeline table view.
+**Fix**: Pass `dateRange` into the query key and filter applications by `created_at` within the selected range.
 
-### 6. Missing sound effects on several key interactions
-- **LeadCenter.tsx**: Has `playSound` imported and used in some places but missing on bulk operations and status changes.
-- **DashboardAgedLeads.tsx**: Quick assign and status change actions don't play sounds.
-- **DashboardCRM.tsx**: Agent expand/collapse has sounds, but attendance changes, course login sends, and other actions lack them.
+### 6. OnboardingPipelineCard Dashboard Accuracy
+The card shows Course Purchased, Test Scheduled, etc. based on `agents` table fields (`has_training_course`, `onboarding_stage`). It only queries agents invited by the current manager (non-admin). For admin it queries ALL agents. This is correct. However, it doesn't cross-reference with `applications` table license_progress data.
 
-These are minor but contribute to the "incomplete" feel. The existing sound effect system (click, success, celebrate, error, whoosh) covers all needed scenarios.
+**Fix**: Cross-reference with `applications.license_progress` to ensure counts include applicants at each stage (course_purchased, passed_test, waiting_on_license, etc.), not just agent records.
 
-**Fix:** Add `playSound("success")` on successful status changes and `playSound("error")` on failures across LeadCenter, DashboardAgedLeads, and CRM where missing.
+### 7. Todoist Integration
+Todoist has an official REST API. This would require the user's Todoist API token as a secret, stored via the secrets tool. We can create an edge function that syncs planner blocks to/from Todoist tasks. However, Todoist is not available as a connector — the user would need to provide their API key manually.
 
-### 7. `AgentPortal.tsx` still imports `motion, AnimatePresence` — verify usage
-**File:** `src/pages/AgentPortal.tsx` line 2  
-Imports `motion, AnimatePresence` from framer-motion. The `QuickStat` component was previously cleaned of entrance animations, but the import remains. Need to check if `motion` is used elsewhere in the file (e.g., tab transitions).
+### 8. Google Calendar & Calendly Integration
+Google Calendar integration would require OAuth setup (not available as a connector). Calendly is already partially integrated (CalendlyEmbed component exists). For Google Calendar, we can generate `.ics` download links or `calendar.google.com` add-event URLs from scheduled interviews.
 
-**Fix:** If unused after prior cleanup, remove the import. If used for legitimate interactive animations (tab switches, conditional reveals), keep it.
+**Fix**: Add "Add to Google Calendar" links on scheduled interviews in CalendarPage. For Calendly, it's already embedded — verify it's wired into scheduling flows.
 
-## Changes
+---
 
-### 1. Fix CourseContent crash (`src/pages/CourseContent.tsx`)
-- Remove `forwardRef` wrapping, change to `export default function CourseContent()`.
-- Remove unused `forwardRef` import and `displayName`.
+## Implementation Plan
 
-### 2. Remove unused motion import (`src/components/dashboard/OnboardingPipelineCard.tsx`)
-- Remove `import { motion } from "framer-motion"` on line 2.
+### Files to Modify
 
-### 3. Always show Pipeline table columns (`src/pages/DashboardApplicants.tsx`)
-- Remove `hidden md:table-cell` from Email (line 979), Phone (line 980), License (line 982), Location (line 983), Manager (line 984), and Created (line 985) column headers.
-- Remove corresponding `hidden md:table-cell` and `hidden lg:table-cell` and `hidden xl:table-cell` from the `<td>` elements in the table body rows (lines 1021, 1024, 1036, 1049, 1052, 1061).
+| File | Changes |
+|------|---------|
+| `src/pages/DashboardApplicants.tsx` | Add "My Directs" / "Full Team" toggle button in filters; filter by `assigned_agent_id === agentId` when "My Directs" active |
+| `src/pages/Dashboard.tsx` | Pass `dateRange` to query; add "My Directs" toggle for admin; filter stats by date range |
+| `src/pages/RecruiterDashboard.tsx` | Add "My Directs" filter toggle |
+| `src/pages/DashboardAgedLeads.tsx` | Add per-row QuickAssignMenu; add bulk assign to selection bar |
+| `src/pages/LeadCenter.tsx` | Add status-change actions (Hired, Contracted, Terminate) to per-row dropdown; fix avg leads/day precision |
+| `src/components/dashboard/OnboardingPipelineCard.tsx` | Cross-reference applications table for accurate license_progress counts |
 
-### 4. Fix nested tbody in CRM (`src/pages/DashboardCRM.tsx`)
-- Line 1003: Change `<tbody key={agent.id}>` to `<>` (React Fragment with key via explicit `<React.Fragment key={agent.id}>`).
-- Line 1108: Change `</tbody>` to `</React.Fragment>`.
+### External Integrations
+- **Todoist**: Requires API key — will prompt user to provide it via secrets tool before implementing
+- **Google Calendar**: Add "Add to Google Calendar" URL links on CalendarPage interview entries (no API key needed, uses URL scheme)
+- **Calendly**: Already embedded via CalendlyEmbed component — verify wiring
 
-### 5. Add recipientPhone to Pipeline licensing button (`src/pages/DashboardApplicants.tsx`)
-- Line 1103: Add `recipientPhone={app.phone || undefined}` prop.
-
-### 6. Add missing sound effects
-- Audit and add `playSound("success")` / `playSound("error")` calls on key interactions in LeadCenter, DashboardAgedLeads, and DashboardCRM where they're missing.
-
-### 7. Clean up AgentPortal motion import (`src/pages/AgentPortal.tsx`)
-- Verify usage and remove if only used for the now-removed QuickStat animations. Keep if used for valid interactive animations elsewhere in the 809-line file.
-
-## Scope
-- 5-6 files edited
-- No database migrations
-- No new dependencies
-- Fixes 1 runtime crash, 1 HTML validation issue, cross-board consistency gaps
+No database changes needed.
 

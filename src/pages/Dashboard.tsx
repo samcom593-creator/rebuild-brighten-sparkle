@@ -94,7 +94,7 @@ async function fetchDashboardData(
 
   let query = supabase
     .from("applications")
-    .select("*");
+    .select("id, created_at, contacted_at, closed_at, license_status, referral_source, assigned_agent_id, terminated_at");
 
   if (myDirectsOnly) {
     query = query.eq("assigned_agent_id", agentData.id);

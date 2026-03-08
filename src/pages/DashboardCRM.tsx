@@ -860,7 +860,7 @@ export default function DashboardCRM() {
         <BackgroundGlow accent="teal" intensity="subtle" />
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative z-10">
           <div>
-            <h1 className="text-2xl font-bold gradient-text">Recruiter HQ</h1>
+            <h1 className="text-2xl font-bold gradient-text">Agent CRM</h1>
             <p className="text-xs text-muted-foreground mt-0.5">
               {filteredAgents.length} agents · {staleCount > 0 && <span className="text-red-500 font-medium">{staleCount} need follow-up</span>}
             </p>

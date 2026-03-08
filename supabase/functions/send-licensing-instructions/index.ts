@@ -134,6 +134,18 @@ const handler = async (req: Request): Promise<Response> => {
                 <li>✅ Your personalized compensation structure</li>
                 <li>✅ Everything you need to close your first deal</li>
               </ul>
+              ${whatsappLink ? `
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: rgba(37,211,102,0.1); border: 1px solid rgba(37,211,102,0.3); border-radius: 12px; margin: 20px 0;">
+                <tr>
+                  <td style="padding: 20px; text-align: center;">
+                    <p style="color: #25D366; font-weight: bold; font-size: 14px; margin: 0 0 8px;">💬 Join Our WhatsApp Group</p>
+                    <p style="color: #e0e0e0; font-size: 13px; margin: 0 0 12px;">Connect with the team and get real-time support.</p>
+                    <a href="${whatsappLink}" style="display: inline-block; background: #25D366; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 8px; font-weight: bold; font-size: 14px;">Join WhatsApp →</a>
+                  </td>
+                </tr>
+              </table>
+              ` : ''}
+
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background: rgba(102, 126, 234, 0.1); border: 1px solid rgba(102, 126, 234, 0.3); border-radius: 12px;">
                 <tr>
                   <td style="padding: 20px;">

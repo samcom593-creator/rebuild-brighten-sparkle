@@ -94,11 +94,7 @@ export default function Numbers() {
   return (
     <div className="max-w-lg mx-auto space-y-4">
       <div className="space-y-4">
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center py-2"
-        >
+        <div className="text-center py-2">
           <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-emerald-400 bg-clip-text text-transparent">
             APEX Daily Numbers
           </h1>
@@ -108,7 +104,7 @@ export default function Numbers() {
             </p>
             <AgentRankBadge agentId={agentId} size="sm" />
           </div>
-        </motion.div>
+        </div>
 
         <CompactProductionEntry 
           agentId={agentId} 

@@ -16,6 +16,7 @@ interface ResendLicensingButtonProps {
   recipientName: string;
   licenseStatus: "licensed" | "unlicensed" | "pending";
   managerEmail?: string;
+  recipientPhone?: string;
 }
 
 export function ResendLicensingButton({
@@ -23,6 +24,7 @@ export function ResendLicensingButton({
   recipientName,
   licenseStatus,
   managerEmail,
+  recipientPhone,
 }: ResendLicensingButtonProps) {
   const [isSending, setIsSending] = useState(false);
   const [justSent, setJustSent] = useState(false);
@@ -38,6 +40,7 @@ export function ResendLicensingButton({
             firstName: recipientName,
             licenseStatus: licenseStatus,
             managerEmail: managerEmail,
+            phone: recipientPhone,
           },
         }
       );
@@ -82,7 +85,7 @@ export function ResendLicensingButton({
               "h-8 w-8",
               justSent
                 ? "border-green-500/50 text-green-400 hover:text-green-300"
-                : "border-primary/30 text-primary hover:text-primary hover:border-primary/50"
+                : "border-green-500/30 text-green-400 hover:text-green-300 hover:border-green-500/50"
             )}
           >
             {isSending ? (

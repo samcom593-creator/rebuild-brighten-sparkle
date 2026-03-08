@@ -145,7 +145,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // On token refresh, just update the session object — no refetches needed
         if (event === "TOKEN_REFRESHED") {
-          setSession(session);
+          if (session) {
+            setSession(session);
+          } else {
+            // Token refresh failed (e.g. refresh_token_not_found) — clear stale state
+            console.warn("Token refresh failed, clearing session");
+            currentUserIdRef.current = null;
+            lastFetchedUserId.current = null;
+            setUser(null);
+            setSession(null);
+            setProfile(null);
+            setRoles([]);
+            setRolesLoading(false);
+            setIsLoading(false);
+            supabase.auth.signOut().catch(() => {});
+          }
           return;
         }
         

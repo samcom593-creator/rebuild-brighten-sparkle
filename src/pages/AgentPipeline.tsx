@@ -539,12 +539,12 @@ export default function AgentPipeline() {
                       )}
                     </AnimatePresence>
                   </div>
-                </motion.div>
+                </div>
               );
             })}
           </div>
         )}
-      </motion.div>
+      </div>
 
       {/* Interview Scheduler Modal */}
       {schedulerApp && (

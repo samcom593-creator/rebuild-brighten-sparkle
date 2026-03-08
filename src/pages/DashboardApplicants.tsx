@@ -976,13 +976,13 @@ export default function DashboardApplicants() {
                   <thead className="[&_tr]:border-b">
                     <tr className="border-b bg-muted/50">
                       <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Name</th>
-                      <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground hidden md:table-cell">Email</th>
-                      <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground hidden md:table-cell">Phone</th>
+                      <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Email</th>
+                      <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Phone</th>
                       <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Status</th>
-                      <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground hidden lg:table-cell">License</th>
-                      <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground hidden lg:table-cell">Location</th>
-                      <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground hidden xl:table-cell">Manager</th>
-                      <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground hidden lg:table-cell">Created</th>
+                      <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">License</th>
+                      <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Location</th>
+                      <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Manager</th>
+                      <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Created</th>
                       <th className="h-10 px-4 text-right align-middle font-medium text-muted-foreground">Actions</th>
                     </tr>
                   </thead>
@@ -1011,17 +1011,13 @@ export default function DashboardApplicants() {
                               </div>
                               <div className="min-w-0">
                                 <p className="font-medium truncate">{app.first_name} {app.last_name}</p>
-                                <p className="text-xs text-muted-foreground md:hidden">{app.email}</p>
-                                {app.phone && (
-                                  <p className="text-[10px] text-muted-foreground md:hidden select-all cursor-text" onClick={(e) => e.stopPropagation()}>{app.phone}</p>
-                                )}
                               </div>
                             </div>
                           </td>
-                          <td className="p-3 align-middle hidden md:table-cell">
+                          <td className="p-3 align-middle">
                             <span className="text-muted-foreground">{app.email}</span>
                           </td>
-                          <td className="p-3 align-middle hidden md:table-cell">
+                          <td className="p-3 align-middle">
                             {app.phone ? (
                               <span className="text-muted-foreground select-all cursor-text" onClick={(e) => e.stopPropagation()}>{app.phone}</span>
                             ) : (
@@ -1033,7 +1029,7 @@ export default function DashboardApplicants() {
                               {status}
                             </Badge>
                           </td>
-                          <td className="p-3 align-middle hidden lg:table-cell">
+                          <td className="p-3 align-middle">
                             {!isTerminated && app.license_status !== "licensed" ? (
                               <LicenseProgressSelector
                                 applicationId={app.id}
@@ -1046,10 +1042,10 @@ export default function DashboardApplicants() {
                               </Badge>
                             )}
                           </td>
-                          <td className="p-3 align-middle hidden lg:table-cell text-muted-foreground text-xs">
+                          <td className="p-3 align-middle text-muted-foreground text-xs">
                             {app.city && app.state ? `${app.city}, ${app.state}` : "—"}
                           </td>
-                          <td className="p-3 align-middle hidden xl:table-cell text-xs">
+                          <td className="p-3 align-middle text-xs">
                             {app.assigned_agent_id ? (
                               <Badge variant="outline" className="bg-violet-500/10 text-violet-400 border-violet-500/30 text-[10px]">
                                 {managerNames.get(app.assigned_agent_id) || "Manager"}
@@ -1058,7 +1054,7 @@ export default function DashboardApplicants() {
                               <span className="text-muted-foreground">Unassigned</span>
                             )}
                           </td>
-                          <td className="p-3 align-middle hidden lg:table-cell text-muted-foreground text-xs">
+                          <td className="p-3 align-middle text-muted-foreground text-xs">
                             {getTimeAgo(app.created_at)}
                           </td>
                           <td className="p-3 align-middle text-right">
@@ -1103,6 +1099,7 @@ export default function DashboardApplicants() {
                                       recipientEmail={app.email}
                                       recipientName={`${app.first_name} ${app.last_name}`}
                                       licenseStatus={app.license_status as "licensed" | "unlicensed" | "pending"}
+                                      recipientPhone={app.phone || undefined}
                                     />
                                   )}
                                   {isAdmin && (

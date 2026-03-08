@@ -1071,6 +1071,55 @@ export default function DashboardAgedLeads() {
         </div>
       )}
 
+      {/* Bulk Assign Confirmation Dialog */}
+      <AlertDialog open={bulkAssignConfirmOpen} onOpenChange={setBulkAssignConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5 text-primary" />
+              Confirm Bulk Assignment
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              You are about to assign <strong>{selectedIds.size}</strong> lead{selectedIds.size !== 1 ? "s" : ""} to{" "}
+              <strong>{managers.find(m => m.id === bulkAssignManagerId)?.name || "selected manager"}</strong>.
+              The manager will receive an email notification.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkAssigning}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkAssignConfirm} disabled={bulkAssigning}>
+              {bulkAssigning ? "Assigning..." : `Assign ${selectedIds.size} Leads`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={bulkDeleteConfirmOpen} onOpenChange={setBulkDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-destructive" />
+              Delete {selectedIds.size} Lead{selectedIds.size !== 1 ? "s" : ""}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{selectedIds.size}</strong> lead{selectedIds.size !== 1 ? "s" : ""}?
+              They will be moved to the vault and can be restored from Settings.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDeleteConfirm}
+              disabled={bulkDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {bulkDeleting ? "Deleting..." : `Delete ${selectedIds.size} Leads`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent>

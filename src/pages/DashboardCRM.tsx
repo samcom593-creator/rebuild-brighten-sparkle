@@ -1005,14 +1005,19 @@ export default function DashboardCRM() {
                           {sectionAgents.map(agent => {
                             const contact = getContactInfo(agent);
                             const isExpanded = expandedAgentId === agent.id;
-                            const licenseLabel = agent.agentLicenseStatus === "licensed" ? "Licensed"
-                              : agent.licenseProgress === "course_purchased" ? "Course"
-                              : agent.licenseProgress === "passed_test" ? "Passed"
-                              : agent.licenseProgress === "waiting_on_license" ? "Waiting"
-                              : "Unlicensed";
-                            const licenseColor = agent.agentLicenseStatus === "licensed"
-                              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                              : "bg-muted text-muted-foreground";
+                            const progressStageMap: Record<string, { label: string; color: string }> = {
+                              licensed: { label: "Licensed", color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" },
+                              course_purchased: { label: "Course", color: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20" },
+                              finished_course: { label: "Finished", color: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20" },
+                              test_scheduled: { label: agent.testScheduledDate ? `Test ${new Date(agent.testScheduledDate).toLocaleDateString("en-US", { month: "numeric", day: "numeric" })}` : "Test Sched.", color: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" },
+                              passed_test: { label: "Passed", color: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20" },
+                              fingerprints_done: { label: "Fingerprints", color: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20" },
+                              waiting_on_license: { label: "Waiting", color: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20" },
+                            };
+                            const progressKey = agent.agentLicenseStatus === "licensed" ? "licensed" : (agent.licenseProgress || "unlicensed");
+                            const stageMeta = progressStageMap[progressKey] || { label: "Unlicensed", color: "bg-muted text-muted-foreground" };
+                            const licenseLabel = stageMeta.label;
+                            const licenseColor = stageMeta.color;
 
                             return (
                               <React.Fragment key={agent.id}>

@@ -254,7 +254,7 @@ const itemVariants = {
   },
 };
 
-export function CareerPathwaySection() {
+export const CareerPathwaySection = forwardRef<HTMLElement>(function CareerPathwaySection(_props, _ref) {
   const { count, isLoading } = useLeadCounter();
   const [activePhase, setActivePhase] = useState(0);
   const [isInView, setIsInView] = useState(false);

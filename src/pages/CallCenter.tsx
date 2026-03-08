@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { ContractedModal } from "@/components/dashboard/ContractedModal";
 import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration";
 import { LicenseConfirmModal } from "@/components/dashboard/LicenseConfirmModal";
@@ -52,6 +53,7 @@ interface UnifiedLead {
 
 export default function CallCenter() {
   const { isAdmin, isManager, user } = useAuth();
+  const { playSound } = useSoundEffects();
   const [leads, setLeads] = useState<UnifiedLead[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -234,6 +236,7 @@ export default function CallCenter() {
     } catch (error) {
       console.error("Error fetching leads:", error);
       toast.error("Failed to load leads");
+      playSound("error");
     } finally {
       setLoading(false);
     }
@@ -244,8 +247,10 @@ export default function CallCenter() {
   const handleStartCalling = () => {
     if (agentIdLoading) {
       toast.error("Still loading your profile, please wait...");
+      playSound("error");
       return;
     }
+    playSound("click");
     setStarted(true);
     fetchLeads();
   };
@@ -279,8 +284,10 @@ export default function CallCenter() {
     try {
       await sendFollowUpEmail(currentLead, "contacted", calendarLink);
       toast.success("Follow-up email sent!");
+      playSound("success");
     } catch {
       toast.error("Failed to send follow-up email");
+      playSound("error");
       throw new Error("Failed");
     }
   }, [currentLead]);
@@ -407,6 +414,7 @@ export default function CallCenter() {
         setShowConfetti(true);
         setTimeout(() => setShowConfetti(false), 3000);
         toast.success("Lead marked as hired - follow-up email sent!");
+        playSound("celebrate");
       } else if (actionId === "no_pickup") {
         // Auto-send "we tried calling you" email
         sendFollowUpEmail(currentLead, "no_pickup").catch(err => 
@@ -415,6 +423,7 @@ export default function CallCenter() {
         toast.info("Marked as no pickup - follow-up email sent!");
       } else {
         toast.success(`Lead marked as ${actionId.replace("_", " ")}`);
+        playSound("success");
       }
 
       // For no_pickup, don't remove from list - just move to next
@@ -437,6 +446,7 @@ export default function CallCenter() {
     } catch (error) {
       console.error("Error updating lead:", error);
       toast.error("Failed to update lead");
+      playSound("error");
     } finally {
       setProcessing(false);
     }
@@ -472,6 +482,7 @@ export default function CallCenter() {
 
     if (currentIndex < leads.length - 1) {
       setCurrentIndex((prev) => prev + 1);
+      playSound("whoosh");
     } else {
       toast.info("You've reached the last lead");
     }
@@ -525,9 +536,11 @@ export default function CallCenter() {
       );
 
       toast.success(`Stage updated to ${stage.replace("_", " ")}`);
+      playSound("success");
     } catch (error) {
       console.error("Error updating stage:", error);
       toast.error("Failed to update stage");
+      playSound("error");
     } finally {
       setProcessing(false);
     }

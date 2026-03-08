@@ -13,10 +13,12 @@ import { CourseVideoPlayer } from "@/components/course/CourseVideoPlayer";
 import { CourseQuiz } from "@/components/course/CourseQuiz";
 
 import { supabase } from "@/integrations/supabase/client";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 export default function OnboardingCourse() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { playSound } = useSoundEffects();
   const [agentId, setAgentId] = useState<string | null>(null);
   const [agentNotFound, setAgentNotFound] = useState(false);
   const [activeTab, setActiveTab] = useState<"video" | "quiz">("video");
@@ -83,7 +85,11 @@ export default function OnboardingCourse() {
     if (!currentModule) return false;
     const success = await submitQuiz(currentModule.id, answers, score, passed);
     
-    // No auto-advance — agent uses "Continue to Next Module" button
+    if (success && passed) {
+      playSound("celebrate");
+    } else if (success && !passed) {
+      playSound("error");
+    }
     
     return success;
   };
@@ -163,7 +169,7 @@ export default function OnboardingCourse() {
                   </CardHeader>
                   
                   <CardContent>
-                    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "video" | "quiz")}>
+                    <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as "video" | "quiz"); playSound("click"); }}>
                       <TabsList className="grid w-full grid-cols-2 mb-6">
                         <TabsTrigger value="video" className="gap-2">
                           <PlayCircle className="h-4 w-4" />

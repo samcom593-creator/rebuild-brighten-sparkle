@@ -1082,31 +1082,29 @@ export default function DashboardCRM() {
                                     </motion.div>
                                   </TableCell>
                                 </TableRow>
-                                <AnimatePresence>
-                                  {isExpanded && (
-                                    <tr>
-                                      <td colSpan={bulkMode ? 9 : 8} className="p-0">
-                                        <AgentExpandedRow
-                                          agent={agent}
-                                          onRefresh={fetchAgents}
-                                          onStageUpdate={handleOptimisticStageUpdate}
-                                          onGoLive={setInstagramPromptAgent}
-                                          onDeactivate={setDeactivateAgent}
-                          onViewApp={(id) => {
-                            const a = agents.find(ag => ag.id === id);
-                            setViewAppTarget({ agentId: id, applicationId: a?.applicationId });
-                          }}
-                                          onRecord={setRecorderAgent}
-                                          onAgentUpdate={onAgentUpdate}
-                                          playSound={playSound}
-                                          sendingCourseLogin={sendingCourseLogin}
-                                          setSendingCourseLogin={setSendingCourseLogin}
-                                          currentAgentId={currentAgentId}
-                                        />
-                                      </td>
-                                    </tr>
-                                  )}
-                                </AnimatePresence>
+                                {isExpanded && (
+                                  <tr>
+                                    <td colSpan={bulkMode ? 9 : 8} className="p-0">
+                                      <AgentExpandedRow
+                                        agent={agent}
+                                        onRefresh={fetchAgents}
+                                        onStageUpdate={handleOptimisticStageUpdate}
+                                        onGoLive={setInstagramPromptAgent}
+                                        onDeactivate={setDeactivateAgent}
+                                        onViewApp={(id) => {
+                                          const a = agents.find(ag => ag.id === id);
+                                          setViewAppTarget({ agentId: id, applicationId: a?.applicationId });
+                                        }}
+                                        onRecord={setRecorderAgent}
+                                        onAgentUpdate={onAgentUpdate}
+                                        playSound={playSound}
+                                        sendingCourseLogin={sendingCourseLogin}
+                                        setSendingCourseLogin={setSendingCourseLogin}
+                                        currentAgentId={currentAgentId}
+                                      />
+                                    </td>
+                                  </tr>
+                                )}
                               </tbody>
                             );
                           })}

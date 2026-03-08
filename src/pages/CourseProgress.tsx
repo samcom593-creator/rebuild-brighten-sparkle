@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+
 import { format, differenceInDays } from "date-fns";
 import {
   GraduationCap,
@@ -645,17 +645,11 @@ export default function CourseProgress() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    <AnimatePresence mode="popLayout">
                       {filteredAgents.map((agent, index) => {
                         const daysInCourse = getDaysInCourse(agent);
                         return (
-                          <motion.tr
+                          <TableRow
                             key={agent.agentId}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: 10 }}
-                            transition={{ delay: index * 0.02, duration: 0.2 }}
-                            layout
                             className={cn(
                               "border-b border-border hover:bg-muted/40 transition-colors border-l-4",
                               getRowBorderColor(agent),
@@ -834,10 +828,9 @@ export default function CourseProgress() {
                                 </DropdownMenu>
                               </div>
                             </TableCell>
-                          </motion.tr>
+                          </TableRow>
                         );
                       })}
-                    </AnimatePresence>
                   </TableBody>
                 </Table>
               </TooltipProvider>

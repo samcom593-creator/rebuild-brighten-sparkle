@@ -231,11 +231,8 @@ export default function AgentPipeline() {
       : "Never contacted";
 
     return (
-      <motion.div
+      <div
         key={app.id}
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: idx * 0.02 }}
         className="px-3 py-2 border-b border-border/50 last:border-b-0 hover:bg-muted/30 transition-colors"
       >
         <div className="flex flex-col md:flex-row md:items-center gap-3">

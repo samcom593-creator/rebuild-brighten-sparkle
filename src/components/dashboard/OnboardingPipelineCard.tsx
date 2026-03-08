@@ -217,11 +217,11 @@ export function OnboardingPipelineCard() {
                 {index < stages.length - 1 && (
                   <div className="hidden md:block absolute top-1/2 -right-1.5 w-3 h-0.5 bg-border" />
                 )}
-              </motion.div>
+              </div>
             ))}
           </div>
         </GlassCard>
-      </motion.div>
+      </div>
 
       {/* Stage drilldown dialog */}
       <Dialog open={!!selectedStage} onOpenChange={() => setSelectedStage(null)}>

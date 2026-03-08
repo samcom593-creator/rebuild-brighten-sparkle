@@ -164,6 +164,7 @@ function DroppableHourSlot({ hour, children, isOver }: { hour: number; children:
 
 export default function AdminCalendar() {
   const { user } = useAuth();
+  const { playSound } = useSoundEffects();
   const isMobile = useIsMobile();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [blocks, setBlocks] = useState<CalendarBlock[]>([]);

@@ -13,6 +13,7 @@ import { CourseVideoPlayer } from "@/components/course/CourseVideoPlayer";
 import { CourseQuiz } from "@/components/course/CourseQuiz";
 
 import { supabase } from "@/integrations/supabase/client";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 
 export default function OnboardingCourse() {
   const navigate = useNavigate();

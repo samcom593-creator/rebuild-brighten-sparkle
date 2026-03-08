@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 

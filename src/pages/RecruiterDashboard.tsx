@@ -170,6 +170,7 @@ interface Lead {
   referral_source: string | null;
   instagram_handle: string | null;
   lead_score: number | null;
+  motivation?: string | null;
 }
 
 // ─── Helper functions ──────────────────────────────────────────────────────────
@@ -940,7 +941,7 @@ function RecruiterDashboardInner() {
       // Also fetch contacted aged leads
       const { data: agedData } = await supabase
         .from("aged_leads")
-        .select("id, first_name, last_name, email, phone, contacted_at, last_contacted_at, created_at, license_status, notes")
+        .select("id, first_name, last_name, email, phone, contacted_at, last_contacted_at, created_at, license_status, notes, instagram_handle, motivation")
         .eq("status", "contacted");
 
       const normalizedAged: Lead[] = (agedData || []).map((a) => ({
@@ -960,8 +961,9 @@ function RecruiterDashboardInner() {
         notes: a.notes,
         assigned_agent_id: null,
         referral_source: "aged_lead",
-        instagram_handle: null,
+        instagram_handle: a.instagram_handle || null,
         lead_score: null,
+        motivation: a.motivation || null,
       }));
 
       // Merge and deduplicate by email

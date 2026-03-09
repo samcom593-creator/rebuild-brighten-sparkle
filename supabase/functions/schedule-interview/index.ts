@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 const ADMIN_EMAIL = "sam@apex-financial.org";
-const FROM_EMAIL = "APEX Financial <notifications@tx.apex-financial.org>";
+const FROM_EMAIL = "APEX Financial <notifications@apex-financial.org>";
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {

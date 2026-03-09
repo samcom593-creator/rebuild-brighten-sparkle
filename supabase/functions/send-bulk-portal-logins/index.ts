@@ -151,7 +151,7 @@ const handler = async (req: Request): Promise<Response> => {
 
         // Send email with magic links
         await resend.emails.send({
-          from: "APEX Financial <notifications@tx.apex-financial.org>",
+          from: "APEX Financial <notifications@apex-financial.org>",
           to: [profile.email],
           cc: ccList.length > 0 ? ccList : undefined,
           subject: "🎯 Your APEX Portal Access - One-Tap Login Inside!",

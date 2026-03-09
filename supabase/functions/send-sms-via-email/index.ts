@@ -92,7 +92,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send plain text email to carrier gateway
     const { error: sendError } = await resend.emails.send({
-      from: "Apex Financial <notifications@tx.apex-financial.org>",
+      from: "Apex Financial <notifications@apex-financial.org>",
       to: [smsEmail],
       subject: "", // SMS gateways ignore subject
       text: message.substring(0, 160), // SMS limit

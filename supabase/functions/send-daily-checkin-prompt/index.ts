@@ -72,7 +72,7 @@ serve(async (req: Request) => {
         if (app.email) {
           try {
             await resend.emails.send({
-              from: "APEX Financial Empire <notifications@tx.apex-financial.org>",
+              from: "APEX Financial Empire <notifications@apex-financial.org>",
               to: [app.email],
               subject: "📋 Daily Check-In — Update Your Licensing Progress",
               html: `<!DOCTYPE html>
@@ -133,7 +133,7 @@ serve(async (req: Request) => {
               if (cleaned.length === 10) {
                 const smsEmail = `${cleaned}@${CARRIER_GATEWAYS[app.carrier]}`;
                 await resend.emails.send({
-                  from: "Apex Financial <notifications@tx.apex-financial.org>",
+                  from: "Apex Financial <notifications@apex-financial.org>",
                   to: [smsEmail],
                   subject: "",
                   text: smsText,

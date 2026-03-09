@@ -117,7 +117,7 @@ serve(async (req) => {
     const timestamp = new Date().toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "short", timeStyle: "short" });
 
     const emailResponse = await resend.emails.send({
-      from: "APEX Production <notifications@tx.apex-financial.org>",
+      from: "APEX Production <notifications@apex-financial.org>",
       to: recipients,
       subject: `🔥 ${agentName} | ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} Production Report`,
       html: `

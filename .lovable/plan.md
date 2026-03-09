@@ -1,27 +1,16 @@
 
+# Resume: Complete Email Domain Migration
 
-# Fix: Email Sender Domain Mismatch
+## Status Check
+A fresh search confirms that **86 edge functions** still contain the unverified `tx.apex-financial.org` domain. It appears the previous replacement process was interrupted before the files were successfully saved. 
 
-## Problem
-Resend has `apex-financial.org` verified, but all edge functions send from `notifications@tx.apex-financial.org`. Resend treats subdomains separately — `tx.apex-financial.org` is NOT verified, causing 403 errors on every email.
+## Next Steps
+I will immediately execute the global search-and-replace to update all 86 edge functions. 
 
-## Recommended Fix: Option 2 — Update All Edge Functions
+I will change every instance of:
+`notifications@tx.apex-financial.org`
 
-Change the `from` address in every edge function from:
-```
-"APEX Financial <notifications@tx.apex-financial.org>"
-```
-to:
-```
-"APEX Financial <notifications@apex-financial.org>"
-```
+To the verified domain:
+`notifications@apex-financial.org`
 
-This uses the domain already verified in Resend and requires no DNS changes.
-
-## Files to Update (~60+ edge functions)
-
-Every file under `supabase/functions/` that contains `tx.apex-financial.org` needs the `from` field updated. A search-and-replace of `tx.apex-financial.org` → `apex-financial.org` across all edge functions.
-
-## Alternative: Option 1
-If you prefer keeping the `tx.` subdomain (e.g., to separate transactional emails from other mail), you'd need to add `tx.apex-financial.org` as a new domain in Resend and verify its DNS records separately. No code changes needed in that case.
-
+This will be applied across all edge function directories (e.g., `send-sms-auto-detect`, `send-course-enrollment-email`, `notify-hire-announcement`, etc.). Once you approve, I will run the replacements in parallel batches to fully resolve the 403 Forbidden errors from Resend.

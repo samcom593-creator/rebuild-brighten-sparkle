@@ -184,7 +184,7 @@
      for (const email of emailsToSend) {
        try {
           await resend.emails.send({
-            from: "APEX Financial <notifications@tx.apex-financial.org>",
+            from: "APEX Financial <notifications@apex-financial.org>",
             to: [email.to],
             subject: email.subject,
             html: email.html,

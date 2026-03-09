@@ -81,7 +81,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Send email to agent with admin CC
     if (agentEmail) {
       await resend.emails.send({
-        from: "Apex Financial <notifications@tx.apex-financial.org>",
+        from: "Apex Financial <notifications@apex-financial.org>",
         to: [agentEmail],
         cc: [ADMIN_EMAIL],
         subject: `Missed ${attendanceLabel.charAt(0).toUpperCase() + attendanceLabel.slice(1)} - ${dateStr}`,
@@ -102,7 +102,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Send email to manager with admin CC
     if (managerEmail) {
       await resend.emails.send({
-        from: "Apex Financial <notifications@tx.apex-financial.org>",
+        from: "Apex Financial <notifications@apex-financial.org>",
         to: [managerEmail],
         cc: [ADMIN_EMAIL],
         subject: `Agent Absent: ${agentName} - ${dateStr}`,

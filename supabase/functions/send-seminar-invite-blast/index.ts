@@ -131,7 +131,7 @@ serve(async (req: Request) => {
       // --- EMAIL ---
       try {
         await resend.emails.send({
-          from: "APEX Financial Empire <notifications@tx.apex-financial.org>",
+           from: "APEX Financial Empire <notifications@apex-financial.org>",
           to: [app.email],
           subject: "📅 You're Invited: Weekly Career Seminar — This Thursday!",
           html: buildSeminarEmail(app.first_name, regUrl, whatsappLink),
@@ -170,7 +170,7 @@ serve(async (req: Request) => {
           for (const gw of gateways) {
             try {
               await resend.emails.send({
-                from: "APEX Financial Empire <notifications@tx.apex-financial.org>",
+                from: "APEX Financial Empire <notifications@apex-financial.org>",
                 to: [`${digits}@${gw}`],
                 subject: "",
                 text: smsText,

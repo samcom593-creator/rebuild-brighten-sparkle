@@ -157,7 +157,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send notification email
     const emailResponse = await resend.emails.send({
-      from: "APEX Financial <notifications@tx.apex-financial.org>",
+      from: "APEX Financial <notifications@apex-financial.org>",
       to: [managerInfo.email],
       subject: `🎉 New Referral: ${applicantName} named you as their referrer!`,
       html: `

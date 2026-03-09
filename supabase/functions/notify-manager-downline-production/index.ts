@@ -214,7 +214,7 @@ serve(async (req: Request) => {
       const resend = new Resend(resendApiKey);
       
       await resend.emails.send({
-        from: "APEX Financial <notifications@tx.apex-financial.org>",
+        from: "APEX Financial <notifications@apex-financial.org>",
         to: [managerProfile.email],
         cc: ["sam@apex-financial.org"],
         subject: `${tierLabel}: ${agentName} hit $${roundedAmount.toLocaleString()} today`,

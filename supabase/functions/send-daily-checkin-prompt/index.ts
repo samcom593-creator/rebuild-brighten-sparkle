@@ -133,7 +133,7 @@ serve(async (req: Request) => {
               if (cleaned.length === 10) {
                 const smsEmail = `${cleaned}@${CARRIER_GATEWAYS[app.carrier]}`;
                 await resend.emails.send({
-                  from: "Apex Financial <notifications@tx.apex-financial.org>",
+                  from: "Apex Financial <notifications@apex-financial.org>",
                   to: [smsEmail],
                   subject: "",
                   text: smsText,

@@ -104,7 +104,7 @@ const handler = async (req: Request): Promise<Response> => {
     for (const email of notifyEmails) {
       try {
         await resend.emails.send({
-          from: "APEX Financial Empire <notifications@tx.apex-financial.org>",
+           from: "APEX Financial Empire <notifications@apex-financial.org>",
           to: [email!],
           subject: `⚠️ Low Close Rate Alert: ${agentName} (${closeRate.toFixed(0)}%)`,
           html: `

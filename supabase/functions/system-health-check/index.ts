@@ -203,7 +203,7 @@ async function checkSyntheticEmail() {
   const timestamp = new Date().toLocaleString("en-US", { timeZone: "America/New_York" });
 
   const { error: sendError } = await resend.emails.send({
-    from: "APEX System Monitor <notifications@tx.apex-financial.org>",
+     from: "APEX System Monitor <notifications@apex-financial.org>",
     to: [ALERT_EMAIL],
     subject: `[Health] Synthetic Email Test — ${timestamp}`,
     html: `<p style="font-family:Arial;color:#64748b;font-size:13px;">

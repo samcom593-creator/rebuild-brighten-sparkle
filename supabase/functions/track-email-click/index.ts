@@ -41,7 +41,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (resendApiKey) {
       const resend = new Resend(resendApiKey);
       await resend.emails.send({
-        from: "APEX Alerts <notifications@tx.apex-financial.org>",
+        from: "APEX Alerts <notifications@apex-financial.org>",
         to: ["sam@apex-financial.org"],
         subject: `🔔 ${name} just clicked REAPPLY from aged lead email`,
         html: `

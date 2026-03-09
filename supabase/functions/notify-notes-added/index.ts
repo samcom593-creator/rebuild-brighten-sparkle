@@ -88,7 +88,7 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
     await resend.emails.send({
-      from: "Apex Financial <notifications@tx.apex-financial.org>",
+      from: "Apex Financial <notifications@apex-financial.org>",
       to: [managerProfile.email],
       cc: [ADMIN_EMAIL],
       subject: `New Note Added: ${agentName}`,

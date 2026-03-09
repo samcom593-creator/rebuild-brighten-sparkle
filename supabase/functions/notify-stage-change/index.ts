@@ -104,7 +104,7 @@ serve(async (req) => {
 </body></html>`;
 
     const { error: emailError } = await resend.emails.send({
-      from: "APEX Financial <notifications@tx.apex-financial.org>",
+      from: "APEX Financial <notifications@apex-financial.org>",
       to: [profile.email],
       subject: `${stageInfo.emoji} ${isPromotion ? "Congratulations!" : "Update:"} You're now ${stageInfo.label}!`,
       html: emailHtml,

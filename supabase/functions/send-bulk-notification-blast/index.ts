@@ -161,7 +161,7 @@ const handler = async (req: Request): Promise<Response> => {
               try {
                 const smsEmail = `${cleaned}@${CARRIER_GATEWAYS[app.carrier]}`;
                 await resend.emails.send({
-                  from: "Apex Financial <notifications@tx.apex-financial.org>",
+                  from: "Apex Financial <notifications@apex-financial.org>",
                   to: [smsEmail],
                   subject: "",
                   text: `Hey ${app.first_name}! Apex Financial sent you licensing resources — check your email! 🚀`.substring(0, 160),

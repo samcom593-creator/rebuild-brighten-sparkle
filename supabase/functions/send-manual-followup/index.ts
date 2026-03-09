@@ -158,7 +158,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log(`Sending ${isLicensed ? "licensed" : "unlicensed"} follow-up to ${application.email}, CC: ${ccList.join(", ")}`);
     
     const { error: emailError } = await resend.emails.send({
-      from: "Apex Financial <notifications@tx.apex-financial.org>",
+      from: "Apex Financial <notifications@apex-financial.org>",
       to: [application.email],
       cc: ccList.length > 0 ? ccList : undefined,
       subject,

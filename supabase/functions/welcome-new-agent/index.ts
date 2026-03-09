@@ -163,7 +163,7 @@ const handler = async (req: Request): Promise<Response> => {
         Authorization: `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: "APEX Financial <notifications@tx.apex-financial.org>",
+        from: "APEX Financial <notifications@apex-financial.org>",
         to: [agentEmail],
         cc: ccList.length > 0 ? ccList : undefined,
         subject: "Welcome to Apex Financial! 🎉 Your First Steps",

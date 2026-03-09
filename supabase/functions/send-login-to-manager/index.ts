@@ -168,7 +168,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email to manager
     await resend.emails.send({
-      from: "APEX Financial <notifications@tx.apex-financial.org>",
+      from: "APEX Financial <notifications@apex-financial.org>",
       to: [managerEmail],
       cc: [ADMIN_EMAIL].filter(e => e !== managerEmail),
       subject: `🔑 Login Link for ${agentName} — Please Forward`,

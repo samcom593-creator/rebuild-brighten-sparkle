@@ -187,7 +187,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Send welcome email with magic link
     const resend = new Resend(RESEND_API_KEY);
     const { error: emailError } = await resend.emails.send({
-      from: "APEX Financial <notifications@tx.apex-financial.org>",
+      from: "APEX Financial <notifications@apex-financial.org>",
       to: [email],
       subject: "🎉 Your APEX Portal Access is Ready!",
       html: `

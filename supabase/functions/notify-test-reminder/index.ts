@@ -199,7 +199,7 @@ async function sendEmail(apiKey: string, to: string, cc: string[], subject: stri
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      from: "APEX Financial <notifications@tx.apex-financial.org>",
+      from: "APEX Financial <notifications@apex-financial.org>",
       to: [to],
       cc,
       subject,

@@ -268,7 +268,7 @@ async function sendLeaderboardEmail(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "APEX Financial <notifications@tx.apex-financial.org>",
+        from: "APEX Financial <notifications@apex-financial.org>",
         to: [recipient.email],
         subject: subject,
         html: emailHtml,

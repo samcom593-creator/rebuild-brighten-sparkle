@@ -80,7 +80,7 @@ const handler = async (req: Request): Promise<Response> => {
       const firstName = profile.full_name?.split(" ")[0] || "there";
 
       await resend.emails.send({
-        from: "APEX Financial <notifications@tx.apex-financial.org>",
+         from: "APEX Financial <notifications@apex-financial.org>",
         to: [normalizedEmail],
         subject: "Your New Login Link – APEX",
         html: `
@@ -157,7 +157,7 @@ const handler = async (req: Request): Promise<Response> => {
     const firstName = profile?.full_name?.split(" ")[0] || "there";
 
     await resend.emails.send({
-      from: "APEX Financial <notifications@tx.apex-financial.org>",
+      from: "APEX Financial <notifications@apex-financial.org>",
       to: [normalizedEmail],
       subject: "Reset Your Password – APEX",
       html: `

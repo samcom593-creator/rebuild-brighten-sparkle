@@ -84,7 +84,7 @@ const handler = async (req: Request): Promise<Response> => {
     const formattedTotal = fmt(totalEarnings);
 
     await resend.emails.send({
-      from: "APEX Financial Empire <notifications@tx.apex-financial.org>",
+      from: "APEX Financial Empire <notifications@apex-financial.org>",
       to: [ADMIN_EMAIL],
       subject: `💰 Earnings Today — ${formattedTotal}`,
       html: `

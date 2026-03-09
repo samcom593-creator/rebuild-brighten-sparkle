@@ -99,7 +99,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Send email to agent
     if (agentEmail) {
       await resend.emails.send({
-        from: "Apex Financial <notifications@tx.apex-financial.org>",
+        from: "Apex Financial <notifications@apex-financial.org>",
         to: [agentEmail],
         subject: `${config.emoji} Field Training Evaluation Result`,
         html: `
@@ -125,7 +125,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Send email to manager
     if (managerEmail) {
       await resend.emails.send({
-        from: "Apex Financial <notifications@tx.apex-financial.org>",
+        from: "Apex Financial <notifications@apex-financial.org>",
         to: [managerEmail],
         subject: `Evaluation Complete: ${agentName} - ${result.toUpperCase()}`,
         html: `
@@ -147,7 +147,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send email to admin
     await resend.emails.send({
-      from: "Apex Financial <notifications@tx.apex-financial.org>",
+      from: "Apex Financial <notifications@apex-financial.org>",
       to: ["sam@apex-financial.org"],
       subject: `[Admin] Evaluation: ${agentName} - ${result.toUpperCase()}`,
       html: `

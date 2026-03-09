@@ -56,6 +56,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const agentName = profile.full_name || "Agent";
     const agentEmail = profile.email;
+    const adminEmail = "sam@apex-financial.org";
 
     // Get manager info for notification
     let managerEmail: string | null = null;

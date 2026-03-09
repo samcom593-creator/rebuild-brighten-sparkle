@@ -173,8 +173,6 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error(`Failed to send email: ${emailError.message}`);
     }
 
-    // Also notify admin and manager
-    const adminEmail = "sam@apex-financial.org";
     const notifyRecipients = [adminEmail];
     if (managerEmail && managerEmail !== adminEmail) {
       notifyRecipients.push(managerEmail);

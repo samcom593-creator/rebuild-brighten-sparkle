@@ -225,7 +225,7 @@ const handler = async (req: Request): Promise<Response> => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: "APEX Financial <notifications@tx.apex-financial.org>",
+            from: "APEX Financial <notifications@apex-financial.org>",
             to: [manager.email],
             subject,
             html,

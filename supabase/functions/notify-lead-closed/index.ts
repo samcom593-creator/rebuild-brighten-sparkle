@@ -113,7 +113,7 @@ const handler = async (req: Request): Promise<Response> => {
     const licenseStatusDisplay = licenseStatusMap[app.license_status] || app.license_status;
 
     const emailResponse = await resend.emails.send({
-      from: "APEX Notifications <notifications@tx.apex-financial.org>",
+      from: "APEX Notifications <notifications@apex-financial.org>",
       to: [managerInfo.email],
       subject: `🎉 Lead Closed: ${sanitized.firstName} ${sanitized.lastName}`,
       html: `

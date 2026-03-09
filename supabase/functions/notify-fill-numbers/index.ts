@@ -194,7 +194,7 @@ const handler = async (req: Request): Promise<Response> => {
           const isPayingWarning = reminderType === "840pm";
 
           await resend.emails.send({
-            from: "APEX Financial Empire <notifications@tx.apex-financial.org>",
+            from: "APEX Financial Empire <notifications@apex-financial.org>",
             to: [profile.email],
             subject: subjectByType[reminderType] || "Log Your Daily Numbers",
             html: `
@@ -279,7 +279,7 @@ const handler = async (req: Request): Promise<Response> => {
         const listHtml = missingNames.map(n => `<li style="color:#e2e8f0;font-size:14px;padding:4px 0;">${n}</li>`).join("");
 
         await resend.emails.send({
-          from: "APEX Financial Empire <notifications@tx.apex-financial.org>",
+          from: "APEX Financial Empire <notifications@apex-financial.org>",
           to: [adminEmail],
           subject: `🚨 ${missingNames.length} agents didn't log numbers today`,
           html: `

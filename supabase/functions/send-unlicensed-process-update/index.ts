@@ -48,7 +48,7 @@ serve(async (req: Request) => {
           const checkinUrl = `${APP_URL}/checkin?id=${app.id}`;
 
           await resend.emails.send({
-            from: "APEX Financial Empire <notifications@tx.apex-financial.org>",
+            from: "APEX Financial Empire <notifications@apex-financial.org>",
             to: [app.email],
             subject: "🚀 Important Update — New Licensing Support Process",
             html: `

@@ -112,7 +112,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send admin notification email
     await resend.emails.send({
-      from: "APEX Alerts <notifications@tx.apex-financial.org>",
+      from: "APEX Alerts <notifications@apex-financial.org>",
       to: ["sam@apex-financial.org"],
       subject: `⚠️ ${abandonedLeads.length} Abandoned Application${abandonedLeads.length > 1 ? "s" : ""} - Follow Up Required`,
       html: `

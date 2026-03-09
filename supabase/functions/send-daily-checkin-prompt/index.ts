@@ -72,7 +72,7 @@ serve(async (req: Request) => {
         if (app.email) {
           try {
             await resend.emails.send({
-              from: "APEX Financial Empire <notifications@tx.apex-financial.org>",
+              from: "APEX Financial Empire <notifications@apex-financial.org>",
               to: [app.email],
               subject: "📋 Daily Check-In — Update Your Licensing Progress",
               html: `<!DOCTYPE html>

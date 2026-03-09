@@ -94,7 +94,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       try {
         const { error: sendError } = await resend.emails.send({
-          from: "Apex Financial <notifications@tx.apex-financial.org>",
+           from: "Apex Financial <notifications@apex-financial.org>",
           to: [smsEmail],
           subject: "",
           text: message.substring(0, 160),

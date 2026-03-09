@@ -1,16 +1,17 @@
 
-# Resume: Complete Email Domain Migration
 
-## Status Check
-A fresh search confirms that **86 edge functions** still contain the unverified `tx.apex-financial.org` domain. It appears the previous replacement process was interrupted before the files were successfully saved. 
+# Complete Email Domain Migration: `tx.apex-financial.org` → `apex-financial.org`
 
-## Next Steps
-I will immediately execute the global search-and-replace to update all 86 edge functions. 
+## Status
+All **86 edge functions** still contain the unverified `tx.apex-financial.org` domain. Previous attempts were interrupted by platform capacity issues before changes were saved.
 
-I will change every instance of:
-`notifications@tx.apex-financial.org`
+## Plan
+Global search-and-replace across all 86 files in `supabase/functions/`:
 
-To the verified domain:
-`notifications@apex-financial.org`
+**Find:** `tx.apex-financial.org`  
+**Replace:** `apex-financial.org`
 
-This will be applied across all edge function directories (e.g., `send-sms-auto-detect`, `send-course-enrollment-email`, `notify-hire-announcement`, etc.). Once you approve, I will run the replacements in parallel batches to fully resolve the 403 Forbidden errors from Resend.
+This is a simple string replacement — no logic changes, no restructuring. Every `from:` email field gets updated to use the verified root domain.
+
+I will process all 86 files in parallel batches to complete this in one pass.
+

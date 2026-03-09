@@ -180,7 +180,7 @@ const handler = async (req: Request): Promise<Response> => {
       : `📥 New Lead Assigned: ${sanitized.firstName} ${sanitized.lastName}`;
 
     const emailResponse = await resend.emails.send({
-      from: "APEX Notifications <notifications@tx.apex-financial.org>",
+      from: "APEX Notifications <notifications@apex-financial.org>",
       to: [newAgentInfo.email],
       cc: ccList.length > 0 ? ccList : undefined,
       subject,

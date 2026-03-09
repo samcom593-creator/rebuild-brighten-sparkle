@@ -134,7 +134,7 @@ serve(async (req) => {
       const batch = recipients.slice(i, i + BATCH_SIZE);
       try {
         await resend.emails.send({
-          from: "APEX Financial <notifications@tx.apex-financial.org>",
+          from: "APEX Financial <notifications@apex-financial.org>",
           bcc: batch,
           to: "sam@apex-financial.org",
           subject: `🚨🔥 DEAL ALERT! ${agentName} just closed! 🔥🚨`,

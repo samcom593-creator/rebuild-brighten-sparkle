@@ -139,7 +139,7 @@ const handler = async (req: Request): Promise<Response> => {
     const denyUrl = `${supabaseUrl}/functions/v1/confirm-agent-removal?action=deny&requestId=${request.id}`;
 
     const emailResponse = await resend.emails.send({
-      from: "APEX Team <notifications@tx.apex-financial.org>",
+      from: "APEX Team <notifications@apex-financial.org>",
       to: ["sam@apex-financial.org"],
       subject: `🗑️ Agent Removal Request: ${body.agentName}`,
       html: `

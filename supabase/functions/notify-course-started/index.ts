@@ -96,7 +96,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Send notification email to admin + manager
     try {
       await resend.emails.send({
-        from: "APEX Financial <notifications@tx.apex-financial.org>",
+        from: "APEX Financial <notifications@apex-financial.org>",
         to: recipients,
         subject: `📚 ${agentName} Started the Training Course`,
         html: `

@@ -24,6 +24,7 @@ import {
   Send,
   CheckSquare,
   EyeOff,
+  Link2,
   Eye,
   FileText,
   CheckCircle2,

@@ -688,6 +688,28 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
               If you have any questions, don't hesitate to reach out. We're here to help you succeed!
             </p>
 
+            <div style="background: #dcfce7; border: 1px solid #86efac; padding: 20px; border-radius: 8px; margin: 25px 0; text-align: center;">
+              <h3 style="color: #166534; margin-top: 0; margin-bottom: 10px; font-size: 16px;">📱 Join Our WhatsApp Group</h3>
+              <p style="color: #15803d; font-size: 13px; margin-bottom: 15px;">Connect with other recruits, get support, and share your progress!</p>
+              <a href="${Deno.env.get('WHATSAPP_GROUP_LINK') || '#'}" 
+                 style="display: inline-block; background: #25D366; color: white; 
+                        padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;
+                        box-shadow: 0 4px 14px rgba(37, 211, 102, 0.4);">
+                Join WhatsApp Group
+              </a>
+            </div>
+
+            <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+              <h3 style="color: #1e40af; margin-top: 0; margin-bottom: 10px; font-size: 16px;">📋 Daily Check-In</h3>
+              <p style="color: #2563eb; font-size: 13px; margin-bottom: 15px;">Submit your daily licensing progress check-in here:</p>
+              <a href="https://rebuild-brighten-sparkle.lovable.app/daily-checkin" 
+                 style="display: inline-block; background: #2563eb; color: white; 
+                        padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;
+                        box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);">
+                Submit Daily Check-In
+              </a>
+            </div>
+
             <p style="color: #4b5563; margin-top: 30px;">
               Best regards,<br>
               <strong style="color: #059669;">The APEX Financial Team</strong>
@@ -701,10 +723,17 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
         </div>
       `;
 
+    // Build CC list - always CC admin, and CC referring manager if present
+    const ccList = ['sam@apex-financial.org'];
+    if (managerInfo?.email && managerInfo.email !== 'sam@apex-financial.org') {
+      ccList.push(managerInfo.email);
+    }
+
     // Send confirmation email to applicant with conditional links
     const applicantEmailResponse = await resend.emails.send({
       from: "APEX Financial <notifications@apex-financial.org>",
       to: [data.email],
+      cc: ccList,
       subject: isLicensed 
         ? "You're on the Fast Track! - APEX Financial" 
         : "Your Next Steps - APEX Financial",

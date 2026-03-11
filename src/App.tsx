@@ -62,6 +62,7 @@ const AdminCalendar = lazy(() => import("./pages/AdminCalendar"));
 const SeminarPage = lazy(() => import("./pages/SeminarPage"));
 const SeminarAdmin = lazy(() => import("./pages/SeminarAdmin"));
 const ApplicantCheckin = lazy(() => import("./pages/ApplicantCheckin"));
+const DailyCheckin = lazy(() => import("./pages/DailyCheckin"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -121,6 +122,7 @@ const App = () => (
                   <Route path="/links" element={<LinksPage />} />
                   <Route path="/seminar" element={<SeminarPage />} />
                   <Route path="/checkin" element={<ApplicantCheckin />} />
+                  <Route path="/daily-checkin" element={<DailyCheckin />} />
                   {/* Authenticated shell - sidebar mounted once */}
                   <Route element={<AuthenticatedShell />}>
                     <Route path="/dashboard" element={<Dashboard />} />

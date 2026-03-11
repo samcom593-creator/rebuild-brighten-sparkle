@@ -24,6 +24,7 @@ import {
   Send,
   CheckSquare,
   EyeOff,
+  Link2,
   Eye,
   FileText,
   CheckCircle2,
@@ -901,6 +902,17 @@ export default function DashboardCRM() {
               </Button>
             )}
             <AddAgentModal onAgentAdded={fetchAgents} />
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => {
+                navigator.clipboard.writeText("https://rebuild-brighten-sparkle.lovable.app/daily-checkin");
+                toast.success("Check-in link copied! Paste into WhatsApp 📋");
+              }}
+            >
+              <Link2 className="h-3.5 w-3.5" /> Check-In Link
+            </Button>
             <Button onClick={fetchAgents} variant="outline" size="sm" className="gap-1.5">
               <RefreshCw className="h-3.5 w-3.5" /> Refresh
             </Button>

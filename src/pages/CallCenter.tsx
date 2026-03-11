@@ -759,10 +759,10 @@ export default function CallCenter() {
               onRecordingStateChange={setIsRecording}
               isAdmin={isAdmin}
               onReassigned={() => {
-                // Remove lead from list after reassignment
                 setLeads((prev) => prev.filter((l) => l.id !== currentLead.id));
               }}
               onSendFollowUp={handleSendFollowUp}
+              onStatusChange={handleStatusChange}
               className="flex-1 overflow-y-auto"
             />
           </AnimatePresence>

@@ -400,6 +400,7 @@ export default function CallCenter() {
               email: currentLead.email,
               firstName: currentLead.firstName,
               licenseStatus: "unlicensed",
+              agentId,
             },
           }).catch(err => console.error("Failed to send licensing instructions:", err));
         }

@@ -102,9 +102,6 @@ export default function Apply() {
   const [selectedReferrer, setSelectedReferrer] = useState<string>("");
   const [customReferrer, setCustomReferrer] = useState("");
   const [savedLicenseStatus, setSavedLicenseStatus] = useState<string>("unlicensed");
-  const [showMotivationStep, setShowMotivationStep] = useState(false);
-  const [motivationText, setMotivationText] = useState("");
-  const [motivationError, setMotivationError] = useState("");
   const [duplicateError, setDuplicateError] = useState(false);
   const [smsConsentError, setSmsConsentError] = useState(false);
   const smsConsentRef = useRef<HTMLDivElement>(null);
@@ -483,39 +480,20 @@ export default function Apply() {
       if (savedLicenseStatus === "licensed") {
         navigate("/apply/success/licensed");
       } else {
-        setShowMotivationStep(true);
+        navigate("/apply/success/unlicensed");
       }
     } catch (error) {
       console.error("Error updating referral:", error);
       if (savedLicenseStatus === "licensed") {
         navigate("/apply/success/licensed");
       } else {
-        setShowMotivationStep(true);
+        navigate("/apply/success/unlicensed");
       }
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleMotivationSubmit = async () => {
-    if (motivationText.trim().length < 10) {
-      setMotivationError("Please share at least a few words about your motivation (minimum 10 characters).");
-      return;
-    }
-    setMotivationError("");
-    setIsSubmitting(true);
-    try {
-      await supabase
-        .from("applications")
-        .update({ notes: motivationText.trim() })
-        .eq("id", applicationId!);
-    } catch (err) {
-      console.error("Error saving motivation:", err);
-    } finally {
-      setIsSubmitting(false);
-      navigate("/apply/success/unlicensed");
-    }
-  };
 
   const toggleState = (stateValue: string) => {
     setSelectedStates(prev => 
@@ -1021,7 +999,7 @@ export default function Apply() {
                   )}
 
                   {/* Step 5: Referral Selection OR Motivation */}
-                  {currentStep === 5 && !showMotivationStep && (
+                  {currentStep === 5 && (
                     <div className="space-y-6">
                       <div className="text-center">
                         <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
@@ -1087,47 +1065,6 @@ export default function Apply() {
                     </div>
                   )}
 
-                  {/* Motivation Step (unlicensed/pending only) */}
-                  {currentStep === 5 && showMotivationStep && (
-                    <div className="space-y-6">
-                      <div className="text-center">
-                        <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
-                          <Heart className="h-8 w-8 text-primary" />
-                        </div>
-                        <h2 className="text-2xl font-bold mb-2">Almost There!</h2>
-                        <p className="text-muted-foreground">
-                          What is your motivation for joining APEX Financial?
-                        </p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="motivation">Your Motivation *</Label>
-                        <Textarea
-                          id="motivation"
-                          value={motivationText}
-                          onChange={(e) => {
-                            setMotivationText(e.target.value);
-                            if (e.target.value.trim().length >= 10) setMotivationError("");
-                          }}
-                          placeholder="Tell us why you want to join APEX and what drives you to succeed..."
-                          className="bg-input min-h-[120px]"
-                          maxLength={1000}
-                        />
-                        {motivationError && (
-                          <p className="text-sm text-destructive">{motivationError}</p>
-                        )}
-                        <p className="text-xs text-muted-foreground">
-                          {motivationText.length}/1000 characters
-                        </p>
-                      </div>
-
-                      <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
-                        <p className="text-sm text-muted-foreground">
-                          We love to hear what drives our future agents. Your answer helps us tailor your onboarding experience.
-                        </p>
-                      </div>
-                    </div>
-                  )}
 
                   {/* Navigation Buttons */}
                   <div className="flex items-center justify-between mt-8 pt-6 border-t border-border">
@@ -1182,24 +1119,6 @@ export default function Apply() {
                         ) : (
                           <>
                             Submit Application
-                            <CheckCircle2 className="h-4 w-4 ml-2" />
-                          </>
-                        )}
-                      </GradientButton>
-                    ) : showMotivationStep ? (
-                      <GradientButton 
-                        type="button" 
-                        onClick={handleMotivationSubmit}
-                        disabled={isSubmitting}
-                      >
-                        {isSubmitting ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Submitting...
-                          </>
-                        ) : (
-                          <>
-                            Submit & Continue
                             <CheckCircle2 className="h-4 w-4 ml-2" />
                           </>
                         )}

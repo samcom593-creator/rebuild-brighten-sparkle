@@ -1,71 +1,33 @@
 
 
-# Go-Live Final Remediation Plan
+# Fix: Admin CC Emails Not Delivering
 
-## Issues Identified
+## Root Cause
 
-### 1. No "My Directs" Filter on Pipeline (DashboardApplicants), Dashboard, or RecruiterHQ
-Currently, admin/managers see ALL agents/applicants with no toggle to filter to only their directly-invited recruits. The AgentPipeline page has a "My Recruits" button, but DashboardApplicants, Dashboard, and RecruiterDashboard lack this.
+The backend logs confirm Resend **accepts** every email (returns success IDs like `ef02ad29...`). However, Resend can accept requests but silently fail to deliver if the sending domain (`notifications@apex-financial.org`) isn't fully verified in the Resend dashboard.
 
-**Fix**: Add a "My Directs" / "Full Team" toggle to:
-- `DashboardApplicants.tsx` — filter `assigned_agent_id` to only the current manager's agent ID
-- `Dashboard.tsx` — the `fetchDashboardData` function currently filters to `assigned_agent_id = agentData.id` for non-admin, but admin sees everything; add a toggle for admin to scope to their directs
-- `RecruiterDashboard.tsx` — add a "My Directs" filter button alongside existing filters
+The code is correct — `sam@apex-financial.org` is set as the `to` recipient on admin notifications and as `cc` on applicant confirmations. This is a **Resend configuration issue**, not a code issue.
 
-### 2. Aged Leads Missing a Visible "Distribute" Button
-The Aged Leads page has a `QuickAssignPanel` but it only appears when `isAdmin && managers.length > 0`. The per-row actions only have status changes + delete/ban via the DropdownMenu — no per-row assign button and no bulk distribute button at the bottom selection bar.
+## Required Action (Manual — Outside Lovable)
 
-**Fix**:
-- Add a `QuickAssignMenu` to each row's actions dropdown (like LeadCenter has)
-- Add a bulk assign section to the bottom selection bar (currently only has "Delete Selected" and "Clear")
+You need to check your **Resend dashboard** (https://resend.com/domains):
 
-### 3. Avg Leads/Day Inaccurate in Lead Center
-The calculation uses `Math.round(recentLeads / 30)` which rounds to zero for small counts. Should use more precise calculation.
+1. **Verify Domain Status**: Confirm `apex-financial.org` shows as "Verified" under Domains. If it shows "Pending" or has warnings, the DNS records (SPF, DKIM, DMARC) need to be added/fixed at your domain registrar.
 
-**Fix**: Change to `parseFloat((recentLeads / 30).toFixed(1))` to show one decimal place.
+2. **Check API Key Scope**: Under API Keys, confirm your `RESEND_API_KEY` is scoped to `apex-financial.org` (not a different domain or "all domains" with restrictions).
 
-### 4. Lead Center Missing Pipeline Actions (Hired, Contracted, etc.)
-Lead Center per-row actions have: Assign, Phone, Email, Resend Licensing, Delete, Ban. But it's missing the stage-change actions that exist in DashboardApplicants (Mark as Hired, Contracted, Terminate).
+3. **Send a Test Email**: Use Resend's dashboard "Send Test Email" feature to `sam@apex-financial.org` from `notifications@apex-financial.org`. If this fails, the domain isn't properly verified.
 
-**Fix**: Add a DropdownMenu with status-change actions (Contacted, Hired, Contracted, Terminate) to the Lead Center row actions for application-source leads.
+4. **Check Spam/Junk**: The emails may be landing in your spam folder at `sam@apex-financial.org`.
 
-### 5. Dashboard Stats Not Filtering by DatePeriodSelector
-The `DatePeriodSelector` was added to Dashboard UI but `fetchDashboardData` doesn't use `dateRange` — it always queries all data.
+## What I Can Do (Code Side)
 
-**Fix**: Pass `dateRange` into the query key and filter applications by `created_at` within the selected range.
+If the Resend domain is verified and emails still aren't arriving, I can:
+- Add the admin as a direct `to` recipient (not just CC) on the applicant confirmation email as a fallback
+- Add detailed delivery logging that captures Resend's full response including any warnings
+- Set up the Lovable email domain system for `apex-financial.org` which handles verification automatically
 
-### 6. OnboardingPipelineCard Dashboard Accuracy
-The card shows Course Purchased, Test Scheduled, etc. based on `agents` table fields (`has_training_course`, `onboarding_stage`). It only queries agents invited by the current manager (non-admin). For admin it queries ALL agents. This is correct. However, it doesn't cross-reference with `applications` table license_progress data.
+## No Code Changes Needed Yet
 
-**Fix**: Cross-reference with `applications.license_progress` to ensure counts include applicants at each stage (course_purchased, passed_test, waiting_on_license, etc.), not just agent records.
-
-### 7. Todoist Integration
-Todoist has an official REST API. This would require the user's Todoist API token as a secret, stored via the secrets tool. We can create an edge function that syncs planner blocks to/from Todoist tasks. However, Todoist is not available as a connector — the user would need to provide their API key manually.
-
-### 8. Google Calendar & Calendly Integration
-Google Calendar integration would require OAuth setup (not available as a connector). Calendly is already partially integrated (CalendlyEmbed component exists). For Google Calendar, we can generate `.ics` download links or `calendar.google.com` add-event URLs from scheduled interviews.
-
-**Fix**: Add "Add to Google Calendar" links on scheduled interviews in CalendarPage. For Calendly, it's already embedded — verify it's wired into scheduling flows.
-
----
-
-## Implementation Plan
-
-### Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/pages/DashboardApplicants.tsx` | Add "My Directs" / "Full Team" toggle button in filters; filter by `assigned_agent_id === agentId` when "My Directs" active |
-| `src/pages/Dashboard.tsx` | Pass `dateRange` to query; add "My Directs" toggle for admin; filter stats by date range |
-| `src/pages/RecruiterDashboard.tsx` | Add "My Directs" filter toggle |
-| `src/pages/DashboardAgedLeads.tsx` | Add per-row QuickAssignMenu; add bulk assign to selection bar |
-| `src/pages/LeadCenter.tsx` | Add status-change actions (Hired, Contracted, Terminate) to per-row dropdown; fix avg leads/day precision |
-| `src/components/dashboard/OnboardingPipelineCard.tsx` | Cross-reference applications table for accurate license_progress counts |
-
-### External Integrations
-- **Todoist**: Requires API key — will prompt user to provide it via secrets tool before implementing
-- **Google Calendar**: Add "Add to Google Calendar" URL links on CalendarPage interview entries (no API key needed, uses URL scheme)
-- **Calendly**: Already embedded via CalendlyEmbed component — verify wiring
-
-No database changes needed.
+The email-sending code is correctly implemented. The fix is in your Resend dashboard configuration.
 

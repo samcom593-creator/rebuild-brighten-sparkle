@@ -218,6 +218,37 @@ export function CallCenterLeadCard({
               )}
             </motion.div>
 
+            {/* Status Selector */}
+            {onStatusChange && (
+              <motion.div variants={itemVariants} className="mt-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className={cn(
+                      "inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium transition-colors",
+                      "bg-muted/40 hover:bg-muted/60 border border-border/50 text-foreground"
+                    )}>
+                      Status: <span className="capitalize">{lead.status.replace("_", " ")}</span>
+                      <ChevronDown className="h-3 w-3" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="min-w-[160px]">
+                    {(lead.source === "applications"
+                      ? ["new", "contacted", "no_pickup", "reviewing", "hired", "rejected"]
+                      : ["new", "contacted", "no_pickup", "hired", "bad_applicant"]
+                    ).map((status) => (
+                      <DropdownMenuItem
+                        key={status}
+                        onClick={() => onStatusChange(status)}
+                        className={cn("capitalize", lead.status === status && "font-bold text-primary")}
+                      >
+                        {status.replace("_", " ")}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </motion.div>
+            )}
+
             {/* Name with sparkle */}
             <motion.div variants={itemVariants} className="flex items-center gap-2">
               <h2 className="text-xl md:text-2xl font-bold text-foreground">

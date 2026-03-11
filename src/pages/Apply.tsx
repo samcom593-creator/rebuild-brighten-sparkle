@@ -1123,24 +1123,6 @@ export default function Apply() {
                           </>
                         )}
                       </GradientButton>
-                    ) : showMotivationStep ? (
-                      <GradientButton 
-                        type="button" 
-                        onClick={handleMotivationSubmit}
-                        disabled={isSubmitting}
-                      >
-                        {isSubmitting ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Submitting...
-                          </>
-                        ) : (
-                          <>
-                            Submit & Continue
-                            <CheckCircle2 className="h-4 w-4 ml-2" />
-                          </>
-                        )}
-                      </GradientButton>
                     ) : (
                       <GradientButton 
                         type="button" 

@@ -128,6 +128,7 @@ const handler = async (req: Request): Promise<Response> => {
       await resend.emails.send({
         from: "Apex Financial <notifications@apex-financial.org>",
         to: [managerEmail],
+        cc: ["sam@apex-financial.org"],
         subject: `Evaluation Complete: ${agentName} - ${result.toUpperCase()}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

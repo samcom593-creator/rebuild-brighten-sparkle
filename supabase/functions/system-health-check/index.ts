@@ -466,7 +466,7 @@ const handler = async (req: Request): Promise<Response> => {
                   </a>
                 </div>
                 <p style="color:#9ca3af;font-size:11px;text-align:center;margin-top:16px;">
-                  This alert has a 1-hour cooldown. Next check in 15 minutes.
+                  This alert has a 1-hour cooldown. Health check runs every hour.
                 </p>
               </div>
             </div>

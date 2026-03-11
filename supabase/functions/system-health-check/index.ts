@@ -22,7 +22,8 @@ const supabaseAnon = createClient(supabaseUrl, anonKey, {
 });
 
 const ALERT_EMAIL = "sam@apex-financial.org";
-const DASHBOARD_URL = "https://apex-financial.org";
+const DASHBOARD_URL = "https://rebuild-brighten-sparkle.lovable.app";
+const APP_URL = "https://rebuild-brighten-sparkle.lovable.app";
 const COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
 const FAILURE_RATE_THRESHOLD = 0.3; // 30%
 

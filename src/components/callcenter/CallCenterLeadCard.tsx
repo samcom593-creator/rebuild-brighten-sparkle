@@ -7,7 +7,8 @@ function formatPhoneDisplay(phone: string): string {
   return phone;
 }
 import { motion } from "framer-motion";
-import { Phone, Mail, Instagram, Clock, User, Calendar, Sparkles, Building2, FileText, MapPin, Eye } from "lucide-react";
+import { Phone, Mail, Instagram, Clock, User, Calendar, Sparkles, Building2, FileText, MapPin, Eye, ChevronDown } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, format } from "date-fns";
@@ -56,6 +57,7 @@ interface CallCenterLeadCardProps {
   isAdmin?: boolean;
   onReassigned?: (newManagerId: string) => void;
   onSendFollowUp?: (calendarLink?: string) => Promise<void>;
+  onStatusChange?: (status: string) => void;
   className?: string;
 }
 
@@ -116,6 +118,7 @@ export function CallCenterLeadCard({
   isAdmin = false,
   onReassigned,
   onSendFollowUp,
+  onStatusChange,
   className,
 }: CallCenterLeadCardProps) {
   const currentStage = progressToStage(lead.licenseProgress, lead.licenseStatus);
@@ -214,6 +217,37 @@ export function CallCenterLeadCard({
                 </motion.span>
               )}
             </motion.div>
+
+            {/* Status Selector */}
+            {onStatusChange && (
+              <motion.div variants={itemVariants} className="mt-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className={cn(
+                      "inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium transition-colors",
+                      "bg-muted/40 hover:bg-muted/60 border border-border/50 text-foreground"
+                    )}>
+                      Status: <span className="capitalize">{lead.status.replace("_", " ")}</span>
+                      <ChevronDown className="h-3 w-3" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="min-w-[160px]">
+                    {(lead.source === "applications"
+                      ? ["new", "contacted", "no_pickup", "reviewing", "hired", "rejected"]
+                      : ["new", "contacted", "no_pickup", "hired", "bad_applicant"]
+                    ).map((status) => (
+                      <DropdownMenuItem
+                        key={status}
+                        onClick={() => onStatusChange(status)}
+                        className={cn("capitalize", lead.status === status && "font-bold text-primary")}
+                      >
+                        {status.replace("_", " ")}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </motion.div>
+            )}
 
             {/* Name with sparkle */}
             <motion.div variants={itemVariants} className="flex items-center gap-2">

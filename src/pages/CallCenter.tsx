@@ -265,6 +265,7 @@ export default function CallCenter() {
           email: lead.email,
           licenseStatus: lead.licenseStatus,
           actionType,
+          agentId,
           ...(calendarLink ? { calendarLink } : {}),
         },
       });
@@ -399,6 +400,7 @@ export default function CallCenter() {
               email: currentLead.email,
               firstName: currentLead.firstName,
               licenseStatus: "unlicensed",
+              agentId,
             },
           }).catch(err => console.error("Failed to send licensing instructions:", err));
         }
@@ -409,6 +411,7 @@ export default function CallCenter() {
             hirerName: "Manager",
             hireeName: `${currentLead.firstName} ${currentLead.lastName || ""}`.trim(),
             actionType: "hired",
+            agentId,
           },
         }).catch(err => console.error("Failed to send hire announcement:", err));
 
@@ -541,6 +544,45 @@ export default function CallCenter() {
     } catch (error) {
       console.error("Error updating stage:", error);
       toast.error("Failed to update stage");
+      playSound("error");
+    } finally {
+      setProcessing(false);
+    }
+  }, [currentLead, processing]);
+
+  const handleStatusChange = useCallback(async (newStatus: string) => {
+    if (!currentLead || processing) return;
+
+    setProcessing(true);
+    try {
+      const nowIso = new Date().toISOString();
+
+      if (currentLead.source === "aged_leads") {
+        const { error } = await supabase
+          .from("aged_leads")
+          .update({ status: newStatus, last_contacted_at: nowIso })
+          .eq("id", currentLead.id);
+        if (error) throw error;
+      } else {
+        const updateData: Record<string, string> = { status: newStatus, last_contacted_at: nowIso };
+        if (newStatus === "contacted" && !currentLead.contactedAt) {
+          updateData.contacted_at = nowIso;
+        }
+        const { error } = await supabase
+          .from("applications")
+          .update(updateData)
+          .eq("id", currentLead.id);
+        if (error) throw error;
+      }
+
+      setLeads((prev) =>
+        prev.map((l) => l.id === currentLead.id ? { ...l, status: newStatus } : l)
+      );
+      toast.success(`Status updated to ${newStatus.replace("_", " ")}`);
+      playSound("success");
+    } catch (error) {
+      console.error("Error updating status:", error);
+      toast.error("Failed to update status");
       playSound("error");
     } finally {
       setProcessing(false);
@@ -717,10 +759,10 @@ export default function CallCenter() {
               onRecordingStateChange={setIsRecording}
               isAdmin={isAdmin}
               onReassigned={() => {
-                // Remove lead from list after reassignment
                 setLeads((prev) => prev.filter((l) => l.id !== currentLead.id));
               }}
               onSendFollowUp={handleSendFollowUp}
+              onStatusChange={handleStatusChange}
               className="flex-1 overflow-y-auto"
             />
           </AnimatePresence>

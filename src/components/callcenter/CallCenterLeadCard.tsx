@@ -7,7 +7,8 @@ function formatPhoneDisplay(phone: string): string {
   return phone;
 }
 import { motion } from "framer-motion";
-import { Phone, Mail, Instagram, Clock, User, Calendar, Sparkles, Building2, FileText, MapPin, Eye } from "lucide-react";
+import { Phone, Mail, Instagram, Clock, User, Calendar, Sparkles, Building2, FileText, MapPin, Eye, ChevronDown } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow, format } from "date-fns";

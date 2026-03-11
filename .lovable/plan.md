@@ -1,46 +1,42 @@
 
 
-# Import 31 Carrier Deals into Production Numbers
+# Daily WhatsApp Check-In Link + Email Fixes
 
-## What
-Import the 31 deals you pasted from carrier records into the production database. The existing import system uses **SET (upsert) logic** — it replaces the total for each agent+date combo rather than adding on top. This prevents any doubling/overlap with manually logged numbers.
+## Problem
+1. The current check-in page (`/checkin?id=<uuid>`) requires a unique per-applicant ID — you can't share one link in WhatsApp for everyone.
+2. Unlicensed applicant confirmation emails don't include the WhatsApp group link.
+3. No easy way to copy the check-in link from the CRM.
 
-## Deal Summary by Agent & Date
+## Plan
 
-| Agent | Date | Deals | ALP |
-|---|---|---|---|
-| Aisha Kebbeh | 03/09 | 2 | $2,584.08 |
-| Kaeden Vaughns | 03/09 | 2 | $2,586.48 |
-| Kaeden Vaughns | 03/08 | 1 | $1,583.88 |
-| Samuel James | 03/09 | 2 | $7,507.44 |
-| Obiajulu Ifediora | 03/09 | 2 | $2,000.52 |
-| Obiajulu Ifediora | 03/06 | 1 | $2,143.80 |
-| Obiajulu Ifediora | 03/05 | 1 | $2,313.84 |
-| Obiajulu Ifediora | 03/04 | 1 | $1,168.08 |
-| Obiajulu Ifediora | 03/03 | 1 | $1,583.64 |
-| Obiajulu Ifediora | 03/02 | 2 | $3,677.76 |
-| Chukwudi Ifediora | 03/09 | 1 | $1,928.28 |
-| Chukwudi Ifediora | 03/06 | 1 | $2,291.64 |
-| Chukwudi Ifediora | 03/04 | 1 | $841.32 |
-| Chukwudi Ifediora | 03/02 | 1 | $776.76 |
-| Chukwudi Ifediora | 03/01 | 1 | $1,512.48 |
-| Brennan Barker | 03/09 | 1 | $935.16 |
-| Brennan Barker | 03/06 | 1 | $1,515.00 |
-| Brennan Barker | 03/03 | 1 | $1,702.08 |
-| Brennan Barker | 03/02 | 1 | $883.92 |
-| Mahmod Imran | 03/09 | 1 | $1,164.00 |
-| Mahmod Imran | 03/06 | 1 | $1,308.00 |
-| Michael Kayembe | 03/05 | 1 | $1,706.28 |
-| Landon Boyd | 03/04 | 1 | $408.00 |
-| Jacob Causer | 03/04 | 1 | $2,051.76 |
-| Loren Lail | 03/03 | 2 | $1,652.16 |
+### 1. Create a Universal Check-In Page (`/daily-checkin`)
+A new public page at `/daily-checkin` that works without an application ID:
+- Applicant enters their **email** (or phone) to identify themselves
+- System looks up their application record
+- Shows the same progress step selector + "Request Phone Call" button
+- If no match found, shows a friendly error
+- This is the single link you paste into WhatsApp every day
 
-**Total: 31 deals across 10 agents, 8 dates**
+Route: `/daily-checkin` → new `DailyCheckin.tsx` page
 
-## How
-Call the `import-production-data` edge function with all 31 deals. The function:
-1. Maps agent names to agent IDs (case-insensitive)
-2. Aggregates deals by agent+date
-3. Upserts (SET, not ADD) into `daily_production` — **no overlap/doubling**
-4. Reports any unmatched agent names
+### 2. Add "Copy Check-In Link" Button to CRM Header
+At the top of the Agent CRM page (next to existing buttons like "Bulk Actions", "Refresh"):
+- A button with a copy icon: **"📋 Check-In Link"**
+- Clicking it copies `https://rebuild-brighten-sparkle.lovable.app/daily-checkin` to clipboard
+- Shows a toast: "Link copied! Paste into WhatsApp"
+
+### 3. Add WhatsApp Group Link to Unlicensed Applicant Confirmation Email
+In `submit-application/index.ts`, after the unlicensed applicant email content:
+- Fetch the `WHATSAPP_GROUP_LINK` secret
+- Add a "Join Our WhatsApp Group" section with button in the unlicensed email template
+- Also add the daily check-in link in the email for good measure
+
+### 4. Verify All Emails Are Using Correct Domain
+Already confirmed all 86+ functions use `notifications@apex-financial.org`. Will ensure the submit-application function's CC logic includes the admin and referring manager on the applicant confirmation email (currently it only CCs on the admin notification, not the applicant email).
+
+## Files Changed
+- **New**: `src/pages/DailyCheckin.tsx` — Universal check-in page (email lookup → progress form)
+- **Edit**: `src/App.tsx` — Add `/daily-checkin` route
+- **Edit**: `src/pages/DashboardCRM.tsx` — Add copy check-in link button in header
+- **Edit**: `supabase/functions/submit-application/index.ts` — Add WhatsApp link + daily check-in link to unlicensed email, CC manager on applicant email
 

@@ -494,25 +494,6 @@ export default function Apply() {
     }
   };
 
-  const handleMotivationSubmit = async () => {
-    if (motivationText.trim().length < 10) {
-      setMotivationError("Please share at least a few words about your motivation (minimum 10 characters).");
-      return;
-    }
-    setMotivationError("");
-    setIsSubmitting(true);
-    try {
-      await supabase
-        .from("applications")
-        .update({ notes: motivationText.trim() })
-        .eq("id", applicationId!);
-    } catch (err) {
-      console.error("Error saving motivation:", err);
-    } finally {
-      setIsSubmitting(false);
-      navigate("/apply/success/unlicensed");
-    }
-  };
 
   const toggleState = (stateValue: string) => {
     setSelectedStates(prev => 

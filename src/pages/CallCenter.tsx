@@ -550,6 +550,45 @@ export default function CallCenter() {
     }
   }, [currentLead, processing]);
 
+  const handleStatusChange = useCallback(async (newStatus: string) => {
+    if (!currentLead || processing) return;
+
+    setProcessing(true);
+    try {
+      const nowIso = new Date().toISOString();
+
+      if (currentLead.source === "aged_leads") {
+        const { error } = await supabase
+          .from("aged_leads")
+          .update({ status: newStatus, last_contacted_at: nowIso })
+          .eq("id", currentLead.id);
+        if (error) throw error;
+      } else {
+        const updateData: Record<string, string> = { status: newStatus, last_contacted_at: nowIso };
+        if (newStatus === "contacted" && !currentLead.contactedAt) {
+          updateData.contacted_at = nowIso;
+        }
+        const { error } = await supabase
+          .from("applications")
+          .update(updateData)
+          .eq("id", currentLead.id);
+        if (error) throw error;
+      }
+
+      setLeads((prev) =>
+        prev.map((l) => l.id === currentLead.id ? { ...l, status: newStatus } : l)
+      );
+      toast.success(`Status updated to ${newStatus.replace("_", " ")}`);
+      playSound("success");
+    } catch (error) {
+      console.error("Error updating status:", error);
+      toast.error("Failed to update status");
+      playSound("error");
+    } finally {
+      setProcessing(false);
+    }
+  }, [currentLead, processing]);
+
   const handleTestDateChange = useCallback(async (date: Date | undefined) => {
     if (!currentLead || processing || currentLead.source !== "applications") return;
 

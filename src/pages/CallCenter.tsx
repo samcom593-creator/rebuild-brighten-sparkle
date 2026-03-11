@@ -411,6 +411,7 @@ export default function CallCenter() {
             hirerName: "Manager",
             hireeName: `${currentLead.firstName} ${currentLead.lastName || ""}`.trim(),
             actionType: "hired",
+            agentId,
           },
         }).catch(err => console.error("Failed to send hire announcement:", err));
 

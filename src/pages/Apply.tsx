@@ -480,14 +480,14 @@ export default function Apply() {
       if (savedLicenseStatus === "licensed") {
         navigate("/apply/success/licensed");
       } else {
-        setShowMotivationStep(true);
+        navigate("/apply/success/unlicensed");
       }
     } catch (error) {
       console.error("Error updating referral:", error);
       if (savedLicenseStatus === "licensed") {
         navigate("/apply/success/licensed");
       } else {
-        setShowMotivationStep(true);
+        navigate("/apply/success/unlicensed");
       }
     } finally {
       setIsSubmitting(false);

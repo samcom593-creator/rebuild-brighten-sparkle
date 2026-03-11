@@ -1065,47 +1065,6 @@ export default function Apply() {
                     </div>
                   )}
 
-                  {/* Motivation Step (unlicensed/pending only) */}
-                  {currentStep === 5 && showMotivationStep && (
-                    <div className="space-y-6">
-                      <div className="text-center">
-                        <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
-                          <Heart className="h-8 w-8 text-primary" />
-                        </div>
-                        <h2 className="text-2xl font-bold mb-2">Almost There!</h2>
-                        <p className="text-muted-foreground">
-                          What is your motivation for joining APEX Financial?
-                        </p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="motivation">Your Motivation *</Label>
-                        <Textarea
-                          id="motivation"
-                          value={motivationText}
-                          onChange={(e) => {
-                            setMotivationText(e.target.value);
-                            if (e.target.value.trim().length >= 10) setMotivationError("");
-                          }}
-                          placeholder="Tell us why you want to join APEX and what drives you to succeed..."
-                          className="bg-input min-h-[120px]"
-                          maxLength={1000}
-                        />
-                        {motivationError && (
-                          <p className="text-sm text-destructive">{motivationError}</p>
-                        )}
-                        <p className="text-xs text-muted-foreground">
-                          {motivationText.length}/1000 characters
-                        </p>
-                      </div>
-
-                      <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
-                        <p className="text-sm text-muted-foreground">
-                          We love to hear what drives our future agents. Your answer helps us tailor your onboarding experience.
-                        </p>
-                      </div>
-                    </div>
-                  )}
 
                   {/* Navigation Buttons */}
                   <div className="flex items-center justify-between mt-8 pt-6 border-t border-border">

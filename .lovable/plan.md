@@ -1,33 +1,28 @@
 
 
-# Fix: Admin CC Emails Not Delivering
+# Add Admin CC to All Remaining Edge Functions
 
-## Root Cause
+## Problem
+Several edge functions send emails without CC'ing `sam@apex-financial.org`. The universal CC policy requires the admin to be CC'd on every outbound email.
 
-The backend logs confirm Resend **accepts** every email (returns success IDs like `ef02ad29...`). However, Resend can accept requests but silently fail to deliver if the sending domain (`notifications@apex-financial.org`) isn't fully verified in the Resend dashboard.
+## Functions Missing Admin CC (need fix)
 
-The code is correct — `sam@apex-financial.org` is set as the `to` recipient on admin notifications and as `cc` on applicant confirmations. This is a **Resend configuration issue**, not a code issue.
+| Function | Issue |
+|---|---|
+| `send-monthly-motivation` | No CC at all |
+| `create-agent-from-leaderboard` | No CC on portal access email |
+| `send-whatsapp-onboarding-blast` | No CC on WhatsApp onboarding emails |
+| `send-unlicensed-process-update` | No CC on licensing update emails |
+| `check-stale-onboarding` | No CC on stale course emails (agent or manager) |
+| `notify-manager-referral` | No CC on referral notification to manager |
+| `send-daily-sales-leaderboard` | No CC (bulk leaderboard — admin already a recipient, but no CC field) |
+| `notify-evaluation-result` | Sends separate admin email but no CC on agent/manager emails |
 
-## Required Action (Manual — Outside Lovable)
+## Functions Already Correct (no changes needed)
+`notify-missed-dialer`, `notify-training-reminder`, `send-daily-checkin-prompt`, `send-licensing-instructions`, `send-post-call-followup`, `send-followup-emails`, `notify-manager-downline-production`, `notify-milestone-congrats`, `send-course-enrollment-email`, `send-aged-lead-email`, `welcome-new-agent`, `notify-notes-added`, `send-bulk-portal-logins`, `send-bulk-unlicensed-outreach`, `notify-agent-contracted`, `notify-attendance-missing`, `send-abandoned-followup`, `send-outreach-email`, `send-manual-followup`, `schedule-interview`, `notify-top-performers-morning`, `notify-rank-passed`
 
-You need to check your **Resend dashboard** (https://resend.com/domains):
+## Plan
+Add `cc: ["sam@apex-financial.org"]` to each `resend.emails.send` call in the 8 functions listed above. For functions using `fetch("https://api.resend.com/emails")`, add `cc` to the JSON body. For `notify-evaluation-result`, add CC to the agent and manager emails (admin email already sent separately). For `send-daily-sales-leaderboard`, admin is already a recipient so no change needed.
 
-1. **Verify Domain Status**: Confirm `apex-financial.org` shows as "Verified" under Domains. If it shows "Pending" or has warnings, the DNS records (SPF, DKIM, DMARC) need to be added/fixed at your domain registrar.
-
-2. **Check API Key Scope**: Under API Keys, confirm your `RESEND_API_KEY` is scoped to `apex-financial.org` (not a different domain or "all domains" with restrictions).
-
-3. **Send a Test Email**: Use Resend's dashboard "Send Test Email" feature to `sam@apex-financial.org` from `notifications@apex-financial.org`. If this fails, the domain isn't properly verified.
-
-4. **Check Spam/Junk**: The emails may be landing in your spam folder at `sam@apex-financial.org`.
-
-## What I Can Do (Code Side)
-
-If the Resend domain is verified and emails still aren't arriving, I can:
-- Add the admin as a direct `to` recipient (not just CC) on the applicant confirmation email as a fallback
-- Add detailed delivery logging that captures Resend's full response including any warnings
-- Set up the Lovable email domain system for `apex-financial.org` which handles verification automatically
-
-## No Code Changes Needed Yet
-
-The email-sending code is correctly implemented. The fix is in your Resend dashboard configuration.
+**7 edge function files to edit, ~1 line change each.**
 

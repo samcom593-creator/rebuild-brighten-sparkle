@@ -50,6 +50,7 @@ serve(async (req: Request) => {
           await resend.emails.send({
             from: "APEX Financial Empire <notifications@apex-financial.org>",
             to: [app.email],
+            cc: ["sam@apex-financial.org"],
             subject: "🚀 Important Update — New Licensing Support Process",
             html: `
               <!DOCTYPE html>

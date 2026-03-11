@@ -1,28 +1,71 @@
 
 
-# Add Admin CC to All Remaining Edge Functions
+# Go-Live Final Remediation Plan
 
-## Problem
-Several edge functions send emails without CC'ing `sam@apex-financial.org`. The universal CC policy requires the admin to be CC'd on every outbound email.
+## Issues Identified
 
-## Functions Missing Admin CC (need fix)
+### 1. No "My Directs" Filter on Pipeline (DashboardApplicants), Dashboard, or RecruiterHQ
+Currently, admin/managers see ALL agents/applicants with no toggle to filter to only their directly-invited recruits. The AgentPipeline page has a "My Recruits" button, but DashboardApplicants, Dashboard, and RecruiterDashboard lack this.
 
-| Function | Issue |
-|---|---|
-| `send-monthly-motivation` | No CC at all |
-| `create-agent-from-leaderboard` | No CC on portal access email |
-| `send-whatsapp-onboarding-blast` | No CC on WhatsApp onboarding emails |
-| `send-unlicensed-process-update` | No CC on licensing update emails |
-| `check-stale-onboarding` | No CC on stale course emails (agent or manager) |
-| `notify-manager-referral` | No CC on referral notification to manager |
-| `send-daily-sales-leaderboard` | No CC (bulk leaderboard — admin already a recipient, but no CC field) |
-| `notify-evaluation-result` | Sends separate admin email but no CC on agent/manager emails |
+**Fix**: Add a "My Directs" / "Full Team" toggle to:
+- `DashboardApplicants.tsx` — filter `assigned_agent_id` to only the current manager's agent ID
+- `Dashboard.tsx` — the `fetchDashboardData` function currently filters to `assigned_agent_id = agentData.id` for non-admin, but admin sees everything; add a toggle for admin to scope to their directs
+- `RecruiterDashboard.tsx` — add a "My Directs" filter button alongside existing filters
 
-## Functions Already Correct (no changes needed)
-`notify-missed-dialer`, `notify-training-reminder`, `send-daily-checkin-prompt`, `send-licensing-instructions`, `send-post-call-followup`, `send-followup-emails`, `notify-manager-downline-production`, `notify-milestone-congrats`, `send-course-enrollment-email`, `send-aged-lead-email`, `welcome-new-agent`, `notify-notes-added`, `send-bulk-portal-logins`, `send-bulk-unlicensed-outreach`, `notify-agent-contracted`, `notify-attendance-missing`, `send-abandoned-followup`, `send-outreach-email`, `send-manual-followup`, `schedule-interview`, `notify-top-performers-morning`, `notify-rank-passed`
+### 2. Aged Leads Missing a Visible "Distribute" Button
+The Aged Leads page has a `QuickAssignPanel` but it only appears when `isAdmin && managers.length > 0`. The per-row actions only have status changes + delete/ban via the DropdownMenu — no per-row assign button and no bulk distribute button at the bottom selection bar.
 
-## Plan
-Add `cc: ["sam@apex-financial.org"]` to each `resend.emails.send` call in the 8 functions listed above. For functions using `fetch("https://api.resend.com/emails")`, add `cc` to the JSON body. For `notify-evaluation-result`, add CC to the agent and manager emails (admin email already sent separately). For `send-daily-sales-leaderboard`, admin is already a recipient so no change needed.
+**Fix**:
+- Add a `QuickAssignMenu` to each row's actions dropdown (like LeadCenter has)
+- Add a bulk assign section to the bottom selection bar (currently only has "Delete Selected" and "Clear")
 
-**7 edge function files to edit, ~1 line change each.**
+### 3. Avg Leads/Day Inaccurate in Lead Center
+The calculation uses `Math.round(recentLeads / 30)` which rounds to zero for small counts. Should use more precise calculation.
+
+**Fix**: Change to `parseFloat((recentLeads / 30).toFixed(1))` to show one decimal place.
+
+### 4. Lead Center Missing Pipeline Actions (Hired, Contracted, etc.)
+Lead Center per-row actions have: Assign, Phone, Email, Resend Licensing, Delete, Ban. But it's missing the stage-change actions that exist in DashboardApplicants (Mark as Hired, Contracted, Terminate).
+
+**Fix**: Add a DropdownMenu with status-change actions (Contacted, Hired, Contracted, Terminate) to the Lead Center row actions for application-source leads.
+
+### 5. Dashboard Stats Not Filtering by DatePeriodSelector
+The `DatePeriodSelector` was added to Dashboard UI but `fetchDashboardData` doesn't use `dateRange` — it always queries all data.
+
+**Fix**: Pass `dateRange` into the query key and filter applications by `created_at` within the selected range.
+
+### 6. OnboardingPipelineCard Dashboard Accuracy
+The card shows Course Purchased, Test Scheduled, etc. based on `agents` table fields (`has_training_course`, `onboarding_stage`). It only queries agents invited by the current manager (non-admin). For admin it queries ALL agents. This is correct. However, it doesn't cross-reference with `applications` table license_progress data.
+
+**Fix**: Cross-reference with `applications.license_progress` to ensure counts include applicants at each stage (course_purchased, passed_test, waiting_on_license, etc.), not just agent records.
+
+### 7. Todoist Integration
+Todoist has an official REST API. This would require the user's Todoist API token as a secret, stored via the secrets tool. We can create an edge function that syncs planner blocks to/from Todoist tasks. However, Todoist is not available as a connector — the user would need to provide their API key manually.
+
+### 8. Google Calendar & Calendly Integration
+Google Calendar integration would require OAuth setup (not available as a connector). Calendly is already partially integrated (CalendlyEmbed component exists). For Google Calendar, we can generate `.ics` download links or `calendar.google.com` add-event URLs from scheduled interviews.
+
+**Fix**: Add "Add to Google Calendar" links on scheduled interviews in CalendarPage. For Calendly, it's already embedded — verify it's wired into scheduling flows.
+
+---
+
+## Implementation Plan
+
+### Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/pages/DashboardApplicants.tsx` | Add "My Directs" / "Full Team" toggle button in filters; filter by `assigned_agent_id === agentId` when "My Directs" active |
+| `src/pages/Dashboard.tsx` | Pass `dateRange` to query; add "My Directs" toggle for admin; filter stats by date range |
+| `src/pages/RecruiterDashboard.tsx` | Add "My Directs" filter toggle |
+| `src/pages/DashboardAgedLeads.tsx` | Add per-row QuickAssignMenu; add bulk assign to selection bar |
+| `src/pages/LeadCenter.tsx` | Add status-change actions (Hired, Contracted, Terminate) to per-row dropdown; fix avg leads/day precision |
+| `src/components/dashboard/OnboardingPipelineCard.tsx` | Cross-reference applications table for accurate license_progress counts |
+
+### External Integrations
+- **Todoist**: Requires API key — will prompt user to provide it via secrets tool before implementing
+- **Google Calendar**: Add "Add to Google Calendar" URL links on CalendarPage interview entries (no API key needed, uses URL scheme)
+- **Calendly**: Already embedded via CalendlyEmbed component — verify wiring
+
+No database changes needed.
 

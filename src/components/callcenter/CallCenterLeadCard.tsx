@@ -57,6 +57,7 @@ interface CallCenterLeadCardProps {
   isAdmin?: boolean;
   onReassigned?: (newManagerId: string) => void;
   onSendFollowUp?: (calendarLink?: string) => Promise<void>;
+  onStatusChange?: (status: string) => void;
   className?: string;
 }
 

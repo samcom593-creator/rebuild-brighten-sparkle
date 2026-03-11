@@ -123,6 +123,23 @@ async function checkApplicationsTable() {
   if (error) throw new Error(`applications table query failed: ${error.message}`);
 }
 
+async function checkFrontendAvailability() {
+  const res = await fetch(APP_URL, { method: "GET", redirect: "follow" });
+  if (!res.ok) throw new Error(`Frontend returned HTTP ${res.status}`);
+  const html = await res.text();
+  if (!html.includes("</html>")) throw new Error("Frontend returned invalid HTML");
+}
+
+async function checkDailyCheckinPage() {
+  const res = await fetch(`${APP_URL}/daily-checkin`, { method: "GET", redirect: "follow" });
+  if (!res.ok) throw new Error(`/daily-checkin returned HTTP ${res.status}`);
+}
+
+async function checkApplyPage() {
+  const res = await fetch(`${APP_URL}/apply`, { method: "GET", redirect: "follow" });
+  if (!res.ok) throw new Error(`/apply returned HTTP ${res.status}`);
+}
+
 async function checkCronJobsActive() {
   const { data, error } = await supabaseAdmin.rpc("get_cron_jobs_count" as any);
   if (error) {

@@ -118,6 +118,7 @@ export function CallCenterLeadCard({
   isAdmin = false,
   onReassigned,
   onSendFollowUp,
+  onStatusChange,
   className,
 }: CallCenterLeadCardProps) {
   const currentStage = progressToStage(lead.licenseProgress, lead.licenseStatus);

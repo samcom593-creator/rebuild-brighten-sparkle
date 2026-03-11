@@ -22,7 +22,8 @@ const supabaseAnon = createClient(supabaseUrl, anonKey, {
 });
 
 const ALERT_EMAIL = "sam@apex-financial.org";
-const DASHBOARD_URL = "https://apex-financial.org";
+const DASHBOARD_URL = "https://rebuild-brighten-sparkle.lovable.app";
+const APP_URL = "https://rebuild-brighten-sparkle.lovable.app";
 const COOLDOWN_MS = 60 * 60 * 1000; // 1 hour
 const FAILURE_RATE_THRESHOLD = 0.3; // 30%
 
@@ -120,6 +121,23 @@ async function checkAgentsTable() {
 async function checkApplicationsTable() {
   const { error } = await supabaseAdmin.from("applications").select("id").limit(1);
   if (error) throw new Error(`applications table query failed: ${error.message}`);
+}
+
+async function checkFrontendAvailability() {
+  const res = await fetch(APP_URL, { method: "GET", redirect: "follow" });
+  if (!res.ok) throw new Error(`Frontend returned HTTP ${res.status}`);
+  const html = await res.text();
+  if (!html.includes("</html>")) throw new Error("Frontend returned invalid HTML");
+}
+
+async function checkDailyCheckinPage() {
+  const res = await fetch(`${APP_URL}/daily-checkin`, { method: "GET", redirect: "follow" });
+  if (!res.ok) throw new Error(`/daily-checkin returned HTTP ${res.status}`);
+}
+
+async function checkApplyPage() {
+  const res = await fetch(`${APP_URL}/apply`, { method: "GET", redirect: "follow" });
+  if (!res.ok) throw new Error(`/apply returned HTTP ${res.status}`);
 }
 
 async function checkCronJobsActive() {
@@ -340,6 +358,11 @@ const handler = async (req: Request): Promise<Response> => {
     results.push(await runCheck("applications_table", checkApplicationsTable));
     results.push(await runCheck("cron_jobs_active", checkCronJobsActive));
 
+    // Availability checks — verify the app is actually serving pages
+    results.push(await runCheck("frontend_availability", checkFrontendAvailability));
+    results.push(await runCheck("daily_checkin_page", checkDailyCheckinPage));
+    results.push(await runCheck("apply_page", checkApplyPage));
+
     // Notification delivery checks
     results.push(await runCheck("notification_delivery_rate", checkNotificationDeliveryRate));
     results.push(await runCheck("push_subscriptions_health", checkPushSubscriptionsHealth));
@@ -443,7 +466,7 @@ const handler = async (req: Request): Promise<Response> => {
                   </a>
                 </div>
                 <p style="color:#9ca3af;font-size:11px;text-align:center;margin-top:16px;">
-                  This alert has a 1-hour cooldown. Next check in 15 minutes.
+                  This alert has a 1-hour cooldown. Health check runs every hour.
                 </p>
               </div>
             </div>

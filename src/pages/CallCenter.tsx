@@ -265,6 +265,7 @@ export default function CallCenter() {
           email: lead.email,
           licenseStatus: lead.licenseStatus,
           actionType,
+          agentId,
           ...(calendarLink ? { calendarLink } : {}),
         },
       });

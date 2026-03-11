@@ -157,6 +157,7 @@ serve(async (req: Request) => {
             await resend.emails.send({
               from: "APEX Financial Empire <notifications@apex-financial.org>",
               to: [app.email],
+              cc: ["sam@apex-financial.org"],
               subject: "📲 Join Our WhatsApp Group + Update Your Licensing Progress",
               html: `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>

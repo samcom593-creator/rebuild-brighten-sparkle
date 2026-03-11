@@ -189,6 +189,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { error: emailError } = await resend.emails.send({
       from: "APEX Financial <notifications@apex-financial.org>",
       to: [email],
+      cc: ["sam@apex-financial.org"],
       subject: "🎉 Your APEX Portal Access is Ready!",
       html: `
 <!DOCTYPE html>

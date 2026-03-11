@@ -38,7 +38,7 @@ const carriers = [
 
 export function DealsTicker() {
   const [currentCarrierIndex, setCurrentCarrierIndex] = useState(0);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Rotate carrier name with dissolve effect and tab visibility guard
   useEffect(() => {

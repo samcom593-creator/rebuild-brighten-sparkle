@@ -34,7 +34,7 @@ const carriers = [
 export function HeroSection() {
   const { count: dealCount, isLoading: isCountLoading } = useLeadCounter();
   const [currentCarrierIndex, setCurrentCarrierIndex] = useState(0);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Rotate carriers every 3 seconds with tab visibility guard
   useEffect(() => {

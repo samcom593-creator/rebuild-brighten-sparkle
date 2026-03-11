@@ -358,6 +358,11 @@ const handler = async (req: Request): Promise<Response> => {
     results.push(await runCheck("applications_table", checkApplicationsTable));
     results.push(await runCheck("cron_jobs_active", checkCronJobsActive));
 
+    // Availability checks — verify the app is actually serving pages
+    results.push(await runCheck("frontend_availability", checkFrontendAvailability));
+    results.push(await runCheck("daily_checkin_page", checkDailyCheckinPage));
+    results.push(await runCheck("apply_page", checkApplyPage));
+
     // Notification delivery checks
     results.push(await runCheck("notification_delivery_rate", checkNotificationDeliveryRate));
     results.push(await runCheck("push_subscriptions_health", checkPushSubscriptionsHealth));

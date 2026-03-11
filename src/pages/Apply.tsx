@@ -48,9 +48,15 @@ const applicationSchema = z.object({
   
   // Step 2: Experience
   hasInsuranceExperience: z.boolean().default(false),
-  yearsExperience: z.number().min(0).max(50).optional(),
+  yearsExperience: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined || (typeof v === "number" && !Number.isFinite(v)) ? undefined : Number(v)),
+    z.number().min(0).max(50).optional(),
+  ),
   previousCompany: z.string().max(100).optional(),
-  numberOfDownlines: z.number().min(0).optional(),
+  numberOfDownlines: z.preprocess(
+    (v) => (v === "" || v === null || v === undefined || (typeof v === "number" && !Number.isFinite(v)) ? undefined : Number(v)),
+    z.number().min(0).optional(),
+  ),
   
   // Step 3: Licensing
   licenseStatus: z.enum(["licensed", "unlicensed", "pending"]),

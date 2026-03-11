@@ -7,7 +7,7 @@ import { useRef, useCallback } from "react";
  */
 export function useDebouncedRefetch(refetchFn: () => void, delay = 1000) {
   const lastRefetchTime = useRef(0);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const debouncedRefetch = useCallback(() => {
     const now = Date.now();

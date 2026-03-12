@@ -164,7 +164,6 @@ const App = () => (
                     <Route path="/quote-engine/admin" element={<ProtectedRoute requireAdmin><QuoteEngineAdmin /></ProtectedRoute>} />
                     <Route path="/quote-engine/history" element={<QuoteHistory />} />
                   </Route>
-                  </Route>
 
                   {/* Legacy redirect */}
                   <Route path="/log-numbers" element={<Navigate to="/apex-daily-numbers" replace />} />

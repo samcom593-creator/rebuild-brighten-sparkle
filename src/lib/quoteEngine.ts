@@ -6,6 +6,7 @@ import type {
   ExcludedProduct,
   QEProduct,
   QECarrier,
+  QERateRow,
   QEBenefitType,
   ApprovalFitLabel,
   RecommendationLabel,

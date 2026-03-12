@@ -10,6 +10,7 @@ import { SidebarProvider } from "@/hooks/useSidebarState";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AuthenticatedShell } from "@/components/layout/AuthenticatedShell";
+import { QuoteEngineShell } from "@/components/quote-engine/QuoteEngineShell";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 // Eagerly loaded pages (critical path)
@@ -65,6 +66,7 @@ const ApplicantCheckin = lazy(() => import("./pages/ApplicantCheckin"));
 const DailyCheckin = lazy(() => import("./pages/DailyCheckin"));
 const QuoteEngine = lazy(() => import("./pages/QuoteEngine"));
 const QuoteEngineAdmin = lazy(() => import("./pages/QuoteEngineAdmin"));
+const QuoteHistory = lazy(() => import("./pages/QuoteHistory"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -152,8 +154,15 @@ const App = () => (
                      <Route path="/dashboard/growth" element={<GrowthDashboard />} />
                      <Route path="/dashboard/planner" element={<ProtectedRoute requireAdmin><AdminCalendar /></ProtectedRoute>} />
                      <Route path="/dashboard/seminar" element={<SeminarAdmin />} />
-                     <Route path="/dashboard/quote-engine" element={<QuoteEngine />} />
-                     <Route path="/dashboard/quote-engine/admin" element={<ProtectedRoute requireAdmin><QuoteEngineAdmin /></ProtectedRoute>} />
+                      <Route path="/dashboard/quote-engine" element={<Navigate to="/quote-engine" replace />} />
+                      <Route path="/dashboard/quote-engine/admin" element={<Navigate to="/quote-engine/admin" replace />} />
+                  </Route>
+
+                  {/* Quote Engine — standalone shell */}
+                  <Route element={<QuoteEngineShell />}>
+                    <Route path="/quote-engine" element={<QuoteEngine />} />
+                    <Route path="/quote-engine/admin" element={<ProtectedRoute requireAdmin><QuoteEngineAdmin /></ProtectedRoute>} />
+                    <Route path="/quote-engine/history" element={<QuoteHistory />} />
                   </Route>
 
                   {/* Legacy redirect */}

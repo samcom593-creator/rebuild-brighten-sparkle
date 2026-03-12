@@ -398,7 +398,7 @@ function ConditionsTab() {
   const add = async () => {
     if (!form.name.trim()) return;
     const synonyms = form.synonyms.split(",").map(s => s.trim()).filter(Boolean);
-    const { error } = await supabase.from("qe_conditions").insert({ name: form.name.trim(), category: form.category, synonyms });
+    const { error } = await supabase.from("qe_conditions").insert([{ name: form.name.trim(), category: form.category as any, synonyms }]);
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     else { toast({ title: "Condition added" }); setForm({ name: "", category: "other", synonyms: "" }); load(); }
   };

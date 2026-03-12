@@ -27,6 +27,7 @@ import {
   Bell,
   Search,
   X,
+  Calculator,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -173,6 +174,7 @@ export function GlobalSidebar({
 
     if (isAdmin || isManager) {
       toolItems.push({ icon: Users, label: "Seminar", href: "/dashboard/seminar" });
+      toolItems.push({ icon: Calculator, label: "Quote Engine", href: "/dashboard/quote-engine", special: true });
     }
 
     toolItems.push({ icon: ShoppingCart, label: "Purchase Leads", href: "/purchase-leads" });

@@ -2021,6 +2021,666 @@ export type Database = {
         }
         Relationships: []
       }
+      qe_build_charts: {
+        Row: {
+          created_at: string
+          gender: string
+          height_inches: number
+          id: string
+          max_weight: number
+          min_weight: number
+          product_id: string
+          rate_class: string
+        }
+        Insert: {
+          created_at?: string
+          gender?: string
+          height_inches: number
+          id?: string
+          max_weight: number
+          min_weight: number
+          product_id: string
+          rate_class?: string
+        }
+        Update: {
+          created_at?: string
+          gender?: string
+          height_inches?: number
+          id?: string
+          max_weight?: number
+          min_weight?: number
+          product_id?: string
+          rate_class?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qe_build_charts_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "qe_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qe_carriers: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          logo_url: string | null
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name?: string
+        }
+        Relationships: []
+      }
+      qe_commission_schedules: {
+        Row: {
+          advance_months: number | null
+          created_at: string
+          effective_date: string | null
+          first_year_pct: number
+          id: string
+          product_id: string
+          renewal_pct: number | null
+          source_doc_id: string | null
+        }
+        Insert: {
+          advance_months?: number | null
+          created_at?: string
+          effective_date?: string | null
+          first_year_pct?: number
+          id?: string
+          product_id: string
+          renewal_pct?: number | null
+          source_doc_id?: string | null
+        }
+        Update: {
+          advance_months?: number | null
+          created_at?: string
+          effective_date?: string | null
+          first_year_pct?: number
+          id?: string
+          product_id?: string
+          renewal_pct?: number | null
+          source_doc_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qe_commission_schedules_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "qe_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qe_commission_schedules_source_doc_id_fkey"
+            columns: ["source_doc_id"]
+            isOneToOne: false
+            referencedRelation: "qe_source_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qe_conditions: {
+        Row: {
+          category: Database["public"]["Enums"]["qe_condition_category"]
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          synonyms: string[] | null
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["qe_condition_category"]
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          synonyms?: string[] | null
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["qe_condition_category"]
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          synonyms?: string[] | null
+        }
+        Relationships: []
+      }
+      qe_graded_routing_rules: {
+        Row: {
+          condition_key: string
+          created_at: string
+          description: string | null
+          id: string
+          product_id: string
+          routes_to: Database["public"]["Enums"]["qe_benefit_type"]
+        }
+        Insert: {
+          condition_key: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          product_id: string
+          routes_to?: Database["public"]["Enums"]["qe_benefit_type"]
+        }
+        Update: {
+          condition_key?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          product_id?: string
+          routes_to?: Database["public"]["Enums"]["qe_benefit_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qe_graded_routing_rules_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "qe_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qe_medications: {
+        Row: {
+          brand_names: string[] | null
+          category: Database["public"]["Enums"]["qe_condition_category"]
+          created_at: string
+          description: string | null
+          generic_name: string | null
+          id: string
+          linked_conditions: string[] | null
+          name: string
+        }
+        Insert: {
+          brand_names?: string[] | null
+          category?: Database["public"]["Enums"]["qe_condition_category"]
+          created_at?: string
+          description?: string | null
+          generic_name?: string | null
+          id?: string
+          linked_conditions?: string[] | null
+          name: string
+        }
+        Update: {
+          brand_names?: string[] | null
+          category?: Database["public"]["Enums"]["qe_condition_category"]
+          created_at?: string
+          description?: string | null
+          generic_name?: string | null
+          id?: string
+          linked_conditions?: string[] | null
+          name?: string
+        }
+        Relationships: []
+      }
+      qe_modal_factors: {
+        Row: {
+          factor: number
+          id: string
+          mode: string
+          product_id: string
+        }
+        Insert: {
+          factor?: number
+          id?: string
+          mode: string
+          product_id: string
+        }
+        Update: {
+          factor?: number
+          id?: string
+          mode?: string
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qe_modal_factors_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "qe_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qe_payment_methods: {
+        Row: {
+          id: string
+          is_supported: boolean
+          method: string
+          notes: string | null
+          product_id: string
+        }
+        Insert: {
+          id?: string
+          is_supported?: boolean
+          method: string
+          notes?: string | null
+          product_id: string
+        }
+        Update: {
+          id?: string
+          is_supported?: boolean
+          method?: string
+          notes?: string | null
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qe_payment_methods_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "qe_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qe_product_badges: {
+        Row: {
+          badge_code: string
+          id: string
+          product_id: string
+          source_doc_id: string | null
+          tooltip_text: string | null
+        }
+        Insert: {
+          badge_code: string
+          id?: string
+          product_id: string
+          source_doc_id?: string | null
+          tooltip_text?: string | null
+        }
+        Update: {
+          badge_code?: string
+          id?: string
+          product_id?: string
+          source_doc_id?: string | null
+          tooltip_text?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qe_product_badges_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "qe_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qe_product_badges_source_doc_id_fkey"
+            columns: ["source_doc_id"]
+            isOneToOne: false
+            referencedRelation: "qe_source_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qe_product_states: {
+        Row: {
+          id: string
+          is_available: boolean
+          product_id: string
+          state_code: string
+        }
+        Insert: {
+          id?: string
+          is_available?: boolean
+          product_id: string
+          state_code: string
+        }
+        Update: {
+          id?: string
+          is_available?: boolean
+          product_id?: string
+          state_code?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qe_product_states_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "qe_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qe_products: {
+        Row: {
+          carrier_id: string
+          category: Database["public"]["Enums"]["qe_product_category"]
+          created_at: string
+          has_gi: boolean
+          has_graded: boolean
+          id: string
+          is_active: boolean
+          max_age: number
+          max_face: number
+          min_age: number
+          min_face: number
+          name: string
+          needs_verification: boolean
+          notes: string | null
+        }
+        Insert: {
+          carrier_id: string
+          category?: Database["public"]["Enums"]["qe_product_category"]
+          created_at?: string
+          has_gi?: boolean
+          has_graded?: boolean
+          id?: string
+          is_active?: boolean
+          max_age?: number
+          max_face?: number
+          min_age?: number
+          min_face?: number
+          name: string
+          needs_verification?: boolean
+          notes?: string | null
+        }
+        Update: {
+          carrier_id?: string
+          category?: Database["public"]["Enums"]["qe_product_category"]
+          created_at?: string
+          has_gi?: boolean
+          has_graded?: boolean
+          id?: string
+          is_active?: boolean
+          max_age?: number
+          max_face?: number
+          min_age?: number
+          min_face?: number
+          name?: string
+          needs_verification?: boolean
+          notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qe_products_carrier_id_fkey"
+            columns: ["carrier_id"]
+            isOneToOne: false
+            referencedRelation: "qe_carriers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qe_quote_logs: {
+        Row: {
+          agent_user_id: string | null
+          client_inputs: Json
+          created_at: string
+          id: string
+          products_considered: Json | null
+          products_excluded: Json | null
+          ranking_output: Json | null
+          rule_set_version: string | null
+          source_versions: Json | null
+        }
+        Insert: {
+          agent_user_id?: string | null
+          client_inputs?: Json
+          created_at?: string
+          id?: string
+          products_considered?: Json | null
+          products_excluded?: Json | null
+          ranking_output?: Json | null
+          rule_set_version?: string | null
+          source_versions?: Json | null
+        }
+        Update: {
+          agent_user_id?: string | null
+          client_inputs?: Json
+          created_at?: string
+          id?: string
+          products_considered?: Json | null
+          products_excluded?: Json | null
+          ranking_output?: Json | null
+          rule_set_version?: string | null
+          source_versions?: Json | null
+        }
+        Relationships: []
+      }
+      qe_rate_tables: {
+        Row: {
+          age: number
+          created_at: string
+          effective_date: string | null
+          face_amount: number
+          gender: string
+          id: string
+          modal_factor_annual: number | null
+          modal_factor_quarterly: number | null
+          modal_factor_semi: number | null
+          monthly_premium: number
+          needs_verification: boolean
+          product_id: string
+          rate_class: string
+          source_doc_id: string | null
+          state_code: string | null
+          tobacco_class: string
+        }
+        Insert: {
+          age: number
+          created_at?: string
+          effective_date?: string | null
+          face_amount: number
+          gender?: string
+          id?: string
+          modal_factor_annual?: number | null
+          modal_factor_quarterly?: number | null
+          modal_factor_semi?: number | null
+          monthly_premium: number
+          needs_verification?: boolean
+          product_id: string
+          rate_class?: string
+          source_doc_id?: string | null
+          state_code?: string | null
+          tobacco_class?: string
+        }
+        Update: {
+          age?: number
+          created_at?: string
+          effective_date?: string | null
+          face_amount?: number
+          gender?: string
+          id?: string
+          modal_factor_annual?: number | null
+          modal_factor_quarterly?: number | null
+          modal_factor_semi?: number | null
+          monthly_premium?: number
+          needs_verification?: boolean
+          product_id?: string
+          rate_class?: string
+          source_doc_id?: string | null
+          state_code?: string | null
+          tobacco_class?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qe_rate_tables_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "qe_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qe_rate_tables_source_doc_id_fkey"
+            columns: ["source_doc_id"]
+            isOneToOne: false
+            referencedRelation: "qe_source_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qe_scoring_weights: {
+        Row: {
+          approval_weight: number
+          commission_weight: number
+          created_at: string
+          id: string
+          is_default: boolean
+          label: string
+          persistency_weight: number
+          placement_weight: number
+          premium_weight: number
+          suitability_weight: number
+          updated_by: string | null
+        }
+        Insert: {
+          approval_weight?: number
+          commission_weight?: number
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          label?: string
+          persistency_weight?: number
+          placement_weight?: number
+          premium_weight?: number
+          suitability_weight?: number
+          updated_by?: string | null
+        }
+        Update: {
+          approval_weight?: number
+          commission_weight?: number
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          label?: string
+          persistency_weight?: number
+          placement_weight?: number
+          premium_weight?: number
+          suitability_weight?: number
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      qe_source_documents: {
+        Row: {
+          carrier_id: string | null
+          confidence_status: Database["public"]["Enums"]["qe_confidence_status"]
+          doc_name: string
+          doc_type: string
+          effective_date: string | null
+          id: string
+          product_id: string | null
+          source_url: string | null
+          uploaded_at: string
+          uploaded_by: string | null
+          version: string | null
+        }
+        Insert: {
+          carrier_id?: string | null
+          confidence_status?: Database["public"]["Enums"]["qe_confidence_status"]
+          doc_name: string
+          doc_type?: string
+          effective_date?: string | null
+          id?: string
+          product_id?: string | null
+          source_url?: string | null
+          uploaded_at?: string
+          uploaded_by?: string | null
+          version?: string | null
+        }
+        Update: {
+          carrier_id?: string | null
+          confidence_status?: Database["public"]["Enums"]["qe_confidence_status"]
+          doc_name?: string
+          doc_type?: string
+          effective_date?: string | null
+          id?: string
+          product_id?: string | null
+          source_url?: string | null
+          uploaded_at?: string
+          uploaded_by?: string | null
+          version?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qe_source_documents_carrier_id_fkey"
+            columns: ["carrier_id"]
+            isOneToOne: false
+            referencedRelation: "qe_carriers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qe_source_documents_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "qe_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qe_underwriting_knockouts: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          lookback_months: number | null
+          product_id: string
+          routes_to: Database["public"]["Enums"]["qe_benefit_type"] | null
+          rule_key: string
+          rule_type: string
+          rule_value: string | null
+          severity: string
+          source_doc_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          lookback_months?: number | null
+          product_id: string
+          routes_to?: Database["public"]["Enums"]["qe_benefit_type"] | null
+          rule_key: string
+          rule_type?: string
+          rule_value?: string | null
+          severity?: string
+          source_doc_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          lookback_months?: number | null
+          product_id?: string
+          routes_to?: Database["public"]["Enums"]["qe_benefit_type"] | null
+          rule_key?: string
+          rule_type?: string
+          rule_value?: string | null
+          severity?: string
+          source_doc_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qe_underwriting_knockouts_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "qe_products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qe_underwriting_knockouts_source_doc_id_fkey"
+            columns: ["source_doc_id"]
+            isOneToOne: false
+            referencedRelation: "qe_source_documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recurring_calendar_blocks: {
         Row: {
           category: string
@@ -2300,6 +2960,26 @@ export type Database = {
         | "in_field_training"
         | "evaluated"
       performance_tier: "below_10k" | "standard" | "top_producer"
+      qe_benefit_type: "immediate" | "graded" | "modified" | "guaranteed_issue"
+      qe_condition_category:
+        | "cardiac"
+        | "respiratory"
+        | "cancer"
+        | "neurological"
+        | "psychiatric"
+        | "renal"
+        | "liver"
+        | "mobility_adl"
+        | "autoimmune"
+        | "metabolic"
+        | "other"
+      qe_confidence_status: "verified" | "unverified" | "stale"
+      qe_product_category:
+        | "final_expense"
+        | "si_whole_life"
+        | "si_ul"
+        | "mortgage_protection"
+        | "other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2466,6 +3146,28 @@ export const Constants = {
         "evaluated",
       ],
       performance_tier: ["below_10k", "standard", "top_producer"],
+      qe_benefit_type: ["immediate", "graded", "modified", "guaranteed_issue"],
+      qe_condition_category: [
+        "cardiac",
+        "respiratory",
+        "cancer",
+        "neurological",
+        "psychiatric",
+        "renal",
+        "liver",
+        "mobility_adl",
+        "autoimmune",
+        "metabolic",
+        "other",
+      ],
+      qe_confidence_status: ["verified", "unverified", "stale"],
+      qe_product_category: [
+        "final_expense",
+        "si_whole_life",
+        "si_ul",
+        "mortgage_protection",
+        "other",
+      ],
     },
   },
 } as const

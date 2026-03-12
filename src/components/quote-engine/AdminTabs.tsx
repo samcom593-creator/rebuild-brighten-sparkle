@@ -468,7 +468,7 @@ function MedicationsTab() {
   const add = async () => {
     if (!form.name.trim()) return;
     const brand_names = form.brand_names.split(",").map(s => s.trim()).filter(Boolean);
-    const { error } = await supabase.from("qe_medications").insert({ name: form.name.trim(), generic_name: form.generic_name.trim() || null, category: form.category, brand_names });
+    const { error } = await supabase.from("qe_medications").insert([{ name: form.name.trim(), generic_name: form.generic_name.trim() || null, category: form.category as any, brand_names }]);
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     else { toast({ title: "Medication added" }); setForm({ name: "", generic_name: "", category: "other", brand_names: "" }); load(); }
   };

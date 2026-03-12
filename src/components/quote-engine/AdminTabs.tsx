@@ -128,11 +128,11 @@ function ProductsTab() {
 
   const add = async () => {
     if (!form.carrier_id || !form.name.trim()) return;
-    const { error } = await supabase.from("qe_products").insert({
-      carrier_id: form.carrier_id, name: form.name.trim(), category: form.category,
+    const { error } = await supabase.from("qe_products").insert([{
+      carrier_id: form.carrier_id, name: form.name.trim(), category: form.category as any,
       min_age: parseInt(form.min_age), max_age: parseInt(form.max_age),
       min_face: parseFloat(form.min_face), max_face: parseFloat(form.max_face),
-    });
+    }]);
     if (error) toast({ title: "Error", description: error.message, variant: "destructive" });
     else { toast({ title: "Product added" }); setForm({ ...form, name: "" }); load(); }
   };

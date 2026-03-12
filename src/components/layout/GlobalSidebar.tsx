@@ -27,6 +27,7 @@ import {
   Bell,
   Search,
   X,
+  Calculator,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";

@@ -174,7 +174,7 @@ export function GlobalSidebar({
 
     if (isAdmin || isManager) {
       toolItems.push({ icon: Users, label: "Seminar", href: "/dashboard/seminar" });
-      toolItems.push({ icon: Calculator, label: "Quote Engine", href: "/dashboard/quote-engine", special: true });
+      toolItems.push({ icon: Calculator, label: "Quote Engine", href: "/quote-engine", special: true });
     }
 
     toolItems.push({ icon: ShoppingCart, label: "Purchase Leads", href: "/purchase-leads" });

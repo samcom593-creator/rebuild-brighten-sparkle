@@ -4,9 +4,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { QuoteInputForm } from "@/components/quote-engine/QuoteInputForm";
 import { QuoteResults } from "@/components/quote-engine/QuoteResults";
 import { runQuoteEngine } from "@/lib/quoteEngine";
-import { Crown, Calculator, Settings } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
 import type { QuoteClientInput, QuoteResult, QuoteEngineData, QEScoringWeights } from "@/lib/quoteEngineTypes";
 import { toast } from "@/hooks/use-toast";
 
@@ -99,29 +96,6 @@ export default function QuoteEngine() {
 
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-primary/10">
-            <Calculator className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
-              Apex Quote Engine
-              <Crown className="h-4 w-4 text-primary" />
-            </h1>
-            <p className="text-xs text-muted-foreground">Underwriting-aware recommendation engine • Internal use only</p>
-          </div>
-        </div>
-        {isAdmin && (
-          <Link to="/dashboard/quote-engine/admin">
-            <Button variant="outline" size="sm">
-              <Settings className="h-4 w-4 mr-2" /> Admin Panel
-            </Button>
-          </Link>
-        )}
-      </div>
-
       {/* Input Form */}
       <QuoteInputForm onSubmit={handleSubmit} loading={loading} />
 

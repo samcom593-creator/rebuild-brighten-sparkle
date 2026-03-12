@@ -1,8 +1,6 @@
 import { useAuth } from "@/hooks/useAuth";
 import { AdminTabs } from "@/components/quote-engine/AdminTabs";
-import { Calculator, ArrowLeft, Crown, Shield } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Link, Navigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 
 export default function QuoteEngineAdmin() {
   const { isAdmin } = useAuth();

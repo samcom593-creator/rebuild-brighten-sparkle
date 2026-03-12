@@ -4,9 +4,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { QuoteInputForm } from "@/components/quote-engine/QuoteInputForm";
 import { QuoteResults } from "@/components/quote-engine/QuoteResults";
 import { runQuoteEngine } from "@/lib/quoteEngine";
-import { Crown, Calculator, Settings } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
 import type { QuoteClientInput, QuoteResult, QuoteEngineData, QEScoringWeights } from "@/lib/quoteEngineTypes";
 import { toast } from "@/hooks/use-toast";
 

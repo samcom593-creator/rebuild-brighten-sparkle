@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { deals, create_missing_agents, admin_agent_id } = await req.json();
+    const { deals, create_missing_agents, admin_agent_id, skip_existing } = await req.json();
 
     if (!deals || !Array.isArray(deals)) {
       return new Response(
@@ -113,6 +113,11 @@ Deno.serve(async (req) => {
           .single();
 
         if (existing) {
+          if (skip_existing) {
+            // Skip — agent already has data for this date
+            upsertResults.push({ agentId, date, success: true, action: "skipped" });
+            continue;
+          }
           // Update existing record by SETTING values (not adding) to prevent doubling
           const { error: updateError } = await supabase
             .from("daily_production")

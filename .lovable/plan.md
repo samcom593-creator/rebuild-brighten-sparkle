@@ -1,54 +1,71 @@
 
 
-# Import Production Data + Schedule Daily 10:30 PM Summary Email
+# Go-Live Final Remediation Plan
 
-## Part 1: Import These Deals (No Overlap)
+## Issues Identified
 
-The user pasted 11 deals all posted on **2026-03-12**. I'll use the existing `import-production-data` edge function which already handles deduplication via SET (upsert) logic — if an agent already logged numbers for that date, the import overwrites with the carrier data (which is the source of truth per the existing import integrity memory).
+### 1. No "My Directs" Filter on Pipeline (DashboardApplicants), Dashboard, or RecruiterHQ
+Currently, admin/managers see ALL agents/applicants with no toggle to filter to only their directly-invited recruits. The AgentPipeline page has a "My Recruits" button, but DashboardApplicants, Dashboard, and RecruiterDashboard lack this.
 
-However, to truly prevent overlap (don't touch agents who already logged), I need to **modify the import function** to support a `skip_existing` mode that leaves existing records untouched and only imports for agent-date combos that have no entry yet.
+**Fix**: Add a "My Directs" / "Full Team" toggle to:
+- `DashboardApplicants.tsx` — filter `assigned_agent_id` to only the current manager's agent ID
+- `Dashboard.tsx` — the `fetchDashboardData` function currently filters to `assigned_agent_id = agentData.id` for non-admin, but admin sees everything; add a toggle for admin to scope to their directs
+- `RecruiterDashboard.tsx` — add a "My Directs" filter button alongside existing filters
 
-**Deals to import** (all posted_date: `2026-03-12`):
+### 2. Aged Leads Missing a Visible "Distribute" Button
+The Aged Leads page has a `QuickAssignPanel` but it only appears when `isAdmin && managers.length > 0`. The per-row actions only have status changes + delete/ban via the DropdownMenu — no per-row assign button and no bulk distribute button at the bottom selection bar.
 
-| Agent | Annual ALP |
-|-------|-----------|
-| Samuel James | $2,781.48 |
-| Mahmod Imran | $696.00 + $2,016.00 = $2,712.00 (2 deals) |
-| Michael Kayembe | $908.76 + $1,492.44 = $2,401.20 (2 deals) |
-| Chukwudi Ifediora | $1,452.00 + $973.20 = $2,425.20 (2 deals) |
-| Obiajulu Ifediora | $890.16 |
-| Kaeden Vaughns | $900.60 |
-| Brennan Barker | $716.52 + $990.72 = $1,707.24 (2 deals) |
+**Fix**:
+- Add a `QuickAssignMenu` to each row's actions dropdown (like LeadCenter has)
+- Add a bulk assign section to the bottom selection bar (currently only has "Delete Selected" and "Clear")
 
-### Changes to `import-production-data` edge function:
-- Add `skip_existing: true` parameter support
-- When `skip_existing` is true: if an agent already has a production record for that date, skip them entirely (no overwrite)
-- This ensures agents who manually logged their numbers aren't affected
+### 3. Avg Leads/Day Inaccurate in Lead Center
+The calculation uses `Math.round(recentLeads / 30)` which rounds to zero for small counts. Should use more precise calculation.
 
-### Invoke the import:
-After updating the function, invoke it with the 11 deals and `skip_existing: true`.
+**Fix**: Change to `parseFloat((recentLeads / 30).toFixed(1))` to show one decimal place.
 
-## Part 2: Schedule Daily 10:30 PM CST Production Summary Email
+### 4. Lead Center Missing Pipeline Actions (Hired, Contracted, etc.)
+Lead Center per-row actions have: Assign, Phone, Email, Resend Licensing, Delete, Ban. But it's missing the stage-change actions that exist in DashboardApplicants (Mark as Hired, Contracted, Terminate).
 
-The `notify-admin-daily-summary` edge function already exists and sends a comprehensive daily production summary to the admin + all managers. It just needs a cron job to fire at **10:30 PM CST** daily.
+**Fix**: Add a DropdownMenu with status-change actions (Contacted, Hired, Contracted, Terminate) to the Lead Center row actions for application-source leads.
 
-### Create cron job (via insert tool, not migration):
-```sql
-SELECT cron.schedule(
-  'daily-production-summary-1030pm',
-  '30 4 * * *',  -- 10:30 PM CST = 4:30 AM UTC
-  $$
-  SELECT net.http_post(
-    url:='https://msydzhzolwourcdmqxvn.supabase.co/functions/v1/notify-admin-daily-summary',
-    headers:='{"Content-Type": "application/json", "Authorization": "Bearer <anon_key>"}'::jsonb,
-    body:='{}'::jsonb
-  ) as request_id;
-  $$
-);
-```
+### 5. Dashboard Stats Not Filtering by DatePeriodSelector
+The `DatePeriodSelector` was added to Dashboard UI but `fetchDashboardData` doesn't use `dateRange` — it always queries all data.
 
-## Files to Edit
-1. **`supabase/functions/import-production-data/index.ts`** — add `skip_existing` mode
-2. **Invoke import** with the 11 deals via the edge function
-3. **Insert cron schedule** for 10:30 PM CST daily summary
+**Fix**: Pass `dateRange` into the query key and filter applications by `created_at` within the selected range.
+
+### 6. OnboardingPipelineCard Dashboard Accuracy
+The card shows Course Purchased, Test Scheduled, etc. based on `agents` table fields (`has_training_course`, `onboarding_stage`). It only queries agents invited by the current manager (non-admin). For admin it queries ALL agents. This is correct. However, it doesn't cross-reference with `applications` table license_progress data.
+
+**Fix**: Cross-reference with `applications.license_progress` to ensure counts include applicants at each stage (course_purchased, passed_test, waiting_on_license, etc.), not just agent records.
+
+### 7. Todoist Integration
+Todoist has an official REST API. This would require the user's Todoist API token as a secret, stored via the secrets tool. We can create an edge function that syncs planner blocks to/from Todoist tasks. However, Todoist is not available as a connector — the user would need to provide their API key manually.
+
+### 8. Google Calendar & Calendly Integration
+Google Calendar integration would require OAuth setup (not available as a connector). Calendly is already partially integrated (CalendlyEmbed component exists). For Google Calendar, we can generate `.ics` download links or `calendar.google.com` add-event URLs from scheduled interviews.
+
+**Fix**: Add "Add to Google Calendar" links on scheduled interviews in CalendarPage. For Calendly, it's already embedded — verify it's wired into scheduling flows.
+
+---
+
+## Implementation Plan
+
+### Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/pages/DashboardApplicants.tsx` | Add "My Directs" / "Full Team" toggle button in filters; filter by `assigned_agent_id === agentId` when "My Directs" active |
+| `src/pages/Dashboard.tsx` | Pass `dateRange` to query; add "My Directs" toggle for admin; filter stats by date range |
+| `src/pages/RecruiterDashboard.tsx` | Add "My Directs" filter toggle |
+| `src/pages/DashboardAgedLeads.tsx` | Add per-row QuickAssignMenu; add bulk assign to selection bar |
+| `src/pages/LeadCenter.tsx` | Add status-change actions (Hired, Contracted, Terminate) to per-row dropdown; fix avg leads/day precision |
+| `src/components/dashboard/OnboardingPipelineCard.tsx` | Cross-reference applications table for accurate license_progress counts |
+
+### External Integrations
+- **Todoist**: Requires API key — will prompt user to provide it via secrets tool before implementing
+- **Google Calendar**: Add "Add to Google Calendar" URL links on CalendarPage interview entries (no API key needed, uses URL scheme)
+- **Calendly**: Already embedded via CalendlyEmbed component — verify wiring
+
+No database changes needed.
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Save, Loader2, TrendingUp, DollarSign, Users, Clock, Target, Home, Handshake, Sparkles, Calendar as CalendarIcon } from "lucide-react";
+import { Save, Loader2, TrendingUp, DollarSign, Users, FileText, Target, Home, Handshake, Sparkles, Calendar as CalendarIcon } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

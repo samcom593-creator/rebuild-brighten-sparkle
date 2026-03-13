@@ -10,7 +10,7 @@ import { SidebarProvider } from "@/hooks/useSidebarState";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AuthenticatedShell } from "@/components/layout/AuthenticatedShell";
-import { QuoteEngineShell } from "@/components/quote-engine/QuoteEngineShell";
+
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 // Eagerly loaded pages (critical path)

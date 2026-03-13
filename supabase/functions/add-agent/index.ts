@@ -266,6 +266,17 @@ const handler = async (req: Request): Promise<Response> => {
       },
     }).catch((err) => console.log("Welcome email skipped:", err));
 
+    // Auto-send course enrollment email when enrolled in course
+    if (hasTrainingCourse) {
+      supabaseAdmin.functions.invoke("send-course-enrollment-email", {
+        body: {
+          agentName: `${firstName} ${lastName}`,
+          agentEmail: normalizedEmail,
+          agentId: newAgent.id,
+        },
+      }).catch((err) => console.log("Course enrollment email skipped:", err));
+    }
+
     return new Response(
       JSON.stringify({
         success: true,

@@ -5,6 +5,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Alias map: carrier-report names → system profile names (lowercase)
+const NAME_ALIASES: Record<string, string> = {
+  "kaeden vaughns": "kj vaughns",
+  "mahmod imran": "moody imran",
+};
+
 interface DealRecord {
   agent_name: string;
   annual_alp: number;
@@ -67,7 +73,8 @@ Deno.serve(async (req) => {
     }>> = {};
 
     for (const deal of deals as DealRecord[]) {
-      const agentKey = deal.agent_name.toLowerCase().trim();
+      const rawKey = deal.agent_name.toLowerCase().trim();
+      const agentKey = NAME_ALIASES[rawKey] || rawKey;
       const agentId = agentNameMap[agentKey];
 
       if (!agentId) {

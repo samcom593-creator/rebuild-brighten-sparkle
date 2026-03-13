@@ -1,32 +1,23 @@
 
 
-# Import Full Production Data (03/01 – 03/12)
+# Add Name Aliases to Production Import
 
-## What This Does
-Import **55 deals** across **10 dates** (March 1–12, 2026) for **13 agents** using the existing `import-production-data` edge function with `skip_existing: true` — so any agent who already logged numbers for a given date won't be overwritten.
+## Problem
+The carrier report lists agents as "Kaeden Vaughns" and "Mahmod Imran", but the system has them as **"KJ Vaughns"** and **"Moody Imran"**. The import function does exact name matching, so their 13 deals were skipped.
 
-## Deals Summary by Agent
+## Solution
+Add an alias map in the `import-production-data` edge function that maps alternate carrier names to the canonical system names before lookup.
 
-| Agent | Deals | Total ALP |
-|---|---|---|
-| Obiajulu Ifediora | 14 | $19,366.28 |
-| Chukwudi Ifediora | 8 | $13,648.00 |
-| Brennan Barker | 8 | $7,246.80 |
-| Mahmod Imran | 7 | $8,100.00 |
-| Kaeden Vaughns | 6 | $9,557.16 |
-| Michael Kayembe | 4 | $6,411.12 |
-| Samuel James | 3 | $10,288.92 |
-| Jacob Causer | 3 | $3,990.36 |
-| Aisha Kebbeh | 3 | $3,936.00 |
-| Loren Lail | 2 | $1,652.16 |
-| Landon Boyd | 1 | $408.00 |
+### Changes to `supabase/functions/import-production-data/index.ts`
+- Add a `NAME_ALIASES` map at the top:
+  - `"kaeden vaughns"` → `"kj vaughns"`
+  - `"mahmod imran"` → `"moody imran"`
+- Before looking up `agentKey` in `agentNameMap`, check if it exists in `NAME_ALIASES` and remap it
 
-## Potential Issues
-From the previous import, **Mahmod Imran** and **Kaeden Vaughns** were not found in the system. New agents in this batch — **Jacob Causer**, **Aisha Kebbeh**, **Landon Boyd**, **Loren Lail** — may also not exist. Any unmatched agents will be reported back so you can fix their profile names.
+### Then Re-import
+After deploying the updated function, re-invoke the import with only the 13 previously failed deals for Kaeden/Mahmod with `skip_existing: true`.
 
-## Steps
-1. Invoke the `import-production-data` edge function with all 55 deals and `skip_existing: true`
-2. Report back which agents matched and which were missing
-
-No code changes needed — this uses the existing edge function as-is.
+**Deals to retry:**
+- Mahmod Imran: 7 deals totaling $8,100 (dates: 03/10, 03/09, 03/12, 03/06)
+- Kaeden Vaughns: 6 deals totaling $9,557.16 (dates: 03/08, 03/09, 03/11, 03/12)
 

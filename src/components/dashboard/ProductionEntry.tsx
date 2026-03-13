@@ -380,7 +380,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
   // Activity fields (not ALP-related)
   const activityFields = [
     { key: "presentations", label: "Presentations", icon: Target, emoji: "🎯" },
-    { key: "hours_called", label: "Hours Called", icon: Clock, step: "0.5", emoji: "⏱️" },
+    { key: "hours_called", label: "Pages", icon: FileText, step: "1", emoji: "📄" },
     { key: "referrals_caught", label: "Referrals Caught", icon: Users, emoji: "👥" },
     { key: "referral_presentations", label: "Referral Pres.", icon: Handshake, emoji: "🤝" },
     { key: "deals_closed", label: "Closes", icon: TrendingUp, emoji: "🏆" },

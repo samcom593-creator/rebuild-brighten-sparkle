@@ -151,9 +151,6 @@ const App = () => (
                      <Route path="/dashboard/growth" element={<GrowthDashboard />} />
                      <Route path="/dashboard/planner" element={<ProtectedRoute requireAdmin><AdminCalendar /></ProtectedRoute>} />
                       <Route path="/dashboard/seminar" element={<SeminarAdmin />} />
-                     <Route path="/quote-engine" element={<QuoteEngine />} />
-                     <Route path="/quote-engine/admin" element={<ProtectedRoute requireAdmin><QuoteEngineAdmin /></ProtectedRoute>} />
-                     <Route path="/quote-engine/history" element={<QuoteHistory />} />
                   </Route>
 
                   {/* Legacy redirect */}

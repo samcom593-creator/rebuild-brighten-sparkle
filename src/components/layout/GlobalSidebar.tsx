@@ -175,8 +175,6 @@ export function GlobalSidebar({
       toolItems.push({ icon: Users, label: "Seminar", href: "/dashboard/seminar" });
     }
 
-    toolItems.push({ icon: Calculator, label: "Quote Engine", href: "/quote-engine", special: true });
-
     toolItems.push({ icon: ShoppingCart, label: "Purchase Leads", href: "/purchase-leads" });
 
     if (toolItems.length > 0) {

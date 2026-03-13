@@ -89,31 +89,21 @@ export function GlobalSidebar({
       return;
     }
     const timeout = setTimeout(async () => {
-      const { data } = await supabase
-        .from("agents")
-        .select("id, user_id, display_name")
-        .eq("is_deactivated", false)
-        .limit(10);
-      
-      if (!data) return;
-      
-      const userIds = data.map(a => a.user_id).filter(Boolean);
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, full_name, email")
-        .in("user_id", userIds);
-      
-      const q = searchQuery.toLowerCase();
-      const results = data
-        .map(agent => {
-          const profile = profiles?.find(p => p.user_id === agent.user_id);
-          const name = agent.display_name || profile?.full_name || "Unknown";
-          return { id: agent.id, name, email: profile?.email || "" };
-        })
-        .filter(r => r.name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q))
-        .slice(0, 6);
-      
-      setSearchResults(results);
+      try {
+        const { data, error } = await supabase.functions.invoke("log-production", {
+          body: { action: "search", query: searchQuery.trim() }
+        });
+        if (error || !data?.agents) {
+          setSearchResults([]);
+          return;
+        }
+        const results = (data.agents as Array<{ id: string; name: string; email: string }>)
+          .slice(0, 6)
+          .map(a => ({ id: a.id, name: a.name, email: a.email }));
+        setSearchResults(results);
+      } catch {
+        setSearchResults([]);
+      }
     }, 300);
     return () => clearTimeout(timeout);
   }, [searchQuery]);

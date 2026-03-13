@@ -331,8 +331,31 @@ export default function DashboardApplicants() {
       if (announceErr) console.error("Failed to send hire announcement:", announceErr);
     });
 
-    // Send licensing instructions for unlicensed/unknown applicants
-    if (app.license_status !== "licensed") {
+    // Auto-create agent + enroll in course for LICENSED applicants
+    if (app.license_status === "licensed") {
+      supabase.functions.invoke("add-agent", {
+        body: {
+          firstName: app.first_name,
+          lastName: app.last_name,
+          email: app.email,
+          phone: app.phone || "",
+          managerId: agentId,
+          licenseStatus: "licensed",
+          hasTrainingCourse: true,
+          city: app.city || undefined,
+          state: app.state || undefined,
+          instagramHandle: app.instagram_handle || undefined,
+        }
+      }).then(({ data, error: addErr }) => {
+        if (addErr) {
+          console.error("Failed to auto-create agent:", addErr);
+        } else {
+          console.log("Agent auto-created and enrolled in course:", data);
+          toast.success(`${app.first_name} added as agent & enrolled in course!`);
+        }
+      });
+    } else {
+      // Send licensing instructions for unlicensed/unknown applicants
       supabase.functions.invoke("send-licensing-instructions", {
         body: {
           email: app.email,

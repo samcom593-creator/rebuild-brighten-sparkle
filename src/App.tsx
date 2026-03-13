@@ -64,9 +64,6 @@ const SeminarPage = lazy(() => import("./pages/SeminarPage"));
 const SeminarAdmin = lazy(() => import("./pages/SeminarAdmin"));
 const ApplicantCheckin = lazy(() => import("./pages/ApplicantCheckin"));
 const DailyCheckin = lazy(() => import("./pages/DailyCheckin"));
-const QuoteEngine = lazy(() => import("./pages/QuoteEngine"));
-const QuoteEngineAdmin = lazy(() => import("./pages/QuoteEngineAdmin"));
-const QuoteHistory = lazy(() => import("./pages/QuoteHistory"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -154,9 +151,6 @@ const App = () => (
                      <Route path="/dashboard/growth" element={<GrowthDashboard />} />
                      <Route path="/dashboard/planner" element={<ProtectedRoute requireAdmin><AdminCalendar /></ProtectedRoute>} />
                       <Route path="/dashboard/seminar" element={<SeminarAdmin />} />
-                     <Route path="/quote-engine" element={<QuoteEngine />} />
-                     <Route path="/quote-engine/admin" element={<ProtectedRoute requireAdmin><QuoteEngineAdmin /></ProtectedRoute>} />
-                     <Route path="/quote-engine/history" element={<QuoteHistory />} />
                   </Route>
 
                   {/* Legacy redirect */}

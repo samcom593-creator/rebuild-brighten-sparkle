@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { DollarSign, Target, Users, TrendingUp, Presentation, X, BarChart3, PhoneCall } from "lucide-react";
+import { DollarSign, Target, Users, TrendingUp, Presentation, X, BarChart3, FileText } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";

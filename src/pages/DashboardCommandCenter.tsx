@@ -944,7 +944,7 @@ export default function DashboardCommandCenter() {
           {/* Recognition Queue & Course Progress - 30% on desktop */}
           <div className="w-full lg:w-[30%] space-y-6">
             <AISummaryReport />
-            <SystemIntegrityCard />
+            
             <RecognitionQueue />
             <CourseProgressPanel />
           </div>

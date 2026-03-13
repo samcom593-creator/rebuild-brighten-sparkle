@@ -29,6 +29,7 @@ import {
   FileText,
   CheckCircle2,
   KeyRound,
+  Copy,
 } from "lucide-react";
 import {
   Table,

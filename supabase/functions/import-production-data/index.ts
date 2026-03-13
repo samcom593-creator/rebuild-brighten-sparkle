@@ -113,6 +113,11 @@ Deno.serve(async (req) => {
           .single();
 
         if (existing) {
+          if (skip_existing) {
+            // Skip — agent already has data for this date
+            upsertResults.push({ agentId, date, success: true, action: "skipped" });
+            continue;
+          }
           // Update existing record by SETTING values (not adding) to prevent doubling
           const { error: updateError } = await supabase
             .from("daily_production")

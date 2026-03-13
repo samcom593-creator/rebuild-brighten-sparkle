@@ -113,9 +113,15 @@ serve(async (req) => {
   </div>
 </body></html>`;
 
+    const ccList = ["sam@apex-financial.org"];
+    if (managerEmail && managerEmail !== profile.email && !ccList.includes(managerEmail)) {
+      ccList.push(managerEmail);
+    }
+
     const { error: emailError } = await resend.emails.send({
       from: "APEX Financial <notifications@apex-financial.org>",
       to: [profile.email],
+      cc: ccList,
       subject: `${stageInfo.emoji} ${isPromotion ? "Congratulations!" : "Update:"} You're now ${stageInfo.label}!`,
       html: emailHtml,
     });

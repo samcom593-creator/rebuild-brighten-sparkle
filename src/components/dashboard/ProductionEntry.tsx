@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Save, Loader2, TrendingUp, DollarSign, Users, Clock, Target, Home, Handshake, Sparkles, Calendar as CalendarIcon } from "lucide-react";
+import { Save, Loader2, TrendingUp, DollarSign, Users, FileText, Target, Home, Handshake, Sparkles, Calendar as CalendarIcon } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -380,7 +380,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
   // Activity fields (not ALP-related)
   const activityFields = [
     { key: "presentations", label: "Presentations", icon: Target, emoji: "🎯" },
-    { key: "hours_called", label: "Hours Called", icon: Clock, step: "0.5", emoji: "⏱️" },
+    { key: "hours_called", label: "Pages", icon: FileText, step: "1", emoji: "📄" },
     { key: "referrals_caught", label: "Referrals Caught", icon: Users, emoji: "👥" },
     { key: "referral_presentations", label: "Referral Pres.", icon: Handshake, emoji: "🤝" },
     { key: "deals_closed", label: "Closes", icon: TrendingUp, emoji: "🏆" },

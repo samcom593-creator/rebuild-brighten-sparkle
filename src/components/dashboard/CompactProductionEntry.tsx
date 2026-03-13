@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Save, Loader2, Target, DollarSign, Users, Clock, Home, Handshake, TrendingUp, Sparkles, Check, CalendarIcon, Plus, Link2, Share2 } from "lucide-react";
+import { Save, Loader2, Target, DollarSign, Users, FileText, Home, Handshake, TrendingUp, Sparkles, Check, CalendarIcon, Plus, Link2, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -247,7 +247,7 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
   // Stat fields with bubble styling
   const statFields = [
     { key: "presentations", label: "Presentations", icon: Target, emoji: "🎯" },
-    { key: "hours_called", label: "Hours Called", icon: Clock, step: 0.5, emoji: "⏱️" },
+    { key: "hours_called", label: "Pages", icon: FileText, step: 1, emoji: "📄" },
     { key: "referrals_caught", label: "Referrals", icon: Users, emoji: "👥" },
     { key: "referral_presentations", label: "Ref. Pres.", icon: Handshake, emoji: "🤝" },
     { key: "deals_closed", label: "Closes", icon: TrendingUp, emoji: "🏆" },

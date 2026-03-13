@@ -295,6 +295,18 @@ function AgentExpandedRow({
               <Button
                 variant="outline"
                 size="sm"
+                className="h-7 text-xs gap-1.5"
+                onClick={() => {
+                  const loginUrl = `${window.location.origin}/login`;
+                  navigator.clipboard.writeText(loginUrl);
+                  toast.success("Login link copied to clipboard!");
+                }}
+              >
+                <Copy className="h-3 w-3" /> Copy Login Link
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 className="h-7 text-xs gap-1.5 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
                 onClick={() => onEditLogin(agent)}
               >

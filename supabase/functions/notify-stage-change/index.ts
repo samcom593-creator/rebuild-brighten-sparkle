@@ -46,8 +46,8 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, serviceRoleKey);
     const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
-    // Get agent info
-    const { data: agent } = await supabase.from("agents").select("user_id").eq("id", agentId).single();
+    // Get agent info including manager
+    const { data: agent } = await supabase.from("agents").select("user_id, invited_by_manager_id").eq("id", agentId).single();
 
     if (!agent?.user_id) {
       return new Response(JSON.stringify({ error: "Agent not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -57,6 +57,16 @@ serve(async (req) => {
 
     if (!profile?.email) {
       return new Response(JSON.stringify({ error: "Profile email not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Resolve manager email for CC
+    let managerEmail: string | null = null;
+    if (agent.invited_by_manager_id) {
+      const { data: managerAgent } = await supabase.from("agents").select("user_id").eq("id", agent.invited_by_manager_id).single();
+      if (managerAgent?.user_id) {
+        const { data: managerProfile } = await supabase.from("profiles").select("email").eq("user_id", managerAgent.user_id).single();
+        managerEmail = managerProfile?.email || null;
+      }
     }
 
     const stageInfo = STAGE_INFO[newStage as keyof typeof STAGE_INFO];

@@ -430,11 +430,11 @@ export function TeamSnapshotCard() {
                 />
               </div>
 
-              {/* Avg Hours Called */}
+              {/* Avg Pages */}
               <div className="bg-background/50 rounded-xl p-4 border border-border/50">
                 <div className="flex items-center gap-2 text-pink-500 mb-2">
-                  <PhoneCall className="h-5 w-5" />
-                  <span className="text-xs font-medium uppercase tracking-wide">Avg Hours</span>
+                  <FileText className="h-5 w-5" />
+                  <span className="text-xs font-medium uppercase tracking-wide">Avg Pages</span>
                 </div>
                 <AnimatedCounter
                   value={stats.avgHoursCalled}

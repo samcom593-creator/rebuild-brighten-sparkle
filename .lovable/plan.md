@@ -1,71 +1,169 @@
 
 
-# Go-Live Final Remediation Plan
+# Comprehensive Platform Refinement — 12 Tasks
 
-## Issues Identified
-
-### 1. No "My Directs" Filter on Pipeline (DashboardApplicants), Dashboard, or RecruiterHQ
-Currently, admin/managers see ALL agents/applicants with no toggle to filter to only their directly-invited recruits. The AgentPipeline page has a "My Recruits" button, but DashboardApplicants, Dashboard, and RecruiterDashboard lack this.
-
-**Fix**: Add a "My Directs" / "Full Team" toggle to:
-- `DashboardApplicants.tsx` — filter `assigned_agent_id` to only the current manager's agent ID
-- `Dashboard.tsx` — the `fetchDashboardData` function currently filters to `assigned_agent_id = agentData.id` for non-admin, but admin sees everything; add a toggle for admin to scope to their directs
-- `RecruiterDashboard.tsx` — add a "My Directs" filter button alongside existing filters
-
-### 2. Aged Leads Missing a Visible "Distribute" Button
-The Aged Leads page has a `QuickAssignPanel` but it only appears when `isAdmin && managers.length > 0`. The per-row actions only have status changes + delete/ban via the DropdownMenu — no per-row assign button and no bulk distribute button at the bottom selection bar.
-
-**Fix**:
-- Add a `QuickAssignMenu` to each row's actions dropdown (like LeadCenter has)
-- Add a bulk assign section to the bottom selection bar (currently only has "Delete Selected" and "Clear")
-
-### 3. Avg Leads/Day Inaccurate in Lead Center
-The calculation uses `Math.round(recentLeads / 30)` which rounds to zero for small counts. Should use more precise calculation.
-
-**Fix**: Change to `parseFloat((recentLeads / 30).toFixed(1))` to show one decimal place.
-
-### 4. Lead Center Missing Pipeline Actions (Hired, Contracted, etc.)
-Lead Center per-row actions have: Assign, Phone, Email, Resend Licensing, Delete, Ban. But it's missing the stage-change actions that exist in DashboardApplicants (Mark as Hired, Contracted, Terminate).
-
-**Fix**: Add a DropdownMenu with status-change actions (Contacted, Hired, Contracted, Terminate) to the Lead Center row actions for application-source leads.
-
-### 5. Dashboard Stats Not Filtering by DatePeriodSelector
-The `DatePeriodSelector` was added to Dashboard UI but `fetchDashboardData` doesn't use `dateRange` — it always queries all data.
-
-**Fix**: Pass `dateRange` into the query key and filter applications by `created_at` within the selected range.
-
-### 6. OnboardingPipelineCard Dashboard Accuracy
-The card shows Course Purchased, Test Scheduled, etc. based on `agents` table fields (`has_training_course`, `onboarding_stage`). It only queries agents invited by the current manager (non-admin). For admin it queries ALL agents. This is correct. However, it doesn't cross-reference with `applications` table license_progress data.
-
-**Fix**: Cross-reference with `applications.license_progress` to ensure counts include applicants at each stage (course_purchased, passed_test, waiting_on_license, etc.), not just agent records.
-
-### 7. Todoist Integration
-Todoist has an official REST API. This would require the user's Todoist API token as a secret, stored via the secrets tool. We can create an edge function that syncs planner blocks to/from Todoist tasks. However, Todoist is not available as a connector — the user would need to provide their API key manually.
-
-### 8. Google Calendar & Calendly Integration
-Google Calendar integration would require OAuth setup (not available as a connector). Calendly is already partially integrated (CalendlyEmbed component exists). For Google Calendar, we can generate `.ics` download links or `calendar.google.com` add-event URLs from scheduled interviews.
-
-**Fix**: Add "Add to Google Calendar" links on scheduled interviews in CalendarPage. For Calendly, it's already embedded — verify it's wired into scheduling flows.
+This plan addresses every issue raised, organized by priority. Each section describes the problem and the fix.
 
 ---
 
-## Implementation Plan
+## 1. Remove Quote Engine Entirely
 
-### Files to Modify
+**Problem:** The quote engine doesn't work and needs to be scrapped.
 
-| File | Changes |
-|------|---------|
-| `src/pages/DashboardApplicants.tsx` | Add "My Directs" / "Full Team" toggle button in filters; filter by `assigned_agent_id === agentId` when "My Directs" active |
-| `src/pages/Dashboard.tsx` | Pass `dateRange` to query; add "My Directs" toggle for admin; filter stats by date range |
-| `src/pages/RecruiterDashboard.tsx` | Add "My Directs" filter toggle |
-| `src/pages/DashboardAgedLeads.tsx` | Add per-row QuickAssignMenu; add bulk assign to selection bar |
-| `src/pages/LeadCenter.tsx` | Add status-change actions (Hired, Contracted, Terminate) to per-row dropdown; fix avg leads/day precision |
-| `src/components/dashboard/OnboardingPipelineCard.tsx` | Cross-reference applications table for accurate license_progress counts |
+**Changes:**
+- Remove routes from `App.tsx`: `/quote-engine`, `/quote-engine/admin`, `/quote-engine/history`
+- Remove the "Quote Engine" nav item from `GlobalSidebar.tsx` (line 179)
+- Delete page files: `QuoteEngine.tsx`, `QuoteEngineAdmin.tsx`, `QuoteHistory.tsx`
+- Delete component folder: `src/components/quote-engine/*`
+- Delete lib files: `src/lib/quoteEngine.ts`, `src/lib/quoteEngineTypes.ts`
+- Remove lazy imports from `App.tsx`
 
-### External Integrations
-- **Todoist**: Requires API key — will prompt user to provide it via secrets tool before implementing
-- **Google Calendar**: Add "Add to Google Calendar" URL links on CalendarPage interview entries (no API key needed, uses URL scheme)
-- **Calendly**: Already embedded via CalendlyEmbed component — verify wiring
+---
 
-No database changes needed.
+## 2. Fix Sidebar Agent Search
+
+**Problem:** The search bar queries agents but only fetches the first 10 without filtering by name server-side, then filters client-side — meaning the target agent is often not in the 10 returned.
+
+**Fix in `GlobalSidebar.tsx` (lines 93-97):** Change the query to use `.ilike()` or `.or()` filtering on the `display_name` column, and also search profiles by `full_name`/`email` with the search term. Use the `log-production` edge function's `search` action (which already does full-text search across all agents) instead of the broken client-side approach.
+
+```typescript
+const { data } = await supabase.functions.invoke("log-production", {
+  body: { action: "search", query: searchQuery.trim() }
+});
+const results = (data?.agents || []).slice(0, 6).map(a => ({
+  id: a.id, name: a.name, email: a.email
+}));
+setSearchResults(results);
+```
+
+---
+
+## 3. Auto-Create Agent + Enroll in Course When Hired (Licensed)
+
+**Problem:** Clicking "Hired" on a licensed applicant doesn't create an agent record or enroll them in the course.
+
+**Fix in `DashboardApplicants.tsx` `handleMarkAsHired`:** After marking as hired, if the applicant is **licensed**, automatically invoke the `add-agent` edge function with `hasTrainingCourse: true` to create their agent record, auth account, and enroll them in the course in one step. The `add-agent` function already supports this — it sets `onboarding_stage: "training_online"` and `has_training_course: true` when the flag is passed.
+
+```typescript
+// After successful status update, auto-create agent if licensed
+if (app.license_status === "licensed") {
+  await supabase.functions.invoke("add-agent", {
+    body: {
+      firstName: app.first_name,
+      lastName: app.last_name,
+      email: app.email,
+      phone: app.phone,
+      managerId: agentId, // current user's agent ID
+      licenseStatus: "licensed",
+      hasTrainingCourse: true,
+    }
+  });
+}
+```
+
+Also update the `add-agent` edge function to send the course enrollment email automatically after agent creation when `hasTrainingCourse` is true, by invoking `send-course-enrollment-email`.
+
+---
+
+## 4. Show Login Link When Tapping Agent Code
+
+**Problem:** When viewing an agent's code, there's no easy login link to share.
+
+**Fix:** In the agent detail views (AgentPortal, DashboardCRM, TeamDirectory — wherever agent codes are displayed), add a copyable login link next to the agent code. The link format: `https://rebuild-brighten-sparkle.lovable.app/login` — display it as a "Login Link" button that copies to clipboard. Also show the magic login URL format for quick sharing.
+
+---
+
+## 5. Manager CC'd on Every Application Step Change
+
+**Problem:** Managers aren't notified when applicants move through pipeline stages.
+
+**Fix:** Update the following edge functions to CC the referring manager:
+- `notify-stage-change/index.ts` — currently only emails the agent. Add logic to look up `invited_by_manager_id` → get manager's profile email → CC them.
+- `submit-application/index.ts` — on new application, CC the `assigned_agent_id`'s manager.
+- `send-post-call-followup/index.ts` — CC the manager on hire emails.
+
+Also update `handleMarkAsHired` and status change handlers in `DashboardApplicants.tsx` and `LeadCenter.tsx` to pass `agentId` so edge functions can resolve the manager.
+
+---
+
+## 6. Leaderboards Should Be Public
+
+**Problem:** Agent production leaderboard requires authentication.
+
+**Fix:** The `/apex-daily-numbers` page is already public and uses the `log-production` edge function's `leaderboard` action (which uses service role). Add a visible leaderboard section to that page showing the weekly rankings. No RLS changes needed since the edge function bypasses RLS.
+
+---
+
+## 7. Duplicate Merge — Auto-Detect Same Email/Phone
+
+**Problem:** The merge feature exists (`DuplicateMergeTool.tsx`) but may not be surfaced properly or auto-merging.
+
+**Fix:** Verify the merge tool is accessible from the admin dashboard. Add a badge/notification indicator showing the count of detected duplicates. The tool already handles email and phone matching — ensure it's prominently placed in the Command Center or Pipeline view.
+
+---
+
+## 8. Reduce Load Screen Times
+
+**Problem:** Pages take too long to load.
+
+**Fix:**
+- The `QueryClient` already has `staleTime: 120000` and `gcTime: 300000` — good.
+- Add `prefetchQuery` calls for common data (agents list, production) in `AuthenticatedShell` so data is ready before navigation.
+- Convert the heaviest lazy-loaded pages (Dashboard, DashboardApplicants) to eager imports since they're the most visited.
+- Add skeleton loading states to replace the generic `PageLoader`.
+
+---
+
+## 9. Remove Self-Healing Health Check
+
+**Problem:** The self-healing system doesn't work.
+
+**Fix:** Remove the `system-health-check` edge function and any cron jobs triggering it. Remove the `SystemIntegrityCard` component from the admin dashboard. Clean up the `health_check_log` table references.
+
+---
+
+## 10. Confirm WhatsApp Messages Are Sending
+
+**Problem:** Need to verify WhatsApp delivery.
+
+**Fix:** Review the `send-whatsapp-onboarding-blast` edge function logs. Add a delivery status indicator in the Notification Hub showing send/fail counts. The existing `notification_log` table tracks channel delivery — surface WhatsApp-specific stats in the Notification Hub dashboard.
+
+---
+
+## 11. Daily Top Producers Email
+
+**Problem:** Need daily top producers notification.
+
+**Fix:** The `notify-admin-daily-summary` cron job (already scheduled at 10:30 PM CST) already includes top 3 performers. Also, `notify-top-performers-morning` exists for morning recaps. Verify both cron jobs are active. If the morning one isn't scheduled, add a cron job for `notify-top-performers-morning` at 8:00 AM CST daily.
+
+---
+
+## 12. Overall Flow Polish
+
+- Ensure the "Hire → Create Agent → Enroll in Course → Send Welcome Email → Send Login" pipeline is seamless end-to-end
+- Add toast confirmations at each step so the user knows what happened
+- Ensure the contracted modal and add-agent flows are consistent
+
+---
+
+## Files to Edit
+
+| File | Change |
+|------|--------|
+| `src/App.tsx` | Remove quote engine routes, eager-load Dashboard |
+| `src/components/layout/GlobalSidebar.tsx` | Remove QE nav item, fix search to use edge function |
+| `src/pages/DashboardApplicants.tsx` | Auto-create agent on hire for licensed applicants |
+| `supabase/functions/add-agent/index.ts` | Auto-send course enrollment email when `hasTrainingCourse` |
+| `supabase/functions/notify-stage-change/index.ts` | CC manager on stage changes |
+| `supabase/functions/submit-application/index.ts` | CC manager on new applications |
+| `src/pages/LogNumbers.tsx` | Add public leaderboard section |
+| `src/components/admin/SystemIntegrityCard.tsx` | Remove or disable |
+
+**Files to Delete:**
+- `src/pages/QuoteEngine.tsx`
+- `src/pages/QuoteEngineAdmin.tsx`
+- `src/pages/QuoteHistory.tsx`
+- `src/components/quote-engine/*` (entire folder)
+- `src/lib/quoteEngine.ts`
+- `src/lib/quoteEngineTypes.ts`
 

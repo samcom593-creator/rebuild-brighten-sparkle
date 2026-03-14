@@ -174,7 +174,7 @@ export function ManagerProductionStats({ managerId }: ManagerProductionStatsProp
             <p className="text-lg font-bold text-primary">
               ${stats.todayALP.toLocaleString()}
             </p>
-            <p className="text-[10px] text-muted-foreground">Today AOP</p>
+            <p className="text-[10px] text-muted-foreground">Today ALP</p>
           </div>
 
           <div className="bg-emerald-500/10 rounded-lg p-3 text-center">

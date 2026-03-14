@@ -464,7 +464,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-popover">
-                    <SelectItem value="alp" className="text-xs">By AOP</SelectItem>
+                    <SelectItem value="alp" className="text-xs">By ALP</SelectItem>
                     <SelectItem value="presentations" className="text-xs">By Pres</SelectItem>
                     <SelectItem value="closingRate" className="text-xs">By Close %</SelectItem>
                     <SelectItem value="deals" className="text-xs">By Deals</SelectItem>
@@ -590,7 +590,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                       <div className={cn("col-span-1 text-center", sortBy === "deals" && "text-primary")}>Closes</div>
                       <div className="col-span-1 text-center">Refs</div>
                       <div className={cn("col-span-1 text-center whitespace-nowrap", sortBy === "closingRate" && "text-primary")}>Close %</div>
-                      <div className={cn("col-span-2 text-right", sortBy === "alp" && "text-primary")}>AOP</div>
+                      <div className={cn("col-span-2 text-right", sortBy === "alp" && "text-primary")}>ALP</div>
                     </div>
 
                     {/* Desktop Leaderboard Rows */}

@@ -364,7 +364,7 @@ export function TeamPerformanceBreakdown() {
                       <DollarSign className="h-3 w-3" />
                     </div>
                     <p className="text-lg font-bold">${week.totalALP.toLocaleString()}</p>
-                    <p className="text-[10px] text-muted-foreground">AOP</p>
+                    <p className="text-[10px] text-muted-foreground">ALP</p>
                   </div>
 
                   <div className="text-center p-2 rounded-lg bg-background/50">

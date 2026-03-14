@@ -285,7 +285,7 @@ export function TeamSnapshotCard() {
 
   const getDrilldownTitle = () => {
     switch (drilldownType) {
-      case "alp": return "AOP Breakdown by Agent";
+      case "alp": return "ALP Breakdown by Agent";
       case "deals": return "Deals Breakdown by Agent";
       case "agents": return "Active Agents";
       case "closeRate": return "Close Rate by Agent";
@@ -345,7 +345,7 @@ export function TeamSnapshotCard() {
               >
                 <div className="flex items-center gap-2 text-primary mb-2">
                   <DollarSign className="h-5 w-5" />
-                  <span className="text-xs font-medium uppercase tracking-wide">Total AOP</span>
+                  <span className="text-xs font-medium uppercase tracking-wide">Total ALP</span>
                 </div>
                 <AnimatedCounter
                   value={stats.totalALP}

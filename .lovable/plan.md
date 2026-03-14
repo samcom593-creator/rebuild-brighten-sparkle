@@ -1,71 +1,71 @@
 
 
-# Go-Live Final Remediation Plan
+# Fix Numbers Entry + Process XCEL Data + Merge Duplicates
 
-## Issues Identified
+## Problem Analysis
 
-### 1. No "My Directs" Filter on Pipeline (DashboardApplicants), Dashboard, or RecruiterHQ
-Currently, admin/managers see ALL agents/applicants with no toggle to filter to only their directly-invited recruits. The AgentPipeline page has a "My Recruits" button, but DashboardApplicants, Dashboard, and RecruiterDashboard lack this.
+Based on the screenshots and your message, there are three things to address:
 
-**Fix**: Add a "My Directs" / "Full Team" toggle to:
-- `DashboardApplicants.tsx` — filter `assigned_agent_id` to only the current manager's agent ID
-- `Dashboard.tsx` — the `fetchDashboardData` function currently filters to `assigned_agent_id = agentData.id` for non-admin, but admin sees everything; add a toggle for admin to scope to their directs
-- `RecruiterDashboard.tsx` — add a "My Directs" filter button alongside existing filters
+1. **Numbers entry not working** — The authenticated `/numbers` page uses direct Supabase client calls which rely on RLS policies with `current_agent_id()`. If an agent's `user_id` isn't properly linked, inserts silently fail. The public `/apex-daily-numbers` page uses an edge function (service role) and should work — but may have a UI or search issue preventing agents from finding themselves.
 
-### 2. Aged Leads Missing a Visible "Distribute" Button
-The Aged Leads page has a `QuickAssignPanel` but it only appears when `isAdmin && managers.length > 0`. The per-row actions only have status changes + delete/ban via the DropdownMenu — no per-row assign button and no bulk distribute button at the bottom selection bar.
+2. **XCEL Solutions course data** (screenshot 1) — Your XCEL daily report shows 16+ students with course progress, completion percentages, and prep status. This data should be synced into your platform's lead records.
 
-**Fix**:
-- Add a `QuickAssignMenu` to each row's actions dropdown (like LeadCenter has)
-- Add a bulk assign section to the bottom selection bar (currently only has "Delete Selected" and "Clear")
-
-### 3. Avg Leads/Day Inaccurate in Lead Center
-The calculation uses `Math.round(recentLeads / 30)` which rounds to zero for small counts. Should use more precise calculation.
-
-**Fix**: Change to `parseFloat((recentLeads / 30).toFixed(1))` to show one decimal place.
-
-### 4. Lead Center Missing Pipeline Actions (Hired, Contracted, etc.)
-Lead Center per-row actions have: Assign, Phone, Email, Resend Licensing, Delete, Ban. But it's missing the stage-change actions that exist in DashboardApplicants (Mark as Hired, Contracted, Terminate).
-
-**Fix**: Add a DropdownMenu with status-change actions (Contacted, Hired, Contracted, Terminate) to the Lead Center row actions for application-source leads.
-
-### 5. Dashboard Stats Not Filtering by DatePeriodSelector
-The `DatePeriodSelector` was added to Dashboard UI but `fetchDashboardData` doesn't use `dateRange` — it always queries all data.
-
-**Fix**: Pass `dateRange` into the query key and filter applications by `created_at` within the selected range.
-
-### 6. OnboardingPipelineCard Dashboard Accuracy
-The card shows Course Purchased, Test Scheduled, etc. based on `agents` table fields (`has_training_course`, `onboarding_stage`). It only queries agents invited by the current manager (non-admin). For admin it queries ALL agents. This is correct. However, it doesn't cross-reference with `applications` table license_progress data.
-
-**Fix**: Cross-reference with `applications.license_progress` to ensure counts include applicants at each stage (course_purchased, passed_test, waiting_on_license, etc.), not just agent records.
-
-### 7. Todoist Integration
-Todoist has an official REST API. This would require the user's Todoist API token as a secret, stored via the secrets tool. We can create an edge function that syncs planner blocks to/from Todoist tasks. However, Todoist is not available as a connector — the user would need to provide their API key manually.
-
-### 8. Google Calendar & Calendly Integration
-Google Calendar integration would require OAuth setup (not available as a connector). Calendly is already partially integrated (CalendlyEmbed component exists). For Google Calendar, we can generate `.ics` download links or `calendar.google.com` add-event URLs from scheduled interviews.
-
-**Fix**: Add "Add to Google Calendar" links on scheduled interviews in CalendarPage. For Calendly, it's already embedded — verify it's wired into scheduling flows.
+3. **Duplicate records** (screenshot 2) — Pierre Auguste appears twice with different emails (`pierreauguste71@yahoo.com` vs `pierre.auguste@placeholder.com`). These need merging.
 
 ---
 
-## Implementation Plan
+## Plan
 
-### Files to Modify
+### Task 1: Fix Numbers Entry — Add Error Logging + Fallback
+**Problem:** The `CompactProductionEntry` (used in Agent Portal and `/numbers`) does a direct `supabase.from("daily_production").upsert(...)` which fails silently if RLS blocks the insert.
 
-| File | Changes |
-|------|---------|
-| `src/pages/DashboardApplicants.tsx` | Add "My Directs" / "Full Team" toggle button in filters; filter by `assigned_agent_id === agentId` when "My Directs" active |
-| `src/pages/Dashboard.tsx` | Pass `dateRange` to query; add "My Directs" toggle for admin; filter stats by date range |
-| `src/pages/RecruiterDashboard.tsx` | Add "My Directs" filter toggle |
-| `src/pages/DashboardAgedLeads.tsx` | Add per-row QuickAssignMenu; add bulk assign to selection bar |
-| `src/pages/LeadCenter.tsx` | Add status-change actions (Hired, Contracted, Terminate) to per-row dropdown; fix avg leads/day precision |
-| `src/components/dashboard/OnboardingPipelineCard.tsx` | Cross-reference applications table for accurate license_progress counts |
+**Fix in `CompactProductionEntry.tsx`:**
+- Add explicit error logging with `toast.error` showing the actual error message
+- Add a fallback: if the direct upsert fails with a permission error, retry via the `log-production` edge function (which uses service role and always works)
+- This ensures numbers can always be saved regardless of RLS state
 
-### External Integrations
-- **Todoist**: Requires API key — will prompt user to provide it via secrets tool before implementing
-- **Google Calendar**: Add "Add to Google Calendar" URL links on CalendarPage interview entries (no API key needed, uses URL scheme)
-- **Calendly**: Already embedded via CalendlyEmbed component — verify wiring
+**Fix in `LogNumbers.tsx` (public page):**
+- Add console.log statements to the search and submit handlers so we can trace failures
+- The edge function path should already work — verify the function is deployed
 
-No database changes needed.
+### Task 2: Process XCEL Course Data
+From the screenshot, update lead records with course progress data for these students:
+- Paul Williams — 0% complete, NOT PREPARED
+- Danglo Walter — 14% complete, NOT PREPARED  
+- Jason Ballard — 3% complete, NOT PREPARED
+- Caleb Watkins — 22% complete, NOT PREPARED (Manager: Samuel James)
+- Brandon Davidson — 51% complete, NOT PREPARED (Manager: Sam)
+- JOSE COOPER — 3% complete, NOT PREPARED (Manager: JOSE)
+- Charles Reese — 100% complete, PLE 03/07, 75% sim, GETTING CLOSER (Manager: Kaeden Vaughns)
+- Ben Gillie — 100% complete, PLE 03/11, 8% prep, 25% sim, GETTING CLOSER
+- Jordan McClendon — 100% complete, 8% prep, 50% sim, GETTING CLOSER
+- Cooper Ubert — 100% complete, PLE 02/23, 33% prep, 50% sim, GETTING CLOSER (Manager: Samuel James)
+- Andre Sanatria — 100% complete, PLE 02/19, 100% prep, 0% sim, ALMOST THERE (Manager: Samuel)
+- Malik Tobias — 100% complete, PLE 02/14, 84% prep, 100% sim, PREPARED TO PASS (Manager: Samuel James — **this student is ready!**)
+- Demetric Fulton — 100% complete, PLE 02/18, N/A 58%, GETTING CLOSER
+- Yosiah Augustine — 45 hrs 52min, 17% complete, NOT PREPARED (Manager: KJ)
+
+**Life & Health section:**
+- Isaiah Nieves — 4% complete, NOT PREPARED (Manager: Samuel James)
+- Joshua Auguste — 0% complete, NOT PREPARED
+- Pierre Auguste — 100% complete, PLE 12/17/2025, 25% prep, 25% sim, GETTING CLOSER (Manager: Samuel James)
+
+**Action:** Update lead notes and `license_progress` status via a database query for each student. Mark students with 100% course completion as `finished_course`.
+
+### Task 3: Merge Duplicate Pierre Auguste
+Merge the two Pierre Auguste records:
+- Keep: `pierreauguste71@yahoo.com` / `4077545167` (the real contact info)
+- Remove: `pierre.auguste@placeholder.com` (placeholder email, no phone)
+- Preserve the "Licensed" status from the second record
+
+### Files to Edit
+| File | Change |
+|------|--------|
+| `src/components/dashboard/CompactProductionEntry.tsx` | Add edge function fallback on RLS failure |
+| `src/pages/LogNumbers.tsx` | Add debug logging to search/submit |
+
+### Database Actions
+- Update lead records with XCEL course progress data
+- Merge duplicate Pierre Auguste records
+- Verify `log-production` edge function is deployed and working
 

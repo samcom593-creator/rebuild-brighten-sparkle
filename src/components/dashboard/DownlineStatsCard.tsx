@@ -196,9 +196,6 @@ export function DownlineStatsCard() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between text-xs text-muted-foreground mb-3">
-          <span>{stats.agentCount} agent{stats.agentCount !== 1 ? 's' : ''}</span>
-        </div>
         
         <div className="grid grid-cols-3 gap-4">
           <div className="text-center">

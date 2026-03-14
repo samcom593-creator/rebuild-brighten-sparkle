@@ -1,42 +1,22 @@
 
 
-# Import March Production Data (65 Deals)
+# Remove Agent Count from Agency Performance + Rename AOP → ALP
 
-## What
-Import the full carrier report containing 65 deals across dates 03/01–03/13/2026 for 13 agents. The data was pasted twice — only unique deals will be processed.
+## Changes
 
-## How
-Invoke the existing `import-production-data` edge function with all 65 parsed deals. Use `skip_existing: false` so existing date records are **overwritten** with correct totals (prevents doubling while ensuring accuracy).
+### 1. Remove agent count from PersonalStatsCard agency summary
+In `src/components/dashboard/PersonalStatsCard.tsx` (line 384-388), remove the `{agencyStats.totalAgents} agents •` portion so it only shows Avg Close and Avg ALP.
 
-The existing `NAME_ALIASES` map already handles:
-- "Kaeden Vaughns" → "KJ Vaughns"  
-- "Mahmod Imran" → "Moody Imran"
+### 2. Remove agent count from DownlineStatsCard
+In `src/components/dashboard/DownlineStatsCard.tsx` (lines 199-201), remove the entire agent count row.
 
-All other agent names (Obiajulu Ifediora, Chukwudi Ifediora, Brennan Barker, Michael Kayembe, Aisha Kebbeh, Jacob Causer, Samuel James, Landon Boyd, Loren Lail) should match system profiles directly.
+### 3. Rename all UI-facing "AOP" labels → "ALP" across 6 files
+- `src/components/dashboard/PersonalStatsCard.tsx` — "Avg AOP" → "Avg ALP"
+- `src/components/dashboard/TeamSnapshotCard.tsx` — "Total AOP", "AOP Breakdown" → "Total ALP", "ALP Breakdown"
+- `src/components/dashboard/MobileLeaderboardCard.tsx` — "AOP" → "ALP"
+- `src/components/dashboard/LeaderboardTabs.tsx` — "AOP" → "ALP"
+- `src/components/dashboard/TeamPerformanceBreakdown.tsx` — "AOP" → "ALP"
+- `src/components/admin/AgentProfileEditor.tsx` — "AOP" → "ALP"
 
-## Agent Summary (65 deals)
-
-| Agent | Deals | Total ALP |
-|-------|-------|-----------|
-| Obiajulu Ifediora | 14 | ~$22,794 |
-| Chukwudi Ifediora | 10 | ~$16,456 |
-| Brennan Barker | 9 | ~$10,682 |
-| Mahmod Imran (Moody) | 9 | ~$12,098 |
-| Kaeden Vaughns (KJ) | 8 | ~$16,229 |
-| Michael Kayembe | 5 | ~$9,406 |
-| Samuel James | 3 | ~$10,289 |
-| Jacob Causer | 4 | ~$5,376 |
-| Aisha Kebbeh | 3 | ~$3,936 |
-| Loren Lail | 2 | ~$1,652 |
-| Landon Boyd | 1 | $408 |
-
-## XCEL Course Data
-The uploaded screenshot shows the same student progress data as the previous report — no new updates to process.
-
-## Technical Steps
-1. Call `import-production-data` edge function with 65 deal objects
-2. Verify all agents resolved (no missing agents)
-3. Report results
-
-No code file changes needed — this is a data operation only.
+No database column changes needed — `aop` column stays as-is, only UI labels change.
 

@@ -382,9 +382,8 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
               className="mt-4 pt-4 border-t border-border/50"
             >
               <p className="text-xs text-muted-foreground text-center">
-                Agency {periodLabels[timePeriod]}: <span className="font-medium text-foreground">{agencyStats.totalAgents}</span> agents • 
-                Avg Close: <span className={cn("font-medium", isAboveAvgClosing ? "text-emerald-500" : "text-foreground")}>{agencyStats.avgClosingRate.toFixed(0)}%</span> • 
-                Avg AOP: <span className="font-medium text-foreground">${Math.round(agencyStats.avgAlp).toLocaleString()}</span>
+                Agency {periodLabels[timePeriod]}: Avg Close: <span className={cn("font-medium", isAboveAvgClosing ? "text-emerald-500" : "text-foreground")}>{agencyStats.avgClosingRate.toFixed(0)}%</span> • 
+                Avg ALP: <span className="font-medium text-foreground">${Math.round(agencyStats.avgAlp).toLocaleString()}</span>
               </p>
             </motion.div>
         )}

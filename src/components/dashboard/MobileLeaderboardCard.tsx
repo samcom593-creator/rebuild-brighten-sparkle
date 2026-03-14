@@ -167,7 +167,7 @@ export function MobileLeaderboardCard({ entry, index, onClick, leaders }: Mobile
           )}>
             ${entry.alp >= 1000 ? `${(entry.alp / 1000).toFixed(1)}k` : entry.alp.toLocaleString()}
           </div>
-          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">AOP</div>
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wide">ALP</div>
         </div>
       </div>
     </motion.div>

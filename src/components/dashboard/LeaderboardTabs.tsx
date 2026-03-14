@@ -464,7 +464,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-popover">
-                    <SelectItem value="alp" className="text-xs">By AOP</SelectItem>
+                    <SelectItem value="alp" className="text-xs">By ALP</SelectItem>
                     <SelectItem value="presentations" className="text-xs">By Pres</SelectItem>
                     <SelectItem value="closingRate" className="text-xs">By Close %</SelectItem>
                     <SelectItem value="deals" className="text-xs">By Deals</SelectItem>

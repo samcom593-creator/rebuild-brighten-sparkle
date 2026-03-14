@@ -590,7 +590,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                       <div className={cn("col-span-1 text-center", sortBy === "deals" && "text-primary")}>Closes</div>
                       <div className="col-span-1 text-center">Refs</div>
                       <div className={cn("col-span-1 text-center whitespace-nowrap", sortBy === "closingRate" && "text-primary")}>Close %</div>
-                      <div className={cn("col-span-2 text-right", sortBy === "alp" && "text-primary")}>AOP</div>
+                      <div className={cn("col-span-2 text-right", sortBy === "alp" && "text-primary")}>ALP</div>
                     </div>
 
                     {/* Desktop Leaderboard Rows */}

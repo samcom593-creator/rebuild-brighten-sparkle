@@ -30,10 +30,15 @@ const getEmailHtml = (agentName: string, type: EmailType, percentComplete: numbe
           You're at <strong>${percentComplete}%</strong> right now. Let's push through and get you ready to start selling!
         </p>
         <div style="margin: 30px 0; text-align: center;">
-          <a href="https://rebuild-brighten-sparkle.lovable.app/onboarding" 
-             style="background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
-            Continue My Training →
-          </a>
+          <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
+            <tr>
+              <td align="center" bgcolor="#6366f1" style="border-radius:8px;">
+                <a href="https://rebuild-brighten-sparkle.lovable.app/onboarding" style="display:inline-block;color:#ffffff;padding:14px 28px;text-decoration:none;font-weight:600;">
+                  Continue My Training →
+                </a>
+              </td>
+            </tr>
+          </table>
         </div>
         <p style="color: #666; font-size: 14px;">
           The faster you finish, the sooner you can start earning. We're excited to have you on the team!

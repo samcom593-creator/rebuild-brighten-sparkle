@@ -91,9 +91,15 @@ const handler = async (req: Request): Promise<Response> => {
             <p style="font-size: 16px; color: #333; margin-bottom: 16px;">Hey ${firstName},</p>
             <p style="font-size: 14px; color: #555; margin-bottom: 24px;">Here's your new login link. Click below to access your portal:</p>
             <div style="text-align: center; margin-bottom: 24px;">
-              <a href="${magicLink}" style="display: inline-block; background: linear-gradient(135deg, #7c3aed, #a78bfa); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
-                Sign In to Portal
-              </a>
+              <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
+                <tr>
+                  <td align="center" bgcolor="#7c3aed" style="border-radius:8px;">
+                    <a href="${magicLink}" style="display:inline-block;color:#ffffff;padding:14px 32px;text-decoration:none;font-weight:600;font-size:16px;">
+                      Sign In to Portal
+                    </a>
+                  </td>
+                </tr>
+              </table>
             </div>
             <p style="font-size: 12px; color: #999; text-align: center;">This link expires in 24 hours.</p>
             <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />

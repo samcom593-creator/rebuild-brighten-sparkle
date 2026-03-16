@@ -19,6 +19,8 @@ function formatPhoneDisplay(phone: string): string {
    Instagram,
    ChevronRight,
    Loader2,
+   Copy,
+   Check,
  } from "lucide-react";
  import { Button } from "@/components/ui/button";
  import { GlassCard } from "@/components/ui/glass-card";
@@ -58,15 +60,34 @@ function formatPhoneDisplay(phone: string): string {
    { id: "no_pickup", label: "No Pickup", icon: PhoneOff, color: "text-amber-500 border-amber-500/30 hover:bg-amber-500/10" },
  ];
  
- export function CallModeInterface({
-   isOpen,
-   onClose,
-   licenseFilter,
-   managerId,
-   isAdmin,
-   onLeadProcessed,
- }: CallModeInterfaceProps) {
-   const [leads, setLeads] = useState<Lead[]>([]);
+  function CallModeCopyButton({ phone }: { phone: string }) {
+    const [copied, setCopied] = useState(false);
+    const handleCopy = () => {
+      navigator.clipboard.writeText(phone.replace(/\D/g, ""));
+      setCopied(true);
+      toast.success("Phone number copied!");
+      setTimeout(() => setCopied(false), 2000);
+    };
+    return (
+      <button
+        onClick={handleCopy}
+        className="p-2 rounded-lg bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+        title="Copy phone number"
+      >
+        {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+      </button>
+    );
+  }
+
+  export function CallModeInterface({
+    isOpen,
+    onClose,
+    licenseFilter,
+    managerId,
+    isAdmin,
+    onLeadProcessed,
+  }: CallModeInterfaceProps) {
+    const [leads, setLeads] = useState<Lead[]>([]);
    const [currentIndex, setCurrentIndex] = useState(0);
    const [loading, setLoading] = useState(true);
    const [processing, setProcessing] = useState(false);
@@ -282,18 +303,21 @@ function formatPhoneDisplay(phone: string): string {
                        <span>{currentLead.email}</span>
                      </a>
  
-                     {currentLead.phone && (
-                       <button
-                         onClick={handleCall}
-                         className="flex items-center gap-3 text-muted-foreground hover:text-foreground transition-colors w-full text-left"
-                       >
-                         <Phone className="h-5 w-5 text-green-500" />
-                         <span className="font-medium">{formatPhoneDisplay(currentLead.phone)}</span>
-                         <span className="ml-auto text-xs bg-green-500/20 text-green-500 px-2 py-1 rounded">
-                           Tap to Call
-                         </span>
-                       </button>
-                     )}
+                      {currentLead.phone && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={handleCall}
+                            className="flex items-center gap-3 text-muted-foreground hover:text-foreground transition-colors flex-1 text-left"
+                          >
+                            <Phone className="h-5 w-5 text-green-500" />
+                            <span className="font-medium">{formatPhoneDisplay(currentLead.phone)}</span>
+                            <span className="ml-auto text-xs bg-green-500/20 text-green-500 px-2 py-1 rounded">
+                              Tap to Call
+                            </span>
+                          </button>
+                          <CallModeCopyButton phone={currentLead.phone} />
+                        </div>
+                      )}
  
                      {currentLead.instagramHandle && (
                        <a

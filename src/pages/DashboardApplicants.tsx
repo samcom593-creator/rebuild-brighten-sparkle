@@ -1117,6 +1117,7 @@ export default function DashboardApplicants() {
                                       recipientName={`${app.first_name} ${app.last_name}`}
                                       licenseStatus={app.license_status as "licensed" | "unlicensed" | "pending"}
                                       recipientPhone={app.phone || undefined}
+                                      agentId={app.assigned_agent_id || undefined}
                                     />
                                   )}
                                   {isAdmin && (

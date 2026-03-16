@@ -87,7 +87,7 @@ export function ResendLicensingButton({
             onClick={handleSend}
             disabled={isSending}
             className={cn(
-              "h-8 w-8",
+              "h-8 w-8 relative z-10",
               justSent
                 ? "border-green-500/50 text-green-400 hover:text-green-300"
                 : "border-green-500/30 text-green-400 hover:text-green-300 hover:border-green-500/50"

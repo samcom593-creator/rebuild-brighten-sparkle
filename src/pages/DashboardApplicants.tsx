@@ -746,6 +746,7 @@ export default function DashboardApplicants() {
                       recipientEmail={app.email}
                       recipientName={app.first_name}
                       licenseStatus={app.license_status}
+                      agentId={app.assigned_agent_id || undefined}
                     />
                   )}
 

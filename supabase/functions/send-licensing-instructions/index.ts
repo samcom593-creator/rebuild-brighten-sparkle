@@ -54,9 +54,11 @@ function buildStepCard(
         </p>
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
           <tr>
-            <td align="center">
-              <a href="${linkUrl}" style="display: block; background: ${accentColor}; color: #ffffff; text-decoration: none; padding: 14px 24px; border-radius: 8px; font-size: 16px; font-weight: 600; text-align: center; max-width: 100%; box-sizing: border-box; word-break: break-word;" target="_blank">
-                ${buttonText}
+            <td align="center" bgcolor="${accentColor}" style="background-color: ${accentColor}; border-radius: 8px;">
+              <a href="${linkUrl}" style="display: inline-block; width: 100%; color: #ffffff; text-decoration: none; padding: 14px 24px; font-size: 16px; font-weight: 600; text-align: center; box-sizing: border-box; word-break: break-word; mso-padding-alt: 0;" target="_blank">
+                <!--[if mso]><i style="mso-font-width:300%;mso-text-raise:30pt">&nbsp;</i><![endif]-->
+                <span style="mso-text-raise:15pt;">${buttonText}</span>
+                <!--[if mso]><i style="mso-font-width:300%">&nbsp;</i><![endif]-->
               </a>
             </td>
           </tr>

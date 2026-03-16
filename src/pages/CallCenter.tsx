@@ -329,9 +329,9 @@ export default function CallCenter() {
       return;
     }
 
-    // For hired action on unlicensed leads, show confirmation
-    if (actionId === "hired" && currentLead.licenseStatus !== "licensed") {
-      setShowLicenseConfirm(true);
+    // For hired action, always show the hire confirm modal
+    if (actionId === "hired") {
+      setShowHireConfirm(true);
       return;
     }
 

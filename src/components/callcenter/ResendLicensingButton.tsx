@@ -17,6 +17,7 @@ interface ResendLicensingButtonProps {
   licenseStatus: "licensed" | "unlicensed" | "pending";
   managerEmail?: string;
   recipientPhone?: string;
+  agentId?: string;
 }
 
 export function ResendLicensingButton({

@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { ContractedModal } from "@/components/dashboard/ContractedModal";
 import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration";
-import { LicenseConfirmModal } from "@/components/dashboard/LicenseConfirmModal";
+import { HireConfirmModal } from "@/components/callcenter/HireConfirmModal";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   CallCenterFilters,

@@ -310,10 +310,16 @@ const handler = async (req: Request): Promise<Response> => {
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
                   <td align="center" style="padding: 20px 0;">
-                    <a href="https://calendly.com/apexfinancialmarketing/apex-interview" 
-                       style="display: block; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: #ffffff; text-decoration: none; padding: 16px 32px; border-radius: 8px; font-size: 18px; font-weight: 600; text-align: center; max-width: 100%; box-sizing: border-box;" target="_blank">
-                      📞 Need Help? Schedule a Call
-                    </a>
+                    <table role="presentation" cellspacing="0" cellpadding="0" width="100%">
+                      <tr>
+                        <td align="center" bgcolor="#f093fb" style="background-color: #f093fb; border-radius: 8px;">
+                          <a href="https://calendly.com/apexfinancialmarketing/apex-interview" 
+                             style="display: inline-block; width: 100%; color: #ffffff; text-decoration: none; padding: 16px 32px; font-size: 18px; font-weight: 600; text-align: center; box-sizing: border-box;" target="_blank">
+                            📞 Need Help? Schedule a Call
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
                   </td>
                 </tr>
               </table>

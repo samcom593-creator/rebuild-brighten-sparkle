@@ -105,10 +105,15 @@ const getEmailHtml = (firstName: string, trackingClickUrl: string, trackingPixel
       
       <!-- Primary CTA -->
       <div style="text-align:center;margin:32px 0 20px 0;">
-        <a href="${trackingClickUrl}" 
-           style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#ffffff;padding:16px 32px;text-decoration:none;border-radius:12px;font-weight:bold;font-size:16px;box-shadow:0 6px 24px rgba(20,184,166,0.35);letter-spacing:0.5px;max-width:100%;box-sizing:border-box;">
-          REAPPLY NOW →
-        </a>
+        <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
+          <tr>
+            <td align="center" bgcolor="#14b8a6" style="border-radius:12px;">
+              <a href="${trackingClickUrl}" style="display:inline-block;color:#ffffff;padding:16px 32px;text-decoration:none;font-weight:bold;font-size:16px;letter-spacing:0.5px;">
+                REAPPLY NOW →
+              </a>
+            </td>
+          </tr>
+        </table>
       </div>
       
       <p style="font-size:14px;color:#f59e0b;text-align:center;margin:20px 0 0 0;font-weight:600;">

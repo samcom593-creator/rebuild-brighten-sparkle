@@ -104,7 +104,13 @@ serve(async (req) => {
       </div>
       ${newStage === "evaluated" ? `
       <div style="margin-top: 24px; text-align: center;">
-        <a href="https://rebuild-brighten-sparkle.lovable.app/agent-portal" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; font-size: 16px; font-weight: bold; padding: 14px 32px; border-radius: 12px; text-decoration: none;">🎯 Access Your Portal</a>
+        <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
+          <tr>
+            <td align="center" bgcolor="#10b981" style="border-radius:12px;">
+              <a href="https://rebuild-brighten-sparkle.lovable.app/agent-portal" style="display:inline-block;color:#ffffff;font-size:16px;font-weight:bold;padding:14px 32px;text-decoration:none;">🎯 Access Your Portal</a>
+            </td>
+          </tr>
+        </table>
       </div>` : ""}
       <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #333; text-align: center;">
         <p style="color: #666; font-size: 12px; margin: 0;">Keep pushing forward! The Apex Financial team is here to support you.</p>

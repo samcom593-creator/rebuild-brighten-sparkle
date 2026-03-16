@@ -102,10 +102,15 @@ const handler = async (req: Request): Promise<Response> => {
       </p>
       <div style="background:rgba(20,184,166,0.1);border-radius:8px;padding:20px;margin:24px 0;text-align:center;">
         <p style="font-size:14px;color:#14b8a6;margin:0 0 12px 0;font-weight:bold;">YOUR NEXT STEP:</p>
-        <a href="${crmSetupLink}" 
-           style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#ffffff;padding:16px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;">
-          Set Up Your CRM Access
-        </a>
+        <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
+          <tr>
+            <td align="center" bgcolor="#14b8a6" style="border-radius:8px;">
+              <a href="${crmSetupLink}" style="display:inline-block;color:#ffffff;padding:16px 32px;text-decoration:none;font-weight:bold;font-size:16px;">
+                Set Up Your CRM Access
+              </a>
+            </td>
+          </tr>
+        </table>
       </div>
       <div style="border-left:3px solid #14b8a6;padding-left:16px;margin:24px 0;">
         <p style="font-size:14px;color:#9ca3af;margin:0;">

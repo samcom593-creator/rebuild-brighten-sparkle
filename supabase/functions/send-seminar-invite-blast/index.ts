@@ -81,9 +81,15 @@ function buildSeminarEmail(firstName: string, registrationUrl: string, whatsappL
    <!-- WhatsApp CTA -->
    <table width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0;">
    <tr><td align="center">
-     <a href="${whatsappLink}" style="display:inline-block;background:linear-gradient(135deg,#25D366,#128C7E);color:#ffffff;text-decoration:none;padding:14px 36px;border-radius:12px;font-size:16px;font-weight:700;">
-       💬 Join Our WhatsApp Group →
-     </a>
+     <table role="presentation" cellspacing="0" cellpadding="0">
+       <tr>
+         <td bgcolor="#25D366" style="border-radius:12px;">
+           <a href="${whatsappLink}" style="display:inline-block;color:#ffffff;text-decoration:none;padding:14px 36px;font-size:16px;font-weight:700;">
+             💬 Join Our WhatsApp Group →
+           </a>
+         </td>
+       </tr>
+     </table>
    </td></tr>
    <tr><td align="center" style="padding-top:8px;">
      <p style="color:#94a3b8;font-size:13px;margin:0;">Connect with the team, get daily updates & support</p>

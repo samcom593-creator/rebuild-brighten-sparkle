@@ -173,9 +173,15 @@ const handler = async (req: Request): Promise<Response> => {
                 </div>
                 
                 <div style="text-align: center; margin: 32px 0;">
-                  <a href="${courseMagicLink}" style="display: inline-block; background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); color: #0a0f1a; text-decoration: none; padding: 18px 48px; max-width: 100%; box-sizing: border-box; border-radius: 8px; font-weight: bold; font-size: 18px;">
-                    🎓 Start My Course →
-                  </a>
+                  <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
+                    <tr>
+                      <td align="center" bgcolor="#14b8a6" style="border-radius:8px;">
+                        <a href="${courseMagicLink}" style="display:inline-block;color:#0a0f1a;text-decoration:none;padding:18px 48px;font-weight:bold;font-size:18px;">
+                          🎓 Start My Course →
+                        </a>
+                      </td>
+                    </tr>
+                  </table>
                 </div>
                 
                 <p style="color: #64748b; font-size: 12px; text-align: center; margin: 0 0 24px 0;">

@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { ContractedModal } from "@/components/dashboard/ContractedModal";
 import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration";
-import { LicenseConfirmModal } from "@/components/dashboard/LicenseConfirmModal";
+import { HireConfirmModal } from "@/components/callcenter/HireConfirmModal";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   CallCenterFilters,
@@ -65,7 +65,7 @@ export default function CallCenter() {
   const [currentTranscription, setCurrentTranscription] = useState("");
   const [showContractedModal, setShowContractedModal] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
-  const [showLicenseConfirm, setShowLicenseConfirm] = useState(false);
+  const [showHireConfirm, setShowHireConfirm] = useState(false);
 
   // Filters
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
@@ -329,9 +329,9 @@ export default function CallCenter() {
       return;
     }
 
-    // For hired action on unlicensed leads, show confirmation
-    if (actionId === "hired" && currentLead.licenseStatus !== "licensed") {
-      setShowLicenseConfirm(true);
+    // For hired action, always show the hire confirm modal
+    if (actionId === "hired") {
+      setShowHireConfirm(true);
       return;
     }
 
@@ -456,10 +456,32 @@ export default function CallCenter() {
     }
   }, [currentLead, leads.length, currentTranscription]);
 
-  const handleLicenseConfirm = useCallback(() => {
-    setShowLicenseConfirm(false);
-    executeAction("hired");
-  }, [executeAction]);
+  const handleHireConfirm = useCallback(async (boughtCourse: boolean) => {
+    setShowHireConfirm(false);
+    await executeAction("hired");
+
+    // Log course purchase activity if checked
+    if (boughtCourse && currentLead) {
+      const { logLeadActivity } = await import("@/lib/logLeadActivity");
+      logLeadActivity({
+        leadId: currentLead.id,
+        type: "course_purchased_on_call",
+        title: "Bought course on the phone",
+        details: { source: currentLead.source },
+      });
+
+      // Also update the has_training_course flag if it's an application-linked agent
+      if (currentLead.source === "applications") {
+        supabase
+          .from("applications")
+          .update({ started_training: true })
+          .eq("id", currentLead.id)
+          .then(({ error }) => {
+            if (error) console.warn("Failed to mark started_training:", error);
+          });
+      }
+    }
+  }, [executeAction, currentLead]);
 
   const handleContractedSuccess = useCallback(() => {
     // Remove lead from list after successful contracting
@@ -803,13 +825,14 @@ export default function CallCenter() {
         />
       )}
 
-      {/* License Confirmation Modal */}
+      {/* Hire Confirmation Modal */}
       {currentLead && (
-        <LicenseConfirmModal
-          open={showLicenseConfirm}
-          onOpenChange={setShowLicenseConfirm}
-          onConfirm={handleLicenseConfirm}
+        <HireConfirmModal
+          open={showHireConfirm}
+          onOpenChange={setShowHireConfirm}
+          onConfirm={handleHireConfirm}
           applicantName={`${currentLead.firstName} ${currentLead.lastName || ""}`.trim()}
+          isUnlicensed={currentLead.licenseStatus !== "licensed"}
         />
       )}
 

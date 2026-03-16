@@ -31,7 +31,9 @@ export function ResendLicensingButton({
   const [isSending, setIsSending] = useState(false);
   const [justSent, setJustSent] = useState(false);
 
-  const handleSend = async () => {
+  const handleSend = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
     setIsSending(true);
     try {
       const { data, error } = await supabase.functions.invoke(
@@ -43,6 +45,7 @@ export function ResendLicensingButton({
             licenseStatus: licenseStatus,
             managerEmail: managerEmail,
             phone: recipientPhone,
+            agentId: agentId,
           },
         }
       );

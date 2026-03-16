@@ -461,9 +461,15 @@ const handler = async (req: Request): Promise<Response> => {
                   <tbody>${checksTable}</tbody>
                 </table>
                 <div style="text-align:center;margin-top:24px;">
-                  <a href="${DASHBOARD_URL}/dashboard/admin" style="display:inline-block;background:linear-gradient(135deg,#dc2626,#991b1b);color:white;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;font-size:14px;">
-                    Fix Now →
-                  </a>
+                  <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
+                    <tr>
+                      <td align="center" bgcolor="#dc2626" style="border-radius:8px;">
+                        <a href="${DASHBOARD_URL}/dashboard/admin" style="display:inline-block;color:#ffffff;text-decoration:none;padding:12px 24px;font-weight:600;font-size:14px;">
+                          Fix Now →
+                        </a>
+                      </td>
+                    </tr>
+                  </table>
                 </div>
                 <p style="color:#9ca3af;font-size:11px;text-align:center;margin-top:16px;">
                   This alert has a 1-hour cooldown. Health check runs every hour.

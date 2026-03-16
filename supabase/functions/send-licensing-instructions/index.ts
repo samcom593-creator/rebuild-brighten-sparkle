@@ -54,9 +54,11 @@ function buildStepCard(
         </p>
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
           <tr>
-            <td align="center">
-              <a href="${linkUrl}" style="display: block; background: ${accentColor}; color: #ffffff; text-decoration: none; padding: 14px 24px; border-radius: 8px; font-size: 16px; font-weight: 600; text-align: center; max-width: 100%; box-sizing: border-box; word-break: break-word;" target="_blank">
-                ${buttonText}
+            <td align="center" bgcolor="${accentColor}" style="background-color: ${accentColor}; border-radius: 8px;">
+              <a href="${linkUrl}" style="display: inline-block; width: 100%; color: #ffffff; text-decoration: none; padding: 14px 24px; font-size: 16px; font-weight: 600; text-align: center; box-sizing: border-box; word-break: break-word; mso-padding-alt: 0;" target="_blank">
+                <!--[if mso]><i style="mso-font-width:300%;mso-text-raise:30pt">&nbsp;</i><![endif]-->
+                <span style="mso-text-raise:15pt;">${buttonText}</span>
+                <!--[if mso]><i style="mso-font-width:300%">&nbsp;</i><![endif]-->
               </a>
             </td>
           </tr>
@@ -150,10 +152,16 @@ const handler = async (req: Request): Promise<Response> => {
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
                   <td align="center" style="padding: 20px 0;">
-                    <a href="https://calendly.com/apexfinancialmarketing/apex-financial-onboarding" 
-                       style="display: block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; padding: 16px 32px; border-radius: 8px; font-size: 18px; font-weight: 600; text-align: center; max-width: 100%; box-sizing: border-box;" target="_blank">
-                      📅 Schedule Your Onboarding Call
-                    </a>
+                    <table role="presentation" cellspacing="0" cellpadding="0" width="100%">
+                      <tr>
+                        <td align="center" bgcolor="#667eea" style="background-color: #667eea; border-radius: 8px;">
+                          <a href="https://calendly.com/apexfinancialmarketing/apex-financial-onboarding" 
+                             style="display: inline-block; width: 100%; color: #ffffff; text-decoration: none; padding: 16px 32px; font-size: 18px; font-weight: 600; text-align: center; box-sizing: border-box;" target="_blank">
+                            📅 Schedule Your Onboarding Call
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
                   </td>
                 </tr>
               </table>
@@ -186,8 +194,8 @@ const handler = async (req: Request): Promise<Response> => {
                     </p>
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                       <tr>
-                        <td align="center">
-                          <a href="https://www.youtube.com/watch?v=fKKaodfYPnk" style="display: block; background: #667eea; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 16px; font-weight: 600; text-align: center; max-width: 100%; box-sizing: border-box;" target="_blank">
+                        <td align="center" bgcolor="#667eea" style="background-color: #667eea; border-radius: 8px;">
+                          <a href="https://www.youtube.com/watch?v=fKKaodfYPnk" style="display: inline-block; width: 100%; color: #ffffff; text-decoration: none; padding: 12px 24px; font-size: 16px; font-weight: 600; text-align: center; box-sizing: border-box;" target="_blank">
                             🎬 Watch Agent Success Testimonials
                           </a>
                         </td>
@@ -302,10 +310,16 @@ const handler = async (req: Request): Promise<Response> => {
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
                   <td align="center" style="padding: 20px 0;">
-                    <a href="https://calendly.com/apexfinancialmarketing/apex-interview" 
-                       style="display: block; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: #ffffff; text-decoration: none; padding: 16px 32px; border-radius: 8px; font-size: 18px; font-weight: 600; text-align: center; max-width: 100%; box-sizing: border-box;" target="_blank">
-                      📞 Need Help? Schedule a Call
-                    </a>
+                    <table role="presentation" cellspacing="0" cellpadding="0" width="100%">
+                      <tr>
+                        <td align="center" bgcolor="#f093fb" style="background-color: #f093fb; border-radius: 8px;">
+                          <a href="https://calendly.com/apexfinancialmarketing/apex-interview" 
+                             style="display: inline-block; width: 100%; color: #ffffff; text-decoration: none; padding: 16px 32px; font-size: 18px; font-weight: 600; text-align: center; box-sizing: border-box;" target="_blank">
+                            📞 Need Help? Schedule a Call
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
                   </td>
                 </tr>
               </table>

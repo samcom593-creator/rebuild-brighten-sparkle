@@ -19,6 +19,8 @@ function formatPhoneDisplay(phone: string): string {
    Instagram,
    ChevronRight,
    Loader2,
+   Copy,
+   Check,
  } from "lucide-react";
  import { Button } from "@/components/ui/button";
  import { GlassCard } from "@/components/ui/glass-card";

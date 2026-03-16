@@ -585,7 +585,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                     <div className="grid grid-cols-12 gap-1 px-2 py-2 text-[10px] font-semibold text-muted-foreground border-b border-border/50 mb-1.5">
                       <div className="col-span-1">#</div>
                       <div className="col-span-3">Agent</div>
-                      <div className="col-span-1 text-center">Pages</div>
+                      <div className="col-span-1 text-center">Hours</div>
                       <div className={cn("col-span-1 text-center", sortBy === "presentations" && "text-primary")}>Pres</div>
                       <div className={cn("col-span-1 text-center", sortBy === "deals" && "text-primary")}>Closes</div>
                       <div className="col-span-1 text-center">Refs</div>

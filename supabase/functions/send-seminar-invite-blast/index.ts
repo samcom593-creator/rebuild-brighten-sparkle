@@ -61,9 +61,15 @@ function buildSeminarEmail(firstName: string, registrationUrl: string, whatsappL
   <!-- CTA Button -->
   <table width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0;">
   <tr><td align="center">
-    <a href="${registrationUrl}" style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#ffffff;text-decoration:none;padding:16px 40px;border-radius:12px;font-size:18px;font-weight:700;letter-spacing:0.5px;">
-      Register Now — It's Free →
-    </a>
+    <table role="presentation" cellspacing="0" cellpadding="0">
+      <tr>
+        <td bgcolor="#6366f1" style="border-radius:12px;">
+          <a href="${registrationUrl}" style="display:inline-block;color:#ffffff;text-decoration:none;padding:16px 40px;font-size:18px;font-weight:700;letter-spacing:0.5px;">
+            Register Now — It's Free →
+          </a>
+        </td>
+      </tr>
+    </table>
   </td></tr>
   </table>
 

@@ -89,9 +89,15 @@ serve(async (req: Request) => {
     Fill this out every day so your manager knows exactly how to help you.
   </p>
   <div style="text-align:center;margin:24px 0;">
-    <a href="${checkinUrl}" style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0d9488);color:#0a0f1a;text-decoration:none;padding:16px 40px;border-radius:8px;font-weight:bold;font-size:16px;">
-      Complete My Check-In →
-    </a>
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
+      <tr>
+        <td align="center" bgcolor="#14b8a6" style="border-radius:8px;">
+          <a href="${checkinUrl}" style="display:inline-block;color:#0a0f1a;text-decoration:none;padding:16px 40px;font-weight:bold;font-size:16px;">
+            Complete My Check-In →
+          </a>
+        </td>
+      </tr>
+    </table>
   </div>
   ${whatsappLink ? `
   <div style="background:rgba(37,211,102,0.1);border:1px solid rgba(37,211,102,0.3);border-radius:8px;padding:16px;margin:20px 0;text-align:center;">

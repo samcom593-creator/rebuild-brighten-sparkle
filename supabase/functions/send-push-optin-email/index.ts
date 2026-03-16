@@ -53,10 +53,15 @@ const handler = async (req: Request): Promise<Response> => {
                   new training resources, team announcements, and opportunities delivered straight to your phone.
                 </p>
                 <div style="text-align: center; margin: 30px 0;">
-                  <a href="https://rebuild-brighten-sparkle.lovable.app/dashboard/settings" 
-                     style="display: inline-block; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; text-decoration: none; padding: 16px 40px; border-radius: 10px; font-weight: 700; font-size: 18px;">
-                    Enable Notifications →
-                  </a>
+                  <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
+                    <tr>
+                      <td align="center" bgcolor="#3b82f6" style="border-radius:10px;">
+                        <a href="https://rebuild-brighten-sparkle.lovable.app/dashboard/settings" style="display:inline-block;color:#ffffff;text-decoration:none;padding:16px 40px;font-weight:700;font-size:18px;">
+                          Enable Notifications →
+                        </a>
+                      </td>
+                    </tr>
+                  </table>
                 </div>
                 <p style="font-size: 14px; color: #6b7280;">
                   Tap the button above to install the Apex Financial app on your phone and enable instant notifications. 

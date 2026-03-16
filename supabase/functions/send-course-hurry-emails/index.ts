@@ -60,10 +60,15 @@ const getEmailHtml = (agentName: string, type: EmailType, percentComplete: numbe
           The top performers on our team finished their training quickly and jumped right into the action. You've got this!
         </p>
         <div style="margin: 30px 0; text-align: center;">
-          <a href="https://rebuild-brighten-sparkle.lovable.app/onboarding" 
-             style="background: linear-gradient(135deg, #f59e0b, #ef4444); color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
-            Finish My Course Now →
-          </a>
+          <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
+            <tr>
+              <td align="center" bgcolor="#f59e0b" style="border-radius:8px;">
+                <a href="https://rebuild-brighten-sparkle.lovable.app/onboarding" style="display:inline-block;color:#ffffff;padding:14px 28px;text-decoration:none;font-weight:600;">
+                  Finish My Course Now →
+                </a>
+              </td>
+            </tr>
+          </table>
         </div>
         <p style="color: #666; font-size: 14px;">
           Every hour you delay is money left on the table. Let's get you selling today!

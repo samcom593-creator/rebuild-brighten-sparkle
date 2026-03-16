@@ -148,9 +148,15 @@ serve(async (req) => {
       
       <!-- CTA Button -->
       <div style="text-align:center;margin:32px 0;">
-        <a href="${portalUrl}" style="display:inline-block;background:linear-gradient(135deg,#10b981 0%,#059669 100%);color:#fff;font-size:18px;font-weight:700;text-decoration:none;padding:16px 40px;border-radius:12px;box-shadow:0 4px 14px rgba(16,185,129,0.4);">
-          Set My Goals →
-        </a>
+        <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
+          <tr>
+            <td align="center" bgcolor="#10b981" style="border-radius:12px;">
+              <a href="${portalUrl}" style="display:inline-block;color:#ffffff;font-size:18px;font-weight:700;text-decoration:none;padding:16px 40px;">
+                Set My Goals →
+              </a>
+            </td>
+          </tr>
+        </table>
       </div>
       
       <!-- Instructions -->

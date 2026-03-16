@@ -213,9 +213,15 @@ const handler = async (req: Request): Promise<Response> => {
                 Log in to your dashboard to view this lead and follow up.
               </p>
               <div style="text-align: center; margin-top: 30px;">
-                <a href="https://rebuild-brighten-sparkle.lovable.app/dashboard/applicants?lead=${applicationId}" style="display: inline-block; background: linear-gradient(135deg, #d4af37 0%, #f4d03f 100%); color: #0a0a0a; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-                  📞 View Lead & Call Now →
-                </a>
+                <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
+                  <tr>
+                    <td align="center" bgcolor="#d4af37" style="border-radius:8px;">
+                      <a href="https://rebuild-brighten-sparkle.lovable.app/dashboard/applicants?lead=${applicationId}" style="display:inline-block;color:#0a0a0a;text-decoration:none;padding:14px 28px;font-weight:600;font-size:16px;">
+                        📞 View Lead & Call Now →
+                      </a>
+                    </td>
+                  </tr>
+                </table>
               </div>
             </div>
             <div style="background: rgba(0, 0, 0, 0.3); padding: 20px; text-align: center; border-top: 1px solid rgba(212, 175, 55, 0.2);">

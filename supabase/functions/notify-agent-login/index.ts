@@ -119,7 +119,7 @@ const handler = async (req: Request): Promise<Response> => {
           .info-value { font-weight: 600; color: #1e293b; }
           .warning { background: #fef3c7; border: 1px solid #fbbf24; border-radius: 12px; padding: 16px; margin: 20px 0; }
           .warning-text { color: #92400e; font-size: 14px; margin: 0; }
-          .cta { display: block; background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); color: white !important; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: bold; text-align: center; margin-top: 24px; }
+          .cta { display: block; background: #3b82f6; color: white !important; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: bold; text-align: center; margin-top: 24px; }
           .footer { text-align: center; margin-top: 24px; color: #6b7280; font-size: 12px; }
         </style>
       </head>

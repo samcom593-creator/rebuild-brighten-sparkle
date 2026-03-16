@@ -825,13 +825,14 @@ export default function CallCenter() {
         />
       )}
 
-      {/* License Confirmation Modal */}
+      {/* Hire Confirmation Modal */}
       {currentLead && (
-        <LicenseConfirmModal
-          open={showLicenseConfirm}
-          onOpenChange={setShowLicenseConfirm}
-          onConfirm={handleLicenseConfirm}
+        <HireConfirmModal
+          open={showHireConfirm}
+          onOpenChange={setShowHireConfirm}
+          onConfirm={handleHireConfirm}
           applicantName={`${currentLead.firstName} ${currentLead.lastName || ""}`.trim()}
+          isUnlicensed={currentLead.licenseStatus !== "licensed"}
         />
       )}
 

@@ -184,12 +184,15 @@ async function sendUnlicensedFollowup2(app: {
             </p>
             
             <div style="text-align: center; margin: 25px 0;">
-              <a href="${LICENSED_CALENDLY}" 
-                 style="display: inline-block; background: linear-gradient(135deg, #059669, #047857); color: white; 
-                         padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;
-                         box-shadow: 0 4px 14px rgba(5, 150, 105, 0.4); max-width:100%; box-sizing:border-box;">
-                 📅 I'm Licensed - Schedule My Call!
-              </a>
+              <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
+                <tr>
+                  <td align="center" bgcolor="#059669" style="border-radius:8px;">
+                    <a href="${LICENSED_CALENDLY}" style="display:inline-block;color:#ffffff;padding:16px 32px;text-decoration:none;font-weight:bold;font-size:16px;">
+                      📅 I'm Licensed - Schedule My Call!
+                    </a>
+                  </td>
+                </tr>
+              </table>
             </div>
 
             <div style="border-top: 1px solid #e5e7eb; margin: 25px 0; padding-top: 25px;">

@@ -308,7 +308,7 @@ export default function LogNumbers() {
 
   const productionFields = [
     { key: "presentations", label: "Presentations", emoji: "🎯", step: 1 },
-    { key: "hours_called", label: "Pages", emoji: "📄", step: 1 },
+    { key: "hours_called", label: "Hours Called", emoji: "📄", step: 1 },
     { key: "referrals_caught", label: "Referrals", emoji: "🤝", step: 1 },
     { key: "referral_presentations", label: "Ref. Pres.", emoji: "📋", step: 1 },
     { key: "deals_closed", label: "Closes", emoji: "🏆", step: 1 },

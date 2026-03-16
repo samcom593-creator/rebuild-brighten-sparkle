@@ -689,7 +689,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                                 </div>
                               </div>
 
-                              {/* Pages */}
+                              {/* Hours Called */}
                               <div className="col-span-1 text-center">
                                 <span className="text-[10px] text-muted-foreground">{entry.hoursCalled}</span>
                               </div>

@@ -105,12 +105,15 @@ async function sendUnlicensedFollowup(app: {
             </p>
             
             <div style="text-align: center; margin: 30px 0;">
-              <a href="${UNLICENSED_CALENDLY}" 
-                 style="display: inline-block; background: linear-gradient(135deg, #059669, #047857); color: white; 
-                         padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;
-                         box-shadow: 0 4px 14px rgba(5, 150, 105, 0.4); max-width:100%; box-sizing:border-box;">
-                 📞 Schedule a Licensing Help Call
-              </a>
+              <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
+                <tr>
+                  <td align="center" bgcolor="#059669" style="border-radius:8px;">
+                    <a href="${UNLICENSED_CALENDLY}" style="display:inline-block;color:#ffffff;padding:16px 32px;text-decoration:none;font-weight:bold;font-size:16px;">
+                      📞 Schedule a Licensing Help Call
+                    </a>
+                  </td>
+                </tr>
+              </table>
             </div>
 
             <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-top: 25px;">

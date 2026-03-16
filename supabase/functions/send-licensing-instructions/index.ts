@@ -17,6 +17,7 @@ interface LicensingEmailRequest {
   licenseStatus: "licensed" | "unlicensed" | "pending";
   managerEmail?: string;
   phone?: string;
+  agentId?: string;
 }
 
 function buildStepCard(

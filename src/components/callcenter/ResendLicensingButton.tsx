@@ -26,6 +26,7 @@ export function ResendLicensingButton({
   licenseStatus,
   managerEmail,
   recipientPhone,
+  agentId,
 }: ResendLicensingButtonProps) {
   const [isSending, setIsSending] = useState(false);
   const [justSent, setJustSent] = useState(false);

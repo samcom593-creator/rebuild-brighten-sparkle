@@ -648,6 +648,7 @@ const LeadCard = memo(function LeadCard({
               recipientName={lead.first_name}
               licenseStatus={lead.license_status as any}
               recipientPhone={lead.phone || undefined}
+              agentId={lead.assigned_agent_id || undefined}
             />
 
             {/* Book call */}
@@ -1527,6 +1528,7 @@ function RecruiterDashboardInner() {
                             recipientName={lead.first_name}
                             licenseStatus={lead.license_status as any}
                             recipientPhone={lead.phone || undefined}
+                            agentId={lead.assigned_agent_id || undefined}
                           />
                           {isAdmin && (
                             <QuickAssignMenu

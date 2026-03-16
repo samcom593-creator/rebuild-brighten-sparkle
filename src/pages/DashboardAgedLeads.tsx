@@ -1014,6 +1014,7 @@ export default function DashboardAgedLeads() {
                           recipientEmail={lead.email}
                           recipientName={lead.firstName}
                           licenseStatus={lead.licenseStatus === "licensed" ? "licensed" : "unlicensed"}
+                          agentId={lead.assignedManagerId || undefined}
                         />
                         {isAdmin && (
                           <QuickAssignMenu

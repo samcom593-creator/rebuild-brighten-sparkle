@@ -162,9 +162,15 @@ serve(async (req) => {
                 Every module you complete brings you closer to becoming a licensed producer. Your success story starts with completing this course!
               </p>
               <div style="text-align: center; margin: 32px 0;">
-                <a href="${courseMagicLink}" style="display: inline-block; background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%); color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; padding: 16px 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);">
-                  Continue My Course →
-                </a>
+                <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
+                  <tr>
+                    <td align="center" bgcolor="#00d4ff" style="border-radius:8px;">
+                      <a href="${courseMagicLink}" style="display:inline-block;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;padding:16px 40px;">
+                        Continue My Course →
+                      </a>
+                    </td>
+                  </tr>
+                </table>
               </div>
               <p style="color: #64748b; font-size: 12px; text-align: center; margin: 0 0 24px 0;">
                 One-tap access • No password needed

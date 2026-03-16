@@ -77,9 +77,15 @@ serve(async (req: Request) => {
                     </p>
 
                     <div style="text-align: center; margin: 24px 0;">
-                      <a href="${checkinUrl}" style="display: inline-block; background: linear-gradient(135deg, #14b8a6, #0d9488); color: #0a0f1a; text-decoration: none; padding: 14px 36px; border-radius: 8px; font-weight: bold; font-size: 15px;">
-                        Complete Your First Check-In →
-                      </a>
+                      <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
+                        <tr>
+                          <td align="center" bgcolor="#14b8a6" style="border-radius:8px;">
+                            <a href="${checkinUrl}" style="display:inline-block;color:#0a0f1a;text-decoration:none;padding:14px 36px;font-weight:bold;font-size:15px;">
+                              Complete Your First Check-In →
+                            </a>
+                          </td>
+                        </tr>
+                      </table>
                     </div>
 
                     ${whatsappLink ? `

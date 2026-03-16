@@ -150,9 +150,16 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
 
             <div style="text-align: center; margin-top: 25px;">
-              <a href="${DASHBOARD_URL}/dashboard/admin" style="display: inline-block; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-                View Admin Dashboard →
-              </a>
+              <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
+                <tr>
+                  <td align="center" bgcolor="#059669" style="border-radius:8px;">
+                    <a href="${DASHBOARD_URL}/dashboard/admin" style="display:inline-block;color:#ffffff;text-decoration:none;padding:14px 28px;font-weight:600;font-size:16px;">
+                      View Admin Dashboard →
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </div>
               <p style="color: #6b7280; font-size: 12px; margin-top: 15px;">
                 Generated on ${new Date().toLocaleString('en-US', { 
                   weekday: 'long', 

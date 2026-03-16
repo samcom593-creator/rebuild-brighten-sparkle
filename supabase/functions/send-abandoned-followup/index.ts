@@ -120,9 +120,15 @@ const handler = async (req: Request): Promise<Response> => {
             </p>
 
             <div style="text-align: center; margin: 25px 0;">
-              <a href="${APPLY_URL}" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px; max-width:100%; box-sizing:border-box;">
-                Complete My Application →
-              </a>
+              <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
+                <tr>
+                  <td align="center" bgcolor="#10b981" style="border-radius:8px;">
+                    <a href="${APPLY_URL}" style="display:inline-block;color:#ffffff;text-decoration:none;padding:14px 32px;font-weight:600;font-size:16px;">
+                      Complete My Application →
+                    </a>
+                  </td>
+                </tr>
+              </table>
             </div>
 
             <p style="font-size: 16px; color: #374151; line-height: 1.6;">

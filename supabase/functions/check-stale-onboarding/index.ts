@@ -261,9 +261,15 @@ serve(async (req) => {
                 
                 <!-- CTA Button -->
                 <div style="text-align: center; margin: 32px 0;">
-                  <a href="${courseUrl}" style="display: inline-block; background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%); color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none; padding: 16px 40px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);">
-                    Resume My Course →
-                  </a>
+                  <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
+                    <tr>
+                      <td align="center" bgcolor="#00d4ff" style="border-radius:8px;">
+                        <a href="${courseUrl}" style="display:inline-block;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;padding:16px 40px;">
+                          Resume My Course →
+                        </a>
+                      </td>
+                    </tr>
+                  </table>
                 </div>
                 
                 ${agent.managerName ? `

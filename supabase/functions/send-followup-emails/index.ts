@@ -105,12 +105,15 @@ async function sendUnlicensedFollowup(app: {
             </p>
             
             <div style="text-align: center; margin: 30px 0;">
-              <a href="${UNLICENSED_CALENDLY}" 
-                 style="display: inline-block; background: linear-gradient(135deg, #059669, #047857); color: white; 
-                         padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;
-                         box-shadow: 0 4px 14px rgba(5, 150, 105, 0.4); max-width:100%; box-sizing:border-box;">
-                 📞 Schedule a Licensing Help Call
-              </a>
+              <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
+                <tr>
+                  <td align="center" bgcolor="#059669" style="border-radius:8px;">
+                    <a href="${UNLICENSED_CALENDLY}" style="display:inline-block;color:#ffffff;padding:16px 32px;text-decoration:none;font-weight:bold;font-size:16px;">
+                      📞 Schedule a Licensing Help Call
+                    </a>
+                  </td>
+                </tr>
+              </table>
             </div>
 
             <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin-top: 25px;">
@@ -181,12 +184,15 @@ async function sendUnlicensedFollowup2(app: {
             </p>
             
             <div style="text-align: center; margin: 25px 0;">
-              <a href="${LICENSED_CALENDLY}" 
-                 style="display: inline-block; background: linear-gradient(135deg, #059669, #047857); color: white; 
-                         padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;
-                         box-shadow: 0 4px 14px rgba(5, 150, 105, 0.4); max-width:100%; box-sizing:border-box;">
-                 📅 I'm Licensed - Schedule My Call!
-              </a>
+              <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
+                <tr>
+                  <td align="center" bgcolor="#059669" style="border-radius:8px;">
+                    <a href="${LICENSED_CALENDLY}" style="display:inline-block;color:#ffffff;padding:16px 32px;text-decoration:none;font-weight:bold;font-size:16px;">
+                      📅 I'm Licensed - Schedule My Call!
+                    </a>
+                  </td>
+                </tr>
+              </table>
             </div>
 
             <div style="border-top: 1px solid #e5e7eb; margin: 25px 0; padding-top: 25px;">
@@ -282,12 +288,15 @@ async function sendLicensedFollowup(app: {
             </ul>
             
             <div style="text-align: center; margin: 30px 0;">
-              <a href="${LICENSED_CALENDLY}" 
-                 style="display: inline-block; background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; 
-                         padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;
-                         box-shadow: 0 4px 14px rgba(220, 38, 38, 0.4); max-width:100%; box-sizing:border-box;">
-                 📅 Schedule Your Call NOW
-              </a>
+              <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
+                <tr>
+                  <td align="center" bgcolor="#dc2626" style="border-radius:8px;">
+                    <a href="${LICENSED_CALENDLY}" style="display:inline-block;color:#ffffff;padding:16px 32px;text-decoration:none;font-weight:bold;font-size:16px;">
+                      📅 Schedule Your Call NOW
+                    </a>
+                  </td>
+                </tr>
+              </table>
             </div>
 
             <div style="background: #fef2f2; border: 1px solid #fecaca; padding: 15px 20px; border-radius: 8px; margin-top: 20px;">

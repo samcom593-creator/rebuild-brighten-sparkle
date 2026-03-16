@@ -194,8 +194,8 @@ const handler = async (req: Request): Promise<Response> => {
                     </p>
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                       <tr>
-                        <td align="center">
-                          <a href="https://www.youtube.com/watch?v=fKKaodfYPnk" style="display: block; background: #667eea; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 16px; font-weight: 600; text-align: center; max-width: 100%; box-sizing: border-box;" target="_blank">
+                        <td align="center" bgcolor="#667eea" style="background-color: #667eea; border-radius: 8px;">
+                          <a href="https://www.youtube.com/watch?v=fKKaodfYPnk" style="display: inline-block; width: 100%; color: #ffffff; text-decoration: none; padding: 12px 24px; font-size: 16px; font-weight: 600; text-align: center; box-sizing: border-box;" target="_blank">
                             🎬 Watch Agent Success Testimonials
                           </a>
                         </td>

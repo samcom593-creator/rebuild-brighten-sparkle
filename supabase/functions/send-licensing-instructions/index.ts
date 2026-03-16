@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const ADMIN_EMAIL = "sam@apex-financial.org";
@@ -16,6 +17,7 @@ interface LicensingEmailRequest {
   licenseStatus: "licensed" | "unlicensed" | "pending";
   managerEmail?: string;
   phone?: string;
+  agentId?: string;
 }
 
 function buildStepCard(
@@ -70,16 +72,46 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { email, firstName, licenseStatus, managerEmail, phone }: LicensingEmailRequest = await req.json();
+    const { email, firstName, licenseStatus, managerEmail, phone, agentId }: LicensingEmailRequest = await req.json();
     const whatsappLink = Deno.env.get("WHATSAPP_GROUP_LINK") || "";
 
-    console.log(`[send-licensing-instructions] Sending to ${email}, status: ${licenseStatus}`);
+    console.log(`[send-licensing-instructions] Sending to ${email}, status: ${licenseStatus}, agentId: ${agentId}`);
 
     if (!email || !firstName) {
       throw new Error("Missing required fields: email and firstName");
     }
 
-    const ccList = [ADMIN_EMAIL, managerEmail]
+    // Resolve manager email from DB if not provided directly
+    let resolvedManagerEmail = managerEmail;
+    if (!resolvedManagerEmail && agentId) {
+      try {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+        // Look up the assigned agent's manager email via profiles
+        const { data: agentData } = await supabase
+          .from("agents")
+          .select("manager_id, profiles!agents_profile_id_fkey(email)")
+          .eq("id", agentId)
+          .single();
+
+        if (agentData?.manager_id) {
+          const { data: managerData } = await supabase
+            .from("agents")
+            .select("profiles!agents_profile_id_fkey(email)")
+            .eq("id", agentData.manager_id)
+            .single();
+
+          resolvedManagerEmail = (managerData as any)?.profiles?.email;
+          console.log(`[send-licensing-instructions] Resolved manager email: ${resolvedManagerEmail}`);
+        }
+      } catch (e) {
+        console.error("[send-licensing-instructions] Could not resolve manager email:", e);
+      }
+    }
+
+    const ccList = [ADMIN_EMAIL, resolvedManagerEmail]
       .filter(Boolean)
       .filter((v, i, a) => a.indexOf(v) === i) as string[];
 

@@ -17,6 +17,7 @@ interface ResendLicensingButtonProps {
   licenseStatus: "licensed" | "unlicensed" | "pending";
   managerEmail?: string;
   recipientPhone?: string;
+  agentId?: string;
 }
 
 export function ResendLicensingButton({
@@ -25,11 +26,14 @@ export function ResendLicensingButton({
   licenseStatus,
   managerEmail,
   recipientPhone,
+  agentId,
 }: ResendLicensingButtonProps) {
   const [isSending, setIsSending] = useState(false);
   const [justSent, setJustSent] = useState(false);
 
-  const handleSend = async () => {
+  const handleSend = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
     setIsSending(true);
     try {
       const { data, error } = await supabase.functions.invoke(
@@ -41,6 +45,7 @@ export function ResendLicensingButton({
             licenseStatus: licenseStatus,
             managerEmail: managerEmail,
             phone: recipientPhone,
+            agentId: agentId,
           },
         }
       );
@@ -82,7 +87,7 @@ export function ResendLicensingButton({
             onClick={handleSend}
             disabled={isSending}
             className={cn(
-              "h-8 w-8",
+              "h-8 w-8 relative z-10",
               justSent
                 ? "border-green-500/50 text-green-400 hover:text-green-300"
                 : "border-green-500/30 text-green-400 hover:text-green-300 hover:border-green-500/50"

@@ -65,7 +65,7 @@ export default function CallCenter() {
   const [currentTranscription, setCurrentTranscription] = useState("");
   const [showContractedModal, setShowContractedModal] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
-  const [showLicenseConfirm, setShowLicenseConfirm] = useState(false);
+  const [showHireConfirm, setShowHireConfirm] = useState(false);
 
   // Filters
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");

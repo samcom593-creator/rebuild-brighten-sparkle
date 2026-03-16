@@ -7,7 +7,8 @@ function formatPhoneDisplay(phone: string): string {
   return phone;
 }
 import { motion } from "framer-motion";
-import { Phone, Mail, Instagram, Clock, User, Calendar, Sparkles, Building2, FileText, MapPin, Eye, ChevronDown } from "lucide-react";
+import { Phone, Mail, Instagram, Clock, User, Calendar, Sparkles, Building2, FileText, MapPin, Eye, ChevronDown, Copy, Check } from "lucide-react";
+import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,28 @@ import { LeadReassignButton } from "./LeadReassignButton";
 import { LeadExpiryCountdown } from "./LeadExpiryCountdown";
 import { QuickEmailMenu } from "@/components/dashboard/QuickEmailMenu";
 import { ResendLicensingButton } from "./ResendLicensingButton";
+
+function CopyPhoneButton({ phone }: { phone: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(phone.replace(/\D/g, ""));
+    setCopied(true);
+    toast.success("Phone number copied!");
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <motion.button
+      onClick={handleCopy}
+      whileHover={{ scale: 1.1 }}
+      whileTap={{ scale: 0.9 }}
+      className="relative z-10 p-2 rounded-lg bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+      title="Copy phone number"
+    >
+      {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+    </motion.button>
+  );
+}
 
 interface UnifiedLead {
   id: string;
@@ -338,6 +361,7 @@ export function CallCenterLeadCard({
                 <div className="text-lg font-semibold text-foreground">{formatPhoneDisplay(lead.phone)}</div>
                 <div className="text-xs text-green-400">Tap to call</div>
               </div>
+              <CopyPhoneButton phone={lead.phone} />
               <motion.div
                 className="relative z-10 text-xs px-3 py-1.5 rounded-lg bg-green-500/20 text-green-400 font-medium"
                 whileHover={{ scale: 1.05, backgroundColor: "rgba(34, 197, 94, 0.3)" }}

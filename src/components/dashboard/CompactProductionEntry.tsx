@@ -263,7 +263,7 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
   // Stat fields with bubble styling
   const statFields = [
     { key: "presentations", label: "Presentations", icon: Target, emoji: "🎯" },
-    { key: "hours_called", label: "Pages", icon: FileText, step: 1, emoji: "📄" },
+    { key: "hours_called", label: "Hours Called", icon: FileText, step: 1, emoji: "📄" },
     { key: "referrals_caught", label: "Referrals", icon: Users, emoji: "👥" },
     { key: "referral_presentations", label: "Ref. Pres.", icon: Handshake, emoji: "🤝" },
     { key: "deals_closed", label: "Closes", icon: TrendingUp, emoji: "🏆" },

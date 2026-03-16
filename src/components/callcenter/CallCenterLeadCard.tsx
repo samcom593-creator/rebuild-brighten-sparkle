@@ -20,6 +20,28 @@ import { LeadExpiryCountdown } from "./LeadExpiryCountdown";
 import { QuickEmailMenu } from "@/components/dashboard/QuickEmailMenu";
 import { ResendLicensingButton } from "./ResendLicensingButton";
 
+function CopyPhoneButton({ phone }: { phone: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(phone.replace(/\D/g, ""));
+    setCopied(true);
+    toast.success("Phone number copied!");
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <motion.button
+      onClick={handleCopy}
+      whileHover={{ scale: 1.1 }}
+      whileTap={{ scale: 0.9 }}
+      className="relative z-10 p-2 rounded-lg bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+      title="Copy phone number"
+    >
+      {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+    </motion.button>
+  );
+}
+
 interface UnifiedLead {
   id: string;
   source: "aged_leads" | "applications";

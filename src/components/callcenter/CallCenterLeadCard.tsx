@@ -339,6 +339,7 @@ export function CallCenterLeadCard({
                 <div className="text-lg font-semibold text-foreground">{formatPhoneDisplay(lead.phone)}</div>
                 <div className="text-xs text-green-400">Tap to call</div>
               </div>
+              <CopyPhoneButton phone={lead.phone} />
               <motion.div
                 className="relative z-10 text-xs px-3 py-1.5 rounded-lg bg-green-500/20 text-green-400 font-medium"
                 whileHover={{ scale: 1.05, backgroundColor: "rgba(34, 197, 94, 0.3)" }}

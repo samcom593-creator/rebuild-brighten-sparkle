@@ -26,14 +26,20 @@ async function getManagerEmailFromAgent(supabase: any, agentId: string): Promise
 }
 
 // Helper to build a mobile-safe CTA button using table layout
-function ctaButton(href: string, text: string, bg: string = "linear-gradient(135deg,#14b8a6,#0ea5e9)"): string {
+function ctaButton(href: string, text: string, bgColor: string = "#14b8a6"): string {
   return `
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
         <tr>
           <td align="center" style="padding:32px 0;">
-            <a href="${href}" style="display:block;background:${bg};color:#ffffff;padding:16px 32px;text-decoration:none;border-radius:8px;font-weight:bold;font-size:16px;text-align:center;max-width:100%;box-sizing:border-box;" target="_blank">
-              ${text}
-            </a>
+            <table role="presentation" cellspacing="0" cellpadding="0">
+              <tr>
+                <td bgcolor="${bgColor}" style="border-radius:8px;">
+                  <a href="${href}" style="display:inline-block;color:#ffffff;padding:16px 32px;text-decoration:none;font-weight:bold;font-size:16px;" target="_blank">
+                    ${text}
+                  </a>
+                </td>
+              </tr>
+            </table>
           </td>
         </tr>
       </table>`;

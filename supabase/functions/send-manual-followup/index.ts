@@ -146,7 +146,7 @@ const handler = async (req: Request): Promise<Response> => {
                   <p style="color: #e0e0e0; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">Getting licensed can feel like a lot, but don't worry – we've got resources and support to help you through every step.</p>
                   <p style="color: #e0e0e0; font-size: 16px; line-height: 1.6; margin: 0 0 30px;">If you're stuck or just want some guidance, book a quick call with us!</p>
                 </td></tr>
-                <tr><td style="padding: 0 40px 30px; text-align: center;"><a href="${UNLICENSED_CALENDLY}" style="display: inline-block; background: linear-gradient(135deg, #00cc99 0%, #00a37a 100%); color: #000; text-decoration: none; padding: 16px 32px; border-radius: 8px; font-weight: 600; font-size: 16px; max-width:100%; box-sizing:border-box;">Book a Licensing Help Call →</a></td></tr>
+                <tr><td style="padding: 0 40px 30px; text-align: center;"><table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;"><tr><td bgcolor="#00cc99" style="border-radius:8px;"><a href="${UNLICENSED_CALENDLY}" style="display:inline-block;color:#000;text-decoration:none;padding:16px 32px;font-weight:600;font-size:16px;">Book a Licensing Help Call →</a></td></tr></table></td></tr>
                 <tr><td style="padding: 20px 40px 40px; border-top: 1px solid rgba(255,255,255,0.1);"><p style="color: #888; font-size: 14px; margin: 0;">We're rooting for you!</p><p style="color: #00cc99; font-size: 14px; margin: 10px 0 0; font-weight: 600;">– ${agentName}</p></td></tr>
               </table>
             </td></tr>

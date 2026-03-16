@@ -216,10 +216,15 @@ serve(async (req) => {
               <p style="color: white; font-size: 20px; font-weight: 700; margin: 0 0 20px 0; font-style: italic;">
                 "New week, new chance to be #1!"
               </p>
-              <a href="https://rebuild-brighten-sparkle.lovable.app/agent-portal" 
-                 style="display: inline-block; background: linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%); color: #ca8a04; font-size: 16px; font-weight: 800; text-decoration: none; padding: 16px 40px; border-radius: 12px; text-transform: uppercase; letter-spacing: 1px;">
-                🎯 START STRONG
-              </a>
+              <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
+                <tr>
+                  <td align="center" bgcolor="#ffffff" style="border-radius:12px;">
+                    <a href="https://rebuild-brighten-sparkle.lovable.app/agent-portal" style="display:inline-block;color:#ca8a04;font-size:16px;font-weight:800;text-decoration:none;padding:16px 40px;text-transform:uppercase;letter-spacing:1px;">
+                      🎯 START STRONG
+                    </a>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
           

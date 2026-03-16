@@ -284,18 +284,21 @@ function formatPhoneDisplay(phone: string): string {
                        <span>{currentLead.email}</span>
                      </a>
  
-                     {currentLead.phone && (
-                       <button
-                         onClick={handleCall}
-                         className="flex items-center gap-3 text-muted-foreground hover:text-foreground transition-colors w-full text-left"
-                       >
-                         <Phone className="h-5 w-5 text-green-500" />
-                         <span className="font-medium">{formatPhoneDisplay(currentLead.phone)}</span>
-                         <span className="ml-auto text-xs bg-green-500/20 text-green-500 px-2 py-1 rounded">
-                           Tap to Call
-                         </span>
-                       </button>
-                     )}
+                      {currentLead.phone && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={handleCall}
+                            className="flex items-center gap-3 text-muted-foreground hover:text-foreground transition-colors flex-1 text-left"
+                          >
+                            <Phone className="h-5 w-5 text-green-500" />
+                            <span className="font-medium">{formatPhoneDisplay(currentLead.phone)}</span>
+                            <span className="ml-auto text-xs bg-green-500/20 text-green-500 px-2 py-1 rounded">
+                              Tap to Call
+                            </span>
+                          </button>
+                          <CallModeCopyButton phone={currentLead.phone} />
+                        </div>
+                      )}
  
                      {currentLead.instagramHandle && (
                        <a

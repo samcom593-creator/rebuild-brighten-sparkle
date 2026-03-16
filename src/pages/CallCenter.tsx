@@ -456,10 +456,32 @@ export default function CallCenter() {
     }
   }, [currentLead, leads.length, currentTranscription]);
 
-  const handleLicenseConfirm = useCallback(() => {
-    setShowLicenseConfirm(false);
-    executeAction("hired");
-  }, [executeAction]);
+  const handleHireConfirm = useCallback(async (boughtCourse: boolean) => {
+    setShowHireConfirm(false);
+    await executeAction("hired");
+
+    // Log course purchase activity if checked
+    if (boughtCourse && currentLead) {
+      const { logLeadActivity } = await import("@/lib/logLeadActivity");
+      logLeadActivity({
+        leadId: currentLead.id,
+        type: "course_purchased_on_call",
+        title: "Bought course on the phone",
+        details: { source: currentLead.source },
+      });
+
+      // Also update the has_training_course flag if it's an application-linked agent
+      if (currentLead.source === "applications") {
+        supabase
+          .from("applications")
+          .update({ started_training: true })
+          .eq("id", currentLead.id)
+          .then(({ error }) => {
+            if (error) console.warn("Failed to mark started_training:", error);
+          });
+      }
+    }
+  }, [executeAction, currentLead]);
 
   const handleContractedSuccess = useCallback(() => {
     // Remove lead from list after successful contracting

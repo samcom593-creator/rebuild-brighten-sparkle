@@ -16,3 +16,5 @@ export { CallCenterVoiceRecorder } from "./CallCenterVoiceRecorder";
 export { LeadReassignButton } from "./LeadReassignButton";
 
 export { ResendLicensingButton } from "./ResendLicensingButton";
+
+export { HireConfirmModal } from "./HireConfirmModal";

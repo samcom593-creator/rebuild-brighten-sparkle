@@ -43,24 +43,19 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Use getClaims to verify JWT (works with signing-keys)
+    // Verify the JWT token using getUser
     const token = authHeader.replace("Bearer ", "");
-    const anonClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-    const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
+    const { data: { user: authUser }, error: userError } = await supabaseAdmin.auth.getUser(token);
 
-    if (claimsError || !claimsData?.claims) {
-      console.error("Claims error:", claimsError);
+    if (userError || !authUser) {
+      console.error("Auth error:", userError);
       return new Response(
         JSON.stringify({ error: "Unauthorized - Invalid token" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const userId = claimsData.claims.sub as string;
+    const userId = authUser.id;
     console.log("Processing email update for user:", userId);
 
     // Verify the user has manager or admin role

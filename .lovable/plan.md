@@ -1,27 +1,29 @@
 
 
-# Fix Draisen's Email + Verify Email Change Works
+# Import Missing Production Data (No Duplicates)
 
-## Current State
-- Draisen has **two profiles**: `a778d4e0` (email: `draien125@gmail.com`, has agent record) and `e6b92288` (email: `draisen125@gmail.com`, no agent record)
-- The `update-user-email` edge function has been fixed and deployed with the `getUser` auth method
-- But Draisen's auth email on user `a778d4e0` (the one with the agent record) still says `draien125@gmail.com`
+## What's Already There
+Most of this data (03/10 through 03/13, most of 03/12 and 03/16) is already in the database and matches perfectly. Only a few records are missing or incorrect.
+
+## What's Missing / Wrong
+| Date | Agent | Expected AOP | Current DB | Issue |
+|------|-------|-------------|------------|-------|
+| 03/16 | Chukwudi Ifediora | $1,079.64 (1 deal) | No record | Missing |
+| 03/16 | Aisha Kebbeh | $677.28 (1 deal) | No record | Missing |
+| 03/16 | Brennan Barker | $1,088.76 (1 deal) | $0.00 (1 deal) | AOP wrong |
+| 03/14 | Samuel James | $6,423.96 (4 deals) | No record | Missing |
+| 03/14 | Mahmod Imran | $5,196.00 (3 deals) | No record | Missing |
 
 ## Plan
+Call the `import-production-data` edge function with all 48 deals from the pasted data, using `skip_existing: false`. The function aggregates deals per agent per posted_date, then:
+- **Existing records**: Overwrites with the correct totals (SET, not ADD)
+- **Missing records**: Inserts new rows
 
-### 1. Create one-time helper edge function to fix Draisen's auth + profile email
-Create `supabase/functions/fix-draisen-email/index.ts` — a small function that uses the service role key to:
-- Call `supabaseAdmin.auth.admin.updateUserById("a778d4e0-...", { email: "Draisen125@gmail.com", email_confirm: true })`
-- Update `profiles` table email for that user_id
-- Deploy it, call it once via `curl_edge_functions`, then delete it
+This is safe because the function replaces totals rather than adding to them, so already-correct records will just be set to the same values they already have. The 5 problem records above will be fixed.
 
-### 2. Verify `update-user-email` works end-to-end
-After fixing Draisen's email, test the deployed `update-user-email` function by checking edge function logs to confirm no auth errors.
-
-### 3. Clean up
-Delete the one-time `fix-draisen-email` function after use.
-
-### Files
-- **New (temporary)**: `supabase/functions/fix-draisen-email/index.ts`
-- **No other code changes needed** — the edge function fix from the previous message is already deployed
+## Technical Details
+- Parse all 48 rows into `{ agent_name, annual_alp, posted_date }` format
+- The edge function's `NAME_ALIASES` map handles "Kaeden Vaughns" → "KJ Vaughns" and "Mahmod Imran" → "Moody Imran"
+- No code changes needed — just invoke the existing edge function with the data
+- No database migration needed
 

@@ -105,8 +105,11 @@ export default function OnboardingCourse() {
           <BookOpen className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
           <h1 className="text-2xl font-bold mb-2">Course Access Required</h1>
           <p className="text-muted-foreground mb-6">
-            Your account isn't linked to an agent profile yet. Please contact your manager or admin to get enrolled in the course.
+            Your account isn't linked to an agent profile yet. Try signing in with your agent credentials, or contact your manager for help.
           </p>
+          <Button onClick={() => navigate("/agent-login")} className="gap-2">
+            Sign In Manually
+          </Button>
         </div>
       </>
     );

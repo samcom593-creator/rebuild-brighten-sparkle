@@ -286,6 +286,7 @@ export function CallCenterLeadCard({
                 <Clock className="h-3.5 w-3.5" />
                 <span>Lead Added:</span>
                 <span className="text-foreground">{format(new Date(lead.createdAt), "MMM d, yyyy 'at' h:mm a")}</span>
+                <span className="text-amber-500 text-xs ml-1">({formatDistanceToNow(new Date(lead.createdAt), { addSuffix: true })})</span>
               </div>
               
               {lead.contactedAt && (

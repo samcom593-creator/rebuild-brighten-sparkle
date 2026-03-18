@@ -44,7 +44,7 @@ import { InterviewRecorder } from "@/components/dashboard/InterviewRecorder";
 import { logLeadActivity } from "@/lib/logLeadActivity";
 import { invokeEdge } from "@/lib/edgeInvoke";
 import { cn } from "@/lib/utils";
-import { formatDistanceToNow, addDays, addMinutes, subDays, differenceInDays } from "date-fns";
+import { format as fmtDate, formatDistanceToNow, addDays, addMinutes, subDays, differenceInDays } from "date-fns";
 import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
 import {

@@ -1,25 +1,28 @@
 
 
-# Import 03/17 Production Data (No Overlap)
+# Add Application Date + Time-Since to Recruiter HQ and Call Center
 
-## What's New
-5 new deals posted on **03/17/2026** that aren't in the database yet:
+## What Changes
 
-| Agent | AOP | Deals |
-|-------|-----|-------|
-| Jacob Causer | $2,124.00 | 1 |
-| Mahmod Imran | $2,976.00 | 1 |
-| Brennan Barker | $1,133.52 | 1 |
-| Chukwudi Ifediora | $1,163.52 | 1 |
-| Samuel James | $1,500.00 | 1 |
+### 1. Recruiter HQ (RecruiterDashboard.tsx) — Add "Applied" column to the desktop table
+- Add a new table column header **"Applied"** between "Location" and "License Progress" (update `colSpan` accordingly)
+- In each row, display:
+  - The application date formatted as `MMM d` (e.g. "Mar 14")
+  - Below it, a time-since badge showing days/hours (e.g. "4d 6h ago") using `formatDistanceToNow` — styled in muted text
+- Increase `min-w` from `1100px` to `1200px` to accommodate the new column
+- Column width: `w-[110px]`
 
-## What's Already There
-All 03/10–03/16 data was imported previously and is correct.
+### 2. Call Center Card (CallCenterLeadCard.tsx) — Add time-since next to existing "Lead Added" line
+- The card already shows `Lead Added: MMM d, yyyy at h:mm a` on line 288
+- Append a time-since indicator right after the date: e.g. `"(4d 6h ago)"` in muted/amber styling
+- Uses `formatDistanceToNow` from date-fns which is already imported
 
-## Approach
-Invoke the `import-production-data` edge function with **all 53 deals** (03/10–03/17) using `skip_existing: true`. This will:
-- **Skip** all existing 03/10–03/16 records (no overwrite, no duplicates)
-- **Insert** only the 5 new 03/17 records
+### Files Modified
+- `src/pages/RecruiterDashboard.tsx` — new "Applied" column in table header + row
+- `src/components/callcenter/CallCenterLeadCard.tsx` — append elapsed time to existing "Lead Added" line
 
-No code changes needed — just a single edge function call.
+### Technical Details
+- Both components already import `date-fns` utilities (`format`, `formatDistanceToNow`)
+- No database changes needed — `created_at` / `createdAt` is already fetched in both components
+- The elapsed time uses `formatDistanceToNow(new Date(created_at), { addSuffix: true })` for a human-readable string like "4 days ago"
 

@@ -1400,7 +1400,7 @@ function RecruiterDashboardInner() {
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-16 text-muted-foreground">
+                  <td colSpan={8} className="text-center py-16 text-muted-foreground">
                     <Sparkles className="h-8 w-8 mx-auto mb-2 text-pink-400/50" />
                     <p className="font-medium">No leads match your search</p>
                   </td>

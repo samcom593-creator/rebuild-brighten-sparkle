@@ -1150,6 +1150,20 @@ function RecruiterDashboardInner() {
             <Button
               variant="outline"
               size="sm"
+              className="border-amber-500/40 text-amber-400 hover:bg-amber-500/10 text-xs font-semibold"
+              onClick={() => {
+                const url = `${window.location.origin}/daily-checkin`;
+                navigator.clipboard.writeText(url);
+                toast.success("Check-In link copied! Paste it in WhatsApp 📋");
+              }}
+            >
+              <Link2 className="h-3.5 w-3.5 mr-1.5" />
+              Check-In Link
+              <Copy className="h-3 w-3 ml-1 opacity-60" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               asChild
               className="border-pink-500/40 text-pink-400 hover:bg-pink-500/10 text-xs"
             >

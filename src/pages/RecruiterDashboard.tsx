@@ -1463,6 +1463,12 @@ function RecruiterDashboardInner() {
                       <td className="px-3 py-2 hidden md:table-cell">
                         <span className="text-muted-foreground text-xs">{location || "—"}</span>
                       </td>
+                      <td className="px-3 py-2">
+                        <div className="flex flex-col">
+                          <span className="text-xs font-medium">{fmtDate(new Date(lead.created_at), "MMM d")}</span>
+                          <span className="text-[10px] text-muted-foreground">{formatDistanceToNow(new Date(lead.created_at), { addSuffix: true })}</span>
+                        </div>
+                      </td>
                       <td className="px-3 py-2" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center gap-1.5">
                           <LicenseProgressSelector

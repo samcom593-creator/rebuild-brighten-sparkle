@@ -9,6 +9,7 @@ import {
   MessageSquare, ChevronDown, ChevronUp, Plus, ExternalLink, AlertCircle,
   Activity, PhoneOff, PhoneCall, PhoneForwarded, PhoneMissed, Ban,
   BarChart3, Percent, Timer, Target, Eye, EyeOff, Lightbulb, CheckCircle,
+  Link2, Copy,
 } from "lucide-react";
 import {
   Tooltip,

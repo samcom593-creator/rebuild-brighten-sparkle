@@ -22,7 +22,9 @@ import {
   ClipboardCheck,
   Fingerprint,
   Clock,
-  Mail,
+  User,
+  Phone,
+  MessageSquare,
 } from "lucide-react";
 import { getTodayPST } from "@/lib/dateUtils";
 
@@ -37,8 +39,14 @@ const PROGRESS_OPTIONS = [
   { value: "pending_state", label: "Waiting on License", icon: Clock, description: "Waiting for state approval" },
 ];
 
+function normPhone(raw: string): string {
+  return raw.replace(/\D/g, "").slice(-10);
+}
+
 export default function DailyCheckin() {
-  const [email, setEmail] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
   const [lookingUp, setLookingUp] = useState(false);
   const [appId, setAppId] = useState<string | null>(null);
   const [applicant, setApplicant] = useState<{ first_name: string; last_name: string } | null>(null);
@@ -54,40 +62,51 @@ export default function DailyCheckin() {
   const [blocker, setBlocker] = useState("");
   const [needsHelp, setNeedsHelp] = useState(false);
   const [courseQuestion, setCourseQuestion] = useState<"yes" | "no" | "">("");
+  const [managerMessage, setManagerMessage] = useState("");
 
   const todayPST = getTodayPST();
 
   const handleLookup = async () => {
-    if (!email.trim()) {
-      toast.error("Please enter your email");
+    if (!firstName.trim() || !lastName.trim() || !phone.trim()) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+    const normalizedInput = normPhone(phone);
+    if (normalizedInput.length < 10) {
+      toast.error("Please enter a valid phone number");
       return;
     }
     setLookingUp(true);
     setNotFound(false);
 
+    // Query by name (case-insensitive), then filter phone client-side
     const { data } = await supabase
       .from("applications")
-      .select("id, first_name, last_name")
-      .eq("email", email.trim().toLowerCase())
+      .select("id, first_name, last_name, phone")
+      .ilike("first_name", firstName.trim())
+      .ilike("last_name", lastName.trim())
       .is("terminated_at", null)
       .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(20);
 
-    if (!data) {
+    const match = (data || []).find(
+      (app) => app.phone && normPhone(app.phone) === normalizedInput
+    );
+
+    if (!match) {
       setNotFound(true);
       setLookingUp(false);
       return;
     }
 
-    setAppId(data.id);
-    setApplicant({ first_name: data.first_name, last_name: data.last_name });
+    setAppId(match.id);
+    setApplicant({ first_name: match.first_name, last_name: match.last_name });
 
     // Check existing checkin for today
     const { data: existing } = await supabase
       .from("applicant_checkins")
       .select("id, license_progress, test_date, notes, blocker")
-      .eq("application_id", data.id)
+      .eq("application_id", match.id)
       .eq("checkin_date", todayPST)
       .maybeSingle();
 
@@ -108,6 +127,10 @@ export default function DailyCheckin() {
     }
     setSaving(true);
     try {
+      const combinedNotes = [notes, managerMessage ? `Manager message: ${managerMessage}` : ""]
+        .filter(Boolean)
+        .join(" | ") || null;
+
       const payload = {
         application_id: appId,
         checkin_date: todayPST,
@@ -115,7 +138,7 @@ export default function DailyCheckin() {
         study_hours: 0,
         test_scheduled: progress === "exam_scheduled",
         test_date: testDate || null,
-        notes: notes || null,
+        notes: combinedNotes,
         blocker: blocker || (courseQuestion === "yes" ? "Has questions about the course" : null),
         needs_help: needsHelp,
       };
@@ -135,18 +158,18 @@ export default function DailyCheckin() {
         .eq("id", appId);
 
       let helpSent = false;
-      if (needsHelp) {
+      if (needsHelp || managerMessage.trim()) {
         try {
           const applicantName = applicant ? `${applicant.first_name} ${applicant.last_name}` : "Applicant";
           const result = await invokeEdge("send-notification", {
             email: "sam@apex-financial.org",
-            title: "🆘 Applicant Needs Help",
-            message: `${applicantName} submitted a check-in and flagged that they need help. Progress: ${progress}. ${blocker ? `Blocker: ${blocker}` : ""}`,
-            url: `${window.location.origin}/dashboard/applicants?search=${encodeURIComponent(email)}`,
+            title: needsHelp ? "🆘 Applicant Needs Help" : "📩 Applicant Message",
+            message: `${applicantName} submitted a check-in. Progress: ${progress}. ${managerMessage ? `Message: ${managerMessage}` : ""} ${blocker ? `Blocker: ${blocker}` : ""}`.trim(),
+            url: `${window.location.origin}/dashboard/applicants?search=${encodeURIComponent(applicant?.first_name + " " + applicant?.last_name)}`,
           });
           helpSent = result.success;
         } catch (e) {
-          console.error("Failed to send help notification:", e);
+          console.error("Failed to send notification:", e);
         }
       }
 
@@ -189,7 +212,7 @@ export default function DailyCheckin() {
     );
   }
 
-  // Email lookup screen
+  // Lookup screen — first name, last name, phone
   if (!appId) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -200,29 +223,53 @@ export default function DailyCheckin() {
               <span className="text-lg font-bold gradient-text">APEX</span>
             </div>
             <h1 className="text-xl font-bold">Daily Check-In</h1>
-            <p className="text-sm text-muted-foreground">Enter the email you applied with</p>
+            <p className="text-sm text-muted-foreground">Enter your info to get started</p>
             <Badge variant="outline" className="text-xs">{todayPST}</Badge>
           </div>
 
           <GlassCard className="p-5 space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium flex items-center gap-2">
+                  <User className="h-4 w-4 text-primary" />
+                  First Name
+                </Label>
+                <Input
+                  value={firstName}
+                  onChange={e => setFirstName(e.target.value)}
+                  placeholder="John"
+                  className="bg-input"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Last Name</Label>
+                <Input
+                  value={lastName}
+                  onChange={e => setLastName(e.target.value)}
+                  placeholder="Doe"
+                  className="bg-input"
+                />
+              </div>
+            </div>
+
             <div className="space-y-1.5">
               <Label className="text-sm font-medium flex items-center gap-2">
-                <Mail className="h-4 w-4 text-primary" />
-                Email Address
+                <Phone className="h-4 w-4 text-primary" />
+                Phone Number
               </Label>
               <Input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
+                type="tel"
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && handleLookup()}
-                placeholder="your@email.com"
+                placeholder="(555) 123-4567"
                 className="bg-input"
               />
             </div>
 
             {notFound && (
               <p className="text-sm text-destructive text-center">
-                No application found for this email. Please use the email you applied with.
+                No application found. Please use the name and phone number you applied with.
               </p>
             )}
 
@@ -240,8 +287,6 @@ export default function DailyCheckin() {
   }
 
   // Check-in form
-  const selectedOption = PROGRESS_OPTIONS.find(o => o.value === progress);
-
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-lg space-y-4">
@@ -318,6 +363,21 @@ export default function DailyCheckin() {
               <Input type="date" value={testDate} onChange={e => setTestDate(e.target.value)} className="bg-input" />
             </div>
           )}
+
+          {/* Manager Message */}
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium flex items-center gap-2">
+              <MessageSquare className="h-4 w-4 text-primary" />
+              Message for your manager (optional)
+            </Label>
+            <Textarea
+              value={managerMessage}
+              onChange={e => setManagerMessage(e.target.value)}
+              placeholder="Type a message for your manager here..."
+              className="bg-input resize-none"
+              rows={2}
+            />
+          </div>
 
           <div className="space-y-1.5">
             <Label className="text-sm font-medium">Additional notes (optional)</Label>

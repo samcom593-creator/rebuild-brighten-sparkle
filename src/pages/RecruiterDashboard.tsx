@@ -44,7 +44,7 @@ import { InterviewRecorder } from "@/components/dashboard/InterviewRecorder";
 import { logLeadActivity } from "@/lib/logLeadActivity";
 import { invokeEdge } from "@/lib/edgeInvoke";
 import { cn } from "@/lib/utils";
-import { formatDistanceToNow, addDays, addMinutes, subDays, differenceInDays } from "date-fns";
+import { format as fmtDate, formatDistanceToNow, addDays, addMinutes, subDays, differenceInDays } from "date-fns";
 import { toast } from "sonner";
 import { Navigate } from "react-router-dom";
 import {
@@ -1384,13 +1384,14 @@ function RecruiterDashboardInner() {
       ) : (
         // Desktop: full-width sortable table
         <div className="rounded-xl border border-border overflow-x-auto">
-          <table className="w-full text-sm min-w-[1100px]">
+          <table className="w-full text-sm min-w-[1200px]">
             <thead>
               <tr className="border-b bg-muted/30">
                 <th className="text-left px-3 py-2.5 font-medium text-muted-foreground w-[220px]">Name</th>
                 <th className="text-left px-3 py-2.5 font-medium text-muted-foreground w-[120px]">Phone</th>
                 <th className="text-left px-3 py-2.5 font-medium text-muted-foreground hidden lg:table-cell">Email</th>
                 <th className="text-left px-3 py-2.5 font-medium text-muted-foreground w-[120px] hidden md:table-cell">Location</th>
+                <th className="text-left px-3 py-2.5 font-medium text-muted-foreground w-[110px]">Applied</th>
                 <th className="text-left px-3 py-2.5 font-medium text-muted-foreground w-[160px]">License Progress</th>
                 <th className="text-left px-3 py-2.5 font-medium text-muted-foreground w-[130px]">Last Contact</th>
                 <th className="text-right px-3 py-2.5 font-medium text-muted-foreground w-[160px]">Actions</th>
@@ -1399,7 +1400,7 @@ function RecruiterDashboardInner() {
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-16 text-muted-foreground">
+                  <td colSpan={8} className="text-center py-16 text-muted-foreground">
                     <Sparkles className="h-8 w-8 mx-auto mb-2 text-pink-400/50" />
                     <p className="font-medium">No leads match your search</p>
                   </td>
@@ -1461,6 +1462,12 @@ function RecruiterDashboardInner() {
                       </td>
                       <td className="px-3 py-2 hidden md:table-cell">
                         <span className="text-muted-foreground text-xs">{location || "—"}</span>
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex flex-col">
+                          <span className="text-xs font-medium">{fmtDate(new Date(lead.created_at), "MMM d")}</span>
+                          <span className="text-[10px] text-muted-foreground">{formatDistanceToNow(new Date(lead.created_at), { addSuffix: true })}</span>
+                        </div>
                       </td>
                       <td className="px-3 py-2" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center gap-1.5">

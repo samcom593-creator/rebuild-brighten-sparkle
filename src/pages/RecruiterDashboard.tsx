@@ -1384,13 +1384,14 @@ function RecruiterDashboardInner() {
       ) : (
         // Desktop: full-width sortable table
         <div className="rounded-xl border border-border overflow-x-auto">
-          <table className="w-full text-sm min-w-[1100px]">
+          <table className="w-full text-sm min-w-[1200px]">
             <thead>
               <tr className="border-b bg-muted/30">
                 <th className="text-left px-3 py-2.5 font-medium text-muted-foreground w-[220px]">Name</th>
                 <th className="text-left px-3 py-2.5 font-medium text-muted-foreground w-[120px]">Phone</th>
                 <th className="text-left px-3 py-2.5 font-medium text-muted-foreground hidden lg:table-cell">Email</th>
                 <th className="text-left px-3 py-2.5 font-medium text-muted-foreground w-[120px] hidden md:table-cell">Location</th>
+                <th className="text-left px-3 py-2.5 font-medium text-muted-foreground w-[110px]">Applied</th>
                 <th className="text-left px-3 py-2.5 font-medium text-muted-foreground w-[160px]">License Progress</th>
                 <th className="text-left px-3 py-2.5 font-medium text-muted-foreground w-[130px]">Last Contact</th>
                 <th className="text-right px-3 py-2.5 font-medium text-muted-foreground w-[160px]">Actions</th>

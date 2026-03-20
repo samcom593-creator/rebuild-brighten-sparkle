@@ -30,25 +30,38 @@ export default function OnboardingCourse() {
       
       const { data } = await supabase
         .from("agents")
-        .select("id")
+        .select("id, has_training_course")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(1);
       
       if (data && data.length > 0) {
         setAgentId(data[0].id);
+        // Auto-enroll: set has_training_course = true on first visit
+        if (!data[0].has_training_course) {
+          await supabase
+            .from("agents")
+            .update({ has_training_course: true })
+            .eq("id", data[0].id);
+        }
       } else {
         // Retry once after a brief delay (handles race conditions on first login)
         setTimeout(async () => {
           const { data: retryData } = await supabase
             .from("agents")
-            .select("id")
+            .select("id, has_training_course")
             .eq("user_id", user.id)
             .order("created_at", { ascending: false })
             .limit(1);
           
           if (retryData && retryData.length > 0) {
             setAgentId(retryData[0].id);
+            if (!retryData[0].has_training_course) {
+              await supabase
+                .from("agents")
+                .update({ has_training_course: true })
+                .eq("id", retryData[0].id);
+            }
           } else {
             setAgentNotFound(true);
           }

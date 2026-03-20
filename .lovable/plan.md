@@ -1,33 +1,25 @@
 
 
-# Import 03/18 + 03/19 Production Data (No Overlap)
+# Fix Course Access for All Agents
 
-## Current State in DB
-03/17: All correct.
-03/18: Missing **Samuel James** ($1,224) and **Mahmod Imran** ($3,864). Chukwudi is $3,771.00 but should be $3,771.96 (rounding).
-03/19: Missing **Mahmod Imran** ($1,728).
+## Problem
+1. **"My Course" link is hidden from managers/admins** — the sidebar only shows it to agents who are NOT admin/manager (line 144 in GlobalSidebar.tsx). So managers testing or viewing the course can't even see the link.
+2. **No self-enrollment path** — when an agent is hired and their `has_training_course` flag isn't set, the course still works (the hook auto-creates progress records), but there's no visible affordance or confirmation that they're enrolled.
+3. **Potential RLS silent failures** — if an agent's `user_id` isn't linked to their agent record (e.g., created via admin bulk action without auth account), `current_agent_id()` returns NULL, and all INSERT/UPDATE/SELECT on `onboarding_progress` silently return empty, making the course appear broken.
 
-## Approach
-Invoke the `import-production-data` edge function with all deals from the pasted data (03/18 and 03/19 only — 03/17 and earlier already correct). Use `skip_existing: false` so it overwrites with correct totals where needed and inserts missing records.
+## Fix
 
-### 03/18 deals (8 deals):
-| Agent | AOP | Deals |
-|-------|-----|-------|
-| Samuel James | $1,224.00 | 1 |
-| Jacob Causer | $655.20 | 1 |
-| Obiajulu Ifediora | $1,562.88 | 1 |
-| Mahmod Imran | $3,864.00 | 2 |
-| Chukwudi Ifediora | $3,771.96 | 2 |
-| Brennan Barker | $1,380.60 | 1 |
+### 1. GlobalSidebar.tsx — Show "My Course" to ALL authenticated users
+Move the "My Course" link out of the agent-only block so managers and admins also see it. Add it to the manager/admin tools section as well.
 
-### 03/19 deals (4 deals):
-| Agent | AOP | Deals |
-|-------|-----|-------|
-| Obiajulu Ifediora | $1,914.96 | 1 |
-| Brennan Barker | $1,089.48 | 1 |
-| Chukwudi Ifediora | $3,421.20 | 1 |
-| Mahmod Imran | $1,728.00 | 1 |
+### 2. OnboardingCourse.tsx — Auto-enroll on first visit
+When an agent visits the course page and has no progress records yet, automatically set `has_training_course = true` on their agent record. This ensures the enrollment flag is always in sync with actual course usage — no manual enrollment step needed.
 
-### Implementation
-Single call to `import-production-data` with all 12 individual deal records, `skip_existing: false`. No code changes needed.
+### 3. OnboardingCourse.tsx — Remove the "Course Access Required" gate
+Instead of showing "Course Access Required" when `agentNotFound` is true, show a more helpful message. The `agentNotFound` state only triggers when there's no agent record linked to the user — which is a real auth/account issue, not a course access issue. Keep this error but improve the messaging.
+
+### Files Modified
+- **`src/components/layout/GlobalSidebar.tsx`** — Add "My Course" link for all roles (managers, admins, agents)
+- **`src/pages/OnboardingCourse.tsx`** — Auto-set `has_training_course = true` when agent first loads the course
+- **`src/hooks/useOnboardingCourse.ts`** — No changes needed (already handles auto-creating progress records)
 

@@ -141,10 +141,12 @@ export function GlobalSidebar({
       toolItems.push({ icon: CalendarDays, label: "Calendar", href: "/dashboard/calendar" });
     }
 
+    // My Course — available to ALL authenticated users
+    toolItems.push({ icon: BarChart3, label: "My Course", href: "/onboarding-course" });
+
     if (isAgent && !isAdmin && !isManager) {
       toolItems.push({ icon: BarChart3, label: "My Portal", href: "/agent-portal" });
       toolItems.push({ icon: Target, label: "My Pipeline", href: "/agent-pipeline" });
-      toolItems.push({ icon: BarChart3, label: "My Course", href: "/onboarding-course" });
       toolItems.push({ icon: CalendarDays, label: "Calendar", href: "/dashboard/calendar" });
     }
 

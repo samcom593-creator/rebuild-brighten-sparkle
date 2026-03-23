@@ -1,24 +1,23 @@
 
 
-# Add Prominent "Check Your Spam" Notice to All Application Success Pages
+# Allow Multiple Applications from the Same Person
 
 ## Problem
-Applicants may miss important emails because they land in spam/junk folders. There's no visible warning on any of the three success pages.
+The `submit-application` edge function blocks duplicate submissions by checking for existing applications with the same email or phone number (lines ~858-899). The `Apply.tsx` page also shows a "duplicate error" banner when a 409 response is received.
 
 ## Changes
 
-### 1. `src/pages/ApplySuccess.tsx`
-Add a bold, eye-catching spam warning banner below the main description text — amber/yellow styled alert box with a mail icon saying: **"Important: Check your spam/junk folder!"** with supporting text explaining that emails from APEX may land there and to mark as "Not Spam."
+### 1. `supabase/functions/submit-application/index.ts`
+Remove the duplicate-check logic that returns 409 errors:
+- Remove the email duplicate check (lines ~860-878)
+- Remove the phone duplicate check (lines ~881-903)
+- Allow the insert to proceed regardless of existing applications
 
-### 2. `src/pages/ApplySuccessLicensed.tsx`
-Same prominent spam warning banner added below the header description, before the video section.
+### 2. `src/pages/Apply.tsx`
+- Remove the `duplicateError` state and the duplicate error banner UI (lines ~105, 436-447, 571-576)
+- Remove the 409-specific error handling — treat all errors uniformly
 
-### 3. `src/pages/ApplySuccessUnlicensed.tsx`
-Same prominent spam warning banner added below the header description, before the video section.
-
-### Design
-- Amber/yellow background with border (`bg-amber-500/10 border-amber-500/30`)
-- Mail warning icon + bold text: **"Check your email spam/junk folder!"**
-- Subtext: "Emails from APEX Financial may land in your spam folder. Be sure to check there and mark us as 'Not Spam' so you don't miss anything."
-- Animated entrance to draw attention
+### Files Modified
+- `supabase/functions/submit-application/index.ts` — Remove duplicate checks
+- `src/pages/Apply.tsx` — Remove duplicate error UI/handling
 

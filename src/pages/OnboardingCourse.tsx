@@ -168,7 +168,7 @@ export default function OnboardingCourse() {
     return success;
   };
 
-  if (loading) {
+  if (loading || provisioningInProgress) {
     return <SkeletonLoader variant="page" />;
   }
 
@@ -177,9 +177,9 @@ export default function OnboardingCourse() {
       <>
         <div className="max-w-4xl mx-auto text-center py-20">
           <BookOpen className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-          <h1 className="text-2xl font-bold mb-2">Course Access Required</h1>
+          <h1 className="text-2xl font-bold mb-2">Course Access Pending</h1>
           <p className="text-muted-foreground mb-6">
-            Your account isn't linked to an agent profile yet. Try signing in with your agent credentials, or contact your manager for help.
+            Your manager hasn't marked you as licensed yet. Once you're marked as licensed, you'll have full access to the training course. Contact your manager for help.
           </p>
           <Button onClick={() => navigate("/agent-login")} className="gap-2">
             Sign In Manually

@@ -562,13 +562,6 @@ export default function Apply() {
                 transition={{ duration: 0.2 }}
               >
                 <GlassCard className="p-4 sm:p-8">
-                  {/* Duplicate Application Error Banner */}
-                  {duplicateError && (
-                    <div className="mb-6 p-4 rounded-xl border border-destructive/30 bg-destructive/10 text-destructive">
-                      <p className="font-semibold text-sm">⚠️ Application Already Exists</p>
-                      <p className="text-xs mt-1">An application with this email or phone number is already on file. If you need to update your application, please email <a href="mailto:info@apex-financial.org" className="underline font-medium">info@apex-financial.org</a>.</p>
-                    </div>
-                  )}
                   {/* Step 1: Personal Info */}
                   {currentStep === 1 && (
                     <div className="space-y-6">

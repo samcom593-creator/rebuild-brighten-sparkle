@@ -72,65 +72,35 @@ export default function OnboardingCourse() {
     fetchAgentId();
   }, [user?.id]);
 
-  // Auto-provision: if no agent record, check if user has a licensed application and create agent
+  // Auto-provision: call self-enroll-course edge function (works for any authenticated user)
   useEffect(() => {
     const autoProvision = async () => {
-      if (!agentNotFound || autoProvisionAttempted || !user?.email) return;
+      if (!agentNotFound || autoProvisionAttempted || !user?.id) return;
       setAutoProvisionAttempted(true);
       setProvisioningInProgress(true);
 
       try {
-        // Check if user has a licensed application
-        const { data: apps } = await supabase
-          .from("applications")
-          .select("id, first_name, last_name, email, phone, assigned_agent_id")
-          .ilike("email", user.email)
-          .eq("license_status", "licensed")
-          .order("created_at", { ascending: false })
-          .limit(1);
+        console.log("Calling self-enroll-course for user:", user.id);
+        const { data, error } = await supabase.functions.invoke("self-enroll-course", {
+          body: {},
+        });
 
-        if (apps && apps.length > 0) {
-          const app = apps[0];
-          console.log("Auto-provisioning agent for licensed applicant:", app.email);
-
-          const { error } = await supabase.functions.invoke("add-agent", {
-            body: {
-              firstName: app.first_name,
-              lastName: app.last_name,
-              email: app.email,
-              phone: app.phone || "",
-              managerId: app.assigned_agent_id || null,
-              licenseStatus: "licensed",
-              hasTrainingCourse: true,
-            },
-          });
-
-          if (!error) {
-            // Re-fetch agent ID after provisioning
-            await new Promise(resolve => setTimeout(resolve, 1500));
-            const { data: newAgent } = await supabase
-              .from("agents")
-              .select("id")
-              .eq("user_id", user.id)
-              .order("created_at", { ascending: false })
-              .limit(1);
-
-            if (newAgent && newAgent.length > 0) {
-              setAgentId(newAgent[0].id);
-              setAgentNotFound(false);
-            }
-          } else {
-            console.error("Auto-provision failed:", error);
-          }
+        if (!error && data?.agentId) {
+          console.log("Self-enroll succeeded, agentId:", data.agentId);
+          setAgentId(data.agentId);
+          setAgentNotFound(false);
+        } else {
+          console.log("Self-enroll result:", error || data);
+          // If noLicense flag, keep agentNotFound true to show message
         }
       } catch (err) {
-        console.error("Auto-provision error:", err);
+        console.error("Self-enroll error:", err);
       } finally {
         setProvisioningInProgress(false);
       }
     };
     autoProvision();
-  }, [agentNotFound, autoProvisionAttempted, user?.email, user?.id]);
+  }, [agentNotFound, autoProvisionAttempted, user?.id]);
 
   const {
     modules,

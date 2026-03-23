@@ -125,53 +125,33 @@ export function GlobalSidebar({
 
     sections.push({ label: "NAVIGATION", items: navItems });
 
-    // TOOLS section
-    const toolItems: NavItem[] = [];
+    // TOOLS section — core items visible to ALL authenticated users
+    const toolItems: NavItem[] = [
+      { icon: BarChart3, label: "My Course", href: "/onboarding-course" },
+      { icon: BarChart3, label: "Portal", href: "/agent-portal" },
+      { icon: Users, label: "Pipeline", href: isAgent && !isAdmin && !isManager ? "/agent-pipeline" : "/dashboard/applicants" },
+      { icon: Briefcase, label: "CRM", href: "/dashboard/crm" },
+      { icon: CalendarDays, label: "Calendar", href: "/dashboard/calendar" },
+    ];
 
-    if (isAdmin || isManager) {
-      toolItems.push({ icon: BarChart3, label: "Course Progress", href: "/course-progress" });
-      toolItems.push({ icon: Users, label: "Pipeline", href: "/dashboard/applicants" });
-      toolItems.push({ icon: BarChart3, label: "Agent Portal", href: "/agent-portal" });
-      toolItems.push({ icon: Briefcase, label: "CRM", href: "/dashboard/crm" });
-    }
-
-    if (isAdmin || isManager) {
-      toolItems.push({ icon: Archive, label: "Aged Leads", href: "/dashboard/aged-leads" });
-      toolItems.push({ icon: Headphones, label: "Call Center", href: "/dashboard/call-center" });
-      toolItems.push({ icon: CalendarDays, label: "Calendar", href: "/dashboard/calendar" });
-    }
-
-    // My Course — available to ALL authenticated users
-    toolItems.push({ icon: BarChart3, label: "My Course", href: "/onboarding-course" });
-
-    if (isAgent && !isAdmin && !isManager) {
-      toolItems.push({ icon: BarChart3, label: "My Portal", href: "/agent-portal" });
-      toolItems.push({ icon: Target, label: "My Pipeline", href: "/agent-pipeline" });
-      toolItems.push({ icon: CalendarDays, label: "Calendar", href: "/dashboard/calendar" });
-    }
-
-    // Recruiter HQ — managers + admins
+    // Manager/Admin extras
     if (isAdmin || isManager) {
       toolItems.push({ icon: Sparkles, label: "Recruiter HQ ✨", href: "/dashboard/recruiter", special: true });
-    }
-
-    if (isAdmin || isManager) {
+      toolItems.push({ icon: BarChart3, label: "Course Progress", href: "/course-progress" });
+      toolItems.push({ icon: Headphones, label: "Call Center", href: "/dashboard/call-center" });
+      toolItems.push({ icon: Archive, label: "Aged Leads", href: "/dashboard/aged-leads" });
       toolItems.push({ icon: TrendingUp, label: "Growth", href: "/dashboard/growth" });
+      toolItems.push({ icon: Users, label: "Seminar", href: "/dashboard/seminar" });
     }
 
+    // Admin-only extras
     if (isAdmin) {
       toolItems.push({ icon: CalendarDays, label: "Day Planner", href: "/dashboard/planner" });
     }
 
-    if (isAdmin || isManager) {
-      toolItems.push({ icon: Users, label: "Seminar", href: "/dashboard/seminar" });
-    }
-
     toolItems.push({ icon: ShoppingCart, label: "Purchase Leads", href: "/purchase-leads" });
 
-    if (toolItems.length > 0) {
-      sections.push({ label: "TOOLS", items: toolItems });
-    }
+    sections.push({ label: "TOOLS", items: toolItems });
 
     // SETTINGS section
     sections.push({

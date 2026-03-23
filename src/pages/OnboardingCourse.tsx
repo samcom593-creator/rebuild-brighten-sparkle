@@ -21,6 +21,8 @@ export default function OnboardingCourse() {
   const { playSound } = useSoundEffects();
   const [agentId, setAgentId] = useState<string | null>(null);
   const [agentNotFound, setAgentNotFound] = useState(false);
+  const [autoProvisionAttempted, setAutoProvisionAttempted] = useState(false);
+  const [provisioningInProgress, setProvisioningInProgress] = useState(false);
   const [activeTab, setActiveTab] = useState<"video" | "quiz">("video");
 
   // Fetch agent ID for current user - use limit(1) to handle legacy duplicates
@@ -37,7 +39,6 @@ export default function OnboardingCourse() {
       
       if (data && data.length > 0) {
         setAgentId(data[0].id);
-        // Auto-enroll: set has_training_course = true on first visit
         if (!data[0].has_training_course) {
           await supabase
             .from("agents")
@@ -70,6 +71,66 @@ export default function OnboardingCourse() {
     };
     fetchAgentId();
   }, [user?.id]);
+
+  // Auto-provision: if no agent record, check if user has a licensed application and create agent
+  useEffect(() => {
+    const autoProvision = async () => {
+      if (!agentNotFound || autoProvisionAttempted || !user?.email) return;
+      setAutoProvisionAttempted(true);
+      setProvisioningInProgress(true);
+
+      try {
+        // Check if user has a licensed application
+        const { data: apps } = await supabase
+          .from("applications")
+          .select("id, first_name, last_name, email, phone, assigned_agent_id")
+          .ilike("email", user.email)
+          .eq("license_status", "licensed")
+          .order("created_at", { ascending: false })
+          .limit(1);
+
+        if (apps && apps.length > 0) {
+          const app = apps[0];
+          console.log("Auto-provisioning agent for licensed applicant:", app.email);
+
+          const { error } = await supabase.functions.invoke("add-agent", {
+            body: {
+              firstName: app.first_name,
+              lastName: app.last_name,
+              email: app.email,
+              phone: app.phone || "",
+              managerId: app.assigned_agent_id || null,
+              licenseStatus: "licensed",
+              hasTrainingCourse: true,
+            },
+          });
+
+          if (!error) {
+            // Re-fetch agent ID after provisioning
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            const { data: newAgent } = await supabase
+              .from("agents")
+              .select("id")
+              .eq("user_id", user.id)
+              .order("created_at", { ascending: false })
+              .limit(1);
+
+            if (newAgent && newAgent.length > 0) {
+              setAgentId(newAgent[0].id);
+              setAgentNotFound(false);
+            }
+          } else {
+            console.error("Auto-provision failed:", error);
+          }
+        }
+      } catch (err) {
+        console.error("Auto-provision error:", err);
+      } finally {
+        setProvisioningInProgress(false);
+      }
+    };
+    autoProvision();
+  }, [agentNotFound, autoProvisionAttempted, user?.email, user?.id]);
 
   const {
     modules,
@@ -107,7 +168,7 @@ export default function OnboardingCourse() {
     return success;
   };
 
-  if (loading) {
+  if (loading || provisioningInProgress) {
     return <SkeletonLoader variant="page" />;
   }
 
@@ -116,9 +177,9 @@ export default function OnboardingCourse() {
       <>
         <div className="max-w-4xl mx-auto text-center py-20">
           <BookOpen className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-          <h1 className="text-2xl font-bold mb-2">Course Access Required</h1>
+          <h1 className="text-2xl font-bold mb-2">Course Access Pending</h1>
           <p className="text-muted-foreground mb-6">
-            Your account isn't linked to an agent profile yet. Try signing in with your agent credentials, or contact your manager for help.
+            Your manager hasn't marked you as licensed yet. Once you're marked as licensed, you'll have full access to the training course. Contact your manager for help.
           </p>
           <Button onClick={() => navigate("/agent-login")} className="gap-2">
             Sign In Manually

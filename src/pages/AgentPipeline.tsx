@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users,
@@ -51,6 +52,7 @@ interface Application extends KanbanApplication {
 }
 
 export default function AgentPipeline() {
+  const navigate = useNavigate();
   const { user, isAdmin, isManager } = useAuth();
   const { playSound } = useSoundEffects();
   const [applications, setApplications] = useState<Application[]>([]);
@@ -239,7 +241,10 @@ export default function AgentPipeline() {
           {/* Name & Contact */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-              <h3 className="font-semibold text-sm">{app.first_name} {app.last_name}</h3>
+              <h3
+                className="font-semibold text-sm text-primary hover:underline cursor-pointer"
+                onClick={() => navigate(`/dashboard/crm?focusAgentId=${app.id}`)}
+              >{app.first_name} {app.last_name}</h3>
               <Badge variant="outline" className={cn("text-[10px]", contactBadgeStyle)}>
                 <Clock className="h-2.5 w-2.5 mr-1" />
                 {contactLabel}

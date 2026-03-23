@@ -1,27 +1,35 @@
 
 
-# Fix All Historical Production Data (01/17 – 03/22)
+# Fix Navigation: Make Key Pages Accessible to All Roles
 
 ## Problem
-Previous imports only targeted specific date ranges (03/10+, then 03/17, 03/18-19, 03/20-22). The full historical data from the source (going back to 01/17) was never fully imported. Example discrepancies:
-- **Samuel James 02/27**: DB has $10,300 / 10 deals, source shows ~$12,156 / 12 deals (off by ~$1,856)
-- **Michael Kayembe 03/16**: Has $1,140 ALP with 0 deals (stale manual entry, no matching carrier deal)
-- Similar gaps likely exist across many agents for Jan-Feb-early March
+- **CRM, Pipeline, Course Progress** are hidden from regular agents in the sidebar — only managers/admins see them
+- No cross-links between Pipeline → CRM or Dashboard → CRM (e.g., clicking an agent name in one view doesn't navigate to their record in another)
+- Agents like "Cooper" only appear on Dashboard but can't be found from Pipeline or other views
 
-## Fix
-Call `import-production-data` with **all ~260+ deals** from the full pasted dataset (01/17 through 03/22) using `skip_existing: false`. The function's SET logic will overwrite every agent-date combination with the correct carrier-verified totals.
+## Changes
 
-This single call fixes:
-1. Under-counted historical days (e.g. Samuel James 02/27)
-2. Stale manual entries that don't match carrier data (e.g. Kayembe 03/16)
-3. Any rounding discrepancies across all dates
+### 1. GlobalSidebar.tsx — Expose core pages to all roles
+Move these items out of the `isAdmin || isManager` block so ALL authenticated users see them:
+- **Dashboard** (already visible to all ✓)
+- **CRM** — agents should see their own recruits/team
+- **Pipeline** — agents already have "My Pipeline" but it's a separate route; unify to one entry
+- **My Course** (already visible to all ✓)
+- **Agent Portal / My Portal** — currently duplicated (managers see "Agent Portal", agents see "My Portal" pointing to same route); consolidate into one entry visible to all
 
-## Implementation
-- Parse all deals from the full source dataset
-- Group by agent + posted_date
-- Single edge function invocation
-- No code changes, no migrations
+Reorganize the TOOLS section:
+- All users: Dashboard, Log Numbers, My Course, Portal, Pipeline, CRM, Calendar, Purchase Leads
+- Managers add: Recruiter HQ, Course Progress, Call Center, Aged Leads, Growth, Seminar
+- Admins add: Command Center, Lead Center, Notifications, Day Planner, Accounts
 
-## Agents in dataset
-Samuel James, Brennan Barker, Jacob Causer, Kaeden Vaughns, Chukwudi Ifediora, Obiajulu Ifediora, Mahmod Imran, Michael Kayembe, Aisha Kebbeh, Loren Lail, Landon Boyd, Bryan Ross, Leslie Patino Galeana, Samuel Lugo Puga, Codey Salazar, Joseph Sebasco, Richard Hall
+### 2. Pipeline cards — Add "View in CRM" action
+In `AgentPipeline.tsx`, when clicking/tapping an applicant card, add a quick-action link or make the name clickable to navigate to `/dashboard/crm?focusAgentId={id}` (the same deep-link pattern already used by OnboardingPipelineCard).
+
+### 3. Dashboard agent cards — Add CRM deep-link
+In key dashboard components that show agent names (like leaderboard entries), make names clickable to navigate to `/dashboard/crm?focusAgentId={id}`.
+
+### Files Modified
+- `src/components/layout/GlobalSidebar.tsx` — Restructure nav items for all roles
+- `src/pages/AgentPipeline.tsx` — Add CRM deep-link on agent cards
+- `src/components/dashboard/LeaderboardTabs.tsx` — Make agent names clickable → CRM
 

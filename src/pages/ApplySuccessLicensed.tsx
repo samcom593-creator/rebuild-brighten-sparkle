@@ -43,6 +43,21 @@ export default function ApplySuccessLicensed() {
             <p className="text-muted-foreground max-w-lg mx-auto">
               Your application has been received. Watch this important video to learn about your next steps with APEX.
             </p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="flex items-start gap-3 p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 text-left max-w-lg mx-auto"
+            >
+              <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-sm text-amber-400">Important: Check your spam/junk folder!</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Emails from APEX Financial may land in your spam folder. Be sure to check there and mark us as "Not Spam" so you don't miss anything.
+                </p>
+              </div>
+            </motion.div>
           </div>
 
           {/* Video Player */}

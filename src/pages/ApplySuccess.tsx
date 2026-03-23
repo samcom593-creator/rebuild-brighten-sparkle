@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { CheckCircle2, Crown, ArrowRight, Mail, Phone, Calendar } from "lucide-react";
+import { CheckCircle2, Crown, ArrowRight, Mail, Phone, Calendar, AlertTriangle } from "lucide-react";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { GlassCard } from "@/components/ui/glass-card";
 
@@ -41,6 +41,21 @@ export default function ApplySuccess() {
             Thank you for your interest in joining APEX Financial. 
             Our recruiting team will review your application and contact you within 24-48 hours.
           </p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="flex items-start gap-3 p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 text-left max-w-md mx-auto mb-2"
+          >
+            <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-sm text-amber-400">Important: Check your spam/junk folder!</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Emails from APEX Financial may land in your spam folder. Be sure to check there and mark us as "Not Spam" so you don't miss anything.
+              </p>
+            </div>
+          </motion.div>
 
           {/* Next Steps */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">

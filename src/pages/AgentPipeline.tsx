@@ -151,6 +151,35 @@ export default function AgentPipeline() {
       if (newStage === "licensed") {
         playSound("celebrate");
         toast.success("🎉 Congratulations! Agent is now licensed!");
+
+        // Auto-create agent record so they appear in Dashboard, CRM, and Course
+        const app = applications.find((a) => a.id === applicationId);
+        if (app && agentId) {
+          try {
+            const { data: addResult, error: addError } = await supabase.functions.invoke("add-agent", {
+              body: {
+                firstName: app.first_name,
+                lastName: app.last_name,
+                email: app.email,
+                phone: app.phone || "",
+                managerId: agentId,
+                licenseStatus: "licensed",
+                hasTrainingCourse: true,
+              },
+            });
+
+            if (addError) {
+              console.error("Error creating agent record:", addError);
+            } else if (addResult?.error) {
+              // 409 = already exists, which is fine
+              console.log("Add-agent result:", addResult);
+            } else {
+              toast.success(`${app.first_name} ${app.last_name} added to Dashboard & enrolled in course`);
+            }
+          } catch (err) {
+            console.error("Failed to auto-create agent:", err);
+          }
+        }
       } else {
         playSound("success");
         toast.success("Stage updated");

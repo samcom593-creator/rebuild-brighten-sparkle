@@ -52,6 +52,7 @@ interface Application extends KanbanApplication {
 }
 
 export default function AgentPipeline() {
+  const navigate = useNavigate();
   const { user, isAdmin, isManager } = useAuth();
   const { playSound } = useSoundEffects();
   const [applications, setApplications] = useState<Application[]>([]);

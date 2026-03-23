@@ -206,8 +206,10 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
         .select("user_id, full_name, avatar_url")
         .in("user_id", userIds);
 
-      // IMPORTANT: not every viewer can see every agent (RLS) and deleted agents will not resolve.
-      // Only include entries for agents we can actually load from the agents table.
+      // Also fetch leaderboard profiles via RPC as fallback for name resolution
+      const { data: rpcProfiles } = await supabase.rpc("get_leaderboard_profiles");
+
+      // All agents with production should be visible now (RLS allows authenticated SELECT)
       const allowedAgentIds = new Set(agents.map((a) => a.id));
       const visibleAgentIds = agentIds.filter((id) => allowedAgentIds.has(id));
 
@@ -224,9 +226,10 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
             ? (totals.deals / totals.presentations) * 100
             : 0;
 
-        // Name fallback: profile_id profile -> user_id profile -> display_name -> Unknown
-        const displayName = profileViaId?.full_name || profileViaUserId?.full_name || agent?.display_name || "Unknown Agent";
-        const avatarUrl = profileViaId?.avatar_url || profileViaUserId?.avatar_url;
+        // Name fallback: profile_id profile -> user_id profile -> RPC profile -> display_name -> Unknown
+        const rpcProfile = rpcProfiles?.find((p: any) => p.user_id === agent?.user_id);
+        const displayName = profileViaId?.full_name || profileViaUserId?.full_name || rpcProfile?.full_name || agent?.display_name || "Unknown Agent";
+        const avatarUrl = profileViaId?.avatar_url || profileViaUserId?.avatar_url || rpcProfile?.avatar_url;
 
         return {
           rank: 0,

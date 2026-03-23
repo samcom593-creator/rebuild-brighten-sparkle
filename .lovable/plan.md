@@ -1,33 +1,24 @@
 
 
-# Fix: Auto-Create Agent Record When Course Page Detects Missing Agent
+# Add Prominent "Check Your Spam" Notice to All Application Success Pages
 
 ## Problem
-Cooper Ubert is logged in (auth user `41818231`), has a profile, and his application is marked as `licensed` — but no agent record exists. The Pipeline's `add-agent` call was added recently but Cooper was marked licensed before that fix. The course page shows "Course Access Required" because it requires an agent record.
+Applicants may miss important emails because they land in spam/junk folders. There's no visible warning on any of the three success pages.
 
-This will happen again for any agent whose record wasn't properly provisioned.
+## Changes
 
-## Fix
+### 1. `src/pages/ApplySuccess.tsx`
+Add a bold, eye-catching spam warning banner below the main description text — amber/yellow styled alert box with a mail icon saying: **"Important: Check your spam/junk folder!"** with supporting text explaining that emails from APEX may land there and to mark as "Not Spam."
 
-### 1. `src/pages/OnboardingCourse.tsx` — Auto-provision agent when missing
-Replace the "Course Access Required" dead-end with automatic agent creation:
-- When `agentNotFound` is true (no agent record for this user), check the `applications` table for a matching email with `license_status = 'licensed'`
-- If found, call the `add-agent` edge function automatically to create the agent record
-- Then retry fetching the agent ID and proceed to the course
-- If no licensed application found, show a friendlier message: "Your manager hasn't marked you as licensed yet. Contact them for help."
-- Keep the "Sign In Manually" button as a fallback
+### 2. `src/pages/ApplySuccessLicensed.tsx`
+Same prominent spam warning banner added below the header description, before the video section.
 
-### 2. Immediate data fix for Cooper Ubert
-Invoke `add-agent` via the edge function for Cooper Ubert specifically:
-- firstName: Cooper, lastName: Ubert, email: cooperubert@gmail.com
-- managerId: `7c3c5581-3544-437f-bfe2-91391afb217d` (from his application's assigned_agent_id)
-- licenseStatus: licensed, hasTrainingCourse: true
+### 3. `src/pages/ApplySuccessUnlicensed.tsx`
+Same prominent spam warning banner added below the header description, before the video section.
 
-### Files Modified
-- **`src/pages/OnboardingCourse.tsx`** — Replace dead-end with auto-provisioning logic
-
-### Technical Details
-- The auto-provision uses the user's profile email to find their application
-- Only triggers for `license_status = 'licensed'` applications to avoid creating agent records for unlicensed applicants
-- Falls back gracefully if no matching application exists
+### Design
+- Amber/yellow background with border (`bg-amber-500/10 border-amber-500/30`)
+- Mail warning icon + bold text: **"Check your email spam/junk folder!"**
+- Subtext: "Emails from APEX Financial may land in your spam folder. Be sure to check there and mark us as 'Not Spam' so you don't miss anything."
+- Animated entrance to draw attention
 

@@ -21,7 +21,8 @@ export default function OnboardingCourse() {
   const { playSound } = useSoundEffects();
   const [agentId, setAgentId] = useState<string | null>(null);
   const [agentNotFound, setAgentNotFound] = useState(false);
-  const [activeTab, setActiveTab] = useState<"video" | "quiz">("video");
+  const [autoProvisionAttempted, setAutoProvisionAttempted] = useState(false);
+  const [provisioningInProgress, setProvisioningInProgress] = useState(false);
 
   // Fetch agent ID for current user - use limit(1) to handle legacy duplicates
   useEffect(() => {
@@ -37,7 +38,6 @@ export default function OnboardingCourse() {
       
       if (data && data.length > 0) {
         setAgentId(data[0].id);
-        // Auto-enroll: set has_training_course = true on first visit
         if (!data[0].has_training_course) {
           await supabase
             .from("agents")
@@ -70,6 +70,66 @@ export default function OnboardingCourse() {
     };
     fetchAgentId();
   }, [user?.id]);
+
+  // Auto-provision: if no agent record, check if user has a licensed application and create agent
+  useEffect(() => {
+    const autoProvision = async () => {
+      if (!agentNotFound || autoProvisionAttempted || !user?.email) return;
+      setAutoProvisionAttempted(true);
+      setProvisioningInProgress(true);
+
+      try {
+        // Check if user has a licensed application
+        const { data: apps } = await supabase
+          .from("applications")
+          .select("id, first_name, last_name, email, phone, assigned_agent_id")
+          .ilike("email", user.email)
+          .eq("license_status", "licensed")
+          .order("created_at", { ascending: false })
+          .limit(1);
+
+        if (apps && apps.length > 0) {
+          const app = apps[0];
+          console.log("Auto-provisioning agent for licensed applicant:", app.email);
+
+          const { error } = await supabase.functions.invoke("add-agent", {
+            body: {
+              firstName: app.first_name,
+              lastName: app.last_name,
+              email: app.email,
+              phone: app.phone || "",
+              managerId: app.assigned_agent_id || null,
+              licenseStatus: "licensed",
+              hasTrainingCourse: true,
+            },
+          });
+
+          if (!error) {
+            // Re-fetch agent ID after provisioning
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            const { data: newAgent } = await supabase
+              .from("agents")
+              .select("id")
+              .eq("user_id", user.id)
+              .order("created_at", { ascending: false })
+              .limit(1);
+
+            if (newAgent && newAgent.length > 0) {
+              setAgentId(newAgent[0].id);
+              setAgentNotFound(false);
+            }
+          } else {
+            console.error("Auto-provision failed:", error);
+          }
+        }
+      } catch (err) {
+        console.error("Auto-provision error:", err);
+      } finally {
+        setProvisioningInProgress(false);
+      }
+    };
+    autoProvision();
+  }, [agentNotFound, autoProvisionAttempted, user?.email, user?.id]);
 
   const {
     modules,

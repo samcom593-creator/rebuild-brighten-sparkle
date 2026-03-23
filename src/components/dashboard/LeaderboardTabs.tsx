@@ -682,10 +682,16 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
                                   )}
                                 </div>
                                 <div className="min-w-0 flex items-center gap-0.5">
-                                  <span className={cn(
-                                    "text-xs font-medium truncate",
-                                    entry.isCurrentUser && "text-primary"
-                                  )}>
+                                  <span
+                                    className={cn(
+                                      "text-xs font-medium truncate hover:underline",
+                                      entry.isCurrentUser && "text-primary"
+                                    )}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      window.location.href = `/dashboard/crm?focusAgentId=${entry.agentId}`;
+                                    }}
+                                  >
                                     {entry.name.split(" ")[0]}
                                   </span>
                                   {getLeaderBadge(entry.agentId)}

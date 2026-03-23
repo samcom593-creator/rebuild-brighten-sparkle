@@ -102,7 +102,7 @@ export default function Apply() {
   const [selectedReferrer, setSelectedReferrer] = useState<string>("");
   const [customReferrer, setCustomReferrer] = useState("");
   const [savedLicenseStatus, setSavedLicenseStatus] = useState<string>("unlicensed");
-  const [duplicateError, setDuplicateError] = useState(false);
+  
   const [smsConsentError, setSmsConsentError] = useState(false);
   const smsConsentRef = useRef<HTMLDivElement>(null);
   const isSubmittedRef = useRef(false);
@@ -432,20 +432,14 @@ export default function Apply() {
         const status = error.context.status;
         try {
           const body = await error.context.json();
-          if (status === 409) {
-            setDuplicateError(true);
-            toast.error(body?.error || "An application with this email already exists. Contact info@apex-financial.org if you need help.", { duration: 10000 });
-          } else if (body?.details && Array.isArray(body.details)) {
+          if (body?.details && Array.isArray(body.details)) {
             const fields = body.details.map((d: any) => d.path?.join?.(".") || d.message).filter(Boolean);
             toast.error(`Please fix these fields: ${fields.join(", ")}`, { duration: 6000 });
           } else {
             toast.error(body?.error || "Failed to submit application. Please try again.", { duration: 5000 });
           }
         } catch (_) {
-          if (status === 409) {
-            setDuplicateError(true);
-            toast.error("An application with this email already exists. Contact info@apex-financial.org if you need help.", { duration: 10000 });
-          } else {
+          {
             toast.error("Failed to submit application. Please check your connection and try again.", { duration: 5000 });
           }
         }
@@ -568,13 +562,6 @@ export default function Apply() {
                 transition={{ duration: 0.2 }}
               >
                 <GlassCard className="p-4 sm:p-8">
-                  {/* Duplicate Application Error Banner */}
-                  {duplicateError && (
-                    <div className="mb-6 p-4 rounded-xl border border-destructive/30 bg-destructive/10 text-destructive">
-                      <p className="font-semibold text-sm">⚠️ Application Already Exists</p>
-                      <p className="text-xs mt-1">An application with this email or phone number is already on file. If you need to update your application, please email <a href="mailto:info@apex-financial.org" className="underline font-medium">info@apex-financial.org</a>.</p>
-                    </div>
-                  )}
                   {/* Step 1: Personal Info */}
                   {currentStep === 1 && (
                     <div className="space-y-6">

@@ -855,53 +855,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Check for duplicate applications by email or phone
-    
-    const { data: existingByEmail } = await supabaseAdmin
-      .from("applications")
-      .select("id, first_name, last_name, terminated_at")
-      .ilike("email", normalizedEmail)
-      .is("terminated_at", null)
-      .maybeSingle();
-
-    if (existingByEmail) {
-      console.log(`Duplicate application detected for email: ${normalizedEmail}`);
-      return new Response(
-        JSON.stringify({ 
-          error: "An application with this email already exists. If you need to update your application, please contact us.",
-          duplicate: true 
-        }),
-        {
-          status: 409,
-          headers: { "Content-Type": "application/json", ...corsHeaders },
-        },
-      );
-    }
-
-    // Also check phone (normalize to last 10 digits)
-    const { data: existingApps } = await supabaseAdmin
-      .from("applications")
-      .select("id, phone, terminated_at")
-      .is("terminated_at", null);
-
-    const duplicateByPhone = existingApps?.find(app => {
-      const appPhone = (app.phone || '').replace(/\D/g, '').slice(-10);
-      return appPhone === normalizedPhone && appPhone.length === 10;
-    });
-
-    if (duplicateByPhone) {
-      console.log(`Duplicate application detected for phone: ${normalizedPhone}`);
-      return new Response(
-        JSON.stringify({ 
-          error: "An application with this phone number already exists. If you need to update your application, please contact us.",
-          duplicate: true 
-        }),
-        {
-          status: 409,
-          headers: { "Content-Type": "application/json", ...corsHeaders },
-        },
-      );
-    }
+    // Duplicate checks removed — allow multiple applications from same person
 
     // Extract consent data
     const consent = data.consent;

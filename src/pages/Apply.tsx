@@ -102,7 +102,7 @@ export default function Apply() {
   const [selectedReferrer, setSelectedReferrer] = useState<string>("");
   const [customReferrer, setCustomReferrer] = useState("");
   const [savedLicenseStatus, setSavedLicenseStatus] = useState<string>("unlicensed");
-  const [duplicateError, setDuplicateError] = useState(false);
+  
   const [smsConsentError, setSmsConsentError] = useState(false);
   const smsConsentRef = useRef<HTMLDivElement>(null);
   const isSubmittedRef = useRef(false);

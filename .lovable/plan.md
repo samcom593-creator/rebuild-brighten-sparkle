@@ -1,35 +1,24 @@
 
 
-# Fix Navigation: Make Key Pages Accessible to All Roles
+# Fix: Auto-Create Agent When Marked Licensed in Pipeline
 
 ## Problem
-- **CRM, Pipeline, Course Progress** are hidden from regular agents in the sidebar — only managers/admins see them
-- No cross-links between Pipeline → CRM or Dashboard → CRM (e.g., clicking an agent name in one view doesn't navigate to their record in another)
-- Agents like "Cooper" only appear on Dashboard but can't be found from Pipeline or other views
+When someone like "Cooper" is marked as **licensed** in the Pipeline (`AgentPipeline.tsx`), the code only updates the `applications` table fields (`license_status`, `license_progress`). It does **NOT** call `add-agent` to create an actual agent record. Without an agent record, the person never appears in the Dashboard, CRM, or Course.
 
-## Changes
+The `DashboardApplicants.tsx` page already has this logic — when you hire someone who is licensed there, it calls `add-agent` automatically. But the Pipeline page skips this entirely.
 
-### 1. GlobalSidebar.tsx — Expose core pages to all roles
-Move these items out of the `isAdmin || isManager` block so ALL authenticated users see them:
-- **Dashboard** (already visible to all ✓)
-- **CRM** — agents should see their own recruits/team
-- **Pipeline** — agents already have "My Pipeline" but it's a separate route; unify to one entry
-- **My Course** (already visible to all ✓)
-- **Agent Portal / My Portal** — currently duplicated (managers see "Agent Portal", agents see "My Portal" pointing to same route); consolidate into one entry visible to all
+## Fix
 
-Reorganize the TOOLS section:
-- All users: Dashboard, Log Numbers, My Course, Portal, Pipeline, CRM, Calendar, Purchase Leads
-- Managers add: Recruiter HQ, Course Progress, Call Center, Aged Leads, Growth, Seminar
-- Admins add: Command Center, Lead Center, Notifications, Day Planner, Accounts
+### 1. `src/pages/AgentPipeline.tsx` — Trigger agent creation when stage changes to "licensed"
+In the `handleStageChange` function (line 151), after successfully updating the application to "licensed":
+- Look up the full application data from the local state
+- Call `supabase.functions.invoke("add-agent")` with firstName, lastName, email, phone, managerId (the current user's agent ID), licenseStatus "licensed", hasTrainingCourse true
+- Show a toast confirming the agent was created and enrolled in the course
+- This mirrors the exact same logic already in `DashboardApplicants.tsx` lines 334-356
 
-### 2. Pipeline cards — Add "View in CRM" action
-In `AgentPipeline.tsx`, when clicking/tapping an applicant card, add a quick-action link or make the name clickable to navigate to `/dashboard/crm?focusAgentId={id}` (the same deep-link pattern already used by OnboardingPipelineCard).
-
-### 3. Dashboard agent cards — Add CRM deep-link
-In key dashboard components that show agent names (like leaderboard entries), make names clickable to navigate to `/dashboard/crm?focusAgentId={id}`.
+### 2. No database changes needed
+The `add-agent` edge function already handles everything: creates the agent record, provisions auth, sets onboarding stage, and sends the course enrollment email.
 
 ### Files Modified
-- `src/components/layout/GlobalSidebar.tsx` — Restructure nav items for all roles
-- `src/pages/AgentPipeline.tsx` — Add CRM deep-link on agent cards
-- `src/components/dashboard/LeaderboardTabs.tsx` — Make agent names clickable → CRM
+- **`src/pages/AgentPipeline.tsx`** — Add `add-agent` edge function call when `newStage === "licensed"`
 

@@ -432,20 +432,14 @@ export default function Apply() {
         const status = error.context.status;
         try {
           const body = await error.context.json();
-          if (status === 409) {
-            setDuplicateError(true);
-            toast.error(body?.error || "An application with this email already exists. Contact info@apex-financial.org if you need help.", { duration: 10000 });
-          } else if (body?.details && Array.isArray(body.details)) {
+          if (body?.details && Array.isArray(body.details)) {
             const fields = body.details.map((d: any) => d.path?.join?.(".") || d.message).filter(Boolean);
             toast.error(`Please fix these fields: ${fields.join(", ")}`, { duration: 6000 });
           } else {
             toast.error(body?.error || "Failed to submit application. Please try again.", { duration: 5000 });
           }
         } catch (_) {
-          if (status === 409) {
-            setDuplicateError(true);
-            toast.error("An application with this email already exists. Contact info@apex-financial.org if you need help.", { duration: 10000 });
-          } else {
+          {
             toast.error("Failed to submit application. Please check your connection and try again.", { duration: 5000 });
           }
         }

@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { CheckCircle2, Crown, ArrowRight, Mail, Phone, Calendar } from "lucide-react";
+import { CheckCircle2, Crown, ArrowRight, Mail, Phone, Calendar, AlertTriangle } from "lucide-react";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { GlassCard } from "@/components/ui/glass-card";
 

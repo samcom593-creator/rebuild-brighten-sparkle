@@ -226,9 +226,10 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
             ? (totals.deals / totals.presentations) * 100
             : 0;
 
-        // Name fallback: profile_id profile -> user_id profile -> display_name -> Unknown
-        const displayName = profileViaId?.full_name || profileViaUserId?.full_name || agent?.display_name || "Unknown Agent";
-        const avatarUrl = profileViaId?.avatar_url || profileViaUserId?.avatar_url;
+        // Name fallback: profile_id profile -> user_id profile -> RPC profile -> display_name -> Unknown
+        const rpcProfile = rpcProfiles?.find((p: any) => p.user_id === agent?.user_id);
+        const displayName = profileViaId?.full_name || profileViaUserId?.full_name || rpcProfile?.full_name || agent?.display_name || "Unknown Agent";
+        const avatarUrl = profileViaId?.avatar_url || profileViaUserId?.avatar_url || rpcProfile?.avatar_url;
 
         return {
           rank: 0,

@@ -1,43 +1,27 @@
 
 
-# Fix: Auto-Provision is Fundamentally Broken — Replace with Self-Service Edge Function
+# Import New Production Data (03/23–03/24)
 
-## Root Cause (Two Blockers)
-The current auto-provisioning in `OnboardingCourse.tsx` calls `add-agent`, which **always fails** for regular agents:
+## New Deals to Import
 
-1. **Line 69**: `add-agent` requires admin/manager role → returns **403** for regular agents
-2. **Line 112**: `add-agent` checks if profile already exists → returns **409** because the user already has a profile from the auth trigger
+### 03/24/2026 (1 deal)
+| Agent | ALP | Deals |
+|-------|-----|-------|
+| Mahmod Imran | $2,016.00 | 1 |
 
-So the "auto-provision" code silently fails every time, and the user sees "Course Access Pending."
+### 03/23/2026 (10 deals)
+| Agent | ALP | Deals |
+|-------|-----|-------|
+| Michael Kayembe | $3,664.68 | 3 |
+| Jacob Causer | $2,376.00 | 2 |
+| Obiajulu Ifediora | $2,689.92 | 1 |
+| Aisha Kebbeh | $2,562.48 | 2 |
+| Kaeden Vaughns | $1,454.28 | 1 |
+| Mahmod Imran | $900.00 | 1 |
 
-## Fix: New `self-enroll-course` Edge Function
+## Approach
+Single call to `import-production-data` with all deals from the full dataset (01/17–03/24) using `skip_existing: false`. This adds the new 03/23–03/24 data and re-validates all historical dates in one pass. No code changes needed.
 
-Create a dedicated edge function that any authenticated user can call to self-provision:
-
-1. Validates the calling user's JWT (no admin/manager requirement)
-2. Checks if user already has an agent record → if yes, just sets `has_training_course = true` and returns
-3. If no agent record, checks `applications` table for a matching email with `license_status = 'licensed'`
-4. If found, creates the agent record using the service role key (handles existing profile via upsert)
-5. Returns the new agent ID so the course page can proceed
-
-### `supabase/functions/self-enroll-course/index.ts`
-- Authenticates via JWT
-- Looks up profile by `user_id` to get email
-- Checks for existing agent record → updates `has_training_course` if found
-- If no agent, queries `applications` for licensed match
-- Creates agent record linked to the existing profile (no profile delete/recreate)
-- Sets `has_training_course: true`, `onboarding_stage: training_online`
-
-### `src/pages/OnboardingCourse.tsx`
-- Replace the broken `add-agent` call with `self-enroll-course`
-- Remove the "Course Access Pending" dead-end entirely
-- If `self-enroll-course` succeeds → refresh and show course
-- If no licensed application found → show "Your manager hasn't marked you as licensed yet"
-
-### Also fix the 9 existing orphaned licensed applications
-Run a one-time data fix via the new function or direct SQL to provision agent records for the 9 people currently stuck (Jordan McClendon, Jacob Causer, Deja Kelly, Pierre Auguste, Maddox Wilson, Tymere Mays, Terrance Brown, KJ Vaughns, etc.).
-
-## Files
-- **New**: `supabase/functions/self-enroll-course/index.ts`
-- **Edit**: `src/pages/OnboardingCourse.tsx` — use new function instead of `add-agent`
+## Also re-imports 03/13–03/22
+The pasted data includes deals from 03/13 onward with some entries that may have been updated (e.g., Joanne Scott now shows "Active" status). All will be overwritten with correct totals.
 

@@ -1,27 +1,40 @@
 
 
-# Import New Production Data (03/23–03/24)
+# Auto-Assign All Unassigned Leads to Samuel James
 
-## New Deals to Import
+## What Changes
+1. **Database trigger** — Update `auto_assign_unassigned_application()` to set `assigned_agent_id` to Samuel James (`7c3c5581-3544-437f-bfe2-91391afb217d`) when a new application has no assigned agent.
 
-### 03/24/2026 (1 deal)
-| Agent | ALP | Deals |
-|-------|-----|-------|
-| Mahmod Imran | $2,016.00 | 1 |
+2. **Backfill** — Update all existing unassigned applications (where `terminated_at IS NULL`) to Samuel James.
 
-### 03/23/2026 (10 deals)
-| Agent | ALP | Deals |
-|-------|-----|-------|
-| Michael Kayembe | $3,664.68 | 3 |
-| Jacob Causer | $2,376.00 | 2 |
-| Obiajulu Ifediora | $2,689.92 | 1 |
-| Aisha Kebbeh | $2,562.48 | 2 |
-| Kaeden Vaughns | $1,454.28 | 1 |
-| Mahmod Imran | $900.00 | 1 |
+## Technical Details
 
-## Approach
-Single call to `import-production-data` with all deals from the full dataset (01/17–03/24) using `skip_existing: false`. This adds the new 03/23–03/24 data and re-validates all historical dates in one pass. No code changes needed.
+### Migration SQL
+```sql
+CREATE OR REPLACE FUNCTION public.auto_assign_unassigned_application()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+BEGIN
+  IF NEW.assigned_agent_id IS NULL THEN
+    NEW.assigned_agent_id := '7c3c5581-3544-437f-bfe2-91391afb217d';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+```
 
-## Also re-imports 03/13–03/22
-The pasted data includes deals from 03/13 onward with some entries that may have been updated (e.g., Joanne Scott now shows "Active" status). All will be overwritten with correct totals.
+### Data backfill (via insert tool)
+```sql
+UPDATE applications
+SET assigned_agent_id = '7c3c5581-3544-437f-bfe2-91391afb217d'
+WHERE assigned_agent_id IS NULL AND terminated_at IS NULL;
+```
+
+### Files
+- **Migration**: Update trigger function
+- **Data fix**: Backfill existing NULLs
+- No frontend code changes needed
 

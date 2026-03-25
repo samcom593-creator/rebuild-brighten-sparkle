@@ -104,6 +104,15 @@ export function LicenseProgressSelector({
 
       if (error) throw error;
 
+      // Also sync the agents table license_status if agentId is provided
+      if (agentId && (newProgress === "licensed" || progress === "licensed")) {
+        const agentLicenseStatus = newProgress === "licensed" ? "licensed" : "pending";
+        await supabase
+          .from("agents")
+          .update({ license_status: agentLicenseStatus })
+          .eq("id", agentId);
+      }
+
       setProgress(newProgress);
       const stepLabel = progressSteps.find(s => s.value === newProgress)?.label;
       toast.success(`Updated to: ${stepLabel}${testDate ? ` (${format(testDate, "MMM d, yyyy")})` : ""}`);

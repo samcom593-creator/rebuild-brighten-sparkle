@@ -21,6 +21,7 @@ type LicenseProgress = "unlicensed" | "course_purchased" | "finished_course" | "
 
 interface LicenseProgressSelectorProps {
   applicationId: string;
+  agentId?: string;
   currentProgress: LicenseProgress | null | undefined;
   testScheduledDate?: string | null;
   onProgressUpdated?: () => void;

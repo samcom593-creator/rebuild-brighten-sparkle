@@ -52,6 +52,7 @@ const progressColors: Record<LicenseProgress, string> = {
 
 export function LicenseProgressSelector({
   applicationId,
+  agentId,
   currentProgress,
   testScheduledDate,
   onProgressUpdated,

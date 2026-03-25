@@ -359,7 +359,8 @@ function AgentExpandedRow({
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground w-16">License:</span>
               <LicenseProgressSelector
-                applicationId={agent.id}
+                applicationId={agent.applicationId || agent.id}
+                agentId={agent.userId ? agent.id : undefined}
                 currentProgress={(agent.licenseProgress || "unlicensed") as any}
                 testScheduledDate={agent.testScheduledDate}
                 onProgressUpdated={onRefresh}

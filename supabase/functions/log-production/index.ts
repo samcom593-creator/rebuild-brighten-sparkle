@@ -33,24 +33,44 @@ Deno.serve(async (req) => {
         .select(`
           id,
           onboarding_stage,
+          user_id,
+          profile_id,
           profile:profiles!agents_profile_id_fkey(full_name, email)
         `)
         ;
 
       if (error) throw error;
 
+      // Also fetch profiles by user_id for agents without profile_id
+      const agentsMissingProfile = (agents || []).filter((a: any) => !a.profile?.full_name && a.user_id);
+      let userIdProfileMap = new Map<string, { full_name: string; email: string }>();
+      if (agentsMissingProfile.length > 0) {
+        const userIds = agentsMissingProfile.map((a: any) => a.user_id);
+        const { data: extraProfiles } = await supabaseAdmin
+          .from("profiles")
+          .select("user_id, full_name, email")
+          .in("user_id", userIds);
+        (extraProfiles || []).forEach((p: any) => {
+          if (p.user_id) userIdProfileMap.set(p.user_id, { full_name: p.full_name, email: p.email });
+        });
+      }
+
       const matches = (agents || [])
         .filter((a: any) => {
-          const name = a.profile?.full_name?.toLowerCase() || "";
-          const email = a.profile?.email?.toLowerCase() || "";
+          const profileData = a.profile || (a.user_id ? userIdProfileMap.get(a.user_id) : null);
+          const name = profileData?.full_name?.toLowerCase() || "";
+          const email = profileData?.email?.toLowerCase() || "";
           return name.includes(query) || email.includes(query);
         })
-        .map((a: any) => ({
-          id: a.id,
-          name: a.profile?.full_name || "Unknown",
-          email: a.profile?.email || "",
-          onboardingStage: a.onboarding_stage,
-        }));
+        .map((a: any) => {
+          const profileData = a.profile || (a.user_id ? userIdProfileMap.get(a.user_id) : null);
+          return {
+            id: a.id,
+            name: profileData?.full_name || "Unknown",
+            email: profileData?.email || "",
+            onboardingStage: a.onboarding_stage,
+          };
+        });
 
       return new Response(JSON.stringify({ agents: matches }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

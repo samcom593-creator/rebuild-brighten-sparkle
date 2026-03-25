@@ -54,10 +54,15 @@ export function BubbleStatInput({
             type="number"
             step={step}
             min="0"
-            inputMode="numeric"
+            inputMode="decimal"
+            pattern="[0-9]*"
             value={value || ""}
             placeholder="0"
-            onChange={(e) => onChange(step < 1 ? parseFloat(e.target.value) || 0 : parseInt(e.target.value) || 0)}
+            onChange={(e) => {
+              const raw = e.target.value;
+              if (raw === "" || raw === "0") { onChange(0); return; }
+              onChange(step < 1 ? parseFloat(raw) || 0 : parseInt(raw) || 0);
+            }}
             onFocus={(e) => e.target.select()}
             className={cn(
               "h-12 text-2xl font-bold text-center pl-12 border-0 bg-transparent focus:ring-0",

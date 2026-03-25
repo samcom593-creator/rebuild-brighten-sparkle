@@ -21,6 +21,7 @@ type LicenseProgress = "unlicensed" | "course_purchased" | "finished_course" | "
 
 interface LicenseProgressSelectorProps {
   applicationId: string;
+  agentId?: string;
   currentProgress: LicenseProgress | null | undefined;
   testScheduledDate?: string | null;
   onProgressUpdated?: () => void;
@@ -51,6 +52,7 @@ const progressColors: Record<LicenseProgress, string> = {
 
 export function LicenseProgressSelector({
   applicationId,
+  agentId,
   currentProgress,
   testScheduledDate,
   onProgressUpdated,
@@ -101,6 +103,15 @@ export function LicenseProgressSelector({
         .eq("id", applicationId);
 
       if (error) throw error;
+
+      // Also sync the agents table license_status if agentId is provided
+      if (agentId && (newProgress === "licensed" || progress === "licensed")) {
+        const agentLicenseStatus = newProgress === "licensed" ? "licensed" : "pending";
+        await supabase
+          .from("agents")
+          .update({ license_status: agentLicenseStatus })
+          .eq("id", agentId);
+      }
 
       setProgress(newProgress);
       const stepLabel = progressSteps.find(s => s.value === newProgress)?.label;

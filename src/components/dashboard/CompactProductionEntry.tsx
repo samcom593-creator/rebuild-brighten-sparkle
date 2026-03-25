@@ -143,17 +143,24 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
       if (error) {
         console.warn("Direct upsert failed, falling back to edge function:", error.message);
         // Fallback: use the log-production edge function (service role, bypasses RLS)
-        const fallbackRes = await supabase.functions.invoke("log-production", {
-          body: {
-            action: "submit",
-            agentId,
-            date: productionDate,
-            productionData: formData,
-          },
-        });
-        if (fallbackRes.error) throw fallbackRes.error;
-        if (fallbackRes.data?.error) throw new Error(fallbackRes.data.error);
-        console.log("✅ Saved via edge function fallback");
+        try {
+          const fallbackRes = await supabase.functions.invoke("log-production", {
+            body: {
+              action: "submit",
+              agentId,
+              date: productionDate,
+              productionData: formData,
+            },
+          });
+          if (fallbackRes.error) throw fallbackRes.error;
+          if (fallbackRes.data?.error) throw new Error(fallbackRes.data.error);
+          console.log("✅ Saved via edge function fallback");
+        } catch (fallbackErr: any) {
+          console.error("Edge function fallback also failed:", fallbackErr);
+          toast.error("Failed to save numbers. Please try again or contact your manager.");
+          setSaving(false);
+          return;
+        }
       }
 
       // Auto-mark daily_sale attendance if deals > 0

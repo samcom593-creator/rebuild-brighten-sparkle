@@ -9,6 +9,7 @@ const corsHeaders = {
 const NAME_ALIASES: Record<string, string> = {
   "kaeden vaughns": "kj vaughns",
   "mahmod imran": "moody imran",
+  "samuel lugo puga": "samuel lugo puga",
 };
 
 interface DealRecord {

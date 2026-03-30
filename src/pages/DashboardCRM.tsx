@@ -88,20 +88,20 @@ const getTimeAgo = (dateString: string): string => {
 
 const isStaleAgent = (agent: AgentCRM): boolean => {
   if (!agent.lastContactedAt) {
-    return (agent.weeklyDeals > 0 || agent.monthlyDeals > 0);
+    // Agents with no contact date are stale only if they've been around (have activity or are not brand new)
+    return true;
   }
-  return (Date.now() - new Date(agent.lastContactedAt).getTime()) / 3600000 >= 48;
+  const daysSince = (Date.now() - new Date(agent.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24);
+  return daysSince >= 6;
 };
 
 const getContactInfo = (agent: AgentCRM) => {
   if (!agent.lastContactedAt) {
-    const hasActivity = agent.weeklyDeals > 0 || agent.monthlyDeals > 0 || agent.weeklyALP > 0;
-    if (!hasActivity) return { label: "New", color: "text-muted-foreground" };
     return { label: "Never", color: "text-red-500 dark:text-red-400" };
   }
-  const h = (Date.now() - new Date(agent.lastContactedAt).getTime()) / 3600000;
-  if (h < 24) return { label: getTimeAgo(agent.lastContactedAt), color: "text-emerald-600 dark:text-emerald-400" };
-  if (h < 48) return { label: getTimeAgo(agent.lastContactedAt), color: "text-amber-600 dark:text-amber-400" };
+  const days = (Date.now() - new Date(agent.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24);
+  if (days < 3) return { label: getTimeAgo(agent.lastContactedAt), color: "text-emerald-600 dark:text-emerald-400" };
+  if (days < 6) return { label: getTimeAgo(agent.lastContactedAt), color: "text-amber-600 dark:text-amber-400" };
   return { label: getTimeAgo(agent.lastContactedAt), color: "text-red-500 dark:text-red-400" };
 };
 
@@ -365,8 +365,20 @@ function FollowUpExpandedRow({ agent, onRefresh, onDeactivate, onViewApp, onReco
 // ─── Inline Notes Popover ─────────────────────────────────────────────────
 function InlineNotesButton({ agent }: { agent: AgentCRM }) {
   const [open, setOpen] = useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  React.useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
   return (
-    <div className="relative" onClick={e => e.stopPropagation()}>
+    <div className="relative" ref={ref} onClick={e => e.stopPropagation()}>
       <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setOpen(!open)}>
         <StickyNote className="h-3.5 w-3.5 text-muted-foreground hover:text-primary" />
       </Button>
@@ -939,7 +951,7 @@ export default function DashboardCRM() {
                                           {agent.name.charAt(0).toUpperCase()}
                                         </div>
                                         {isStaleAgent(agent) && (
-                                          <div className={cn("absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background", !agent.lastContactedAt ? "bg-red-500" : "bg-amber-500")} />
+                                          <div className={cn("absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-red-500")} />
                                         )}
                                       </div>
                                       <div className="min-w-0">

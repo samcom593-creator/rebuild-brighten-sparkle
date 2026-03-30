@@ -97,13 +97,11 @@ const isStaleAgent = (agent: AgentCRM): boolean => {
 
 const getContactInfo = (agent: AgentCRM) => {
   if (!agent.lastContactedAt) {
-    const hasActivity = agent.weeklyDeals > 0 || agent.monthlyDeals > 0 || agent.weeklyALP > 0;
-    if (!hasActivity) return { label: "New", color: "text-muted-foreground" };
     return { label: "Never", color: "text-red-500 dark:text-red-400" };
   }
-  const h = (Date.now() - new Date(agent.lastContactedAt).getTime()) / 3600000;
-  if (h < 24) return { label: getTimeAgo(agent.lastContactedAt), color: "text-emerald-600 dark:text-emerald-400" };
-  if (h < 48) return { label: getTimeAgo(agent.lastContactedAt), color: "text-amber-600 dark:text-amber-400" };
+  const days = (Date.now() - new Date(agent.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24);
+  if (days < 3) return { label: getTimeAgo(agent.lastContactedAt), color: "text-emerald-600 dark:text-emerald-400" };
+  if (days < 6) return { label: getTimeAgo(agent.lastContactedAt), color: "text-amber-600 dark:text-amber-400" };
   return { label: getTimeAgo(agent.lastContactedAt), color: "text-red-500 dark:text-red-400" };
 };
 

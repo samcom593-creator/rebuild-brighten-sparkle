@@ -88,9 +88,11 @@ const getTimeAgo = (dateString: string): string => {
 
 const isStaleAgent = (agent: AgentCRM): boolean => {
   if (!agent.lastContactedAt) {
-    return (agent.weeklyDeals > 0 || agent.monthlyDeals > 0);
+    // Agents with no contact date are stale only if they've been around (have activity or are not brand new)
+    return true;
   }
-  return (Date.now() - new Date(agent.lastContactedAt).getTime()) / 3600000 >= 48;
+  const daysSince = (Date.now() - new Date(agent.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24);
+  return daysSince >= 6;
 };
 
 const getContactInfo = (agent: AgentCRM) => {

@@ -951,7 +951,7 @@ export default function DashboardCRM() {
                                           {agent.name.charAt(0).toUpperCase()}
                                         </div>
                                         {isStaleAgent(agent) && (
-                                          <div className={cn("absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background", !agent.lastContactedAt ? "bg-red-500" : "bg-amber-500")} />
+                                          <div className={cn("absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-red-500")} />
                                         )}
                                       </div>
                                       <div className="min-w-0">

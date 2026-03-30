@@ -116,7 +116,7 @@ export function LeadReassignment() {
               .from("agents")
               .select("user_id")
               .eq("id", app.assigned_agent_id)
-              .single();
+              .maybeSingle();
 
             if (agent?.user_id) {
               const { data: profile } = await supabase

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Check, ChevronRight, Loader2, GraduationCap, BookOpen, BookCheck, CalendarClock, FileCheck, Fingerprint, Clock, Award, CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";

@@ -1,50 +1,68 @@
 
 
-# Import Full Production Data (01/13 – 03/25) with New Agents
+# CRM Overhaul: Simplify for Managers + Import New Data
 
-## What's New
-This dataset includes **03/25 deals** (9 new deals) plus corrections/additions across 03/24 back to 01/13. It also introduces several agents not previously imported:
+## Problem
+The CRM is overwhelming — too much info per agent, buried features, wrong filtering logic. Managers avoid using it. Each tab shows the same heavy expanded row with star ratings, checklists, production stats, evaluation buttons, etc. regardless of context.
 
-### New agents in dataset (not in previous imports)
-- **Dalton Rowland** — ~40+ deals across many dates
-- **Alyjah Rowland** — ~10 deals
-- **Christopher Avent** — 1 deal (02/20)
-- **Loren Lail** — 2 deals
-- **Codey Salazar** — ~6 deals
-- **Joseph Sebasco** — ~5 deals
-- **Richard Hall** — 1 deal
-- **Bryan Ross** — ~10 deals
-- **Leslie Patino Galeana** — 1 deal
-- **Samuel Lugo Puga** — ~3 deals
-- **Landon Boyd** — ~3 deals
+## Changes
 
-These agents must already exist in the `agents` table with matching profile names, or they'll be reported as "missing" by the import function.
+### 1. Rewrite `AgentExpandedRow` per-section context (`DashboardCRM.tsx`)
 
-### 03/25 deals (new)
-| Agent | ALP | Deals |
-|-------|-----|-------|
-| Chukwudi Ifediora | $1,631.64 | 1 |
-| Michael Kayembe | $1,728.36 | 2 |
-| Aisha Kebbeh | $2,885.40 | 3 |
-| Obiajulu Ifediora | $1,487.88 | 2 |
-| Mahmod Imran | $720.00 | 1 |
+**Onboarding** expanded row shows ONLY:
+- License status (Licensed / Unlicensed badge)
+- Course progress bar (the 5-step dots already there)
+- Contact info (phone, email, IG)
+- Notes button
+- Remove: star rating, checklist, production summary, evaluation, attendance, days counters, performance badges
 
-### 03/24 additions (not in prior import)
-| Agent | ALP | Deals |
-|-------|-----|-------|
-| Samuel James | $2,292.00 | 2 |
-| Dalton Rowland | $2,552.40 | 1 |
+**In-Field Training** expanded row shows ONLY:
+- Attendance grids (Training + Meeting) — daily marking
+- Homework grid (daily marking)
+- Contact info
+- Notes button
+- Remove: star rating, checklist, production summary, license progress bar, evaluation
 
-## Approach
-1. Single call to `import-production-data` with the **full dataset** (~300+ deals) using `skip_existing: false` to overwrite all dates with correct totals
-2. The function will report any missing agents — if new agents (Dalton Rowland, Alyjah Rowland, etc.) aren't in the system yet, they'll appear in the `missing_agents` list
-3. If agents are missing, we'll need to either add them first or add name aliases to the import function
+**Live** expanded row shows ONLY:
+- Week ALP, Previous Week ALP, Weekly Deals (inline in table row, not just expanded)
+- Contact info
+- Attendance
+- Notes button
+- Remove: star rating, checklist, month ALP, closing rate %, days counters, performance badges, evaluation
 
-## Pre-check needed
-Before importing, verify which of the new agents exist in the database. If they don't, we need to:
-- Either create agent records for them first (via `add-agent` edge function)
-- Or add aliases to the `NAME_ALIASES` map if their profile names differ
+**Needs Follow-Up**: Change threshold from 14 days to **6 days** with no progress update. Show contact info + last activity + notes.
 
-## No code changes required
-Data-only operation via edge function invocation.
+### 2. Simplify table columns per section
+
+- **Onboarding**: Agent | Licensed/Unlicensed | Course Progress | Contact | Notes icon
+- **In-Field Training**: Agent | Attendance | Homework | Contact
+- **Live**: Agent | Week ALP | Prev Week ALP | Deals | Attendance | Contact
+- **Needs Follow-Up**: Agent | Last Activity | Days Stale | Contact
+
+### 3. Unlicensed Pipeline — full-height scrollable
+Remove `max-h-[300px]` from pipeline columns. Make the pipeline section use full viewport height with proper scrolling.
+
+### 4. Add inline Notes button to every row
+Show a small notes icon on each table row that opens the notes panel inline (not requiring full expand). Use the existing `AgentNotes` component.
+
+### 5. Import production data (03/27–03/30)
+**New deals:**
+| Date | Agent | ALP | Deals |
+|------|-------|-----|-------|
+| 03/30 | Alyjah Rowland | $600.00 | 1 |
+| 03/30 | Kaeden Vaughns | $754.44 | 1 |
+| 03/30 | Chukwudi Ifediora | $1,224.00 | 1 |
+| 03/30 | Obiajulu Ifediora | $855.84 | 1 |
+| 03/30 | Mahmod Imran | $2,832.00 | 1 |
+| 03/28 | Mahmod Imran | $1,452.00 | 1 |
+| 03/27 | Jacob Causer | $756.00 | 1 |
+| 03/27 | Chukwudi Ifediora | $1,559.88 | 1 |
+| 03/27 | Kaeden Vaughns | $828.48 | 1 |
+| 03/27 | Obiajulu Ifediora | $1,135.56 | 1 |
+
+Plus all prior data re-synced with `skip_existing: false`.
+
+## Files Modified
+- **`src/pages/DashboardCRM.tsx`** — Major rewrite of `AgentExpandedRow`, table headers, section filtering logic, unlicensed pipeline height
+- **Data import** via `import-production-data` edge function call
 

@@ -227,7 +227,7 @@ export default function AgentPortal() {
           .from("agents")
           .select("id, onboarding_stage")
           .eq("user_id", user!.id)
-          .single();
+          .maybeSingle();
         
         if (agent) {
           setAgentId(agent.id);

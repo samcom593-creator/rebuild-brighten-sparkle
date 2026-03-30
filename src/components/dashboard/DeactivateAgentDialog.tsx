@@ -180,7 +180,7 @@ export function DeactivateAgentDialog({
             .from("profiles")
             .select("full_name")
             .eq("user_id", user?.id)
-            .single();
+            .maybeSingle();
 
           const { error } = await supabase.functions.invoke("confirm-agent-removal", {
             body: {

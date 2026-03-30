@@ -83,7 +83,7 @@ async function fetchTeamDataFn(userId: string, isAdmin: boolean): Promise<{ memb
     .from("agents")
     .select("id")
     .eq("user_id", userId)
-    .single();
+    .maybeSingle();
 
   if (!currentAgent) return { members: [], stats: { totalMembers: 0, totalLeads: 0, totalClosed: 0, avgCloseRate: 0, licensedCount: 0, unlicensedCount: 0, trainingCount: 0 }, managerUserIds };
 

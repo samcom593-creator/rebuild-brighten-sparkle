@@ -444,7 +444,7 @@ export default function DashboardCRM() {
       setManagers(managerAgents.map(a => ({ id: a.id, name: profileMap.get(a.user_id) || "Unknown" })));
     } catch (error) { console.error("Error fetching managers:", error); }
     try {
-      const { data: currentAgent } = await supabase.from("agents").select("id").eq("user_id", user!.id).single();
+      const { data: currentAgent } = await supabase.from("agents").select("id").eq("user_id", user!.id).maybeSingle();
       if (!currentAgent && !isAdmin) { return []; }
       if (currentAgent) setCurrentAgentId(currentAgent.id);
 
@@ -630,7 +630,7 @@ export default function DashboardCRM() {
 
   const handleOptimisticStageUpdate = async (agentId: string) => {
     try {
-      const { data } = await supabase.from("agents").select("onboarding_stage, onboarding_completed_at, field_training_started_at").eq("id", agentId).single();
+      const { data } = await supabase.from("agents").select("onboarding_stage, onboarding_completed_at, field_training_started_at").eq("id", agentId).maybeSingle();
       if (data) setAgents(prev => prev.map(a => a.id === agentId ? { ...a, onboardingStage: data.onboarding_stage || a.onboardingStage, fieldTrainingStartedAt: data.field_training_started_at || a.fieldTrainingStartedAt } : a));
     } catch (err) { console.error("Error refreshing agent stage:", err); }
   };

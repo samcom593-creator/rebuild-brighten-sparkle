@@ -44,7 +44,7 @@ export function InstagramPromptDialog({
         .from("agents")
         .select("user_id")
         .eq("id", agentId)
-        .single();
+        .maybeSingle();
 
       if (agent?.user_id) {
         const { error } = await supabase

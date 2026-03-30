@@ -227,7 +227,7 @@ export default function AgentPortal() {
           .from("agents")
           .select("id, onboarding_stage")
           .eq("user_id", user!.id)
-          .single();
+          .maybeSingle();
         
         if (agent) {
           setAgentId(agent.id);
@@ -237,8 +237,8 @@ export default function AgentPortal() {
             .from("daily_production")
             .select("*")
             .eq("agent_id", agent.id)
-            .eq("production_date", today)
-            .single();
+          .eq("production_date", today)
+          .maybeSingle();
           if (production) setTodayProduction(production);
           
           // Fetch team stats for managers/admins
@@ -295,7 +295,7 @@ export default function AgentPortal() {
         .select("*")
         .eq("agent_id", agent.id)
         .eq("production_date", today)
-        .single();
+        .maybeSingle();
 
       if (production) {
         setTodayProduction(production);

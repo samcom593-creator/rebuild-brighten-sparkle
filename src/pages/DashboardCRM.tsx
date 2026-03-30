@@ -365,8 +365,20 @@ function FollowUpExpandedRow({ agent, onRefresh, onDeactivate, onViewApp, onReco
 // ─── Inline Notes Popover ─────────────────────────────────────────────────
 function InlineNotesButton({ agent }: { agent: AgentCRM }) {
   const [open, setOpen] = useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  React.useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
   return (
-    <div className="relative" onClick={e => e.stopPropagation()}>
+    <div className="relative" ref={ref} onClick={e => e.stopPropagation()}>
       <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setOpen(!open)}>
         <StickyNote className="h-3.5 w-3.5 text-muted-foreground hover:text-primary" />
       </Button>

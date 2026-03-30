@@ -1,73 +1,26 @@
-// ============= Full file contents =============
-
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { useLocation, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  Users,
-  Search,
-  RefreshCw,
-  Clock,
-  AlertTriangle,
-  ChevronDown,
-  ChevronRight,
-  Mail,
-  Phone,
-  UserX,
-  Filter,
-  Mic,
-  BookOpen,
-  GraduationCap,
-  Briefcase,
-  Instagram,
-  X,
-  Send,
-  CheckSquare,
-  EyeOff,
-  Link2,
-  Eye,
-  FileText,
-  CheckCircle2,
-  KeyRound,
-  Copy,
+  Users, Search, RefreshCw, Clock, AlertTriangle, ChevronDown, ChevronRight,
+  Mail, Phone, UserX, Filter, Mic, BookOpen, GraduationCap, Briefcase,
+  Instagram, X, Send, CheckSquare, EyeOff, Link2, Eye, FileText,
+  CheckCircle2, KeyRound, Copy, StickyNote,
 } from "lucide-react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-// DashboardLayout removed — AuthenticatedShell already provides SidebarLayout
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { OnboardingTracker } from "@/components/dashboard/OnboardingTracker";
 import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
-import { AgentChecklist } from "@/components/dashboard/AgentChecklist";
 import { AttendanceGrid } from "@/components/dashboard/AttendanceGrid";
-import { StarRating } from "@/components/dashboard/StarRating";
 import { AgentNotes } from "@/components/dashboard/AgentNotes";
-import { EvaluationButtons } from "@/components/dashboard/EvaluationButtons";
-import { PerformanceBadges } from "@/components/dashboard/PerformanceBadges";
 import { DeactivateAgentDialog } from "@/components/dashboard/DeactivateAgentDialog";
 import { InstagramPromptDialog } from "@/components/dashboard/InstagramPromptDialog";
 import { BulkStageActions, AgentSelectCheckbox } from "@/components/crm/BulkStageActions";
@@ -86,49 +39,21 @@ type AttendanceStatus = Database["public"]["Enums"]["attendance_status"];
 type PerformanceTier = Database["public"]["Enums"]["performance_tier"];
 type OnboardingStage = Database["public"]["Enums"]["onboarding_stage"];
 
-interface Manager {
-  id: string;
-  name: string;
-}
+interface Manager { id: string; name: string; }
 
 interface AgentCRM {
-  id: string;
-  userId: string;
-  name: string;
-  applicationId?: string;
-  email: string;
-  phone?: string;
-  avatarUrl?: string;
-  instagramHandle?: string;
-  onboardingStage: OnboardingStage;
-  attendanceStatus: AttendanceStatus;
-  performanceTier: PerformanceTier;
-  fieldTrainingStartedAt?: string;
-  startDate?: string;
-  totalEarnings: number;
-  hasTrainingCourse: boolean;
-  hasDialerLogin: boolean;
-  hasDiscordAccess: boolean;
-  potentialRating: number;
-  evaluationResult?: string | null;
-  isDeactivated: boolean;
-  isInactive: boolean;
-  managerId?: string;
-  managerName?: string;
-  weekly10kBadges: number;
-  sortOrder: number;
-  weeklyALP: number;
-  weeklyPresentations: number;
-  weeklyDeals: number;
-  weeklyClosingRate: number;
-  monthlyALP: number;
-  monthlyDeals: number;
-  lastContactedAt: string | null;
-  standardPaid: boolean;
-  premiumPaid: boolean;
-  licenseProgress: string | null;
-  testScheduledDate: string | null;
-  agentLicenseStatus: string;
+  id: string; userId: string; name: string; applicationId?: string;
+  email: string; phone?: string; avatarUrl?: string; instagramHandle?: string;
+  onboardingStage: OnboardingStage; attendanceStatus: AttendanceStatus;
+  performanceTier: PerformanceTier; fieldTrainingStartedAt?: string; startDate?: string;
+  totalEarnings: number; hasTrainingCourse: boolean; hasDialerLogin: boolean; hasDiscordAccess: boolean;
+  potentialRating: number; evaluationResult?: string | null;
+  isDeactivated: boolean; isInactive: boolean; managerId?: string; managerName?: string;
+  weekly10kBadges: number; sortOrder: number;
+  weeklyALP: number; weeklyPresentations: number; weeklyDeals: number; weeklyClosingRate: number;
+  monthlyALP: number; monthlyDeals: number; prevWeekALP: number;
+  lastContactedAt: string | null; standardPaid: boolean; premiumPaid: boolean;
+  licenseProgress: string | null; testScheduledDate: string | null; agentLicenseStatus: string;
 }
 
 const attendanceColors: Record<AttendanceStatus, string> = {
@@ -136,24 +61,13 @@ const attendanceColors: Record<AttendanceStatus, string> = {
   warning: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
   critical: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
 };
-
-const attendanceLabels: Record<AttendanceStatus, string> = {
-  good: "Good",
-  warning: "Warning",
-  critical: "Critical",
-};
+const attendanceLabels: Record<AttendanceStatus, string> = { good: "Good", warning: "Warning", critical: "Critical" };
 
 const AVATAR_COLORS = [
-  "from-primary to-cyan-500",
-  "from-violet-500 to-purple-500",
-  "from-rose-500 to-pink-500",
-  "from-amber-500 to-orange-500",
-  "from-emerald-500 to-teal-500",
-  "from-blue-500 to-indigo-500",
-  "from-fuchsia-500 to-pink-500",
-  "from-cyan-500 to-blue-500",
+  "from-primary to-cyan-500", "from-violet-500 to-purple-500", "from-rose-500 to-pink-500",
+  "from-amber-500 to-orange-500", "from-emerald-500 to-teal-500", "from-blue-500 to-indigo-500",
+  "from-fuchsia-500 to-pink-500", "from-cyan-500 to-blue-500",
 ];
-
 const getAvatarColor = (name: string) => {
   const hash = name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
   return AVATAR_COLORS[hash % AVATAR_COLORS.length];
@@ -206,158 +120,94 @@ const UNLICENSED_COLUMNS = [
   { key: "waiting_on_license", label: "Waiting on License", progress: ["fingerprints_done", "waiting_on_license"] },
 ];
 
-function AgentExpandedRow({
-  agent,
-  onRefresh,
-  onStageUpdate,
-  onGoLive,
-  onDeactivate,
-  onViewApp,
-  onRecord,
-  onEditLogin,
-  onAgentUpdate,
-  playSound,
-  sendingCourseLogin,
-  setSendingCourseLogin,
-  currentAgentId,
-}: {
-  agent: AgentCRM;
-  onRefresh: () => void;
-  onStageUpdate: (id: string) => void;
-  onGoLive: (a: AgentCRM) => void;
-  onDeactivate: (a: AgentCRM) => void;
-  onViewApp: (id: string) => void;
-  onRecord: (a: AgentCRM) => void;
-  onEditLogin: (a: AgentCRM) => void;
-  onAgentUpdate: (id: string, updates: Partial<AgentCRM>) => void;
-  playSound: (s: "success" | "error" | "whoosh" | "click" | "celebrate") => void;
-  sendingCourseLogin: string | null;
-  setSendingCourseLogin: (id: string | null) => void;
-  currentAgentId: string | null;
+// ─── Contact buttons row ─────────────────────────────────────────────────
+function ContactActions({ agent, onViewApp, onRecord, onEditLogin, onDeactivate, onAgentUpdate, currentAgentId }: {
+  agent: AgentCRM; onViewApp: (id: string) => void; onRecord: (a: AgentCRM) => void;
+  onEditLogin: (a: AgentCRM) => void; onDeactivate: (a: AgentCRM) => void;
+  onAgentUpdate: (id: string, updates: Partial<AgentCRM>) => void; currentAgentId: string | null;
 }) {
-  const daysInTraining = agent.fieldTrainingStartedAt
-    ? differenceInDays(new Date(), new Date(agent.fieldTrainingStartedAt))
-    : null;
-  const evaluationDue = daysInTraining !== null && daysInTraining >= 7 && !agent.evaluationResult;
-  const isLive = agent.onboardingStage === "evaluated";
-  const isOnboarding = ["onboarding", "training_online"].includes(agent.onboardingStage);
-
   return (
-    <div className="overflow-hidden animate-in fade-in-0 slide-in-from-top-1 duration-200">
-      <div className={cn(
-        "px-4 py-3 border-t border-border space-y-3 rounded-b-lg",
-        "bg-card/80 backdrop-blur-sm shadow-inner",
-        isOnboarding && "border-l-2 border-l-primary",
-        agent.onboardingStage === "in_field_training" && "border-l-2 border-l-amber-500",
-        isLive && "border-l-2 border-l-emerald-500"
-      )}>
-        {/* Top action bar */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {agent.phone && (
-            <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" asChild>
-              <a href={`tel:${agent.phone}`}><Phone className="h-3 w-3" /> Call</a>
-            </Button>
-          )}
-          {agent.email && (
-            <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" asChild>
-              <a href={`mailto:${agent.email}`}><Mail className="h-3 w-3" /> Email</a>
-            </Button>
-          )}
-          {agent.instagramHandle && (
-            <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" asChild>
-              <a href={`https://instagram.com/${agent.instagramHandle.replace('@', '')}`} target="_blank" rel="noopener noreferrer">
-                <Instagram className="h-3 w-3" /> {agent.instagramHandle}
-              </a>
-            </Button>
-          )}
-          <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => onRecord(agent)}>
-            <Mic className="h-3 w-3" /> Record
-          </Button>
-          <Button variant="outline" size="sm" className="h-7 text-xs gap-1.5" onClick={() => onViewApp(agent.id)}>
-            <FileText className="h-3 w-3" /> Application
-          </Button>
-          {agent.userId && (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 text-xs gap-1.5"
-                onClick={async () => {
-                  try {
-                    const { data, error } = await supabase.functions.invoke("send-agent-portal-login", { body: { agentId: agent.id } });
-                    if (error) throw error;
-                    if (data?.success === false) throw new Error(data.error || "Failed");
-                    toast.success(`Portal login sent to ${agent.email}`);
-                  } catch (err: any) { toast.error(err.message || "Failed to send"); }
-                }}
-              >
-                <Send className="h-3 w-3" /> Portal Login
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 text-xs gap-1.5"
-                onClick={() => {
-                  const loginUrl = `${window.location.origin}/login`;
-                  navigator.clipboard.writeText(loginUrl);
-                  toast.success("Login link copied to clipboard!");
-                }}
-              >
-                <Copy className="h-3 w-3" /> Copy Login Link
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 text-xs gap-1.5 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
-                onClick={() => onEditLogin(agent)}
-              >
-                <KeyRound className="h-3 w-3" /> Change Login
-              </Button>
-            </>
-          )}
-          <div className="flex-1" />
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 text-xs gap-1.5 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
+    <div className="flex items-center gap-1.5 flex-wrap">
+      {agent.phone && (
+        <Button variant="outline" size="sm" className="h-7 text-xs gap-1" asChild>
+          <a href={`tel:${agent.phone}`}><Phone className="h-3 w-3" /> Call</a>
+        </Button>
+      )}
+      {agent.email && (
+        <Button variant="outline" size="sm" className="h-7 text-xs gap-1" asChild>
+          <a href={`mailto:${agent.email}`}><Mail className="h-3 w-3" /> Email</a>
+        </Button>
+      )}
+      {agent.instagramHandle && (
+        <Button variant="outline" size="sm" className="h-7 text-xs gap-1" asChild>
+          <a href={`https://instagram.com/${agent.instagramHandle.replace('@', '')}`} target="_blank" rel="noopener noreferrer">
+            <Instagram className="h-3 w-3" /> IG
+          </a>
+        </Button>
+      )}
+      <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => onViewApp(agent.id)}>
+        <FileText className="h-3 w-3" /> App
+      </Button>
+      {agent.userId && (
+        <>
+          <Button variant="outline" size="sm" className="h-7 text-xs gap-1"
             onClick={async () => {
               try {
-                await supabase.from("agents").update({ is_inactive: true }).eq("id", agent.id);
-                onAgentUpdate(agent.id, { isInactive: true });
-                toast.success(`${agent.name} hidden`);
-              } catch { toast.error("Failed"); }
-            }}
-          >
-            <EyeOff className="h-3 w-3" /> Hide
+                const { data, error } = await supabase.functions.invoke("send-agent-portal-login", { body: { agentId: agent.id } });
+                if (error) throw error;
+                if (data?.success === false) throw new Error(data.error || "Failed");
+                toast.success(`Portal login sent to ${agent.email}`);
+              } catch (err: any) { toast.error(err.message || "Failed to send"); }
+            }}>
+            <Send className="h-3 w-3" /> Portal
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 text-xs gap-1.5 text-destructive hover:bg-destructive/10"
-            onClick={() => onDeactivate(agent)}
-          >
-            <X className="h-3 w-3" /> Remove
+          <Button variant="outline" size="sm" className="h-7 text-xs gap-1"
+            onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/login`); toast.success("Login link copied!"); }}>
+            <Copy className="h-3 w-3" /> Link
           </Button>
-        </div>
+          <Button variant="outline" size="sm" className="h-7 text-xs gap-1 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
+            onClick={() => onEditLogin(agent)}>
+            <KeyRound className="h-3 w-3" /> Login
+          </Button>
+        </>
+      )}
+      <div className="flex-1" />
+      <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
+        onClick={async () => {
+          try {
+            await supabase.from("agents").update({ is_inactive: true }).eq("id", agent.id);
+            onAgentUpdate(agent.id, { isInactive: true });
+            toast.success(`${agent.name} hidden`);
+          } catch { toast.error("Failed"); }
+        }}>
+        <EyeOff className="h-3 w-3" /> Hide
+      </Button>
+      <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-destructive hover:bg-destructive/10"
+        onClick={() => onDeactivate(agent)}>
+        <X className="h-3 w-3" /> Remove
+      </Button>
+    </div>
+  );
+}
 
-        {/* Two-column detail grid */}
+// ─── ONBOARDING Expanded Row ──────────────────────────────────────────────
+function OnboardingExpandedRow({ agent, onRefresh, onStageUpdate, onGoLive, onDeactivate, onViewApp, onRecord, onEditLogin, onAgentUpdate, playSound, sendingCourseLogin, setSendingCourseLogin, currentAgentId }: any) {
+  return (
+    <div className="overflow-hidden animate-in fade-in-0 slide-in-from-top-1 duration-200">
+      <div className="px-4 py-3 border-t border-border space-y-3 rounded-b-lg bg-card/80 backdrop-blur-sm shadow-inner border-l-2 border-l-primary">
+        <ContactActions agent={agent} onViewApp={onViewApp} onRecord={onRecord} onEditLogin={onEditLogin} onDeactivate={onDeactivate} onAgentUpdate={onAgentUpdate} currentAgentId={currentAgentId} />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {/* Left column */}
           <div className="space-y-3">
-            {/* Star Rating */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground w-16">Rating:</span>
-              <StarRating
-                agentId={agent.id}
-                rating={agent.potentialRating}
-                onUpdate={(newRating?: number) => { if (newRating !== undefined) onAgentUpdate(agent.id, { potentialRating: newRating }); }}
-                size="sm"
-              />
-            </div>
-
-            {/* License Progress */}
+            {/* License status badge */}
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground w-16">License:</span>
+              <Badge variant="outline" className={cn("text-xs", agent.agentLicenseStatus === "licensed" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-muted text-muted-foreground")}>
+                {agent.agentLicenseStatus === "licensed" ? "Licensed" : "Unlicensed"}
+              </Badge>
+            </div>
+            {/* License Progress selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground w-16">Progress:</span>
               <LicenseProgressSelector
                 applicationId={agent.applicationId || agent.id}
                 agentId={agent.userId ? agent.id : undefined}
@@ -366,218 +216,171 @@ function AgentExpandedRow({
                 onProgressUpdated={onRefresh}
                 className="h-6 text-xs"
               />
-              {agent.licenseProgress !== "licensed" && isOnboarding && (
-                <ResendLicensingButton
-                  recipientEmail={agent.email}
-                  recipientName={agent.name}
-                  licenseStatus="unlicensed"
-                />
+              {agent.licenseProgress !== "licensed" && (
+                <ResendLicensingButton recipientEmail={agent.email} recipientName={agent.name} licenseStatus="unlicensed" />
               )}
             </div>
-
-            {/* Onboarding Stage */}
-            <OnboardingTracker
-              agentId={agent.id}
-              agentName={agent.name}
-              currentStage={agent.onboardingStage}
-              onStageUpdate={() => onStageUpdate(agent.id)}
-              onGoLive={() => onGoLive(agent)}
-              readOnly={false}
-            />
-
-            {/* Checklist */}
-            <AgentChecklist
-              agentId={agent.id}
-              hasTrainingCourse={agent.hasTrainingCourse}
-              hasDialerLogin={agent.hasDialerLogin}
-              hasDiscordAccess={agent.hasDiscordAccess}
-              onOptimisticToggle={(agentId, field, newValue) => {
-                const fieldMap: Record<string, string> = {
-                  has_training_course: "hasTrainingCourse",
-                  has_dialer_login: "hasDialerLogin",
-                  has_discord_access: "hasDiscordAccess",
-                };
-                const key = fieldMap[field];
-                if (key) onAgentUpdate(agentId, { [key]: newValue } as any);
-              }}
-            />
-
-            {/* Course actions for onboarding agents */}
-            {isOnboarding && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full h-7 text-xs gap-1.5"
-                disabled={sendingCourseLogin === agent.id}
-                onClick={async () => {
-                  setSendingCourseLogin(agent.id);
-                  try {
-                    const { data, error } = await supabase.functions.invoke("send-course-enrollment-email", { body: { agentId: agent.id } });
-                    if (error) throw error;
-                    if (data?.success === false) throw new Error(data.error || "Failed");
-                    toast.success(`Course login sent to ${agent.name}`);
-                    playSound("success");
-                  } catch { toast.error("Failed to send"); }
-                  finally { setSendingCourseLogin(null); }
-                }}
-              >
-                {sendingCourseLogin === agent.id ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
-                Resend Course Login
-              </Button>
-            )}
+            {/* Course progress dots */}
+            <div className="space-y-1">
+              <p className="text-[10px] text-muted-foreground font-medium">Course Progress</p>
+              <div className="flex items-center gap-1">
+                {["unlicensed", "course_purchased", "finished_course", "test_scheduled", "licensed"].map((step, i) => {
+                  const progress = agent.licenseProgress || "unlicensed";
+                  const steps = ["unlicensed", "course_purchased", "finished_course", "test_scheduled", "licensed"];
+                  const currentIdx = steps.indexOf(progress);
+                  const isComplete = i <= currentIdx;
+                  return (
+                    <div key={step} className="flex items-center gap-1">
+                      <div className={cn("h-2.5 w-2.5 rounded-full border", isComplete ? "bg-primary border-primary" : "bg-muted border-border")} />
+                      {i < 4 && <div className={cn("h-0.5 w-4", isComplete ? "bg-primary" : "bg-border")} />}
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-[10px] text-muted-foreground capitalize">{(agent.licenseProgress || "unlicensed").replace(/_/g, " ")}</p>
+            </div>
+            {/* Resend course login */}
+            <Button variant="outline" size="sm" className="w-full h-7 text-xs gap-1.5"
+              disabled={sendingCourseLogin === agent.id}
+              onClick={async () => {
+                setSendingCourseLogin(agent.id);
+                try {
+                  const { data, error } = await supabase.functions.invoke("send-course-enrollment-email", { body: { agentId: agent.id } });
+                  if (error) throw error;
+                  if (data?.success === false) throw new Error(data.error || "Failed");
+                  toast.success(`Course login sent to ${agent.name}`);
+                  playSound("success");
+                } catch { toast.error("Failed to send"); }
+                finally { setSendingCourseLogin(null); }
+              }}>
+              {sendingCourseLogin === agent.id ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+              Resend Course Login
+            </Button>
+            {/* Onboarding stage tracker */}
+            <OnboardingTracker agentId={agent.id} agentName={agent.name} currentStage={agent.onboardingStage}
+              onStageUpdate={() => onStageUpdate(agent.id)} onGoLive={() => onGoLive(agent)} readOnly={false} />
           </div>
-
-          {/* Right column */}
           <div className="space-y-3">
-            {/* Performance badges for live agents */}
-            {isLive && agent.weekly10kBadges > 0 && (
-              <PerformanceBadges agentId={agent.id} badgeCount={agent.weekly10kBadges} onUpdate={onRefresh} />
-            )}
-
-            {/* Attendance */}
-            {agent.onboardingStage === "in_field_training" && (
-              <div className="space-y-1.5">
-                <AttendanceGrid agentId={agent.id} type="training" label="Homework" onMarkAbsent={() => {}} />
-                <AttendanceGrid agentId={agent.id} type="onboarded_meeting" label="Meetings" onMarkAbsent={() => {}} />
-              </div>
-            )}
-            {isLive && (
-              <div className="space-y-1.5">
-                <AttendanceGrid agentId={agent.id} type="onboarded_meeting" label="Meeting" onMarkAbsent={() => {}} />
-                <AttendanceGrid agentId={agent.id} type="daily_sale" label="Sold" onMarkAbsent={() => {}} />
-              </div>
-            )}
-
-            {/* Evaluation */}
-            {(evaluationDue || agent.evaluationResult) && (
-              <div className="flex items-center gap-2">
-                {daysInTraining !== null && (
-                  <Badge variant="outline" className={cn("text-xs", evaluationDue && "bg-amber-500/10 text-amber-500 border-amber-500/20")}>
-                    <Clock className="h-3 w-3 mr-1" /> {daysInTraining}d {evaluationDue && "- Eval Due!"}
-                  </Badge>
-                )}
-                <EvaluationButtons
-                  agentId={agent.id}
-                  agentName={agent.name}
-                  currentResult={agent.evaluationResult}
-                  onEvaluated={onRefresh}
-                />
-              </div>
-            )}
-
-            {/* Attendance status */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Attendance:</span>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className={cn("h-6 text-xs gap-1", attendanceColors[agent.attendanceStatus])}>
-                    {attendanceLabels[agent.attendanceStatus]}
-                    <ChevronDown className="h-3 w-3" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuItem onClick={async () => {
-                    await supabase.from("agents").update({ attendance_status: "good" }).eq("id", agent.id);
-                    onAgentUpdate(agent.id, { attendanceStatus: "good" });
-                    toast.success("Updated");
-                  }}>
-                    <CheckCircle2 className="h-4 w-4 mr-2 text-emerald-500" /> Good
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={async () => {
-                    await supabase.from("agents").update({ attendance_status: "warning" }).eq("id", agent.id);
-                    onAgentUpdate(agent.id, { attendanceStatus: "warning" });
-                    toast.success("Updated");
-                  }}>
-                    <AlertTriangle className="h-4 w-4 mr-2 text-amber-500" /> Warning
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={async () => {
-                    await supabase.from("agents").update({ attendance_status: "critical" }).eq("id", agent.id);
-                    onAgentUpdate(agent.id, { attendanceStatus: "critical" });
-                    toast.success("Updated");
-                  }}>
-                    <AlertTriangle className="h-4 w-4 mr-2 text-red-500" /> Critical
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            {/* Production Summary — ALL stages */}
-            <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/5 border border-primary/10">
-              <div>
-                <p className="text-[10px] text-muted-foreground">Week ALP</p>
-                <p className="text-sm font-bold text-primary">${agent.weeklyALP.toLocaleString()}</p>
-              </div>
-              <div className="w-px h-8 bg-border" />
-              <div>
-                <p className="text-[10px] text-muted-foreground">Month ALP</p>
-                <p className="text-sm font-bold">${agent.monthlyALP.toLocaleString()}</p>
-              </div>
-              <div className="w-px h-8 bg-border" />
-              <div>
-                <p className="text-[10px] text-muted-foreground">Deals</p>
-                <p className="text-sm font-bold">{agent.monthlyDeals}</p>
-              </div>
-              {agent.weeklyClosingRate > 0 && (
-                <>
-                  <div className="w-px h-8 bg-border" />
-                  <div>
-                    <p className="text-[10px] text-muted-foreground">Close %</p>
-                    <p className={cn(
-                      "text-sm font-bold",
-                      agent.weeklyClosingRate < 30 ? "text-destructive" :
-                      agent.weeklyClosingRate < 60 ? "text-amber-500" :
-                      "text-emerald-500"
-                    )}>{agent.weeklyClosingRate}%</p>
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Days Active / Training counter */}
-            {agent.startDate && (
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs">
-                  <Clock className="h-3 w-3 mr-1" />
-                  {differenceInDays(new Date(), new Date(agent.startDate))}d since joined
-                </Badge>
-              </div>
-            )}
-            {daysInTraining !== null && !isLive && (
-              <Badge variant="outline" className={cn("text-xs", daysInTraining >= 7 ? "bg-amber-500/10 text-amber-500 border-amber-500/20" : "")}>
-                <Clock className="h-3 w-3 mr-1" /> {daysInTraining}d in training
-              </Badge>
-            )}
-
-            {/* License Progress for onboarding */}
-            {isOnboarding && (
-              <div className="space-y-1">
-                <p className="text-[10px] text-muted-foreground font-medium">License Progress</p>
-                <div className="flex items-center gap-1">
-                  {["unlicensed", "course_purchased", "finished_course", "test_scheduled", "licensed"].map((step, i) => {
-                    const progress = agent.licenseProgress || "unlicensed";
-                    const steps = ["unlicensed", "course_purchased", "finished_course", "test_scheduled", "licensed"];
-                    const currentIdx = steps.indexOf(progress);
-                    const isComplete = i <= currentIdx;
-                    return (
-                      <div key={step} className="flex items-center gap-1">
-                        <div className={cn(
-                          "h-2.5 w-2.5 rounded-full border",
-                          isComplete ? "bg-primary border-primary" : "bg-muted border-border"
-                        )} />
-                        {i < 4 && <div className={cn("h-0.5 w-4", isComplete ? "bg-primary" : "bg-border")} />}
-                      </div>
-                    );
-                  })}
-                </div>
-                <p className="text-[10px] text-muted-foreground capitalize">{(agent.licenseProgress || "unlicensed").replace(/_/g, " ")}</p>
-              </div>
-            )}
-
-            {/* Notes */}
             <AgentNotes agentId={agent.id} onNoteAdded={() => {}} />
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── IN-FIELD TRAINING Expanded Row ───────────────────────────────────────
+function TrainingExpandedRow({ agent, onRefresh, onStageUpdate, onGoLive, onDeactivate, onViewApp, onRecord, onEditLogin, onAgentUpdate, currentAgentId }: any) {
+  return (
+    <div className="overflow-hidden animate-in fade-in-0 slide-in-from-top-1 duration-200">
+      <div className="px-4 py-3 border-t border-border space-y-3 rounded-b-lg bg-card/80 backdrop-blur-sm shadow-inner border-l-2 border-l-amber-500">
+        <ContactActions agent={agent} onViewApp={onViewApp} onRecord={onRecord} onEditLogin={onEditLogin} onDeactivate={onDeactivate} onAgentUpdate={onAgentUpdate} currentAgentId={currentAgentId} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground">📋 Attendance</p>
+            <AttendanceGrid agentId={agent.id} type="training" label="Training" onMarkAbsent={() => {}} />
+            <AttendanceGrid agentId={agent.id} type="onboarded_meeting" label="Meetings" onMarkAbsent={() => {}} />
+          </div>
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground">📝 Homework</p>
+            <AttendanceGrid agentId={agent.id} type="daily_sale" label="Homework" onMarkAbsent={() => {}} />
+            <OnboardingTracker agentId={agent.id} agentName={agent.name} currentStage={agent.onboardingStage}
+              onStageUpdate={() => onStageUpdate(agent.id)} onGoLive={() => onGoLive(agent)} readOnly={false} />
+            <AgentNotes agentId={agent.id} onNoteAdded={() => {}} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── LIVE Expanded Row ────────────────────────────────────────────────────
+function LiveExpandedRow({ agent, onRefresh, onDeactivate, onViewApp, onRecord, onEditLogin, onAgentUpdate, currentAgentId }: any) {
+  return (
+    <div className="overflow-hidden animate-in fade-in-0 slide-in-from-top-1 duration-200">
+      <div className="px-4 py-3 border-t border-border space-y-3 rounded-b-lg bg-card/80 backdrop-blur-sm shadow-inner border-l-2 border-l-emerald-500">
+        <ContactActions agent={agent} onViewApp={onViewApp} onRecord={onRecord} onEditLogin={onEditLogin} onDeactivate={onDeactivate} onAgentUpdate={onAgentUpdate} currentAgentId={currentAgentId} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="space-y-2">
+            {/* Production stats */}
+            <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-emerald-500/5 border border-emerald-500/10">
+              <div>
+                <p className="text-[10px] text-muted-foreground">Week ALP</p>
+                <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400">${agent.weeklyALP.toLocaleString()}</p>
+              </div>
+              <div className="w-px h-8 bg-border" />
+              <div>
+                <p className="text-[10px] text-muted-foreground">Prev Week</p>
+                <p className="text-sm font-bold">${agent.prevWeekALP.toLocaleString()}</p>
+              </div>
+              <div className="w-px h-8 bg-border" />
+              <div>
+                <p className="text-[10px] text-muted-foreground">Deals</p>
+                <p className="text-sm font-bold">{agent.weeklyDeals}</p>
+              </div>
+            </div>
+            <p className="text-xs font-semibold text-muted-foreground">📋 Attendance</p>
+            <AttendanceGrid agentId={agent.id} type="onboarded_meeting" label="Meeting" onMarkAbsent={() => {}} />
+            <AttendanceGrid agentId={agent.id} type="daily_sale" label="Sold" onMarkAbsent={() => {}} />
+          </div>
+          <div className="space-y-2">
+            <AgentNotes agentId={agent.id} onNoteAdded={() => {}} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── NEEDS FOLLOW-UP Expanded Row ─────────────────────────────────────────
+function FollowUpExpandedRow({ agent, onRefresh, onDeactivate, onViewApp, onRecord, onEditLogin, onAgentUpdate, onStageUpdate, onGoLive, currentAgentId }: any) {
+  const daysSinceContact = agent.lastContactedAt ? Math.floor((Date.now() - new Date(agent.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24)) : null;
+  return (
+    <div className="overflow-hidden animate-in fade-in-0 slide-in-from-top-1 duration-200">
+      <div className="px-4 py-3 border-t border-border space-y-3 rounded-b-lg bg-card/80 backdrop-blur-sm shadow-inner border-l-2 border-l-red-500">
+        <ContactActions agent={agent} onViewApp={onViewApp} onRecord={onRecord} onEditLogin={onEditLogin} onDeactivate={onDeactivate} onAgentUpdate={onAgentUpdate} currentAgentId={currentAgentId} />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs bg-red-500/10 text-red-500 border-red-500/20">
+                <Clock className="h-3 w-3 mr-1" />
+                {daysSinceContact !== null ? `${daysSinceContact}d since contact` : "Never contacted"}
+              </Badge>
+              <Badge variant="outline" className="text-xs">
+                Stage: {agent.onboardingStage.replace(/_/g, " ")}
+              </Badge>
+            </div>
+            <OnboardingTracker agentId={agent.id} agentName={agent.name} currentStage={agent.onboardingStage}
+              onStageUpdate={() => onStageUpdate(agent.id)} onGoLive={() => onGoLive(agent)} readOnly={false} />
+          </div>
+          <div className="space-y-2">
+            <AgentNotes agentId={agent.id} onNoteAdded={() => {}} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Inline Notes Popover ─────────────────────────────────────────────────
+function InlineNotesButton({ agent }: { agent: AgentCRM }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative" onClick={e => e.stopPropagation()}>
+      <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setOpen(!open)}>
+        <StickyNote className="h-3.5 w-3.5 text-muted-foreground hover:text-primary" />
+      </Button>
+      {open && (
+        <div className="absolute right-0 top-8 z-50 w-[320px] bg-card border border-border rounded-xl shadow-xl p-3 animate-in fade-in-0 slide-in-from-top-2 duration-150">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold">Notes — {agent.name}</span>
+            <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => setOpen(false)}>
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+          <AgentNotes agentId={agent.id} onNoteAdded={() => {}} />
+        </div>
+      )}
     </div>
   );
 }
@@ -606,17 +409,13 @@ export default function DashboardCRM() {
   const [currentAgentId, setCurrentAgentId] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
 
-  // Focus agent logic
   const focusAgentId = searchParams.get('focusAgentId');
   useEffect(() => {
     if (focusAgentId && agents.length > 0) {
       setExpandedAgentId(focusAgentId);
       setTimeout(() => {
         const el = document.getElementById(`agent-row-${focusAgentId}`);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          playSound("whoosh");
-        }
+        if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); playSound("whoosh"); }
       }, 500);
     }
   }, [focusAgentId, agents.length]);
@@ -656,24 +455,33 @@ export default function DashboardCRM() {
       const weekStartStr = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
       const monthStartStr = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split("T")[0];
 
-      const [profilesResult, managerAgentsResult, monthlyProductionResult, appContactsResult, appLicenseResult, paymentsResult] = await Promise.all([
+      // Previous week range
+      const prevWeekEnd = new Date(weekStart);
+      prevWeekEnd.setDate(prevWeekEnd.getDate() - 1);
+      const prevWeekStart = new Date(prevWeekEnd);
+      prevWeekStart.setDate(prevWeekStart.getDate() - 6);
+      const prevWeekStartStr = `${prevWeekStart.getFullYear()}-${String(prevWeekStart.getMonth() + 1).padStart(2, '0')}-${String(prevWeekStart.getDate()).padStart(2, '0')}`;
+      const prevWeekEndStr = `${prevWeekEnd.getFullYear()}-${String(prevWeekEnd.getMonth() + 1).padStart(2, '0')}-${String(prevWeekEnd.getDate()).padStart(2, '0')}`;
+
+      const [profilesResult, managerAgentsResult, monthlyProductionResult, prevWeekProductionResult, appContactsResult, appLicenseResult, paymentsResult] = await Promise.all([
         supabase.from("profiles").select("user_id, full_name, email, phone, avatar_url, instagram_handle").in("user_id", userIds),
         managerIds.length > 0 ? supabase.from("agents").select("id, user_id").in("id", managerIds) : Promise.resolve({ data: [] as any[] }),
         liveAgentIds.length > 0 ? supabase.from("daily_production").select("agent_id, aop, presentations, deals_closed, production_date").in("agent_id", liveAgentIds).gte("production_date", monthStartStr) : Promise.resolve({ data: [] as any[] }),
+        liveAgentIds.length > 0 ? supabase.from("daily_production").select("agent_id, aop").in("agent_id", liveAgentIds).gte("production_date", prevWeekStartStr).lte("production_date", prevWeekEndStr) : Promise.resolve({ data: [] as any[] }),
         supabase.from("applications").select("assigned_agent_id, last_contacted_at").in("assigned_agent_id", allAgentIds).not("last_contacted_at", "is", null).order("last_contacted_at", { ascending: false }),
         supabase.from("applications").select("id, email, license_progress, test_scheduled_date").is("terminated_at", null),
         supabase.from("lead_payment_tracking").select("agent_id, tier, paid").eq("week_start", weekStartStr).eq("paid", true),
       ]);
 
-      const profileMap = new Map(profilesResult.data?.map(p => [p.user_id, p]) || []);
+      const profileMapData = new Map(profilesResult.data?.map(p => [p.user_id, p]) || []);
 
       let managerProfileMap = new Map<string, string>();
-      const managerAgents = managerAgentsResult.data;
-      if (managerAgents?.length) {
-        const mUserIds = managerAgents.map((a: any) => a.user_id).filter(Boolean);
+      const managerAgentsData = managerAgentsResult.data;
+      if (managerAgentsData?.length) {
+        const mUserIds = managerAgentsData.map((a: any) => a.user_id).filter(Boolean);
         const { data: mProfiles } = await supabase.from("profiles").select("user_id, full_name").in("user_id", mUserIds);
         const userToName = new Map(mProfiles?.map(p => [p.user_id, p.full_name]) || []);
-        managerAgents.forEach((ma: any) => { if (ma.user_id) managerProfileMap.set(ma.id, userToName.get(ma.user_id) || "Unknown"); });
+        managerAgentsData.forEach((ma: any) => { if (ma.user_id) managerProfileMap.set(ma.id, userToName.get(ma.user_id) || "Unknown"); });
       }
 
       const weeklyProductionMap = new Map<string, { aop: number; presentations: number; deals: number }>();
@@ -688,12 +496,17 @@ export default function DashboardCRM() {
         }
       }
 
+      // Previous week ALP
+      const prevWeekALPMap = new Map<string, number>();
+      for (const prod of prevWeekProductionResult.data || []) {
+        prevWeekALPMap.set(prod.agent_id, (prevWeekALPMap.get(prod.agent_id) || 0) + (Number(prod.aop) || 0));
+      }
+
       const lastContactMap = new Map<string, string>();
       for (const app of appContactsResult.data || []) {
         if (app.assigned_agent_id && app.last_contacted_at && !lastContactMap.has(app.assigned_agent_id)) lastContactMap.set(app.assigned_agent_id, app.last_contacted_at);
       }
 
-      // Build email→license progress map AND email→applicationId map (matching agent's OWN application by email)
       const progressOrder = ["unlicensed","course_purchased","finished_course","test_scheduled","passed_test","fingerprints_done","waiting_on_license","licensed"];
       const emailLicenseMap = new Map<string, { progress: string | null; testDate: string | null; appId: string }>();
       for (const app of appLicenseResult.data || []) {
@@ -702,9 +515,7 @@ export default function DashboardCRM() {
         const current = emailLicenseMap.get(appEmail);
         const newIdx = progressOrder.indexOf(app.license_progress || "unlicensed");
         const curIdx = current ? progressOrder.indexOf(current.progress || "unlicensed") : -1;
-        if (newIdx > curIdx) {
-          emailLicenseMap.set(appEmail, { progress: app.license_progress, testDate: app.test_scheduled_date, appId: app.id });
-        }
+        if (newIdx > curIdx) emailLicenseMap.set(appEmail, { progress: app.license_progress, testDate: app.test_scheduled_date, appId: app.id });
       }
 
       const paymentMap = new Map<string, { standard: boolean; premium: boolean }>();
@@ -716,7 +527,7 @@ export default function DashboardCRM() {
       });
 
       const crmAgents: AgentCRM[] = agentData.map((agent, index) => {
-        const profile = profileMap.get(agent.user_id);
+        const profile = profileMapData.get(agent.user_id);
         const ws = weeklyProductionMap.get(agent.id) || { aop: 0, presentations: 0, deals: 0 };
         const pay = paymentMap.get(agent.id) || { standard: false, premium: false };
         const emailKey = profile?.email?.toLowerCase().trim() || "";
@@ -737,6 +548,7 @@ export default function DashboardCRM() {
           weeklyALP: ws.aop, weeklyPresentations: ws.presentations, weeklyDeals: ws.deals,
           weeklyClosingRate: ws.presentations > 0 ? Math.round((ws.deals / ws.presentations) * 100) : 0,
           monthlyALP: monthlyProductionMap.get(agent.id) || 0, monthlyDeals: monthlyDealsMap.get(agent.id) || 0,
+          prevWeekALP: prevWeekALPMap.get(agent.id) || 0,
           lastContactedAt: lastContactMap.get(agent.id) || null, standardPaid: pay.standard, premiumPaid: pay.premium,
           licenseProgress: licenseEntry?.progress || null, testScheduledDate: licenseEntry?.testDate || null,
           agentLicenseStatus: agent.license_status || "unlicensed",
@@ -761,7 +573,8 @@ export default function DashboardCRM() {
           potentialRating: 0, evaluationResult: null, isDeactivated: false, isInactive: false, managerId: undefined,
           managerName: undefined, weekly10kBadges: 0, sortOrder: crmAgents.length + index,
           weeklyALP: 0, weeklyPresentations: 0, weeklyDeals: 0, weeklyClosingRate: 0,
-          monthlyALP: 0, monthlyDeals: 0, lastContactedAt: null, standardPaid: false, premiumPaid: false,
+          monthlyALP: 0, monthlyDeals: 0, prevWeekALP: 0,
+          lastContactedAt: null, standardPaid: false, premiumPaid: false,
           licenseProgress: app.license_progress || null, testScheduledDate: app.test_scheduled_date || null,
           agentLicenseStatus: app.license_status || "unlicensed",
         }));
@@ -797,20 +610,11 @@ export default function DashboardCRM() {
     staleTime: 120000,
   });
 
-  // Sync query data to local state for optimistic updates
-  useEffect(() => {
-    if (agentsData) setAgents(agentsData);
-  }, [agentsData]);
-
-  useEffect(() => {
-    if (managersData) setManagers(managersData);
-  }, [managersData]);
+  useEffect(() => { if (agentsData) setAgents(agentsData); }, [agentsData]);
+  useEffect(() => { if (managersData) setManagers(managersData); }, [managersData]);
 
   const loading = agentsLoading;
-
-  const fetchAgents = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ["crm-agents"] });
-  }, [queryClient]);
+  const fetchAgents = useCallback(() => { queryClient.invalidateQueries({ queryKey: ["crm-agents"] }); }, [queryClient]);
 
   const handleOptimisticStageUpdate = async (agentId: string) => {
     try {
@@ -849,17 +653,20 @@ export default function DashboardCRM() {
   const getAgentsForSection = (section: typeof SECTIONS[number]) => {
     if (section.key === "needs_followup") {
       return filteredAgents.filter(a => {
-        const isLive = a.onboardingStage === "evaluated";
-        const completedOnboarding = ["evaluated", "in_field_training"].includes(a.onboardingStage);
-        const hasNoDeals = a.weeklyDeals === 0 && a.monthlyDeals === 0;
+        // Below live but no progress in 6+ days
+        const isBelowLive = a.onboardingStage !== "evaluated";
         const daysSinceContact = a.lastContactedAt ? (Date.now() - new Date(a.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24) : 999;
-        return (isLive && hasNoDeals) || (completedOnboarding && daysSinceContact >= 14 && hasNoDeals);
+        return isBelowLive && daysSinceContact >= 6;
       }).sort((a, b) => {
         if (!a.lastContactedAt && !b.lastContactedAt) return a.sortOrder - b.sortOrder;
         if (!a.lastContactedAt) return -1;
         if (!b.lastContactedAt) return 1;
         return new Date(a.lastContactedAt).getTime() - new Date(b.lastContactedAt).getTime();
       });
+    }
+    if (section.key === "live") {
+      // Only licensed agents in Live
+      return filteredAgents.filter(a => section.stages.includes(a.onboardingStage) && a.agentLicenseStatus === "licensed").sort((a, b) => b.weeklyALP - a.weeklyALP);
     }
     return filteredAgents.filter(a => section.stages.includes(a.onboardingStage)).sort((a, b) => {
       if (!a.lastContactedAt && !b.lastContactedAt) return a.sortOrder - b.sortOrder;
@@ -881,13 +688,102 @@ export default function DashboardCRM() {
     return dupeIds;
   }, [activeAgents]);
 
-  const licensedAgents = filteredAgents.filter(a => a.agentLicenseStatus === "licensed");
-  const onboardingCount = licensedAgents.filter(a => ["onboarding", "training_online"].includes(a.onboardingStage)).length;
-  const trainingCount = licensedAgents.filter(a => a.onboardingStage === "in_field_training").length;
-  const liveCount = licensedAgents.filter(a => a.onboardingStage === "evaluated").length;
+  const onboardingCount = filteredAgents.filter(a => ["onboarding", "training_online"].includes(a.onboardingStage)).length;
+  const trainingCount = filteredAgents.filter(a => a.onboardingStage === "in_field_training").length;
+  const liveCount = filteredAgents.filter(a => a.onboardingStage === "evaluated" && a.agentLicenseStatus === "licensed").length;
   const needsFollowUpCount = getAgentsForSection(SECTIONS.find(s => s.key === "needs_followup")!).length;
   const staleCount = filteredAgents.filter(isStaleAgent).length;
 
+  // Section-specific table headers
+  const getTableHeaders = (sectionKey: string) => {
+    switch (sectionKey) {
+      case "onboarding":
+        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[90px]">Status</TableHead><TableHead className="w-[120px]">Course Progress</TableHead><TableHead className="w-[90px]">Contact</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
+      case "in_training":
+        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[90px]">Attendance</TableHead><TableHead className="w-[90px]">Contact</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
+      case "live":
+        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[100px] text-right">Week ALP</TableHead><TableHead className="w-[100px] text-right">Prev Week</TableHead><TableHead className="w-[60px] text-right">Deals</TableHead><TableHead className="w-[80px]">Attend.</TableHead><TableHead className="w-[90px]">Contact</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
+      case "needs_followup":
+        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[100px]">Last Activity</TableHead><TableHead className="w-[80px]">Days Stale</TableHead><TableHead className="w-[90px]">Contact</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
+      default:
+        return null;
+    }
+  };
+
+  // Section-specific table cells
+  const getTableCells = (sectionKey: string, agent: AgentCRM) => {
+    const contact = getContactInfo(agent);
+    switch (sectionKey) {
+      case "onboarding": {
+        const progressLabels: Record<string, string> = {
+          unlicensed: "Not Started", course_purchased: "In Course", finished_course: "Finished",
+          test_scheduled: "Test Sched.", passed_test: "Passed", fingerprints_done: "Fingerprints",
+          waiting_on_license: "Waiting", licensed: "Licensed",
+        };
+        return (<>
+          <TableCell className="py-2">
+            <Badge variant="outline" className={cn("text-[10px]", agent.agentLicenseStatus === "licensed" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-muted text-muted-foreground")}>
+              {agent.agentLicenseStatus === "licensed" ? "Licensed" : "Unlicensed"}
+            </Badge>
+          </TableCell>
+          <TableCell className="py-2">
+            <span className="text-[10px] font-medium">{progressLabels[agent.licenseProgress || "unlicensed"] || "—"}</span>
+          </TableCell>
+          <TableCell className="py-2"><span className={cn("text-xs font-medium", contact.color)}>{contact.label}</span></TableCell>
+          <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
+        </>);
+      }
+      case "in_training":
+        return (<>
+          <TableCell className="py-2">
+            <Badge variant="outline" className={cn("text-[10px]", attendanceColors[agent.attendanceStatus])}>{attendanceLabels[agent.attendanceStatus]}</Badge>
+          </TableCell>
+          <TableCell className="py-2"><span className={cn("text-xs font-medium", contact.color)}>{contact.label}</span></TableCell>
+          <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
+        </>);
+      case "live":
+        return (<>
+          <TableCell className="py-2 text-right"><span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{agent.weeklyALP > 0 ? `$${agent.weeklyALP.toLocaleString()}` : "—"}</span></TableCell>
+          <TableCell className="py-2 text-right"><span className="text-xs">{agent.prevWeekALP > 0 ? `$${agent.prevWeekALP.toLocaleString()}` : "—"}</span></TableCell>
+          <TableCell className="py-2 text-right"><span className="text-xs font-semibold">{agent.weeklyDeals > 0 ? agent.weeklyDeals : "—"}</span></TableCell>
+          <TableCell className="py-2">
+            <Badge variant="outline" className={cn("text-[10px]", attendanceColors[agent.attendanceStatus])}>{attendanceLabels[agent.attendanceStatus]}</Badge>
+          </TableCell>
+          <TableCell className="py-2"><span className={cn("text-xs font-medium", contact.color)}>{contact.label}</span></TableCell>
+          <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
+        </>);
+      case "needs_followup": {
+        const daysSince = agent.lastContactedAt ? Math.floor((Date.now() - new Date(agent.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24)) : null;
+        return (<>
+          <TableCell className="py-2"><span className="text-xs">{agent.lastContactedAt ? getTimeAgo(agent.lastContactedAt) : "Never"}</span></TableCell>
+          <TableCell className="py-2">
+            <Badge variant="outline" className="text-[10px] bg-red-500/10 text-red-500 border-red-500/20">{daysSince !== null ? `${daysSince}d` : "∞"}</Badge>
+          </TableCell>
+          <TableCell className="py-2"><span className={cn("text-xs font-medium", contact.color)}>{contact.label}</span></TableCell>
+          <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
+        </>);
+      }
+      default: return null;
+    }
+  };
+
+  // Render the correct expanded row based on section
+  const renderExpandedRow = (sectionKey: string, agent: AgentCRM) => {
+    const commonProps = {
+      agent, onRefresh: fetchAgents, onStageUpdate: handleOptimisticStageUpdate,
+      onGoLive: setInstagramPromptAgent, onDeactivate: setDeactivateAgent,
+      onViewApp: (id: string) => { const a = agents.find(ag => ag.id === id); setViewAppTarget({ agentId: id, applicationId: a?.applicationId }); },
+      onRecord: setRecorderAgent, onEditLogin: setEditLoginAgent,
+      onAgentUpdate, playSound, sendingCourseLogin, setSendingCourseLogin, currentAgentId,
+    };
+    switch (sectionKey) {
+      case "onboarding": return <OnboardingExpandedRow {...commonProps} />;
+      case "in_training": return <TrainingExpandedRow {...commonProps} />;
+      case "live": return <LiveExpandedRow {...commonProps} />;
+      case "needs_followup": return <FollowUpExpandedRow {...commonProps} />;
+      default: return null;
+    }
+  };
 
   if (authLoading) {
     return <div className="flex items-center justify-center h-64"><RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
@@ -916,15 +812,8 @@ export default function DashboardCRM() {
               </Button>
             )}
             <AddAgentModal onAgentAdded={fetchAgents} />
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => {
-                navigator.clipboard.writeText("https://rebuild-brighten-sparkle.lovable.app/daily-checkin");
-                toast.success("Check-in link copied! Paste into WhatsApp 📋");
-              }}
-            >
+            <Button variant="outline" size="sm" className="gap-1.5"
+              onClick={() => { navigator.clipboard.writeText("https://rebuild-brighten-sparkle.lovable.app/daily-checkin"); toast.success("Check-in link copied! Paste into WhatsApp 📋"); }}>
               <Link2 className="h-3.5 w-3.5" /> Check-In Link
             </Button>
             <Button onClick={fetchAgents} variant="outline" size="sm" className="gap-1.5">
@@ -936,11 +825,9 @@ export default function DashboardCRM() {
         {bulkMode && (
           <BulkStageActions
             agents={filteredAgents.map(a => ({ id: a.id, name: a.name, onboardingStage: a.onboardingStage }))}
-            selectedIds={selectedAgents}
-            onSelectionChange={setSelectedAgents}
+            selectedIds={selectedAgents} onSelectionChange={setSelectedAgents}
             onBulkUpdate={() => { fetchAgents(); setSelectedAgents(new Set()); }}
-            isEnabled={bulkMode}
-            onToggle={() => { setBulkMode(false); setSelectedAgents(new Set()); }}
+            isEnabled={bulkMode} onToggle={() => { setBulkMode(false); setSelectedAgents(new Set()); }}
           />
         )}
 
@@ -951,27 +838,12 @@ export default function DashboardCRM() {
             { label: "Live", count: liveCount, icon: Briefcase, color: "text-emerald-500", borderColor: "border-t-emerald-500", bgGlow: "bg-emerald-500/5" },
             { label: "Needs F/U", count: needsFollowUpCount, icon: AlertTriangle, color: "text-red-500", borderColor: "border-t-red-500", bgGlow: "bg-red-500/5" },
           ].map(s => (
-            <div
-              key={s.label}
-              className={cn(
-                "flex items-center gap-2.5 px-3.5 py-3 rounded-xl border border-border/60 bg-card/80 backdrop-blur-sm shadow-sm border-t-2 transition-transform hover:-translate-y-0.5",
-                s.borderColor, s.bgGlow
-              )}
-            >
-              <div className={cn("p-1.5 rounded-lg bg-background/60")}>
-                <s.icon className={cn("h-4 w-4", s.color)} />
-              </div>
+            <div key={s.label} className={cn("flex items-center gap-2.5 px-3.5 py-3 rounded-xl border border-border/60 bg-card/80 backdrop-blur-sm shadow-sm border-t-2 transition-transform hover:-translate-y-0.5", s.borderColor, s.bgGlow)}>
+              <div className="p-1.5 rounded-lg bg-background/60"><s.icon className={cn("h-4 w-4", s.color)} /></div>
               <div>
                 <p className="text-xl font-bold leading-none tabular-nums">{s.count}</p>
                 <p className="text-[10px] text-muted-foreground font-medium mt-0.5">{s.label}</p>
               </div>
-              {filteredAgents.length > 0 && (
-                <div className="ml-auto">
-                  <div className="h-1 w-10 rounded-full bg-muted overflow-hidden">
-                    <div className={cn("h-full rounded-full transition-all", s.color.replace("text-", "bg-"))} style={{ width: `${Math.round((s.count / filteredAgents.length) * 100)}%` }} />
-                  </div>
-                </div>
-              )}
             </div>
           ))}
         </div>
@@ -1006,20 +878,12 @@ export default function DashboardCRM() {
             <TabsList className="w-full justify-start flex-wrap h-auto gap-1 p-1">
               {SECTIONS.map(section => {
                 const count = getAgentsForSection(section).length;
-                const stale = getAgentsForSection(section).filter(isStaleAgent).length;
                 const Icon = section.icon;
                 return (
                   <TabsTrigger key={section.key} value={section.key} className="gap-1.5 text-xs">
                     <Icon className={cn("h-3.5 w-3.5", section.iconColor)} />
                     {section.label}
-                    <Badge variant="outline" className={cn("text-[10px] h-4 px-1", section.headerBg, section.iconColor, "border-current/20")}>
-                      {count}
-                    </Badge>
-                    {stale > 0 && (
-                      <Badge variant="outline" className="text-[10px] h-4 px-1 bg-red-500/10 text-red-500 border-red-500/20">
-                        {stale}
-                      </Badge>
-                    )}
+                    <Badge variant="outline" className={cn("text-[10px] h-4 px-1", section.headerBg, section.iconColor, "border-current/20")}>{count}</Badge>
                   </TabsTrigger>
                 );
               })}
@@ -1038,40 +902,20 @@ export default function DashboardCRM() {
                     </div>
                   ) : (
                     <div className={cn("rounded-xl border border-border overflow-x-auto", section.accent, "border-l-4")}>
-                      <Table className="min-w-[1100px]">
+                      <Table className="min-w-[900px]">
                         <TableHeader>
                           <TableRow className="hover:bg-transparent">
                             {bulkMode && <TableHead className="w-8" />}
-                            <TableHead className="w-[220px]">Agent</TableHead>
-                            <TableHead className="w-[100px]">License</TableHead>
-                            <TableHead className="w-[90px]">Contact</TableHead>
-                            <TableHead className="w-[100px] text-right">Week ALP</TableHead>
-                            <TableHead className="w-[80px] text-right">Deals</TableHead>
-                            <TableHead className="w-[80px]">Attend.</TableHead>
-                            <TableHead className="w-8" />
+                            {getTableHeaders(section.key)}
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {sectionAgents.map(agent => {
-                            const contact = getContactInfo(agent);
                             const isExpanded = expandedAgentId === agent.id;
-                            const progressStageMap: Record<string, { label: string; color: string }> = {
-                              licensed: { label: "Licensed", color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" },
-                              course_purchased: { label: "Course", color: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20" },
-                              finished_course: { label: "Finished", color: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20" },
-                              test_scheduled: { label: agent.testScheduledDate ? `Test ${new Date(agent.testScheduledDate).toLocaleDateString("en-US", { month: "numeric", day: "numeric" })}` : "Test Sched.", color: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" },
-                              passed_test: { label: "Passed", color: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20" },
-                              fingerprints_done: { label: "Fingerprints", color: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20" },
-                              waiting_on_license: { label: "Waiting", color: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20" },
-                            };
-                            const progressKey = agent.agentLicenseStatus === "licensed" ? "licensed" : (agent.licenseProgress || "unlicensed");
-                            const stageMeta = progressStageMap[progressKey] || { label: "Unlicensed", color: "bg-muted text-muted-foreground" };
-                            const licenseLabel = stageMeta.label;
-                            const licenseColor = stageMeta.color;
-
                             return (
                               <React.Fragment key={agent.id}>
                                 <TableRow
+                                  id={`agent-row-${agent.id}`}
                                   className={cn(
                                     "cursor-pointer transition-all duration-150 hover:bg-muted/40",
                                     isExpanded && "bg-muted/50",
@@ -1079,32 +923,19 @@ export default function DashboardCRM() {
                                     isStaleAgent(agent) && !isExpanded && "bg-red-500/[0.04] hover:bg-red-500/[0.08] border-l-2 border-l-red-500/40",
                                     agent.isDeactivated && "opacity-50"
                                   )}
-                                  onClick={() => {
-                                    setExpandedAgentId(isExpanded ? null : agent.id);
-                                    playSound(isExpanded ? "click" : "whoosh");
-                                  }}
+                                  onClick={() => { setExpandedAgentId(isExpanded ? null : agent.id); playSound(isExpanded ? "click" : "whoosh"); }}
                                 >
                                   {bulkMode && (
                                     <TableCell className="py-2" onClick={e => e.stopPropagation()}>
-                                      <AgentSelectCheckbox
-                                        agentId={agent.id}
-                                        isSelected={selectedAgents.has(agent.id)}
-                                        onToggle={(id) => {
-                                          const s = new Set(selectedAgents);
-                                          s.has(id) ? s.delete(id) : s.add(id);
-                                          setSelectedAgents(s);
-                                        }}
-                                        isEnabled={bulkMode}
-                                      />
+                                      <AgentSelectCheckbox agentId={agent.id} isSelected={selectedAgents.has(agent.id)}
+                                        onToggle={(id) => { const s = new Set(selectedAgents); s.has(id) ? s.delete(id) : s.add(id); setSelectedAgents(s); }}
+                                        isEnabled={bulkMode} />
                                     </TableCell>
                                   )}
                                   <TableCell className="py-2">
                                     <div className="flex items-center gap-2 min-w-0">
                                       <div className="relative shrink-0">
-                                        <div className={cn(
-                                          "h-7 w-7 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-xs font-bold ring-2 ring-background shadow-sm",
-                                          getAvatarColor(agent.name)
-                                        )}>
+                                        <div className={cn("h-7 w-7 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-xs font-bold ring-2 ring-background shadow-sm", getAvatarColor(agent.name))}>
                                           {agent.name.charAt(0).toUpperCase()}
                                         </div>
                                         {isStaleAgent(agent) && (
@@ -1116,36 +947,15 @@ export default function DashboardCRM() {
                                           <p className="font-medium text-xs truncate">{agent.name}</p>
                                           {duplicateAgentIds.has(agent.id) && <Badge variant="outline" className="text-[8px] h-3.5 px-1 bg-amber-500/10 text-amber-500 border-amber-500/20">Dupe</Badge>}
                                           {agent.managerId && agent.managerName && agent.managerId !== currentAgentId && (
-                                            <Badge variant="outline" className="text-[8px] h-3.5 px-1 bg-sky-500/10 text-sky-500 border-sky-500/20">
-                                              {agent.managerName.split(" ")[0]}
-                                            </Badge>
+                                            <Badge variant="outline" className="text-[8px] h-3.5 px-1 bg-sky-500/10 text-sky-500 border-sky-500/20">{agent.managerName.split(" ")[0]}</Badge>
                                           )}
-                                          {agent.premiumPaid && <Badge className="text-[8px] h-3.5 px-1 bg-emerald-500/10 text-emerald-500 border-emerald-500/20">$1K</Badge>}
-                                          {agent.standardPaid && !agent.premiumPaid && <Badge className="text-[8px] h-3.5 px-1 bg-emerald-500/10 text-emerald-500 border-emerald-500/20">$250</Badge>}
                                         </div>
                                         <p className="text-[10px] text-muted-foreground truncate">{agent.email}</p>
                                         {agent.phone && <p className="text-[10px] text-muted-foreground select-all cursor-text" onClick={e => e.stopPropagation()}>{agent.phone}</p>}
                                       </div>
                                     </div>
                                   </TableCell>
-                                  <TableCell className="py-2">
-                                    <Badge variant="outline" className={cn("text-[10px]", licenseColor)}>{licenseLabel}</Badge>
-                                  </TableCell>
-                                  <TableCell className="py-2">
-                                    <span className={cn("text-xs font-medium", contact.color)}>{contact.label}</span>
-                                  </TableCell>
-                                  <TableCell className="py-2 text-right">
-                                    <span className="text-xs font-semibold">{agent.weeklyALP > 0 ? `$${agent.weeklyALP.toLocaleString()}` : "—"}</span>
-                                    {agent.hasTrainingCourse && <CheckCircle2 className="h-3 w-3 text-emerald-500 inline ml-1" />}
-                                  </TableCell>
-                                  <TableCell className="py-2 text-right">
-                                    <span className="text-xs">{agent.weeklyDeals > 0 ? agent.weeklyDeals : "—"}</span>
-                                  </TableCell>
-                                  <TableCell className="py-2">
-                                    <Badge variant="outline" className={cn("text-[10px]", attendanceColors[agent.attendanceStatus])}>
-                                      {attendanceLabels[agent.attendanceStatus]}
-                                    </Badge>
-                                  </TableCell>
+                                  {getTableCells(section.key, agent)}
                                   <TableCell className="py-2">
                                     <div className={`transition-transform duration-150 ${isExpanded ? 'rotate-90' : ''}`}>
                                       <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -1153,28 +963,7 @@ export default function DashboardCRM() {
                                   </TableCell>
                                 </TableRow>
                                 {isExpanded && (
-                                  <tr>
-                                    <td colSpan={bulkMode ? 9 : 8} className="p-0">
-                                      <AgentExpandedRow
-                                        agent={agent}
-                                        onRefresh={fetchAgents}
-                                        onStageUpdate={handleOptimisticStageUpdate}
-                                        onGoLive={setInstagramPromptAgent}
-                                        onDeactivate={setDeactivateAgent}
-                                        onViewApp={(id) => {
-                                          const a = agents.find(ag => ag.id === id);
-                                          setViewAppTarget({ agentId: id, applicationId: a?.applicationId });
-                                        }}
-                                        onRecord={setRecorderAgent}
-                                        onEditLogin={setEditLoginAgent}
-                                        onAgentUpdate={onAgentUpdate}
-                                        playSound={playSound}
-                                        sendingCourseLogin={sendingCourseLogin}
-                                        setSendingCourseLogin={setSendingCourseLogin}
-                                        currentAgentId={currentAgentId}
-                                      />
-                                    </td>
-                                  </tr>
+                                  <tr><td colSpan={20} className="p-0">{renderExpandedRow(section.key, agent)}</td></tr>
                                 )}
                               </React.Fragment>
                             );
@@ -1188,16 +977,13 @@ export default function DashboardCRM() {
             })}
           </Tabs>
 
+          {/* Unlicensed Pipeline — full height scrollable */}
           {unlicensedAgents.length > 0 && (
             <div className="mt-6 space-y-3">
               <div className="flex items-center gap-2.5 px-1">
-                <div className="p-1.5 rounded-md bg-amber-500/10">
-                  <GraduationCap className="h-4 w-4 text-amber-500" />
-                </div>
+                <div className="p-1.5 rounded-md bg-amber-500/10"><GraduationCap className="h-4 w-4 text-amber-500" /></div>
                 <h2 className="font-bold text-sm">Unlicensed Pipeline</h2>
-                <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-500 border-amber-500/20">
-                  {unlicensedAgents.length}
-                </Badge>
+                <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-500 border-amber-500/20">{unlicensedAgents.length}</Badge>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                 {UNLICENSED_COLUMNS.map(col => {
@@ -1208,22 +994,14 @@ export default function DashboardCRM() {
                         <span className="text-xs font-semibold">{col.label}</span>
                         <Badge variant="outline" className="text-[10px] h-5">{colAgents.length}</Badge>
                       </div>
-                      <div className="p-2 space-y-1.5 max-h-[300px] overflow-y-auto">
+                      <div className="p-2 space-y-1.5 overflow-y-auto" style={{ maxHeight: "calc(100vh - 200px)" }}>
                         {colAgents.length === 0 ? (
                           <p className="text-xs text-muted-foreground text-center py-4">None</p>
                         ) : colAgents.map(agent => (
-                          <div
-                            key={agent.id}
+                          <div key={agent.id}
                             className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/40 cursor-pointer transition-colors group"
-                            onClick={() => {
-                              setViewAppTarget({ agentId: agent.userId ? agent.id : undefined, applicationId: agent.applicationId || agent.id });
-                              playSound("click");
-                            }}
-                          >
-                            <div className={cn(
-                              "h-6 w-6 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-[10px] font-bold shrink-0",
-                              getAvatarColor(agent.name)
-                            )}>
+                            onClick={() => { setViewAppTarget({ agentId: agent.userId ? agent.id : undefined, applicationId: agent.applicationId || agent.id }); playSound("click"); }}>
+                            <div className={cn("h-6 w-6 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-[10px] font-bold shrink-0", getAvatarColor(agent.name))}>
                               {agent.name.charAt(0).toUpperCase()}
                             </div>
                             <div className="min-w-0 flex-1">
@@ -1261,13 +1039,7 @@ export default function DashboardCRM() {
         <InterviewRecorder applicationId={recorderAgent.id} agentId={recorderAgent.id} applicantName={recorderAgent.name} onClose={() => setRecorderAgent(null)} onTranscriptionSaved={fetchAgents} />
       )}
       {editLoginAgent && (
-        <AgentQuickEditDialog
-          open={!!editLoginAgent}
-          onOpenChange={(o) => !o && setEditLoginAgent(null)}
-          agentId={editLoginAgent.id}
-          currentName={editLoginAgent.name}
-          onUpdate={fetchAgents}
-        />
+        <AgentQuickEditDialog open={!!editLoginAgent} onOpenChange={(o) => !o && setEditLoginAgent(null)} agentId={editLoginAgent.id} currentName={editLoginAgent.name} onUpdate={fetchAgents} />
       )}
     </>
   );

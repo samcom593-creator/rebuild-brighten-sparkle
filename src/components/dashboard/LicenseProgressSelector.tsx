@@ -59,12 +59,22 @@ export function LicenseProgressSelector({
   className,
 }: LicenseProgressSelectorProps) {
   const [isUpdating, setIsUpdating] = useState(false);
-  const initialProgress: LicenseProgress = currentProgress || "unlicensed";
-  const [progress, setProgress] = useState<LicenseProgress>(initialProgress);
+  const resolvedProgress: LicenseProgress = currentProgress || "unlicensed";
+  const [progress, setProgress] = useState<LicenseProgress>(resolvedProgress);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [selectedTestDate, setSelectedTestDate] = useState<Date | undefined>(
     testScheduledDate ? new Date(testScheduledDate) : undefined
   );
+
+  // CRITICAL: Re-sync local state when props change (fixes "revert" bug)
+  useEffect(() => {
+    const incoming: LicenseProgress = currentProgress || "unlicensed";
+    setProgress(incoming);
+  }, [currentProgress]);
+
+  useEffect(() => {
+    setSelectedTestDate(testScheduledDate ? new Date(testScheduledDate) : undefined);
+  }, [testScheduledDate]);
 
   const currentStepIndex = progressSteps.findIndex((s) => s.value === progress);
   const currentStep = progressSteps[currentStepIndex] || progressSteps[0];

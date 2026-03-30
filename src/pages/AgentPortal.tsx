@@ -237,8 +237,8 @@ export default function AgentPortal() {
             .from("daily_production")
             .select("*")
             .eq("agent_id", agent.id)
-            .eq("production_date", today)
-            .single();
+          .eq("production_date", today)
+          .maybeSingle();
           if (production) setTodayProduction(production);
           
           // Fetch team stats for managers/admins

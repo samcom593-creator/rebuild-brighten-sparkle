@@ -630,7 +630,7 @@ export default function DashboardCRM() {
 
   const handleOptimisticStageUpdate = async (agentId: string) => {
     try {
-      const { data } = await supabase.from("agents").select("onboarding_stage, onboarding_completed_at, field_training_started_at").eq("id", agentId).single();
+      const { data } = await supabase.from("agents").select("onboarding_stage, onboarding_completed_at, field_training_started_at").eq("id", agentId).maybeSingle();
       if (data) setAgents(prev => prev.map(a => a.id === agentId ? { ...a, onboardingStage: data.onboarding_stage || a.onboardingStage, fieldTrainingStartedAt: data.field_training_started_at || a.fieldTrainingStartedAt } : a));
     } catch (err) { console.error("Error refreshing agent stage:", err); }
   };

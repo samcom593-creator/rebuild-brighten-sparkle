@@ -169,7 +169,7 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
           .eq("agent_id", agentId)
           .order("aop", { ascending: false })
           .limit(1)
-          .single();
+          .maybeSingle();
 
         if (bestData) {
           setPersonalBest(Number(bestData.aop));

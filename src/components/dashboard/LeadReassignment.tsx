@@ -123,7 +123,7 @@ export function LeadReassignment() {
                 .from("profiles")
                 .select("full_name")
                 .eq("user_id", agent.user_id)
-                .single();
+                .maybeSingle();
               assignedAgentName = profile?.full_name || undefined;
             }
           }

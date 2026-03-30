@@ -155,7 +155,7 @@ export function InviteTeamModal({ open, onClose }: InviteTeamModalProps) {
         .from("agents")
         .select("id")
         .eq("user_id", user?.id)
-        .single();
+        .maybeSingle();
 
       if (!currentAgent) {
         throw new Error("Unable to find your agent profile");

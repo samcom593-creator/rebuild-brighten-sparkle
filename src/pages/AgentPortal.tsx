@@ -295,7 +295,7 @@ export default function AgentPortal() {
         .select("*")
         .eq("agent_id", agent.id)
         .eq("production_date", today)
-        .single();
+        .maybeSingle();
 
       if (production) {
         setTodayProduction(production);

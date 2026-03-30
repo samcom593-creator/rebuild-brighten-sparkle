@@ -115,7 +115,7 @@ export function ManagerInviteLinks() {
             .from("profiles")
             .select("full_name, email")
             .eq("user_id", agent.user_id)
-            .single();
+            .maybeSingle();
 
           return {
             id: agent.id,

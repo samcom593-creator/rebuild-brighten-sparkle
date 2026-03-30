@@ -54,7 +54,7 @@ const emailTemplateLabels: Record<EmailTemplate, string> = {
   couldnt_reach_you: "Couldn't Reach You",
 };
 
-// Sample email content for preview (would ideally come from backend)
+// Email templates for outreach
 const getEmailContent = (template: EmailTemplate, name: string): { subject: string; html: string } => {
   const firstName = name.split(" ")[0];
   

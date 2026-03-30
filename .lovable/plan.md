@@ -1,68 +1,63 @@
 
 
-# CRM Overhaul: Simplify for Managers + Import New Data
+# System Audit: Fix `.single()` Crashes, Remove Dummy Data, Harden Logic
 
-## Problem
-The CRM is overwhelming — too much info per agent, buried features, wrong filtering logic. Managers avoid using it. Each tab shows the same heavy expanded row with star ratings, checklists, production stats, evaluation buttons, etc. regardless of context.
+## Issues Found
 
-## Changes
+### 1. Dangerous `.single()` calls that can crash (13+ locations)
+`.single()` throws a PostgREST error when 0 or 2+ rows are returned. Several places use it where `maybeSingle()` should be used instead:
 
-### 1. Rewrite `AgentExpandedRow` per-section context (`DashboardCRM.tsx`)
+- **`src/pages/RecruiterDashboard.tsx` ~line 926** — agent lookup with `.single()` will crash if user has no agent record
+- **`src/pages/DashboardCRM.tsx` ~line 447** — agent lookup `.single()` crashes for non-agent admins
+- **`src/pages/DashboardCRM.tsx` ~line 633** — `handleOptimisticStageUpdate` uses `.single()` on agent by ID (safe but inconsistent)
+- **`src/pages/AgentPortal.tsx` ~lines 230, 241, 298** — 3 uses of `.single()` for agent/production lookups
+- **`src/components/dashboard/ManagerTeamView.tsx` ~line 86** — agent lookup `.single()` for current user
+- **`src/components/dashboard/InviteTeamModal.tsx` ~lines 69, 81, 114, 158, 204** — 5 `.single()` calls
+- **`src/components/dashboard/PersonalStatsCard.tsx` ~line 172** — `.limit(1).single()` on production data (crashes when agent has no data)
+- **`src/components/dashboard/ManagerInviteLinks.tsx` ~lines 75, 83, 118** — nested lookups
+- **`src/components/dashboard/DeactivateAgentDialog.tsx` ~line 183** — profile lookup
+- **`src/components/dashboard/InstagramPromptDialog.tsx` ~line 47** — agent lookup
+- **`src/components/dashboard/LeadReassignment.tsx` ~lines 119, 126** — agent/profile lookups
+- **`src/components/dashboard/QuickInviteLink.tsx` ~line 58** — insert `.single()`
+- **`src/components/dashboard/InviteManagerCard.tsx` ~line 64** — insert `.single()`
 
-**Onboarding** expanded row shows ONLY:
-- License status (Licensed / Unlicensed badge)
-- Course progress bar (the 5-step dots already there)
-- Contact info (phone, email, IG)
-- Notes button
-- Remove: star rating, checklist, production summary, evaluation, attendance, days counters, performance badges
+### 2. Landing page dummy data (DealsTicker.tsx)
+Lines 4-17: Hardcoded fake deal names/amounts (`"John M." $45,000`, `"Sarah K." $62,000`, etc.) scrolling across the top of the landing page. These should either pull real data or be removed/replaced with carrier-only ticker.
 
-**In-Field Training** expanded row shows ONLY:
-- Attendance grids (Training + Meeting) — daily marking
-- Homework grid (daily marking)
-- Contact info
-- Notes button
-- Remove: star rating, checklist, production summary, license progress bar, evaluation
+### 3. Landing page earnings projections (EarningsSection.tsx)
+Lines 8-25: Hardcoded earnings projections ($250K full-time, $504K top producer). These are marketing numbers — acceptable for a landing page, but the copy says "real numbers from agents just like you" which is misleading if not backed by data. Mark as aspirational.
 
-**Live** expanded row shows ONLY:
-- Week ALP, Previous Week ALP, Weekly Deals (inline in table row, not just expanded)
-- Contact info
-- Attendance
-- Notes button
-- Remove: star rating, checklist, month ALP, closing rate %, days counters, performance badges, evaluation
+### 4. QuickEmailMenu sample templates (QuickEmailMenu.tsx)
+Line 57: Comment says "Sample email content for preview (would ideally come from backend)". These are functional email templates used for outreach — they work correctly but the comment is misleading. Clean up the comment.
 
-**Needs Follow-Up**: Change threshold from 14 days to **6 days** with no progress update. Show contact info + last activity + notes.
+## Plan
 
-### 2. Simplify table columns per section
+### Step 1: Replace all dangerous `.single()` with `.maybeSingle()` (13 files)
+For every file listed above, replace `.single()` with `.maybeSingle()` and add null-check guards where the result is used. This prevents runtime PostgREST 406 errors that silently break pages.
 
-- **Onboarding**: Agent | Licensed/Unlicensed | Course Progress | Contact | Notes icon
-- **In-Field Training**: Agent | Attendance | Homework | Contact
-- **Live**: Agent | Week ALP | Prev Week ALP | Deals | Attendance | Contact
-- **Needs Follow-Up**: Agent | Last Activity | Days Stale | Contact
+### Step 2: Replace DealsTicker dummy data with carrier-only rotation
+Remove the fake deal entries (lines 4-17 in `DealsTicker.tsx`). Keep only the carrier name rotation banner which is already there and uses real carrier names. This eliminates fake names and amounts from the public landing page.
 
-### 3. Unlicensed Pipeline — full-height scrollable
-Remove `max-h-[300px]` from pipeline columns. Make the pipeline section use full viewport height with proper scrolling.
+### Step 3: Update EarningsSection copy
+Change "These are real numbers from agents just like you" to "See what's possible at APEX" to avoid misleading claims.
 
-### 4. Add inline Notes button to every row
-Show a small notes icon on each table row that opens the notes panel inline (not requiring full expand). Use the existing `AgentNotes` component.
-
-### 5. Import production data (03/27–03/30)
-**New deals:**
-| Date | Agent | ALP | Deals |
-|------|-------|-----|-------|
-| 03/30 | Alyjah Rowland | $600.00 | 1 |
-| 03/30 | Kaeden Vaughns | $754.44 | 1 |
-| 03/30 | Chukwudi Ifediora | $1,224.00 | 1 |
-| 03/30 | Obiajulu Ifediora | $855.84 | 1 |
-| 03/30 | Mahmod Imran | $2,832.00 | 1 |
-| 03/28 | Mahmod Imran | $1,452.00 | 1 |
-| 03/27 | Jacob Causer | $756.00 | 1 |
-| 03/27 | Chukwudi Ifediora | $1,559.88 | 1 |
-| 03/27 | Kaeden Vaughns | $828.48 | 1 |
-| 03/27 | Obiajulu Ifediora | $1,135.56 | 1 |
-
-Plus all prior data re-synced with `skip_existing: false`.
+### Step 4: Clean up QuickEmailMenu comment
+Remove the "Sample email content" comment — these templates are production email content.
 
 ## Files Modified
-- **`src/pages/DashboardCRM.tsx`** — Major rewrite of `AgentExpandedRow`, table headers, section filtering logic, unlicensed pipeline height
-- **Data import** via `import-production-data` edge function call
+- `src/pages/RecruiterDashboard.tsx` — `.single()` → `.maybeSingle()`
+- `src/pages/DashboardCRM.tsx` — 2x `.single()` → `.maybeSingle()`
+- `src/pages/AgentPortal.tsx` — 3x `.single()` → `.maybeSingle()`
+- `src/components/dashboard/ManagerTeamView.tsx` — `.single()` → `.maybeSingle()`
+- `src/components/dashboard/InviteTeamModal.tsx` — 5x fixes
+- `src/components/dashboard/PersonalStatsCard.tsx` — `.single()` → `.maybeSingle()`
+- `src/components/dashboard/ManagerInviteLinks.tsx` — 3x fixes
+- `src/components/dashboard/DeactivateAgentDialog.tsx` — 1x fix
+- `src/components/dashboard/InstagramPromptDialog.tsx` — 1x fix
+- `src/components/dashboard/LeadReassignment.tsx` — 2x fixes
+- `src/components/dashboard/QuickInviteLink.tsx` — 1x fix (insert `.select().single()` is fine for inserts, keep)
+- `src/components/dashboard/InviteManagerCard.tsx` — 1x fix (insert, keep)
+- `src/components/landing/DealsTicker.tsx` — Remove fake deals, keep carrier rotation
+- `src/components/landing/EarningsSection.tsx` — Update marketing copy
+- `src/components/dashboard/QuickEmailMenu.tsx` — Clean comment
 

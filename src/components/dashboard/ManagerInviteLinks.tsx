@@ -72,7 +72,7 @@ export function ManagerInviteLinks() {
             .from("agents")
             .select("user_id")
             .eq("id", link.manager_agent_id)
-            .single();
+            .maybeSingle();
 
           let managerName = "Unknown";
           if (agent?.user_id) {
@@ -80,7 +80,7 @@ export function ManagerInviteLinks() {
               .from("profiles")
               .select("full_name")
               .eq("user_id", agent.user_id)
-              .single();
+              .maybeSingle();
             managerName = profile?.full_name || "Unknown";
           }
 
@@ -115,7 +115,7 @@ export function ManagerInviteLinks() {
             .from("profiles")
             .select("full_name, email")
             .eq("user_id", agent.user_id)
-            .single();
+            .maybeSingle();
 
           return {
             id: agent.id,

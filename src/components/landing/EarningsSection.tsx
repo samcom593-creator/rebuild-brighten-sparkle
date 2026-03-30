@@ -43,7 +43,7 @@ export function EarningsSection() {
         <SectionHeading
           badge="Earnings Potential"
           title="Your Income, Your Choice"
-          subtitle="See what top agents are earning at APEX. These are real numbers from agents just like you."
+          subtitle="See what's possible at APEX. Your income is determined by your effort and commitment."
         />
 
         {/* Earnings Toggle */}

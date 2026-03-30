@@ -116,14 +116,14 @@ export function LeadReassignment() {
               .from("agents")
               .select("user_id")
               .eq("id", app.assigned_agent_id)
-              .single();
+              .maybeSingle();
 
             if (agent?.user_id) {
               const { data: profile } = await supabase
                 .from("profiles")
                 .select("full_name")
                 .eq("user_id", agent.user_id)
-                .single();
+                .maybeSingle();
               assignedAgentName = profile?.full_name || undefined;
             }
           }

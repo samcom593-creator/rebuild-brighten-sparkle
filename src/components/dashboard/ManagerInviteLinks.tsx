@@ -80,7 +80,7 @@ export function ManagerInviteLinks() {
               .from("profiles")
               .select("full_name")
               .eq("user_id", agent.user_id)
-              .single();
+              .maybeSingle();
             managerName = profile?.full_name || "Unknown";
           }
 

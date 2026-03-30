@@ -444,7 +444,7 @@ export default function DashboardCRM() {
       setManagers(managerAgents.map(a => ({ id: a.id, name: profileMap.get(a.user_id) || "Unknown" })));
     } catch (error) { console.error("Error fetching managers:", error); }
     try {
-      const { data: currentAgent } = await supabase.from("agents").select("id").eq("user_id", user!.id).single();
+      const { data: currentAgent } = await supabase.from("agents").select("id").eq("user_id", user!.id).maybeSingle();
       if (!currentAgent && !isAdmin) { return []; }
       if (currentAgent) setCurrentAgentId(currentAgent.id);
 

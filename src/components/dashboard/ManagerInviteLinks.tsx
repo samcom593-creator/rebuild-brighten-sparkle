@@ -72,7 +72,7 @@ export function ManagerInviteLinks() {
             .from("agents")
             .select("user_id")
             .eq("id", link.manager_agent_id)
-            .single();
+            .maybeSingle();
 
           let managerName = "Unknown";
           if (agent?.user_id) {

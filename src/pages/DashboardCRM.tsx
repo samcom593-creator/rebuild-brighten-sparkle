@@ -818,13 +818,21 @@ export default function DashboardCRM() {
           <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
         </>);
       }
-      case "in_training":
+      case "in_training": {
+        const daysInTraining = agent.fieldTrainingStartedAt ? differenceInDays(new Date(), new Date(agent.fieldTrainingStartedAt)) : null;
+        const trainingColor = daysInTraining === null ? "bg-muted text-muted-foreground" : daysInTraining < 14 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" : daysInTraining < 30 ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" : "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20";
         return (<>
-          <TableCell className="py-2">
+          <TableCell className="py-3">
             <Badge variant="outline" className={cn("text-[10px]", attendanceColors[agent.attendanceStatus])}>{attendanceLabels[agent.attendanceStatus]}</Badge>
           </TableCell>
-          <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
+          <TableCell className="py-3">
+            <Badge variant="outline" className={cn("text-[10px] font-bold tabular-nums", trainingColor)}>
+              {daysInTraining !== null ? `${daysInTraining}d` : "—"}
+            </Badge>
+          </TableCell>
+          <TableCell className="py-3"><InlineNotesButton agent={agent} /></TableCell>
         </>);
+      }
       case "live":
         return (<>
           <TableCell className="py-2 text-right"><span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{agent.weeklyALP > 0 ? `$${agent.weeklyALP.toLocaleString()}` : "—"}</span></TableCell>

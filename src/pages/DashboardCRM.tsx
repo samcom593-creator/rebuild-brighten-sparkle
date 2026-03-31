@@ -107,6 +107,7 @@ const getContactInfo = (agent: AgentCRM) => {
 
 const SECTIONS = [
   { key: "onboarding", label: "Onboarding", icon: BookOpen, stages: ["onboarding", "training_online"] as OnboardingStage[], accent: "border-l-primary", headerBg: "bg-primary/5", iconColor: "text-primary" },
+  { key: "pre_licensed", label: "Pre-Licensed", icon: GraduationCap, stages: [] as OnboardingStage[], accent: "border-l-violet-500", headerBg: "bg-violet-500/5", iconColor: "text-violet-500" },
   { key: "in_training", label: "In-Field Training", icon: GraduationCap, stages: ["in_field_training"] as OnboardingStage[], accent: "border-l-amber-500", headerBg: "bg-amber-500/5", iconColor: "text-amber-500" },
   { key: "live", label: "Live", icon: Briefcase, stages: ["evaluated"] as OnboardingStage[], accent: "border-l-emerald-500", headerBg: "bg-emerald-500/5", iconColor: "text-emerald-500" },
   { key: "needs_followup", label: "Needs Follow-Up", icon: AlertTriangle, stages: [] as OnboardingStage[], accent: "border-l-red-500", headerBg: "bg-red-500/5", iconColor: "text-red-500" },
@@ -362,10 +363,21 @@ function FollowUpExpandedRow({ agent, onRefresh, onDeactivate, onViewApp, onReco
   );
 }
 
-// ─── Inline Notes Popover ─────────────────────────────────────────────────
+// ─── Inline Notes Quick Input ─────────────────────────────────────────────
 function InlineNotesButton({ agent }: { agent: AgentCRM }) {
   const [open, setOpen] = useState(false);
+  const [noteText, setNoteText] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [latestNote, setLatestNote] = useState<string | null>(null);
   const ref = React.useRef<HTMLDivElement>(null);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  // Fetch latest note on mount
+  React.useEffect(() => {
+    supabase.from("agent_notes").select("note").eq("agent_id", agent.id).order("created_at", { ascending: false }).limit(1)
+      .then(({ data }) => { if (data?.[0]) setLatestNote(data[0].note); });
+  }, [agent.id]);
 
   // Close on outside click
   React.useEffect(() => {
@@ -377,10 +389,34 @@ function InlineNotesButton({ agent }: { agent: AgentCRM }) {
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
+  // Auto-focus input when opened
+  React.useEffect(() => {
+    if (open) setTimeout(() => inputRef.current?.focus(), 50);
+  }, [open]);
+
+  const handleSubmit = async () => {
+    if (!noteText.trim() || saving) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("agent_notes").insert({ agent_id: agent.id, note: noteText.trim() });
+      if (error) throw error;
+      setLatestNote(noteText.trim());
+      setNoteText("");
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 1200);
+    } catch { toast.error("Failed to save note"); }
+    finally { setSaving(false); }
+  };
+
   return (
-    <div className="relative" ref={ref} onClick={e => e.stopPropagation()}>
-      <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setOpen(!open)}>
-        <StickyNote className="h-3.5 w-3.5 text-muted-foreground hover:text-primary" />
+    <div className="relative flex items-center gap-1" ref={ref} onClick={e => e.stopPropagation()}>
+      {latestNote && !open && (
+        <span className="text-[9px] text-muted-foreground truncate max-w-[80px]" title={latestNote}>
+          {latestNote.slice(0, 20)}{latestNote.length > 20 ? "…" : ""}
+        </span>
+      )}
+      <Button variant="ghost" size="sm" className={cn("h-6 w-6 p-0 transition-colors", showSuccess && "text-emerald-500")} onClick={() => setOpen(!open)}>
+        {showSuccess ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 animate-in zoom-in-50 duration-300" /> : <StickyNote className="h-3.5 w-3.5 text-muted-foreground hover:text-primary" />}
       </Button>
       {open && (
         <div className="absolute right-0 top-8 z-50 w-[320px] bg-card border border-border rounded-xl shadow-xl p-3 animate-in fade-in-0 slide-in-from-top-2 duration-150">
@@ -388,6 +424,21 @@ function InlineNotesButton({ agent }: { agent: AgentCRM }) {
             <span className="text-xs font-semibold">Notes — {agent.name}</span>
             <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => setOpen(false)}>
               <X className="h-3 w-3" />
+            </Button>
+          </div>
+          {/* Quick add input */}
+          <div className="flex gap-1.5 mb-2">
+            <Input
+              ref={inputRef}
+              value={noteText}
+              onChange={e => setNoteText(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") handleSubmit(); }}
+              placeholder="Quick note… (Enter to save)"
+              className="h-7 text-xs flex-1"
+              disabled={saving}
+            />
+            <Button size="sm" className="h-7 px-2 text-xs" onClick={handleSubmit} disabled={!noteText.trim() || saving}>
+              {saving ? <RefreshCw className="h-3 w-3 animate-spin" /> : "Add"}
             </Button>
           </div>
           <AgentNotes agentId={agent.id} onNoteAdded={() => {}} />
@@ -665,7 +716,6 @@ export default function DashboardCRM() {
   const getAgentsForSection = (section: typeof SECTIONS[number]) => {
     if (section.key === "needs_followup") {
       return filteredAgents.filter(a => {
-        // Below live but no progress in 6+ days
         const isBelowLive = a.onboardingStage !== "evaluated";
         const daysSinceContact = a.lastContactedAt ? (Date.now() - new Date(a.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24) : 999;
         return isBelowLive && daysSinceContact >= 6;
@@ -676,8 +726,11 @@ export default function DashboardCRM() {
         return new Date(a.lastContactedAt).getTime() - new Date(b.lastContactedAt).getTime();
       });
     }
+    if (section.key === "pre_licensed") {
+      // All unlicensed agents in the licensing pipeline
+      return filteredAgents.filter(a => a.agentLicenseStatus !== "licensed");
+    }
     if (section.key === "live") {
-      // Only licensed agents in Live
       return filteredAgents.filter(a => section.stages.includes(a.onboardingStage) && a.agentLicenseStatus === "licensed").sort((a, b) => b.weeklyALP - a.weeklyALP);
     }
     return filteredAgents.filter(a => section.stages.includes(a.onboardingStage)).sort((a, b) => {
@@ -701,6 +754,7 @@ export default function DashboardCRM() {
   }, [activeAgents]);
 
   const onboardingCount = filteredAgents.filter(a => ["onboarding", "training_online"].includes(a.onboardingStage)).length;
+  const preLicensedCount = filteredAgents.filter(a => a.agentLicenseStatus !== "licensed").length;
   const trainingCount = filteredAgents.filter(a => a.onboardingStage === "in_field_training").length;
   const liveCount = filteredAgents.filter(a => a.onboardingStage === "evaluated" && a.agentLicenseStatus === "licensed").length;
   const needsFollowUpCount = getAgentsForSection(SECTIONS.find(s => s.key === "needs_followup")!).length;
@@ -710,11 +764,13 @@ export default function DashboardCRM() {
   const getTableHeaders = (sectionKey: string) => {
     switch (sectionKey) {
       case "onboarding":
-        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[90px]">Status</TableHead><TableHead className="w-[120px]">Course Progress</TableHead><TableHead className="w-[90px]">Contact</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
+        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[90px]">Status</TableHead><TableHead className="w-[120px]">Course Progress</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
+      case "pre_licensed":
+        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[120px]">License Stage</TableHead><TableHead className="w-[90px]">Contact</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
       case "in_training":
-        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[90px]">Attendance</TableHead><TableHead className="w-[90px]">Contact</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
+        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[90px]">Attendance</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
       case "live":
-        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[100px] text-right">Week ALP</TableHead><TableHead className="w-[100px] text-right">Prev Week</TableHead><TableHead className="w-[60px] text-right">Deals</TableHead><TableHead className="w-[80px]">Attend.</TableHead><TableHead className="w-[90px]">Contact</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
+        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[100px] text-right">Week ALP</TableHead><TableHead className="w-[100px] text-right">Prev Week</TableHead><TableHead className="w-[60px] text-right">Deals</TableHead><TableHead className="w-[80px]">Attend.</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
       case "needs_followup":
         return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[100px]">Last Activity</TableHead><TableHead className="w-[80px]">Days Stale</TableHead><TableHead className="w-[90px]">Contact</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
       default:
@@ -741,6 +797,21 @@ export default function DashboardCRM() {
           <TableCell className="py-2">
             <span className="text-[10px] font-medium">{progressLabels[agent.licenseProgress || "unlicensed"] || "—"}</span>
           </TableCell>
+          <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
+        </>);
+      }
+      case "pre_licensed": {
+        const progressLabels: Record<string, string> = {
+          unlicensed: "Not Started", course_purchased: "In Course", finished_course: "Finished",
+          test_scheduled: "Test Sched.", passed_test: "Passed", fingerprints_done: "Fingerprints",
+          waiting_on_license: "Waiting", licensed: "Licensed",
+        };
+        return (<>
+          <TableCell className="py-2">
+            <Badge variant="outline" className="text-[10px] bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20">
+              {progressLabels[agent.licenseProgress || "unlicensed"] || "—"}
+            </Badge>
+          </TableCell>
           <TableCell className="py-2"><span className={cn("text-xs font-medium", contact.color)}>{contact.label}</span></TableCell>
           <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
         </>);
@@ -750,7 +821,6 @@ export default function DashboardCRM() {
           <TableCell className="py-2">
             <Badge variant="outline" className={cn("text-[10px]", attendanceColors[agent.attendanceStatus])}>{attendanceLabels[agent.attendanceStatus]}</Badge>
           </TableCell>
-          <TableCell className="py-2"><span className={cn("text-xs font-medium", contact.color)}>{contact.label}</span></TableCell>
           <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
         </>);
       case "live":
@@ -761,7 +831,6 @@ export default function DashboardCRM() {
           <TableCell className="py-2">
             <Badge variant="outline" className={cn("text-[10px]", attendanceColors[agent.attendanceStatus])}>{attendanceLabels[agent.attendanceStatus]}</Badge>
           </TableCell>
-          <TableCell className="py-2"><span className={cn("text-xs font-medium", contact.color)}>{contact.label}</span></TableCell>
           <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
         </>);
       case "needs_followup": {
@@ -790,6 +859,7 @@ export default function DashboardCRM() {
     };
     switch (sectionKey) {
       case "onboarding": return <OnboardingExpandedRow {...commonProps} />;
+      case "pre_licensed": return <OnboardingExpandedRow {...commonProps} />;
       case "in_training": return <TrainingExpandedRow {...commonProps} />;
       case "live": return <LiveExpandedRow {...commonProps} />;
       case "needs_followup": return <FollowUpExpandedRow {...commonProps} />;
@@ -843,9 +913,10 @@ export default function DashboardCRM() {
           />
         )}
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
           {[
             { label: "Onboarding", count: onboardingCount, icon: BookOpen, color: "text-primary", borderColor: "border-t-primary", bgGlow: "bg-primary/5" },
+            { label: "Pre-Licensed", count: preLicensedCount, icon: GraduationCap, color: "text-violet-500", borderColor: "border-t-violet-500", bgGlow: "bg-violet-500/5" },
             { label: "In Training", count: trainingCount, icon: GraduationCap, color: "text-amber-500", borderColor: "border-t-amber-500", bgGlow: "bg-amber-500/5" },
             { label: "Live", count: liveCount, icon: Briefcase, color: "text-emerald-500", borderColor: "border-t-emerald-500", bgGlow: "bg-emerald-500/5" },
             { label: "Needs F/U", count: needsFollowUpCount, icon: AlertTriangle, color: "text-red-500", borderColor: "border-t-red-500", bgGlow: "bg-red-500/5" },
@@ -903,6 +974,68 @@ export default function DashboardCRM() {
 
             {SECTIONS.map(section => {
               const sectionAgents = getAgentsForSection(section);
+
+              // Pre-Licensed tab renders as 5-column pipeline
+              if (section.key === "pre_licensed") {
+                return (
+                  <TabsContent key={section.key} value={section.key}>
+                    {sectionAgents.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-10 gap-2">
+                        <div className={cn("p-3 rounded-full", section.headerBg)}>
+                          <Users className={cn("h-6 w-6", section.iconColor, "opacity-50")} />
+                        </div>
+                        <p className="text-sm text-muted-foreground">No unlicensed agents</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                        {UNLICENSED_COLUMNS.map(col => {
+                          const colAgents = sectionAgents.filter(a => col.progress.includes(a.licenseProgress || "unlicensed"));
+                          return (
+                            <div key={col.key} className="rounded-xl border border-border overflow-hidden">
+                              <div className="px-3 py-2 bg-violet-500/5 border-b border-border flex items-center justify-between">
+                                <span className="text-xs font-semibold">{col.label}</span>
+                                <Badge variant="outline" className="text-[10px] h-5">{colAgents.length}</Badge>
+                              </div>
+                              <div className="p-2 space-y-1.5 overflow-y-auto" style={{ maxHeight: "calc(100vh - 200px)" }}>
+                                {colAgents.length === 0 ? (
+                                  <p className="text-xs text-muted-foreground text-center py-4">None</p>
+                                ) : colAgents.map(agent => (
+                                  <div key={agent.id}
+                                    className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/40 cursor-pointer transition-colors group"
+                                    onClick={() => { setViewAppTarget({ agentId: agent.userId ? agent.id : undefined, applicationId: agent.applicationId || agent.id }); playSound("click"); }}>
+                                    <div className={cn("h-6 w-6 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-[10px] font-bold shrink-0", getAvatarColor(agent.name))}>
+                                      {agent.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-xs font-medium truncate">{agent.name}</p>
+                                      {agent.managerId && agent.managerName && agent.managerId !== currentAgentId && (
+                                        <Badge variant="outline" className="text-[9px] h-3.5 px-1 font-medium bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20">{agent.managerName.split(" ")[0]}</Badge>
+                                      )}
+                                      <p className="text-[10px] text-muted-foreground truncate">{agent.email}</p>
+                                      {agent.phone && <p className="text-[10px] text-muted-foreground select-all cursor-text" onClick={e => e.stopPropagation()}>{agent.phone}</p>}
+                                    </div>
+                                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                      {agent.phone && (
+                                        <a href={`tel:${agent.phone}`} onClick={e => e.stopPropagation()} className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors">
+                                          <Phone className="h-3 w-3" />
+                                        </a>
+                                      )}
+                                      <a href={`mailto:${agent.email}`} onClick={e => e.stopPropagation()} className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors">
+                                        <Mail className="h-3 w-3" />
+                                      </a>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </TabsContent>
+                );
+              }
+
               return (
                 <TabsContent key={section.key} value={section.key}>
                   {sectionAgents.length === 0 ? (
@@ -955,11 +1088,11 @@ export default function DashboardCRM() {
                                         )}
                                       </div>
                                       <div className="min-w-0">
-                                        <div className="flex items-center gap-1">
-                                          <p className="font-medium text-xs truncate">{agent.name}</p>
+                                        <p className="font-medium text-xs truncate">{agent.name}</p>
+                                        <div className="flex items-center gap-1 mt-0.5">
                                           {duplicateAgentIds.has(agent.id) && <Badge variant="outline" className="text-[8px] h-3.5 px-1 bg-amber-500/10 text-amber-500 border-amber-500/20">Dupe</Badge>}
                                           {agent.managerId && agent.managerName && agent.managerId !== currentAgentId && (
-                                            <Badge variant="outline" className="text-[8px] h-3.5 px-1 bg-sky-500/10 text-sky-500 border-sky-500/20">{agent.managerName.split(" ")[0]}</Badge>
+                                            <Badge variant="outline" className="text-[10px] h-4 px-1.5 font-medium bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20">{agent.managerName.split(" ")[0]}</Badge>
                                           )}
                                         </div>
                                         <p className="text-[10px] text-muted-foreground truncate">{agent.email}</p>
@@ -989,57 +1122,7 @@ export default function DashboardCRM() {
             })}
           </Tabs>
 
-          {/* Unlicensed Pipeline — full height scrollable */}
-          {unlicensedAgents.length > 0 && (
-            <div className="mt-6 space-y-3">
-              <div className="flex items-center gap-2.5 px-1">
-                <div className="p-1.5 rounded-md bg-amber-500/10"><GraduationCap className="h-4 w-4 text-amber-500" /></div>
-                <h2 className="font-bold text-sm">Unlicensed Pipeline</h2>
-                <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-500 border-amber-500/20">{unlicensedAgents.length}</Badge>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                {UNLICENSED_COLUMNS.map(col => {
-                  const colAgents = getUnlicensedForColumn(col.progress);
-                  return (
-                    <div key={col.key} className="rounded-xl border border-border overflow-hidden">
-                      <div className="px-3 py-2 bg-amber-500/5 border-b border-border flex items-center justify-between">
-                        <span className="text-xs font-semibold">{col.label}</span>
-                        <Badge variant="outline" className="text-[10px] h-5">{colAgents.length}</Badge>
-                      </div>
-                      <div className="p-2 space-y-1.5 overflow-y-auto" style={{ maxHeight: "calc(100vh - 200px)" }}>
-                        {colAgents.length === 0 ? (
-                          <p className="text-xs text-muted-foreground text-center py-4">None</p>
-                        ) : colAgents.map(agent => (
-                          <div key={agent.id}
-                            className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/40 cursor-pointer transition-colors group"
-                            onClick={() => { setViewAppTarget({ agentId: agent.userId ? agent.id : undefined, applicationId: agent.applicationId || agent.id }); playSound("click"); }}>
-                            <div className={cn("h-6 w-6 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-[10px] font-bold shrink-0", getAvatarColor(agent.name))}>
-                              {agent.name.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-xs font-medium truncate">{agent.name}</p>
-                              <p className="text-[10px] text-muted-foreground truncate">{agent.email}</p>
-                              {agent.phone && <p className="text-[10px] text-muted-foreground select-all cursor-text" onClick={e => e.stopPropagation()}>{agent.phone}</p>}
-                            </div>
-                            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                              {agent.phone && (
-                                <a href={`tel:${agent.phone}`} onClick={e => e.stopPropagation()} className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors">
-                                  <Phone className="h-3 w-3" />
-                                </a>
-                              )}
-                              <a href={`mailto:${agent.email}`} onClick={e => e.stopPropagation()} className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors">
-                                <Mail className="h-3 w-3" />
-                              </a>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          
           </>
         )}
       </div>

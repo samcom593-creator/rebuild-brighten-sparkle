@@ -1003,8 +1003,9 @@ export default function DashboardCRM() {
           />
         )}
 
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+        <div className="grid grid-cols-2 sm:grid-cols-6 gap-2.5">
           {[
+            { label: "Present Today", count: meetingPresentCount, icon: ClipboardCheck, color: "text-sky-500", borderColor: "border-t-sky-500", bgGlow: "bg-sky-500/5" },
             { label: "Onboarding", count: onboardingCount, icon: BookOpen, color: "text-primary", borderColor: "border-t-primary", bgGlow: "bg-primary/5" },
             { label: "Pre-Licensed", count: preLicensedCount, icon: GraduationCap, color: "text-violet-500", borderColor: "border-t-violet-500", bgGlow: "bg-violet-500/5" },
             { label: "In Training", count: trainingCount, icon: GraduationCap, color: "text-amber-500", borderColor: "border-t-amber-500", bgGlow: "bg-amber-500/5" },

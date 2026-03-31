@@ -974,6 +974,68 @@ export default function DashboardCRM() {
 
             {SECTIONS.map(section => {
               const sectionAgents = getAgentsForSection(section);
+
+              // Pre-Licensed tab renders as 5-column pipeline
+              if (section.key === "pre_licensed") {
+                return (
+                  <TabsContent key={section.key} value={section.key}>
+                    {sectionAgents.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-10 gap-2">
+                        <div className={cn("p-3 rounded-full", section.headerBg)}>
+                          <Users className={cn("h-6 w-6", section.iconColor, "opacity-50")} />
+                        </div>
+                        <p className="text-sm text-muted-foreground">No unlicensed agents</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                        {UNLICENSED_COLUMNS.map(col => {
+                          const colAgents = sectionAgents.filter(a => col.progress.includes(a.licenseProgress || "unlicensed"));
+                          return (
+                            <div key={col.key} className="rounded-xl border border-border overflow-hidden">
+                              <div className="px-3 py-2 bg-violet-500/5 border-b border-border flex items-center justify-between">
+                                <span className="text-xs font-semibold">{col.label}</span>
+                                <Badge variant="outline" className="text-[10px] h-5">{colAgents.length}</Badge>
+                              </div>
+                              <div className="p-2 space-y-1.5 overflow-y-auto" style={{ maxHeight: "calc(100vh - 200px)" }}>
+                                {colAgents.length === 0 ? (
+                                  <p className="text-xs text-muted-foreground text-center py-4">None</p>
+                                ) : colAgents.map(agent => (
+                                  <div key={agent.id}
+                                    className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/40 cursor-pointer transition-colors group"
+                                    onClick={() => { setViewAppTarget({ agentId: agent.userId ? agent.id : undefined, applicationId: agent.applicationId || agent.id }); playSound("click"); }}>
+                                    <div className={cn("h-6 w-6 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-[10px] font-bold shrink-0", getAvatarColor(agent.name))}>
+                                      {agent.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-xs font-medium truncate">{agent.name}</p>
+                                      {agent.managerId && agent.managerName && agent.managerId !== currentAgentId && (
+                                        <Badge variant="outline" className="text-[9px] h-3.5 px-1 font-medium bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20">{agent.managerName.split(" ")[0]}</Badge>
+                                      )}
+                                      <p className="text-[10px] text-muted-foreground truncate">{agent.email}</p>
+                                      {agent.phone && <p className="text-[10px] text-muted-foreground select-all cursor-text" onClick={e => e.stopPropagation()}>{agent.phone}</p>}
+                                    </div>
+                                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                      {agent.phone && (
+                                        <a href={`tel:${agent.phone}`} onClick={e => e.stopPropagation()} className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors">
+                                          <Phone className="h-3 w-3" />
+                                        </a>
+                                      )}
+                                      <a href={`mailto:${agent.email}`} onClick={e => e.stopPropagation()} className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors">
+                                        <Mail className="h-3 w-3" />
+                                      </a>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </TabsContent>
+                );
+              }
+
               return (
                 <TabsContent key={section.key} value={section.key}>
                   {sectionAgents.length === 0 ? (

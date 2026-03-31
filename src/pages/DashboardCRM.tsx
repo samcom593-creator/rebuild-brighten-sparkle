@@ -858,6 +858,7 @@ export default function DashboardCRM() {
     };
     switch (sectionKey) {
       case "onboarding": return <OnboardingExpandedRow {...commonProps} />;
+      case "pre_licensed": return <OnboardingExpandedRow {...commonProps} />;
       case "in_training": return <TrainingExpandedRow {...commonProps} />;
       case "live": return <LiveExpandedRow {...commonProps} />;
       case "needs_followup": return <FollowUpExpandedRow {...commonProps} />;

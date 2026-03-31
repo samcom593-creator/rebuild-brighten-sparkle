@@ -929,6 +929,40 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // Auto-merge: if person reapplied and old apps are assigned to Samuel James, mark them as merged
+    const SAMUEL_JAMES_ID = "7c3c5581-3544-437f-bfe2-91391afb217d";
+    try {
+      const { data: oldApps } = await supabaseAdmin
+        .from("applications")
+        .select("id")
+        .eq("email", data.email)
+        .eq("assigned_agent_id", SAMUEL_JAMES_ID)
+        .is("terminated_at", null)
+        .neq("id", inserted.id);
+
+      if (oldApps && oldApps.length > 0) {
+        const oldIds = oldApps.map(a => a.id);
+        await supabaseAdmin
+          .from("applications")
+          .update({ terminated_at: new Date().toISOString(), termination_reason: "reapplied_merged" })
+          .in("id", oldIds);
+
+        // Log the merge
+        for (const oldId of oldIds) {
+          await supabaseAdmin.from("lead_activity").insert({
+            lead_id: inserted.id,
+            activity_type: "merge",
+            title: `Merged duplicate application (old ID: ${oldId.slice(0, 8)}…)`,
+            actor_name: "System",
+            actor_role: "system",
+          });
+        }
+        console.log(`Auto-merged ${oldIds.length} duplicate Samuel James applications for ${data.email}`);
+      }
+    } catch (mergeErr) {
+      console.error("Auto-merge error (non-fatal):", mergeErr);
+    }
+
     // Send email notifications in background (pass the application ID)
     sendEmailNotifications(data, inserted.id).catch((err) => {
       console.error("Background email notification failed:", err);

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { CheckCircle2, Crown, ArrowRight, Mail, Phone, Calendar, AlertTriangle } from "lucide-react";
+import { CheckCircle2, Crown, ArrowRight, Mail, Phone, Calendar, AlertTriangle, MessageCircle } from "lucide-react";
+import { WHATSAPP_GROUP_URL } from "@/lib/constants";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { GlassCard } from "@/components/ui/glass-card";
 
@@ -77,6 +78,22 @@ export default function ApplySuccess() {
               </motion.div>
             ))}
           </div>
+
+          {/* WhatsApp Group CTA */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="mb-6"
+          >
+            <a href={WHATSAPP_GROUP_URL} target="_blank" rel="noopener noreferrer">
+              <GradientButton size="lg" className="w-full sm:w-auto text-lg px-8 bg-[#25D366] hover:bg-[#20BD5A] border-[#25D366]">
+                <MessageCircle className="h-5 w-5 mr-2" />
+                Join the APEX Hiring Chat
+              </GradientButton>
+            </a>
+            <p className="text-xs text-muted-foreground mt-2">Join our WhatsApp group for updates, support & community</p>
+          </motion.div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/">

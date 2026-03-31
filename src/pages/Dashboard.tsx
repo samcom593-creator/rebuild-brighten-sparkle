@@ -103,7 +103,7 @@ async function fetchDashboardData(
   const { data: allApplications } = await query;
 
   if (!allApplications || allApplications.length === 0) {
-    return { stats: defaultStats, dailyData: emptyChartData, weeklyData: emptyChartData, monthlyData: emptyChartData, sourceData: emptySourceData, userName, currentAgentId: agentData.id };
+    return { stats: defaultStats, dailyData: emptyChartData, weeklyData: emptyChartData, monthlyData: emptyChartData, sourceData: emptySourceData, userName, currentAgentId: agentData.id, previousPeriodLeads: 0 };
   }
 
   // Filter by selected date range for stats

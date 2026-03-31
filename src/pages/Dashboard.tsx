@@ -515,7 +515,7 @@ export default function Dashboard() {
               weeklyData={weeklyData}
               monthlyData={monthlyData}
               currentPeriodTotal={stats.totalLeads}
-              previousPeriodTotal={Math.round(stats.totalLeads * 0.87)}
+              previousPeriodTotal={previousPeriodLeads}
             />
           </div>
         </div>

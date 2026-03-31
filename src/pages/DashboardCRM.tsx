@@ -936,11 +936,11 @@ export default function DashboardCRM() {
             { label: "Live", count: liveCount, icon: Briefcase, color: "text-emerald-500", borderColor: "border-t-emerald-500", bgGlow: "bg-emerald-500/5" },
             { label: "Needs F/U", count: needsFollowUpCount, icon: AlertTriangle, color: "text-red-500", borderColor: "border-t-red-500", bgGlow: "bg-red-500/5" },
           ].map(s => (
-            <div key={s.label} className={cn("flex items-center gap-2.5 px-3.5 py-3 rounded-xl border border-border/60 bg-card/80 backdrop-blur-sm shadow-sm border-t-2 transition-transform hover:-translate-y-0.5", s.borderColor, s.bgGlow)}>
-              <div className="p-1.5 rounded-lg bg-background/60"><s.icon className={cn("h-4 w-4", s.color)} /></div>
+            <div key={s.label} className={cn("flex items-center gap-3 px-4 py-3.5 rounded-xl border border-border/60 bg-card/80 backdrop-blur-sm shadow-sm border-t-2 transition-all hover:-translate-y-0.5 hover:shadow-md cursor-default", s.borderColor, s.bgGlow)}>
+              <div className="p-2 rounded-lg bg-background/60"><s.icon className={cn("h-5 w-5", s.color)} /></div>
               <div>
-                <p className="text-xl font-bold leading-none tabular-nums">{s.count}</p>
-                <p className="text-[10px] text-muted-foreground font-medium mt-0.5">{s.label}</p>
+                <p className="text-2xl font-extrabold leading-none tabular-nums">{s.count}</p>
+                <p className="text-[11px] text-muted-foreground font-semibold mt-0.5">{s.label}</p>
               </div>
             </div>
           ))}

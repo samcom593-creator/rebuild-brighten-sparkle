@@ -603,6 +603,7 @@ export default function DashboardCRM() {
           instagramHandle: profile?.instagram_handle || undefined, onboardingStage: agent.onboarding_stage || "onboarding",
           attendanceStatus: agent.attendance_status || "good", performanceTier: agent.performance_tier || "below_10k",
           fieldTrainingStartedAt: agent.field_training_started_at || undefined, startDate: agent.start_date || undefined,
+          onboardingCompletedAt: agent.onboarding_completed_at || undefined,
           totalEarnings: Number(agent.total_earnings) || 0, hasTrainingCourse: agent.has_training_course || false,
           hasDialerLogin: agent.has_dialer_login || false, hasDiscordAccess: agent.has_discord_access || false,
           potentialRating: agent.potential_rating || 0, evaluationResult: agent.evaluation_result,

@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Crown, CheckCircle2, Calendar, AlertTriangle } from "lucide-react";
+import { Crown, CheckCircle2, Calendar, AlertTriangle, MessageCircle } from "lucide-react";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { CalendlyEmbed } from "@/components/landing/CalendlyEmbed";
+import { WHATSAPP_GROUP_URL } from "@/lib/constants";
 
 export default function ApplySuccessLicensed() {
   const calendlyUrl = "https://calendly.com/sam-com593/1on1-call-clone";

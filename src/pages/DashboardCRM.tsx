@@ -829,6 +829,35 @@ export default function DashboardCRM() {
   const getTableCells = (sectionKey: string, agent: AgentCRM) => {
     const contact = getContactInfo(agent);
     switch (sectionKey) {
+      case "meeting_attendance": {
+        const status = meetingAttendance.get(agent.id) || "unmarked";
+        const isPresent = status === "present";
+        const isTrainee = agent.onboardingStage === "in_field_training";
+        const isLive = agent.onboardingStage === "evaluated" && agent.agentLicenseStatus === "licensed";
+        return (<>
+          <TableCell className="py-3">
+            <span className="text-xs text-muted-foreground">{agent.managerName?.split(" ")[0] || "—"}</span>
+          </TableCell>
+          <TableCell className="py-3 text-center" onClick={e => e.stopPropagation()}>
+            <button onClick={() => toggleMeetingAttendance(agent.id)} className="focus:outline-none transition-transform hover:scale-110">
+              {isPresent ? (
+                <CircleCheck className="h-6 w-6 text-emerald-500 fill-emerald-500/20" />
+              ) : (
+                <Circle className={cn("h-6 w-6", status === "absent" ? "text-red-500" : "text-muted-foreground/40")} />
+              )}
+            </button>
+          </TableCell>
+          <TableCell className="py-3 text-center">
+            {isTrainee ? <Circle className="h-5 w-5 text-muted-foreground/30 mx-auto" /> : <span className="text-xs text-muted-foreground">—</span>}
+          </TableCell>
+          <TableCell className="py-3 text-right">
+            {isLive ? <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{agent.weeklyALP > 0 ? `$${agent.weeklyALP.toLocaleString()}` : "—"}</span> : <span className="text-xs text-muted-foreground">—</span>}
+          </TableCell>
+          <TableCell className="py-3 text-right">
+            {isLive ? <span className="text-xs font-semibold">{agent.monthlyALP > 0 ? `$${agent.monthlyALP.toLocaleString()}` : "—"}</span> : <span className="text-xs text-muted-foreground">—</span>}
+          </TableCell>
+        </>);
+      }
       case "onboarding": {
         const progressLabels: Record<string, string> = {
           unlicensed: "Not Started", course_purchased: "In Course", finished_course: "Finished",

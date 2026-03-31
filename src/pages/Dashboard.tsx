@@ -89,7 +89,7 @@ async function fetchDashboardData(
     .maybeSingle();
 
   if (!agentData) {
-    return { stats: defaultStats, dailyData: emptyChartData, weeklyData: emptyChartData, monthlyData: emptyChartData, sourceData: emptySourceData, userName, currentAgentId: undefined };
+    return { stats: defaultStats, dailyData: emptyChartData, weeklyData: emptyChartData, monthlyData: emptyChartData, sourceData: emptySourceData, userName, currentAgentId: undefined, previousPeriodLeads: 0 };
   }
 
   let query = supabase

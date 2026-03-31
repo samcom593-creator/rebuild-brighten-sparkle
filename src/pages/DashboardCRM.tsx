@@ -833,16 +833,21 @@ export default function DashboardCRM() {
           <TableCell className="py-3"><InlineNotesButton agent={agent} /></TableCell>
         </>);
       }
-      case "live":
+      case "live": {
+        const daysLive = agent.onboardingCompletedAt ? differenceInDays(new Date(), new Date(agent.onboardingCompletedAt)) : null;
         return (<>
-          <TableCell className="py-2 text-right"><span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{agent.weeklyALP > 0 ? `$${agent.weeklyALP.toLocaleString()}` : "—"}</span></TableCell>
-          <TableCell className="py-2 text-right"><span className="text-xs">{agent.prevWeekALP > 0 ? `$${agent.prevWeekALP.toLocaleString()}` : "—"}</span></TableCell>
-          <TableCell className="py-2 text-right"><span className="text-xs font-semibold">{agent.weeklyDeals > 0 ? agent.weeklyDeals : "—"}</span></TableCell>
-          <TableCell className="py-2">
+          <TableCell className="py-3 text-right"><span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{agent.weeklyALP > 0 ? `$${agent.weeklyALP.toLocaleString()}` : "—"}</span></TableCell>
+          <TableCell className="py-3 text-right"><span className="text-xs">{agent.prevWeekALP > 0 ? `$${agent.prevWeekALP.toLocaleString()}` : "—"}</span></TableCell>
+          <TableCell className="py-3 text-right"><span className="text-xs font-semibold">{agent.weeklyDeals > 0 ? agent.weeklyDeals : "—"}</span></TableCell>
+          <TableCell className="py-3">
             <Badge variant="outline" className={cn("text-[10px]", attendanceColors[agent.attendanceStatus])}>{attendanceLabels[agent.attendanceStatus]}</Badge>
           </TableCell>
-          <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
+          <TableCell className="py-3">
+            <Badge variant="outline" className="text-[10px] font-bold tabular-nums bg-muted/50">{daysLive !== null ? `${daysLive}d` : "—"}</Badge>
+          </TableCell>
+          <TableCell className="py-3"><InlineNotesButton agent={agent} /></TableCell>
         </>);
+      }
       case "needs_followup": {
         const daysSince = agent.lastContactedAt ? Math.floor((Date.now() - new Date(agent.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24)) : null;
         return (<>

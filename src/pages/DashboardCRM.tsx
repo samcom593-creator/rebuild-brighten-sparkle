@@ -5,7 +5,7 @@ import {
   Users, Search, RefreshCw, Clock, AlertTriangle, ChevronDown, ChevronRight,
   Mail, Phone, UserX, Filter, Mic, BookOpen, GraduationCap, Briefcase,
   Instagram, X, Send, CheckSquare, EyeOff, Link2, Eye, FileText,
-  CheckCircle2, KeyRound, Copy, StickyNote,
+  CheckCircle2, KeyRound, Copy, StickyNote, ClipboardCheck, Circle, CircleCheck,
 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";

@@ -2942,6 +2942,7 @@ export type Database = {
         | "onboarded_meeting"
         | "dialer_activity"
         | "daily_sale"
+        | "agency_meeting"
       deactivation_reason: "bad_business" | "inactive" | "switched_teams"
       license_progress:
         | "unlicensed"
@@ -3125,6 +3126,7 @@ export const Constants = {
         "onboarded_meeting",
         "dialer_activity",
         "daily_sale",
+        "agency_meeting",
       ],
       deactivation_reason: ["bad_business", "inactive", "switched_teams"],
       license_progress: [

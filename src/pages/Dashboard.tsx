@@ -265,6 +265,7 @@ export default function Dashboard() {
   const sourceData = data?.sourceData ?? emptySourceData;
   const userName = data?.userName ?? "";
   const currentAgentId = data?.currentAgentId;
+  const previousPeriodLeads = data?.previousPeriodLeads ?? 0;
 
   const licenseData = useMemo(() => [
     { name: "Licensed", value: stats.licensed, color: "hsl(168, 84%, 42%)" },

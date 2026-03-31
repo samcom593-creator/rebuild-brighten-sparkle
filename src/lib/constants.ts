@@ -98,3 +98,6 @@ export const RESOURCE_TYPES = [
   { value: "script", label: "Script", icon: "MessageSquare" },
   { value: "faq", label: "FAQ", icon: "HelpCircle" },
 ];
+
+// WhatsApp group invite link (fetched from env or hardcoded fallback)
+export const WHATSAPP_GROUP_URL = "https://chat.whatsapp.com/LMx1ORbczN19ijJVRatd1m";

@@ -5,7 +5,7 @@ import {
   Users, Search, RefreshCw, Clock, AlertTriangle, ChevronDown, ChevronRight,
   Mail, Phone, UserX, Filter, Mic, BookOpen, GraduationCap, Briefcase,
   Instagram, X, Send, CheckSquare, EyeOff, Link2, Eye, FileText,
-  CheckCircle2, KeyRound, Copy, StickyNote,
+  CheckCircle2, KeyRound, Copy, StickyNote, ClipboardCheck, Circle, CircleCheck,
 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -107,6 +107,7 @@ const getContactInfo = (agent: AgentCRM) => {
 };
 
 const SECTIONS = [
+  { key: "meeting_attendance", label: "Meeting Attendance", icon: ClipboardCheck, stages: [] as OnboardingStage[], accent: "border-l-sky-500", headerBg: "bg-sky-500/5", iconColor: "text-sky-500" },
   { key: "onboarding", label: "Onboarding", icon: BookOpen, stages: ["onboarding", "training_online"] as OnboardingStage[], accent: "border-l-primary", headerBg: "bg-primary/5", iconColor: "text-primary" },
   { key: "pre_licensed", label: "Pre-Licensed", icon: GraduationCap, stages: [] as OnboardingStage[], accent: "border-l-violet-500", headerBg: "bg-violet-500/5", iconColor: "text-violet-500" },
   { key: "in_training", label: "In-Field Training", icon: GraduationCap, stages: ["in_field_training"] as OnboardingStage[], accent: "border-l-amber-500", headerBg: "bg-amber-500/5", iconColor: "text-amber-500" },
@@ -469,8 +470,9 @@ export default function DashboardCRM() {
   const [viewAppTarget, setViewAppTarget] = useState<{ agentId?: string; applicationId?: string } | null>(null);
   const [expandedAgentId, setExpandedAgentId] = useState<string | null>(null);
   const [editLoginAgent, setEditLoginAgent] = useState<AgentCRM | null>(null);
-  const [activeStageTab, setActiveStageTab] = useState<string>("onboarding");
+  const [activeStageTab, setActiveStageTab] = useState<string>("meeting_attendance");
   const [currentAgentId, setCurrentAgentId] = useState<string | null>(null);
+  const [meetingAttendance, setMeetingAttendance] = useState<Map<string, "present" | "absent" | "unmarked">>(new Map());
   const [searchParams] = useSearchParams();
 
   const focusAgentId = searchParams.get('focusAgentId');
@@ -678,6 +680,43 @@ export default function DashboardCRM() {
   useEffect(() => { if (agentsData) setAgents(agentsData); }, [agentsData]);
   useEffect(() => { if (managersData) setManagers(managersData); }, [managersData]);
 
+  // Fetch today's meeting attendance
+  const todayStr = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }, []);
+
+  useEffect(() => {
+    if (!agents.length) return;
+    const fetchAttendance = async () => {
+      const agentIds = agents.map(a => a.id);
+      const { data } = await supabase.from("agent_attendance")
+        .select("agent_id, status")
+        .in("agent_id", agentIds)
+        .eq("attendance_date", todayStr)
+        .eq("attendance_type", "agency_meeting" as any);
+      const map = new Map<string, "present" | "absent" | "unmarked">();
+      data?.forEach(r => map.set(r.agent_id, r.status as any));
+      setMeetingAttendance(map);
+    };
+    fetchAttendance();
+  }, [agents, todayStr]);
+
+  const toggleMeetingAttendance = async (agentId: string) => {
+    const current = meetingAttendance.get(agentId) || "unmarked";
+    const next = current === "present" ? "absent" : "present";
+    setMeetingAttendance(prev => { const m = new Map(prev); m.set(agentId, next); return m; });
+    try {
+      await supabase.from("agent_attendance").upsert({
+        agent_id: agentId,
+        attendance_date: todayStr,
+        attendance_type: "agency_meeting" as any,
+        status: next as any,
+        marked_by: user?.id,
+      }, { onConflict: "agent_id,attendance_date,attendance_type" as any });
+    } catch { toast.error("Failed to save attendance"); }
+  };
+
   const loading = agentsLoading;
   const fetchAgents = useCallback(() => { queryClient.invalidateQueries({ queryKey: ["crm-agents"] }); }, [queryClient]);
 
@@ -716,6 +755,9 @@ export default function DashboardCRM() {
   });
 
   const getAgentsForSection = (section: typeof SECTIONS[number]) => {
+    if (section.key === "meeting_attendance") {
+      return [...filteredAgents].sort((a, b) => a.name.localeCompare(b.name));
+    }
     if (section.key === "needs_followup") {
       return filteredAgents.filter(a => {
         const isBelowLive = a.onboardingStage !== "evaluated";
@@ -755,6 +797,7 @@ export default function DashboardCRM() {
     return dupeIds;
   }, [activeAgents]);
 
+  const meetingPresentCount = Array.from(meetingAttendance.values()).filter(v => v === "present").length;
   const onboardingCount = filteredAgents.filter(a => ["onboarding", "training_online"].includes(a.onboardingStage)).length;
   const preLicensedCount = filteredAgents.filter(a => a.agentLicenseStatus !== "licensed").length;
   const trainingCount = filteredAgents.filter(a => a.onboardingStage === "in_field_training").length;
@@ -765,6 +808,8 @@ export default function DashboardCRM() {
   // Section-specific table headers
   const getTableHeaders = (sectionKey: string) => {
     switch (sectionKey) {
+      case "meeting_attendance":
+        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[100px]">Mentor</TableHead><TableHead className="w-[80px] text-center">Present</TableHead><TableHead className="w-[80px] text-center">Homework</TableHead><TableHead className="w-[100px] text-right">Week ALP</TableHead><TableHead className="w-[100px] text-right">Month ALP</TableHead><TableHead className="w-8" /></>);
       case "onboarding":
         return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[90px]">Status</TableHead><TableHead className="w-[120px]">Course Progress</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
       case "pre_licensed":
@@ -784,6 +829,35 @@ export default function DashboardCRM() {
   const getTableCells = (sectionKey: string, agent: AgentCRM) => {
     const contact = getContactInfo(agent);
     switch (sectionKey) {
+      case "meeting_attendance": {
+        const status = meetingAttendance.get(agent.id) || "unmarked";
+        const isPresent = status === "present";
+        const isTrainee = agent.onboardingStage === "in_field_training";
+        const isLive = agent.onboardingStage === "evaluated" && agent.agentLicenseStatus === "licensed";
+        return (<>
+          <TableCell className="py-3">
+            <span className="text-xs text-muted-foreground">{agent.managerName?.split(" ")[0] || "—"}</span>
+          </TableCell>
+          <TableCell className="py-3 text-center" onClick={e => e.stopPropagation()}>
+            <button onClick={() => toggleMeetingAttendance(agent.id)} className="focus:outline-none transition-transform hover:scale-110">
+              {isPresent ? (
+                <CircleCheck className="h-6 w-6 text-emerald-500 fill-emerald-500/20" />
+              ) : (
+                <Circle className={cn("h-6 w-6", status === "absent" ? "text-red-500" : "text-muted-foreground/40")} />
+              )}
+            </button>
+          </TableCell>
+          <TableCell className="py-3 text-center">
+            {isTrainee ? <Circle className="h-5 w-5 text-muted-foreground/30 mx-auto" /> : <span className="text-xs text-muted-foreground">—</span>}
+          </TableCell>
+          <TableCell className="py-3 text-right">
+            {isLive ? <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{agent.weeklyALP > 0 ? `$${agent.weeklyALP.toLocaleString()}` : "—"}</span> : <span className="text-xs text-muted-foreground">—</span>}
+          </TableCell>
+          <TableCell className="py-3 text-right">
+            {isLive ? <span className="text-xs font-semibold">{agent.monthlyALP > 0 ? `$${agent.monthlyALP.toLocaleString()}` : "—"}</span> : <span className="text-xs text-muted-foreground">—</span>}
+          </TableCell>
+        </>);
+      }
       case "onboarding": {
         const progressLabels: Record<string, string> = {
           unlicensed: "Not Started", course_purchased: "In Course", finished_course: "Finished",
@@ -873,6 +947,7 @@ export default function DashboardCRM() {
       onAgentUpdate, playSound, sendingCourseLogin, setSendingCourseLogin, currentAgentId,
     };
     switch (sectionKey) {
+      case "meeting_attendance": return <OnboardingExpandedRow {...commonProps} />;
       case "onboarding": return <OnboardingExpandedRow {...commonProps} />;
       case "pre_licensed": return <OnboardingExpandedRow {...commonProps} />;
       case "in_training": return <TrainingExpandedRow {...commonProps} />;
@@ -928,8 +1003,9 @@ export default function DashboardCRM() {
           />
         )}
 
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+        <div className="grid grid-cols-2 sm:grid-cols-6 gap-2.5">
           {[
+            { label: "Present Today", count: meetingPresentCount, icon: ClipboardCheck, color: "text-sky-500", borderColor: "border-t-sky-500", bgGlow: "bg-sky-500/5" },
             { label: "Onboarding", count: onboardingCount, icon: BookOpen, color: "text-primary", borderColor: "border-t-primary", bgGlow: "bg-primary/5" },
             { label: "Pre-Licensed", count: preLicensedCount, icon: GraduationCap, color: "text-violet-500", borderColor: "border-t-violet-500", bgGlow: "bg-violet-500/5" },
             { label: "In Training", count: trainingCount, icon: GraduationCap, color: "text-amber-500", borderColor: "border-t-amber-500", bgGlow: "bg-amber-500/5" },

@@ -1,0 +1,1 @@
+ALTER TYPE public.attendance_type ADD VALUE IF NOT EXISTS 'agency_meeting';

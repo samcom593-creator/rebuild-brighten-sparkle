@@ -137,11 +137,27 @@ export default function ApplySuccessUnlicensed() {
             </a>
           </motion.div>
 
-          {/* Back Button */}
+          {/* WhatsApp Group CTA */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.7 }}
+            className="text-center mb-6"
+          >
+            <a href={WHATSAPP_GROUP_URL} target="_blank" rel="noopener noreferrer">
+              <GradientButton size="lg" className="w-full sm:w-auto text-lg px-8 bg-[#25D366] hover:bg-[#20BD5A] border-[#25D366]">
+                <MessageCircle className="h-5 w-5 mr-2" />
+                Join the APEX Hiring Chat
+              </GradientButton>
+            </a>
+            <p className="text-xs text-muted-foreground mt-2">Join our WhatsApp group for updates & community support</p>
+          </motion.div>
+
+          {/* Back Button */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8 }}
             className="text-center"
           >
             <Link to="/">

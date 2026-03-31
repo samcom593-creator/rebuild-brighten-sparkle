@@ -107,6 +107,7 @@ const getContactInfo = (agent: AgentCRM) => {
 };
 
 const SECTIONS = [
+  { key: "meeting_attendance", label: "Meeting Attendance", icon: ClipboardCheck, stages: [] as OnboardingStage[], accent: "border-l-sky-500", headerBg: "bg-sky-500/5", iconColor: "text-sky-500" },
   { key: "onboarding", label: "Onboarding", icon: BookOpen, stages: ["onboarding", "training_online"] as OnboardingStage[], accent: "border-l-primary", headerBg: "bg-primary/5", iconColor: "text-primary" },
   { key: "pre_licensed", label: "Pre-Licensed", icon: GraduationCap, stages: [] as OnboardingStage[], accent: "border-l-violet-500", headerBg: "bg-violet-500/5", iconColor: "text-violet-500" },
   { key: "in_training", label: "In-Field Training", icon: GraduationCap, stages: ["in_field_training"] as OnboardingStage[], accent: "border-l-amber-500", headerBg: "bg-amber-500/5", iconColor: "text-amber-500" },

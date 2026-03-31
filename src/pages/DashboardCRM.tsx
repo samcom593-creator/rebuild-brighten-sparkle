@@ -470,8 +470,9 @@ export default function DashboardCRM() {
   const [viewAppTarget, setViewAppTarget] = useState<{ agentId?: string; applicationId?: string } | null>(null);
   const [expandedAgentId, setExpandedAgentId] = useState<string | null>(null);
   const [editLoginAgent, setEditLoginAgent] = useState<AgentCRM | null>(null);
-  const [activeStageTab, setActiveStageTab] = useState<string>("onboarding");
+  const [activeStageTab, setActiveStageTab] = useState<string>("meeting_attendance");
   const [currentAgentId, setCurrentAgentId] = useState<string | null>(null);
+  const [meetingAttendance, setMeetingAttendance] = useState<Map<string, "present" | "absent" | "unmarked">>(new Map());
   const [searchParams] = useSearchParams();
 
   const focusAgentId = searchParams.get('focusAgentId');

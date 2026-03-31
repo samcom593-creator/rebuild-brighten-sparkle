@@ -363,10 +363,21 @@ function FollowUpExpandedRow({ agent, onRefresh, onDeactivate, onViewApp, onReco
   );
 }
 
-// ─── Inline Notes Popover ─────────────────────────────────────────────────
+// ─── Inline Notes Quick Input ─────────────────────────────────────────────
 function InlineNotesButton({ agent }: { agent: AgentCRM }) {
   const [open, setOpen] = useState(false);
+  const [noteText, setNoteText] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [latestNote, setLatestNote] = useState<string | null>(null);
   const ref = React.useRef<HTMLDivElement>(null);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  // Fetch latest note on mount
+  React.useEffect(() => {
+    supabase.from("agent_notes").select("note").eq("agent_id", agent.id).order("created_at", { ascending: false }).limit(1)
+      .then(({ data }) => { if (data?.[0]) setLatestNote(data[0].note); });
+  }, [agent.id]);
 
   // Close on outside click
   React.useEffect(() => {
@@ -378,10 +389,34 @@ function InlineNotesButton({ agent }: { agent: AgentCRM }) {
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
+  // Auto-focus input when opened
+  React.useEffect(() => {
+    if (open) setTimeout(() => inputRef.current?.focus(), 50);
+  }, [open]);
+
+  const handleSubmit = async () => {
+    if (!noteText.trim() || saving) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("agent_notes").insert({ agent_id: agent.id, note: noteText.trim() });
+      if (error) throw error;
+      setLatestNote(noteText.trim());
+      setNoteText("");
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 1200);
+    } catch { toast.error("Failed to save note"); }
+    finally { setSaving(false); }
+  };
+
   return (
-    <div className="relative" ref={ref} onClick={e => e.stopPropagation()}>
-      <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setOpen(!open)}>
-        <StickyNote className="h-3.5 w-3.5 text-muted-foreground hover:text-primary" />
+    <div className="relative flex items-center gap-1" ref={ref} onClick={e => e.stopPropagation()}>
+      {latestNote && !open && (
+        <span className="text-[9px] text-muted-foreground truncate max-w-[80px]" title={latestNote}>
+          {latestNote.slice(0, 20)}{latestNote.length > 20 ? "…" : ""}
+        </span>
+      )}
+      <Button variant="ghost" size="sm" className={cn("h-6 w-6 p-0 transition-colors", showSuccess && "text-emerald-500")} onClick={() => setOpen(!open)}>
+        {showSuccess ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 animate-in zoom-in-50 duration-300" /> : <StickyNote className="h-3.5 w-3.5 text-muted-foreground hover:text-primary" />}
       </Button>
       {open && (
         <div className="absolute right-0 top-8 z-50 w-[320px] bg-card border border-border rounded-xl shadow-xl p-3 animate-in fade-in-0 slide-in-from-top-2 duration-150">
@@ -389,6 +424,21 @@ function InlineNotesButton({ agent }: { agent: AgentCRM }) {
             <span className="text-xs font-semibold">Notes — {agent.name}</span>
             <Button variant="ghost" size="sm" className="h-5 w-5 p-0" onClick={() => setOpen(false)}>
               <X className="h-3 w-3" />
+            </Button>
+          </div>
+          {/* Quick add input */}
+          <div className="flex gap-1.5 mb-2">
+            <Input
+              ref={inputRef}
+              value={noteText}
+              onChange={e => setNoteText(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") handleSubmit(); }}
+              placeholder="Quick note… (Enter to save)"
+              className="h-7 text-xs flex-1"
+              disabled={saving}
+            />
+            <Button size="sm" className="h-7 px-2 text-xs" onClick={handleSubmit} disabled={!noteText.trim() || saving}>
+              {saving ? <RefreshCw className="h-3 w-3 animate-spin" /> : "Add"}
             </Button>
           </div>
           <AgentNotes agentId={agent.id} onNoteAdded={() => {}} />

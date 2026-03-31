@@ -990,39 +990,72 @@ export default function DashboardCRM() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                         {UNLICENSED_COLUMNS.map(col => {
                           const colAgents = sectionAgents.filter(a => col.progress.includes(a.licenseProgress || "unlicensed"));
+                          const colColors: Record<string, string> = {
+                            unlicensed: "border-t-red-500 bg-red-500/3",
+                            course_purchased: "border-t-amber-500 bg-amber-500/3",
+                            finished_course: "border-t-blue-500 bg-blue-500/3",
+                            test_scheduled: "border-t-violet-500 bg-violet-500/3",
+                            waiting_on_license: "border-t-emerald-500 bg-emerald-500/3",
+                          };
                           return (
-                            <div key={col.key} className="rounded-xl border border-border overflow-hidden">
-                              <div className="px-3 py-2 bg-violet-500/5 border-b border-border flex items-center justify-between">
-                                <span className="text-xs font-semibold">{col.label}</span>
-                                <Badge variant="outline" className="text-[10px] h-5">{colAgents.length}</Badge>
+                            <div key={col.key} className={cn("rounded-xl border border-border overflow-hidden border-t-3", colColors[col.key])}>
+                              <div className="px-3 py-2.5 bg-muted/30 border-b border-border flex items-center justify-between">
+                                <span className="text-xs font-bold tracking-wide">{col.label}</span>
+                                <Badge variant="outline" className="text-[10px] h-5 font-bold tabular-nums">{colAgents.length}</Badge>
                               </div>
-                              <div className="p-2 space-y-1.5 overflow-y-auto" style={{ maxHeight: "calc(100vh - 200px)" }}>
+                              <div className="p-2 space-y-2 overflow-y-auto" style={{ maxHeight: "calc(100vh - 220px)" }}>
                                 {colAgents.length === 0 ? (
-                                  <p className="text-xs text-muted-foreground text-center py-4">None</p>
+                                  <p className="text-xs text-muted-foreground text-center py-6 italic">No agents here</p>
                                 ) : colAgents.map(agent => (
                                   <div key={agent.id}
-                                    className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted/40 cursor-pointer transition-colors group"
-                                    onClick={() => { setViewAppTarget({ agentId: agent.userId ? agent.id : undefined, applicationId: agent.applicationId || agent.id }); playSound("click"); }}>
-                                    <div className={cn("h-6 w-6 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-[10px] font-bold shrink-0", getAvatarColor(agent.name))}>
-                                      {agent.name.charAt(0).toUpperCase()}
+                                    className="rounded-lg border border-border/60 bg-card hover:bg-muted/30 transition-colors group overflow-hidden">
+                                    {/* Agent Header */}
+                                    <div className="flex items-center gap-2.5 p-2.5 cursor-pointer"
+                                      onClick={() => { setViewAppTarget({ agentId: agent.userId ? agent.id : undefined, applicationId: agent.applicationId || agent.id }); playSound("click"); }}>
+                                      <div className={cn("h-8 w-8 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-xs font-bold shrink-0 ring-2 ring-background shadow-sm", getAvatarColor(agent.name))}>
+                                        {agent.name.charAt(0).toUpperCase()}
+                                      </div>
+                                      <div className="min-w-0 flex-1">
+                                        <p className="text-sm font-semibold truncate leading-tight">{agent.name}</p>
+                                        {agent.managerId && agent.managerName && agent.managerId !== currentAgentId && (
+                                          <Badge variant="outline" className="text-[9px] h-4 px-1.5 font-semibold bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20 mt-0.5">{agent.managerName.split(" ")[0]}</Badge>
+                                        )}
+                                      </div>
                                     </div>
-                                    <div className="min-w-0 flex-1">
-                                      <p className="text-xs font-medium truncate">{agent.name}</p>
-                                      {agent.managerId && agent.managerName && agent.managerId !== currentAgentId && (
-                                        <Badge variant="outline" className="text-[9px] h-3.5 px-1 font-medium bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20">{agent.managerName.split(" ")[0]}</Badge>
-                                      )}
-                                      <p className="text-[10px] text-muted-foreground truncate">{agent.email}</p>
-                                      {agent.phone && <p className="text-[10px] text-muted-foreground select-all cursor-text" onClick={e => e.stopPropagation()}>{agent.phone}</p>}
-                                    </div>
-                                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                    {/* Contact Row */}
+                                    <div className="flex items-center gap-1 px-2.5 pb-1">
                                       {agent.phone && (
-                                        <a href={`tel:${agent.phone}`} onClick={e => e.stopPropagation()} className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors">
-                                          <Phone className="h-3 w-3" />
+                                        <a href={`tel:${agent.phone}`} onClick={e => e.stopPropagation()} className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors">
+                                          <Phone className="h-2.5 w-2.5" /> Call
                                         </a>
                                       )}
-                                      <a href={`mailto:${agent.email}`} onClick={e => e.stopPropagation()} className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors">
-                                        <Mail className="h-3 w-3" />
+                                      <a href={`mailto:${agent.email}`} onClick={e => e.stopPropagation()} className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 transition-colors">
+                                        <Mail className="h-2.5 w-2.5" /> Email
                                       </a>
+                                      {agent.instagramHandle && (
+                                        <a href={`https://instagram.com/${agent.instagramHandle.replace('@', '')}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium bg-pink-500/10 text-pink-600 dark:text-pink-400 hover:bg-pink-500/20 transition-colors">
+                                          <Instagram className="h-2.5 w-2.5" />
+                                        </a>
+                                      )}
+                                    </div>
+                                    {/* Phone number visible */}
+                                    {agent.phone && (
+                                      <p className="text-[10px] text-muted-foreground px-2.5 pb-1 select-all cursor-text font-mono">{agent.phone}</p>
+                                    )}
+                                    {/* License Progress Selector */}
+                                    <div className="px-2.5 pb-2" onClick={e => e.stopPropagation()}>
+                                      <LicenseProgressSelector
+                                        applicationId={agent.applicationId || agent.id}
+                                        agentId={agent.userId ? agent.id : undefined}
+                                        currentProgress={(agent.licenseProgress || "unlicensed") as any}
+                                        testScheduledDate={agent.testScheduledDate}
+                                        onProgressUpdated={fetchAgents}
+                                        className="h-6 text-[10px] w-full"
+                                      />
+                                    </div>
+                                    {/* Inline Quick Note */}
+                                    <div className="px-2.5 pb-2" onClick={e => e.stopPropagation()}>
+                                      <InlineNotesButton agent={agent} />
                                     </div>
                                   </div>
                                 ))}

@@ -216,6 +216,7 @@ async function fetchDashboardData(
     sourceData: sourceData.length > 0 ? sourceData : [{ name: "No data yet", value: 1, color: "hsl(222, 30%, 30%)" }],
     userName,
     currentAgentId: agentData.id,
+    previousPeriodLeads,
   };
 }
 

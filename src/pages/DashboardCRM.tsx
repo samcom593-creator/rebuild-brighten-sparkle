@@ -973,15 +973,15 @@ export default function DashboardCRM() {
         ) : (
           <>
           <Tabs value={activeStageTab} onValueChange={(v) => { setActiveStageTab(v); playSound("click"); }} className="space-y-3">
-            <TabsList className="w-full justify-start flex-wrap h-auto gap-1 p-1">
+            <TabsList className="w-full justify-start flex-wrap h-auto gap-1.5 p-1.5 bg-muted/60">
               {SECTIONS.map(section => {
                 const count = getAgentsForSection(section).length;
                 const Icon = section.icon;
                 return (
-                  <TabsTrigger key={section.key} value={section.key} className="gap-1.5 text-xs">
+                  <TabsTrigger key={section.key} value={section.key} className="gap-1.5 text-xs font-semibold data-[state=active]:bg-background data-[state=active]:shadow-md px-3 py-2">
                     <Icon className={cn("h-3.5 w-3.5", section.iconColor)} />
                     {section.label}
-                    <Badge variant="outline" className={cn("text-[10px] h-4 px-1", section.headerBg, section.iconColor, "border-current/20")}>{count}</Badge>
+                    <Badge variant="outline" className={cn("text-[10px] h-5 px-1.5 font-bold", section.headerBg, section.iconColor, "border-current/20")}>{count}</Badge>
                   </TabsTrigger>
                 );
               })}

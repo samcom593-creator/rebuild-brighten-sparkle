@@ -1,52 +1,59 @@
 
 
-# Full Site Audit + Training/Live Timers + Production Data Import
+# CRM Meeting Attendance Tab + Duplicate Auto-Merge + WhatsApp Funnel Confirmation
 
-## 1. Add Duration Timers to CRM (In-Field Training & Live tabs)
+## 1. New "Meeting Attendance" Tab (First Tab in CRM)
 
-**Problem**: No visibility into how long agents have been in training or live.
+Add a new first tab called **"Meeting Attendance"** before Onboarding in the `SECTIONS` array.
 
-**Changes to `src/pages/DashboardCRM.tsx`**:
-- Add `onboardingCompletedAt` to the `AgentCRM` interface, map from `agent.onboarding_completed_at` in the fetch query
-- **In-Field Training tab**: Add a "Days in Training" column showing `differenceInDays(now, fieldTrainingStartedAt)` with color coding (green <14d, amber 14-30d, red >30d)
-- **Live tab**: Add a "Days Live" column showing `differenceInDays(now, onboardingCompletedAt)` with a neutral badge
+**Layout**: Clean, single-purpose daily attendance view:
+- **Columns**: Agent Name (with manager badge below), Present (tappable circle icon), Homework (circle — only shown for agents in `in_field_training`), Week ALP (for `evaluated`/live agents), Month ALP (for `evaluated`/live agents)
+- Tapping the circle toggles present/absent for today's date, saving to `agent_attendance` table with type `agency_meeting`
+- Green filled circle = present, empty/red circle = absent
+- Sort alphabetically by agent name
+- Show ALL active agents (not filtered by stage) since meeting attendance applies to everyone
 
-Both displayed as prominent badges in the table headers and the expanded rows.
+**Changes to `DashboardCRM.tsx`**:
+- Add `meeting_attendance` as first entry in `SECTIONS` array
+- Add `getAgentsForSection` logic: return all active agents sorted by name
+- Add `getTableHeaders` case with columns: Agent, Mentor, Present, Homework, Week ALP, Month ALP
+- Add `getTableCells` case: render tappable attendance circles using `agent_attendance` table, conditionally show homework/ALP columns based on stage
+- Attendance toggle: upsert to `agent_attendance` with `attendance_type: 'agency_meeting'` and `attendance_date: today`
+- Add new status card for Meeting Attendance count (agents marked present today)
 
-## 2. Visual Polish Pass (Make Everything 10x Better)
+## 2. Auto-Merge Duplicate Samuel James Applications
 
-### CRM (`DashboardCRM.tsx`)
-- **Status cards**: Increase font sizes, add subtle hover animations, improve spacing
-- **Tab triggers**: Make active tab more prominent with filled background instead of just underline
-- **Pre-Licensed pipeline cards**: Add subtle gradient borders, improve card spacing, larger agent names
-- **Table rows**: Better alternating row colors, more breathing room (py-3 instead of py-2)
-- **Expanded rows**: Cleaner grid layout with card-based sections instead of plain divs
-- **Manager badge**: Already 10px sky pill — bump to 11px with bolder weight
+When a person reapplies and their previous application is assigned to Samuel James, merge them automatically.
 
-### Landing Page
-- **HeroSection**: Already solid — no changes needed
-- **DealsTicker**: Already cleaned up — no changes needed
+**Changes to `submit-application` edge function**:
+- After inserting the new application, check for existing applications with the same email
+- If any prior applications exist assigned to Samuel James (ID: `7c3c5581-3544-437f-bfe2-91391afb217d`), mark those older ones as `terminated_at = now()` with `termination_reason = 'reapplied_merged'`
+- Keep only the newest application active
+- Log the merge in `lead_activity`
 
-### Dashboard (`Dashboard.tsx`)
-- **Stat cards**: Ensure consistent spacing and visual hierarchy
-- No dummy data remaining (already cleaned)
+## 3. Add WhatsApp Group Link to Success Pages
 
-## 3. Import New Production Data (03/30 + updates)
+Currently the WhatsApp link is only in the confirmation **email** but NOT on the success pages the user sees after applying.
 
-Parse the provided dataset for new deals posted 03/28–03/30:
+**Changes to `ApplySuccess.tsx`, `ApplySuccessLicensed.tsx`, `ApplySuccessUnlicensed.tsx`**:
+- Add a prominent "Join the APEX Hiring Chat" WhatsApp button with the green WhatsApp brand color
+- Link pulls from the `WHATSAPP_GROUP_LINK` env var — but since these are client-side pages, we'll need to either:
+  - Hardcode the link (simplest, since it rarely changes), OR
+  - Fetch it via a lightweight edge function call
+- Use hardcoded approach with the link stored as a constant in a shared file
 
-| Date | Agent | ALP | Deals |
-|------|-------|-----|-------|
-| 03/30 | Alyjah Rowland | $600.00 | 1 |
-| 03/30 | Kaeden Vaughns | $754.44 | 1 |
-| 03/30 | Chukwudi Ifediora | $1,224.00 | 1 |
-| 03/30 | Obiajulu Ifediora | $855.84 | 1 |
-| 03/30 | Mahmod Imran | $2,832.00 | 1 |
-| 03/28 | Mahmod Imran | $1,452.00 | 1 |
+## 4. Production Data Import (03/28–03/30 new deals)
 
-Plus all historical data re-synced via `import-production-data` with `skip_existing: false`.
+Import via `import-production-data` edge function with all deals from the pasted dataset. Key new entries:
+- 03/30: Alyjah Rowland $600, Kaeden Vaughns $754.44, Chukwudi Ifediora $1,224, Obiajulu Ifediora $855.84, Mahmod Imran $2,832
+- 03/28: Mahmod Imran $1,452
+- Plus full historical re-sync
 
 ## Files Modified
-- **`src/pages/DashboardCRM.tsx`** — Add `onboardingCompletedAt` field, training/live duration columns, visual polish across all sections
-- **Data import** via `import-production-data` edge function call with full dataset
+- **`src/pages/DashboardCRM.tsx`** — New Meeting Attendance tab (first tab), attendance toggle logic, conditional homework/ALP columns
+- **`supabase/functions/submit-application/index.ts`** — Auto-merge duplicate Samuel James applications on reapply
+- **`src/pages/ApplySuccess.tsx`** — Add WhatsApp group button
+- **`src/pages/ApplySuccessLicensed.tsx`** — Add WhatsApp group button
+- **`src/pages/ApplySuccessUnlicensed.tsx`** — Add WhatsApp group button
+- **Data import** via `import-production-data` edge function
 

@@ -947,6 +947,7 @@ export default function DashboardCRM() {
       onAgentUpdate, playSound, sendingCourseLogin, setSendingCourseLogin, currentAgentId,
     };
     switch (sectionKey) {
+      case "meeting_attendance": return <OnboardingExpandedRow {...commonProps} />;
       case "onboarding": return <OnboardingExpandedRow {...commonProps} />;
       case "pre_licensed": return <OnboardingExpandedRow {...commonProps} />;
       case "in_training": return <TrainingExpandedRow {...commonProps} />;

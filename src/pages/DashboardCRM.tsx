@@ -797,6 +797,7 @@ export default function DashboardCRM() {
     return dupeIds;
   }, [activeAgents]);
 
+  const meetingPresentCount = Array.from(meetingAttendance.values()).filter(v => v === "present").length;
   const onboardingCount = filteredAgents.filter(a => ["onboarding", "training_online"].includes(a.onboardingStage)).length;
   const preLicensedCount = filteredAgents.filter(a => a.agentLicenseStatus !== "licensed").length;
   const trainingCount = filteredAgents.filter(a => a.onboardingStage === "in_field_training").length;

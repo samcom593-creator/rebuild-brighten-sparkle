@@ -89,7 +89,7 @@ async function fetchDashboardData(
     .maybeSingle();
 
   if (!agentData) {
-    return { stats: defaultStats, dailyData: emptyChartData, weeklyData: emptyChartData, monthlyData: emptyChartData, sourceData: emptySourceData, userName, currentAgentId: undefined };
+    return { stats: defaultStats, dailyData: emptyChartData, weeklyData: emptyChartData, monthlyData: emptyChartData, sourceData: emptySourceData, userName, currentAgentId: undefined, previousPeriodLeads: 0 };
   }
 
   let query = supabase
@@ -103,7 +103,7 @@ async function fetchDashboardData(
   const { data: allApplications } = await query;
 
   if (!allApplications || allApplications.length === 0) {
-    return { stats: defaultStats, dailyData: emptyChartData, weeklyData: emptyChartData, monthlyData: emptyChartData, sourceData: emptySourceData, userName, currentAgentId: agentData.id };
+    return { stats: defaultStats, dailyData: emptyChartData, weeklyData: emptyChartData, monthlyData: emptyChartData, sourceData: emptySourceData, userName, currentAgentId: agentData.id, previousPeriodLeads: 0 };
   }
 
   // Filter by selected date range for stats
@@ -216,6 +216,7 @@ async function fetchDashboardData(
     sourceData: sourceData.length > 0 ? sourceData : [{ name: "No data yet", value: 1, color: "hsl(222, 30%, 30%)" }],
     userName,
     currentAgentId: agentData.id,
+    previousPeriodLeads,
   };
 }
 
@@ -264,6 +265,7 @@ export default function Dashboard() {
   const sourceData = data?.sourceData ?? emptySourceData;
   const userName = data?.userName ?? "";
   const currentAgentId = data?.currentAgentId;
+  const previousPeriodLeads = data?.previousPeriodLeads ?? 0;
 
   const licenseData = useMemo(() => [
     { name: "Licensed", value: stats.licensed, color: "hsl(168, 84%, 42%)" },
@@ -514,7 +516,7 @@ export default function Dashboard() {
               weeklyData={weeklyData}
               monthlyData={monthlyData}
               currentPeriodTotal={stats.totalLeads}
-              previousPeriodTotal={Math.round(stats.totalLeads * 0.87)}
+              previousPeriodTotal={previousPeriodLeads}
             />
           </div>
         </div>

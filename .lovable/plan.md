@@ -1,36 +1,52 @@
 
 
-# CRM Improvements: Sort, Simplify, Split Tabs, Better Notes & Manager Display
+# Full Site Audit + Training/Live Timers + Production Data Import
 
-## Changes
+## 1. Add Duration Timers to CRM (In-Field Training & Live tabs)
 
-### 1. Live tab — sort by Week ALP (descending)
-Already sorted by `weeklyALP` descending (line 681). Confirmed working. No change needed.
+**Problem**: No visibility into how long agents have been in training or live.
 
-### 2. Remove "Contact" column from Onboarding, In-Field Training, and Live tabs
-Currently all 4 tabs show a "Contact" column with last-contacted-at timestamps. Remove it from **Onboarding**, **In-Field Training**, and **Live** — keep it only in **Needs Follow-Up**.
+**Changes to `src/pages/DashboardCRM.tsx`**:
+- Add `onboardingCompletedAt` to the `AgentCRM` interface, map from `agent.onboarding_completed_at` in the fetch query
+- **In-Field Training tab**: Add a "Days in Training" column showing `differenceInDays(now, fieldTrainingStartedAt)` with color coding (green <14d, amber 14-30d, red >30d)
+- **Live tab**: Add a "Days Live" column showing `differenceInDays(now, onboardingCompletedAt)` with a neutral badge
 
-**Files**: `DashboardCRM.tsx` — `getTableHeaders()` and `getTableCells()` functions
+Both displayed as prominent badges in the table headers and the expanded rows.
 
-### 3. Split "Onboarding" into two separate tabs: "Onboarding" and "Pre-Licensed"
-- **Onboarding** = agents in `onboarding`/`training_online` stage who were hired **this week** (created/start date within current week)
-- **Pre-Licensed** = all other unlicensed agents in the licensing pipeline (replaces the bottom Unlicensed Pipeline section — move it into its own tab so it's not buried at the bottom)
+## 2. Visual Polish Pass (Make Everything 10x Better)
 
-Update `SECTIONS` array to add a new "Pre-Licensed" section. The Pre-Licensed tab will show the 5-column pipeline view (Course Not Purchased → Waiting on License) as a full-height scrollable layout inside the tab.
+### CRM (`DashboardCRM.tsx`)
+- **Status cards**: Increase font sizes, add subtle hover animations, improve spacing
+- **Tab triggers**: Make active tab more prominent with filled background instead of just underline
+- **Pre-Licensed pipeline cards**: Add subtle gradient borders, improve card spacing, larger agent names
+- **Table rows**: Better alternating row colors, more breathing room (py-3 instead of py-2)
+- **Expanded rows**: Cleaner grid layout with card-based sections instead of plain divs
+- **Manager badge**: Already 10px sky pill — bump to 11px with bolder weight
 
-### 4. Make note-taking much easier — game-like quick input
-Replace the tiny popover `InlineNotesButton` with a more prominent, always-visible quick-note input:
-- Expand the notes button to show a small inline text input that appears on hover/click right in the table row
-- Single-line input with Enter-to-submit, auto-clear after submit
-- Show a green flash/checkmark animation on successful note save (gamification feel)
-- Show latest note snippet (truncated) next to the notes icon so managers see activity at a glance
+### Landing Page
+- **HeroSection**: Already solid — no changes needed
+- **DealsTicker**: Already cleaned up — no changes needed
 
-### 5. Make manager name bigger and more readable
-Currently the manager name is a tiny `text-[8px]` badge. Change to:
-- `text-[10px]` minimum with `font-medium`
-- Show full first name (already does `split(" ")[0]`) but make it a more prominent colored pill
-- Move it below the agent name instead of inline beside it for better readability
+### Dashboard (`Dashboard.tsx`)
+- **Stat cards**: Ensure consistent spacing and visual hierarchy
+- No dummy data remaining (already cleaned)
 
-### Files Modified
-- **`src/pages/DashboardCRM.tsx`** — All changes above (headers, cells, sections, notes UI, manager badge styling)
+## 3. Import New Production Data (03/30 + updates)
+
+Parse the provided dataset for new deals posted 03/28–03/30:
+
+| Date | Agent | ALP | Deals |
+|------|-------|-----|-------|
+| 03/30 | Alyjah Rowland | $600.00 | 1 |
+| 03/30 | Kaeden Vaughns | $754.44 | 1 |
+| 03/30 | Chukwudi Ifediora | $1,224.00 | 1 |
+| 03/30 | Obiajulu Ifediora | $855.84 | 1 |
+| 03/30 | Mahmod Imran | $2,832.00 | 1 |
+| 03/28 | Mahmod Imran | $1,452.00 | 1 |
+
+Plus all historical data re-synced via `import-production-data` with `skip_existing: false`.
+
+## Files Modified
+- **`src/pages/DashboardCRM.tsx`** — Add `onboardingCompletedAt` field, training/live duration columns, visual polish across all sections
+- **Data import** via `import-production-data` edge function call with full dataset
 

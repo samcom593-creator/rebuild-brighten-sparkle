@@ -716,7 +716,6 @@ export default function DashboardCRM() {
   const getAgentsForSection = (section: typeof SECTIONS[number]) => {
     if (section.key === "needs_followup") {
       return filteredAgents.filter(a => {
-        // Below live but no progress in 6+ days
         const isBelowLive = a.onboardingStage !== "evaluated";
         const daysSinceContact = a.lastContactedAt ? (Date.now() - new Date(a.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24) : 999;
         return isBelowLive && daysSinceContact >= 6;
@@ -727,8 +726,11 @@ export default function DashboardCRM() {
         return new Date(a.lastContactedAt).getTime() - new Date(b.lastContactedAt).getTime();
       });
     }
+    if (section.key === "pre_licensed") {
+      // All unlicensed agents in the licensing pipeline
+      return filteredAgents.filter(a => a.agentLicenseStatus !== "licensed");
+    }
     if (section.key === "live") {
-      // Only licensed agents in Live
       return filteredAgents.filter(a => section.stages.includes(a.onboardingStage) && a.agentLicenseStatus === "licensed").sort((a, b) => b.weeklyALP - a.weeklyALP);
     }
     return filteredAgents.filter(a => section.stages.includes(a.onboardingStage)).sort((a, b) => {

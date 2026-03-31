@@ -754,6 +754,7 @@ export default function DashboardCRM() {
   }, [activeAgents]);
 
   const onboardingCount = filteredAgents.filter(a => ["onboarding", "training_online"].includes(a.onboardingStage)).length;
+  const preLicensedCount = filteredAgents.filter(a => a.agentLicenseStatus !== "licensed").length;
   const trainingCount = filteredAgents.filter(a => a.onboardingStage === "in_field_training").length;
   const liveCount = filteredAgents.filter(a => a.onboardingStage === "evaluated" && a.agentLicenseStatus === "licensed").length;
   const needsFollowUpCount = getAgentsForSection(SECTIONS.find(s => s.key === "needs_followup")!).length;

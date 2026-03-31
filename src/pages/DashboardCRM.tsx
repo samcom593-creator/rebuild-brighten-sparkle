@@ -796,6 +796,21 @@ export default function DashboardCRM() {
           <TableCell className="py-2">
             <span className="text-[10px] font-medium">{progressLabels[agent.licenseProgress || "unlicensed"] || "—"}</span>
           </TableCell>
+          <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
+        </>);
+      }
+      case "pre_licensed": {
+        const progressLabels: Record<string, string> = {
+          unlicensed: "Not Started", course_purchased: "In Course", finished_course: "Finished",
+          test_scheduled: "Test Sched.", passed_test: "Passed", fingerprints_done: "Fingerprints",
+          waiting_on_license: "Waiting", licensed: "Licensed",
+        };
+        return (<>
+          <TableCell className="py-2">
+            <Badge variant="outline" className="text-[10px] bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20">
+              {progressLabels[agent.licenseProgress || "unlicensed"] || "—"}
+            </Badge>
+          </TableCell>
           <TableCell className="py-2"><span className={cn("text-xs font-medium", contact.color)}>{contact.label}</span></TableCell>
           <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
         </>);
@@ -805,7 +820,6 @@ export default function DashboardCRM() {
           <TableCell className="py-2">
             <Badge variant="outline" className={cn("text-[10px]", attendanceColors[agent.attendanceStatus])}>{attendanceLabels[agent.attendanceStatus]}</Badge>
           </TableCell>
-          <TableCell className="py-2"><span className={cn("text-xs font-medium", contact.color)}>{contact.label}</span></TableCell>
           <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
         </>);
       case "live":
@@ -816,7 +830,6 @@ export default function DashboardCRM() {
           <TableCell className="py-2">
             <Badge variant="outline" className={cn("text-[10px]", attendanceColors[agent.attendanceStatus])}>{attendanceLabels[agent.attendanceStatus]}</Badge>
           </TableCell>
-          <TableCell className="py-2"><span className={cn("text-xs font-medium", contact.color)}>{contact.label}</span></TableCell>
           <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
         </>);
       case "needs_followup": {

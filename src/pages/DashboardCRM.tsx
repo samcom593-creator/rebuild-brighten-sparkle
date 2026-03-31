@@ -808,6 +808,8 @@ export default function DashboardCRM() {
   // Section-specific table headers
   const getTableHeaders = (sectionKey: string) => {
     switch (sectionKey) {
+      case "meeting_attendance":
+        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[100px]">Mentor</TableHead><TableHead className="w-[80px] text-center">Present</TableHead><TableHead className="w-[80px] text-center">Homework</TableHead><TableHead className="w-[100px] text-right">Week ALP</TableHead><TableHead className="w-[100px] text-right">Month ALP</TableHead><TableHead className="w-8" /></>);
       case "onboarding":
         return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[90px]">Status</TableHead><TableHead className="w-[120px]">Course Progress</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
       case "pre_licensed":

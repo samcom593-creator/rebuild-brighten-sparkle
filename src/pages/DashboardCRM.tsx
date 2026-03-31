@@ -46,6 +46,7 @@ interface AgentCRM {
   email: string; phone?: string; avatarUrl?: string; instagramHandle?: string;
   onboardingStage: OnboardingStage; attendanceStatus: AttendanceStatus;
   performanceTier: PerformanceTier; fieldTrainingStartedAt?: string; startDate?: string;
+  onboardingCompletedAt?: string;
   totalEarnings: number; hasTrainingCourse: boolean; hasDialerLogin: boolean; hasDiscordAccess: boolean;
   potentialRating: number; evaluationResult?: string | null;
   isDeactivated: boolean; isInactive: boolean; managerId?: string; managerName?: string;

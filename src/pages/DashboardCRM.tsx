@@ -755,6 +755,9 @@ export default function DashboardCRM() {
   });
 
   const getAgentsForSection = (section: typeof SECTIONS[number]) => {
+    if (section.key === "meeting_attendance") {
+      return [...filteredAgents].sort((a, b) => a.name.localeCompare(b.name));
+    }
     if (section.key === "needs_followup") {
       return filteredAgents.filter(a => {
         const isBelowLive = a.onboardingStage !== "evaluated";

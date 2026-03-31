@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Crown, CheckCircle2, ArrowRight, Calendar, Sparkles, AlertTriangle } from "lucide-react";
+import { Crown, CheckCircle2, ArrowRight, Calendar, Sparkles, AlertTriangle, MessageCircle } from "lucide-react";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { GlassCard } from "@/components/ui/glass-card";
+import { WHATSAPP_GROUP_URL } from "@/lib/constants";
 
 export default function ApplySuccessUnlicensed() {
   const calendlyUrl = "https://calendly.com/sam-com593/licensed-prospect-call-clone";

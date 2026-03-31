@@ -680,6 +680,43 @@ export default function DashboardCRM() {
   useEffect(() => { if (agentsData) setAgents(agentsData); }, [agentsData]);
   useEffect(() => { if (managersData) setManagers(managersData); }, [managersData]);
 
+  // Fetch today's meeting attendance
+  const todayStr = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }, []);
+
+  useEffect(() => {
+    if (!agents.length) return;
+    const fetchAttendance = async () => {
+      const agentIds = agents.map(a => a.id);
+      const { data } = await supabase.from("agent_attendance")
+        .select("agent_id, status")
+        .in("agent_id", agentIds)
+        .eq("attendance_date", todayStr)
+        .eq("attendance_type", "agency_meeting" as any);
+      const map = new Map<string, "present" | "absent" | "unmarked">();
+      data?.forEach(r => map.set(r.agent_id, r.status as any));
+      setMeetingAttendance(map);
+    };
+    fetchAttendance();
+  }, [agents, todayStr]);
+
+  const toggleMeetingAttendance = async (agentId: string) => {
+    const current = meetingAttendance.get(agentId) || "unmarked";
+    const next = current === "present" ? "absent" : "present";
+    setMeetingAttendance(prev => { const m = new Map(prev); m.set(agentId, next); return m; });
+    try {
+      await supabase.from("agent_attendance").upsert({
+        agent_id: agentId,
+        attendance_date: todayStr,
+        attendance_type: "agency_meeting" as any,
+        status: next as any,
+        marked_by: user?.id,
+      }, { onConflict: "agent_id,attendance_date,attendance_type" as any });
+    } catch { toast.error("Failed to save attendance"); }
+  };
+
   const loading = agentsLoading;
   const fetchAgents = useCallback(() => { queryClient.invalidateQueries({ queryKey: ["crm-agents"] }); }, [queryClient]);
 

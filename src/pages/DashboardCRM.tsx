@@ -46,6 +46,7 @@ interface AgentCRM {
   email: string; phone?: string; avatarUrl?: string; instagramHandle?: string;
   onboardingStage: OnboardingStage; attendanceStatus: AttendanceStatus;
   performanceTier: PerformanceTier; fieldTrainingStartedAt?: string; startDate?: string;
+  onboardingCompletedAt?: string;
   totalEarnings: number; hasTrainingCourse: boolean; hasDialerLogin: boolean; hasDiscordAccess: boolean;
   potentialRating: number; evaluationResult?: string | null;
   isDeactivated: boolean; isInactive: boolean; managerId?: string; managerName?: string;
@@ -602,6 +603,7 @@ export default function DashboardCRM() {
           instagramHandle: profile?.instagram_handle || undefined, onboardingStage: agent.onboarding_stage || "onboarding",
           attendanceStatus: agent.attendance_status || "good", performanceTier: agent.performance_tier || "below_10k",
           fieldTrainingStartedAt: agent.field_training_started_at || undefined, startDate: agent.start_date || undefined,
+          onboardingCompletedAt: agent.onboarding_completed_at || undefined,
           totalEarnings: Number(agent.total_earnings) || 0, hasTrainingCourse: agent.has_training_course || false,
           hasDialerLogin: agent.has_dialer_login || false, hasDiscordAccess: agent.has_discord_access || false,
           potentialRating: agent.potential_rating || 0, evaluationResult: agent.evaluation_result,
@@ -682,7 +684,7 @@ export default function DashboardCRM() {
   const handleOptimisticStageUpdate = async (agentId: string) => {
     try {
       const { data } = await supabase.from("agents").select("onboarding_stage, onboarding_completed_at, field_training_started_at").eq("id", agentId).maybeSingle();
-      if (data) setAgents(prev => prev.map(a => a.id === agentId ? { ...a, onboardingStage: data.onboarding_stage || a.onboardingStage, fieldTrainingStartedAt: data.field_training_started_at || a.fieldTrainingStartedAt } : a));
+      if (data) setAgents(prev => prev.map(a => a.id === agentId ? { ...a, onboardingStage: data.onboarding_stage || a.onboardingStage, fieldTrainingStartedAt: data.field_training_started_at || a.fieldTrainingStartedAt, onboardingCompletedAt: data.onboarding_completed_at || a.onboardingCompletedAt } : a));
     } catch (err) { console.error("Error refreshing agent stage:", err); }
   };
 
@@ -768,9 +770,9 @@ export default function DashboardCRM() {
       case "pre_licensed":
         return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[120px]">License Stage</TableHead><TableHead className="w-[90px]">Contact</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
       case "in_training":
-        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[90px]">Attendance</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
+        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[90px]">Attendance</TableHead><TableHead className="w-[90px]">Days Training</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
       case "live":
-        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[100px] text-right">Week ALP</TableHead><TableHead className="w-[100px] text-right">Prev Week</TableHead><TableHead className="w-[60px] text-right">Deals</TableHead><TableHead className="w-[80px]">Attend.</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
+        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[100px] text-right">Week ALP</TableHead><TableHead className="w-[100px] text-right">Prev Week</TableHead><TableHead className="w-[60px] text-right">Deals</TableHead><TableHead className="w-[80px]">Attend.</TableHead><TableHead className="w-[80px]">Days Live</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
       case "needs_followup":
         return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[100px]">Last Activity</TableHead><TableHead className="w-[80px]">Days Stale</TableHead><TableHead className="w-[90px]">Contact</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
       default:
@@ -816,23 +818,36 @@ export default function DashboardCRM() {
           <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
         </>);
       }
-      case "in_training":
+      case "in_training": {
+        const daysInTraining = agent.fieldTrainingStartedAt ? differenceInDays(new Date(), new Date(agent.fieldTrainingStartedAt)) : null;
+        const trainingColor = daysInTraining === null ? "bg-muted text-muted-foreground" : daysInTraining < 14 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" : daysInTraining < 30 ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" : "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20";
         return (<>
-          <TableCell className="py-2">
+          <TableCell className="py-3">
             <Badge variant="outline" className={cn("text-[10px]", attendanceColors[agent.attendanceStatus])}>{attendanceLabels[agent.attendanceStatus]}</Badge>
           </TableCell>
-          <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
+          <TableCell className="py-3">
+            <Badge variant="outline" className={cn("text-[10px] font-bold tabular-nums", trainingColor)}>
+              {daysInTraining !== null ? `${daysInTraining}d` : "—"}
+            </Badge>
+          </TableCell>
+          <TableCell className="py-3"><InlineNotesButton agent={agent} /></TableCell>
         </>);
-      case "live":
+      }
+      case "live": {
+        const daysLive = agent.onboardingCompletedAt ? differenceInDays(new Date(), new Date(agent.onboardingCompletedAt)) : null;
         return (<>
-          <TableCell className="py-2 text-right"><span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{agent.weeklyALP > 0 ? `$${agent.weeklyALP.toLocaleString()}` : "—"}</span></TableCell>
-          <TableCell className="py-2 text-right"><span className="text-xs">{agent.prevWeekALP > 0 ? `$${agent.prevWeekALP.toLocaleString()}` : "—"}</span></TableCell>
-          <TableCell className="py-2 text-right"><span className="text-xs font-semibold">{agent.weeklyDeals > 0 ? agent.weeklyDeals : "—"}</span></TableCell>
-          <TableCell className="py-2">
+          <TableCell className="py-3 text-right"><span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{agent.weeklyALP > 0 ? `$${agent.weeklyALP.toLocaleString()}` : "—"}</span></TableCell>
+          <TableCell className="py-3 text-right"><span className="text-xs">{agent.prevWeekALP > 0 ? `$${agent.prevWeekALP.toLocaleString()}` : "—"}</span></TableCell>
+          <TableCell className="py-3 text-right"><span className="text-xs font-semibold">{agent.weeklyDeals > 0 ? agent.weeklyDeals : "—"}</span></TableCell>
+          <TableCell className="py-3">
             <Badge variant="outline" className={cn("text-[10px]", attendanceColors[agent.attendanceStatus])}>{attendanceLabels[agent.attendanceStatus]}</Badge>
           </TableCell>
-          <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
+          <TableCell className="py-3">
+            <Badge variant="outline" className="text-[10px] font-bold tabular-nums bg-muted/50">{daysLive !== null ? `${daysLive}d` : "—"}</Badge>
+          </TableCell>
+          <TableCell className="py-3"><InlineNotesButton agent={agent} /></TableCell>
         </>);
+      }
       case "needs_followup": {
         const daysSince = agent.lastContactedAt ? Math.floor((Date.now() - new Date(agent.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24)) : null;
         return (<>
@@ -921,11 +936,11 @@ export default function DashboardCRM() {
             { label: "Live", count: liveCount, icon: Briefcase, color: "text-emerald-500", borderColor: "border-t-emerald-500", bgGlow: "bg-emerald-500/5" },
             { label: "Needs F/U", count: needsFollowUpCount, icon: AlertTriangle, color: "text-red-500", borderColor: "border-t-red-500", bgGlow: "bg-red-500/5" },
           ].map(s => (
-            <div key={s.label} className={cn("flex items-center gap-2.5 px-3.5 py-3 rounded-xl border border-border/60 bg-card/80 backdrop-blur-sm shadow-sm border-t-2 transition-transform hover:-translate-y-0.5", s.borderColor, s.bgGlow)}>
-              <div className="p-1.5 rounded-lg bg-background/60"><s.icon className={cn("h-4 w-4", s.color)} /></div>
+            <div key={s.label} className={cn("flex items-center gap-3 px-4 py-3.5 rounded-xl border border-border/60 bg-card/80 backdrop-blur-sm shadow-sm border-t-2 transition-all hover:-translate-y-0.5 hover:shadow-md cursor-default", s.borderColor, s.bgGlow)}>
+              <div className="p-2 rounded-lg bg-background/60"><s.icon className={cn("h-5 w-5", s.color)} /></div>
               <div>
-                <p className="text-xl font-bold leading-none tabular-nums">{s.count}</p>
-                <p className="text-[10px] text-muted-foreground font-medium mt-0.5">{s.label}</p>
+                <p className="text-2xl font-extrabold leading-none tabular-nums">{s.count}</p>
+                <p className="text-[11px] text-muted-foreground font-semibold mt-0.5">{s.label}</p>
               </div>
             </div>
           ))}
@@ -958,15 +973,15 @@ export default function DashboardCRM() {
         ) : (
           <>
           <Tabs value={activeStageTab} onValueChange={(v) => { setActiveStageTab(v); playSound("click"); }} className="space-y-3">
-            <TabsList className="w-full justify-start flex-wrap h-auto gap-1 p-1">
+            <TabsList className="w-full justify-start flex-wrap h-auto gap-1.5 p-1.5 bg-muted/60">
               {SECTIONS.map(section => {
                 const count = getAgentsForSection(section).length;
                 const Icon = section.icon;
                 return (
-                  <TabsTrigger key={section.key} value={section.key} className="gap-1.5 text-xs">
+                  <TabsTrigger key={section.key} value={section.key} className="gap-1.5 text-xs font-semibold data-[state=active]:bg-background data-[state=active]:shadow-md px-3 py-2">
                     <Icon className={cn("h-3.5 w-3.5", section.iconColor)} />
                     {section.label}
-                    <Badge variant="outline" className={cn("text-[10px] h-4 px-1", section.headerBg, section.iconColor, "border-current/20")}>{count}</Badge>
+                    <Badge variant="outline" className={cn("text-[10px] h-5 px-1.5 font-bold", section.headerBg, section.iconColor, "border-current/20")}>{count}</Badge>
                   </TabsTrigger>
                 );
               })}
@@ -1125,7 +1140,7 @@ export default function DashboardCRM() {
                                         <div className="flex items-center gap-1 mt-0.5">
                                           {duplicateAgentIds.has(agent.id) && <Badge variant="outline" className="text-[8px] h-3.5 px-1 bg-amber-500/10 text-amber-500 border-amber-500/20">Dupe</Badge>}
                                           {agent.managerId && agent.managerName && agent.managerId !== currentAgentId && (
-                                            <Badge variant="outline" className="text-[10px] h-4 px-1.5 font-medium bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20">{agent.managerName.split(" ")[0]}</Badge>
+                                            <Badge variant="outline" className="text-[11px] h-4.5 px-2 font-bold bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20">{agent.managerName.split(" ")[0]}</Badge>
                                           )}
                                         </div>
                                         <p className="text-[10px] text-muted-foreground truncate">{agent.email}</p>

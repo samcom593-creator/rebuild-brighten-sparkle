@@ -147,6 +147,7 @@ export function GlobalSidebar({
     // Admin-only extras
     if (isAdmin) {
       toolItems.push({ icon: CalendarDays, label: "Day Planner", href: "/dashboard/planner" });
+      toolItems.push({ icon: Crown, label: "Awards", href: "/dashboard/awards" });
     }
 
     toolItems.push({ icon: ShoppingCart, label: "Purchase Leads", href: "/purchase-leads" });

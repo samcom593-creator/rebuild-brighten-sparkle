@@ -125,6 +125,7 @@ const App = () => (
                   <Route path="/seminar" element={<SeminarPage />} />
                   <Route path="/checkin" element={<ApplicantCheckin />} />
                   <Route path="/daily-checkin" element={<DailyCheckin />} />
+                  <Route path="/awards" element={<AwardGraphics />} />
                   {/* Authenticated shell - sidebar mounted once */}
                   <Route element={<AuthenticatedShell />}>
                     <Route path="/dashboard" element={<Dashboard />} />

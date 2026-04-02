@@ -63,7 +63,7 @@ export default function AwardGraphics() {
         .order("created_at", { ascending: false })
         .limit(50);
       if (error) throw error;
-      return data as AwardBatch[];
+      return data as unknown as AwardBatch[];
     },
   });
 

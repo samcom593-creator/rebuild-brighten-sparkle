@@ -60,6 +60,7 @@ const NotificationHub = lazy(() => import("./pages/NotificationHub"));
 const LinksPage = lazy(() => import("./pages/LinksPage"));
 const GrowthDashboard = lazy(() => import("./pages/GrowthDashboard"));
 const AdminCalendar = lazy(() => import("./pages/AdminCalendar"));
+const AwardGraphics = lazy(() => import("./pages/AwardGraphics"));
 const SeminarPage = lazy(() => import("./pages/SeminarPage"));
 const SeminarAdmin = lazy(() => import("./pages/SeminarAdmin"));
 const ApplicantCheckin = lazy(() => import("./pages/ApplicantCheckin"));

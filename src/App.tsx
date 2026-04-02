@@ -60,6 +60,7 @@ const NotificationHub = lazy(() => import("./pages/NotificationHub"));
 const LinksPage = lazy(() => import("./pages/LinksPage"));
 const GrowthDashboard = lazy(() => import("./pages/GrowthDashboard"));
 const AdminCalendar = lazy(() => import("./pages/AdminCalendar"));
+const AwardGraphics = lazy(() => import("./pages/AwardGraphics"));
 const SeminarPage = lazy(() => import("./pages/SeminarPage"));
 const SeminarAdmin = lazy(() => import("./pages/SeminarAdmin"));
 const ApplicantCheckin = lazy(() => import("./pages/ApplicantCheckin"));
@@ -151,6 +152,7 @@ const App = () => (
                      <Route path="/dashboard/growth" element={<GrowthDashboard />} />
                      <Route path="/dashboard/planner" element={<ProtectedRoute requireAdmin><AdminCalendar /></ProtectedRoute>} />
                       <Route path="/dashboard/seminar" element={<SeminarAdmin />} />
+                      <Route path="/dashboard/awards" element={<ProtectedRoute requireAdmin><AwardGraphics /></ProtectedRoute>} />
                   </Route>
 
                   {/* Legacy redirect */}

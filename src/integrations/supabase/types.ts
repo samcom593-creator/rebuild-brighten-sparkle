@@ -1010,6 +1010,65 @@ export type Database = {
           },
         ]
       }
+      award_batches: {
+        Row: {
+          created_at: string
+          id: string
+          leaderboard_file: string | null
+          metric_type: string
+          period_end: string | null
+          period_start: string | null
+          source_data: Json | null
+          status: string
+          time_period: string
+          top_agents: Json | null
+          top_producer_file: string | null
+          winner_agent_id: string | null
+          winner_amount: number | null
+          winner_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          leaderboard_file?: string | null
+          metric_type?: string
+          period_end?: string | null
+          period_start?: string | null
+          source_data?: Json | null
+          status?: string
+          time_period: string
+          top_agents?: Json | null
+          top_producer_file?: string | null
+          winner_agent_id?: string | null
+          winner_amount?: number | null
+          winner_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          leaderboard_file?: string | null
+          metric_type?: string
+          period_end?: string | null
+          period_start?: string | null
+          source_data?: Json | null
+          status?: string
+          time_period?: string
+          top_agents?: Json | null
+          top_producer_file?: string | null
+          winner_agent_id?: string | null
+          winner_amount?: number | null
+          winner_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "award_batches_winner_agent_id_fkey"
+            columns: ["winner_agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       banned_prospects: {
         Row: {
           banned_by: string | null

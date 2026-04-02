@@ -318,3 +318,6 @@ verify_jwt = false
 
 [functions.send-login-to-manager]
 verify_jwt = false
+
+[functions.generate-award-graphics]
+verify_jwt = false

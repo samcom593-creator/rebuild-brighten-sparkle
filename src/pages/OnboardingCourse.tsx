@@ -242,6 +242,8 @@ export default function OnboardingCourse() {
                           onProgressUpdate={(percent) => updateVideoProgress(currentModule.id, percent)}
                           watchedPercent={currentProgress?.video_watched_percent || 0}
                           onVideoComplete={handleVideoComplete}
+                          playbackRate={playbackRate}
+                          onPlaybackRateChange={setPlaybackRate}
                         />
                         
                         {currentProgress?.passed && (

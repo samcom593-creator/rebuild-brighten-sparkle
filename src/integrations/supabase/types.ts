@@ -264,6 +264,44 @@ export type Database = {
           },
         ]
       }
+      agent_award_profiles: {
+        Row: {
+          agent_id: string
+          created_at: string | null
+          display_name_override: string | null
+          id: string
+          instagram_handle: string | null
+          photo_url: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string | null
+          display_name_override?: string | null
+          id?: string
+          instagram_handle?: string | null
+          photo_url?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string | null
+          display_name_override?: string | null
+          id?: string
+          instagram_handle?: string | null
+          photo_url?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_award_profiles_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_goals: {
         Row: {
           agent_id: string
@@ -1012,6 +1050,7 @@ export type Database = {
       }
       award_batches: {
         Row: {
+          award_type: string
           created_at: string
           id: string
           leaderboard_file: string | null
@@ -1028,6 +1067,7 @@ export type Database = {
           winner_name: string | null
         }
         Insert: {
+          award_type?: string
           created_at?: string
           id?: string
           leaderboard_file?: string | null
@@ -1044,6 +1084,7 @@ export type Database = {
           winner_name?: string | null
         }
         Update: {
+          award_type?: string
           created_at?: string
           id?: string
           leaderboard_file?: string | null

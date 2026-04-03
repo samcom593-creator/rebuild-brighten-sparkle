@@ -152,7 +152,7 @@ export function GlobalSidebar({
     if (isAdmin) {
       toolItems.push({ icon: CalendarDays, label: "Day Planner", href: "/dashboard/planner" });
       toolItems.push({ icon: Crown, label: "Awards", href: "/awards" });
-      toolItems.push({ icon: Network, label: "Team Structure", href: "/dashboard/team" });
+      toolItems.push({ icon: Network, label: "Team Structure", href: "/dashboard/hierarchy" });
       toolItems.push({ icon: Zap, label: "Automation", href: "/dashboard/automation" });
     }
 

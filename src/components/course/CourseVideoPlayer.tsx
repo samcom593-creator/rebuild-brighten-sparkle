@@ -59,7 +59,9 @@ export function CourseVideoPlayer({
   onProgressUpdate,
   watchedPercent,
   onVideoComplete,
-}: CourseVideoPlayerProps) {
+  playbackRate = 1,
+  onPlaybackRateChange,
+}: CourseVideoPlayerProps & { playbackRate?: number; onPlaybackRateChange?: (rate: number) => void }) {
   const isYouTube = videoUrl.includes("youtube.com") || videoUrl.includes("youtu.be");
   const youtubeId = isYouTube ? getYouTubeId(videoUrl) : null;
 
@@ -70,6 +72,8 @@ export function CourseVideoPlayer({
         onProgressUpdate={onProgressUpdate}
         watchedPercent={watchedPercent}
         onVideoComplete={onVideoComplete}
+        playbackRate={playbackRate}
+        onPlaybackRateChange={onPlaybackRateChange}
       />
     );
   }
@@ -91,6 +95,8 @@ interface YouTubePlayerProps {
   onProgressUpdate: (percent: number) => void;
   watchedPercent: number;
   onVideoComplete: () => void;
+  playbackRate?: number;
+  onPlaybackRateChange?: (rate: number) => void;
 }
 
 function YouTubePlayer({
@@ -98,6 +104,8 @@ function YouTubePlayer({
   onProgressUpdate,
   watchedPercent,
   onVideoComplete,
+  playbackRate = 1,
+  onPlaybackRateChange,
 }: YouTubePlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);
@@ -222,6 +230,8 @@ function YouTubePlayer({
     setShowFallback(false);
   };
 
+  const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+
   return (
     <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black">
       {!apiReady && (
@@ -230,6 +240,29 @@ function YouTubePlayer({
         </div>
       )}
       <div ref={containerRef} className="w-full h-full" />
+
+      {/* Speed controls */}
+      {onPlaybackRateChange && (
+        <div className="absolute top-3 left-3 z-20 flex gap-1">
+          {SPEEDS.map(s => (
+            <button
+              key={s}
+              onClick={() => {
+                onPlaybackRateChange(s);
+                try { playerRef.current?.setPlaybackRate?.(s); } catch {}
+              }}
+              className={cn(
+                "px-2 py-0.5 rounded text-[10px] font-bold transition-all",
+                (playbackRate || 1) === s
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-black/60 text-white/70 hover:bg-black/80"
+              )}
+            >
+              {s}x
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Progress overlay */}
       <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent pointer-events-none">

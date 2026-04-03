@@ -72,6 +72,8 @@ export function CourseVideoPlayer({
         onProgressUpdate={onProgressUpdate}
         watchedPercent={watchedPercent}
         onVideoComplete={onVideoComplete}
+        playbackRate={playbackRate}
+        onPlaybackRateChange={onPlaybackRateChange}
       />
     );
   }

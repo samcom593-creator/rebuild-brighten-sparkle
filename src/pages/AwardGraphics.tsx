@@ -11,10 +11,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Trophy, Download, Image, Search, RefreshCw, Zap, Calendar, Users, Star, CalendarDays, Edit2, X, Instagram, User } from "lucide-react";
+import {
+  Trophy, Download, Image, Search, RefreshCw, Zap, Calendar, Users,
+  Star, CalendarDays, Edit2, X, Instagram, User, Sparkles, Crown, ChevronRight
+} from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { motion, AnimatePresence } from "framer-motion";
 import AwardProfilesPanel from "@/components/awards/AwardProfilesPanel";
 
 const PERIODS = [
@@ -65,6 +69,12 @@ function getAwardLabel(type: string) {
   return AWARD_TYPES.find(a => a.value === type)?.label || type;
 }
 
+function getStatusColor(status: string) {
+  if (status === "published") return "bg-emerald-500/15 text-emerald-600 border-emerald-500/20";
+  if (status === "data_review_required") return "bg-red-500/15 text-red-600 border-red-500/20";
+  return "bg-amber-500/15 text-amber-600 border-amber-500/20";
+}
+
 export default function AwardGraphics() {
   const queryClient = useQueryClient();
   const [period, setPeriod] = useState("today");
@@ -76,7 +86,6 @@ export default function AwardGraphics() {
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const [showProfiles, setShowProfiles] = useState(false);
 
-  // Editable overrides for generated result
   const [editName, setEditName] = useState("");
   const [editIG, setEditIG] = useState("");
   const [editAmount, setEditAmount] = useState("");
@@ -180,39 +189,56 @@ export default function AwardGraphics() {
     <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Trophy className="h-8 w-8 text-yellow-500" />
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-600/20 flex items-center justify-center ring-1 ring-amber-500/20">
+            <Crown className="h-6 w-6 text-amber-500" />
+          </div>
           <div>
-            <h1 className="text-2xl font-bold">Award Graphics</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Award Graphics</h1>
             <p className="text-muted-foreground text-sm">Generate Instagram-ready award graphics from live data</p>
           </div>
         </div>
-        <Button variant="outline" onClick={() => setShowProfiles(!showProfiles)} className="gap-2">
+        <Button
+          variant={showProfiles ? "default" : "outline"}
+          onClick={() => setShowProfiles(!showProfiles)}
+          className={cn("gap-2 transition-all", showProfiles && "bg-primary")}
+        >
           <User className="h-4 w-4" />
           Agent Profiles
+          <ChevronRight className={cn("h-3.5 w-3.5 transition-transform", showProfiles && "rotate-90")} />
         </Button>
       </div>
 
-      {/* Agent Profiles Panel (toggleable) */}
-      {showProfiles && <AwardProfilesPanel />}
+      {/* Agent Profiles Panel */}
+      <AnimatePresence>
+        {showProfiles && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <AwardProfilesPanel />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Generate Panel */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Zap className="h-5 w-5 text-yellow-500" />
+      <Card className="border-border/40 shadow-lg shadow-black/5 overflow-hidden">
+        <CardHeader className="bg-gradient-to-r from-amber-500/5 via-transparent to-transparent border-b border-border/30">
+          <CardTitle className="flex items-center gap-2.5 text-lg">
+            <div className="h-8 w-8 rounded-lg bg-amber-500/15 flex items-center justify-center">
+              <Sparkles className="h-4 w-4 text-amber-500" />
+            </div>
             Generate Awards
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="pt-5 space-y-5">
           <div className="flex flex-wrap gap-3 items-end">
-            {/* Award Type */}
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <label className="text-xs text-muted-foreground font-medium">Award Type</label>
               <Select value={awardType} onValueChange={setAwardType}>
-                <SelectTrigger className="w-52">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger className="w-52"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {AWARD_TYPES.map((a) => (
                     <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
@@ -221,13 +247,10 @@ export default function AwardGraphics() {
               </Select>
             </div>
 
-            {/* Period */}
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <label className="text-xs text-muted-foreground font-medium">Period</label>
               <Select value={period} onValueChange={(v) => { setPeriod(v); setCustomDate(undefined); }}>
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {PERIODS.map((p) => (
                     <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
@@ -236,8 +259,7 @@ export default function AwardGraphics() {
               </Select>
             </div>
 
-            {/* Custom Date Picker */}
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <label className="text-xs text-muted-foreground font-medium">Specific Date</label>
               <Popover>
                 <PopoverTrigger asChild>
@@ -247,7 +269,7 @@ export default function AwardGraphics() {
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <CalendarComponent mode="single" selected={customDate} onSelect={setCustomDate} className={cn("p-3 pointer-events-auto")} />
+                  <CalendarComponent mode="single" selected={customDate} onSelect={setCustomDate} className="p-3 pointer-events-auto" />
                 </PopoverContent>
               </Popover>
               {customDate && (
@@ -255,13 +277,10 @@ export default function AwardGraphics() {
               )}
             </div>
 
-            {/* Metric */}
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <label className="text-xs text-muted-foreground font-medium">Metric</label>
               <Select value={metric} onValueChange={setMetric}>
-                <SelectTrigger className="w-48">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {METRICS.map((m) => (
                     <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
@@ -270,7 +289,11 @@ export default function AwardGraphics() {
               </Select>
             </div>
 
-            <Button onClick={handleGenerate} disabled={generateMutation.isPending} className="bg-yellow-600 hover:bg-yellow-700 text-white">
+            <Button
+              onClick={handleGenerate}
+              disabled={generateMutation.isPending}
+              className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white shadow-lg shadow-amber-500/20 transition-all hover:shadow-xl hover:shadow-amber-500/30"
+            >
               {generateMutation.isPending ? (
                 <><RefreshCw className="h-4 w-4 mr-2 animate-spin" />Generating...</>
               ) : (
@@ -286,98 +309,127 @@ export default function AwardGraphics() {
             </div>
           )}
 
-          {/* Generated Result with Edit Controls */}
+          {/* Generated Result */}
           {generatedResult && !generateMutation.isPending && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge className="bg-green-600">Generated</Badge>
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-4"
+            >
+              <div className="flex items-center gap-2 flex-wrap p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+                <Badge className="bg-emerald-600 text-white">Generated</Badge>
                 <Badge variant="outline">{getAwardLabel(generatedResult.award_type)}</Badge>
                 <span className="text-sm text-muted-foreground">
-                  Winner: <strong>{generatedResult.top_producer?.name}</strong> — {generatedResult.top_producer?.formatted_amount}
+                  Winner: <strong className="text-foreground">{generatedResult.top_producer?.name}</strong> — <span className="text-emerald-600 font-semibold">{generatedResult.top_producer?.formatted_amount}</span>
                 </span>
-                <Button variant="ghost" size="sm" onClick={() => setIsEditing(!isEditing)} className="ml-auto gap-1">
-                  <Edit2 className="h-3 w-3" />{isEditing ? "Cancel Edit" : "Edit & Regenerate"}
+                <Button variant="ghost" size="sm" onClick={() => setIsEditing(!isEditing)} className="ml-auto gap-1.5 hover:bg-primary/10">
+                  <Edit2 className="h-3.5 w-3.5" />{isEditing ? "Cancel" : "Edit & Regenerate"}
                 </Button>
               </div>
 
               {/* Edit Panel */}
-              {isEditing && (
-                <Card className="border-yellow-500/50 bg-yellow-50/5">
-                  <CardContent className="pt-4">
-                    <div className="flex flex-wrap gap-3 items-end">
-                      <div className="space-y-1">
-                        <label className="text-xs font-medium">Name Override</label>
-                        <Input value={editName} onChange={e => setEditName(e.target.value)} placeholder="Display name" className="w-40" />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-xs font-medium">Instagram</label>
-                        <div className="flex items-center gap-1">
-                          <Instagram className="h-4 w-4 text-muted-foreground" />
-                          <Input value={editIG} onChange={e => setEditIG(e.target.value)} placeholder="@handle" className="w-36" />
+              <AnimatePresence>
+                {isEditing && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                  >
+                    <Card className="border-amber-500/30 bg-amber-500/5">
+                      <CardContent className="pt-4">
+                        <div className="flex flex-wrap gap-3 items-end">
+                          <div className="space-y-1">
+                            <label className="text-xs font-medium">Name Override</label>
+                            <Input value={editName} onChange={e => setEditName(e.target.value)} placeholder="Display name" className="w-40" />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs font-medium">Instagram</label>
+                            <div className="flex items-center gap-1">
+                              <Instagram className="h-4 w-4 text-pink-500" />
+                              <Input value={editIG} onChange={e => setEditIG(e.target.value)} placeholder="@handle" className="w-36" />
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs font-medium">Amount</label>
+                            <Input value={editAmount} onChange={e => setEditAmount(e.target.value)} placeholder="$" className="w-28" type="number" />
+                          </div>
+                          <Button onClick={handleRegenerateWithOverrides} disabled={generateMutation.isPending} className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white gap-1.5">
+                            <RefreshCw className="h-4 w-4" />Regenerate
+                          </Button>
                         </div>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-xs font-medium">Amount</label>
-                        <Input value={editAmount} onChange={e => setEditAmount(e.target.value)} placeholder="$" className="w-28" type="number" />
-                      </div>
-                      <Button onClick={handleRegenerateWithOverrides} disabled={generateMutation.isPending} className="bg-yellow-600 hover:bg-yellow-700 text-white gap-1">
-                        <RefreshCw className="h-4 w-4" />Regenerate
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Image Previews */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 {generatedResult.files?.top_producer_story && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.96 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="space-y-3 group"
+                  >
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       {generatedResult.award_type === "first_deal" ? "First Deal Story" : generatedResult.award_type?.includes("hires") ? "Most Hires Story" : "Top Producer Story"}
                     </p>
-                    <img
-                      src={generatedResult.files.top_producer_story}
-                      alt="Award"
-                      className="rounded-lg border max-h-[500px] w-auto mx-auto cursor-pointer hover:opacity-90 transition-opacity"
-                      onClick={() => setFullscreenImage(generatedResult.files.top_producer_story)}
-                    />
+                    <div className="rounded-xl overflow-hidden border border-border/40 shadow-lg group-hover:shadow-xl transition-shadow cursor-pointer" onClick={() => setFullscreenImage(generatedResult.files.top_producer_story)}>
+                      <img
+                        src={generatedResult.files.top_producer_story}
+                        alt="Award"
+                        className="max-h-[500px] w-auto mx-auto hover:scale-[1.01] transition-transform duration-500"
+                      />
+                    </div>
                     <a href={generatedResult.files.top_producer_story} download target="_blank" rel="noopener noreferrer">
-                      <Button variant="outline" size="sm" className="w-full gap-2">
+                      <Button variant="outline" size="sm" className="w-full gap-2 hover:bg-primary/5">
                         <Download className="h-4 w-4" />Download
                       </Button>
                     </a>
-                  </div>
+                  </motion.div>
                 )}
                 {generatedResult.files?.leaderboard_story && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground">Leaderboard Story</p>
-                    <img
-                      src={generatedResult.files.leaderboard_story}
-                      alt="Leaderboard"
-                      className="rounded-lg border max-h-[500px] w-auto mx-auto cursor-pointer hover:opacity-90 transition-opacity"
-                      onClick={() => setFullscreenImage(generatedResult.files.leaderboard_story)}
-                    />
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.96 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.1 }}
+                    className="space-y-3 group"
+                  >
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Leaderboard Story</p>
+                    <div className="rounded-xl overflow-hidden border border-border/40 shadow-lg group-hover:shadow-xl transition-shadow cursor-pointer" onClick={() => setFullscreenImage(generatedResult.files.leaderboard_story)}>
+                      <img
+                        src={generatedResult.files.leaderboard_story}
+                        alt="Leaderboard"
+                        className="max-h-[500px] w-auto mx-auto hover:scale-[1.01] transition-transform duration-500"
+                      />
+                    </div>
                     <a href={generatedResult.files.leaderboard_story} download target="_blank" rel="noopener noreferrer">
-                      <Button variant="outline" size="sm" className="w-full gap-2">
+                      <Button variant="outline" size="sm" className="w-full gap-2 hover:bg-primary/5">
                         <Download className="h-4 w-4" />Download
                       </Button>
                     </a>
-                  </div>
+                  </motion.div>
                 )}
               </div>
-            </div>
+            </motion.div>
           )}
         </CardContent>
       </Card>
 
       {/* Archive */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Calendar className="h-5 w-5" />Awards Archive
+      <Card className="border-border/40 shadow-lg shadow-black/5">
+        <CardHeader className="border-b border-border/30">
+          <CardTitle className="flex items-center gap-2.5 text-lg">
+            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Calendar className="h-4 w-4 text-primary" />
+            </div>
+            Awards Archive
+            {batches && (
+              <Badge variant="secondary" className="ml-2 text-xs">{batches.length} awards</Badge>
+            )}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="pt-5 space-y-4">
           <div className="relative max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Search by agent, period, type..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
@@ -386,37 +438,40 @@ export default function AwardGraphics() {
           {archiveLoading ? (
             <div className="space-y-2">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-14 w-full" />)}</div>
           ) : filteredBatches.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">No awards found. Generate your first award above!</p>
+            <div className="py-12 text-center">
+              <Trophy className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
+              <p className="text-sm text-muted-foreground">No awards found. Generate your first award above!</p>
+            </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-lg border border-border/30">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Period</TableHead>
-                    <TableHead>Winner</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
+                  <TableRow className="bg-muted/30">
+                    <TableHead className="text-xs font-semibold">Date</TableHead>
+                    <TableHead className="text-xs font-semibold">Type</TableHead>
+                    <TableHead className="text-xs font-semibold">Period</TableHead>
+                    <TableHead className="text-xs font-semibold">Winner</TableHead>
+                    <TableHead className="text-xs font-semibold">Amount</TableHead>
+                    <TableHead className="text-xs font-semibold">Status</TableHead>
+                    <TableHead className="text-xs font-semibold">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredBatches.map((batch) => (
-                    <TableRow key={batch.id}>
-                      <TableCell className="text-xs">{format(new Date(batch.created_at), "MMM d, yyyy h:mm a")}</TableCell>
+                    <TableRow key={batch.id} className="hover:bg-muted/20 transition-colors">
+                      <TableCell className="text-xs text-muted-foreground">{format(new Date(batch.created_at), "MMM d, yyyy h:mm a")}</TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className="text-xs">{getAwardLabel(batch.award_type)}</Badge>
+                        <Badge variant="secondary" className="text-[10px]">{getAwardLabel(batch.award_type)}</Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="text-xs">{batch.time_period?.replace(/_/g, " ")}</Badge>
+                        <Badge variant="outline" className="text-[10px] capitalize">{batch.time_period?.replace(/_/g, " ")}</Badge>
                       </TableCell>
-                      <TableCell className="font-semibold text-sm">{batch.winner_name}</TableCell>
-                      <TableCell className="text-green-600 font-bold">
+                      <TableCell className="font-bold text-sm">{batch.winner_name}</TableCell>
+                      <TableCell className="text-emerald-600 font-bold text-sm">
                         {batch.award_type?.includes("hires") ? `${batch.winner_amount} hires` : `$${Math.round(batch.winner_amount || 0).toLocaleString()}`}
                       </TableCell>
                       <TableCell>
-                        <Badge className={batch.status === "published" ? "bg-green-600" : batch.status === "data_review_required" ? "bg-red-600" : "bg-yellow-600"}>
+                        <Badge variant="outline" className={cn("text-[10px]", getStatusColor(batch.status))}>
                           {batch.status?.replace(/_/g, " ")}
                         </Badge>
                       </TableCell>
@@ -424,11 +479,11 @@ export default function AwardGraphics() {
                         <div className="flex gap-1">
                           {batch.top_producer_file && (
                             <a href={getStorageUrl(batch.top_producer_file) || "#"} target="_blank" rel="noopener noreferrer">
-                              <Button variant="ghost" size="sm"><Download className="h-3 w-3" /></Button>
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-primary/10"><Download className="h-3.5 w-3.5" /></Button>
                             </a>
                           )}
-                          <Button variant="ghost" size="sm" onClick={() => regenerateMutation.mutate(batch)} disabled={regenerateMutation.isPending}>
-                            <RefreshCw className={`h-3 w-3 ${regenerateMutation.isPending ? "animate-spin" : ""}`} />
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-primary/10" onClick={() => regenerateMutation.mutate(batch)} disabled={regenerateMutation.isPending}>
+                            <RefreshCw className={cn("h-3.5 w-3.5", regenerateMutation.isPending && "animate-spin")} />
                           </Button>
                         </div>
                       </TableCell>
@@ -443,12 +498,14 @@ export default function AwardGraphics() {
 
       {/* Fullscreen Image Dialog */}
       <Dialog open={!!fullscreenImage} onOpenChange={() => setFullscreenImage(null)}>
-        <DialogContent className="max-w-[95vw] max-h-[95vh] p-2">
+        <DialogContent className="max-w-[95vw] max-h-[95vh] p-2 bg-black/95 border-border/20">
           {fullscreenImage && (
-            <div className="flex flex-col items-center gap-2">
+            <div className="flex flex-col items-center gap-3">
               <img src={fullscreenImage} alt="Award fullscreen" className="max-h-[85vh] w-auto rounded-lg" />
               <a href={fullscreenImage} download target="_blank" rel="noopener noreferrer">
-                <Button className="gap-2"><Download className="h-4 w-4" />Download</Button>
+                <Button className="gap-2 bg-gradient-to-r from-amber-600 to-orange-600 text-white">
+                  <Download className="h-4 w-4" />Download
+                </Button>
               </a>
             </div>
           )}

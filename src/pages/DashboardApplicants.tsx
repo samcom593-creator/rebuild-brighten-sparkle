@@ -29,6 +29,7 @@ import {
   LayoutGrid,
   List,
   Copy,
+  Sparkles,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -97,6 +98,8 @@ interface Application {
   previous_company: string | null;
   years_experience: number | null;
   assigned_agent_id: string | null;
+  lead_score: number | null;
+  ai_score_tier: string | null;
 }
 
 const statusColors: Record<string, string> = {
@@ -125,7 +128,7 @@ export default function DashboardApplicants() {
   const [licenseFilter, setLicenseFilter] = useState<string>("all");
   const [sortOrder, setSortOrder] = useState<string>("newest");
   const [myDirectsOnly, setMyDirectsOnly] = useState(false);
-  
+  const [hotLeadsOnly, setHotLeadsOnly] = useState(false);
   // Notes modal state
   const [notesApp, setNotesApp] = useState<Application | null>(null);
   
@@ -519,8 +522,9 @@ export default function DashboardApplicants() {
       const matchesStatus = statusFilter === "all" || statusFilter === "terminated" || appStatus === statusFilter;
       const matchesLicense = licenseFilter === "all" || app.license_status === licenseFilter;
       const matchesDirects = !myDirectsOnly || app.assigned_agent_id === agentId;
+      const matchesHot = !hotLeadsOnly || (app as any).ai_score_tier === "hot" || (app as any).ai_score_tier === "warm";
       
-      return matchesSearch && matchesStatus && matchesLicense && matchesDirects;
+      return matchesSearch && matchesStatus && matchesLicense && matchesDirects && matchesHot;
     })
     .sort((a, b) => {
       const dateA = new Date(a.created_at).getTime();
@@ -967,6 +971,35 @@ export default function DashboardApplicants() {
             <SelectItem value="oldest">Oldest First</SelectItem>
           </SelectContent>
         </Select>
+        <Button
+          variant={hotLeadsOnly ? "default" : "outline"}
+          size="sm"
+          onClick={() => setHotLeadsOnly(!hotLeadsOnly)}
+          className={cn("gap-1.5", hotLeadsOnly && "bg-orange-500 hover:bg-orange-600")}
+        >
+          🔥 Hot Leads
+        </Button>
+        {(isAdmin || isManager) && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              toast.info("Scoring all applicants...");
+              const { error } = await supabase.functions.invoke("score-applicant", {
+                body: { scoreAll: true }
+              });
+              if (error) toast.error("Scoring failed");
+              else {
+                toast.success("All applicants scored!");
+                fetchApplications();
+              }
+            }}
+            className="gap-1.5"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            Score All
+          </Button>
+        )}
       </div>
 
       {/* Kanban View */}
@@ -993,6 +1026,7 @@ export default function DashboardApplicants() {
                   <thead className="[&_tr]:border-b">
                     <tr className="border-b bg-muted/50">
                       <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Name</th>
+                      <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Score</th>
                       <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Email</th>
                       <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Phone</th>
                       <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Status</th>
@@ -1030,6 +1064,20 @@ export default function DashboardApplicants() {
                                 <p className="font-medium truncate">{app.first_name} {app.last_name}</p>
                               </div>
                             </div>
+                          </td>
+                          <td className="p-3 align-middle">
+                            {app.ai_score_tier ? (
+                              <Badge variant="outline" className={cn("text-[10px] font-bold uppercase",
+                                app.ai_score_tier === "hot" && "bg-orange-500/20 text-orange-400 border-orange-500/30",
+                                app.ai_score_tier === "warm" && "bg-amber-500/20 text-amber-400 border-amber-500/30",
+                                app.ai_score_tier === "cool" && "bg-blue-500/20 text-blue-400 border-blue-500/30",
+                                app.ai_score_tier === "cold" && "bg-slate-500/20 text-slate-400 border-slate-500/30",
+                              )}>
+                                {app.ai_score_tier === "hot" && "🔥"}{app.ai_score_tier === "warm" && "🌤"}{app.ai_score_tier === "cool" && "❄️"}{app.ai_score_tier === "cold" && "🧊"} {app.lead_score}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">—</span>
+                            )}
                           </td>
                           <td className="p-3 align-middle">
                             <span className="text-muted-foreground">{app.email}</span>

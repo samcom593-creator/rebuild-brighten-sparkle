@@ -562,7 +562,7 @@ export default function Apply() {
           )}
 
           {/* Progress Steps */}
-          {vslUnlocked && (
+          {vslUnlocked && <>
           <div className="mb-12">
             <div className="flex items-center justify-between relative">
               <div className="absolute top-5 left-0 right-0 h-0.5 bg-border" />

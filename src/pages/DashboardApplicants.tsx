@@ -970,6 +970,35 @@ export default function DashboardApplicants() {
             <SelectItem value="oldest">Oldest First</SelectItem>
           </SelectContent>
         </Select>
+        <Button
+          variant={hotLeadsOnly ? "default" : "outline"}
+          size="sm"
+          onClick={() => setHotLeadsOnly(!hotLeadsOnly)}
+          className={cn("gap-1.5", hotLeadsOnly && "bg-orange-500 hover:bg-orange-600")}
+        >
+          🔥 Hot Leads
+        </Button>
+        {(isAdmin || isManager) && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              toast.info("Scoring all applicants...");
+              const { error } = await supabase.functions.invoke("score-applicant", {
+                body: { scoreAll: true }
+              });
+              if (error) toast.error("Scoring failed");
+              else {
+                toast.success("All applicants scored!");
+                fetchApplications();
+              }
+            }}
+            className="gap-1.5"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            Score All
+          </Button>
+        )}
       </div>
 
       {/* Kanban View */}

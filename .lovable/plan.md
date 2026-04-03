@@ -1,33 +1,50 @@
 
 
-# Import 04/01 Production Data + Verify Forecast
+# Import 04/02 Production Data + Flag Fake Policy Numbers
 
-## Data to Import (10 deals, posted 04/01/2026)
+## Unique Deals (9 deals, posted 04/02/2026)
 
 | Agent | Client | ALP |
 |-------|--------|-----|
-| Luis Garcia | Tawny Houser | $840.00 |
-| Obiajulu Ifediora | Randy Crisp | $2,239.44 |
-| Jacob Causer | Elizabeth Barhorst | $984.00 |
-| Aisha Kebbeh | Frederick Forster | $1,268.64 |
-| Kaeden Vaughns | Jerry Hill | $463.20 |
-| Kaeden Vaughns | Pamela Hill | $306.60 |
-| Chukwudi Ifediora | Exa Gates | $1,198.32 |
-| Xaviar Watts | Gerald Worsham | $1,479.00 |
-| Chukwudi Ifediora | Trice Breaux | $991.20 |
-| Mahmod Imran | Robert Timmer | $924.00 |
+| Marcos Castellanos | Patrick Evans | $1,775.88 |
+| Wendell Funderburg | Karen Golliver | $832.56 |
+| Chukwudi Ifediora | Rob Zane | $1,639.44 |
+| Obiajulu Ifediora | Juan Acosta | $1,509.36 |
+| Mahmod Imran | Candance Smith | $1,632.00 |
+| Jacob Causer | Darlene Gagnon | $1,618.68 |
+| Grey Bowman | Ernest Adams | $1,847.52 |
+| Mahmod Imran | Anna Gomez | $1,692.00 |
+| Wendell Funderburg | Brendon Tomlinson | $492.96 |
 
-## Existing 04/01 Data
-- Jacob Causer: $991.68 (1 deal) — will be overwritten with combined total
-- Xaviar Watts: $1,479.00 (1 deal) — Gerald Worsham is likely same deal, upsert keeps it
-- Luis Garcia: $840.00 (0 deals) — Tawny Houser matches, upsert keeps it
+Note: The data was pasted twice — duplicates removed.
 
-## Approach
-Call `import-production-data` with `skip_existing: false` so the function aggregates all deals per agent per date and upserts. All agent names have existing matches or aliases (Kaeden→KJ, Mahmod→Moody).
+## Existing 04/02 Data Already in DB
+- Dudley Bowman (mapped to Grey Bowman?): $1,847.52 / 1 deal — already there
+- Chukwudi Ifediora: $1,639.44 / 1 deal — already there
+- Wendell Funderburg: $1,325.16 / 0 deals — will be overwritten with $1,325.52 (2 deals)
 
-## Forecast Verification
-The 30-day forecast at $143,587 uses linear regression on agency-wide daily totals with zero-fill for missing days. Given the data pattern (many days with $6k-$16k production but several zero days), the projection is mathematically correct. Adding ~$10k more on 04/01 will slightly increase the projected number on next refresh.
+## Agent Name Issue
+**"Grey Bowman"** is not in the system. The closest match is **"Dudley Bowman"**. Need to add `"grey bowman": "dudley bowman"` to the alias map in the edge function before importing, OR confirm Grey Bowman is a new agent.
 
-## No code changes needed
-Data-only operation via edge function invocation.
+## Agents Using Fake/Placeholder Policy Numbers
+
+| Policy # | Client | Agent |
+|----------|--------|-------|
+| `1234` | Patrick Evans | **Marcos Castellanos** |
+| `0` | Karen Golliver | **Wendell Funderburg** |
+| `1234` | Candance Smith | **Mahmod Imran** |
+| `1234` | Darlene Gagnon | **Jacob Causer** |
+| `1234` | Anna Gomez | **Mahmod Imran** |
+| `000` | Brendon Tomlinson | **Wendell Funderburg** |
+
+**Summary**: **Marcos Castellanos**, **Mahmod Imran** (2x), **Jacob Causer**, and **Wendell Funderburg** (2x) all submitted random/placeholder policy numbers instead of real ones.
+
+## Implementation Steps
+
+1. Add `"grey bowman": "dudley bowman"` alias to `import-production-data` edge function
+2. Call the edge function with all 9 deals using `skip_existing: false`
+3. This will aggregate per-agent-per-date and upsert (Mahmod gets 2 deals combined, Wendell gets 2 deals combined)
+
+## Files Modified
+- **`supabase/functions/import-production-data/index.ts`** — Add Grey Bowman alias
 

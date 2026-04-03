@@ -69,6 +69,7 @@ const FieldCheckin = lazy(() => import("./pages/FieldCheckin"));
 const AgentFlow = lazy(() => import("./pages/AgentFlow"));
 const InboxPage = lazy(() => import("./pages/InboxPage"));
 const AutomationHub = lazy(() => import("./pages/AutomationHub"));
+const TeamHierarchy = lazy(() => import("./pages/TeamHierarchy"));
 
 const queryClient = new QueryClient({
   defaultOptions: {

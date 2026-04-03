@@ -319,8 +319,11 @@ export default function Dashboard() {
       {/* ====== FOMO APPLICATIONS BANNER ====== */}
       <TotalApplicationsBanner />
 
+      {/* ====== CHURN RISK BANNER ====== */}
+      {(isAdmin || isManager) && <ChurnRiskBanner />}
+
       {/* ====== QUICK ACTIONS ROW ====== */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 mt-4">
         {quickActions.map((card) => (
           <div key={card.to}>
             <Link to={card.to} onClick={() => playSound("click")}>

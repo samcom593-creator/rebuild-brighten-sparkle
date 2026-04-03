@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Zap, Play, RefreshCw, Clock, CheckCircle2, XCircle, ToggleLeft, ToggleRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -41,17 +40,17 @@ export default function AutomationHub() {
   const fetchAutomations = async () => {
     setLoading(true);
     const { data } = await supabase
-      .from("automation_settings")
+      .from("automation_settings" as any)
       .select("*")
       .order("created_at", { ascending: true });
-    if (data) setAutomations(data as AutomationSetting[]);
+    if (data) setAutomations(data as unknown as AutomationSetting[]);
     setLoading(false);
   };
 
   useEffect(() => { fetchAutomations(); }, []);
 
   const toggleEnabled = async (id: string, enabled: boolean) => {
-    await supabase.from("automation_settings").update({ enabled: !enabled }).eq("id", id);
+    await (supabase.from("automation_settings" as any) as any).update({ enabled: !enabled }).eq("id", id);
     setAutomations(prev => prev.map(a => a.id === id ? { ...a, enabled: !enabled } : a));
     toast.success(`Automation ${!enabled ? "enabled" : "disabled"}`);
   };
@@ -66,14 +65,14 @@ export default function AutomationHub() {
     try {
       const { error } = await supabase.functions.invoke(fnName, { body: {} });
       if (error) throw error;
-      await supabase.from("automation_settings").update({
+      await (supabase.from("automation_settings" as any) as any).update({
         last_run_at: new Date().toISOString(),
         last_status: "success",
       }).eq("id", automation.id);
       toast.success(`${automation.name} ran successfully`);
       fetchAutomations();
     } catch (err: any) {
-      await supabase.from("automation_settings").update({
+      await (supabase.from("automation_settings" as any) as any).update({
         last_run_at: new Date().toISOString(),
         last_status: "failed",
       }).eq("id", automation.id);

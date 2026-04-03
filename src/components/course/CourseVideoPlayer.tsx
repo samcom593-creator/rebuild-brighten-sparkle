@@ -59,7 +59,9 @@ export function CourseVideoPlayer({
   onProgressUpdate,
   watchedPercent,
   onVideoComplete,
-}: CourseVideoPlayerProps) {
+  playbackRate = 1,
+  onPlaybackRateChange,
+}: CourseVideoPlayerProps & { playbackRate?: number; onPlaybackRateChange?: (rate: number) => void }) {
   const isYouTube = videoUrl.includes("youtube.com") || videoUrl.includes("youtu.be");
   const youtubeId = isYouTube ? getYouTubeId(videoUrl) : null;
 

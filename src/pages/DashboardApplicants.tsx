@@ -97,6 +97,8 @@ interface Application {
   previous_company: string | null;
   years_experience: number | null;
   assigned_agent_id: string | null;
+  lead_score: number | null;
+  ai_score_tier: string | null;
 }
 
 const statusColors: Record<string, string> = {

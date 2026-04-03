@@ -65,6 +65,8 @@ const SeminarPage = lazy(() => import("./pages/SeminarPage"));
 const SeminarAdmin = lazy(() => import("./pages/SeminarAdmin"));
 const ApplicantCheckin = lazy(() => import("./pages/ApplicantCheckin"));
 const DailyCheckin = lazy(() => import("./pages/DailyCheckin"));
+const FieldCheckin = lazy(() => import("./pages/FieldCheckin"));
+const AgentFlow = lazy(() => import("./pages/AgentFlow"));
 
 const queryClient = new QueryClient({
   defaultOptions: {

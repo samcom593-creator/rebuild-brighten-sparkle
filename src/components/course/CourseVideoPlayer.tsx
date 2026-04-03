@@ -95,6 +95,8 @@ interface YouTubePlayerProps {
   onProgressUpdate: (percent: number) => void;
   watchedPercent: number;
   onVideoComplete: () => void;
+  playbackRate?: number;
+  onPlaybackRateChange?: (rate: number) => void;
 }
 
 function YouTubePlayer({
@@ -102,6 +104,8 @@ function YouTubePlayer({
   onProgressUpdate,
   watchedPercent,
   onVideoComplete,
+  playbackRate = 1,
+  onPlaybackRateChange,
 }: YouTubePlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);

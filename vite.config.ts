@@ -66,6 +66,18 @@ export default defineConfig(({ mode }) => ({
       },
     }),
   ].filter(Boolean),
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ["react", "react-dom", "react-router-dom"],
+          ui: ["@radix-ui/react-dialog", "@radix-ui/react-popover", "@radix-ui/react-select", "@radix-ui/react-tabs"],
+          charts: ["recharts"],
+          supabase: ["@supabase/supabase-js"],
+        },
+      },
+    },
+  },
   resolve: {
     dedupe: ["react", "react-dom", "react/jsx-runtime"],
     alias: {

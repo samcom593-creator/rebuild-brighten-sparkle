@@ -1,77 +1,55 @@
 
-# APEX Elite Upgrade — Phase 1
+# APEX Elite Checklist — Full Implementation Plan
 
-Given the 20-section scope, we'll tackle this in focused batches. Phase 1 covers **Visual Redesign (#1)** and **New Features (#2-6)** as prioritized.
+## Already Complete ✅
+1. ✅ Syne + DM Sans fonts loading
+2. ✅ Electric green (#22d3a5) primary accent
+3. ✅ Landing page hero with animated counter
+4. ✅ Commission calculator component
+5. ✅ CRM AI score badge on applicants
+6. ✅ CRM Hot Leads filter
+7. ✅ score-applicant edge function deployed
+8. ✅ ai_score columns on applications table
 
----
+## Batch 1: Database Migrations (must run first)
+- Create `field_checkins` table (GPS lat/lng, client name, outcome, voice notes, offline queue)
+- Create `churn_risk_alerts` table (agent_id, risk_score, risk_factors, resolved_at)
+- Both with RLS policies
 
-## Batch 1A: Visual Redesign (Section 1)
+## Batch 2: Edge Functions (3 new functions)
+- `check-churn-risk` — daily risk scoring based on production gaps, attendance, login frequency
+- `send-licensing-sequence` — multi-step drip emails for unlicensed recruits
+- `send-proactive-coaching` — AI-powered coaching emails based on agent performance
 
-### Typography
-- Import **Syne** (400,600,700,800) for headings, nav, buttons, badges
-- Import **DM Sans** (300,400,500) for body text, inputs
-- Add Google Fonts link to `index.html`
-- Update CSS with font-family rules
+## Batch 3: New Pages + Routes
+- `/field-checkin` — GPS check-in page with client form, outcome selector, offline localStorage queue
+- `/agent-flow` — dual-flow page showing Licensed vs Unlicensed onboarding paths
 
-### Color System
-- Add APEX color tokens to `index.css`: `--apex-black`, `--apex-navy`, `--apex-surface`, `--apex-border`, `--apex-green`, `--apex-gold`, `--apex-text`, `--apex-muted`
-- Map to Tailwind config
+## Batch 4: Dashboard Upgrades
+- System Health Monitor card on main dashboard
+- Churn Risk Banner on dashboard (pulls from churn_risk_alerts)
+- Real-time Achievement Feed card
+- Page transition animations (framer-motion fade+slide on all page routes)
 
-### Landing Page Redesign
-- Hero: dark bg, Syne 800 headline with green accent, animated counter, 3 stat pills
-- Floating geometric shapes (CSS only)
-- DealsTicker: sleek horizontal scroll bar
-- Benefits: dark cards with green left border
-- CTA: full-width dark, two buttons (Apply = green, Schedule Call = outline)
-- All buttons: Syne 700, letter-spacing
+## Batch 5: Agent Portal + Leaderboard
+- Mobile bottom nav bar for agent portal
+- Leaderboard real-time Supabase subscription (postgres_changes)
+- Animated number updates on leaderboard (already have AnimatedNumber component)
 
-### Dashboard Visual Upgrade
-- Darker sidebar gradient
-- Premium stat cards with animated counters + trend indicators
-- Glass cards upgrade (gradient bg, border transitions, blur)
-- Page transition animations (framer-motion fade+slide)
+## Batch 6: Apply Page + Profile Upload
+- VSL gate on Apply page (70% video watch required before form appears)
+- Face detection + auto-crop on AvatarUpload (using canvas-based approach, no face-api.js)
 
----
-
-## Batch 1B: New Features (Sections 2-6)
-
-### Section 2: Face-Lock Profile Pictures
-- Add `face-api.js` dependency
-- Upgrade AvatarUpload to detect faces, auto-crop, reject no-face photos
-- Save face-cropped 400×400 version
-
-### Section 3: Field Agent Mobile Check-In
-- New page `/field-checkin` with GPS, client form, outcome selector, voice notes
-- Offline support with localStorage queue
-- New `field_checkins` table (migration)
-- Add to sidebar navigation
-
-### Section 4: AI Applicant Scoring
-- New edge function `score-applicant` (rule-based 0-100 scoring)
-- Add `ai_score` + `ai_score_tier` columns to applications table
-- Show score badges in CRM/Applicants views
-- "Hot Leads Only" filter toggle
-
-### Section 5: Churn Detection
-- New edge function `check-churn-risk` (daily risk scoring)
-- New `churn_risk_alerts` table (migration)
-- Dashboard banner with risk badges + recovery actions
-
-### Section 6: Commission Calculator
-- New component with ALP slider, tier selector, live calculations
-- Add to Agent Portal and Numbers page
-
----
+## Batch 7: Sharing + Performance
+- Achievement share graphics with Instagram Story download
+- Vite chunk splitting config (separate vendor, ui, dashboard chunks)
+- All buttons use Syne font-weight 700 (CSS rule)
+- Mobile layout optimizations for agent portal, call center, CRM, numbers
 
 ## Implementation Order
-1. Fix build error ✅ (done)
-2. Typography + Color System
-3. Landing Page visual overhaul
-4. Dashboard + Glass Card upgrades
-5. Commission Calculator (smallest new feature)
-6. AI Applicant Scoring (edge function + UI)
-7. Field Check-In (new page + table)
-8. Face-Lock Profiles
-9. Churn Detection
-
-Each batch will be confirmed before moving to the next.
+1. Migrations (Batch 1) — must be approved before code
+2. Edge Functions (Batch 2) — deploy in parallel
+3. New Pages + Routes (Batch 3)
+4. Dashboard + Agent Portal (Batch 4+5)
+5. Apply VSL + Avatar (Batch 6)
+6. Sharing + Performance (Batch 7)

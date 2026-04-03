@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { AnimatedNumber } from "./AnimatedNumber";
 import { motion } from "framer-motion";
 import { Trophy, Medal, Award, TrendingUp, Users, Target, Sparkles } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";

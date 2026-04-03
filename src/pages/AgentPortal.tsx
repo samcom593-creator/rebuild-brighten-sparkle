@@ -740,6 +740,11 @@ export default function AgentPortal() {
           </GlassCard>
         </section>
       </div>
+
+      {/* Mobile Bottom Navigation */}
+      <MobileBottomNav />
+      {/* Bottom padding for mobile nav */}
+      <div className="h-20 sm:hidden" />
     </div>
   );
 }

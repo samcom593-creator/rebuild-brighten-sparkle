@@ -94,8 +94,7 @@ const steps = [
 
 export default function Apply() {
   const navigate = useNavigate();
-  const [currentStep, setCurrentStep] = useState(0); // 0 = VSL gate
-  const [vslProgress, setVslProgress] = useState(0);
+  const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedStates, setSelectedStates] = useState<string[]>([]);
   const [applicationId, setApplicationId] = useState<string | null>(null);

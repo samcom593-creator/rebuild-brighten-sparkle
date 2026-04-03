@@ -1,11 +1,10 @@
 import { motion } from "framer-motion";
 import { SectionHeading } from "@/components/ui/section-heading";
-import { GlassCard } from "@/components/ui/glass-card";
 
 export function TestimonialsSection() {
   return (
-    <section id="testimonials" className="py-24 relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,hsl(var(--primary)/0.05)_0%,transparent_50%)]" />
+    <section id="testimonials" className="py-24 relative overflow-hidden bg-[#030712]">
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,hsl(168_84%_42%/0.04)_0%,transparent_50%)]" />
       
       <div className="container mx-auto px-4 relative z-10">
         <SectionHeading
@@ -21,7 +20,7 @@ export function TestimonialsSection() {
           transition={{ duration: 0.6 }}
           className="mt-12 max-w-4xl mx-auto"
         >
-          <GlassCard className="p-2 md:p-3">
+          <div className="p-2 md:p-3 bg-gradient-to-br from-[#0f172a] to-[#070d1b] border border-[#1e293b] rounded-xl">
             <div className="aspect-video rounded-lg overflow-hidden">
               <iframe
                 src="https://www.youtube.com/embed/YmlLSIwfGdE"
@@ -31,7 +30,7 @@ export function TestimonialsSection() {
                 allowFullScreen
               />
             </div>
-          </GlassCard>
+          </div>
         </motion.div>
       </div>
     </section>

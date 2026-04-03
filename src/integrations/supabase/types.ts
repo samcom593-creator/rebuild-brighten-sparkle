@@ -862,6 +862,7 @@ export type Database = {
       }
       applications: {
         Row: {
+          ai_score_tier: string | null
           assigned_agent_id: string | null
           availability: string | null
           carrier: string | null
@@ -921,6 +922,7 @@ export type Database = {
           years_experience: number | null
         }
         Insert: {
+          ai_score_tier?: string | null
           assigned_agent_id?: string | null
           availability?: string | null
           carrier?: string | null
@@ -980,6 +982,7 @@ export type Database = {
           years_experience?: number | null
         }
         Update: {
+          ai_score_tier?: string | null
           assigned_agent_id?: string | null
           availability?: string | null
           carrier?: string | null

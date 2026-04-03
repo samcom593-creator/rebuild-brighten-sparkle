@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { AnimatedNumber } from "./AnimatedNumber";
 import { motion } from "framer-motion";
 import { Trophy, Medal, Award, TrendingUp, Users, Target, Sparkles } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -185,7 +186,7 @@ export function LiveLeaderboard({ currentAgentId, showAISummary = true }: LiveLe
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <GlassCard className="p-3 text-center">
           <p className="text-2xl font-bold gradient-text">
-            ${teamStats.totalProduction.toLocaleString()}
+            <AnimatedNumber value={teamStats.totalProduction} prefix="$" formatAsCurrency />
           </p>
           <p className="text-xs text-muted-foreground">Production</p>
         </GlassCard>
@@ -237,7 +238,7 @@ export function LiveLeaderboard({ currentAgentId, showAISummary = true }: LiveLe
                     {entry.name}
                   </h3>
                   <p className="text-lg font-bold gradient-text">
-                    ${entry.production.toLocaleString()}
+                    <AnimatedNumber value={entry.production} prefix="$" formatAsCurrency />
                   </p>
                 </GlassCard>
               </motion.div>
@@ -296,7 +297,7 @@ export function LiveLeaderboard({ currentAgentId, showAISummary = true }: LiveLe
                 </div>
                 <div className="text-right">
                   <p className="font-bold text-primary">
-                    ${entry.production.toLocaleString()}
+                    <AnimatedNumber value={entry.production} prefix="$" formatAsCurrency />
                   </p>
                 </div>
               </motion.div>

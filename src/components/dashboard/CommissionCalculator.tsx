@@ -128,14 +128,13 @@ export function CommissionCalculator() {
         {targets.map((t) => (
           <div
             key={t.name}
-            className={`rounded-lg p-2 text-center transition-all duration-300 ${
+            className={`rounded-lg p-2 text-center border transition-all duration-300 ${
               currentTarget.name === t.name
-                ? "ring-2 ring-offset-1 ring-offset-[#0f172a] scale-105"
-                : "opacity-50"
+                ? "scale-105"
+                : "opacity-50 border-transparent"
             }`}
             style={{
-              borderColor: t.color,
-              ringColor: t.color,
+              borderColor: currentTarget.name === t.name ? t.color : "transparent",
               background: currentTarget.name === t.name ? `${t.color}15` : "transparent",
             }}
           >

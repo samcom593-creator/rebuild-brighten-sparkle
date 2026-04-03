@@ -1146,6 +1146,53 @@ export type Database = {
         }
         Relationships: []
       }
+      churn_risk_alerts: {
+        Row: {
+          action_taken: string | null
+          agent_id: string
+          created_at: string
+          id: string
+          resolved_at: string | null
+          resolved_by: string | null
+          risk_factors: Json | null
+          risk_score: number
+          risk_tier: string
+          updated_at: string
+        }
+        Insert: {
+          action_taken?: string | null
+          agent_id: string
+          created_at?: string
+          id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          risk_factors?: Json | null
+          risk_score?: number
+          risk_tier?: string
+          updated_at?: string
+        }
+        Update: {
+          action_taken?: string | null
+          agent_id?: string
+          created_at?: string
+          id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          risk_factors?: Json | null
+          risk_score?: number
+          risk_tier?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "churn_risk_alerts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_history: {
         Row: {
           agent_id: string | null
@@ -1439,6 +1486,59 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      field_checkins: {
+        Row: {
+          agent_id: string
+          checkin_date: string
+          client_name: string
+          created_at: string
+          id: string
+          latitude: number | null
+          longitude: number | null
+          notes: string | null
+          outcome: string
+          synced: boolean
+          updated_at: string
+          voice_note_url: string | null
+        }
+        Insert: {
+          agent_id: string
+          checkin_date?: string
+          client_name: string
+          created_at?: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          notes?: string | null
+          outcome?: string
+          synced?: boolean
+          updated_at?: string
+          voice_note_url?: string | null
+        }
+        Update: {
+          agent_id?: string
+          checkin_date?: string
+          client_name?: string
+          created_at?: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          notes?: string | null
+          outcome?: string
+          synced?: boolean
+          updated_at?: string
+          voice_note_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "field_checkins_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       health_check_log: {
         Row: {

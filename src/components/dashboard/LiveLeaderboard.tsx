@@ -297,7 +297,7 @@ export function LiveLeaderboard({ currentAgentId, showAISummary = true }: LiveLe
                 </div>
                 <div className="text-right">
                   <p className="font-bold text-primary">
-                    ${entry.production.toLocaleString()}
+                    <AnimatedNumber value={entry.production} prefix="$" formatAsCurrency />
                   </p>
                 </div>
               </motion.div>

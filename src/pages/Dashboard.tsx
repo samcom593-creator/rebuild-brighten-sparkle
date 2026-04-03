@@ -42,6 +42,9 @@ import { DatePeriodSelector, type DatePeriod } from "@/components/ui/date-period
 import { TotalApplicationsBanner } from "@/components/dashboard/TotalApplicationsBanner";
 import { EstimatedEarningsCard } from "@/components/dashboard/EstimatedEarningsCard";
 import { TeamOverviewDashboard } from "@/components/dashboard/TeamOverviewDashboard";
+import { SystemHealthMonitor } from "@/components/dashboard/SystemHealthMonitor";
+import { ChurnRiskBanner } from "@/components/dashboard/ChurnRiskBanner";
+import { AchievementFeed } from "@/components/dashboard/AchievementFeed";
 import { useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useSoundEffects } from "@/hooks/useSoundEffects";

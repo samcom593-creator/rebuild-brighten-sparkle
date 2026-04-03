@@ -186,7 +186,7 @@ export function LiveLeaderboard({ currentAgentId, showAISummary = true }: LiveLe
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <GlassCard className="p-3 text-center">
           <p className="text-2xl font-bold gradient-text">
-            ${teamStats.totalProduction.toLocaleString()}
+            <AnimatedNumber value={teamStats.totalProduction} prefix="$" formatAsCurrency />
           </p>
           <p className="text-xs text-muted-foreground">Production</p>
         </GlassCard>

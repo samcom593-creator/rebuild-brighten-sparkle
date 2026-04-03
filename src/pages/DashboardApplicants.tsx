@@ -521,8 +521,9 @@ export default function DashboardApplicants() {
       const matchesStatus = statusFilter === "all" || statusFilter === "terminated" || appStatus === statusFilter;
       const matchesLicense = licenseFilter === "all" || app.license_status === licenseFilter;
       const matchesDirects = !myDirectsOnly || app.assigned_agent_id === agentId;
+      const matchesHot = !hotLeadsOnly || (app as any).ai_score_tier === "hot" || (app as any).ai_score_tier === "warm";
       
-      return matchesSearch && matchesStatus && matchesLicense && matchesDirects;
+      return matchesSearch && matchesStatus && matchesLicense && matchesDirects && matchesHot;
     })
     .sort((a, b) => {
       const dateA = new Date(a.created_at).getTime();

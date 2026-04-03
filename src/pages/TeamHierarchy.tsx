@@ -2,14 +2,13 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, ChevronDown, ChevronRight, Crown, Shield, User,
-  ArrowRightLeft, Loader2, Search,
+  ArrowRightLeft, Loader2, Search, Sparkles,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { GlassCard } from "@/components/ui/glass-card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -31,6 +30,36 @@ interface AgentNode {
   teamCount: number;
 }
 
+const roleConfig = {
+  admin: {
+    ring: "ring-2 ring-amber-400/60 shadow-[0_0_12px_rgba(245,158,11,0.4)]",
+    badge: "bg-amber-400/15 text-amber-400 border-amber-400/30",
+    fallbackBg: "bg-gradient-to-br from-amber-500/30 to-amber-600/20 text-amber-300",
+    icon: Crown,
+    label: "Admin",
+    statBg: "from-amber-500/10 to-amber-600/5 border-amber-500/20",
+    glow: "shadow-[0_0_20px_rgba(245,158,11,0.15)]",
+  },
+  manager: {
+    ring: "ring-2 ring-emerald-400/60 shadow-[0_0_12px_rgba(34,211,165,0.4)]",
+    badge: "bg-emerald-400/15 text-emerald-400 border-emerald-400/30",
+    fallbackBg: "bg-gradient-to-br from-emerald-500/30 to-emerald-600/20 text-emerald-300",
+    icon: Shield,
+    label: "Manager",
+    statBg: "from-emerald-500/10 to-emerald-600/5 border-emerald-500/20",
+    glow: "shadow-[0_0_20px_rgba(34,211,165,0.15)]",
+  },
+  agent: {
+    ring: "ring-1 ring-border/50",
+    badge: "bg-muted/50 text-muted-foreground border-border/50",
+    fallbackBg: "bg-gradient-to-br from-muted/50 to-muted/30 text-muted-foreground",
+    icon: User,
+    label: "Agent",
+    statBg: "from-muted/10 to-muted/5 border-border/30",
+    glow: "",
+  },
+};
+
 export default function TeamHierarchy() {
   const { isAdmin } = useAuth();
   const [agents, setAgents] = useState<AgentNode[]>([]);
@@ -43,7 +72,6 @@ export default function TeamHierarchy() {
 
   useEffect(() => {
     const fetchData = async () => {
-      // Fetch all active agents with user_id
       const { data: agentsData } = await supabase
         .from("agents")
         .select("id, display_name, manager_id, is_deactivated, onboarding_stage, invited_by_manager_id, user_id")
@@ -52,7 +80,6 @@ export default function TeamHierarchy() {
 
       const allAgents = agentsData || [];
 
-      // Get profiles for avatars
       const userIds = allAgents.filter(a => a.user_id).map(a => a.user_id!);
       const { data: profiles } = userIds.length > 0
         ? await supabase.from("profiles").select("user_id, avatar_url").in("user_id", userIds)
@@ -60,25 +87,17 @@ export default function TeamHierarchy() {
 
       const profileMap = new Map((profiles || []).map(p => [p.user_id, p.avatar_url]));
 
-      // Determine roles by structure instead of user_roles table:
-      // - If agent has others pointing to them via invited_by_manager_id → manager
-      // - We'll also check user_roles for the current user's own role visibility
       const managerIds = new Set(
-        allAgents
-          .filter(a => a.invited_by_manager_id)
-          .map(a => a.invited_by_manager_id!)
+        allAgents.filter(a => a.invited_by_manager_id).map(a => a.invited_by_manager_id!)
       );
 
-      // Try to get admin roles - only works for admins due to RLS
       let adminUserIds = new Set<string>();
       try {
         const { data: adminRoles } = await supabase
           .from("user_roles")
           .select("user_id")
           .eq("role", "admin");
-        if (adminRoles) {
-          adminUserIds = new Set(adminRoles.map(r => r.user_id));
-        }
+        if (adminRoles) adminUserIds = new Set(adminRoles.map(r => r.user_id));
       } catch { /* non-admins won't see this */ }
 
       const nodes: AgentNode[] = allAgents.map(a => {
@@ -98,7 +117,6 @@ export default function TeamHierarchy() {
         };
       });
 
-      // Count team members
       nodes.forEach(n => {
         if (n.managerId) {
           const mgr = nodes.find(m => m.id === n.managerId);
@@ -107,8 +125,6 @@ export default function TeamHierarchy() {
       });
 
       setAgents(nodes);
-
-      // Auto-expand admins + managers
       const autoExpand = new Set<string>();
       nodes.filter(n => n.role === "admin" || n.role === "manager").forEach(n => autoExpand.add(n.id));
       setExpanded(autoExpand);
@@ -132,7 +148,7 @@ export default function TeamHierarchy() {
       .from("agents")
       .update({ invited_by_manager_id: newManagerId, manager_id: newManagerId })
       .eq("id", reassignAgent.id);
-    if (error) { toast.error("Reassign failed"); }
+    if (error) toast.error("Reassign failed");
     else {
       toast.success(`${reassignAgent.name} reassigned`);
       setAgents(prev => prev.map(a =>
@@ -144,10 +160,8 @@ export default function TeamHierarchy() {
     setNewManagerId("");
   };
 
-  // Build tree - top level = nodes with no parent or whose parent isn't in the list
   const agentIdSet = new Set(agents.map(a => a.id));
   const topLevel = agents.filter(a => !a.managerId || !agentIdSet.has(a.managerId));
-
   const getChildren = (parentId: string) =>
     agents.filter(a => a.managerId === parentId && a.id !== parentId);
 
@@ -155,68 +169,104 @@ export default function TeamHierarchy() {
     ? agents.filter(a => a.name.toLowerCase().includes(search.toLowerCase()))
     : [];
 
-  const RoleIcon = ({ role }: { role: string }) => {
-    if (role === "admin") return <Crown className="h-3.5 w-3.5 text-amber-400" />;
-    if (role === "manager") return <Shield className="h-3.5 w-3.5 text-primary" />;
-    return <User className="h-3.5 w-3.5 text-muted-foreground" />;
-  };
-
-  const renderNode = (node: AgentNode, depth: number = 0) => {
+  const renderNode = (node: AgentNode, depth: number = 0, index: number = 0) => {
     const children = getChildren(node.id);
     const isExpanded = expanded.has(node.id);
     const hasChildren = children.length > 0;
+    const cfg = roleConfig[node.role];
+    const RoleIcon = cfg.icon;
 
     return (
-      <div key={node.id} style={{ marginLeft: depth * 24 }}>
-        <div className={cn(
-          "flex items-center gap-3 px-3 py-2.5 rounded-lg border border-transparent hover:border-border hover:bg-card/50 transition-all group",
-          depth === 0 && "bg-card/30 border-border"
-        )}>
-          <button
-            onClick={() => hasChildren && toggleExpand(node.id)}
-            className={cn("w-5 h-5 flex items-center justify-center shrink-0", !hasChildren && "opacity-0")}
-          >
-            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-          </button>
+      <motion.div
+        key={node.id}
+        initial={{ opacity: 0, x: -16 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.3, delay: index * 0.04 }}
+      >
+        {/* Tree connector */}
+        <div className={cn("relative", depth > 0 && "ml-6")}>
+          {depth > 0 && (
+            <div className="absolute left-[-12px] top-0 bottom-0 w-px bg-border/30" />
+          )}
+          {depth > 0 && (
+            <div className="absolute left-[-12px] top-5 w-3 h-px bg-border/30" />
+          )}
 
-          <Avatar className="h-8 w-8 border border-border shrink-0">
-            <AvatarImage src={node.avatarUrl || ""} />
-            <AvatarFallback className="text-xs bg-muted">{node.name.charAt(0)}</AvatarFallback>
-          </Avatar>
-
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <RoleIcon role={node.role} />
-              <span className="font-medium text-sm truncate">{node.name}</span>
-              {hasChildren && (
-                <Badge variant="outline" className="text-[9px] ml-1">{children.length}</Badge>
+          <div className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-xl border border-transparent transition-all duration-200 group cursor-pointer",
+            "hover:border-primary/20 hover:bg-card/60 hover:shadow-lg hover:shadow-primary/5 hover:scale-[1.01]",
+            depth === 0 && "bg-card/40 border-border/30 backdrop-blur-sm",
+            cfg.glow && depth === 0 && cfg.glow,
+          )}>
+            {/* Expand toggle */}
+            <button
+              onClick={() => hasChildren && toggleExpand(node.id)}
+              className={cn(
+                "w-5 h-5 flex items-center justify-center shrink-0 transition-transform duration-200",
+                !hasChildren && "opacity-0 pointer-events-none",
+                isExpanded && "rotate-0",
               )}
+            >
+              <motion.div animate={{ rotate: isExpanded ? 90 : 0 }} transition={{ duration: 0.2 }}>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </motion.div>
+            </button>
+
+            {/* Avatar with role ring */}
+            <div className={cn("relative shrink-0 rounded-full", cfg.ring)}>
+              <Avatar className="h-9 w-9">
+                <AvatarImage src={node.avatarUrl || ""} className="object-cover" />
+                <AvatarFallback className={cn("text-xs font-semibold font-['Syne']", cfg.fallbackBg)}>
+                  {node.name.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
             </div>
+
+            {/* Name + badge */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-sm truncate font-['DM_Sans']">{node.name}</span>
+                <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0 h-4 border font-['Syne'] font-bold uppercase tracking-wider", cfg.badge)}>
+                  {cfg.label}
+                </Badge>
+                {hasChildren && (
+                  <span className="text-[10px] text-muted-foreground bg-muted/30 px-1.5 py-0.5 rounded-full">
+                    {children.length}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Reassign */}
+            {isAdmin && node.role !== "admin" && (
+              <Button
+                variant="ghost" size="sm"
+                className="h-7 text-xs opacity-0 group-hover:opacity-100 transition-opacity font-['Syne'] font-bold"
+                onClick={(e) => { e.stopPropagation(); setReassignAgent(node); setNewManagerId(node.managerId || ""); }}
+              >
+                <ArrowRightLeft className="h-3 w-3 mr-1" /> Reassign
+              </Button>
+            )}
           </div>
 
-          {isAdmin && node.role !== "admin" && (
-            <Button
-              variant="ghost" size="sm"
-              className="h-7 text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={() => { setReassignAgent(node); setNewManagerId(node.managerId || ""); }}
-            >
-              <ArrowRightLeft className="h-3 w-3 mr-1" /> Reassign
-            </Button>
-          )}
+          {/* Children */}
+          <AnimatePresence>
+            {isExpanded && hasChildren && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.25, ease: "easeInOut" }}
+                className="overflow-hidden"
+              >
+                <div className="mt-1 space-y-0.5">
+                  {children.map((c, i) => renderNode(c, depth + 1, i))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
-
-        {isExpanded && hasChildren && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
-          >
-            {children.map(c => renderNode(c, depth + 1))}
-          </motion.div>
-        )}
-      </div>
+      </motion.div>
     );
   };
 
@@ -229,62 +279,106 @@ export default function TeamHierarchy() {
   }
 
   const managerList = agents.filter(a => a.role === "manager" || a.role === "admin");
+  const counts = {
+    admin: agents.filter(a => a.role === "admin").length,
+    manager: agents.filter(a => a.role === "manager").length,
+    agent: agents.filter(a => a.role === "agent").length,
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between"
+      >
         <div>
-          <h1 className="text-2xl font-bold font-['Syne']">Team Structure</h1>
-          <p className="text-muted-foreground text-sm">{agents.length} active members</p>
+          <h1 className="text-2xl font-bold font-['Syne'] bg-gradient-to-r from-foreground via-foreground to-primary bg-clip-text text-transparent">
+            Team Structure
+          </h1>
+          <p className="text-muted-foreground text-sm font-['DM_Sans']">
+            {agents.length} active members
+          </p>
         </div>
-      </div>
+        <div className="flex items-center gap-1.5 text-primary/60">
+          <Sparkles className="h-4 w-4" />
+          <span className="text-xs font-['Syne'] font-bold uppercase tracking-wider">Live</span>
+        </div>
+      </motion.div>
 
-      <div className="relative">
+      {/* Search */}
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Search team members..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
-      </div>
+        <Input
+          placeholder="Search team members..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="pl-10 bg-card/30 border-border/40 backdrop-blur-sm focus:ring-2 focus:ring-primary/30 focus:border-primary/40 transition-all font-['DM_Sans']"
+        />
+      </motion.div>
 
-      <div className="grid grid-cols-3 gap-3">
-        <GlassCard className="p-3 text-center">
-          <Crown className="h-5 w-5 mx-auto mb-1 text-amber-400" />
-          <p className="text-lg font-bold">{agents.filter(a => a.role === "admin").length}</p>
-          <p className="text-[10px] text-muted-foreground">Admin</p>
-        </GlassCard>
-        <GlassCard className="p-3 text-center">
-          <Shield className="h-5 w-5 mx-auto mb-1 text-primary" />
-          <p className="text-lg font-bold">{agents.filter(a => a.role === "manager").length}</p>
-          <p className="text-[10px] text-muted-foreground">Managers</p>
-        </GlassCard>
-        <GlassCard className="p-3 text-center">
-          <User className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
-          <p className="text-lg font-bold">{agents.filter(a => a.role === "agent").length}</p>
-          <p className="text-[10px] text-muted-foreground">Agents</p>
-        </GlassCard>
-      </div>
+      {/* Stat Cards */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+        className="grid grid-cols-3 gap-3"
+      >
+        {(["admin", "manager", "agent"] as const).map((role) => {
+          const c = roleConfig[role];
+          const Icon = c.icon;
+          return (
+            <div
+              key={role}
+              className={cn(
+                "relative overflow-hidden rounded-xl border p-4 text-center bg-gradient-to-b backdrop-blur-sm transition-all duration-300 hover:scale-[1.02]",
+                c.statBg,
+              )}
+            >
+              <Icon className={cn(
+                "h-5 w-5 mx-auto mb-2",
+                role === "admin" && "text-amber-400",
+                role === "manager" && "text-emerald-400",
+                role === "agent" && "text-muted-foreground",
+              )} />
+              <p className="text-2xl font-bold font-['Syne']">{counts[role]}</p>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-['Syne'] font-bold mt-0.5">{c.label}s</p>
+            </div>
+          );
+        })}
+      </motion.div>
 
-      <GlassCard className="p-4">
+      {/* Tree */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="rounded-2xl border border-border/30 bg-card/20 backdrop-blur-sm p-4"
+      >
         {search ? (
           <div className="space-y-1">
-            {filtered.length === 0 && <p className="text-center text-muted-foreground py-4">No results</p>}
-            {filtered.map(n => renderNode(n, 0))}
+            {filtered.length === 0 && <p className="text-center text-muted-foreground py-8 font-['DM_Sans']">No results</p>}
+            {filtered.map((n, i) => renderNode(n, 0, i))}
           </div>
         ) : (
           <div className="space-y-1">
-            {topLevel.map(n => renderNode(n, 0))}
+            {topLevel.map((n, i) => renderNode(n, 0, i))}
             {topLevel.length === 0 && (
-              <p className="text-center text-muted-foreground py-8">No team structure found</p>
+              <p className="text-center text-muted-foreground py-8 font-['DM_Sans']">No team structure found</p>
             )}
           </div>
         )}
-      </GlassCard>
+      </motion.div>
 
+      {/* Reassign Dialog */}
       <Dialog open={!!reassignAgent} onOpenChange={() => setReassignAgent(null)}>
-        <DialogContent>
+        <DialogContent className="border-border/40 bg-card/95 backdrop-blur-xl">
           <DialogHeader>
-            <DialogTitle>Reassign {reassignAgent?.name}</DialogTitle>
+            <DialogTitle className="font-['Syne']">Reassign {reassignAgent?.name}</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <label className="text-sm text-muted-foreground mb-2 block">New Manager</label>
+            <label className="text-sm text-muted-foreground mb-2 block font-['DM_Sans']">New Manager</label>
             <Select value={newManagerId} onValueChange={setNewManagerId}>
               <SelectTrigger><SelectValue placeholder="Select manager" /></SelectTrigger>
               <SelectContent>
@@ -295,8 +389,8 @@ export default function TeamHierarchy() {
             </Select>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setReassignAgent(null)}>Cancel</Button>
-            <Button onClick={handleReassign} disabled={!newManagerId || saving}>
+            <Button variant="outline" onClick={() => setReassignAgent(null)} className="font-['Syne'] font-bold">Cancel</Button>
+            <Button onClick={handleReassign} disabled={!newManagerId || saving} className="font-['Syne'] font-bold">
               {saving ? "Saving..." : "Reassign"}
             </Button>
           </DialogFooter>

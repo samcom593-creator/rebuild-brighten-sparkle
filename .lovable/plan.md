@@ -1,35 +1,77 @@
 
+# APEX Elite Upgrade — Phase 1
 
-# Upgrade Award Profiles Panel: Show Only Producing Agents + Visual Overhaul
+Given the 20-section scope, we'll tackle this in focused batches. Phase 1 covers **Visual Redesign (#1)** and **New Features (#2-6)** as prioritized.
 
-## Summary
-Filter the Agent Award Profiles panel to only show agents who have actual production (deals_closed > 0), and redesign the panel with a premium, elite visual style including better avatars, status indicators, and smoother edit UX.
+---
 
-## Changes to `src/components/awards/AwardProfilesPanel.tsx`
+## Batch 1A: Visual Redesign (Section 1)
 
-### 1. Filter to only agents with deals
-- After fetching agents, also query `daily_production` grouped by `agent_id` to get agents with `SUM(deals_closed) > 0`
-- Cross-reference to only show agents who appear in that set
-- Sort by total ALP descending so top producers appear first
+### Typography
+- Import **Syne** (400,600,700,800) for headings, nav, buttons, badges
+- Import **DM Sans** (300,400,500) for body text, inputs
+- Add Google Fonts link to `index.html`
+- Update CSS with font-family rules
 
-### 2. Visual overhaul — make it elite
-- Larger avatar (h-16 w-16) with a gold ring/border for agents who have an award photo set
-- Show total ALP and deal count as small stats under each name
-- Green dot indicator when award photo is uploaded, amber when missing
-- Gradient card backgrounds with subtle hover glow effects
-- Use `backdrop-blur` glass-card styling
-- Instagram handle shown as a colored pill badge
-- Edit mode: slide-in animation instead of abrupt swap, cleaner input layout
-- Photo upload: show a camera overlay on the avatar itself (tap avatar to upload)
-- "Profile complete" vs "Needs photo" status badges
-- Search/filter input at the top to quickly find agents by name
+### Color System
+- Add APEX color tokens to `index.css`: `--apex-black`, `--apex-navy`, `--apex-surface`, `--apex-border`, `--apex-green`, `--apex-gold`, `--apex-text`, `--apex-muted`
+- Map to Tailwind config
 
-### 3. Additional polish
-- Add agent count badge in the header ("12 producers")
-- Collapsible panel with smooth animation (default expanded)
-- Success animations on save (brief green flash)
-- Show "last updated" timestamp on each profile card
+### Landing Page Redesign
+- Hero: dark bg, Syne 800 headline with green accent, animated counter, 3 stat pills
+- Floating geometric shapes (CSS only)
+- DealsTicker: sleek horizontal scroll bar
+- Benefits: dark cards with green left border
+- CTA: full-width dark, two buttons (Apply = green, Schedule Call = outline)
+- All buttons: Syne 700, letter-spacing
 
-## Files Modified
-- **`src/components/awards/AwardProfilesPanel.tsx`** — Complete rewrite with production filter, elite styling, better UX
+### Dashboard Visual Upgrade
+- Darker sidebar gradient
+- Premium stat cards with animated counters + trend indicators
+- Glass cards upgrade (gradient bg, border transitions, blur)
+- Page transition animations (framer-motion fade+slide)
 
+---
+
+## Batch 1B: New Features (Sections 2-6)
+
+### Section 2: Face-Lock Profile Pictures
+- Add `face-api.js` dependency
+- Upgrade AvatarUpload to detect faces, auto-crop, reject no-face photos
+- Save face-cropped 400×400 version
+
+### Section 3: Field Agent Mobile Check-In
+- New page `/field-checkin` with GPS, client form, outcome selector, voice notes
+- Offline support with localStorage queue
+- New `field_checkins` table (migration)
+- Add to sidebar navigation
+
+### Section 4: AI Applicant Scoring
+- New edge function `score-applicant` (rule-based 0-100 scoring)
+- Add `ai_score` + `ai_score_tier` columns to applications table
+- Show score badges in CRM/Applicants views
+- "Hot Leads Only" filter toggle
+
+### Section 5: Churn Detection
+- New edge function `check-churn-risk` (daily risk scoring)
+- New `churn_risk_alerts` table (migration)
+- Dashboard banner with risk badges + recovery actions
+
+### Section 6: Commission Calculator
+- New component with ALP slider, tier selector, live calculations
+- Add to Agent Portal and Numbers page
+
+---
+
+## Implementation Order
+1. Fix build error ✅ (done)
+2. Typography + Color System
+3. Landing Page visual overhaul
+4. Dashboard + Glass Card upgrades
+5. Commission Calculator (smallest new feature)
+6. AI Applicant Scoring (edge function + UI)
+7. Field Check-In (new page + table)
+8. Face-Lock Profiles
+9. Churn Detection
+
+Each batch will be confirmed before moving to the next.

@@ -12,7 +12,7 @@ import { ApplicationToast } from "@/components/landing/ApplicationToast";
 
 const Index = () => {
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden w-full max-w-full">
+    <div className="min-h-screen bg-[#030712] overflow-x-hidden w-full max-w-full">
       <DealsTicker />
       <Navbar />
       <main>
@@ -25,8 +25,6 @@ const Index = () => {
         <CTASection />
       </main>
       <Footer />
-      
-      {/* Synthetic "new application" notification popups */}
       <ApplicationToast />
     </div>
   );

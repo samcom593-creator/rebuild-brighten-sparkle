@@ -1179,7 +1179,7 @@ export default function Apply() {
               </motion.div>
             </AnimatePresence>
           </form>
-          )}
+          </>}
         </div>
       </main>
     </div>

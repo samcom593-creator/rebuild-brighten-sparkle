@@ -127,7 +127,7 @@ export default function DashboardApplicants() {
   const [licenseFilter, setLicenseFilter] = useState<string>("all");
   const [sortOrder, setSortOrder] = useState<string>("newest");
   const [myDirectsOnly, setMyDirectsOnly] = useState(false);
-  
+  const [hotLeadsOnly, setHotLeadsOnly] = useState(false);
   // Notes modal state
   const [notesApp, setNotesApp] = useState<Application | null>(null);
   

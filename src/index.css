@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Global: All buttons use Syne 700 */
+button, [role="button"] { font-family: 'Syne', system-ui, sans-serif; font-weight: 700; }
+
 /* APEX Financial Empire Design System
    Dark theme with teal/emerald accents, glass morphism effects
    All colors MUST be HSL.

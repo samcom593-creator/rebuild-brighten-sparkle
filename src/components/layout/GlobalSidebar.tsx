@@ -124,6 +124,7 @@ export function GlobalSidebar({
       navItems.push({ icon: Crown, label: "Command Center", href: "/dashboard/command" });
       navItems.push({ icon: Target, label: "Lead Center", href: "/dashboard/leads" });
       navItems.push({ icon: Bell, label: "Notifications", href: "/dashboard/notifications" });
+      navItems.push({ icon: Mail, label: "Inbox", href: "/dashboard/inbox" });
     }
 
     sections.push({ label: "NAVIGATION", items: navItems });

@@ -527,6 +527,14 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* ====== ADMIN SIDEBAR: System Health + Achievement Feed ====== */}
+      {(isAdmin || isManager) && (
+        <div className="grid md:grid-cols-2 gap-4 mb-6">
+          <SystemHealthMonitor />
+          <AchievementFeed />
+        </div>
+      )}
     </>
   );
 }

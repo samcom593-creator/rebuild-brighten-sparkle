@@ -96,6 +96,9 @@ export default function Apply() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [vslWatchPercent, setVslWatchPercent] = useState(0);
+  const [vslUnlocked, setVslUnlocked] = useState(false);
+  const vslRef = useRef<HTMLVideoElement>(null);
   const [selectedStates, setSelectedStates] = useState<string[]>([]);
   const [applicationId, setApplicationId] = useState<string | null>(null);
   const [activeAgents, setActiveAgents] = useState<ActiveAgent[]>([]);

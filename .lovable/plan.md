@@ -1,79 +1,39 @@
 
-# APEX Billionaire Level System Upgrade
 
-## Phase 1: Database Migrations (must run first)
-- Add columns to `notification_log`: `subject`, `body`, `notification_type`, `opened_at`, `agent_id` + indexes
-- Create `lead_purchase_requests` table (agent_id, package_type, amount_paid, payment_method, transaction_id, status, confirmed_at, notes)
-- Create `automation_settings` table (name, schedule, enabled, last_run_at, last_status)
+# Team Hierarchy Visual Overhaul + Auto-Crop Profile Pictures
 
-## Phase 2: Communication Inbox (`/dashboard/inbox`)
-- New page: email-client layout with left panel (message list) + right panel (detail view)
-- Filter by Email/SMS/Push, search by agent, date range
-- Stats bar: emails today, SMS today, delivery rate, opens
-- Realtime Supabase subscription on notification_log
-- Resend button on failed messages
-- Add to sidebar with Mail icon
+## Summary
+Redesign the Team Hierarchy page with premium dark fintech styling (glow effects, animated entrances, role-specific ring colors, connecting lines) and add client-side canvas auto-crop to center-crop uploaded profile photos to a square before uploading.
 
-## Phase 3: CRM Overhaul
-- Full filter bar: Stage / License / Manager / AI Score / Performance / Stalled
-- Sort by: Name, ALP, Date, AI Score, Days in stage
-- Bulk select with bulk actions (move stage, reassign, email, SMS, deactivate)
-- Pagination at 25/page
-- Search covers phone + Instagram
-- Quick Stats bar above table
-- Inline manager reassignment per agent
-- "Manager" column with click-to-change
+## Changes
 
-## Phase 4: Lead Purchase System
-- APEX Leads section on landing page (2 packages: Standard $250, Premium $350)
-- Purchase confirmation flow with payment tracking
-- Admin "Pending Purchases" card on dashboard
-- `notify-lead-purchase` edge function to alert Sam
+### 1. `src/pages/TeamHierarchy.tsx` — Visual overhaul
+- **Role-specific avatar rings**: Admin = gold glow ring, Manager = green glow ring, Agent = subtle border
+- **Animated stagger entrance**: Each node fades/slides in with staggered delay using framer-motion
+- **Connecting tree lines**: CSS `border-left` vertical lines with `border-bottom` horizontal connectors at each depth level (replaces plain `marginLeft`)
+- **Stat cards upgrade**: Add pulse-glow effect, animated counters, gradient backgrounds per role
+- **Node hover effects**: Glassmorphic hover with subtle scale transform and glow shadow
+- **Role badges**: Colored pill badges ("Admin", "Manager", "Agent") instead of just icons
+- **Search**: Add focus glow ring effect on the search input
+- **Header**: Add a subtle gradient text effect on the title
+- **Expand/collapse**: Smooth rotate animation on chevron icons (180deg transition)
+- **Empty avatar fallback**: Gradient background matching role color
 
-## Phase 5: Hierarchy Management
-- Visual org chart (Sam → Managers → Agents)
-- Quick reassign panel with confirmation
-- Bulk operations (reassign, promote, demote, deactivate)
-- Add "Team Structure" to sidebar (admin only)
+### 2. `src/components/dashboard/AvatarUpload.tsx` — Auto-crop to square
+- After file selection, draw the image onto an HTML5 Canvas
+- Calculate the largest centered square crop (min of width/height)
+- Export as 512x512 JPEG blob at 0.9 quality
+- Upload the cropped blob instead of the raw file
+- No external library needed — pure Canvas API
 
-## Phase 6: Growth Dashboard Overhaul
-- Tab 1: Pipeline funnel with conversion rates per stage
-- Tab 2: Recruiter leaderboard (managers ranked by team production)
-- Tab 3: Social growth charts (Instagram tracking)
-- Tab 4: Retention analytics (30/60/90 day retention, churn by manager)
+### 3. `src/components/ui/glass-card.tsx` — No changes needed (already supports glow)
 
-## Phase 7: Seminar Dashboard Overhaul
-- Countdown timer to next seminar
-- Schedule new seminar with auto invite blast
-- Registrant list with AI scores + follow-up buttons
-- Analytics tab (attendance rate, conversion, best day)
+## Technical Details
+- Auto-crop uses `createImageBitmap` or `Image()` + canvas `drawImage(img, sx, sy, sSize, sSize, 0, 0, 512, 512)`
+- Tree connector lines use `relative`/`absolute` positioning with `before`/`after` pseudo-elements via Tailwind arbitrary values
+- Stagger animation: parent `motion.div` with `staggerChildren: 0.05`, each child as `motion.div` with `initial={{ opacity: 0, x: -12 }}` 
 
-## Phase 8: Course System Upgrade
-- Sequential module unlocking
-- 80% video watch gate before quiz
-- Playback speed controls (0.5x-2x)
-- Agent notes panel per module
-- Completion certificate (canvas-generated PDF)
-- Admin progress table with filters
+## Files Modified
+- **`src/pages/TeamHierarchy.tsx`** — Full visual redesign with effects
+- **`src/components/dashboard/AvatarUpload.tsx`** — Add canvas auto-crop before upload
 
-## Phase 9: Automation Hub (`/dashboard/automation`)
-- New page showing all automated workflows
-- Toggle on/off per automation
-- "Run Now" manual trigger
-- Last run timestamp + status
-- Automation log table
-
-## Phase 10: Daily Producer Spotlight
-- `send-daily-producer-spotlight` edge function
-- Moody premium email template with agent photo
-- SMS version to all agents
-- Achievement detection logic (40K in 90 days, Diamond Week, streaks)
-
-## Phase 11: Visual Polish
-- Sidebar redesign with proper nav sections
-- Consistent page headers across all dashboard pages
-- Landing page hero refinement
-
-## Implementation Order
-Phases 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11
-(Database first, then features in order of impact)

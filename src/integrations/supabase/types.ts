@@ -1051,6 +1051,45 @@ export type Database = {
           },
         ]
       }
+      automation_settings: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          enabled: boolean | null
+          id: string
+          last_affected_count: number | null
+          last_run_at: string | null
+          last_status: string | null
+          name: string
+          schedule: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          enabled?: boolean | null
+          id?: string
+          last_affected_count?: number | null
+          last_run_at?: string | null
+          last_status?: string | null
+          name: string
+          schedule?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          enabled?: boolean | null
+          id?: string
+          last_affected_count?: number | null
+          last_run_at?: string | null
+          last_status?: string | null
+          name?: string
+          schedule?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       award_batches: {
         Row: {
           award_type: string
@@ -1741,6 +1780,56 @@ export type Database = {
           },
         ]
       }
+      lead_purchase_requests: {
+        Row: {
+          agent_id: string
+          amount_paid: number | null
+          confirmed_at: string | null
+          confirmed_by: string | null
+          id: string
+          notes: string | null
+          package_type: string
+          payment_method: string | null
+          requested_at: string | null
+          status: string | null
+          transaction_id: string | null
+        }
+        Insert: {
+          agent_id: string
+          amount_paid?: number | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          id?: string
+          notes?: string | null
+          package_type: string
+          payment_method?: string | null
+          requested_at?: string | null
+          status?: string | null
+          transaction_id?: string | null
+        }
+        Update: {
+          agent_id?: string
+          amount_paid?: number | null
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          id?: string
+          notes?: string | null
+          package_type?: string
+          payment_method?: string | null
+          requested_at?: string | null
+          status?: string | null
+          transaction_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_purchase_requests_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       magic_login_tokens: {
         Row: {
           agent_id: string
@@ -1896,45 +1985,68 @@ export type Database = {
       }
       notification_log: {
         Row: {
+          agent_id: string | null
+          body: string | null
           channel: string
           created_at: string
           error_message: string | null
           id: string
           message: string
           metadata: Json | null
+          notification_type: string | null
+          opened_at: string | null
           recipient_email: string | null
           recipient_phone: string | null
           recipient_user_id: string | null
           status: string
+          subject: string | null
           title: string
         }
         Insert: {
+          agent_id?: string | null
+          body?: string | null
           channel: string
           created_at?: string
           error_message?: string | null
           id?: string
           message: string
           metadata?: Json | null
+          notification_type?: string | null
+          opened_at?: string | null
           recipient_email?: string | null
           recipient_phone?: string | null
           recipient_user_id?: string | null
           status?: string
+          subject?: string | null
           title: string
         }
         Update: {
+          agent_id?: string | null
+          body?: string | null
           channel?: string
           created_at?: string
           error_message?: string | null
           id?: string
           message?: string
           metadata?: Json | null
+          notification_type?: string | null
+          opened_at?: string | null
           recipient_email?: string | null
           recipient_phone?: string | null
           recipient_user_id?: string | null
           status?: string
+          subject?: string | null
           title?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "notification_log_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       onboarding_modules: {
         Row: {

@@ -24,6 +24,7 @@ export default function OnboardingCourse() {
   const [autoProvisionAttempted, setAutoProvisionAttempted] = useState(false);
   const [provisioningInProgress, setProvisioningInProgress] = useState(false);
   const [activeTab, setActiveTab] = useState<"video" | "quiz">("video");
+  const [playbackRate, setPlaybackRate] = useState(1);
 
   // Fetch agent ID for current user - use limit(1) to handle legacy duplicates
   useEffect(() => {

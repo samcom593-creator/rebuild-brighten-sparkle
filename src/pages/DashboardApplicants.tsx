@@ -1026,6 +1026,7 @@ export default function DashboardApplicants() {
                   <thead className="[&_tr]:border-b">
                     <tr className="border-b bg-muted/50">
                       <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Name</th>
+                      <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Score</th>
                       <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Email</th>
                       <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Phone</th>
                       <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Status</th>

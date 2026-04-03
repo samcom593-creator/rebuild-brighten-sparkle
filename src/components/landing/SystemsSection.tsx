@@ -119,7 +119,7 @@ export function SystemsSection() {
   const [activeTab, setActiveTab] = useState("core");
 
   return (
-    <section id="systems" className="relative py-24 md:py-32 overflow-hidden">
+    <section id="systems" className="relative py-24 md:py-32 overflow-hidden bg-[#030712]">
       {/* Background decorative elements */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/4 -left-32 w-96 h-96 bg-primary/10 rounded-full blur-3xl" />

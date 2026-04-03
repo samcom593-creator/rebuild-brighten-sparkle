@@ -1,5 +1,20 @@
-import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect, useRef } from "react";
+import { useRef, useEffect } from "react";
+
+const deals = [
+  { agent: "MOODY", amount: "$3,324", color: "#22d3a5" },
+  { agent: "CHUDI", amount: "$2,575", color: "#22d3ee" },
+  { agent: "KJ", amount: "$3,441", color: "#f59e0b" },
+  { agent: "OBI", amount: "$5,189", color: "#f43f5e" },
+  { agent: "JACOB", amount: "$4,174", color: "#a78bfa" },
+  { agent: "AISHA", amount: "$1,559", color: "#22d3a5" },
+  { agent: "XAVIAR", amount: "$2,483", color: "#38bdf8" },
+  { agent: "SAMUEL", amount: "$1,430", color: "#fb923c" },
+  { agent: "DALTON", amount: "$1,430", color: "#ec4899" },
+  { agent: "MARCOS", amount: "$1,775", color: "#2dd4bf" },
+  { agent: "WENDELL", amount: "$1,325", color: "#84cc16" },
+  { agent: "LUIS", amount: "$840", color: "#d946ef" },
+  { agent: "DUDLEY", amount: "$1,847", color: "#818cf8" },
+];
 
 const carriers = [
   "American National", "Mutual of Omaha", "Transamerica", "Foresters",
@@ -9,98 +24,79 @@ const carriers = [
   "Guarantee Trust Life", "Newbridge",
 ];
 
-const deals = [
-  { agent: "MOODY", amount: "$3,324", color: "text-emerald-400" },
-  { agent: "CHUDI", amount: "$2,575", color: "text-cyan-400" },
-  { agent: "KJ", amount: "$3,441", color: "text-amber-400" },
-  { agent: "OBI", amount: "$5,189", color: "text-rose-400" },
-  { agent: "JACOB", amount: "$4,174", color: "text-violet-400" },
-  { agent: "AISHA", amount: "$1,559", color: "text-emerald-400" },
-  { agent: "XAVIAR", amount: "$2,483", color: "text-sky-400" },
-  { agent: "SAMUEL", amount: "$1,430", color: "text-orange-400" },
-  { agent: "DALTON", amount: "$1,430", color: "text-pink-400" },
-  { agent: "MARCOS", amount: "$1,775", color: "text-teal-400" },
-  { agent: "WENDELL", amount: "$1,325", color: "text-lime-400" },
-  { agent: "LUIS", amount: "$840", color: "text-fuchsia-400" },
-  { agent: "DUDLEY", amount: "$1,847", color: "text-indigo-400" },
-];
+// Build ticker items: interleave deals with carrier mentions
+function buildTickerItems() {
+  const items: Array<{ type: "deal"; agent: string; amount: string; color: string } | { type: "carrier"; name: string }> = [];
+  const maxLen = Math.max(deals.length, carriers.length);
+  for (let i = 0; i < maxLen; i++) {
+    if (i < deals.length) items.push({ type: "deal", ...deals[i] });
+    if (i < carriers.length) items.push({ type: "carrier", name: carriers[i] });
+  }
+  return items;
+}
+
+const tickerItems = buildTickerItems();
 
 export function DealsTicker() {
-  const [carrierIndex, setCarrierIndex] = useState(0);
-  const [dealIndex, setDealIndex] = useState(0);
-  const [showDeal, setShowDeal] = useState(false);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Alternate: deal for 2.5s → carrier for 2.5s
-    let tick = 0;
-    const run = () => {
-      intervalRef.current = setInterval(() => {
-        tick++;
-        if (tick % 2 === 1) {
-          // Show deal
-          setDealIndex((prev) => (prev + 1) % deals.length);
-          setShowDeal(true);
-        } else {
-          // Show carrier
-          setCarrierIndex((prev) => (prev + 1) % carriers.length);
-          setShowDeal(false);
-        }
-      }, 2500);
+    const el = scrollRef.current;
+    if (!el) return;
+    let raf: number;
+    let pos = 0;
+    const speed = 0.5; // px per frame
+
+    const tick = () => {
+      pos += speed;
+      // When we've scrolled past the first copy, reset
+      if (pos >= el.scrollWidth / 2) pos = 0;
+      el.style.transform = `translateX(-${pos}px)`;
+      raf = requestAnimationFrame(tick);
     };
 
-    const handleVisibility = () => {
-      if (document.hidden) {
-        if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
-      } else if (!intervalRef.current) {
-        run();
-      }
+    const handleVis = () => {
+      if (document.hidden) cancelAnimationFrame(raf);
+      else raf = requestAnimationFrame(tick);
     };
 
-    run();
-    document.addEventListener("visibilitychange", handleVisibility);
+    raf = requestAnimationFrame(tick);
+    document.addEventListener("visibilitychange", handleVis);
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      document.removeEventListener("visibilitychange", handleVisibility);
+      cancelAnimationFrame(raf);
+      document.removeEventListener("visibilitychange", handleVis);
     };
   }, []);
 
-  const deal = deals[dealIndex];
+  const renderItem = (item: (typeof tickerItems)[number], idx: number) => {
+    if (item.type === "deal") {
+      return (
+        <span key={`d-${idx}`} className="inline-flex items-center gap-1.5 px-4 whitespace-nowrap">
+          <span className="text-[#64748b]">🔥</span>
+          <span className="font-bold font-display" style={{ color: item.color }}>{item.agent}</span>
+          <span className="text-[#64748b]">closed</span>
+          <span className="font-black font-display" style={{ color: item.color }}>{item.amount}</span>
+          <span className="text-[#64748b]">ALP</span>
+          <span className="text-[#1e293b] mx-2">|</span>
+        </span>
+      );
+    }
+    return (
+      <span key={`c-${idx}`} className="inline-flex items-center gap-1.5 px-4 whitespace-nowrap">
+        <span className="text-[#64748b]">Our agents write with</span>
+        <span className="text-[#22d3a5] font-bold font-display">{item.name}</span>
+        <span className="text-[#1e293b] mx-2">|</span>
+      </span>
+    );
+  };
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[60] bg-black h-8 overflow-hidden flex items-center justify-center">
-      <AnimatePresence mode="wait">
-        {showDeal ? (
-          <motion.div
-            key={`deal-${dealIndex}`}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.25 }}
-            className="flex items-center gap-2 text-sm"
-          >
-            <span className="text-white/50">🔥</span>
-            <span className={`font-bold ${deal.color}`}>{deal.agent}</span>
-            <span className="text-white/40">closed</span>
-            <span className={`font-black ${deal.color}`}>{deal.amount}</span>
-            <span className="text-white/40">ALP</span>
-          </motion.div>
-        ) : (
-          <motion.div
-            key={`carrier-${carrierIndex}`}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12 }}
-            transition={{ duration: 0.25 }}
-            className="flex items-center gap-3 text-sm"
-          >
-            <span className="text-amber-400">🔥</span>
-            <span className="text-white/60 font-medium">Our agents write with</span>
-            <span className="text-primary font-bold">{carriers[carrierIndex]}</span>
-            <span className="text-white/60 font-medium">& more</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
+    <div className="fixed top-0 left-0 right-0 z-[60] bg-[#030712] h-8 overflow-hidden flex items-center border-b border-[#1e293b]/50">
+      <div ref={scrollRef} className="flex items-center text-sm will-change-transform">
+        {/* Duplicate for seamless loop */}
+        {tickerItems.map((item, i) => renderItem(item, i))}
+        {tickerItems.map((item, i) => renderItem(item, i + tickerItems.length))}
+      </div>
     </div>
   );
 }

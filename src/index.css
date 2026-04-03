@@ -182,7 +182,17 @@
 
   body {
     @apply bg-background text-foreground antialiased;
+    font-family: 'DM Sans', system-ui, sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  h1, h2, h3, h4, h5, h6, .font-display {
+    font-family: 'Syne', system-ui, sans-serif;
+  }
+
+  button, .btn, nav a, .badge, label {
+    font-family: 'Syne', system-ui, sans-serif;
+    letter-spacing: 0.3px;
   }
 }
 

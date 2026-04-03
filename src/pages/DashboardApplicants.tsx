@@ -1066,6 +1066,20 @@ export default function DashboardApplicants() {
                             </div>
                           </td>
                           <td className="p-3 align-middle">
+                            {app.ai_score_tier ? (
+                              <Badge variant="outline" className={cn("text-[10px] font-bold uppercase",
+                                app.ai_score_tier === "hot" && "bg-orange-500/20 text-orange-400 border-orange-500/30",
+                                app.ai_score_tier === "warm" && "bg-amber-500/20 text-amber-400 border-amber-500/30",
+                                app.ai_score_tier === "cool" && "bg-blue-500/20 text-blue-400 border-blue-500/30",
+                                app.ai_score_tier === "cold" && "bg-slate-500/20 text-slate-400 border-slate-500/30",
+                              )}>
+                                {app.ai_score_tier === "hot" && "🔥"}{app.ai_score_tier === "warm" && "🌤"}{app.ai_score_tier === "cool" && "❄️"}{app.ai_score_tier === "cold" && "🧊"} {app.lead_score}
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-xs">—</span>
+                            )}
+                          </td>
+                          <td className="p-3 align-middle">
                             <span className="text-muted-foreground">{app.email}</span>
                           </td>
                           <td className="p-3 align-middle">

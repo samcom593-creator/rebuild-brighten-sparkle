@@ -67,6 +67,8 @@ const ApplicantCheckin = lazy(() => import("./pages/ApplicantCheckin"));
 const DailyCheckin = lazy(() => import("./pages/DailyCheckin"));
 const FieldCheckin = lazy(() => import("./pages/FieldCheckin"));
 const AgentFlow = lazy(() => import("./pages/AgentFlow"));
+const InboxPage = lazy(() => import("./pages/InboxPage"));
+const AutomationHub = lazy(() => import("./pages/AutomationHub"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -157,6 +159,8 @@ const App = () => (
                      <Route path="/dashboard/growth" element={<GrowthDashboard />} />
                      <Route path="/dashboard/planner" element={<ProtectedRoute requireAdmin><AdminCalendar /></ProtectedRoute>} />
                       <Route path="/dashboard/seminar" element={<SeminarAdmin />} />
+                      <Route path="/dashboard/inbox" element={<ProtectedRoute requireAdmin><InboxPage /></ProtectedRoute>} />
+                      <Route path="/dashboard/automation" element={<ProtectedRoute requireAdmin><AutomationHub /></ProtectedRoute>} />
                   </Route>
 
                   {/* Legacy redirect */}

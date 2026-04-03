@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays } from "date-fns";
 import { Link } from "react-router-dom";

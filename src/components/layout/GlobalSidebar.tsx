@@ -27,6 +27,9 @@ import {
   Bell,
   Search,
   X,
+  Mail,
+  Zap,
+  Network,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -121,6 +124,7 @@ export function GlobalSidebar({
       navItems.push({ icon: Crown, label: "Command Center", href: "/dashboard/command" });
       navItems.push({ icon: Target, label: "Lead Center", href: "/dashboard/leads" });
       navItems.push({ icon: Bell, label: "Notifications", href: "/dashboard/notifications" });
+      navItems.push({ icon: Mail, label: "Inbox", href: "/dashboard/inbox" });
     }
 
     sections.push({ label: "NAVIGATION", items: navItems });
@@ -148,6 +152,8 @@ export function GlobalSidebar({
     if (isAdmin) {
       toolItems.push({ icon: CalendarDays, label: "Day Planner", href: "/dashboard/planner" });
       toolItems.push({ icon: Crown, label: "Awards", href: "/awards" });
+      toolItems.push({ icon: Network, label: "Team Structure", href: "/dashboard/team" });
+      toolItems.push({ icon: Zap, label: "Automation", href: "/dashboard/automation" });
     }
 
     toolItems.push({ icon: ShoppingCart, label: "Purchase Leads", href: "/purchase-leads" });

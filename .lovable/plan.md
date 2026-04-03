@@ -1,55 +1,79 @@
 
-# APEX Elite Checklist — Full Implementation Plan
+# APEX Billionaire Level System Upgrade
 
-## Already Complete ✅
-1. ✅ Syne + DM Sans fonts loading
-2. ✅ Electric green (#22d3a5) primary accent
-3. ✅ Landing page hero with animated counter
-4. ✅ Commission calculator component
-5. ✅ CRM AI score badge on applicants
-6. ✅ CRM Hot Leads filter
-7. ✅ score-applicant edge function deployed
-8. ✅ ai_score columns on applications table
+## Phase 1: Database Migrations (must run first)
+- Add columns to `notification_log`: `subject`, `body`, `notification_type`, `opened_at`, `agent_id` + indexes
+- Create `lead_purchase_requests` table (agent_id, package_type, amount_paid, payment_method, transaction_id, status, confirmed_at, notes)
+- Create `automation_settings` table (name, schedule, enabled, last_run_at, last_status)
 
-## Batch 1: Database Migrations (must run first)
-- Create `field_checkins` table (GPS lat/lng, client name, outcome, voice notes, offline queue)
-- Create `churn_risk_alerts` table (agent_id, risk_score, risk_factors, resolved_at)
-- Both with RLS policies
+## Phase 2: Communication Inbox (`/dashboard/inbox`)
+- New page: email-client layout with left panel (message list) + right panel (detail view)
+- Filter by Email/SMS/Push, search by agent, date range
+- Stats bar: emails today, SMS today, delivery rate, opens
+- Realtime Supabase subscription on notification_log
+- Resend button on failed messages
+- Add to sidebar with Mail icon
 
-## Batch 2: Edge Functions (3 new functions)
-- `check-churn-risk` — daily risk scoring based on production gaps, attendance, login frequency
-- `send-licensing-sequence` — multi-step drip emails for unlicensed recruits
-- `send-proactive-coaching` — AI-powered coaching emails based on agent performance
+## Phase 3: CRM Overhaul
+- Full filter bar: Stage / License / Manager / AI Score / Performance / Stalled
+- Sort by: Name, ALP, Date, AI Score, Days in stage
+- Bulk select with bulk actions (move stage, reassign, email, SMS, deactivate)
+- Pagination at 25/page
+- Search covers phone + Instagram
+- Quick Stats bar above table
+- Inline manager reassignment per agent
+- "Manager" column with click-to-change
 
-## Batch 3: New Pages + Routes
-- `/field-checkin` — GPS check-in page with client form, outcome selector, offline localStorage queue
-- `/agent-flow` — dual-flow page showing Licensed vs Unlicensed onboarding paths
+## Phase 4: Lead Purchase System
+- APEX Leads section on landing page (2 packages: Standard $250, Premium $350)
+- Purchase confirmation flow with payment tracking
+- Admin "Pending Purchases" card on dashboard
+- `notify-lead-purchase` edge function to alert Sam
 
-## Batch 4: Dashboard Upgrades
-- System Health Monitor card on main dashboard
-- Churn Risk Banner on dashboard (pulls from churn_risk_alerts)
-- Real-time Achievement Feed card
-- Page transition animations (framer-motion fade+slide on all page routes)
+## Phase 5: Hierarchy Management
+- Visual org chart (Sam → Managers → Agents)
+- Quick reassign panel with confirmation
+- Bulk operations (reassign, promote, demote, deactivate)
+- Add "Team Structure" to sidebar (admin only)
 
-## Batch 5: Agent Portal + Leaderboard
-- Mobile bottom nav bar for agent portal
-- Leaderboard real-time Supabase subscription (postgres_changes)
-- Animated number updates on leaderboard (already have AnimatedNumber component)
+## Phase 6: Growth Dashboard Overhaul
+- Tab 1: Pipeline funnel with conversion rates per stage
+- Tab 2: Recruiter leaderboard (managers ranked by team production)
+- Tab 3: Social growth charts (Instagram tracking)
+- Tab 4: Retention analytics (30/60/90 day retention, churn by manager)
 
-## Batch 6: Apply Page + Profile Upload
-- VSL gate on Apply page (70% video watch required before form appears)
-- Face detection + auto-crop on AvatarUpload (using canvas-based approach, no face-api.js)
+## Phase 7: Seminar Dashboard Overhaul
+- Countdown timer to next seminar
+- Schedule new seminar with auto invite blast
+- Registrant list with AI scores + follow-up buttons
+- Analytics tab (attendance rate, conversion, best day)
 
-## Batch 7: Sharing + Performance
-- Achievement share graphics with Instagram Story download
-- Vite chunk splitting config (separate vendor, ui, dashboard chunks)
-- All buttons use Syne font-weight 700 (CSS rule)
-- Mobile layout optimizations for agent portal, call center, CRM, numbers
+## Phase 8: Course System Upgrade
+- Sequential module unlocking
+- 80% video watch gate before quiz
+- Playback speed controls (0.5x-2x)
+- Agent notes panel per module
+- Completion certificate (canvas-generated PDF)
+- Admin progress table with filters
+
+## Phase 9: Automation Hub (`/dashboard/automation`)
+- New page showing all automated workflows
+- Toggle on/off per automation
+- "Run Now" manual trigger
+- Last run timestamp + status
+- Automation log table
+
+## Phase 10: Daily Producer Spotlight
+- `send-daily-producer-spotlight` edge function
+- Moody premium email template with agent photo
+- SMS version to all agents
+- Achievement detection logic (40K in 90 days, Diamond Week, streaks)
+
+## Phase 11: Visual Polish
+- Sidebar redesign with proper nav sections
+- Consistent page headers across all dashboard pages
+- Landing page hero refinement
 
 ## Implementation Order
-1. Migrations (Batch 1) — must be approved before code
-2. Edge Functions (Batch 2) — deploy in parallel
-3. New Pages + Routes (Batch 3)
-4. Dashboard + Agent Portal (Batch 4+5)
-5. Apply VSL + Avatar (Batch 6)
-6. Sharing + Performance (Batch 7)
+Phases 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10 → 11
+(Database first, then features in order of impact)

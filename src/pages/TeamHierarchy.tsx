@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, ChevronDown, ChevronRight, Crown, Shield, User,
-  ArrowRightLeft, Loader2, Search, UserPlus, UserMinus,
+  ArrowRightLeft, Loader2, Search,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -42,37 +42,55 @@ export default function TeamHierarchy() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const fetch = async () => {
+    const fetchData = async () => {
+      // Fetch all active agents with user_id
       const { data: agentsData } = await supabase
         .from("agents")
-        .select("id, display_name, manager_id, is_deactivated, onboarding_stage, invited_by_manager_id")
+        .select("id, display_name, manager_id, is_deactivated, onboarding_stage, invited_by_manager_id, user_id")
         .eq("is_deactivated", false)
         .order("display_name");
 
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, avatar_url");
+      const allAgents = agentsData || [];
 
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("user_id, role");
-
-      const { data: agentUsers } = await supabase
-        .from("agents")
-        .select("id, user_id");
+      // Get profiles for avatars
+      const userIds = allAgents.filter(a => a.user_id).map(a => a.user_id!);
+      const { data: profiles } = userIds.length > 0
+        ? await supabase.from("profiles").select("user_id, avatar_url").in("user_id", userIds)
+        : { data: [] };
 
       const profileMap = new Map((profiles || []).map(p => [p.user_id, p.avatar_url]));
-      const userMap = new Map((agentUsers || []).map(a => [a.id, a.user_id]));
-      const roleMap = new Map((roles || []).map(r => [r.user_id, r.role]));
 
-      const nodes: AgentNode[] = (agentsData || []).map(a => {
-        const userId = userMap.get(a.id);
-        const role = userId ? roleMap.get(userId) : "agent";
+      // Determine roles by structure instead of user_roles table:
+      // - If agent has others pointing to them via invited_by_manager_id → manager
+      // - We'll also check user_roles for the current user's own role visibility
+      const managerIds = new Set(
+        allAgents
+          .filter(a => a.invited_by_manager_id)
+          .map(a => a.invited_by_manager_id!)
+      );
+
+      // Try to get admin roles - only works for admins due to RLS
+      let adminUserIds = new Set<string>();
+      try {
+        const { data: adminRoles } = await supabase
+          .from("user_roles")
+          .select("user_id")
+          .eq("role", "admin");
+        if (adminRoles) {
+          adminUserIds = new Set(adminRoles.map(r => r.user_id));
+        }
+      } catch { /* non-admins won't see this */ }
+
+      const nodes: AgentNode[] = allAgents.map(a => {
+        const isAdminUser = a.user_id ? adminUserIds.has(a.user_id) : false;
+        const isManager = managerIds.has(a.id);
+        const role: "admin" | "manager" | "agent" = isAdminUser ? "admin" : isManager ? "manager" : "agent";
+
         return {
           id: a.id,
           name: a.display_name || "Unknown",
-          avatarUrl: userId ? profileMap.get(userId) || undefined : undefined,
-          role: (role === "admin" ? "admin" : role === "manager" ? "manager" : "agent") as any,
+          avatarUrl: a.user_id ? profileMap.get(a.user_id) || undefined : undefined,
+          role,
           managerId: a.invited_by_manager_id || a.manager_id,
           isDeactivated: a.is_deactivated || false,
           onboardingStage: a.onboarding_stage,
@@ -90,14 +108,13 @@ export default function TeamHierarchy() {
 
       setAgents(nodes);
 
-      // Auto-expand admin + managers
+      // Auto-expand admins + managers
       const autoExpand = new Set<string>();
       nodes.filter(n => n.role === "admin" || n.role === "manager").forEach(n => autoExpand.add(n.id));
       setExpanded(autoExpand);
-
       setLoading(false);
     };
-    fetch();
+    fetchData();
   }, []);
 
   const toggleExpand = (id: string) => {
@@ -127,10 +144,9 @@ export default function TeamHierarchy() {
     setNewManagerId("");
   };
 
-  // Build tree
-  const admins = agents.filter(a => a.role === "admin" && !a.managerId);
-  const managers = agents.filter(a => a.role === "manager" || a.teamCount > 0);
-  const topLevel = admins.length > 0 ? admins : managers.filter(m => !m.managerId || !agents.find(a => a.id === m.managerId));
+  // Build tree - top level = nodes with no parent or whose parent isn't in the list
+  const agentIdSet = new Set(agents.map(a => a.id));
+  const topLevel = agents.filter(a => !a.managerId || !agentIdSet.has(a.managerId));
 
   const getChildren = (parentId: string) =>
     agents.filter(a => a.managerId === parentId && a.id !== parentId);
@@ -156,21 +172,18 @@ export default function TeamHierarchy() {
           "flex items-center gap-3 px-3 py-2.5 rounded-lg border border-transparent hover:border-border hover:bg-card/50 transition-all group",
           depth === 0 && "bg-card/30 border-border"
         )}>
-          {/* Expand toggle */}
           <button
             onClick={() => hasChildren && toggleExpand(node.id)}
-            className={cn("w-5 h-5 flex items-center justify-center", !hasChildren && "opacity-0")}
+            className={cn("w-5 h-5 flex items-center justify-center shrink-0", !hasChildren && "opacity-0")}
           >
             {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </button>
 
-          {/* Avatar */}
-          <Avatar className="h-8 w-8 border border-border">
+          <Avatar className="h-8 w-8 border border-border shrink-0">
             <AvatarImage src={node.avatarUrl || ""} />
             <AvatarFallback className="text-xs bg-muted">{node.name.charAt(0)}</AvatarFallback>
           </Avatar>
 
-          {/* Info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
               <RoleIcon role={node.role} />
@@ -181,7 +194,6 @@ export default function TeamHierarchy() {
             </div>
           </div>
 
-          {/* Actions */}
           {isAdmin && node.role !== "admin" && (
             <Button
               variant="ghost" size="sm"
@@ -193,20 +205,17 @@ export default function TeamHierarchy() {
           )}
         </div>
 
-        {/* Children */}
-        <AnimatePresence>
-          {isExpanded && hasChildren && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden"
-            >
-              {children.map(c => renderNode(c, depth + 1))}
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {isExpanded && hasChildren && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            {children.map(c => renderNode(c, depth + 1))}
+          </motion.div>
+        )}
       </div>
     );
   };
@@ -230,13 +239,11 @@ export default function TeamHierarchy() {
         </div>
       </div>
 
-      {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input placeholder="Search team members..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
         <GlassCard className="p-3 text-center">
           <Crown className="h-5 w-5 mx-auto mb-1 text-amber-400" />
@@ -255,7 +262,6 @@ export default function TeamHierarchy() {
         </GlassCard>
       </div>
 
-      {/* Tree or search results */}
       <GlassCard className="p-4">
         {search ? (
           <div className="space-y-1">
@@ -272,7 +278,6 @@ export default function TeamHierarchy() {
         )}
       </GlassCard>
 
-      {/* Reassign Dialog */}
       <Dialog open={!!reassignAgent} onOpenChange={() => setReassignAgent(null)}>
         <DialogContent>
           <DialogHeader>

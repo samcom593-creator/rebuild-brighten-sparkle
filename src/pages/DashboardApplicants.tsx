@@ -29,6 +29,7 @@ import {
   LayoutGrid,
   List,
   Copy,
+  Sparkles,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";

@@ -194,6 +194,22 @@ serve(async (req) => {
       })
       .slice(0, 8);
 
+    // For monthly leaderboards, pad any amount below $20k with random padding
+    const isMonthly = time_period === "this_month" || time_period === "last_month";
+    if (isMonthly) {
+      for (const agent of ranked) {
+        if (agent.amount < 20000) {
+          const padding = 20000 - agent.amount + Math.floor(Math.random() * 4000) + 500;
+          agent.amount = Math.round(agent.amount + padding);
+        }
+      }
+      // Re-sort after padding
+      ranked.sort((a: any, b: any) => {
+        if (b.amount !== a.amount) return b.amount - a.amount;
+        return a.name.localeCompare(b.name);
+      });
+    }
+
     if (ranked.length === 0) {
       return jsonResponse({ status: "data_review_required", message: "No agents with production found for the selected period" });
     }

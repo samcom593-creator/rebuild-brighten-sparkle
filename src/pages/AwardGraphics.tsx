@@ -130,7 +130,7 @@ function getStatusColor(status: string) {
 export default function AwardGraphics() {
   const queryClient = useQueryClient();
   const [period, setPeriod] = useState("today");
-  const [metric, setMetric] = useState("AP");
+  const [metric, setMetric] = useState("Issue Paid");
   const [awardType, setAwardType] = useState("top_producer");
   const [customDate, setCustomDate] = useState<Date | undefined>();
   const [searchTerm, setSearchTerm] = useState("");

@@ -10,6 +10,7 @@ import { Footer } from "@/components/landing/Footer";
 import { DealsTicker } from "@/components/landing/DealsTicker";
 import { ApplicationToast } from "@/components/landing/ApplicationToast";
 import { ApexLeadsSection } from "@/components/landing/ApexLeadsSection";
+import { InstagramGrowthSection } from "@/components/landing/InstagramGrowthSection";
 
 const Index = () => {
   return (
@@ -24,6 +25,7 @@ const Index = () => {
         <SystemsSection />
         <CareerPathwaySection />
         <ApexLeadsSection />
+        <InstagramGrowthSection />
         <CTASection />
       </main>
       <Footer />

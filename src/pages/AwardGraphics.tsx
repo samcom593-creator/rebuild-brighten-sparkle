@@ -40,9 +40,61 @@ const AWARD_TYPES = [
 ];
 
 const METRICS = [
-  { value: "AP", label: "AP (Annual Premium)" },
-  { value: "Issue Paid", label: "Issue Paid" },
+  { value: "Issue Paid", label: "Issued Paid" },
 ];
+
+async function svgUrlToPngBlob(svgUrl: string, width = 1080, height = 1920): Promise<Blob> {
+  const response = await fetch(svgUrl);
+  const svgText = await response.text();
+  const blob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, width, height);
+      URL.revokeObjectURL(url);
+      canvas.toBlob((pngBlob) => {
+        if (pngBlob) resolve(pngBlob);
+        else reject(new Error("PNG conversion failed"));
+      }, "image/png");
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("SVG load failed")); };
+    img.src = url;
+  });
+}
+
+async function saveAsPng(svgUrl: string, filename: string) {
+  try {
+    const pngBlob = await svgUrlToPngBlob(svgUrl);
+
+    // Try native share (mobile save-to-photos)
+    if (navigator.share && navigator.canShare) {
+      const file = new File([pngBlob], filename, { type: "image/png" });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: "APEX Award" });
+        return;
+      }
+    }
+
+    // Fallback: download
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(pngBlob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+  } catch (err) {
+    console.error("Save failed:", err);
+    // Last resort: open in new tab
+    window.open(svgUrl, "_blank");
+  }
+}
 
 interface AwardBatch {
   id: string;

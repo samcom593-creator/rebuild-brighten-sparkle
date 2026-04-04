@@ -38,7 +38,7 @@ function getDateRange(
   customDate?: string,
 ): { start: string; end: string; label: string } {
   if (customDate) {
-    return { start: customDate, end: customDate, label: `AP ${customDate}` };
+    return { start: customDate, end: customDate, label: `ISSUED PAID ${customDate}` };
   }
 
   const now = new Date();
@@ -47,17 +47,17 @@ function getDateRange(
 
   switch (timePeriod) {
     case "today":
-      return { start: today, end: today, label: "AP TODAY" };
+      return { start: today, end: today, label: "ISSUED PAID TODAY" };
     case "yesterday": {
       const y = new Date(now);
       y.setDate(y.getDate() - 1);
       const ys = y.toISOString().slice(0, 10);
-      return { start: ys, end: ys, label: "AP YESTERDAY" };
+      return { start: ys, end: ys, label: "ISSUED PAID YESTERDAY" };
     }
     case "this_week": {
       const monday = new Date(now);
       monday.setDate(monday.getDate() - ((dayOfWeek + 6) % 7));
-      return { start: monday.toISOString().slice(0, 10), end: today, label: "AP THIS WEEK" };
+      return { start: monday.toISOString().slice(0, 10), end: today, label: "ISSUED PAID THIS WEEK" };
     }
     case "last_week": {
       const lastMon = new Date(now);
@@ -67,12 +67,12 @@ function getDateRange(
       return {
         start: lastMon.toISOString().slice(0, 10),
         end: lastSun.toISOString().slice(0, 10),
-        label: "AP LAST WEEK",
+        label: "ISSUED PAID LAST WEEK",
       };
     }
     case "this_month": {
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-      return { start: firstDay.toISOString().slice(0, 10), end: today, label: "AP THIS MONTH" };
+      return { start: firstDay.toISOString().slice(0, 10), end: today, label: "ISSUED PAID THIS MONTH" };
     }
     case "last_month": {
       const firstLast = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -80,13 +80,13 @@ function getDateRange(
       return {
         start: firstLast.toISOString().slice(0, 10),
         end: lastDayLast.toISOString().slice(0, 10),
-        label: "AP LAST MONTH",
+        label: "ISSUED PAID LAST MONTH",
       };
     }
     case "custom_range":
-      return { start: customStart || today, end: customEnd || today, label: "AP CUSTOM" };
+      return { start: customStart || today, end: customEnd || today, label: "ISSUED PAID CUSTOM" };
     default:
-      return { start: today, end: today, label: "AP TODAY" };
+      return { start: today, end: today, label: "ISSUED PAID TODAY" };
   }
 }
 
@@ -619,7 +619,7 @@ serve(async (req) => {
       if (overrides.amount !== undefined) winner.amount = overrides.amount;
     }
 
-    const effectiveLabel = award_type === "top_producer_week" ? "AP THIS WEEK" : label;
+    const effectiveLabel = award_type === "top_producer_week" ? "ISSUED PAID THIS WEEK" : label;
     const topSvg = await renderTopProducerStory({
       title: "TOP PRODUCER",
       name: winner.displayName,

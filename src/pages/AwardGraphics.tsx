@@ -40,9 +40,61 @@ const AWARD_TYPES = [
 ];
 
 const METRICS = [
-  { value: "AP", label: "AP (Annual Premium)" },
-  { value: "Issue Paid", label: "Issue Paid" },
+  { value: "Issue Paid", label: "Issued Paid" },
 ];
+
+async function svgUrlToPngBlob(svgUrl: string, width = 1080, height = 1920): Promise<Blob> {
+  const response = await fetch(svgUrl);
+  const svgText = await response.text();
+  const blob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, width, height);
+      URL.revokeObjectURL(url);
+      canvas.toBlob((pngBlob) => {
+        if (pngBlob) resolve(pngBlob);
+        else reject(new Error("PNG conversion failed"));
+      }, "image/png");
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("SVG load failed")); };
+    img.src = url;
+  });
+}
+
+async function saveAsPng(svgUrl: string, filename: string) {
+  try {
+    const pngBlob = await svgUrlToPngBlob(svgUrl);
+
+    // Try native share (mobile save-to-photos)
+    if (navigator.share && navigator.canShare) {
+      const file = new File([pngBlob], filename, { type: "image/png" });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: "APEX Award" });
+        return;
+      }
+    }
+
+    // Fallback: download
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(pngBlob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+  } catch (err) {
+    console.error("Save failed:", err);
+    // Last resort: open in new tab
+    window.open(svgUrl, "_blank");
+  }
+}
 
 interface AwardBatch {
   id: string;
@@ -78,7 +130,7 @@ function getStatusColor(status: string) {
 export default function AwardGraphics() {
   const queryClient = useQueryClient();
   const [period, setPeriod] = useState("today");
-  const [metric, setMetric] = useState("AP");
+  const [metric, setMetric] = useState("Issue Paid");
   const [awardType, setAwardType] = useState("top_producer");
   const [customDate, setCustomDate] = useState<Date | undefined>();
   const [searchTerm, setSearchTerm] = useState("");
@@ -277,16 +329,8 @@ export default function AwardGraphics() {
               )}
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground font-medium">Metric</label>
-              <Select value={metric} onValueChange={setMetric}>
-                <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {METRICS.map((m) => (
-                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex items-end">
+              <Badge variant="secondary" className="h-9 px-3 text-xs font-semibold">Issued Paid</Badge>
             </div>
 
             <Button
@@ -381,11 +425,14 @@ export default function AwardGraphics() {
                         className="max-h-[500px] w-auto mx-auto hover:scale-[1.01] transition-transform duration-500"
                       />
                     </div>
-                    <a href={generatedResult.files.top_producer_story} download target="_blank" rel="noopener noreferrer">
-                      <Button variant="outline" size="sm" className="w-full gap-2 hover:bg-primary/5">
-                        <Download className="h-4 w-4" />Download
-                      </Button>
-                    </a>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full gap-2 hover:bg-primary/5"
+                      onClick={() => saveAsPng(generatedResult.files.top_producer_story, `apex_award_${Date.now()}.png`)}
+                    >
+                      <Download className="h-4 w-4" />Save to Photos
+                    </Button>
                   </motion.div>
                 )}
                 {generatedResult.files?.leaderboard_story && (
@@ -403,11 +450,14 @@ export default function AwardGraphics() {
                         className="max-h-[500px] w-auto mx-auto hover:scale-[1.01] transition-transform duration-500"
                       />
                     </div>
-                    <a href={generatedResult.files.leaderboard_story} download target="_blank" rel="noopener noreferrer">
-                      <Button variant="outline" size="sm" className="w-full gap-2 hover:bg-primary/5">
-                        <Download className="h-4 w-4" />Download
-                      </Button>
-                    </a>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full gap-2 hover:bg-primary/5"
+                      onClick={() => saveAsPng(generatedResult.files.leaderboard_story, `apex_leaderboard_${Date.now()}.png`)}
+                    >
+                      <Download className="h-4 w-4" />Save to Photos
+                    </Button>
                   </motion.div>
                 )}
               </div>
@@ -501,12 +551,15 @@ export default function AwardGraphics() {
         <DialogContent className="max-w-[95vw] max-h-[95vh] p-2 bg-black/95 border-border/20">
           {fullscreenImage && (
             <div className="flex flex-col items-center gap-3">
-              <img src={fullscreenImage} alt="Award fullscreen" className="max-h-[85vh] w-auto rounded-lg" />
-              <a href={fullscreenImage} download target="_blank" rel="noopener noreferrer">
-                <Button className="gap-2 bg-gradient-to-r from-amber-600 to-orange-600 text-white">
-                  <Download className="h-4 w-4" />Download
+              <img src={fullscreenImage} alt="Award fullscreen" className="max-h-[80vh] w-auto rounded-lg" />
+              <div className="flex gap-2">
+                <Button
+                  className="gap-2 bg-gradient-to-r from-amber-600 to-orange-600 text-white"
+                  onClick={() => saveAsPng(fullscreenImage, `apex_award_${Date.now()}.png`)}
+                >
+                  <Download className="h-4 w-4" />Save to Photos
                 </Button>
-              </a>
+              </div>
             </div>
           )}
         </DialogContent>

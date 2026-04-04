@@ -1,10 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 const DISPLAY_ALIASES: Record<string, string> = {
@@ -15,6 +14,19 @@ const DISPLAY_ALIASES: Record<string, string> = {
   "KJ Vaughns": "KJ",
 };
 
+const STORY_WIDTH = 1080;
+const STORY_HEIGHT = 1920;
+const COLORS = {
+  background: "#000000",
+  white: "#FFFFFF",
+  gold: "#C9A96E",
+  green: "#00FF88",
+  yellow: "#F4D35E",
+  gray: "#5B5B5B",
+  lightGray: "#EDEDED",
+  darkText: "#101010",
+};
+
 function getDisplayName(fullName: string): string {
   return DISPLAY_ALIASES[fullName] || fullName.split(" ")[0].toUpperCase();
 }
@@ -23,11 +35,12 @@ function getDateRange(
   timePeriod: string,
   customStart?: string,
   customEnd?: string,
-  customDate?: string
+  customDate?: string,
 ): { start: string; end: string; label: string } {
   if (customDate) {
     return { start: customDate, end: customDate, label: `AP ${customDate}` };
   }
+
   const now = new Date();
   const today = now.toISOString().slice(0, 10);
   const dayOfWeek = now.getDay();
@@ -51,7 +64,11 @@ function getDateRange(
       lastMon.setDate(lastMon.getDate() - ((dayOfWeek + 6) % 7) - 7);
       const lastSun = new Date(lastMon);
       lastSun.setDate(lastSun.getDate() + 6);
-      return { start: lastMon.toISOString().slice(0, 10), end: lastSun.toISOString().slice(0, 10), label: "AP LAST WEEK" };
+      return {
+        start: lastMon.toISOString().slice(0, 10),
+        end: lastSun.toISOString().slice(0, 10),
+        label: "AP LAST WEEK",
+      };
     }
     case "this_month": {
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -60,7 +77,11 @@ function getDateRange(
     case "last_month": {
       const firstLast = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       const lastDayLast = new Date(now.getFullYear(), now.getMonth(), 0);
-      return { start: firstLast.toISOString().slice(0, 10), end: lastDayLast.toISOString().slice(0, 10), label: "AP LAST MONTH" };
+      return {
+        start: firstLast.toISOString().slice(0, 10),
+        end: lastDayLast.toISOString().slice(0, 10),
+        label: "AP LAST MONTH",
+      };
     }
     case "custom_range":
       return { start: customStart || today, end: customEnd || today, label: "AP CUSTOM" };
@@ -73,16 +94,119 @@ function formatCurrency(amount: number): string {
   return "$" + Math.round(amount).toLocaleString("en-US");
 }
 
+function jsonResponse(data: unknown) {
+  return new Response(JSON.stringify(data), {
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+function escapeXml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function initialsFromName(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || "")
+    .join("") || "?";
+}
+
+function toBase64(bytes: Uint8Array): string {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
+
+function guessImageType(url: string): string {
+  const lower = url.toLowerCase();
+  if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+  if (lower.endsWith(".webp")) return "image/webp";
+  return "image/png";
+}
+
+async function fetchImageAsDataUrl(url: string | null | undefined): Promise<string | null> {
+  if (!url) return null;
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.warn("Could not fetch image:", url, response.status);
+      return null;
+    }
+
+    const contentType = response.headers.get("content-type") || guessImageType(url);
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    return `data:${contentType};base64,${toBase64(bytes)}`;
+  } catch (error) {
+    console.warn("Image fetch failed:", url, error);
+    return null;
+  }
+}
+
+function buildCircleVisual({
+  id,
+  cx,
+  cy,
+  radius,
+  photoDataUrl,
+  fallbackLabel,
+  borderColor = COLORS.gold,
+  fill = COLORS.gray,
+  fontSize = 80,
+}: {
+  id: string;
+  cx: number;
+  cy: number;
+  radius: number;
+  photoDataUrl?: string | null;
+  fallbackLabel: string;
+  borderColor?: string;
+  fill?: string;
+  fontSize?: number;
+}) {
+  const clipId = `clip-${id}`;
+  const defs = photoDataUrl
+    ? `<clipPath id="${clipId}"><circle cx="${cx}" cy="${cy}" r="${radius}" /></clipPath>`
+    : "";
+
+  const content = photoDataUrl
+    ? `<image href="${photoDataUrl}" x="${cx - radius}" y="${cy - radius}" width="${radius * 2}" height="${radius * 2}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${clipId})" />`
+    : `
+      <circle cx="${cx}" cy="${cy}" r="${radius}" fill="${fill}" />
+      <text x="${cx}" y="${cy + fontSize / 3}" fill="${COLORS.white}" font-size="${fontSize}" font-weight="800" text-anchor="middle" font-family="Arial, Helvetica, sans-serif">${escapeXml(fallbackLabel)}</text>
+    `;
+
+  const ring = `<circle cx="${cx}" cy="${cy}" r="${radius + 6}" fill="none" stroke="${borderColor}" stroke-width="8" />`;
+  return { defs, content: `${content}${ring}` };
+}
+
+async function uploadSvg(supabase: any, path: string, svg: string) {
+  const bytes = new TextEncoder().encode(svg);
+  const { error } = await supabase.storage.from("award-graphics").upload(path, bytes, {
+    contentType: "image/svg+xml",
+    upsert: true,
+  });
+
+  if (error) throw new Error(`Upload failed: ${error.message}`);
+  return supabase.storage.from("award-graphics").getPublicUrl(path).data.publicUrl;
+}
+
 async function getAwardProfiles(supabase: any, agentIds: string[]) {
   if (agentIds.length === 0) return {};
   const { data } = await supabase
     .from("agent_award_profiles")
     .select("agent_id, photo_url, instagram_handle, display_name_override")
     .in("agent_id", agentIds);
+
   const map: Record<string, any> = {};
-  for (const p of data || []) {
-    map[p.agent_id] = p;
-  }
+  for (const profile of data || []) map[profile.agent_id] = profile;
   return map;
 }
 
@@ -96,11 +220,10 @@ async function getHiresData(supabase: any, start: string, end: string) {
     .not("assigned_agent_id", "is", null);
 
   if (error) throw new Error(`Hires query failed: ${error.message}`);
-  
+
   const counts: Record<string, number> = {};
-  for (const row of data || []) {
-    counts[row.assigned_agent_id] = (counts[row.assigned_agent_id] || 0) + 1;
-  }
+  for (const row of data || []) counts[row.assigned_agent_id] = (counts[row.assigned_agent_id] || 0) + 1;
+
   return Object.entries(counts)
     .map(([agent_id, count]) => ({ agent_id, total_hires: count as number }))
     .sort((a, b) => b.total_hires - a.total_hires);
@@ -119,10 +242,299 @@ async function getFirstDealData(supabase: any, date: string) {
   return data?.[0] || null;
 }
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+async function getAgentMap(supabase: any, agentIds: string[]) {
+  const { data: agents } = await supabase
+    .from("agents")
+    .select("id, display_name, user_id, profile:profiles!agents_profile_id_fkey(full_name, avatar_url, instagram_handle)")
+    .in("id", agentIds);
+
+  const userIds = (agents || []).filter((a: any) => a.user_id).map((a: any) => a.user_id);
+  const { data: profilesByUser } = userIds.length > 0
+    ? await supabase.from("profiles").select("user_id, full_name, avatar_url, instagram_handle").in("user_id", userIds)
+    : { data: [] };
+
+  const map: Record<string, { name: string; avatar_url: string | null; instagram: string | null }> = {};
+  for (const agent of agents || []) {
+    const profileByForeignKey = agent.profile as any;
+    const profileByUserId = (profilesByUser || []).find((p: any) => p.user_id === agent.user_id);
+    map[agent.id] = {
+      name: agent.display_name || profileByForeignKey?.full_name || profileByUserId?.full_name || "Unknown",
+      avatar_url: profileByForeignKey?.avatar_url || profileByUserId?.avatar_url || null,
+      instagram: profileByForeignKey?.instagram_handle || profileByUserId?.instagram_handle || null,
+    };
   }
+  return map;
+}
+
+async function renderTopProducerStory({
+  title,
+  name,
+  amountText,
+  subtitle,
+  instagram,
+  photoUrl,
+}: {
+  title: string;
+  name: string;
+  amountText: string;
+  subtitle: string;
+  instagram?: string | null;
+  photoUrl?: string | null;
+}) {
+  const photoDataUrl = await fetchImageAsDataUrl(photoUrl);
+  const visual = buildCircleVisual({
+    id: "winner",
+    cx: 540,
+    cy: 825,
+    radius: 165,
+    photoDataUrl,
+    fallbackLabel: initialsFromName(name),
+    borderColor: COLORS.gold,
+    fontSize: 120,
+  });
+
+  const instagramLine = instagram
+    ? `<text x="540" y="1338" fill="${COLORS.white}" font-size="56" font-weight="700" text-anchor="middle" font-family="Arial, Helvetica, sans-serif">@${escapeXml(instagram.replace(/^@/, ""))}</text>`
+    : "";
+
+  return `
+    <svg width="${STORY_WIDTH}" height="${STORY_HEIGHT}" viewBox="0 0 ${STORY_WIDTH} ${STORY_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
+      <defs>${visual.defs}</defs>
+      <rect width="100%" height="100%" fill="${COLORS.background}" />
+      <text x="540" y="168" fill="${COLORS.gold}" font-size="42" letter-spacing="6" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif">${escapeXml(title)}</text>
+      <text x="540" y="320" fill="${COLORS.white}" font-size="124" font-weight="900" text-anchor="middle" font-family="Arial Black, Arial, Helvetica, sans-serif">${escapeXml(name.toUpperCase())}</text>
+      ${visual.content}
+      <text x="540" y="1228" fill="${COLORS.green}" font-size="110" font-weight="900" text-anchor="middle" font-family="Arial Black, Arial, Helvetica, sans-serif">${escapeXml(amountText)}</text>
+      ${instagramLine}
+      <text x="540" y="1424" fill="${COLORS.white}" font-size="42" text-anchor="middle" font-family="Arial, Helvetica, sans-serif">${escapeXml(subtitle)}</text>
+      <text x="540" y="1768" fill="${COLORS.white}" font-size="38" letter-spacing="10" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif">APEX FINANCIAL</text>
+    </svg>
+  `;
+}
+
+async function renderLeaderboardStory(ranked: any[], label: string) {
+  const enriched = await Promise.all(
+    ranked.slice(0, 8).map(async (entry: any) => ({
+      ...entry,
+      photoDataUrl: await fetchImageAsDataUrl(entry.avatar_url),
+    })),
+  );
+
+  const defs: string[] = [];
+  const content: string[] = [];
+
+  const topLayouts = [
+    { cx: 540, cy: 410, radius: 108, nameY: 590, amountY: 638, crown: true },
+    { cx: 320, cy: 450, radius: 82, nameY: 602, amountY: 646, crown: false },
+    { cx: 760, cy: 450, radius: 82, nameY: 602, amountY: 646, crown: false },
+  ];
+
+  enriched.slice(0, 3).forEach((entry: any, index: number) => {
+    const layout = topLayouts[index];
+    const visual = buildCircleVisual({
+      id: `top-${index + 1}`,
+      cx: layout.cx,
+      cy: layout.cy,
+      radius: layout.radius,
+      photoDataUrl: entry.photoDataUrl,
+      fallbackLabel: initialsFromName(entry.displayName),
+      borderColor: index === 0 ? COLORS.gold : "#8C8C8C",
+      fontSize: index === 0 ? 72 : 56,
+    });
+
+    defs.push(visual.defs);
+    if (layout.crown) content.push(`<text x="${layout.cx}" y="250" fill="${COLORS.gold}" font-size="48" text-anchor="middle">♛</text>`);
+    content.push(visual.content);
+    content.push(`<text x="${layout.cx}" y="${layout.nameY}" fill="${COLORS.white}" font-size="48" font-weight="800" text-anchor="middle" font-family="Arial, Helvetica, sans-serif">${escapeXml(entry.displayName)}</text>`);
+    content.push(`<text x="${layout.cx}" y="${layout.amountY}" fill="${COLORS.yellow}" font-size="40" font-weight="800" text-anchor="middle" font-family="Arial, Helvetica, sans-serif">${escapeXml(formatCurrency(entry.amount))}</text>`);
+  });
+
+  enriched.slice(3, 8).forEach((entry: any, index: number) => {
+    const rank = index + 4;
+    const y = 780 + index * 152;
+    const circleX = 330;
+    const circleY = y + 46;
+    const visual = buildCircleVisual({
+      id: `bar-${rank}`,
+      cx: circleX,
+      cy: circleY,
+      radius: 24,
+      photoDataUrl: entry.photoDataUrl,
+      fallbackLabel: initialsFromName(entry.displayName),
+      borderColor: "#7A7A7A",
+      fill: COLORS.gray,
+      fontSize: 24,
+    });
+
+    defs.push(visual.defs);
+    content.push(`<rect x="120" y="${y}" width="840" height="92" rx="18" fill="${COLORS.lightGray}" />`);
+    content.push(`<text x="180" y="${y + 58}" fill="${COLORS.darkText}" font-size="42" font-weight="800" text-anchor="middle" font-family="Arial, Helvetica, sans-serif">#${rank}</text>`);
+    content.push(visual.content);
+    content.push(`<text x="380" y="${y + 58}" fill="${COLORS.darkText}" font-size="40" font-weight="800" font-family="Arial, Helvetica, sans-serif">${escapeXml(entry.displayName)}</text>`);
+    content.push(`<text x="920" y="${y + 58}" fill="${COLORS.darkText}" font-size="38" font-weight="700" text-anchor="end" font-family="Arial, Helvetica, sans-serif">${escapeXml(formatCurrency(entry.amount))}</text>`);
+  });
+
+  return `
+    <svg width="${STORY_WIDTH}" height="${STORY_HEIGHT}" viewBox="0 0 ${STORY_WIDTH} ${STORY_HEIGHT}" xmlns="http://www.w3.org/2000/svg">
+      <defs>${defs.join("")}</defs>
+      <rect width="100%" height="100%" fill="${COLORS.background}" />
+      <text x="540" y="136" fill="${COLORS.gold}" font-size="64" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif">LEADERBOARD</text>
+      <text x="540" y="196" fill="${COLORS.white}" font-size="34" letter-spacing="2" text-anchor="middle" font-family="Arial, Helvetica, sans-serif">${escapeXml(label)}</text>
+      ${content.join("")}
+      <text x="540" y="1810" fill="${COLORS.white}" font-size="34" letter-spacing="10" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif">APEX FINANCIAL</text>
+    </svg>
+  `;
+}
+
+async function handleFirstDeal(
+  supabase: any,
+  date: string,
+  label: string,
+  time_period: string,
+  metric_type: string,
+  auto_publish: boolean,
+  overrides: any,
+) {
+  const firstDeal = await getFirstDealData(supabase, date);
+  if (!firstDeal) return jsonResponse({ status: "data_review_required", message: "No deals found for this date" });
+
+  const [agentMap, awardProfiles] = await Promise.all([
+    getAgentMap(supabase, [firstDeal.agent_id]),
+    getAwardProfiles(supabase, [firstDeal.agent_id]),
+  ]);
+
+  const awardProfile = awardProfiles[firstDeal.agent_id];
+  const agent = agentMap[firstDeal.agent_id];
+  let displayName = awardProfile?.display_name_override || getDisplayName(agent?.name || "Unknown");
+  let amount = Number(firstDeal.aop) || 0;
+  let instagram = awardProfile?.instagram_handle || agent?.instagram || null;
+
+  if (overrides) {
+    if (overrides.name) displayName = overrides.name;
+    if (overrides.amount !== undefined) amount = overrides.amount;
+    if (overrides.instagram) instagram = overrides.instagram;
+  }
+
+  const svg = await renderTopProducerStory({
+    title: "FIRST DEAL TODAY",
+    name: displayName,
+    amountText: formatCurrency(amount),
+    subtitle: label,
+    instagram,
+    photoUrl: awardProfile?.photo_url || agent?.avatar_url || null,
+  });
+
+  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "_");
+  const path = `apex_first_deal_${dateStr}.svg`;
+  const url = await uploadSvg(supabase, path, svg);
+
+  const { data: batch } = await supabase.from("award_batches").insert({
+    time_period,
+    metric_type,
+    period_start: date,
+    period_end: date,
+    winner_agent_id: firstDeal.agent_id,
+    winner_name: displayName,
+    winner_amount: amount,
+    top_agents: [{ rank: 1, name: displayName, amount, formatted_amount: formatCurrency(amount) }],
+    top_producer_file: path,
+    status: auto_publish ? "published" : "ready_for_review",
+    source_data: { label, type: "first_deal", generated_at: new Date().toISOString(), renderer: "svg" },
+    award_type: "first_deal",
+  }).select().single();
+
+  return jsonResponse({
+    status: "success",
+    award_type: "first_deal",
+    top_producer: { agent_id: firstDeal.agent_id, name: displayName, amount, formatted_amount: formatCurrency(amount), instagram },
+    files: { top_producer_story: url },
+    archive: { award_batch_id: batch?.id, saved: true },
+  });
+}
+
+async function handleMostHires(
+  supabase: any,
+  start: string,
+  end: string,
+  label: string,
+  time_period: string,
+  metric_type: string,
+  award_type: string,
+  auto_publish: boolean,
+  overrides: any,
+) {
+  const hiresData = await getHiresData(supabase, start, end);
+  if (hiresData.length === 0) return jsonResponse({ status: "data_review_required", message: "No hires found for this period" });
+
+  const agentIds = hiresData.map((hire) => hire.agent_id);
+  const [agentMap, awardProfiles] = await Promise.all([
+    getAgentMap(supabase, agentIds),
+    getAwardProfiles(supabase, agentIds),
+  ]);
+
+  const winner = hiresData[0];
+  const awardProfile = awardProfiles[winner.agent_id];
+  const agent = agentMap[winner.agent_id];
+  let displayName = awardProfile?.display_name_override || getDisplayName(agent?.name || "Unknown");
+  let hireCount = winner.total_hires;
+  let instagram = awardProfile?.instagram_handle || agent?.instagram || null;
+
+  if (overrides) {
+    if (overrides.name) displayName = overrides.name;
+    if (overrides.instagram) instagram = overrides.instagram;
+  }
+
+  const svg = await renderTopProducerStory({
+    title: award_type === "most_hires_week" ? "MOST HIRES THIS WEEK" : "MOST HIRES THIS MONTH",
+    name: displayName,
+    amountText: `${hireCount} HIRES`,
+    subtitle: label,
+    instagram,
+    photoUrl: awardProfile?.photo_url || agent?.avatar_url || null,
+  });
+
+  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "_");
+  const path = `apex_${award_type}_${dateStr}.svg`;
+  const url = await uploadSvg(supabase, path, svg);
+
+  const topAgents = hiresData.slice(0, 8).map((hire, index) => {
+    const currentProfile = awardProfiles[hire.agent_id];
+    const currentAgent = agentMap[hire.agent_id];
+    return {
+      rank: index + 1,
+      name: currentProfile?.display_name_override || getDisplayName(currentAgent?.name || "Unknown"),
+      amount: hire.total_hires,
+      formatted_amount: `${hire.total_hires} hires`,
+    };
+  });
+
+  const { data: batch } = await supabase.from("award_batches").insert({
+    time_period,
+    metric_type,
+    period_start: start,
+    period_end: end,
+    winner_agent_id: winner.agent_id,
+    winner_name: displayName,
+    winner_amount: hireCount,
+    top_agents: topAgents,
+    top_producer_file: path,
+    status: auto_publish ? "published" : "ready_for_review",
+    source_data: { label, type: award_type, generated_at: new Date().toISOString(), renderer: "svg" },
+    award_type,
+  }).select().single();
+
+  return jsonResponse({
+    status: "success",
+    award_type,
+    top_producer: { agent_id: winner.agent_id, name: displayName, amount: hireCount, formatted_amount: `${hireCount} hires`, instagram },
+    leaderboard: topAgents,
+    files: { top_producer_story: url },
+    archive: { award_batch_id: batch?.id, saved: true },
+  });
+}
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const {
@@ -138,28 +550,19 @@ serve(async (req) => {
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const { start, end, label } = getDateRange(time_period, custom_start, custom_end, custom_date);
 
-    // Route based on award_type
     if (award_type === "first_deal") {
-      return await handleFirstDeal(supabase, start, label, time_period, metric_type, auto_publish, overrides, LOVABLE_API_KEY);
+      return await handleFirstDeal(supabase, start, label, time_period, metric_type, auto_publish, overrides);
     }
+
     if (award_type === "most_hires_week" || award_type === "most_hires_month") {
-      return await handleMostHires(supabase, start, end, label, time_period, metric_type, award_type, auto_publish, overrides, LOVABLE_API_KEY);
+      return await handleMostHires(supabase, start, end, label, time_period, metric_type, award_type, auto_publish, overrides);
     }
 
-    // Default: top_producer, leaderboard, top_producer_week all use ALP data
-    const { data: prodData, error: prodError } = await supabase.rpc(
-      "get_agent_production_stats",
-      { start_date: start, end_date: end }
-    );
-
+    const { data: prodData, error: prodError } = await supabase.rpc("get_agent_production_stats", { start_date: start, end_date: end });
     if (prodError) throw new Error(`Production query failed: ${prodError.message}`);
     if (!prodData || prodData.length === 0) {
       return jsonResponse({ status: "data_review_required", message: "No production data found for the selected period" });
@@ -173,17 +576,17 @@ serve(async (req) => {
 
     const ranked = prodData
       .map((p: any) => {
-        const ap = awardProfiles[p.agent_id];
-        const base = agentMap[p.agent_id];
-        const name = ap?.display_name_override || base?.name || "Unknown";
+        const awardProfile = awardProfiles[p.agent_id];
+        const agent = agentMap[p.agent_id];
+        const name = awardProfile?.display_name_override || agent?.name || "Unknown";
         return {
           agent_id: p.agent_id,
           amount: Number(p.total_alp) || 0,
           deals: Number(p.total_deals) || 0,
           name,
-          displayName: ap?.display_name_override || getDisplayName(base?.name || "Unknown"),
-          avatar_url: ap?.photo_url || base?.avatar_url || null,
-          instagram: ap?.instagram_handle || base?.instagram || null,
+          displayName: awardProfile?.display_name_override || getDisplayName(agent?.name || "Unknown"),
+          avatar_url: awardProfile?.photo_url || agent?.avatar_url || null,
+          instagram: awardProfile?.instagram_handle || agent?.instagram || null,
         };
       })
       .filter((p: any) => p.amount > 0)
@@ -194,7 +597,6 @@ serve(async (req) => {
       })
       .slice(0, 8);
 
-    // For monthly leaderboards, pad any amount below $20k with random padding
     const isMonthly = time_period === "this_month" || time_period === "last_month";
     if (isMonthly) {
       for (const agent of ranked) {
@@ -203,11 +605,7 @@ serve(async (req) => {
           agent.amount = Math.round(agent.amount + padding);
         }
       }
-      // Re-sort after padding
-      ranked.sort((a: any, b: any) => {
-        if (b.amount !== a.amount) return b.amount - a.amount;
-        return a.name.localeCompare(b.name);
-      });
+      ranked.sort((a: any, b: any) => (b.amount !== a.amount ? b.amount - a.amount : a.name.localeCompare(b.name)));
     }
 
     if (ranked.length === 0) {
@@ -215,7 +613,6 @@ serve(async (req) => {
     }
 
     const winner = ranked[0];
-    // Apply overrides
     if (overrides) {
       if (overrides.name) winner.displayName = overrides.name;
       if (overrides.instagram) winner.instagram = overrides.instagram;
@@ -223,358 +620,84 @@ serve(async (req) => {
     }
 
     const effectiveLabel = award_type === "top_producer_week" ? "AP THIS WEEK" : label;
+    const topSvg = await renderTopProducerStory({
+      title: "TOP PRODUCER",
+      name: winner.displayName,
+      amountText: formatCurrency(winner.amount),
+      subtitle: effectiveLabel,
+      instagram: winner.instagram,
+      photoUrl: winner.avatar_url,
+    });
 
-    // Generate images - build multimodal messages with real photos when available
-    const topProducerPrompt = buildTopProducerPrompt(winner, effectiveLabel);
-    const topProducerMessages = await buildMultimodalMessage(topProducerPrompt, winner.avatar_url ? [winner.avatar_url] : []);
-    
-    let leaderboardPrompt: string | null = null;
+    let leaderboardSvg: string | null = null;
     if (award_type === "top_producer" || award_type === "top_producer_week" || award_type === "leaderboard") {
-      leaderboardPrompt = buildLeaderboardPrompt(ranked, effectiveLabel);
+      leaderboardSvg = await renderLeaderboardStory(ranked, effectiveLabel);
     }
 
-    const imagePromises: Promise<Response>[] = [
-      fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "google/gemini-3-pro-image-preview", messages: topProducerMessages, modalities: ["image", "text"] }),
-      }),
-    ];
-
-    if (leaderboardPrompt) {
-      // Collect top 3 photos for leaderboard
-      const top3Photos = ranked.slice(0, 3).map((a: any) => a.avatar_url).filter(Boolean);
-      const lbMessages = await buildMultimodalMessage(leaderboardPrompt, top3Photos);
-      imagePromises.push(
-        fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ model: "google/gemini-3-pro-image-preview", messages: lbMessages, modalities: ["image", "text"] }),
-        })
-      );
-    }
-
-    const results = await Promise.all(imagePromises);
-    for (const r of results) {
-      if (!r.ok) throw new Error(`Image generation failed [${r.status}]: ${await r.text()}`);
-    }
-
-    const topProducerData = await results[0].json();
-    const topProducerB64 = topProducerData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-    if (!topProducerB64) throw new Error("AI did not return top producer image");
-
-    let leaderboardB64: string | null = null;
-    if (results.length > 1) {
-      const lbData = await results[1].json();
-      leaderboardB64 = lbData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-    }
-
-    // Upload
     const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "_");
     const slug = `${award_type}_${metric_type.toLowerCase().replace(/\s+/g, "_")}_${time_period}_${dateStr}`;
 
-    const topPath = `apex_${slug}_top.png`;
-    const topBytes = b64ToBytes(topProducerB64);
-    const { error: topErr } = await supabase.storage.from("award-graphics").upload(topPath, topBytes, { contentType: "image/png", upsert: true });
-    if (topErr) throw new Error(`Upload failed: ${topErr.message}`);
-    const topUrl = supabase.storage.from("award-graphics").getPublicUrl(topPath).data.publicUrl;
+    const topPath = `apex_${slug}_top.svg`;
+    const topUrl = await uploadSvg(supabase, topPath, topSvg);
 
     let lbPath: string | null = null;
     let lbUrl: string | null = null;
-    if (leaderboardB64) {
-      lbPath = `apex_${slug}_lb.png`;
-      const lbBytes = b64ToBytes(leaderboardB64);
-      const { error: lbErr } = await supabase.storage.from("award-graphics").upload(lbPath, lbBytes, { contentType: "image/png", upsert: true });
-      if (lbErr) throw new Error(`Leaderboard upload failed: ${lbErr.message}`);
-      lbUrl = supabase.storage.from("award-graphics").getPublicUrl(lbPath).data.publicUrl;
+    if (leaderboardSvg) {
+      lbPath = `apex_${slug}_lb.svg`;
+      lbUrl = await uploadSvg(supabase, lbPath, leaderboardSvg);
     }
 
-    const topAgents = ranked.map((a: any, i: number) => ({
-      rank: i + 1, agent_id: a.agent_id, name: a.displayName, full_name: a.name,
-      amount: a.amount, formatted_amount: formatCurrency(a.amount), instagram: a.instagram,
+    const topAgents = ranked.map((entry: any, index: number) => ({
+      rank: index + 1,
+      agent_id: entry.agent_id,
+      name: entry.displayName,
+      full_name: entry.name,
+      amount: entry.amount,
+      formatted_amount: formatCurrency(entry.amount),
+      instagram: entry.instagram,
     }));
 
     const { data: batch, error: batchError } = await supabase.from("award_batches").insert({
-      time_period, metric_type, period_start: start, period_end: end,
-      winner_agent_id: winner.agent_id, winner_name: winner.displayName, winner_amount: winner.amount,
-      top_agents: topAgents, top_producer_file: topPath, leaderboard_file: lbPath,
+      time_period,
+      metric_type,
+      period_start: start,
+      period_end: end,
+      winner_agent_id: winner.agent_id,
+      winner_name: winner.displayName,
+      winner_amount: winner.amount,
+      top_agents: topAgents,
+      top_producer_file: topPath,
+      leaderboard_file: lbPath,
       status: auto_publish ? "published" : "ready_for_review",
-      source_data: { label: effectiveLabel, generated_at: new Date().toISOString() },
+      source_data: { label: effectiveLabel, generated_at: new Date().toISOString(), renderer: "svg" },
       award_type,
     }).select().single();
 
     if (batchError) throw new Error(`Archive insert failed: ${batchError.message}`);
 
     return jsonResponse({
-      status: "success", award_type, time_period, metric_type, period_label: effectiveLabel,
-      top_producer: { agent_id: winner.agent_id, name: winner.displayName, full_name: winner.name, amount: winner.amount, formatted_amount: formatCurrency(winner.amount), instagram: winner.instagram },
+      status: "success",
+      award_type,
+      time_period,
+      metric_type,
+      period_label: effectiveLabel,
+      top_producer: {
+        agent_id: winner.agent_id,
+        name: winner.displayName,
+        full_name: winner.name,
+        amount: winner.amount,
+        formatted_amount: formatCurrency(winner.amount),
+        instagram: winner.instagram,
+      },
       leaderboard: topAgents,
       files: { top_producer_story: topUrl, leaderboard_story: lbUrl },
       archive: { award_batch_id: batch.id, saved: true },
     });
   } catch (error) {
     console.error("generate-award-graphics error:", error);
-    return new Response(
-      JSON.stringify({ status: "error", error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ status: "error", error: error instanceof Error ? error.message : "Unknown error" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
-
-// --- Helpers ---
-
-function jsonResponse(data: any) {
-  return new Response(JSON.stringify(data), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-}
-
-function b64ToBytes(b64: string): Uint8Array {
-  const raw = b64.replace(/^data:image\/\w+;base64,/, "");
-  return Uint8Array.from(atob(raw), (c) => c.charCodeAt(0));
-}
-
-async function getAgentMap(supabase: any, agentIds: string[]) {
-  const { data: agents } = await supabase
-    .from("agents")
-    .select("id, display_name, user_id, profile:profiles!agents_profile_id_fkey(full_name, avatar_url, instagram_handle)")
-    .in("id", agentIds);
-
-  const userIds = (agents || []).filter((a: any) => a.user_id).map((a: any) => a.user_id);
-  const { data: profilesByUser } = userIds.length > 0
-    ? await supabase.from("profiles").select("user_id, full_name, avatar_url, instagram_handle").in("user_id", userIds)
-    : { data: [] };
-
-  const map: Record<string, { name: string; avatar_url: string | null; instagram: string | null }> = {};
-  for (const a of agents || []) {
-    const pfk = a.profile as any;
-    const pu = (profilesByUser || []).find((p: any) => p.user_id === a.user_id);
-    map[a.id] = {
-      name: a.display_name || pfk?.full_name || pu?.full_name || "Unknown",
-      avatar_url: pfk?.avatar_url || pu?.avatar_url || null,
-      instagram: pfk?.instagram_handle || pu?.instagram_handle || null,
-    };
-  }
-  return map;
-}
-
-async function buildMultimodalMessage(textPrompt: string, photoUrls: string[]): Promise<any[]> {
-  const content: any[] = [{ type: "text", text: textPrompt }];
-  
-  for (const url of photoUrls) {
-    if (!url) continue;
-    try {
-      content.push({
-        type: "image_url",
-        image_url: { url }
-      });
-    } catch (e) {
-      console.log("Could not include photo:", url, e);
-    }
-  }
-  
-  return [{ role: "user", content }];
-}
-
-function buildTopProducerPrompt(winner: any, label: string) {
-  const igLine = winner.instagram ? `\n- Below the amount: "@${winner.instagram}" in white text` : "";
-  const photoInstruction = winner.avatar_url
-    ? `- Center of the graphic: a large circular frame containing the provided profile photo of this person. Crop and fit the photo into a perfect circle. Add a thin gold/green border ring around the circle.`
-    : `- Center of the graphic: a large circular placeholder - make it a dark gray circle with the initials "${winner.displayName.charAt(0)}" in white`;
-  return `Create an Instagram Story graphic (1080x1920 pixels, vertical portrait).
-
-EXACT DESIGN REQUIREMENTS - follow precisely:
-- Pure solid BLACK background (#000000)
-- At the very top center: small elegant text "TOP PRODUCER" in a luxury serif font (gold/champagne color)
-- Below that: the name "${winner.displayName}" in large bold uppercase condensed white sans-serif text, centered
-${photoInstruction}
-- Below the photo: the amount "${formatCurrency(winner.amount)}" in large bold bright green text (#00FF88)${igLine}
-- Below the amount: "${label}" in smaller white text
-- At the very bottom center: "APEX FINANCIAL" in elegant spaced-out white text
-- Style: clean, sharp, luxury sales team aesthetic
-- No decorative elements, no gradients, no patterns - just clean typography on black
-- Make it look like a premium, high-status sales team award post`;
-}
-
-function buildLeaderboardPrompt(ranked: any[], label: string) {
-  const photoInstructions = ranked.slice(0, 3).map((a: any, i: number) => {
-    const pos = i === 0 ? "center, largest" : i === 1 ? "left side, smaller" : "right side, smaller";
-    const crown = i === 0 ? ", a small gold crown icon above it" : "";
-    const amountColor = i === 0 ? "bright yellow/gold" : "yellow";
-    if (a.avatar_url) {
-      return `- #${i + 1} (${pos}): Large circular frame containing the provided profile photo (photo #${i + 1}). Crop into a perfect circle${crown}, name "${a.displayName}" in bold white text below, amount "${formatCurrency(a.amount)}" in ${amountColor}`;
-    }
-    return `- #${i + 1} (${pos}): Dark gray circle with initial "${a.displayName.charAt(0)}"${crown}, name "${a.displayName}" below, amount "${formatCurrency(a.amount)}" in ${amountColor}`;
-  }).join("\n");
-
-  return `Create an Instagram Story graphic (1080x1920 pixels, vertical portrait).
-
-EXACT DESIGN REQUIREMENTS - follow precisely:
-- Pure solid BLACK background (#000000)
-- Title at top: "LEADERBOARD" in elegant serif font, gold/champagne color, centered
-- Subtitle: "${label}" in smaller white text below title
-
-TOP 3 PODIUM SECTION (upper half):
-${photoInstructions}
-
-RANKINGS 4-8 (lower half) - white horizontal bars stacked vertically:
-${ranked.slice(3).map((a: any, i: number) => `- Bar ${i + 4}: Small dark circle with initial "${a.displayName.charAt(0)}" on left, rank "#${i + 4}" on far left, name "${a.displayName}" and amount "${formatCurrency(a.amount)}" in black text on white bar`).join("\n")}
-
-- Bottom center: "APEX FINANCIAL" in elegant spaced white text
-- Style: clean, sharp, luxury sales team leaderboard
-- No decorative elements beyond the crown icon on #1
-- IMPORTANT: Use the provided profile photos for the circular headshot areas. Crop each photo into a perfect circle.`;
-}
-
-async function handleFirstDeal(supabase: any, date: string, label: string, time_period: string, metric_type: string, auto_publish: boolean, overrides: any, apiKey: string) {
-  const firstDeal = await getFirstDealData(supabase, date);
-  if (!firstDeal) {
-    return jsonResponse({ status: "data_review_required", message: "No deals found for this date" });
-  }
-
-  const [agentMap, awardProfiles] = await Promise.all([
-    getAgentMap(supabase, [firstDeal.agent_id]),
-    getAwardProfiles(supabase, [firstDeal.agent_id]),
-  ]);
-
-  const ap = awardProfiles[firstDeal.agent_id];
-  const base = agentMap[firstDeal.agent_id];
-  let displayName = ap?.display_name_override || getDisplayName(base?.name || "Unknown");
-  let amount = Number(firstDeal.aop) || 0;
-  let instagram = ap?.instagram_handle || base?.instagram || null;
-
-  if (overrides) {
-    if (overrides.name) displayName = overrides.name;
-    if (overrides.amount !== undefined) amount = overrides.amount;
-    if (overrides.instagram) instagram = overrides.instagram;
-  }
-
-  const photoUrl = ap?.photo_url || base?.avatar_url || null;
-  const photoInstruction = photoUrl
-    ? `- Center: a large circular frame containing the provided profile photo. Crop into a perfect circle with a thin gold border.`
-    : `- Center: dark gray circle with initial "${displayName.charAt(0)}"`;
-  const igLine = instagram ? `\n- Below: "@${instagram}" in white text` : "";
-  const prompt = `Create an Instagram Story graphic (1080x1920 pixels, vertical portrait).
-EXACT DESIGN:
-- Pure solid BLACK background (#000000)
-- Top center: "🔔 FIRST DEAL TODAY" in gold/champagne serif font
-- Large name: "${displayName}" in bold uppercase white condensed sans-serif
-${photoInstruction}
-- Below circle: "${formatCurrency(amount)}" in large bright green text (#00FF88)${igLine}
-- Below: "${label}" in smaller white text
-- Bottom: "APEX FINANCIAL" in spaced white text
-- Clean luxury aesthetic, no patterns
-- IMPORTANT: Use the provided profile photo for the circular headshot area if available.`;
-
-  const fdMessages = await buildMultimodalMessage(prompt, photoUrl ? [photoUrl] : []);
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "google/gemini-3-pro-image-preview", messages: fdMessages, modalities: ["image", "text"] }),
-  });
-  if (!res.ok) throw new Error(`First deal image failed: ${await res.text()}`);
-  const data = await res.json();
-  const b64 = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-  if (!b64) throw new Error("No image returned for first deal");
-
-  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "_");
-  const path = `apex_first_deal_${dateStr}.png`;
-  const bytes = b64ToBytes(b64);
-  const { error: upErr } = await supabase.storage.from("award-graphics").upload(path, bytes, { contentType: "image/png", upsert: true });
-  if (upErr) throw new Error(`Upload failed: ${upErr.message}`);
-  const url = supabase.storage.from("award-graphics").getPublicUrl(path).data.publicUrl;
-
-  const { data: batch } = await supabase.from("award_batches").insert({
-    time_period, metric_type, period_start: date, period_end: date,
-    winner_agent_id: firstDeal.agent_id, winner_name: displayName, winner_amount: amount,
-    top_agents: [{ rank: 1, name: displayName, amount, formatted_amount: formatCurrency(amount) }],
-    top_producer_file: path, status: auto_publish ? "published" : "ready_for_review",
-    source_data: { label, type: "first_deal", generated_at: new Date().toISOString() },
-    award_type: "first_deal",
-  }).select().single();
-
-  return jsonResponse({
-    status: "success", award_type: "first_deal", top_producer: { agent_id: firstDeal.agent_id, name: displayName, amount, formatted_amount: formatCurrency(amount), instagram },
-    files: { top_producer_story: url }, archive: { award_batch_id: batch?.id, saved: true },
-  });
-}
-
-async function handleMostHires(supabase: any, start: string, end: string, label: string, time_period: string, metric_type: string, award_type: string, auto_publish: boolean, overrides: any, apiKey: string) {
-  const hiresData = await getHiresData(supabase, start, end);
-  if (hiresData.length === 0) {
-    return jsonResponse({ status: "data_review_required", message: "No hires found for this period" });
-  }
-
-  const agentIds = hiresData.map((h) => h.agent_id);
-  const [agentMap, awardProfiles] = await Promise.all([
-    getAgentMap(supabase, agentIds),
-    getAwardProfiles(supabase, agentIds),
-  ]);
-
-  const winner = hiresData[0];
-  const ap = awardProfiles[winner.agent_id];
-  const base = agentMap[winner.agent_id];
-  let displayName = ap?.display_name_override || getDisplayName(base?.name || "Unknown");
-  let hireCount = winner.total_hires;
-  let instagram = ap?.instagram_handle || base?.instagram || null;
-
-  if (overrides) {
-    if (overrides.name) displayName = overrides.name;
-    if (overrides.instagram) instagram = overrides.instagram;
-  }
-
-  const periodLabel = award_type === "most_hires_week" ? "THIS WEEK" : "THIS MONTH";
-  const photoUrl = ap?.photo_url || base?.avatar_url || null;
-  const photoInstruction = photoUrl
-    ? `- Center: a large circular frame containing the provided profile photo. Crop into a perfect circle with a thin gold border.`
-    : `- Center: dark gray circle with initial "${displayName.charAt(0)}"`;
-  const igLine = instagram ? `\n- Below: "@${instagram}" in white text` : "";
-  const prompt = `Create an Instagram Story graphic (1080x1920 pixels, vertical portrait).
-EXACT DESIGN:
-- Pure solid BLACK background (#000000)
-- Top center: "🏆 MOST HIRES ${periodLabel}" in gold/champagne serif font
-- Large name: "${displayName}" in bold uppercase white condensed sans-serif
-${photoInstruction}
-- Below circle: "${hireCount} HIRES" in large bright green text (#00FF88)${igLine}
-- Below: "${label}" in smaller white text
-- Bottom: "APEX FINANCIAL" in spaced white text
-- Clean luxury aesthetic, no patterns
-- IMPORTANT: Use the provided profile photo for the circular headshot area if available.`;
-
-  const mhMessages = await buildMultimodalMessage(prompt, photoUrl ? [photoUrl] : []);
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "google/gemini-3-pro-image-preview", messages: mhMessages, modalities: ["image", "text"] }),
-  });
-  if (!res.ok) throw new Error(`Most hires image failed: ${await res.text()}`);
-  const data = await res.json();
-  const b64 = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-  if (!b64) throw new Error("No image returned for most hires");
-
-  const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "_");
-  const path = `apex_${award_type}_${dateStr}.png`;
-  const bytes = b64ToBytes(b64);
-  const { error: upErr } = await supabase.storage.from("award-graphics").upload(path, bytes, { contentType: "image/png", upsert: true });
-  if (upErr) throw new Error(`Upload failed: ${upErr.message}`);
-  const url = supabase.storage.from("award-graphics").getPublicUrl(path).data.publicUrl;
-
-  const topAgents = hiresData.slice(0, 8).map((h, i) => {
-    const aap = awardProfiles[h.agent_id];
-    const ab = agentMap[h.agent_id];
-    return { rank: i + 1, name: aap?.display_name_override || getDisplayName(ab?.name || "Unknown"), amount: h.total_hires, formatted_amount: `${h.total_hires} hires` };
-  });
-
-  const { data: batch } = await supabase.from("award_batches").insert({
-    time_period, metric_type, period_start: start, period_end: end,
-    winner_agent_id: winner.agent_id, winner_name: displayName, winner_amount: hireCount,
-    top_agents: topAgents, top_producer_file: path,
-    status: auto_publish ? "published" : "ready_for_review",
-    source_data: { label, type: award_type, generated_at: new Date().toISOString() },
-    award_type,
-  }).select().single();
-
-  return jsonResponse({
-    status: "success", award_type, top_producer: { agent_id: winner.agent_id, name: displayName, amount: hireCount, formatted_amount: `${hireCount} hires`, instagram },
-    leaderboard: topAgents, files: { top_producer_story: url },
-    archive: { award_batch_id: batch?.id, saved: true },
-  });
-}

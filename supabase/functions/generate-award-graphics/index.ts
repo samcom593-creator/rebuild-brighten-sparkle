@@ -522,22 +522,28 @@ async function handleMostHires(supabase: any, start: string, end: string, label:
   }
 
   const periodLabel = award_type === "most_hires_week" ? "THIS WEEK" : "THIS MONTH";
+  const photoUrl = ap?.photo_url || base?.avatar_url || null;
+  const photoInstruction = photoUrl
+    ? `- Center: a large circular frame containing the provided profile photo. Crop into a perfect circle with a thin gold border.`
+    : `- Center: dark gray circle with initial "${displayName.charAt(0)}"`;
   const igLine = instagram ? `\n- Below: "@${instagram}" in white text` : "";
   const prompt = `Create an Instagram Story graphic (1080x1920 pixels, vertical portrait).
 EXACT DESIGN:
 - Pure solid BLACK background (#000000)
 - Top center: "🏆 MOST HIRES ${periodLabel}" in gold/champagne serif font
 - Large name: "${displayName}" in bold uppercase white condensed sans-serif
-- Center: dark gray circle with initial "${displayName.charAt(0)}"
+${photoInstruction}
 - Below circle: "${hireCount} HIRES" in large bright green text (#00FF88)${igLine}
 - Below: "${label}" in smaller white text
 - Bottom: "APEX FINANCIAL" in spaced white text
-- Clean luxury aesthetic, no patterns`;
+- Clean luxury aesthetic, no patterns
+- IMPORTANT: Use the provided profile photo for the circular headshot area if available.`;
 
+  const mhMessages = await buildMultimodalMessage(prompt, photoUrl ? [photoUrl] : []);
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "google/gemini-3-pro-image-preview", messages: [{ role: "user", content: prompt }], modalities: ["image", "text"] }),
+    body: JSON.stringify({ model: "google/gemini-3-pro-image-preview", messages: mhMessages, modalities: ["image", "text"] }),
   });
   if (!res.ok) throw new Error(`Most hires image failed: ${await res.text()}`);
   const data = await res.json();

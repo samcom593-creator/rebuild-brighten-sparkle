@@ -551,12 +551,15 @@ export default function AwardGraphics() {
         <DialogContent className="max-w-[95vw] max-h-[95vh] p-2 bg-black/95 border-border/20">
           {fullscreenImage && (
             <div className="flex flex-col items-center gap-3">
-              <img src={fullscreenImage} alt="Award fullscreen" className="max-h-[85vh] w-auto rounded-lg" />
-              <a href={fullscreenImage} download target="_blank" rel="noopener noreferrer">
-                <Button className="gap-2 bg-gradient-to-r from-amber-600 to-orange-600 text-white">
-                  <Download className="h-4 w-4" />Download
+              <img src={fullscreenImage} alt="Award fullscreen" className="max-h-[80vh] w-auto rounded-lg" />
+              <div className="flex gap-2">
+                <Button
+                  className="gap-2 bg-gradient-to-r from-amber-600 to-orange-600 text-white"
+                  onClick={() => saveAsPng(fullscreenImage, `apex_award_${Date.now()}.png`)}
+                >
+                  <Download className="h-4 w-4" />Save to Photos
                 </Button>
-              </a>
+              </div>
             </div>
           )}
         </DialogContent>

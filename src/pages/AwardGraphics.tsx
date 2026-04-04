@@ -329,16 +329,8 @@ export default function AwardGraphics() {
               )}
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground font-medium">Metric</label>
-              <Select value={metric} onValueChange={setMetric}>
-                <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {METRICS.map((m) => (
-                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex items-end">
+              <Badge variant="secondary" className="h-9 px-3 text-xs font-semibold">Issued Paid</Badge>
             </div>
 
             <Button

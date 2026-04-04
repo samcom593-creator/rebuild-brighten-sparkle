@@ -619,7 +619,7 @@ serve(async (req) => {
       if (overrides.amount !== undefined) winner.amount = overrides.amount;
     }
 
-    const effectiveLabel = award_type === "top_producer_week" ? "AP THIS WEEK" : label;
+    const effectiveLabel = award_type === "top_producer_week" ? "ISSUED PAID THIS WEEK" : label;
     const topSvg = await renderTopProducerStory({
       title: "TOP PRODUCER",
       name: winner.displayName,

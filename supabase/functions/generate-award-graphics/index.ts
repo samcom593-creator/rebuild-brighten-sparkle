@@ -356,15 +356,36 @@ async function getAgentMap(supabase: any, agentIds: string[]) {
   return map;
 }
 
+async function buildMultimodalMessage(textPrompt: string, photoUrls: string[]): Promise<any[]> {
+  const content: any[] = [{ type: "text", text: textPrompt }];
+  
+  for (const url of photoUrls) {
+    if (!url) continue;
+    try {
+      content.push({
+        type: "image_url",
+        image_url: { url }
+      });
+    } catch (e) {
+      console.log("Could not include photo:", url, e);
+    }
+  }
+  
+  return [{ role: "user", content }];
+}
+
 function buildTopProducerPrompt(winner: any, label: string) {
   const igLine = winner.instagram ? `\n- Below the amount: "@${winner.instagram}" in white text` : "";
+  const photoInstruction = winner.avatar_url
+    ? `- Center of the graphic: a large circular frame containing the provided profile photo of this person. Crop and fit the photo into a perfect circle. Add a thin gold/green border ring around the circle.`
+    : `- Center of the graphic: a large circular placeholder - make it a dark gray circle with the initials "${winner.displayName.charAt(0)}" in white`;
   return `Create an Instagram Story graphic (1080x1920 pixels, vertical portrait).
 
 EXACT DESIGN REQUIREMENTS - follow precisely:
 - Pure solid BLACK background (#000000)
 - At the very top center: small elegant text "TOP PRODUCER" in a luxury serif font (gold/champagne color)
 - Below that: the name "${winner.displayName}" in large bold uppercase condensed white sans-serif text, centered
-- Center of the graphic: a large circular placeholder for a portrait photo - make it a dark gray circle with the initials "${winner.displayName.charAt(0)}" in white
+${photoInstruction}
 - Below the photo: the amount "${formatCurrency(winner.amount)}" in large bold bright green text (#00FF88)${igLine}
 - Below the amount: "${label}" in smaller white text
 - At the very bottom center: "APEX FINANCIAL" in elegant spaced-out white text
@@ -374,6 +395,16 @@ EXACT DESIGN REQUIREMENTS - follow precisely:
 }
 
 function buildLeaderboardPrompt(ranked: any[], label: string) {
+  const photoInstructions = ranked.slice(0, 3).map((a: any, i: number) => {
+    const pos = i === 0 ? "center, largest" : i === 1 ? "left side, smaller" : "right side, smaller";
+    const crown = i === 0 ? ", a small gold crown icon above it" : "";
+    const amountColor = i === 0 ? "bright yellow/gold" : "yellow";
+    if (a.avatar_url) {
+      return `- #${i + 1} (${pos}): Large circular frame containing the provided profile photo (photo #${i + 1}). Crop into a perfect circle${crown}, name "${a.displayName}" in bold white text below, amount "${formatCurrency(a.amount)}" in ${amountColor}`;
+    }
+    return `- #${i + 1} (${pos}): Dark gray circle with initial "${a.displayName.charAt(0)}"${crown}, name "${a.displayName}" below, amount "${formatCurrency(a.amount)}" in ${amountColor}`;
+  }).join("\n");
+
   return `Create an Instagram Story graphic (1080x1920 pixels, vertical portrait).
 
 EXACT DESIGN REQUIREMENTS - follow precisely:
@@ -382,16 +413,15 @@ EXACT DESIGN REQUIREMENTS - follow precisely:
 - Subtitle: "${label}" in smaller white text below title
 
 TOP 3 PODIUM SECTION (upper half):
-- #1 WINNER (center, largest): Large dark gray circle with initial "${ranked[0]?.displayName.charAt(0) || "?"}", a small gold crown icon above it, name "${ranked[0]?.displayName || ""}" in bold white text below, amount "${formatCurrency(ranked[0]?.amount || 0)}" in bright yellow/gold
-- #2 (left side, smaller): Dark gray circle with initial "${ranked[1]?.displayName.charAt(0) || "?"}", name "${ranked[1]?.displayName || ""}" below, amount "${formatCurrency(ranked[1]?.amount || 0)}" in yellow
-- #3 (right side, smaller): Dark gray circle with initial "${ranked[2]?.displayName.charAt(0) || "?"}", name "${ranked[2]?.displayName || ""}" below, amount "${formatCurrency(ranked[2]?.amount || 0)}" in yellow
+${photoInstructions}
 
 RANKINGS 4-8 (lower half) - white horizontal bars stacked vertically:
 ${ranked.slice(3).map((a: any, i: number) => `- Bar ${i + 4}: Small dark circle with initial "${a.displayName.charAt(0)}" on left, rank "#${i + 4}" on far left, name "${a.displayName}" and amount "${formatCurrency(a.amount)}" in black text on white bar`).join("\n")}
 
 - Bottom center: "APEX FINANCIAL" in elegant spaced white text
 - Style: clean, sharp, luxury sales team leaderboard
-- No decorative elements beyond the crown icon on #1`;
+- No decorative elements beyond the crown icon on #1
+- IMPORTANT: Use the provided profile photos for the circular headshot areas. Crop each photo into a perfect circle.`;
 }
 
 async function handleFirstDeal(supabase: any, date: string, label: string, time_period: string, metric_type: string, auto_publish: boolean, overrides: any, apiKey: string) {

@@ -450,11 +450,14 @@ export default function AwardGraphics() {
                         className="max-h-[500px] w-auto mx-auto hover:scale-[1.01] transition-transform duration-500"
                       />
                     </div>
-                    <a href={generatedResult.files.leaderboard_story} download target="_blank" rel="noopener noreferrer">
-                      <Button variant="outline" size="sm" className="w-full gap-2 hover:bg-primary/5">
-                        <Download className="h-4 w-4" />Download
-                      </Button>
-                    </a>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full gap-2 hover:bg-primary/5"
+                      onClick={() => saveAsPng(generatedResult.files.leaderboard_story, `apex_leaderboard_${Date.now()}.png`)}
+                    >
+                      <Download className="h-4 w-4" />Save to Photos
+                    </Button>
                   </motion.div>
                 )}
               </div>

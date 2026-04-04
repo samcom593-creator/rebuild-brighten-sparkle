@@ -224,8 +224,9 @@ serve(async (req) => {
 
     const effectiveLabel = award_type === "top_producer_week" ? "AP THIS WEEK" : label;
 
-    // Generate images
+    // Generate images - build multimodal messages with real photos when available
     const topProducerPrompt = buildTopProducerPrompt(winner, effectiveLabel);
+    const topProducerMessages = await buildMultimodalMessage(topProducerPrompt, winner.avatar_url ? [winner.avatar_url] : []);
     
     let leaderboardPrompt: string | null = null;
     if (award_type === "top_producer" || award_type === "top_producer_week" || award_type === "leaderboard") {
@@ -236,16 +237,19 @@ serve(async (req) => {
       fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "google/gemini-3-pro-image-preview", messages: [{ role: "user", content: topProducerPrompt }], modalities: ["image", "text"] }),
+        body: JSON.stringify({ model: "google/gemini-3-pro-image-preview", messages: topProducerMessages, modalities: ["image", "text"] }),
       }),
     ];
 
     if (leaderboardPrompt) {
+      // Collect top 3 photos for leaderboard
+      const top3Photos = ranked.slice(0, 3).map((a: any) => a.avatar_url).filter(Boolean);
+      const lbMessages = await buildMultimodalMessage(leaderboardPrompt, top3Photos);
       imagePromises.push(
         fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ model: "google/gemini-3-pro-image-preview", messages: [{ role: "user", content: leaderboardPrompt }], modalities: ["image", "text"] }),
+          body: JSON.stringify({ model: "google/gemini-3-pro-image-preview", messages: lbMessages, modalities: ["image", "text"] }),
         })
       );
     }

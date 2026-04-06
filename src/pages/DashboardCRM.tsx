@@ -756,7 +756,7 @@ export default function DashboardCRM() {
 
   const getAgentsForSection = (section: typeof SECTIONS[number]) => {
     if (section.key === "meeting_attendance") {
-      return [...filteredAgents].sort((a, b) => a.name.localeCompare(b.name));
+      return [...filteredAgents].filter(a => a.agentLicenseStatus === "licensed").sort((a, b) => a.name.localeCompare(b.name));
     }
     if (section.key === "needs_followup") {
       return filteredAgents.filter(a => {
@@ -797,7 +797,8 @@ export default function DashboardCRM() {
     return dupeIds;
   }, [activeAgents]);
 
-  const meetingPresentCount = Array.from(meetingAttendance.values()).filter(v => v === "present").length;
+  const meetingAgents = filteredAgents.filter(a => a.agentLicenseStatus === "licensed");
+  const meetingPresentCount = Array.from(meetingAttendance.entries()).filter(([id, v]) => v === "present" && meetingAgents.some(a => a.id === id)).length;
   const onboardingCount = filteredAgents.filter(a => ["onboarding", "training_online"].includes(a.onboardingStage)).length;
   const preLicensedCount = filteredAgents.filter(a => a.agentLicenseStatus !== "licensed").length;
   const trainingCount = filteredAgents.filter(a => a.onboardingStage === "in_field_training").length;

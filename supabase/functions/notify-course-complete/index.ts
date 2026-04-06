@@ -215,7 +215,7 @@ const handler = async (req: Request): Promise<Response> => {
       <div style="background:rgba(20,184,166,0.1);border-radius:8px;padding:20px;margin:24px 0;">
         <h3 style="font-size:16px;color:#14b8a6;margin:0 0 12px 0;">📅 Daily Team Meeting</h3>
         <p style="font-size:14px;color:#d1d5db;margin:0;">
-          <strong style="color:#ffffff;">Time:</strong> 10:00 AM CST on Discord<br><br>
+          <strong style="color:#ffffff;">Time:</strong> 9:30 AM CST on Discord<br><br>
           <strong style="color:#ffffff;">Expectations:</strong><br>
           • Camera ON (required)<br>
           • Remember: <strong style="color:#f59e0b;">On time is LATE</strong>

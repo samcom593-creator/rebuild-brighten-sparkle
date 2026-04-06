@@ -77,7 +77,7 @@ const handler = async (req: Request): Promise<Response> => {
               
               <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 12px; margin: 20px 0;">
                 <h3 style="margin: 0 0 10px 0;">Daily Training Reminder</h3>
-                <p style="margin: 0; font-size: 18px;">Please be <strong>logged on and camera-ready by 10:00 AM</strong></p>
+                <p style="margin: 0; font-size: 18px;">Please be <strong>logged on and camera-ready by 9:30 AM CST</strong></p>
               </div>
 
               <div style="background: #f3f4f6; padding: 16px; border-radius: 8px; margin: 16px 0;">

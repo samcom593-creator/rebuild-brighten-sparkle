@@ -756,7 +756,7 @@ export default function DashboardCRM() {
 
   const getAgentsForSection = (section: typeof SECTIONS[number]) => {
     if (section.key === "meeting_attendance") {
-      return [...filteredAgents].sort((a, b) => a.name.localeCompare(b.name));
+      return [...filteredAgents].filter(a => a.agentLicenseStatus === "licensed").sort((a, b) => a.name.localeCompare(b.name));
     }
     if (section.key === "needs_followup") {
       return filteredAgents.filter(a => {

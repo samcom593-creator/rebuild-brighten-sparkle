@@ -70,6 +70,7 @@ const AgentFlow = lazy(() => import("./pages/AgentFlow"));
 const InboxPage = lazy(() => import("./pages/InboxPage"));
 const AutomationHub = lazy(() => import("./pages/AutomationHub"));
 const TeamHierarchy = lazy(() => import("./pages/TeamHierarchy"));
+const AgentPipelineSimple = lazy(() => import("./pages/AgentPipelineSimple"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -162,7 +163,8 @@ const App = () => (
                       <Route path="/dashboard/seminar" element={<SeminarAdmin />} />
                       <Route path="/dashboard/inbox" element={<ProtectedRoute requireAdmin><InboxPage /></ProtectedRoute>} />
                       <Route path="/dashboard/automation" element={<ProtectedRoute requireAdmin><AutomationHub /></ProtectedRoute>} />
-                      <Route path="/dashboard/hierarchy" element={<ProtectedRoute requireAdmin><TeamHierarchy /></ProtectedRoute>} />
+                       <Route path="/dashboard/hierarchy" element={<ProtectedRoute requireAdmin><TeamHierarchy /></ProtectedRoute>} />
+                       <Route path="/dashboard/pipeline-simple" element={<AgentPipelineSimple />} />
                   </Route>
 
                   {/* Legacy redirect */}

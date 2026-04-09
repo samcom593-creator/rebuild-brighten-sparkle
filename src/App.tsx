@@ -163,7 +163,8 @@ const App = () => (
                       <Route path="/dashboard/seminar" element={<SeminarAdmin />} />
                       <Route path="/dashboard/inbox" element={<ProtectedRoute requireAdmin><InboxPage /></ProtectedRoute>} />
                       <Route path="/dashboard/automation" element={<ProtectedRoute requireAdmin><AutomationHub /></ProtectedRoute>} />
-                      <Route path="/dashboard/hierarchy" element={<ProtectedRoute requireAdmin><TeamHierarchy /></ProtectedRoute>} />
+                       <Route path="/dashboard/hierarchy" element={<ProtectedRoute requireAdmin><TeamHierarchy /></ProtectedRoute>} />
+                       <Route path="/dashboard/pipeline-simple" element={<AgentPipelineSimple />} />
                   </Route>
 
                   {/* Legacy redirect */}

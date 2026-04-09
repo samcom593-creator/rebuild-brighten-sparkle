@@ -70,6 +70,7 @@ const AgentFlow = lazy(() => import("./pages/AgentFlow"));
 const InboxPage = lazy(() => import("./pages/InboxPage"));
 const AutomationHub = lazy(() => import("./pages/AutomationHub"));
 const TeamHierarchy = lazy(() => import("./pages/TeamHierarchy"));
+const AgentPipelineSimple = lazy(() => import("./pages/AgentPipelineSimple"));
 
 const queryClient = new QueryClient({
   defaultOptions: {

@@ -176,6 +176,17 @@ export default function AgentPipelineSimple() {
     setSubmitting(false);
   };
 
+  const approveSwitch = async (req: SwitchRequest) => {
+    await supabase.from("agents").update({ invited_by_manager_id: req.requestedManager }).eq("id", req.agentId);
+    toast.success(`${req.agentName} moved`);
+    fetchAll();
+  };
+
+  const declineSwitch = async (reqId: string) => {
+    toast.success("Request declined");
+    fetchAll();
+  };
+
   const filtered = agents.filter(a => {
     const q = search.toLowerCase();
     const matchSearch = !q || a.name.toLowerCase().includes(q) || a.email.toLowerCase().includes(q);

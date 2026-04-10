@@ -16,7 +16,7 @@ const packages = [
   },
   {
     name: "Platinum Vet Leads",
-    price: 350,
+    price: 500,
     features: ["Unlimited leads", "Fresh this week", "Highest conversion rates", "Priority delivery", "Exclusive territories"],
     popular: true,
   },

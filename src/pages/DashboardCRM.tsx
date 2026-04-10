@@ -827,8 +827,8 @@ export default function DashboardCRM() {
   const preLicensedCount = filteredAgents.filter(a => a.agentLicenseStatus !== "licensed" && ["pre_licensed", "onboarding", "training_online"].includes(a.onboardingStage)).length;
   const transferCount = filteredAgents.filter(a => a.onboardingStage === "transfer").length;
   const trainingCount = filteredAgents.filter(a => a.onboardingStage === "in_field_training").length;
-  const below10kCount = filteredAgents.filter(a => a.onboardingStage === "below_10k").length;
-  const liveCount = filteredAgents.filter(a => ["evaluated", "live"].includes(a.onboardingStage) && a.agentLicenseStatus === "licensed").length;
+  const below10kCount = getAgentsForSection(SECTIONS.find(s => s.key === "below_10k")!).length;
+  const liveCount = getAgentsForSection(SECTIONS.find(s => s.key === "live")!).length;
   const needsFollowUpCount = getAgentsForSection(SECTIONS.find(s => s.key === "needs_followup")!).length;
   const inactiveCount = filteredAgents.filter(a => a.onboardingStage === "inactive" || a.isInactive).length;
   const staleCount = filteredAgents.filter(isStaleAgent).length;

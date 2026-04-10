@@ -578,14 +578,14 @@ export default function DashboardCRM() {
       }
 
       const progressOrder = ["unlicensed","course_purchased","finished_course","test_scheduled","passed_test","fingerprints_done","waiting_on_license","licensed"];
-      const emailLicenseMap = new Map<string, { progress: string | null; testDate: string | null; appId: string }>();
+      const emailLicenseMap = new Map<string, { progress: string | null; testDate: string | null; appId: string; aiScore: string | null }>();
       for (const app of appLicenseResult.data || []) {
         const appEmail = app.email?.toLowerCase().trim();
         if (!appEmail) continue;
         const current = emailLicenseMap.get(appEmail);
         const newIdx = progressOrder.indexOf(app.license_progress || "unlicensed");
         const curIdx = current ? progressOrder.indexOf(current.progress || "unlicensed") : -1;
-        if (newIdx > curIdx) emailLicenseMap.set(appEmail, { progress: app.license_progress, testDate: app.test_scheduled_date, appId: app.id });
+        if (newIdx > curIdx) emailLicenseMap.set(appEmail, { progress: app.license_progress, testDate: app.test_scheduled_date, appId: app.id, aiScore: app.ai_score_tier || null });
       }
 
       const paymentMap = new Map<string, { standard: boolean; premium: boolean }>();

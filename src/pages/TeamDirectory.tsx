@@ -173,6 +173,7 @@ export default function TeamDirectory() {
         agentId: managerAgent.id,
         teamMembers,
         isCurrentUser: managerAgent.id === currentAgent?.id,
+        totalWeeklyAlp,
       };
     });
 

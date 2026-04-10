@@ -1247,6 +1247,7 @@ export default function DashboardCRM() {
                                         <p className="font-medium text-xs truncate">{agent.name}</p>
                                         <div className="flex items-center gap-1 mt-0.5">
                                           {duplicateAgentIds.has(agent.id) && <Badge variant="outline" className="text-[8px] h-3.5 px-1 bg-amber-500/10 text-amber-500 border-amber-500/20">Dupe</Badge>}
+                                          {!agent.avatarUrl && <Badge variant="outline" className="text-[8px] h-3.5 px-1 bg-red-500/10 text-red-500 border-red-500/20">📷 Photo</Badge>}
                                           {agent.managerId && agent.managerName && agent.managerId !== currentAgentId && (
                                             <Badge variant="outline" className="text-[11px] h-4.5 px-2 font-bold bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20">{agent.managerName.split(" ")[0]}</Badge>
                                           )}

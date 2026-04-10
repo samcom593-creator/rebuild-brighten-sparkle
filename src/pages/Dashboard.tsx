@@ -375,6 +375,86 @@ export default function Dashboard() {
         </p>
       </div>
 
+      {/* ====== TOP METRIC CARDS (Real Data) ====== */}
+      {(isAdmin || isManager) && topMetrics && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <StatCard title="Active Agents" value={topMetrics.activeAgents} icon={Users} variant="primary" />
+          <StatCard title="Weekly ALP" value={`$${topMetrics.weeklyALP.toLocaleString()}`} icon={DollarSign} variant="success" />
+          <StatCard title="Apps This Week" value={topMetrics.appsThisWeek} icon={UserPlus} variant="default" />
+          <StatCard title="Close Rate" value={`${topMetrics.closeRate}%`} icon={Percent} variant="success" />
+        </div>
+      )}
+
+      {/* ====== ALERT BANNERS (Admin) ====== */}
+      {isAdmin && staleAgents && staleAgents.length > 0 && (
+        <div className="mb-4 p-3 rounded-lg border border-destructive/30 bg-destructive/5">
+          <div className="flex items-center gap-2 mb-1">
+            <AlertCircle className="h-4 w-4 text-destructive" />
+            <span className="text-sm font-semibold text-destructive">{staleAgents.length} agents haven't logged production in 7+ days</span>
+          </div>
+          <p className="text-xs text-muted-foreground ml-6">{staleAgents.slice(0, 5).join(", ")}{staleAgents.length > 5 ? ` +${staleAgents.length - 5} more` : ""}</p>
+        </div>
+      )}
+
+      {isAdmin && pendingPurchases && pendingPurchases > 0 && (
+        <Link to="/purchase-leads">
+          <div className="mb-4 p-3 rounded-lg border border-amber-500/30 bg-amber-500/5 cursor-pointer hover:border-amber-500/50 transition-all">
+            <div className="flex items-center gap-2">
+              <ShoppingCart className="h-4 w-4 text-amber-500" />
+              <span className="text-sm font-semibold text-amber-400">{pendingPurchases} lead purchase request{pendingPurchases > 1 ? "s" : ""} pending your confirmation</span>
+            </div>
+          </div>
+        </Link>
+      )}
+
+      {/* ====== ADMIN QUICK ACTIONS ROW ====== */}
+      {isAdmin && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <Button
+            variant="outline"
+            className="h-auto py-3 flex flex-col items-center gap-1 hover:border-primary/50"
+            onClick={async () => {
+              toast.info("Sending licensing blast...");
+              await supabase.functions.invoke("bulk-send-licensing");
+              toast.success("Licensing blast sent!");
+            }}
+          >
+            <Send className="h-4 w-4 text-primary" />
+            <span className="text-xs">Send Licensing Blast</span>
+          </Button>
+          <Button
+            variant="outline"
+            className="h-auto py-3 flex flex-col items-center gap-1 hover:border-primary/50"
+            onClick={async () => {
+              toast.info("Sending portal logins...");
+              await supabase.functions.invoke("send-bulk-portal-logins");
+              toast.success("Portal logins sent!");
+            }}
+          >
+            <KeyRound className="h-4 w-4 text-primary" />
+            <span className="text-xs">Send Portal Logins</span>
+          </Button>
+          <Link to="/purchase-leads">
+            <Button variant="outline" className="w-full h-auto py-3 flex flex-col items-center gap-1 hover:border-primary/50">
+              <ShoppingCart className="h-4 w-4 text-primary" />
+              <span className="text-xs">Confirm Lead Purchases</span>
+            </Button>
+          </Link>
+          <Button
+            variant="outline"
+            className="h-auto py-3 flex flex-col items-center gap-1 hover:border-primary/50"
+            onClick={async () => {
+              toast.info("Running system check...");
+              await supabase.functions.invoke("system-health-check");
+              toast.success("System check complete!");
+            }}
+          >
+            <Activity className="h-4 w-4 text-primary" />
+            <span className="text-xs">Run System Check</span>
+          </Button>
+        </div>
+      )}
+
       {/* ====== DATE PERIOD SELECTOR ====== */}
       <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
         <DatePeriodSelector value={datePeriod} onChange={handleDatePeriodChange} />
@@ -390,12 +470,6 @@ export default function Dashboard() {
           </Button>
         )}
       </div>
-
-      {/* ====== FOMO APPLICATIONS BANNER ====== */}
-      <TotalApplicationsBanner />
-
-      {/* ====== CHURN RISK BANNER ====== */}
-      {(isAdmin || isManager) && <ChurnRiskBanner />}
 
       {/* ====== QUICK ACTIONS ROW ====== */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 mt-4">

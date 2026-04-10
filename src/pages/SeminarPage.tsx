@@ -23,10 +23,10 @@ export default function SeminarPage() {
             APEX Financial
           </span>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1">
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1">
           Weekly Career Seminar
         </h1>
-        <p className="text-sm text-gray-400">
+        <p className="text-sm text-muted-foreground">
           Every Thursday at 7:00 PM CST • Watch the latest replay below
         </p>
       </motion.div>

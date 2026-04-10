@@ -158,6 +158,16 @@ export default function PurchaseLeads() {
 
   useEffect(() => {
     fetchLeadCount();
+    // Check for Stripe redirect
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("success") === "true") {
+      toast.success("🎉 Subscription activated! Your leads will start flowing.");
+      playSound("celebrate");
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (params.get("canceled") === "true") {
+      toast.info("Checkout canceled. You can try again anytime.");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
   }, []);
 
   const fetchLeadCount = async () => {

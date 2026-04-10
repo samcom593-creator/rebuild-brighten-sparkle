@@ -804,11 +804,15 @@ export default function DashboardCRM() {
 
   const meetingAgents = filteredAgents.filter(a => a.agentLicenseStatus === "licensed");
   const meetingPresentCount = Array.from(meetingAttendance.entries()).filter(([id, v]) => v === "present" && meetingAgents.some(a => a.id === id)).length;
+  const appliedCount = filteredAgents.filter(a => a.onboardingStage === "applied").length;
   const onboardingCount = filteredAgents.filter(a => ["onboarding", "training_online"].includes(a.onboardingStage)).length;
-  const preLicensedCount = filteredAgents.filter(a => a.agentLicenseStatus !== "licensed").length;
+  const preLicensedCount = filteredAgents.filter(a => a.agentLicenseStatus !== "licensed" && ["pre_licensed", "onboarding", "training_online"].includes(a.onboardingStage)).length;
+  const transferCount = filteredAgents.filter(a => a.onboardingStage === "transfer").length;
   const trainingCount = filteredAgents.filter(a => a.onboardingStage === "in_field_training").length;
-  const liveCount = filteredAgents.filter(a => a.onboardingStage === "evaluated" && a.agentLicenseStatus === "licensed").length;
+  const below10kCount = filteredAgents.filter(a => a.onboardingStage === "below_10k").length;
+  const liveCount = filteredAgents.filter(a => ["evaluated", "live"].includes(a.onboardingStage) && a.agentLicenseStatus === "licensed").length;
   const needsFollowUpCount = getAgentsForSection(SECTIONS.find(s => s.key === "needs_followup")!).length;
+  const inactiveCount = filteredAgents.filter(a => a.onboardingStage === "inactive" || a.isInactive).length;
   const staleCount = filteredAgents.filter(isStaleAgent).length;
 
   // Section-specific table headers
@@ -826,6 +830,11 @@ export default function DashboardCRM() {
         return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[100px] text-right">Week ALP</TableHead><TableHead className="w-[100px] text-right">Prev Week</TableHead><TableHead className="w-[60px] text-right">Deals</TableHead><TableHead className="w-[80px]">Attend.</TableHead><TableHead className="w-[80px]">Days Live</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
       case "needs_followup":
         return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[100px]">Last Activity</TableHead><TableHead className="w-[80px]">Days Stale</TableHead><TableHead className="w-[90px]">Contact</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
+      case "applied":
+      case "transfer":
+      case "below_10k":
+      case "inactive":
+        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[120px]">Stage</TableHead><TableHead className="w-[90px]">Contact</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
       default:
         return null;
     }

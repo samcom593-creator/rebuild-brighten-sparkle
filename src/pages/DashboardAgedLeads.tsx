@@ -24,7 +24,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+// Table imports removed - using card grid layout
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -214,6 +214,8 @@ function QuickAssignPanel({ managers, unassignedCount, onAssign }: {
   );
 }
 
+const PAGE_SIZE = 25;
+
 export default function DashboardAgedLeads() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const { user, isAdmin, isManager, isLoading: authLoading } = useAuth();
@@ -230,6 +232,7 @@ export default function DashboardAgedLeads() {
   const [callModeLicense, setCallModeLicense] = useState<"licensed" | "unlicensed">("unlicensed");
   const [callModeSelectOpen, setCallModeSelectOpen] = useState(false);
   const [myAgentId, setMyAgentId] = useState<string | undefined>(undefined);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Ban state
   const [banTarget, setBanTarget] = useState<AgedLead | null>(null);
@@ -469,7 +472,7 @@ export default function DashboardAgedLeads() {
     );
   }
 
-  const filteredLeads = leads.filter(lead => {
+  const filteredLeads = useMemo(() => leads.filter(lead => {
     const q = searchTerm.toLowerCase();
     const matchesSearch =
       lead.firstName.toLowerCase().includes(q) ||
@@ -483,7 +486,25 @@ export default function DashboardAgedLeads() {
     const matchesSource = sourceFilter === "all" || lead.leadSource === sourceFilter;
 
     return matchesSearch && matchesStatus && matchesLicense && matchesSource;
-  });
+  }), [leads, searchTerm, statusFilter, licenseFilter, sourceFilter]);
+
+  // Reset page when filters change
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, statusFilter, licenseFilter, sourceFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredLeads.length / PAGE_SIZE));
+  const paginatedLeads = filteredLeads.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  const getLeadAgeDays = (lead: AgedLead) => {
+    const dateStr = lead.originalDate || lead.createdAt;
+    if (!dateStr) return 0;
+    return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
+  };
+
+  const getAgeColor = (days: number) => {
+    if (days <= 30) return { border: "border-emerald-500/30", bg: "bg-emerald-500/5", badge: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20" };
+    if (days <= 60) return { border: "border-amber-500/30", bg: "bg-amber-500/5", badge: "bg-amber-500/15 text-amber-400 border-amber-500/20" };
+    return { border: "border-destructive/30", bg: "bg-destructive/5", badge: "bg-destructive/15 text-destructive border-destructive/20" };
+  };
 
   // Stats
   const totalLeads = leads.length;
@@ -895,136 +916,99 @@ export default function DashboardAgedLeads() {
           </p>
         </GlassCard>
       ) : (
-        <div className="rounded-xl border border-border overflow-hidden overflow-x-auto max-h-[calc(100vh-280px)] overflow-y-auto">
-          <Table className="min-w-[1100px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-10">
-                  <Checkbox
-                    checked={selectedIds.size === filteredLeads.length && filteredLeads.length > 0}
-                    onCheckedChange={(checked) => {
-                      if (checked) {
-                        setSelectedIds(new Set(filteredLeads.map(l => l.id)));
-                      } else {
-                        setSelectedIds(new Set());
-                      }
-                    }}
-                  />
-                </TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Instagram</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>License</TableHead>
-                <TableHead>Source</TableHead>
-                <TableHead className="w-[140px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredLeads.map((lead) => {
-                const config = statusConfig[lead.status] || statusConfig.new;
-                const isDuplicate = duplicateMap.has(lead.id);
-                return (
-                  <TableRow
-                    key={lead.id}
+        <>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <AnimatePresence mode="popLayout">
+            {paginatedLeads.map((lead) => {
+              const config = statusConfig[lead.status] || statusConfig.new;
+              const isDuplicate = duplicateMap.has(lead.id);
+              const ageDays = getLeadAgeDays(lead);
+              const ageColor = getAgeColor(ageDays);
+              return (
+                <motion.div
+                  key={lead.id}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <GlassCard
                     className={cn(
-                      "hover:bg-muted/30 transition-colors",
-                      isDuplicate && "bg-amber-500/5",
-                      selectedIds.has(lead.id) && "bg-primary/5"
+                      "p-4 cursor-pointer transition-all hover:shadow-lg relative",
+                      ageColor.border,
+                      ageColor.bg,
+                      selectedIds.has(lead.id) && "ring-2 ring-primary/50",
+                      isDuplicate && "ring-1 ring-amber-500/30"
                     )}
+                    onClick={() => setDetailLead(lead)}
                   >
-                    <TableCell onClick={e => e.stopPropagation()}>
-                      <Checkbox
-                        checked={selectedIds.has(lead.id)}
-                        onCheckedChange={(checked) => {
-                          const next = new Set(selectedIds);
-                          if (checked) next.add(lead.id); else next.delete(lead.id);
-                          setSelectedIds(next);
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2 cursor-pointer" onClick={() => setDetailLead(lead)}>
-                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                          <span className="text-[10px] font-semibold text-primary">
-                            {getInitials(lead.firstName, lead.lastName)}
-                          </span>
+                    <div className="flex items-start gap-2 mb-3">
+                      <div onClick={e => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selectedIds.has(lead.id)}
+                          onCheckedChange={(checked) => {
+                            const next = new Set(selectedIds);
+                            if (checked) next.add(lead.id); else next.delete(lead.id);
+                            setSelectedIds(next);
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                            <span className="text-[10px] font-semibold text-primary">
+                              {getInitials(lead.firstName, lead.lastName)}
+                            </span>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold truncate">{lead.firstName} {lead.lastName || ""}</p>
+                            {lead.motivation && <p className="text-[10px] text-muted-foreground truncate">{lead.motivation}</p>}
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate hover:text-primary transition-colors">{lead.firstName} {lead.lastName || ""}</p>
-                          {lead.motivation && <p className="text-[10px] text-muted-foreground truncate max-w-[140px]">{lead.motivation}</p>}
-                        </div>
+                      </div>
+                      <Badge variant="outline" className={cn("text-[9px] h-5 px-1.5 shrink-0", ageColor.badge)}>
+                        {ageDays}d
+                      </Badge>
+                    </div>
+                    <div className="space-y-1 mb-3 text-xs">
+                      {lead.phone && (
+                        <a href={`tel:${lead.phone}`} onClick={e => e.stopPropagation()} className="flex items-center gap-1.5 text-emerald-400 hover:underline">
+                          <Phone className="h-3 w-3" /> {lead.phone}
+                        </a>
+                      )}
+                      {lead.email && (
+                        <a href={`mailto:${lead.email}`} onClick={e => e.stopPropagation()} className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground truncate">
+                          <Mail className="h-3 w-3" /> {lead.email}
+                        </a>
+                      )}
+                      {lead.instagramHandle && (
+                        <a href={`https://instagram.com/${lead.instagramHandle.replace("@","")}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="flex items-center gap-1.5 text-pink-400 hover:text-pink-300">
+                          <Instagram className="h-3 w-3" /> @{lead.instagramHandle.replace("@","")}
+                        </a>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <Badge variant="outline" className={cn("text-[9px] h-5 px-1.5", config.color)}>
+                          {config.label}
+                        </Badge>
+                        <Badge variant="outline" className={cn("text-[9px] h-5 px-1.5",
+                          lead.licenseStatus === "licensed" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-muted/50 text-muted-foreground border-border/50"
+                        )}>
+                          {lead.licenseStatus === "licensed" ? "Licensed" : "Unlicensed"}
+                        </Badge>
                         {isDuplicate && (
-                          <Badge variant="outline" className="text-[9px] h-4 px-1 bg-amber-500/10 text-amber-500 border-amber-500/20 shrink-0">
-                            Dupe
-                          </Badge>
+                          <Badge variant="outline" className="text-[9px] h-4 px-1 bg-amber-500/10 text-amber-500 border-amber-500/20">Dupe</Badge>
+                        )}
+                        {lead.leadSource === "new_drip" && (
+                          <Badge variant="outline" className="text-[9px] h-4 px-1 bg-cyan-500/10 text-cyan-400 border-cyan-500/20">Drip</Badge>
                         )}
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      {lead.phone ? (
-                        <a href={`tel:${lead.phone}`} className="text-xs text-emerald-500 hover:underline">{lead.phone}</a>
-                      ) : <span className="text-xs text-muted-foreground">—</span>}
-                    </TableCell>
-                    <TableCell>
-                      {lead.email ? (
-                        <a href={`mailto:${lead.email}`} className="text-xs text-muted-foreground hover:text-foreground truncate block max-w-[160px]">{lead.email}</a>
-                      ) : <span className="text-xs text-muted-foreground">—</span>}
-                    </TableCell>
-                    <TableCell>
-                      {lead.instagramHandle ? (
-                        <a href={`https://instagram.com/${lead.instagramHandle.replace("@","")}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-pink-400 hover:text-pink-300">
-                          <Instagram className="h-3 w-3" />
-                          @{lead.instagramHandle.replace("@","")}
-                        </a>
-                      ) : <span className="text-xs text-muted-foreground">—</span>}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={cn("text-[10px] h-5 px-2", config.color)}>
-                        {config.label}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={cn("text-[10px] h-5 px-2", lead.licenseStatus === "licensed" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-muted/50 text-muted-foreground border-border/50")}>
-                        {lead.licenseStatus === "licensed" ? "Licensed" : "Unlicensed"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {lead.leadSource === "new_drip" && (
-                        <Badge variant="outline" className="text-[10px] h-4 px-1.5 bg-cyan-500/10 text-cyan-400 border-cyan-500/20">Drip</Badge>
-                      )}
-                      {lead.leadSource === "aged" && (
-                        <span className="text-[10px] text-muted-foreground">Aged</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
                         {lead.phone && (
-                          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" asChild title="Call">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
                             <a href={`tel:${lead.phone}`}><PhoneCall className="h-3.5 w-3.5 text-emerald-400" /></a>
                           </Button>
-                        )}
-                        {lead.email && (
-                          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" asChild title="Email">
-                            <a href={`mailto:${lead.email}`}><Mail className="h-3.5 w-3.5 text-blue-400" /></a>
-                          </Button>
-                        )}
-                        <ResendLicensingButton
-                          recipientEmail={lead.email}
-                          recipientName={lead.firstName}
-                          licenseStatus={lead.licenseStatus === "licensed" ? "licensed" : "unlicensed"}
-                          agentId={lead.assignedManagerId || undefined}
-                        />
-                        {isAdmin && (
-                          <QuickAssignMenu
-                            applicationId={lead.id}
-                            currentAgentId={lead.assignedManagerId || null}
-                            onAssigned={fetchLeads}
-                            source="aged_leads"
-                            displayMode="icon"
-                            className="h-7 w-7"
-                          />
                         )}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -1058,18 +1042,25 @@ export default function DashboardAgedLeads() {
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-          {selectedIds.size > 0 && (
-            <div className="flex items-center gap-3 px-4 py-2.5 border-t border-border bg-muted/30">
-              <span className="text-xs font-medium text-muted-foreground">{selectedIds.size} selected — use toolbar above to assign or delete</span>
-            </div>
-          )}
+                    </div>
+                  </GlassCard>
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
         </div>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 mt-4">
+            <Button variant="outline" size="sm" className="h-8 text-xs" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>
+              Previous
+            </Button>
+            <span className="text-xs text-muted-foreground">Page {currentPage} of {totalPages}</span>
+            <Button variant="outline" size="sm" className="h-8 text-xs" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>
+              Next
+            </Button>
+          </div>
+        )}
+        </>
       )}
 
       {/* Bulk Assign Confirmation Dialog */}

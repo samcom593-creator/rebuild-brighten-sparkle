@@ -39,30 +39,32 @@ const CASHAPP_LINK = "https://cash.app/$ApexFinancial";
 // Package data
 const packages = [
   {
-    id: "standard",
-    name: "Apex Standard Leads",
+    id: "gold",
+    name: "Gold Leads",
     description: "Quality leads that are 30 days old or less. Perfect for agents building a consistent pipeline with proven prospects.",
     features: [
+      "Unlimited leads",
       "Leads 30 days or less old",
       "Pre-qualified prospects",
-      "Verified contact info",
       "Weekly delivery",
     ],
     price: 250,
     popular: false,
+    stripeTier: "gold",
   },
   {
-    id: "premium",
-    name: "Apex Premium Leads",
+    id: "platinum",
+    name: "Platinum Vet Leads",
     description: "Fresh leads logged within the past week. Ideal for agents who want the hottest prospects with maximum conversion potential.",
     features: [
+      "Unlimited leads",
       "Leads logged this week",
       "Highest conversion rates",
       "First-priority access",
-      "Real-time delivery",
     ],
-    price: 500,
+    price: 350,
     popular: true,
+    stripeTier: "platinum",
   },
 ];
 
@@ -127,13 +129,45 @@ export default function PurchaseLeads() {
     packageName: "",
     price: 0,
   });
-   const [notifying, setNotifying] = useState(false);
+  const [notifying, setNotifying] = useState(false);
+  const [checkingOut, setCheckingOut] = useState<string | null>(null);
+
+  const handleStripeCheckout = async (tier: string) => {
+    setCheckingOut(tier);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-lead-checkout", {
+        body: { tier },
+      });
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, "_blank");
+      } else {
+        throw new Error("No checkout URL returned");
+      }
+    } catch (err: any) {
+      console.error("Stripe checkout error:", err);
+      toast.error("Failed to start checkout: " + (err.message || "Unknown error"));
+      playSound("error");
+    } finally {
+      setCheckingOut(null);
+    }
+  };
 
   const nextSunday = useMemo(() => getNextSundayMidnightCST(), []);
   const countdown = useCountdown(nextSunday);
 
   useEffect(() => {
     fetchLeadCount();
+    // Check for Stripe redirect
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("success") === "true") {
+      toast.success("🎉 Subscription activated! Your leads will start flowing.");
+      playSound("celebrate");
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (params.get("canceled") === "true") {
+      toast.info("Checkout canceled. You can try again anytime.");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
   }, []);
 
   const fetchLeadCount = async () => {
@@ -397,21 +431,37 @@ export default function PurchaseLeads() {
                   </p>
 
                   {/* Payment Buttons */}
-                  <div className="grid grid-cols-2 gap-3 pt-2">
+                  <div className="space-y-3 pt-2">
                     <Button
-                      onClick={() => handlePaymentClick("venmo", pkg.name, pkg.price)}
-                      className="bg-[#008CFF] hover:bg-[#0070CC] text-white gap-2"
+                      onClick={() => handleStripeCheckout(pkg.stripeTier)}
+                      disabled={checkingOut === pkg.stripeTier}
+                      className="w-full gap-2 h-11 text-sm font-semibold"
+                      size="lg"
                     >
-                      <DollarSign className="h-4 w-4" />
-                      Venmo
+                      {checkingOut === pkg.stripeTier ? (
+                        <><Clock className="h-4 w-4 animate-spin" /> Processing...</>
+                      ) : (
+                        <><DollarSign className="h-4 w-4" /> Subscribe with Card</>
+                      )}
                     </Button>
-                    <Button
-                      onClick={() => handlePaymentClick("cashapp", pkg.name, pkg.price)}
-                      className="bg-[#00D632] hover:bg-[#00B82B] text-white gap-2"
-                    >
-                      <DollarSign className="h-4 w-4" />
-                      Cash App
-                    </Button>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        onClick={() => handlePaymentClick("venmo", pkg.name, pkg.price)}
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 text-xs"
+                      >
+                        <DollarSign className="h-3 w-3" /> Venmo
+                      </Button>
+                      <Button
+                        onClick={() => handlePaymentClick("cashapp", pkg.name, pkg.price)}
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 text-xs"
+                      >
+                        <DollarSign className="h-3 w-3" /> Cash App
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </Card>

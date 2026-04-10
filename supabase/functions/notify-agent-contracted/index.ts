@@ -31,7 +31,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Fetch application details
     const { data: application, error: appError } = await supabase
       .from("applications")
-      .select("first_name, last_name, email")
+      .select("first_name, last_name, email, license_status")
       .eq("id", applicationId)
       .single();
 
@@ -71,28 +71,16 @@ const handler = async (req: Request): Promise<Response> => {
       .filter((v, i, a) => a.indexOf(v) === i) as string[];
 
     const firstName = application.first_name;
-    
-    const { error: emailError } = await resend.emails.send({
-      from: "APEX Financial <notifications@apex-financial.org>",
-      to: [application.email],
-      cc: ccList.length > 0 ? ccList : undefined,
-      subject: "🎉 Welcome to the Team! Set Up Your CRM Access",
-      html: `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-</head>
-<body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#0a0a0a;color:#ffffff;">
-  <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
-    <div style="text-align:center;margin-bottom:32px;">
-      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">APEX FINANCIAL</h1>
-    </div>
-    <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:16px;padding:32px;border:1px solid rgba(20,184,166,0.2);">
-      <div style="text-align:center;margin-bottom:24px;">
-        <span style="font-size:48px;">🎉</span>
-      </div>
+    const isLicensed = application.license_status === "licensed";
+
+    // Licensed agents → CRM setup / portal onboarding (no pre-licensing course)
+    // Unlicensed agents → pre-licensing instructions
+    const subject = isLicensed
+      ? "🎉 Welcome to the Team! Set Up Your CRM Access"
+      : "🎉 Welcome to Apex Financial! Next Steps to Get Licensed";
+
+    const bodyContent = isLicensed
+      ? `
       <h2 style="font-size:24px;margin:0 0 16px 0;color:#14b8a6;text-align:center;">Congratulations, ${firstName}!</h2>
       <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 16px 0;">
         Welcome to the Apex Financial family! We're thrilled to have you on board.
@@ -120,7 +108,64 @@ const handler = async (req: Request): Promise<Response> => {
           • Start receiving leads and building your pipeline<br>
           • Schedule your first week of training sessions
         </p>
+      </div>`
+      : `
+      <h2 style="font-size:24px;margin:0 0 16px 0;color:#14b8a6;text-align:center;">Welcome, ${firstName}!</h2>
+      <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 16px 0;">
+        We're excited to have you join Apex Financial! Before you can start in the field, you'll need to get your insurance license.
+      </p>
+      <p style="font-size:16px;line-height:1.6;color:#d1d5db;margin:0 0 16px 0;">
+        Don't worry — we'll guide you through every step of the process.
+      </p>
+      <div style="background:rgba(20,184,166,0.1);border-radius:8px;padding:20px;margin:24px 0;">
+        <p style="font-size:14px;color:#14b8a6;margin:0 0 12px 0;font-weight:bold;">YOUR LICENSING STEPS:</p>
+        <p style="font-size:14px;color:#9ca3af;margin:0;">
+          1. Complete your state pre-licensing course<br>
+          2. Schedule your licensing exam<br>
+          3. Pass your exam and submit your license<br>
+          4. Get contracted and start earning
+        </p>
       </div>
+      <div style="text-align:center;margin:24px 0;">
+        <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
+          <tr>
+            <td align="center" bgcolor="#14b8a6" style="border-radius:8px;">
+              <a href="${crmSetupLink}" style="display:inline-block;color:#ffffff;padding:16px 32px;text-decoration:none;font-weight:bold;font-size:16px;">
+                Start Your Onboarding
+              </a>
+            </td>
+          </tr>
+        </table>
+      </div>
+      <div style="border-left:3px solid #f59e0b;padding-left:16px;margin:24px 0;">
+        <p style="font-size:14px;color:#9ca3af;margin:0;">
+          <strong style="color:#ffffff;">Daily check-ins start tomorrow!</strong><br>
+          You'll receive a brief daily check-in to track your study progress. We'll also send reminders on Day 1, 3, 7, and 14 to keep you on track.
+        </p>
+      </div>`;
+
+    const { error: emailError } = await resend.emails.send({
+      from: "APEX Financial <notifications@apex-financial.org>",
+      to: [application.email],
+      cc: ccList.length > 0 ? ccList : undefined,
+      subject,
+      html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;background-color:#0a0a0a;color:#ffffff;">
+  <div style="max-width:600px;margin:0 auto;padding:40px 20px;">
+    <div style="text-align:center;margin-bottom:32px;">
+      <h1 style="font-size:28px;font-weight:bold;margin:0;background:linear-gradient(135deg,#14b8a6,#0ea5e9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">APEX FINANCIAL</h1>
+    </div>
+    <div style="background:linear-gradient(145deg,#1a1a2e,#16213e);border-radius:16px;padding:32px;border:1px solid rgba(20,184,166,0.2);">
+      <div style="text-align:center;margin-bottom:24px;">
+        <span style="font-size:48px;">🎉</span>
+      </div>
+      ${bodyContent}
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         If you have any questions, don't hesitate to reach out. We're here to help you succeed!<br><br>
         Welcome aboard,<br>

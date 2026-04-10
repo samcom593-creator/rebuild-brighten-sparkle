@@ -1,166 +1,158 @@
 
 
-## Master Prompt Implementation Plan
+# APEX Financial Maximum Rebuild Plan
 
-This is a large 19-section upgrade. Based on my audit, here's what's **already done** vs. **still needed**:
+This is a comprehensive 14-part overhaul covering visual identity, CRM, communications, training, calendar, content library, automation, and global fixes. Many features already partially exist; this plan addresses what's missing or broken.
 
-### Already Implemented (from previous work)
-- Landing page ApexLeadsSection (Gold/Platinum Vet Leads)
+---
+
+## Current State Assessment
+
+**Already implemented (partially or fully):**
+- CRM stages (Below 10K, Transfer, Live) with ALP logic
+- Agent cards with photos and AI score badges
+- Filter bar (stage, license, manager, AI score)
+- Manager isolation via `invited_by_manager_id`
+- Inbox page with timestamps and delivery status
 - Automation Hub with toggle cards
-- Instagram Automation page
-- InboxPage exists
-- Award Graphics with canvas-based generation
-- Agent Flow page
-- Vite chunking + lazy loading
-- Syne + DM Sans fonts
-- Growth Dashboard + Seminar Admin removed from sidebar
-- Discord webhook in settings
-- Lead purchase notification edge function
+- Team Hierarchy with promote/demote
+- Sidebar structure (Growth Dashboard and Field Check-In removed)
+- Syne + DM Sans fonts loaded in `index.html`
+- Lazy loading and manual chunks in Vite config
+- `lead_purchase_requests` table exists
+- Purchase Leads page with Venmo/CashApp
 
-### Remaining Work (grouped into implementation phases)
-
----
-
-### Phase 1: Database Migrations
-
-Create migrations for:
-1. **CRM stages** — Add `transfer` and `below_10k` to `onboarding_stage` enum (if not already in enum). Add constraint allowing: `applied, meeting_attendance, pre_licensed, transfer, in_field_training, below_10k, live, need_followup, inactive, evaluated, pending_review`
-2. **`lead_purchase_requests` table** — if it doesn't exist yet (Dashboard.tsx references it with `as any`)
-3. **`instagram_subscriptions` table** — if missing
-4. **`automations_config` table** — if different from `automation_settings`
-5. **`notification_log` columns** — add `subject`, `body`, `status`, `opened_at` if missing
-
----
-
-### Phase 2: CRM Stages Update (Section 1)
-
-**File: `src/pages/DashboardCRM.tsx`**
-- Update `SECTIONS` array to include all 9 stages in order: applied → meeting_attendance → pre_licensed → transfer → in_field_training → below_10k → live → need_followup → inactive
-- Color code each stage per spec (blue, purple, yellow, orange, teal, red, green, amber, gray)
-- Add stage filter dropdown in CRM top bar
-- Show colored pill badge on each agent card
+**Missing or needs building:**
+- Content Library page (`/dashboard/content`) — does not exist
+- Course Catalog Netflix-style rebuild (`/course-catalog` route) — currently uses `/onboarding-course`
+- Call Library tab — not built
+- Completion certificate generation and auto-email
+- Google Calendar OAuth integration
+- Stripe checkout session edge function
+- APEX Leads section on landing page
+- `system_settings` table for earnings override rate
+- Discord webhook URL in Settings page
+- Daily check-in WhatsApp redirect for unlicensed
+- Agent Portal → Agent Dashboard rename (partially done, `/agent-portal` still exists)
+- CSS global styles from Part 1 (glass-card, hover transitions, etc.)
+- Vite `build.target: 'esnext'` and framer-motion/date-fns chunks
 
 ---
 
-### Phase 3: Profile Photo Requirement (Section 2)
+## Implementation Phases
 
-- **`src/pages/DashboardCRM.tsx`**: Show "Photo Required" red badge on cards without avatar
-- **`src/pages/OnboardingCourse.tsx`**: Before Module 1 unlocks, check `profiles.avatar_url`. Show full-screen upload prompt if missing
+### Phase 1: Visual Identity & CSS Foundation
+- Add Part 1 CSS rules to `index.css`: glass-card styles, universal hover transitions, button primary styles
+- Add `build.target: 'esnext'` and additional manual chunks (framer-motion, date-fns) to `vite.config.ts`
 
----
+### Phase 2: Landing Page — APEX Leads Section
+- Create `src/components/landing/ApexLeadsSection.tsx` with Standard ($250) and Premium ($350) lead package cards
+- Add trust signals row and "How it works" steps
+- Wire purchase buttons to Stripe checkout (Phase 5)
+- Add section to Index page between CareerPathway and CTA
 
-### Phase 4: Team Directory → Visual Org Chart (Section 3)
+### Phase 3: Database Migrations
+- Create `system_settings` table (key TEXT PRIMARY KEY, value TEXT, updated_at)
+- Insert `sam_override_rate = 0.03`
+- Add `discord_webhook_url` column or use `system_settings` for it
+- Ensure `lead_purchase_requests` has all needed columns
 
-**File: `src/pages/TeamDirectory.tsx`** — Complete rebuild:
-- Pyramid org chart: Sam (gold) → Managers (blue) → Team Leaders (teal) → Agents (green)
-- Recursive `OrgNode` component with avatar, name, role badge, weekly ALP
-- Connecting lines between levels
-- Right-side Quick Reassign panel (agent dropdown → new manager dropdown → confirm)
-- Role Promotion side panel on card click
+### Phase 4: CRM Enhancements
+- Add bulk actions toolbar (select all, bulk email/SMS/move stage/assign/deactivate)
+- Add "Pending Lead Confirmations" admin banner with confirm/decline buttons
+- Add pagination (24 cards per page)
+- Polish agent card hover states (lift + green glow)
 
----
+### Phase 5: Stripe Checkout Integration
+- Create `supabase/functions/create-checkout-session/index.ts` edge function
+- Accept package_type + agent_id, create Stripe checkout session, return URL
+- On success: insert `lead_purchase_request`, notify Sam via SMS + email
+- Wire Purchase Leads page and landing page buttons to this function
 
-### Phase 5: Course Catalog Netflix Rebuild (Section 4)
+### Phase 6: Training Academy — Netflix-Style Course Catalog
+- Rebuild `OnboardingCourse.tsx` as Netflix-style catalog with hero banner, 3-column grid
+- Add locked/unlocked/completed visual states with overlays
+- Add Call Library tab with search/filter (Sales Calls, Recruiting, Training, Live Replays)
+- Add completion certificate generation (HTML canvas → PDF)
+- Create edge function to email certificate to agent + Sam
+- Add `/course-catalog` route (redirect from `/onboarding-course`)
 
-**File: `src/pages/OnboardingCourse.tsx`** — Major enhancements:
-- Hero banner with current/next module + progress bar
-- Module grid with lock/complete/current visual states
-- Sequential unlock logic (photo → Module 1 → Module 2 → etc.)
-- 80% video watch threshold before quiz
-- Speed controls (already partially done)
-- Notes panel alongside video
-- Call Library tab (grid of recorded calls, search/filter)
-- Completion certificate generation (PDF)
+### Phase 7: Content Library (New Page)
+- Create `src/pages/ContentLibrary.tsx` at `/dashboard/content`
+- Grid view for uploaded content (videos/photos) with tags
+- Social post generator (caption + hashtags + download)
+- Award graphics generator using HTML Canvas (5 templates)
+- Add to sidebar under CONTENT section
 
----
+### Phase 8: Calendar Rebuild
+- Rebuild `CalendarPage.tsx` with proper week grid view (7 columns × hourly rows)
+- Add drag-to-create and drag-to-move events
+- Auto-populate APEX events from DB (interviews, exam dates, milestones)
+- Add Google Calendar connect button (OAuth flow via edge function)
+- Add sidebar with mini month navigator and upcoming events
 
-### Phase 6: Course Progress Optimization (Section 5)
+### Phase 9: Communications & Inbox Polish
+- Ensure email-client style layout with left panel (35%) and right panel (65%)
+- Add unread badge count to sidebar Inbox item
+- Verify resend button works on failed messages
 
-**File: `src/pages/CourseProgress.tsx`**:
-- 3 tabs: In Progress (default) / Completed / Not Started
-- Hide deactivated/inactive agents
-- Add columns: photo, modules complete, %, last activity, days since start, quiz avg, [Send Nudge]
-- "Send Reminder to All Stalled" bulk action
-- Manager-scoped filtering
+### Phase 10: Global Fixes
+- Fix earnings calculation to use `system_settings.sam_override_rate`
+- Complete "Agent Portal" → "Agent Dashboard" rename globally
+- Fix pre-licensing email routing in `notify-agent-contracted` to send YOUR course link for licensed agents
+- Daily check-in: redirect licensed agents to `/agent-dashboard`, add WhatsApp link after submit for unlicensed
+- Add Discord webhook URL field to Settings page (admin)
+- Wire `discord-webhook-notify` to read from `system_settings` instead of `profiles`
 
----
+### Phase 11: Daily Producer Spotlight Enhancement
+- Update `send-daily-producer-spotlight` with the 5-tier achievement detection logic
+- Add moody email template with agent photo overlay
+- Add SMS blast via `send-sms-auto-detect`
+- Log all sends to `notification_log`
 
-### Phase 7: Inbox Timestamps + Cleanup (Section 6)
+### Phase 12: Mobile Optimization
+- Bottom nav bar on Agent Dashboard: Home | Numbers | Leaderboard | Awards | Profile
+- Large tap targets (48px min), swipe gestures on Call Center
+- `inputmode="decimal"` on number inputs in Numbers page
 
-**File: `src/pages/InboxPage.tsx`**:
-- Left panel with filter tabs (All/Email/SMS/Push)
-- Prominent date/time formatting ("Today 9:32am", "Apr 3, 9:32am")
-- Color left border by type
-- Right panel: full message body, To, Sent, Status, Resend button
-- Stats bar: emails/SMS sent today, open rate
+### Phase 13: Sidebar Polish
+- Apply luxury dark gradient background
+- Green pulsing live indicator dot next to "APEX" logo
+- Active item: teal text + 2px left border
+- Section headers: 10px uppercase with letter-spacing
 
----
-
-### Phase 8: Daily Check-In + Remove Field Check-In (Sections 7 & 8)
-
-- **DailyCheckin.tsx**: Add license check — redirect licensed agents to /agent-portal
-- **Remove Field Check-In**: Delete `src/pages/FieldCheckin.tsx`, remove route from App.tsx, remove from GlobalSidebar.tsx
-
----
-
-### Phase 9: Purchase Leads Stripe Integration (Section 9)
-
-- Enable Stripe via the Stripe tool
-- Create Stripe checkout sessions for Gold ($250) and Platinum Vet ($350) packages
-- **PurchaseLeads.tsx**: Dark luxury card design, Stripe payment buttons
-- Admin view: pending confirmations with Confirm/Decline buttons
-- Webhook → creates `lead_purchase_requests` entry
-
----
-
-### Phase 10: Aged Leads Design (Section 10)
-
-**File: `src/pages/DashboardAgedLeads.tsx`**:
-- Card grid layout instead of table
-- Color by age: green (0-30), yellow (31-60), red (61+)
-- Bulk actions, search/filter, pagination (25 per page)
-
----
-
-### Phase 11: Dashboard Real Numbers (Section 11)
-
-**File: `src/pages/Dashboard.tsx`**:
-- Override earnings calculation: team ALP × agency_override_rate
-- Remove all hardcoded numbers, replace with real Supabase queries
-- Stat cards using proper queries (active agents, weekly ALP, applications, close rate)
-
----
-
-### Phase 12: Auto-Promote Logic (Section 1 addendum)
-
-**File: `supabase/functions/log-production/index.ts`**:
-- After production submission, check if agent's total ALP ≥ $10,000
-- If yes and stage is `below_10k`, auto-update to `live`
+### Phase 14: Cleanup & QA
+- Remove all remaining placeholder/hardcoded numbers
+- Verify all alert banners use real DB queries
+- Ensure all email cron schedules use `'30 15 * * *'` (9:30am CST)
 
 ---
 
-### Phase 13: Email/SMS Routing Fix (Section 13)
+## Technical Details
 
-- In hire/contract edge functions: check license_status
-- Licensed → portal onboarding email (no pre-licensing course)
-- Unlicensed → pre-licensing + Day 1/3/7/14 sequence
-- Fix all send times to 9:30am CST (15:30 UTC)
+**New files to create:**
+- `src/pages/ContentLibrary.tsx`
+- `src/components/landing/ApexLeadsSection.tsx` (may already exist — needs verification/rebuild)
+- `supabase/functions/create-checkout-session/index.ts`
+- `supabase/functions/send-completion-certificate/index.ts`
 
----
+**Database migrations:**
+- `system_settings` table
+- Indexes on `notification_log` if missing
 
-### Phase 14: Remaining Cleanup (Sections 14, 18, 19)
+**Edge function secrets needed:**
+- `STRIPE_SECRET_KEY` (already set)
+- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` (needed for Calendar OAuth)
 
-- Remove all hardcoded placeholder numbers across codebase
-- Loading skeletons + pagination on heavy pages
-- Page load animations (opacity + translateY)
+**Files with major edits:**
+- `src/index.css` — add glass-card and global hover styles
+- `src/pages/DashboardCRM.tsx` — bulk actions, pagination, lead confirmation panel
+- `src/pages/OnboardingCourse.tsx` — Netflix-style rebuild with call library
+- `src/pages/CalendarPage.tsx` — week grid rebuild
+- `src/pages/Settings.tsx` — Discord webhook URL field
+- `src/pages/DailyCheckin.tsx` — licensed redirect + WhatsApp link
+- `src/components/layout/GlobalSidebar.tsx` — visual polish + Content Library link
+- `vite.config.ts` — build optimizations
 
----
-
-### Technical Notes
-
-- Stripe integration requires enabling via the Stripe tool first
-- Database migrations needed before UI code for new enum values and tables
-- The `onboarding_stage` enum likely needs `ALTER TYPE` rather than a CHECK constraint since it's a Postgres enum
-- Total estimated files to create/modify: ~15-20 files
-- This is a multi-step implementation that will be executed sequentially by phase
+This is approximately 8-10 implementation rounds. Shall I begin with Phase 1 (Visual Identity + CSS) and Phase 3 (Database migrations), then proceed sequentially?
 

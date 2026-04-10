@@ -31,6 +31,81 @@ import { getAllFlags, setFeatureFlag, FEATURE_FLAG_LABELS, type FeatureFlagName 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CARRIER_OPTIONS } from "@/lib/carrierOptions";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { MessageSquare } from "lucide-react";
+
+function DiscordWebhookSection() {
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase
+        .from("automation_settings" as any)
+        .select("*")
+        .eq("name", "Discord Webhook")
+        .maybeSingle();
+      if (data) setWebhookUrl((data as any).description || "");
+      setLoaded(true);
+    };
+    load();
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const { data: existing } = await supabase
+        .from("automation_settings" as any)
+        .select("id")
+        .eq("name", "Discord Webhook")
+        .maybeSingle();
+
+      if (existing) {
+        await (supabase.from("automation_settings" as any) as any)
+          .update({ description: webhookUrl })
+          .eq("id", (existing as any).id);
+      } else {
+        await supabase.from("automation_settings" as any).insert({
+          name: "Discord Webhook",
+          description: webhookUrl,
+          schedule: "On events",
+          enabled: !!webhookUrl,
+        } as any);
+      }
+      toast({ title: "Discord webhook saved" });
+    } catch {
+      toast({ title: "Failed to save", variant: "destructive" });
+    }
+    setSaving(false);
+  };
+
+  if (!loaded) return null;
+
+  return (
+    <GlassCard className="p-6">
+      <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
+        <MessageSquare className="h-5 w-5 text-indigo-400" />
+        Discord Integration
+      </h3>
+      <p className="text-sm text-muted-foreground mb-4">
+        Paste your Discord channel webhook URL to receive deal alerts, hire announcements, and milestone notifications.
+      </p>
+      <div className="flex gap-2">
+        <Input
+          placeholder="https://discord.com/api/webhooks/..."
+          value={webhookUrl}
+          onChange={(e) => setWebhookUrl(e.target.value)}
+          className="flex-1"
+        />
+        <Button onClick={handleSave} disabled={saving} size="sm">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
+          Save
+        </Button>
+      </div>
+    </GlassCard>
+  );
+}
+
 export function ProfileSettings() {
   const { user, profile, refreshProfile, isAdmin } = useAuth();
   const navigate = useNavigate();

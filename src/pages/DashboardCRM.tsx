@@ -764,7 +764,7 @@ export default function DashboardCRM() {
     }
     if (section.key === "needs_followup") {
       return filteredAgents.filter(a => {
-        const isNotLive = !["evaluated", "live"].includes(a.onboardingStage);
+        const isNotLive = !["evaluated", "live", "below_10k"].includes(a.onboardingStage);
         const daysSinceContact = a.lastContactedAt ? (Date.now() - new Date(a.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24) : 999;
         return isNotLive && daysSinceContact >= 6;
       }).sort((a, b) => {
@@ -780,8 +780,25 @@ export default function DashboardCRM() {
     if (section.key === "pre_licensed") {
       return filteredAgents.filter(a => a.agentLicenseStatus !== "licensed" && section.stages.includes(a.onboardingStage));
     }
+    // Live = actively selling + above $10K weekly ALP
     if (section.key === "live") {
-      return filteredAgents.filter(a => section.stages.includes(a.onboardingStage) && a.agentLicenseStatus === "licensed").sort((a, b) => b.weeklyALP - a.weeklyALP);
+      return filteredAgents.filter(a => 
+        (section.stages.includes(a.onboardingStage) || a.onboardingStage === "below_10k") && 
+        a.agentLicenseStatus === "licensed" && 
+        a.weeklyALP >= 10000
+      ).sort((a, b) => b.weeklyALP - a.weeklyALP);
+    }
+    // Below 10K = licensed agents selling but under $10K ALP
+    if (section.key === "below_10k") {
+      return filteredAgents.filter(a => 
+        (["evaluated", "live", "below_10k"].includes(a.onboardingStage)) && 
+        a.agentLicenseStatus === "licensed" && 
+        a.weeklyALP < 10000
+      ).sort((a, b) => b.weeklyALP - a.weeklyALP);
+    }
+    // Transfer = course done, not yet in field training
+    if (section.key === "transfer") {
+      return filteredAgents.filter(a => a.onboardingStage === "transfer");
     }
     return filteredAgents.filter(a => section.stages.includes(a.onboardingStage)).sort((a, b) => {
       if (!a.lastContactedAt && !b.lastContactedAt) return a.sortOrder - b.sortOrder;

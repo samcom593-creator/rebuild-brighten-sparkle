@@ -255,6 +255,81 @@ export default function Dashboard() {
 
   const [myDirectsOnly, setMyDirectsOnly] = useState(false);
 
+  // Fetch top-row real metrics
+  const { data: topMetrics } = useQuery({
+    queryKey: ["dashboard-top-metrics"],
+    queryFn: async () => {
+      const now = new Date();
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - now.getDay());
+      const weekStartStr = weekStart.toISOString().split("T")[0];
+
+      const [agentsRes, prodRes, appsRes] = await Promise.all([
+        supabase.from("agents").select("id", { count: "exact", head: true }).eq("is_deactivated", false),
+        supabase.from("daily_production").select("aop, deals_closed, presentations").gte("production_date", weekStartStr),
+        supabase.from("applications").select("id", { count: "exact", head: true }).gte("created_at", weekStart.toISOString()),
+      ]);
+
+      const weeklyALP = (prodRes.data || []).reduce((s: number, r: any) => s + (Number(r.aop) || 0), 0);
+      const totalDeals = (prodRes.data || []).reduce((s: number, r: any) => s + (Number(r.deals_closed) || 0), 0);
+      const totalPres = (prodRes.data || []).reduce((s: number, r: any) => s + (Number(r.presentations) || 0), 0);
+      const closeRate = totalPres > 0 ? (totalDeals / totalPres) * 100 : 0;
+
+      return {
+        activeAgents: agentsRes.count || 0,
+        weeklyALP,
+        appsThisWeek: appsRes.count || 0,
+        closeRate: Math.round(closeRate * 10) / 10,
+      };
+    },
+    enabled: !!user && !authLoading,
+    staleTime: 60000,
+  });
+
+  // Fetch agents who haven't logged production in 7+ days
+  const { data: staleAgents } = useQuery({
+    queryKey: ["dashboard-stale-agents"],
+    queryFn: async () => {
+      if (!isAdmin) return [];
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      const { data: agents } = await supabase
+        .from("agents")
+        .select("id, display_name, profiles:profile_id(full_name)")
+        .eq("is_deactivated", false);
+
+      if (!agents || agents.length === 0) return [];
+
+      const { data: recentProd } = await supabase
+        .from("daily_production")
+        .select("agent_id")
+        .gte("production_date", sevenDaysAgo.toISOString().split("T")[0]);
+
+      const activeIds = new Set((recentProd || []).map((p: any) => p.agent_id));
+      return agents
+        .filter((a: any) => !activeIds.has(a.id))
+        .map((a: any) => a.display_name || a.profiles?.full_name || "Agent")
+        .slice(0, 10);
+    },
+    enabled: !!user && !authLoading && isAdmin,
+    staleTime: 300000,
+  });
+
+  // Fetch pending lead purchase requests count
+  const { data: pendingPurchases } = useQuery({
+    queryKey: ["dashboard-pending-purchases"],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("lead_purchase_requests" as any)
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending");
+      return count || 0;
+    },
+    enabled: !!user && !authLoading && isAdmin,
+    staleTime: 60000,
+  });
+
   const { data } = useQuery({
     queryKey: ["dashboard-stats", user?.id, profile?.full_name, user?.email, dateRange.start.toISOString(), dateRange.end.toISOString(), myDirectsOnly],
     queryFn: () => fetchDashboardData(user!.id, profile?.full_name, user!.email, dateRange, myDirectsOnly),

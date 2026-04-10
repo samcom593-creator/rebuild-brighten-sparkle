@@ -759,7 +759,9 @@ export default function DashboardCRM() {
   const filteredAgents = activeAgents.filter(a => {
     const matchesSearch = !searchTerm || a.name.toLowerCase().includes(searchTerm.toLowerCase()) || a.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesManager = managerFilter === "all" || a.managerId === managerFilter;
-    return matchesSearch && matchesManager;
+    const matchesLicense = licenseFilter === "all" || (licenseFilter === "licensed" ? a.agentLicenseStatus === "licensed" : a.agentLicenseStatus !== "licensed");
+    const matchesAiScore = aiScoreFilter === "all" || a.aiScoreTier === aiScoreFilter;
+    return matchesSearch && matchesManager && matchesLicense && matchesAiScore;
   });
 
   const getAgentsForSection = (section: typeof SECTIONS[number]) => {

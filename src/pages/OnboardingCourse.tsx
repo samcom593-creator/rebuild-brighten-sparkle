@@ -4,6 +4,7 @@ import { BookOpen, PlayCircle, HelpCircle, Award, Camera, Upload } from "lucide-
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SkeletonLoader } from "@/components/ui/skeleton-loader";
 import { useAuth } from "@/hooks/useAuth";
@@ -217,11 +218,46 @@ export default function OnboardingCourse() {
 
   return (
     <>
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Hero Banner */}
+        <motion.div
+          initial={{ opacity: 0, y: -12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 via-card to-primary/5 p-6"
+        >
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <h1 className="text-2xl font-bold" style={{ fontFamily: "Syne" }}>
+                {isCourseComplete()
+                  ? "🎓 Course Complete!"
+                  : currentModule
+                    ? `Module ${currentModuleIndex + 1}: ${currentModule.title}`
+                    : "Training Course"
+                }
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                {isCourseComplete()
+                  ? "You've completed all modules. You're ready for field training!"
+                  : `${modules.filter(m => progress[m.id]?.passed).length} of ${modules.length} modules complete`
+                }
+              </p>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <p className="text-3xl font-bold text-primary">{getOverallProgress()}%</p>
+                <p className="text-xs text-muted-foreground">overall</p>
+              </div>
+            </div>
+          </div>
+          <div className="mt-4">
+            <Progress value={getOverallProgress()} className="h-2" />
+          </div>
+        </motion.div>
+
         {isCourseComplete() && (
-          <div className="flex items-center justify-center gap-2 mb-6 px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 w-fit mx-auto">
+          <div className="flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 w-fit mx-auto">
             <Award className="h-5 w-5" />
-            <span className="font-medium">Course Complete!</span>
+            <span className="font-medium">All Modules Passed!</span>
           </div>
         )}
 

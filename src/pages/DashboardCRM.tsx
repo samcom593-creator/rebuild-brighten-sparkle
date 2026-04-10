@@ -948,6 +948,19 @@ export default function DashboardCRM() {
           <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
         </>);
       }
+      case "applied":
+      case "transfer":
+      case "below_10k":
+      case "inactive": {
+        const stageLabel = agent.onboardingStage.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+        return (<>
+          <TableCell className="py-2">
+            <Badge variant="outline" className="text-[10px]">{stageLabel}</Badge>
+          </TableCell>
+          <TableCell className="py-2"><span className={cn("text-xs font-medium", contact.color)}>{contact.label}</span></TableCell>
+          <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
+        </>);
+      }
       default: return null;
     }
   };
@@ -963,11 +976,15 @@ export default function DashboardCRM() {
     };
     switch (sectionKey) {
       case "meeting_attendance": return <OnboardingExpandedRow {...commonProps} />;
+      case "applied": return <OnboardingExpandedRow {...commonProps} />;
       case "onboarding": return <OnboardingExpandedRow {...commonProps} />;
       case "pre_licensed": return <OnboardingExpandedRow {...commonProps} />;
+      case "transfer": return <OnboardingExpandedRow {...commonProps} />;
       case "in_training": return <TrainingExpandedRow {...commonProps} />;
+      case "below_10k": return <LiveExpandedRow {...commonProps} />;
       case "live": return <LiveExpandedRow {...commonProps} />;
       case "needs_followup": return <FollowUpExpandedRow {...commonProps} />;
+      case "inactive": return <FollowUpExpandedRow {...commonProps} />;
       default: return null;
     }
   };

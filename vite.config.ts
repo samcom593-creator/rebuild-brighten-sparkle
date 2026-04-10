@@ -68,15 +68,16 @@ export default defineConfig(({ mode }) => ({
   ].filter(Boolean),
   build: {
     target: "esnext",
+    minify: "esbuild",
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ["react", "react-dom", "react-router-dom"],
+          "vendor-react": ["react", "react-dom", "react-router-dom"],
+          "vendor-supabase": ["@supabase/supabase-js"],
+          "vendor-charts": ["recharts"],
+          "vendor-motion": ["framer-motion"],
+          "vendor-dates": ["date-fns", "date-fns-tz"],
           ui: ["@radix-ui/react-dialog", "@radix-ui/react-popover", "@radix-ui/react-select", "@radix-ui/react-tabs"],
-          charts: ["recharts"],
-          supabase: ["@supabase/supabase-js"],
-          motion: ["framer-motion"],
-          dates: ["date-fns", "date-fns-tz"],
         },
       },
     },

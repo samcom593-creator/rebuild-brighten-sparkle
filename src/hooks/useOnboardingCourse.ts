@@ -239,8 +239,8 @@ export function useOnboardingCourse(agentId: string | null) {
   const canTakeQuiz = useCallback((moduleId: string) => {
     const prog = progress[moduleId];
     if (!prog) return false;
-    // Primary: 90% watched
-    if (prog.video_watched_percent >= 90) return true;
+    // Primary: 80% watched
+    if (prog.video_watched_percent >= 80) return true;
     // Safety net: if progress record exists for 5+ minutes, allow quiz
     if (prog.started_at) {
       const elapsed = Date.now() - new Date(prog.started_at).getTime();

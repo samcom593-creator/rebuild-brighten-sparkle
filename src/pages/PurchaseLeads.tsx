@@ -39,30 +39,32 @@ const CASHAPP_LINK = "https://cash.app/$ApexFinancial";
 // Package data
 const packages = [
   {
-    id: "standard",
-    name: "Apex Standard Leads",
+    id: "gold",
+    name: "Gold Leads",
     description: "Quality leads that are 30 days old or less. Perfect for agents building a consistent pipeline with proven prospects.",
     features: [
+      "Unlimited leads",
       "Leads 30 days or less old",
       "Pre-qualified prospects",
-      "Verified contact info",
       "Weekly delivery",
     ],
     price: 250,
     popular: false,
+    stripeTier: "gold",
   },
   {
-    id: "premium",
-    name: "Apex Premium Leads",
+    id: "platinum",
+    name: "Platinum Vet Leads",
     description: "Fresh leads logged within the past week. Ideal for agents who want the hottest prospects with maximum conversion potential.",
     features: [
+      "Unlimited leads",
       "Leads logged this week",
       "Highest conversion rates",
       "First-priority access",
-      "Real-time delivery",
     ],
-    price: 500,
+    price: 350,
     popular: true,
+    stripeTier: "platinum",
   },
 ];
 

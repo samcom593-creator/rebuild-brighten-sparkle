@@ -1,10 +1,12 @@
 import { ReactNode, useState, useEffect, useRef, memo } from "react";
-import { Menu, Crown } from "lucide-react";
+import { Menu, Crown, Plus } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import { GlobalSidebar } from "./GlobalSidebar";
 import { PhonePromptBanner } from "@/components/dashboard/PhonePromptBanner";
+import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
 import { useSidebarState } from "@/hooks/useSidebarState";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { useNavigationGuard } from "@/hooks/useNavigationGuard";
@@ -25,6 +27,7 @@ const PageContent = memo(({ children, showPhoneBanner }: { children: ReactNode; 
 
 export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayoutProps) {
   const { isOpen, isFullscreen, toggleSidebar, toggleFullscreen, sidebarWidth } = useSidebarState();
+  const { isAdmin, isManager, isLoading: authLoading } = useAuth();
   const location = useLocation();
   const prevPathRef = useRef(location.pathname);
   const isDesktop = useIsDesktop();
@@ -56,6 +59,19 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
             <span className="text-lg font-bold gradient-text">APEX</span>
           </Link>
           <div className="flex items-center gap-2">
+            {!authLoading && (isAdmin || isManager) && (
+              <AddAgentModal
+                trigger={
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Add agent"
+                  >
+                    <Plus className="h-5 w-5" />
+                  </Button>
+                }
+              />
+            )}
             <ThemeToggle />
             <Button
               variant="ghost"

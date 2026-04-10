@@ -36,7 +36,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { InviteTeamModal } from "@/components/dashboard/InviteTeamModal";
 import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
 import { cn } from "@/lib/utils";
 import {
@@ -77,7 +76,6 @@ export function GlobalSidebar({
   const { user, isAdmin, isManager, isAgent } = useAuth();
   const AISHA_EMAIL = "kebbeh045@gmail.com";
   const isAisha = user?.email === AISHA_EMAIL;
-  const [showInviteModal, setShowInviteModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Array<{ id: string; name: string; email: string }>>([]);
   const [showSearch, setShowSearch] = useState(false);
@@ -117,6 +115,7 @@ export function GlobalSidebar({
     // OPERATIONS
     const opsItems: NavItem[] = [
       { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
+      { icon: BarChart3, label: "Agent Dashboard", href: "/agent-portal" },
       { icon: Briefcase, label: "CRM", href: "/dashboard/crm" },
     ];
     if (isAdmin || isManager) {
@@ -330,17 +329,19 @@ export function GlobalSidebar({
             )}
             <div className="flex items-center gap-1">
               {!isCollapsed && (isAdmin || isManager) && (
-                <ConditionalTooltip label="Add Team Member">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setShowInviteModal(true)}
-                    className="h-7 w-7 text-[#22d3a5] hover:bg-[#22d3a5]/10"
-                    style={{ touchAction: "manipulation" }}
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </ConditionalTooltip>
+                <AddAgentModal
+                  trigger={
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-[#22d3a5] hover:bg-[#22d3a5]/10"
+                      style={{ touchAction: "manipulation" }}
+                      aria-label="Add agent"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  }
+                />
               )}
               <ConditionalTooltip label={isCollapsed ? "Expand" : "Collapse"}>
                 <Button
@@ -359,17 +360,19 @@ export function GlobalSidebar({
           {/* Quick Add Button - Collapsed State */}
           {isCollapsed && (isAdmin || isManager) && (
             <div className="px-2 py-2 border-b border-[#1e293b]">
-              <ConditionalTooltip label="Add Team Member">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowInviteModal(true)}
-                  className="w-full justify-center text-[#22d3a5] hover:bg-[#22d3a5]/10"
-                  style={{ touchAction: "manipulation" }}
-                >
-                  <Plus className="h-5 w-5" />
-                </Button>
-              </ConditionalTooltip>
+              <AddAgentModal
+                trigger={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-center text-[#22d3a5] hover:bg-[#22d3a5]/10"
+                    style={{ touchAction: "manipulation" }}
+                    aria-label="Add agent"
+                  >
+                    <Plus className="h-5 w-5" />
+                  </Button>
+                }
+              />
             </div>
           )}
 
@@ -456,11 +459,6 @@ export function GlobalSidebar({
                     return <NavItemComponent key={item.href} item={item} isActive={isActive} />;
                   })}
                 </div>
-                {section.label === "NAVIGATION" && isAdmin && (
-                  <div className={cn("mt-1", isCollapsed ? "px-1" : "px-1")}>
-                    <AddAgentModal />
-                  </div>
-                )}
               </div>
             ))}
             <div className="pointer-events-none sticky bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-[#030712] to-transparent" />
@@ -551,11 +549,6 @@ export function GlobalSidebar({
           </Button>
         </div>
       )}
-
-      <InviteTeamModal
-        open={showInviteModal}
-        onClose={() => setShowInviteModal(false)}
-      />
     </>
   );
 }

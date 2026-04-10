@@ -421,21 +421,37 @@ export default function PurchaseLeads() {
                   </p>
 
                   {/* Payment Buttons */}
-                  <div className="grid grid-cols-2 gap-3 pt-2">
+                  <div className="space-y-3 pt-2">
                     <Button
-                      onClick={() => handlePaymentClick("venmo", pkg.name, pkg.price)}
-                      className="bg-[#008CFF] hover:bg-[#0070CC] text-white gap-2"
+                      onClick={() => handleStripeCheckout(pkg.stripeTier)}
+                      disabled={checkingOut === pkg.stripeTier}
+                      className="w-full gap-2 h-11 text-sm font-semibold"
+                      size="lg"
                     >
-                      <DollarSign className="h-4 w-4" />
-                      Venmo
+                      {checkingOut === pkg.stripeTier ? (
+                        <><Clock className="h-4 w-4 animate-spin" /> Processing...</>
+                      ) : (
+                        <><DollarSign className="h-4 w-4" /> Subscribe with Card</>
+                      )}
                     </Button>
-                    <Button
-                      onClick={() => handlePaymentClick("cashapp", pkg.name, pkg.price)}
-                      className="bg-[#00D632] hover:bg-[#00B82B] text-white gap-2"
-                    >
-                      <DollarSign className="h-4 w-4" />
-                      Cash App
-                    </Button>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        onClick={() => handlePaymentClick("venmo", pkg.name, pkg.price)}
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 text-xs"
+                      >
+                        <DollarSign className="h-3 w-3" /> Venmo
+                      </Button>
+                      <Button
+                        onClick={() => handlePaymentClick("cashapp", pkg.name, pkg.price)}
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5 text-xs"
+                      >
+                        <DollarSign className="h-3 w-3" /> Cash App
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </Card>

@@ -628,7 +628,7 @@ export default function DashboardCRM() {
       });
 
       let appQuery = supabase.from("applications")
-        .select("id, first_name, last_name, email, phone, license_status, license_progress, test_scheduled_date, status, instagram_handle, started_training")
+        .select("id, first_name, last_name, email, phone, license_status, license_progress, test_scheduled_date, status, instagram_handle, started_training, ai_score_tier")
         .is("terminated_at", null).neq("license_status", "licensed").in("status", ["approved", "contracting"]);
       if (isManager && !isAdmin && currentAgent) appQuery = appQuery.eq("assigned_agent_id", currentAgent.id);
 
@@ -649,6 +649,7 @@ export default function DashboardCRM() {
           lastContactedAt: null, standardPaid: false, premiumPaid: false,
           licenseProgress: app.license_progress || null, testScheduledDate: app.test_scheduled_date || null,
           agentLicenseStatus: app.license_status || "unlicensed",
+          aiScoreTier: app.ai_score_tier || null,
         }));
 
       return [...crmAgents, ...newApplicants];

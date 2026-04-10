@@ -9,15 +9,15 @@ import { toast } from "sonner";
 
 const packages = [
   {
-    name: "Standard Leads",
+    name: "Gold Leads",
     price: 250,
-    features: ["30 days old or less", "Pre-qualified prospects", "Verified contact info", "Weekly delivery"],
+    features: ["Unlimited leads", "30 days old or less", "Pre-qualified prospects", "Verified contact info", "Weekly delivery"],
     popular: false,
   },
   {
-    name: "Premium Leads",
+    name: "Platinum Vet Leads",
     price: 350,
-    features: ["Fresh this week", "Highest conversion rates", "Priority delivery", "Exclusive territories"],
+    features: ["Unlimited leads", "Fresh this week", "Highest conversion rates", "Priority delivery", "Exclusive territories"],
     popular: true,
   },
 ];

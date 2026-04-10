@@ -35,17 +35,35 @@ interface BulkStageActionsProps {
 }
 
 const STAGE_ORDER: OnboardingStage[] = [
+  "applied",
   "onboarding",
+  "meeting_attendance",
+  "pre_licensed",
   "training_online",
+  "transfer",
   "in_field_training",
+  "below_10k",
+  "live",
   "evaluated",
+  "need_followup",
+  "inactive",
+  "pending_review",
 ];
 
 const STAGE_LABELS: Record<OnboardingStage, string> = {
+  applied: "Applied",
   onboarding: "Onboarding",
+  meeting_attendance: "Meeting Attendance",
+  pre_licensed: "Pre-Licensed",
   training_online: "In Course",
+  transfer: "Transfer",
   in_field_training: "In-Field Training",
-  evaluated: "Live",
+  below_10k: "Below $10K",
+  live: "Live",
+  evaluated: "Evaluated",
+  need_followup: "Needs Follow-Up",
+  inactive: "Inactive",
+  pending_review: "Pending Review",
 };
 
 export function BulkStageActions({

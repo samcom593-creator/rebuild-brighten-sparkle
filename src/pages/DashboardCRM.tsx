@@ -107,12 +107,15 @@ const getContactInfo = (agent: AgentCRM) => {
 };
 
 const SECTIONS = [
-  { key: "meeting_attendance", label: "Meeting Attendance", icon: ClipboardCheck, stages: [] as OnboardingStage[], accent: "border-l-sky-500", headerBg: "bg-sky-500/5", iconColor: "text-sky-500" },
-  { key: "onboarding", label: "Onboarding", icon: BookOpen, stages: ["onboarding", "training_online"] as OnboardingStage[], accent: "border-l-primary", headerBg: "bg-primary/5", iconColor: "text-primary" },
-  { key: "pre_licensed", label: "Pre-Licensed", icon: GraduationCap, stages: [] as OnboardingStage[], accent: "border-l-violet-500", headerBg: "bg-violet-500/5", iconColor: "text-violet-500" },
-  { key: "in_training", label: "In-Field Training", icon: GraduationCap, stages: ["in_field_training"] as OnboardingStage[], accent: "border-l-amber-500", headerBg: "bg-amber-500/5", iconColor: "text-amber-500" },
-  { key: "live", label: "Live", icon: Briefcase, stages: ["evaluated"] as OnboardingStage[], accent: "border-l-emerald-500", headerBg: "bg-emerald-500/5", iconColor: "text-emerald-500" },
-  { key: "needs_followup", label: "Needs Follow-Up", icon: AlertTriangle, stages: [] as OnboardingStage[], accent: "border-l-red-500", headerBg: "bg-red-500/5", iconColor: "text-red-500" },
+  { key: "applied", label: "Applied", icon: Users, stages: ["applied"] as OnboardingStage[], accent: "border-l-blue-500", headerBg: "bg-blue-500/5", iconColor: "text-blue-500" },
+  { key: "meeting_attendance", label: "Meeting Attendance", icon: ClipboardCheck, stages: ["meeting_attendance"] as OnboardingStage[], accent: "border-l-purple-500", headerBg: "bg-purple-500/5", iconColor: "text-purple-500" },
+  { key: "pre_licensed", label: "Pre-Licensed", icon: GraduationCap, stages: ["pre_licensed", "onboarding", "training_online"] as OnboardingStage[], accent: "border-l-yellow-500", headerBg: "bg-yellow-500/5", iconColor: "text-yellow-500" },
+  { key: "transfer", label: "Transfer", icon: Users, stages: ["transfer"] as OnboardingStage[], accent: "border-l-orange-500", headerBg: "bg-orange-500/5", iconColor: "text-orange-500" },
+  { key: "in_training", label: "In-Field Training", icon: GraduationCap, stages: ["in_field_training"] as OnboardingStage[], accent: "border-l-teal-500", headerBg: "bg-teal-500/5", iconColor: "text-teal-500" },
+  { key: "below_10k", label: "Below $10K", icon: AlertTriangle, stages: ["below_10k"] as OnboardingStage[], accent: "border-l-red-500", headerBg: "bg-red-500/5", iconColor: "text-red-500" },
+  { key: "live", label: "Live", icon: Briefcase, stages: ["live", "evaluated"] as OnboardingStage[], accent: "border-l-emerald-500", headerBg: "bg-emerald-500/5", iconColor: "text-emerald-500" },
+  { key: "needs_followup", label: "Needs Follow-Up", icon: AlertTriangle, stages: ["need_followup"] as OnboardingStage[], accent: "border-l-amber-500", headerBg: "bg-amber-500/5", iconColor: "text-amber-500" },
+  { key: "inactive", label: "Inactive", icon: UserX, stages: ["inactive"] as OnboardingStage[], accent: "border-l-gray-500", headerBg: "bg-gray-500/5", iconColor: "text-gray-500" },
 ];
 
 const UNLICENSED_COLUMNS = [
@@ -760,9 +763,9 @@ export default function DashboardCRM() {
     }
     if (section.key === "needs_followup") {
       return filteredAgents.filter(a => {
-        const isBelowLive = a.onboardingStage !== "evaluated";
+        const isNotLive = !["evaluated", "live"].includes(a.onboardingStage);
         const daysSinceContact = a.lastContactedAt ? (Date.now() - new Date(a.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24) : 999;
-        return isBelowLive && daysSinceContact >= 6;
+        return isNotLive && daysSinceContact >= 6;
       }).sort((a, b) => {
         if (!a.lastContactedAt && !b.lastContactedAt) return a.sortOrder - b.sortOrder;
         if (!a.lastContactedAt) return -1;
@@ -770,9 +773,11 @@ export default function DashboardCRM() {
         return new Date(a.lastContactedAt).getTime() - new Date(b.lastContactedAt).getTime();
       });
     }
+    if (section.key === "inactive") {
+      return filteredAgents.filter(a => a.onboardingStage === "inactive" || a.isInactive);
+    }
     if (section.key === "pre_licensed") {
-      // All unlicensed agents in the licensing pipeline
-      return filteredAgents.filter(a => a.agentLicenseStatus !== "licensed");
+      return filteredAgents.filter(a => a.agentLicenseStatus !== "licensed" && section.stages.includes(a.onboardingStage));
     }
     if (section.key === "live") {
       return filteredAgents.filter(a => section.stages.includes(a.onboardingStage) && a.agentLicenseStatus === "licensed").sort((a, b) => b.weeklyALP - a.weeklyALP);
@@ -799,11 +804,15 @@ export default function DashboardCRM() {
 
   const meetingAgents = filteredAgents.filter(a => a.agentLicenseStatus === "licensed");
   const meetingPresentCount = Array.from(meetingAttendance.entries()).filter(([id, v]) => v === "present" && meetingAgents.some(a => a.id === id)).length;
+  const appliedCount = filteredAgents.filter(a => a.onboardingStage === "applied").length;
   const onboardingCount = filteredAgents.filter(a => ["onboarding", "training_online"].includes(a.onboardingStage)).length;
-  const preLicensedCount = filteredAgents.filter(a => a.agentLicenseStatus !== "licensed").length;
+  const preLicensedCount = filteredAgents.filter(a => a.agentLicenseStatus !== "licensed" && ["pre_licensed", "onboarding", "training_online"].includes(a.onboardingStage)).length;
+  const transferCount = filteredAgents.filter(a => a.onboardingStage === "transfer").length;
   const trainingCount = filteredAgents.filter(a => a.onboardingStage === "in_field_training").length;
-  const liveCount = filteredAgents.filter(a => a.onboardingStage === "evaluated" && a.agentLicenseStatus === "licensed").length;
+  const below10kCount = filteredAgents.filter(a => a.onboardingStage === "below_10k").length;
+  const liveCount = filteredAgents.filter(a => ["evaluated", "live"].includes(a.onboardingStage) && a.agentLicenseStatus === "licensed").length;
   const needsFollowUpCount = getAgentsForSection(SECTIONS.find(s => s.key === "needs_followup")!).length;
+  const inactiveCount = filteredAgents.filter(a => a.onboardingStage === "inactive" || a.isInactive).length;
   const staleCount = filteredAgents.filter(isStaleAgent).length;
 
   // Section-specific table headers
@@ -821,6 +830,11 @@ export default function DashboardCRM() {
         return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[100px] text-right">Week ALP</TableHead><TableHead className="w-[100px] text-right">Prev Week</TableHead><TableHead className="w-[60px] text-right">Deals</TableHead><TableHead className="w-[80px]">Attend.</TableHead><TableHead className="w-[80px]">Days Live</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
       case "needs_followup":
         return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[100px]">Last Activity</TableHead><TableHead className="w-[80px]">Days Stale</TableHead><TableHead className="w-[90px]">Contact</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
+      case "applied":
+      case "transfer":
+      case "below_10k":
+      case "inactive":
+        return (<><TableHead className="w-[220px]">Agent</TableHead><TableHead className="w-[120px]">Stage</TableHead><TableHead className="w-[90px]">Contact</TableHead><TableHead className="w-8"><StickyNote className="h-3 w-3" /></TableHead><TableHead className="w-8" /></>);
       default:
         return null;
     }
@@ -934,6 +948,19 @@ export default function DashboardCRM() {
           <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
         </>);
       }
+      case "applied":
+      case "transfer":
+      case "below_10k":
+      case "inactive": {
+        const stageLabel = agent.onboardingStage.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+        return (<>
+          <TableCell className="py-2">
+            <Badge variant="outline" className="text-[10px]">{stageLabel}</Badge>
+          </TableCell>
+          <TableCell className="py-2"><span className={cn("text-xs font-medium", contact.color)}>{contact.label}</span></TableCell>
+          <TableCell className="py-2"><InlineNotesButton agent={agent} /></TableCell>
+        </>);
+      }
       default: return null;
     }
   };
@@ -949,11 +976,15 @@ export default function DashboardCRM() {
     };
     switch (sectionKey) {
       case "meeting_attendance": return <OnboardingExpandedRow {...commonProps} />;
+      case "applied": return <OnboardingExpandedRow {...commonProps} />;
       case "onboarding": return <OnboardingExpandedRow {...commonProps} />;
       case "pre_licensed": return <OnboardingExpandedRow {...commonProps} />;
+      case "transfer": return <OnboardingExpandedRow {...commonProps} />;
       case "in_training": return <TrainingExpandedRow {...commonProps} />;
+      case "below_10k": return <LiveExpandedRow {...commonProps} />;
       case "live": return <LiveExpandedRow {...commonProps} />;
       case "needs_followup": return <FollowUpExpandedRow {...commonProps} />;
+      case "inactive": return <FollowUpExpandedRow {...commonProps} />;
       default: return null;
     }
   };

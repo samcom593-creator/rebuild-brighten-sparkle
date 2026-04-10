@@ -462,6 +462,8 @@ export default function DashboardCRM() {
   const [managers, setManagers] = useState<Manager[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [managerFilter, setManagerFilter] = useState<string>("all");
+  const [licenseFilter, setLicenseFilter] = useState<string>("all");
+  const [aiScoreFilter, setAiScoreFilter] = useState<string>("all");
   const [showDeactivated, setShowDeactivated] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
   const [deactivateAgent, setDeactivateAgent] = useState<AgentCRM | null>(null);

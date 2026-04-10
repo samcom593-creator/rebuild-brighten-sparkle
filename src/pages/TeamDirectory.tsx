@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-
+import { startOfWeek, endOfWeek } from "date-fns";
 import {
   Mail,
   Phone,
@@ -9,6 +9,7 @@ import {
   ExternalLink,
   RefreshCw,
   ChevronRight,
+  DollarSign,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -40,6 +41,7 @@ interface TeamMember {
   hasProgress: boolean;
   courseProgress: number;
   avatarUrl?: string;
+  weeklyAlp: number;
 }
 
 interface ManagerWithTeam {
@@ -47,6 +49,7 @@ interface ManagerWithTeam {
   agentId: string;
   teamMembers: TeamMember[];
   isCurrentUser: boolean;
+  totalWeeklyAlp: number;
 }
 
 export default function TeamDirectory() {
@@ -89,13 +92,24 @@ export default function TeamDirectory() {
       .maybeSingle();
 
     // Fetch all managers and their teams
-    const [rolesResult, agentsResult, profilesResult, progressResult, modulesResult] = await Promise.all([
+    const now = new Date();
+    const weekStart = startOfWeek(now, { weekStartsOn: 1 }).toISOString().split("T")[0];
+    const weekEnd = endOfWeek(now, { weekStartsOn: 1 }).toISOString().split("T")[0];
+
+    const [rolesResult, agentsResult, profilesResult, progressResult, modulesResult, prodResult] = await Promise.all([
       supabase.from("user_roles").select("user_id").in("role", ["manager", "admin"]),
       supabase.from("agents").select("id, user_id, invited_by_manager_id, onboarding_stage, is_deactivated, status"),
       supabase.from("profiles").select("*"),
       supabase.from("onboarding_progress").select("agent_id, passed"),
       supabase.from("onboarding_modules").select("id").eq("is_active", true),
+      supabase.from("daily_production").select("agent_id, aop").gte("production_date", weekStart).lte("production_date", weekEnd),
     ]);
+
+    // Build weekly ALP map
+    const weeklyAlpMap = new Map<string, number>();
+    (prodResult.data || []).forEach(p => {
+      weeklyAlpMap.set(p.agent_id, (weeklyAlpMap.get(p.agent_id) || 0) + Number(p.aop || 0));
+    });
 
     const managerUserIds = new Set(rolesResult.data?.map(r => r.user_id) || []);
     const agents = agentsResult.data || [];

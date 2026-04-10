@@ -28,7 +28,7 @@ export function MobileBottomNav() {
               key={item.label}
               onClick={() => navigate(item.path)}
               className={cn(
-                "flex flex-col items-center justify-center gap-0.5 w-16 h-14 rounded-xl transition-all",
+                "flex flex-col items-center justify-center gap-0.5 min-w-[48px] min-h-[48px] w-16 h-14 rounded-xl transition-all",
                 isActive
                   ? "text-primary"
                   : "text-muted-foreground hover:text-foreground"

@@ -92,7 +92,7 @@ interface AgentProgress {
   courseStartedAt: string | null;
 }
 
-type FilterType = "all" | "not_started" | "in_progress" | "stalled" | "complete";
+type FilterType = "in_progress" | "complete" | "not_started";
 
 // Progress ring component
 function ProgressRing({ percent, size = 40, strokeWidth = 4, className }: { percent: number; size?: number; strokeWidth?: number; className?: string }) {

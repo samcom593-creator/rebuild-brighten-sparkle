@@ -10,7 +10,7 @@ export default function SeminarPage() {
   const [muted, setMuted] = useState(false);
 
   return (
-    <div className="min-h-screen bg-black flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -19,7 +19,7 @@ export default function SeminarPage() {
       >
         <div className="flex items-center justify-center gap-2 mb-2">
           <Crown className="h-6 w-6 text-primary" />
-          <span className="text-lg font-bold text-white" style={{ fontFamily: "Syne" }}>
+          <span className="text-lg font-bold text-foreground" style={{ fontFamily: "Syne" }}>
             APEX Financial
           </span>
         </div>

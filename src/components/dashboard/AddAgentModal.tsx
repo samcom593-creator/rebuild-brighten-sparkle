@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { UserPlus, Loader2 } from "lucide-react";
 import {
   Dialog,
@@ -30,9 +30,10 @@ interface Manager {
 
 interface AddAgentModalProps {
   onAgentAdded?: () => void;
+  trigger?: ReactNode;
 }
 
-export function AddAgentModal({ onAgentAdded }: AddAgentModalProps) {
+export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
   const { user } = useAuth();
   const { playSound } = useSoundEffects();
   const queryClient = useQueryClient();
@@ -181,10 +182,12 @@ export function AddAgentModal({ onAgentAdded }: AddAgentModalProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="gap-2">
-          <UserPlus className="h-4 w-4" />
-          Add Agent
-        </Button>
+        {trigger ?? (
+          <Button className="gap-2">
+            <UserPlus className="h-4 w-4" />
+            Add Agent
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>

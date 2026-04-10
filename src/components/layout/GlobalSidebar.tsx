@@ -177,15 +177,14 @@ export function GlobalSidebar({
     // Field Check-In removed
     sections.push({ label: "EVENTS", items: eventItems });
 
-    // CONTENT (admin only)
+    // CONTENT
+    const contentItems: NavItem[] = [
+      { icon: Library, label: "Content Library", href: "/dashboard/content" },
+    ];
     if (isAdmin) {
-      sections.push({
-        label: "CONTENT",
-        items: [
-          { icon: Sparkles, label: "Instagram Automation", href: "/dashboard/instagram-automation" },
-        ],
-      });
+      contentItems.push({ icon: Sparkles, label: "Instagram Automation", href: "/dashboard/instagram-automation" });
     }
+    sections.push({ label: "CONTENT", items: contentItems });
 
     // AUTOMATION (admin only)
     if (isAdmin) {

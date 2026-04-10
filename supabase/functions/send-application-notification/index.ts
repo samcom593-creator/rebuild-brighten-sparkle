@@ -129,7 +129,9 @@ const handler = async (req: Request): Promise<Response> => {
     const adminEmailResponse = await resend.emails.send({
       from: "APEX Financial <notifications@apex-financial.org>",
       to: ["sam@apex-financial.org"],
-      subject: `New Application: ${sanitized.firstName} ${sanitized.lastName} (${licenseStatusDisplay})`,
+      subject: sanitized.licenseStatus === 'licensed'
+        ? `🔥 New LICENSED Application — ${sanitized.firstName} ${sanitized.lastName} | ${sanitized.city}, ${sanitized.state}`
+        : `New ${licenseStatusDisplay.toUpperCase()} Application — ${sanitized.firstName} ${sanitized.lastName} | ${sanitized.city}, ${sanitized.state}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #059669, #047857); padding: 30px; border-radius: 10px 10px 0 0;">
@@ -227,10 +229,14 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send confirmation email to applicant
     const applicantEmailResponse = await resend.emails.send({
-      from: "APEX Financial <notifications@apex-financial.org>",
+      from: "Sam <notifications@apex-financial.org>",
       to: [data.email],
       cc: ["sam@apex-financial.org"],
-      subject: "Application Received - APEX Financial",
+      subject: sanitized.licenseStatus === 'licensed'
+        ? `Welcome to APEX, ${sanitized.firstName} — Your Licensed Agent Journey Starts Now 🔑`
+        : sanitized.licenseStatus === 'pending'
+        ? `Welcome to APEX, ${sanitized.firstName} — You're Almost Ready to Earn 📋`
+        : `Welcome to APEX, ${sanitized.firstName} — Let's Get You Licensed and Earning 🎯`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <div style="background: linear-gradient(135deg, #059669, #047857); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
@@ -238,19 +244,23 @@ const handler = async (req: Request): Promise<Response> => {
           </div>
           
           <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 10px 10px;">
-            <h2 style="color: #111827; margin-top: 0;">Hi ${sanitized.firstName},</h2>
+            <h2 style="color: #111827; margin-top: 0;">${sanitized.firstName},</h2>
             
-            <p style="color: #4b5563; line-height: 1.6;">
-              Thank you for applying to join the APEX Financial team! We've received your application and are excited to learn more about you.
-            </p>
-
-            <div style="background: #d1fae5; border-left: 4px solid #059669; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
-              <p style="margin: 0; color: #047857; font-weight: 500;">
-                ${sanitized.licenseStatus === 'licensed' 
-                  ? "As a licensed agent, you're on the fast track! Expect to hear from us within 24-48 hours."
-                  : "Don't worry about not having a license yet - we cover most of the licensing costs and will guide you through the process!"}
-              </p>
-            </div>
+            ${sanitized.licenseStatus === 'licensed' 
+              ? `<p style="color: #4b5563; line-height: 1.6;">You just made a move that most people only talk about. You're licensed. You have the hardest part done. Now it's time to actually use it to build something real.</p>
+                 <div style="background: #d1fae5; border-left: 4px solid #059669; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+                   <p style="margin: 0; color: #047857; font-weight: 500;">A manager will call you within 24 hours. Agents on this team are averaging $23,000/month in production.</p>
+                 </div>`
+              : sanitized.licenseStatus === 'pending'
+              ? `<p style="color: #4b5563; line-height: 1.6;">You're in the right place at the right time. While your license processes, here's how to get ahead of everyone else...</p>
+                 <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+                   <p style="margin: 0; color: #92400e; font-weight: 500;">Your license is almost done — you'll hear from us within 48 hours to start the next steps.</p>
+                 </div>`
+              : `<p style="color: #4b5563; line-height: 1.6;">You took the first step. Most people never do. The license is just a test — we'll help you pass it.</p>
+                 <div style="background: #d1fae5; border-left: 4px solid #059669; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+                   <p style="margin: 0; color: #047857; font-weight: 500;">Agents went from exactly where you are to earning $5K-$23K/month. We cover most licensing costs!</p>
+                 </div>`
+            }
 
             <h3 style="color: #111827; margin-bottom: 15px;">What Happens Next?</h3>
             <ol style="color: #4b5563; line-height: 1.8;">
@@ -260,18 +270,14 @@ const handler = async (req: Request): Promise<Response> => {
               <li>Start your training and begin earning!</li>
             </ol>
 
-            <p style="color: #4b5563; line-height: 1.6;">
-              If you have any questions in the meantime, don't hesitate to reach out. We're here to help you succeed!
-            </p>
-
             <p style="color: #4b5563; margin-top: 30px;">
-              Best regards,<br>
-              <strong style="color: #059669;">The APEX Financial Team</strong>
+              — Sam<br>
+              <strong style="color: #059669;">Managing Partner, APEX Financial</strong>
             </p>
           </div>
 
           <div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">
-            <p>&copy; ${new Date().getFullYear()} APEX Financial. All rights reserved.</p>
+            <p>APEX Financial | apex-financial.org</p>
           </div>
         </div>
       `,

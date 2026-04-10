@@ -31,7 +31,7 @@ export function AuthenticatedShell() {
   return (
     <ProtectedRoute>
       <SidebarLayout showPhoneBanner={true}>
-        <ScheduleBar />
+        
         <PushNotificationPrompt />
         <ComponentErrorBoundary name="page-content">
           <Suspense fallback={<InnerPageLoader />}>

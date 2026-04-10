@@ -42,6 +42,7 @@ const TeamDirectory = lazy(() => import("./pages/TeamDirectory"));
 const PendingApproval = lazy(() => import("./pages/PendingApproval"));
 const AgentPortal = lazy(() => import("./pages/AgentPortal"));
 const OnboardingCourse = lazy(() => import("./pages/OnboardingCourse"));
+const CourseCatalog = lazy(() => import("./pages/CourseCatalog"));
 const MagicLogin = lazy(() => import("./pages/MagicLogin"));
 const Numbers = lazy(() => import("./pages/Numbers"));
 const Privacy = lazy(() => import("./pages/Privacy"));
@@ -149,6 +150,7 @@ const App = () => (
                     <Route path="/agent-portal" element={<AgentPortal />} />
                     <Route path="/agent-dashboard" element={<AgentPortal />} />
                     <Route path="/onboarding-course" element={<OnboardingCourse />} />
+                    <Route path="/course-catalog" element={<CourseCatalog />} />
                     <Route path="/course-progress" element={<CourseProgress />} />
                     <Route path="/course-progress/content" element={<CourseContent />} />
                     <Route path="/numbers" element={<Numbers />} />

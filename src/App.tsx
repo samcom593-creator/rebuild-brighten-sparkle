@@ -58,11 +58,9 @@ const AgentPipeline = lazy(() => import("./pages/AgentPipeline"));
 const CalendarPage = lazy(() => import("./pages/CalendarPage"));
 const NotificationHub = lazy(() => import("./pages/NotificationHub"));
 const LinksPage = lazy(() => import("./pages/LinksPage"));
-const GrowthDashboard = lazy(() => import("./pages/GrowthDashboard"));
 const AdminCalendar = lazy(() => import("./pages/AdminCalendar"));
 const AwardGraphics = lazy(() => import("./pages/AwardGraphics"));
 const SeminarPage = lazy(() => import("./pages/SeminarPage"));
-const SeminarAdmin = lazy(() => import("./pages/SeminarAdmin"));
 const ApplicantCheckin = lazy(() => import("./pages/ApplicantCheckin"));
 const DailyCheckin = lazy(() => import("./pages/DailyCheckin"));
 const FieldCheckin = lazy(() => import("./pages/FieldCheckin"));
@@ -71,6 +69,7 @@ const InboxPage = lazy(() => import("./pages/InboxPage"));
 const AutomationHub = lazy(() => import("./pages/AutomationHub"));
 const TeamHierarchy = lazy(() => import("./pages/TeamHierarchy"));
 const AgentPipelineSimple = lazy(() => import("./pages/AgentPipelineSimple"));
+const InstagramAutomation = lazy(() => import("./pages/InstagramAutomation"));
 
 const queryClient = new QueryClient({
   defaultOptions: {

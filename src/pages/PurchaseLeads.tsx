@@ -129,7 +129,29 @@ export default function PurchaseLeads() {
     packageName: "",
     price: 0,
   });
-   const [notifying, setNotifying] = useState(false);
+  const [notifying, setNotifying] = useState(false);
+  const [checkingOut, setCheckingOut] = useState<string | null>(null);
+
+  const handleStripeCheckout = async (tier: string) => {
+    setCheckingOut(tier);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-lead-checkout", {
+        body: { tier },
+      });
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, "_blank");
+      } else {
+        throw new Error("No checkout URL returned");
+      }
+    } catch (err: any) {
+      console.error("Stripe checkout error:", err);
+      toast.error("Failed to start checkout: " + (err.message || "Unknown error"));
+      playSound("error");
+    } finally {
+      setCheckingOut(null);
+    }
+  };
 
   const nextSunday = useMemo(() => getNextSundayMidnightCST(), []);
   const countdown = useCountdown(nextSunday);

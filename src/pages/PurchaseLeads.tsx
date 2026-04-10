@@ -62,7 +62,7 @@ const packages = [
       "Highest conversion rates",
       "First-priority access",
     ],
-    price: 350,
+    price: 500,
     popular: true,
     stripeTier: "platinum",
   },

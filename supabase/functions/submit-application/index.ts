@@ -699,7 +699,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
             </div>
 
             <p style="color: #4b5563; line-height: 1.6; margin-top: 25px;">
-              If you have any questions, don't hesitate to reach out. We're here to help you succeed!
+              You'll hear from a manager within 48 hours.
             </p>
 
             <div style="background: #dcfce7; border: 1px solid #86efac; padding: 20px; border-radius: 8px; margin: 25px 0; text-align: center;">
@@ -724,9 +724,9 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
               </a>
             </div>
 
-            <p style="color: #4b5563; margin-top: 30px;">
-              Best regards,<br>
-              <strong style="color: #059669;">The APEX Financial Team</strong>
+            <p style="color: #4b5563; margin-top: 25px;">
+              — Sam<br/>
+              <strong style="color: #059669;">Managing Partner, APEX Financial</strong>
             </p>
           </div>
 

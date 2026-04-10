@@ -1280,9 +1280,13 @@ export default function DashboardCRM() {
                                   <TableCell className="py-2">
                                     <div className="flex items-center gap-2 min-w-0">
                                       <div className="relative shrink-0">
-                                        <div className={cn("h-7 w-7 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-xs font-bold ring-2 ring-background shadow-sm", getAvatarColor(agent.name))}>
-                                          {agent.name.charAt(0).toUpperCase()}
-                                        </div>
+                                        {agent.avatarUrl ? (
+                                          <img src={agent.avatarUrl} alt={agent.name} className="h-7 w-7 rounded-full object-cover ring-2 ring-background shadow-sm" />
+                                        ) : (
+                                          <div className={cn("h-7 w-7 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-xs font-bold ring-2 ring-background shadow-sm", getAvatarColor(agent.name))}>
+                                            {agent.name.charAt(0).toUpperCase()}
+                                          </div>
+                                        )}
                                         {isStaleAgent(agent) && (
                                           <div className={cn("absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-red-500")} />
                                         )}
@@ -1292,6 +1296,16 @@ export default function DashboardCRM() {
                                         <div className="flex items-center gap-1 mt-0.5">
                                           {duplicateAgentIds.has(agent.id) && <Badge variant="outline" className="text-[8px] h-3.5 px-1 bg-amber-500/10 text-amber-500 border-amber-500/20">Dupe</Badge>}
                                           {!agent.avatarUrl && <Badge variant="outline" className="text-[8px] h-3.5 px-1 bg-red-500/10 text-red-500 border-red-500/20">📷 Photo</Badge>}
+                                          {agent.aiScoreTier && (
+                                            <Badge variant="outline" className={cn("text-[8px] h-3.5 px-1", {
+                                              "bg-red-500/10 text-red-500 border-red-500/20": agent.aiScoreTier === "hot",
+                                              "bg-orange-500/10 text-orange-500 border-orange-500/20": agent.aiScoreTier === "warm",
+                                              "bg-blue-500/10 text-blue-500 border-blue-500/20": agent.aiScoreTier === "cool",
+                                              "bg-slate-500/10 text-slate-500 border-slate-500/20": agent.aiScoreTier === "cold",
+                                            })}>
+                                              {agent.aiScoreTier === "hot" ? "🔥" : agent.aiScoreTier === "warm" ? "☀️" : agent.aiScoreTier === "cool" ? "❄️" : "🧊"} {agent.aiScoreTier}
+                                            </Badge>
+                                          )}
                                           {agent.managerId && agent.managerName && agent.managerId !== currentAgentId && (
                                             <Badge variant="outline" className="text-[11px] h-4.5 px-2 font-bold bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20">{agent.managerName.split(" ")[0]}</Badge>
                                           )}

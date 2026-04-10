@@ -107,12 +107,15 @@ const getContactInfo = (agent: AgentCRM) => {
 };
 
 const SECTIONS = [
-  { key: "meeting_attendance", label: "Meeting Attendance", icon: ClipboardCheck, stages: [] as OnboardingStage[], accent: "border-l-sky-500", headerBg: "bg-sky-500/5", iconColor: "text-sky-500" },
-  { key: "onboarding", label: "Onboarding", icon: BookOpen, stages: ["onboarding", "training_online"] as OnboardingStage[], accent: "border-l-primary", headerBg: "bg-primary/5", iconColor: "text-primary" },
-  { key: "pre_licensed", label: "Pre-Licensed", icon: GraduationCap, stages: [] as OnboardingStage[], accent: "border-l-violet-500", headerBg: "bg-violet-500/5", iconColor: "text-violet-500" },
-  { key: "in_training", label: "In-Field Training", icon: GraduationCap, stages: ["in_field_training"] as OnboardingStage[], accent: "border-l-amber-500", headerBg: "bg-amber-500/5", iconColor: "text-amber-500" },
-  { key: "live", label: "Live", icon: Briefcase, stages: ["evaluated"] as OnboardingStage[], accent: "border-l-emerald-500", headerBg: "bg-emerald-500/5", iconColor: "text-emerald-500" },
-  { key: "needs_followup", label: "Needs Follow-Up", icon: AlertTriangle, stages: [] as OnboardingStage[], accent: "border-l-red-500", headerBg: "bg-red-500/5", iconColor: "text-red-500" },
+  { key: "applied", label: "Applied", icon: Users, stages: ["applied"] as OnboardingStage[], accent: "border-l-blue-500", headerBg: "bg-blue-500/5", iconColor: "text-blue-500" },
+  { key: "meeting_attendance", label: "Meeting Attendance", icon: ClipboardCheck, stages: ["meeting_attendance"] as OnboardingStage[], accent: "border-l-purple-500", headerBg: "bg-purple-500/5", iconColor: "text-purple-500" },
+  { key: "pre_licensed", label: "Pre-Licensed", icon: GraduationCap, stages: ["pre_licensed", "onboarding", "training_online"] as OnboardingStage[], accent: "border-l-yellow-500", headerBg: "bg-yellow-500/5", iconColor: "text-yellow-500" },
+  { key: "transfer", label: "Transfer", icon: Users, stages: ["transfer"] as OnboardingStage[], accent: "border-l-orange-500", headerBg: "bg-orange-500/5", iconColor: "text-orange-500" },
+  { key: "in_training", label: "In-Field Training", icon: GraduationCap, stages: ["in_field_training"] as OnboardingStage[], accent: "border-l-teal-500", headerBg: "bg-teal-500/5", iconColor: "text-teal-500" },
+  { key: "below_10k", label: "Below $10K", icon: AlertTriangle, stages: ["below_10k"] as OnboardingStage[], accent: "border-l-red-500", headerBg: "bg-red-500/5", iconColor: "text-red-500" },
+  { key: "live", label: "Live", icon: Briefcase, stages: ["live", "evaluated"] as OnboardingStage[], accent: "border-l-emerald-500", headerBg: "bg-emerald-500/5", iconColor: "text-emerald-500" },
+  { key: "needs_followup", label: "Needs Follow-Up", icon: AlertTriangle, stages: ["need_followup"] as OnboardingStage[], accent: "border-l-amber-500", headerBg: "bg-amber-500/5", iconColor: "text-amber-500" },
+  { key: "inactive", label: "Inactive", icon: UserX, stages: ["inactive"] as OnboardingStage[], accent: "border-l-gray-500", headerBg: "bg-gray-500/5", iconColor: "text-gray-500" },
 ];
 
 const UNLICENSED_COLUMNS = [

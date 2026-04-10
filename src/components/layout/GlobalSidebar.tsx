@@ -173,7 +173,7 @@ export function GlobalSidebar({
       { icon: CalendarDays, label: "Calendar", href: "/dashboard/calendar" },
     ];
     eventItems.push({ icon: CalendarDays, label: "Daily Check-In", href: "/daily-checkin" });
-    eventItems.push({ icon: CalendarDays, label: "Field Check-In", href: "/field-checkin" });
+    // Field Check-In removed
     sections.push({ label: "EVENTS", items: eventItems });
 
     // CONTENT (admin only)

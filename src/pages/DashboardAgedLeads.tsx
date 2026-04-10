@@ -916,6 +916,7 @@ export default function DashboardAgedLeads() {
           </p>
         </GlassCard>
       ) : (
+        <>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <AnimatePresence mode="popLayout">
             {paginatedLeads.map((lead) => {
@@ -941,7 +942,6 @@ export default function DashboardAgedLeads() {
                     )}
                     onClick={() => setDetailLead(lead)}
                   >
-                    {/* Top row: checkbox + name + age badge */}
                     <div className="flex items-start gap-2 mb-3">
                       <div onClick={e => e.stopPropagation()}>
                         <Checkbox
@@ -970,8 +970,6 @@ export default function DashboardAgedLeads() {
                         {ageDays}d
                       </Badge>
                     </div>
-
-                    {/* Contact info */}
                     <div className="space-y-1 mb-3 text-xs">
                       {lead.phone && (
                         <a href={`tel:${lead.phone}`} onClick={e => e.stopPropagation()} className="flex items-center gap-1.5 text-emerald-400 hover:underline">
@@ -989,8 +987,6 @@ export default function DashboardAgedLeads() {
                         </a>
                       )}
                     </div>
-
-                    {/* Bottom row: badges + actions */}
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <Badge variant="outline" className={cn("text-[9px] h-5 px-1.5", config.color)}>
@@ -1053,33 +1049,18 @@ export default function DashboardAgedLeads() {
             })}
           </AnimatePresence>
         </div>
-
-        {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-center gap-2 mt-4">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 text-xs"
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage(p => p - 1)}
-            >
+            <Button variant="outline" size="sm" className="h-8 text-xs" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>
               Previous
             </Button>
-            <span className="text-xs text-muted-foreground">
-              Page {currentPage} of {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 text-xs"
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage(p => p + 1)}
-            >
+            <span className="text-xs text-muted-foreground">Page {currentPage} of {totalPages}</span>
+            <Button variant="outline" size="sm" className="h-8 text-xs" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>
               Next
             </Button>
           </div>
         )}
+        </>
       )}
 
       {/* Bulk Assign Confirmation Dialog */}

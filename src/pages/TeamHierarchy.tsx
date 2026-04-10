@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, ChevronDown, ChevronRight, Crown, Shield, User,
-  ArrowRightLeft, Loader2, Search, Sparkles,
+  ArrowRightLeft, Loader2, Search, Sparkles, ArrowUp, ArrowDown,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,7 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -23,6 +23,7 @@ interface AgentNode {
   id: string;
   name: string;
   avatarUrl?: string;
+  userId?: string | null;
   role: "admin" | "manager" | "agent";
   managerId: string | null;
   isDeactivated: boolean;
@@ -70,6 +71,11 @@ export default function TeamHierarchy() {
   const [newManagerId, setNewManagerId] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Promotion/demotion state
+  const [promoteAgent, setPromoteAgent] = useState<AgentNode | null>(null);
+  const [promoteDirection, setPromoteDirection] = useState<"up" | "down">("up");
+  const [promoteSaving, setPromoteSaving] = useState(false);
+
   useEffect(() => {
     const fetchData = async () => {
       const { data: agentsData } = await supabase
@@ -109,6 +115,7 @@ export default function TeamHierarchy() {
           id: a.id,
           name: a.display_name || "Unknown",
           avatarUrl: a.user_id ? profileMap.get(a.user_id) || undefined : undefined,
+          userId: a.user_id,
           role,
           managerId: a.invited_by_manager_id || a.manager_id,
           isDeactivated: a.is_deactivated || false,
@@ -160,6 +167,44 @@ export default function TeamHierarchy() {
     setNewManagerId("");
   };
 
+  const handlePromote = async () => {
+    if (!promoteAgent || !promoteAgent.userId) return;
+    setPromoteSaving(true);
+
+    if (promoteDirection === "up") {
+      // Promote agent → manager (add manager role)
+      const { error } = await supabase
+        .from("user_roles")
+        .insert({ user_id: promoteAgent.userId, role: "manager" as any });
+      if (error && !error.message.includes("duplicate")) {
+        toast.error("Promotion failed");
+      } else {
+        toast.success(`${promoteAgent.name} promoted to Manager`);
+        setAgents(prev => prev.map(a =>
+          a.id === promoteAgent.id ? { ...a, role: "manager" } : a
+        ));
+      }
+    } else {
+      // Demote manager → agent (remove manager role)
+      const { error } = await supabase
+        .from("user_roles")
+        .delete()
+        .eq("user_id", promoteAgent.userId)
+        .eq("role", "manager" as any);
+      if (error) {
+        toast.error("Demotion failed");
+      } else {
+        toast.success(`${promoteAgent.name} demoted to Agent`);
+        setAgents(prev => prev.map(a =>
+          a.id === promoteAgent.id ? { ...a, role: "agent" } : a
+        ));
+      }
+    }
+
+    setPromoteSaving(false);
+    setPromoteAgent(null);
+  };
+
   const agentIdSet = new Set(agents.map(a => a.id));
   const topLevel = agents.filter(a => !a.managerId || !agentIdSet.has(a.managerId));
   const getChildren = (parentId: string) =>
@@ -176,6 +221,9 @@ export default function TeamHierarchy() {
     const cfg = roleConfig[node.role];
     const RoleIcon = cfg.icon;
 
+    const canPromote = isAdmin && node.role === "agent" && !!node.userId;
+    const canDemote = isAdmin && node.role === "manager" && !!node.userId;
+
     return (
       <motion.div
         key={node.id}
@@ -183,7 +231,6 @@ export default function TeamHierarchy() {
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.3, delay: index * 0.04 }}
       >
-        {/* Tree connector */}
         <div className={cn("relative", depth > 0 && "ml-6")}>
           {depth > 0 && (
             <div className="absolute left-[-12px] top-0 bottom-0 w-px bg-border/30" />
@@ -204,7 +251,6 @@ export default function TeamHierarchy() {
               className={cn(
                 "w-5 h-5 flex items-center justify-center shrink-0 transition-transform duration-200",
                 !hasChildren && "opacity-0 pointer-events-none",
-                isExpanded && "rotate-0",
               )}
             >
               <motion.div animate={{ rotate: isExpanded ? 90 : 0 }} transition={{ duration: 0.2 }}>
@@ -212,7 +258,7 @@ export default function TeamHierarchy() {
               </motion.div>
             </button>
 
-            {/* Avatar with role ring */}
+            {/* Avatar */}
             <div className={cn("relative shrink-0 rounded-full", cfg.ring)}>
               <Avatar className="h-9 w-9">
                 <AvatarImage src={node.avatarUrl || ""} className="object-cover" />
@@ -237,15 +283,35 @@ export default function TeamHierarchy() {
               </div>
             </div>
 
-            {/* Reassign */}
+            {/* Actions */}
             {isAdmin && node.role !== "admin" && (
-              <Button
-                variant="ghost" size="sm"
-                className="h-7 text-xs opacity-0 group-hover:opacity-100 transition-opacity font-['Syne'] font-bold"
-                onClick={(e) => { e.stopPropagation(); setReassignAgent(node); setNewManagerId(node.managerId || ""); }}
-              >
-                <ArrowRightLeft className="h-3 w-3 mr-1" /> Reassign
-              </Button>
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {canPromote && (
+                  <Button
+                    variant="ghost" size="sm"
+                    className="h-7 text-xs font-['Syne'] font-bold text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+                    onClick={(e) => { e.stopPropagation(); setPromoteAgent(node); setPromoteDirection("up"); }}
+                  >
+                    <ArrowUp className="h-3 w-3 mr-1" /> Promote
+                  </Button>
+                )}
+                {canDemote && (
+                  <Button
+                    variant="ghost" size="sm"
+                    className="h-7 text-xs font-['Syne'] font-bold text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
+                    onClick={(e) => { e.stopPropagation(); setPromoteAgent(node); setPromoteDirection("down"); }}
+                  >
+                    <ArrowDown className="h-3 w-3 mr-1" /> Demote
+                  </Button>
+                )}
+                <Button
+                  variant="ghost" size="sm"
+                  className="h-7 text-xs font-['Syne'] font-bold"
+                  onClick={(e) => { e.stopPropagation(); setReassignAgent(node); setNewManagerId(node.managerId || ""); }}
+                >
+                  <ArrowRightLeft className="h-3 w-3 mr-1" /> Reassign
+                </Button>
+              </div>
             )}
           </div>
 
@@ -392,6 +458,41 @@ export default function TeamHierarchy() {
             <Button variant="outline" onClick={() => setReassignAgent(null)} className="font-['Syne'] font-bold">Cancel</Button>
             <Button onClick={handleReassign} disabled={!newManagerId || saving} className="font-['Syne'] font-bold">
               {saving ? "Saving..." : "Reassign"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Promote/Demote Confirmation Dialog */}
+      <Dialog open={!!promoteAgent} onOpenChange={() => setPromoteAgent(null)}>
+        <DialogContent className="border-border/40 bg-card/95 backdrop-blur-xl">
+          <DialogHeader>
+            <DialogTitle className="font-['Syne']">
+              {promoteDirection === "up" ? "Promote" : "Demote"} {promoteAgent?.name}?
+            </DialogTitle>
+            <DialogDescription className="font-['DM_Sans']">
+              {promoteDirection === "up"
+                ? `This will promote ${promoteAgent?.name} from Agent to Manager. They will gain access to management tools and be able to manage their own team.`
+                : `This will demote ${promoteAgent?.name} from Manager to Agent. They will lose access to management tools.`
+              }
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPromoteAgent(null)} className="font-['Syne'] font-bold">Cancel</Button>
+            <Button
+              onClick={handlePromote}
+              disabled={promoteSaving}
+              className={cn(
+                "font-['Syne'] font-bold",
+                promoteDirection === "down" && "bg-amber-500 hover:bg-amber-600 text-white"
+              )}
+            >
+              {promoteSaving
+                ? "Saving..."
+                : promoteDirection === "up"
+                  ? "Promote to Manager"
+                  : "Demote to Agent"
+              }
             </Button>
           </DialogFooter>
         </DialogContent>

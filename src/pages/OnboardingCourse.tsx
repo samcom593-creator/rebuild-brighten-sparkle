@@ -307,7 +307,7 @@ export default function OnboardingCourse() {
                           <HelpCircle className="h-4 w-4" />
                           Quiz
                           {!canTakeQuiz(currentModule.id) && !currentProgress?.passed && (
-                            <span className="text-xs opacity-60">(Watch 90%)</span>
+                            <span className="text-xs opacity-60">(Watch 80%)</span>
                           )}
                         </TabsTrigger>
                       </TabsList>

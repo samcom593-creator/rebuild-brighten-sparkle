@@ -623,6 +623,7 @@ export default function DashboardCRM() {
           lastContactedAt: lastContactMap.get(agent.id) || null, standardPaid: pay.standard, premiumPaid: pay.premium,
           licenseProgress: licenseEntry?.progress || null, testScheduledDate: licenseEntry?.testDate || null,
           agentLicenseStatus: agent.license_status || "unlicensed",
+          aiScoreTier: licenseEntry?.aiScore || null,
         };
       });
 

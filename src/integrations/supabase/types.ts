@@ -1606,6 +1606,41 @@ export type Database = {
         }
         Relationships: []
       }
+      instagram_subscriptions: {
+        Row: {
+          agent_id: string
+          created_at: string
+          id: string
+          instagram_handle: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          id?: string
+          instagram_handle: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          id?: string
+          instagram_handle?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instagram_subscriptions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       interview_recordings: {
         Row: {
           agent_id: string | null
@@ -3275,6 +3310,15 @@ export type Database = {
         | "training_online"
         | "in_field_training"
         | "evaluated"
+        | "applied"
+        | "meeting_attendance"
+        | "pre_licensed"
+        | "transfer"
+        | "below_10k"
+        | "live"
+        | "need_followup"
+        | "inactive"
+        | "pending_review"
       performance_tier: "below_10k" | "standard" | "top_producer"
       qe_benefit_type: "immediate" | "graded" | "modified" | "guaranteed_issue"
       qe_condition_category:
@@ -3461,6 +3505,15 @@ export const Constants = {
         "training_online",
         "in_field_training",
         "evaluated",
+        "applied",
+        "meeting_attendance",
+        "pre_licensed",
+        "transfer",
+        "below_10k",
+        "live",
+        "need_followup",
+        "inactive",
+        "pending_review",
       ],
       performance_tier: ["below_10k", "standard", "top_producer"],
       qe_benefit_type: ["immediate", "graded", "modified", "guaranteed_issue"],

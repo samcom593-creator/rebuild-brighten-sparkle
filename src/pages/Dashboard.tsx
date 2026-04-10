@@ -223,11 +223,11 @@ async function fetchDashboardData(
   };
 }
 
-import { Shield, Settings } from "lucide-react";
+import { Shield, Settings, Send, KeyRound, ShoppingCart, Activity, AlertCircle, Flame } from "lucide-react";
 
 const quickActions = [
   { to: "/numbers", icon: Edit3, color: "primary", title: "Log Numbers", sub: "Enter today's stats" },
-  { to: "/agent-portal", icon: BarChart3, color: "violet-500", title: "Agent Portal", sub: "View performance" },
+  { to: "/agent-portal", icon: BarChart3, color: "violet-500", title: "Agent Dashboard", sub: "View performance" },
   { to: "/dashboard/crm", icon: Users, color: "emerald-500", title: "CRM", sub: "Manage agents" },
   { to: "/dashboard/applicants", icon: Sparkles, color: "amber-500", title: "Pipeline", sub: "View applicants" },
 ] as const;

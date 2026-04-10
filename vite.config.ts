@@ -67,6 +67,7 @@ export default defineConfig(({ mode }) => ({
     }),
   ].filter(Boolean),
   build: {
+    target: "esnext",
     rollupOptions: {
       output: {
         manualChunks: {
@@ -74,6 +75,8 @@ export default defineConfig(({ mode }) => ({
           ui: ["@radix-ui/react-dialog", "@radix-ui/react-popover", "@radix-ui/react-select", "@radix-ui/react-tabs"],
           charts: ["recharts"],
           supabase: ["@supabase/supabase-js"],
+          motion: ["framer-motion"],
+          dates: ["date-fns", "date-fns-tz"],
         },
       },
     },

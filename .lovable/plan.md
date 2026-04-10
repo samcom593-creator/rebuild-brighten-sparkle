@@ -1,158 +1,175 @@
 
 
-# APEX Financial Maximum Rebuild Plan
+# APEX Targeted Fixes — Implementation Plan
 
-This is a comprehensive 14-part overhaul covering visual identity, CRM, communications, training, calendar, content library, automation, and global fixes. Many features already partially exist; this plan addresses what's missing or broken.
-
----
-
-## Current State Assessment
-
-**Already implemented (partially or fully):**
-- CRM stages (Below 10K, Transfer, Live) with ALP logic
-- Agent cards with photos and AI score badges
-- Filter bar (stage, license, manager, AI score)
-- Manager isolation via `invited_by_manager_id`
-- Inbox page with timestamps and delivery status
-- Automation Hub with toggle cards
-- Team Hierarchy with promote/demote
-- Sidebar structure (Growth Dashboard and Field Check-In removed)
-- Syne + DM Sans fonts loaded in `index.html`
-- Lazy loading and manual chunks in Vite config
-- `lead_purchase_requests` table exists
-- Purchase Leads page with Venmo/CashApp
-
-**Missing or needs building:**
-- Content Library page (`/dashboard/content`) — does not exist
-- Course Catalog Netflix-style rebuild (`/course-catalog` route) — currently uses `/onboarding-course`
-- Call Library tab — not built
-- Completion certificate generation and auto-email
-- Google Calendar OAuth integration
-- Stripe checkout session edge function
-- APEX Leads section on landing page
-- `system_settings` table for earnings override rate
-- Discord webhook URL in Settings page
-- Daily check-in WhatsApp redirect for unlicensed
-- Agent Portal → Agent Dashboard rename (partially done, `/agent-portal` still exists)
-- CSS global styles from Part 1 (glass-card, hover transitions, etc.)
-- Vite `build.target: 'esnext'` and framer-motion/date-fns chunks
+This covers all 11 fixes from the uploaded prompt. Each fix is a discrete unit of work.
 
 ---
 
-## Implementation Phases
+## Fix 1: Logo Fitting in Sidebar
 
-### Phase 1: Visual Identity & CSS Foundation
-- Add Part 1 CSS rules to `index.css`: glass-card styles, universal hover transitions, button primary styles
-- Add `build.target: 'esnext'` and additional manual chunks (framer-motion, date-fns) to `vite.config.ts`
+**File:** `src/components/layout/GlobalSidebar.tsx`
 
-### Phase 2: Landing Page — APEX Leads Section
-- Create `src/components/landing/ApexLeadsSection.tsx` with Standard ($250) and Premium ($350) lead package cards
-- Add trust signals row and "How it works" steps
-- Wire purchase buttons to Stripe checkout (Phase 5)
-- Add section to Index page between CareerPathway and CTA
-
-### Phase 3: Database Migrations
-- Create `system_settings` table (key TEXT PRIMARY KEY, value TEXT, updated_at)
-- Insert `sam_override_rate = 0.03`
-- Add `discord_webhook_url` column or use `system_settings` for it
-- Ensure `lead_purchase_requests` has all needed columns
-
-### Phase 4: CRM Enhancements
-- Add bulk actions toolbar (select all, bulk email/SMS/move stage/assign/deactivate)
-- Add "Pending Lead Confirmations" admin banner with confirm/decline buttons
-- Add pagination (24 cards per page)
-- Polish agent card hover states (lift + green glow)
-
-### Phase 5: Stripe Checkout Integration
-- Create `supabase/functions/create-checkout-session/index.ts` edge function
-- Accept package_type + agent_id, create Stripe checkout session, return URL
-- On success: insert `lead_purchase_request`, notify Sam via SMS + email
-- Wire Purchase Leads page and landing page buttons to this function
-
-### Phase 6: Training Academy — Netflix-Style Course Catalog
-- Rebuild `OnboardingCourse.tsx` as Netflix-style catalog with hero banner, 3-column grid
-- Add locked/unlocked/completed visual states with overlays
-- Add Call Library tab with search/filter (Sales Calls, Recruiting, Training, Live Replays)
-- Add completion certificate generation (HTML canvas → PDF)
-- Create edge function to email certificate to agent + Sam
-- Add `/course-catalog` route (redirect from `/onboarding-course`)
-
-### Phase 7: Content Library (New Page)
-- Create `src/pages/ContentLibrary.tsx` at `/dashboard/content`
-- Grid view for uploaded content (videos/photos) with tags
-- Social post generator (caption + hashtags + download)
-- Award graphics generator using HTML Canvas (5 templates)
-- Add to sidebar under CONTENT section
-
-### Phase 8: Calendar Rebuild
-- Rebuild `CalendarPage.tsx` with proper week grid view (7 columns × hourly rows)
-- Add drag-to-create and drag-to-move events
-- Auto-populate APEX events from DB (interviews, exam dates, milestones)
-- Add Google Calendar connect button (OAuth flow via edge function)
-- Add sidebar with mini month navigator and upcoming events
-
-### Phase 9: Communications & Inbox Polish
-- Ensure email-client style layout with left panel (35%) and right panel (65%)
-- Add unread badge count to sidebar Inbox item
-- Verify resend button works on failed messages
-
-### Phase 10: Global Fixes
-- Fix earnings calculation to use `system_settings.sam_override_rate`
-- Complete "Agent Portal" → "Agent Dashboard" rename globally
-- Fix pre-licensing email routing in `notify-agent-contracted` to send YOUR course link for licensed agents
-- Daily check-in: redirect licensed agents to `/agent-dashboard`, add WhatsApp link after submit for unlicensed
-- Add Discord webhook URL field to Settings page (admin)
-- Wire `discord-webhook-notify` to read from `system_settings` instead of `profiles`
-
-### Phase 11: Daily Producer Spotlight Enhancement
-- Update `send-daily-producer-spotlight` with the 5-tier achievement detection logic
-- Add moody email template with agent photo overlay
-- Add SMS blast via `send-sms-auto-detect`
-- Log all sends to `notification_log`
-
-### Phase 12: Mobile Optimization
-- Bottom nav bar on Agent Dashboard: Home | Numbers | Leaderboard | Awards | Profile
-- Large tap targets (48px min), swipe gestures on Call Center
-- `inputmode="decimal"` on number inputs in Numbers page
-
-### Phase 13: Sidebar Polish
-- Apply luxury dark gradient background
-- Green pulsing live indicator dot next to "APEX" logo
-- Active item: teal text + 2px left border
-- Section headers: 10px uppercase with letter-spacing
-
-### Phase 14: Cleanup & QA
-- Remove all remaining placeholder/hardcoded numbers
-- Verify all alert banners use real DB queries
-- Ensure all email cron schedules use `'30 15 * * *'` (9:30am CST)
+- Change logo font-size from `22px` to `18px`
+- Add `overflow-hidden`, `whitespace-nowrap` to the logo container
+- Ensure padding is `0 16px` on the header
+- Keep layout: "APEX" white + green dot + "Financial" in `#22d3a5`
 
 ---
 
-## Technical Details
+## Fix 2: Video Skip Prevention (Critical)
 
-**New files to create:**
-- `src/pages/ContentLibrary.tsx`
-- `src/components/landing/ApexLeadsSection.tsx` (may already exist — needs verification/rebuild)
-- `supabase/functions/create-checkout-session/index.ts`
-- `supabase/functions/send-completion-certificate/index.ts`
+**File:** `src/components/course/CourseVideoPlayer.tsx`
 
-**Database migrations:**
-- `system_settings` table
-- Indexes on `notification_log` if missing
+**NativeVideoPlayer changes:**
+- Add `maxWatchedRef` to track furthest watched position
+- Add `seeking` listener that snaps back if user seeks beyond `maxWatchedRef + 1`
+- Update `maxWatchedRef` on `timeupdate`
+- Hide native seek bar via CSS: `video::-webkit-media-controls-timeline { display: none !important }`
+- Show read-only progress bar: "Watched X% — need 80% to unlock quiz"
+- Add speed controls (0.5x/1x/1.5x/2x)
+- Save `maxWatchedTime` to DB every 15 seconds via the existing progress callback
+- Change threshold from 90% to 80% for quiz unlock
 
-**Edge function secrets needed:**
-- `STRIPE_SECRET_KEY` (already set)
-- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` (needed for Calendar OAuth)
+**YouTubePlayer:** Already has polling + speed controls. Will add note that YouTube's built-in controls can't be fully blocked, but progress tracking remains enforced server-side.
 
-**Files with major edits:**
-- `src/index.css` — add glass-card and global hover styles
-- `src/pages/DashboardCRM.tsx` — bulk actions, pagination, lead confirmation panel
-- `src/pages/OnboardingCourse.tsx` — Netflix-style rebuild with call library
-- `src/pages/CalendarPage.tsx` — week grid rebuild
-- `src/pages/Settings.tsx` — Discord webhook URL field
-- `src/pages/DailyCheckin.tsx` — licensed redirect + WhatsApp link
-- `src/components/layout/GlobalSidebar.tsx` — visual polish + Content Library link
-- `vite.config.ts` — build optimizations
+**CSS:** Add global style in `index.css` to hide native timeline.
 
-This is approximately 8-10 implementation rounds. Shall I begin with Phase 1 (Visual Identity + CSS) and Phase 3 (Database migrations), then proceed sequentially?
+---
+
+## Fix 3: Team Directory Full Profile Editing
+
+**File:** `src/pages/TeamDirectory.tsx`
+
+- Add `[Edit Profile]` button on every person card
+- Opens a Sheet/Dialog with fields: photo upload, name, email, phone, role (Agent/Leader/Manager/Admin), manager assignment dropdown, Instagram handle, license status, NIPR number, licensed states (multi-select), start date, notes
+- `[Save Changes]` updates `profiles` + `applications` tables
+- `[Deactivate Agent]` red button with confirmation dialog
+- `[Reset Password]` calls `reset-agent-password` edge function
+- Cards display: photo, name, role badge, weekly ALP, stage, manager name, last active
+
+---
+
+## Fix 4: Sidebar Restructure
+
+**File:** `src/components/layout/GlobalSidebar.tsx`
+
+The sidebar already has the dark gradient background and most sections. Adjustments:
+- Confirm section labels: `10px Syne, uppercase, letter-spacing 3px, color #334155`
+- Nav items: `DM Sans 14px, color #94a3b8, padding 10px 16px, border-radius 8px`
+- Active state: `bg rgba(34,211,165,0.08)`, left border `2px solid #22d3a5`, text `#22d3a5`
+- Hover: `bg rgba(255,255,255,0.04)`
+- Bottom section: user avatar + name + email, theme toggle, fullscreen, sign out, "POWERED BY APEX FINANCIAL" footer text
+
+Most of this is already in place — will fine-tune font-family, spacing, and letter-spacing to match spec exactly.
+
+---
+
+## Fix 5: Remove Venmo and CashApp
+
+**Files:**
+- `src/pages/PurchaseLeads.tsx` — Remove `VENMO_LINK`, `CASHAPP_LINK`, Venmo/CashApp buttons. Replace with single `[Purchase Now]` button that calls `create-checkout-session` edge function for Stripe hosted checkout
+- `src/components/landing/ApexLeadsSection.tsx` — Remove Venmo/CashApp payment flow, replace with Stripe checkout button
+- `supabase/functions/notify-lead-purchase/index.ts` — Remove `paymentMethod` venmo/cashapp references, update to reference Stripe payment
+
+---
+
+## Fix 6: Purchase Leads — Active Agents Only
+
+**File:** `src/pages/PurchaseLeads.tsx`
+
+- Default filter: `is_deactivated = false AND status = 'active'`
+- Add "Show All" toggle for admin users
+- Show per agent: payment status badge (Paid/Pending/No Leads), last payment date, package type
+- Sort by most recent payment first
+
+---
+
+## Fix 7: Content Library — Fully Functional
+
+**File:** `src/pages/ContentLibrary.tsx` (major rewrite)
+
+- **Remove:** All `SAMPLE_CONTENT` hardcoded data, Caption Generator tab, Word template references
+- **Upload:** Drag-and-drop accepting MP4/MOV/PNG/JPG/WEBP → Supabase Storage `content-library` bucket with progress indicator → post-upload form for title, tag, description
+- **Grid:** Fetch from Supabase Storage + DB table, show thumbnail/title/tag/date per card, with Edit/Delete/Download actions
+- **Video thumbnails:** Use `<video preload="metadata">` to capture first frame
+- **Award Graphics tab:** Canvas-based generator with 5 templates (Deal Closed, Weekly Top Producer, Streak Achievement, Monthly Elite, First Deal). Agent dropdown loads from DB with photo from `avatars` bucket. Live canvas preview. Download as 1080x1080 PNG. Initials fallback for missing photos.
+
+**Database:** Create `content_library` table (id, title, description, tags, storage_path, file_type, uploaded_by, created_at) via migration.
+
+**Storage:** Create `content-library` bucket if not exists.
+
+---
+
+## Fix 8: Daily Check-In — Unlicensed Only + WhatsApp
+
+**File:** `src/pages/DailyCheckin.tsx`
+
+- After agent lookup, query `license_status` from `applications`
+- If `licensed`: redirect to `/agent-dashboard` with toast "Licensed agents check in via your dashboard"
+- If unlicensed/pending: show form as normal
+- After submission success: show "Join our WhatsApp community" button
+- Link sourced from `system_settings` table key `whatsapp_group_link`
+
+**File:** `src/pages/Settings.tsx` — Add "WhatsApp Group Link" admin field that saves to `system_settings`
+
+**File:** `supabase/functions/send-daily-checkin-prompt/index.ts` — Filter query to `license_status IN ('unlicensed','pending')` only
+
+---
+
+## Fix 9: Profile Pictures & Award Images
+
+**All components showing agent photos:**
+- Ensure `getAvatarUrl()` helper is applied consistently (already exists in `AgentAvatar.tsx`)
+- Add `onError` fallback showing initials circle on every `<img>`
+- Verify `avatars` bucket is public
+
+**Award images:**
+- Remove any OpenAI/DALL-E calls from `generate-award-graphics` edge function
+- Frontend `AwardGraphics.tsx` uses canvas generator from Fix 7
+- Each `plaque_awards` row gets `[Download Graphic]` button pre-filled with agent data
+
+---
+
+## Fix 10: Email Subject Lines
+
+**Edge functions to update:**
+- `submit-application` — Licensed vs unlicensed subject lines
+- `send-agent-portal-login` — "Your APEX Agent Dashboard is Live, [FirstName]"
+- Other notification functions — warm tone, "Hey [FirstName]," opening, "— Sam" closing, PS lines
+
+Already partially done in previous work — will verify and complete remaining functions.
+
+---
+
+## Fix 11: Pipeline & Lead Center Cleanup
+
+**Files:** `src/pages/AgentPipeline.tsx`, `src/pages/LeadCenter.tsx`
+
+- Default: hide `is_deactivated = true` agents and `terminated_at IS NOT NULL` leads
+- Add "Show Inactive" toggle
+- Lead Center sort options: Newest / Highest potential / Stage / Last contacted
+- Lead cards: name, phone, email, stage, days since applied, AI score badge
+- Quick actions: Call, Email, Move Stage, Assign
+- Bulk assign: multi-select + agent dropdown + assign all
+
+---
+
+## Removals Checklist
+
+- Caption generator (from ContentLibrary)
+- Word templates (from ContentLibrary)
+- Venmo payment button (PurchaseLeads + ApexLeadsSection)
+- CashApp payment button (PurchaseLeads + ApexLeadsSection)
+- Placeholder/demo content in content library
+- Deactivated agents from payment tracker default view
+
+---
+
+## Technical Notes
+
+- **New DB migration:** `content_library` table + `content-library` storage bucket
+- **Edge function updates:** `generate-award-graphics`, `send-daily-checkin-prompt`, `notify-lead-purchase`, email notification functions
+- **~15 files** will be modified across frontend and backend
+- Implementation will proceed fix-by-fix in order of priority (Fix 2 video blocking first as marked critical)
 

@@ -114,57 +114,96 @@ export function GlobalSidebar({
   const navSections = useMemo(() => {
     const sections: NavSection[] = [];
 
-    // NAVIGATION section
-    const navItems: NavItem[] = [
+    // OPERATIONS
+    const opsItems: NavItem[] = [
       { icon: LayoutDashboard, label: "Dashboard", href: "/dashboard" },
-      { icon: Edit3, label: "Log Numbers", href: "/numbers", special: true },
+      { icon: Briefcase, label: "CRM", href: "/dashboard/crm" },
     ];
+    if (isAdmin || isManager) {
+      opsItems.push({ icon: Headphones, label: "Call Center", href: "/dashboard/call-center" });
+    }
+    opsItems.push({ icon: Users, label: "Pipeline", href: isAgent && !isAdmin && !isManager ? "/agent-pipeline" : "/dashboard/applicants" });
+    opsItems.push({ icon: Edit3, label: "Log Numbers", href: "/numbers", special: true });
+    sections.push({ label: "OPERATIONS", items: opsItems });
 
+    // TEAM
+    const teamItems: NavItem[] = [
+      { icon: Users, label: "Team Directory", href: "/dashboard/team" },
+    ];
     if (isAdmin) {
-      navItems.push({ icon: Crown, label: "Command Center", href: "/dashboard/command" });
-      navItems.push({ icon: Target, label: "Lead Center", href: "/dashboard/leads" });
-      navItems.push({ icon: Bell, label: "Notifications", href: "/dashboard/notifications" });
-      navItems.push({ icon: Mail, label: "Inbox", href: "/dashboard/inbox" });
+      teamItems.push({ icon: Network, label: "Hierarchy", href: "/dashboard/hierarchy" });
+    }
+    sections.push({ label: "TEAM", items: teamItems });
+
+    // COMMUNICATIONS
+    const commItems: NavItem[] = [];
+    if (isAdmin || isManager) {
+      commItems.push({ icon: Mail, label: "Inbox", href: "/dashboard/inbox" });
+    }
+    if (isAdmin) {
+      commItems.push({ icon: Bell, label: "Notification Hub", href: "/dashboard/notifications" });
+    }
+    if (commItems.length > 0) {
+      sections.push({ label: "COMMUNICATIONS", items: commItems });
     }
 
-    sections.push({ label: "NAVIGATION", items: navItems });
+    // TRAINING
+    const trainingItems: NavItem[] = [
+      { icon: BarChart3, label: "Course Catalog", href: "/onboarding-course" },
+    ];
+    if (isAdmin || isManager) {
+      trainingItems.push({ icon: BarChart3, label: "Course Progress", href: "/course-progress" });
+    }
+    sections.push({ label: "TRAINING", items: trainingItems });
 
-    // TOOLS section — core items visible to ALL authenticated users
-    const toolItems: NavItem[] = [
-      { icon: BarChart3, label: "My Course", href: "/onboarding-course" },
-      { icon: BarChart3, label: "Portal", href: "/agent-portal" },
-      { icon: Users, label: "Pipeline", href: isAgent && !isAdmin && !isManager ? "/agent-pipeline" : "/dashboard/applicants" },
-      { icon: Briefcase, label: "CRM", href: "/dashboard/crm" },
+    // LEADS
+    const leadItems: NavItem[] = [
+      { icon: ShoppingCart, label: "Purchase Leads", href: "/purchase-leads" },
+    ];
+    if (isAdmin || isManager) {
+      leadItems.push({ icon: Archive, label: "Aged Leads", href: "/dashboard/aged-leads" });
+    }
+    if (isAdmin) {
+      leadItems.push({ icon: Target, label: "Lead Center", href: "/dashboard/leads" });
+    }
+    sections.push({ label: "LEADS", items: leadItems });
+
+    // EVENTS
+    const eventItems: NavItem[] = [
       { icon: CalendarDays, label: "Calendar", href: "/dashboard/calendar" },
     ];
+    eventItems.push({ icon: CalendarDays, label: "Daily Check-In", href: "/daily-checkin" });
+    eventItems.push({ icon: CalendarDays, label: "Field Check-In", href: "/field-checkin" });
+    sections.push({ label: "EVENTS", items: eventItems });
 
-    // Manager/Admin extras
-    if (isAdmin || isManager) {
-      toolItems.push({ icon: Sparkles, label: "Recruiter HQ ✨", href: "/dashboard/recruiter", special: true });
-      toolItems.push({ icon: BarChart3, label: "Course Progress", href: "/course-progress" });
-      toolItems.push({ icon: Headphones, label: "Call Center", href: "/dashboard/call-center" });
-      toolItems.push({ icon: Archive, label: "Aged Leads", href: "/dashboard/aged-leads" });
-      toolItems.push({ icon: TrendingUp, label: "Growth", href: "/dashboard/growth" });
-      toolItems.push({ icon: Users, label: "Seminar", href: "/dashboard/seminar" });
-    }
-
-    // Admin-only extras
+    // CONTENT (admin only)
     if (isAdmin) {
-      toolItems.push({ icon: CalendarDays, label: "Day Planner", href: "/dashboard/planner" });
-      toolItems.push({ icon: Crown, label: "Awards", href: "/awards" });
-      toolItems.push({ icon: Network, label: "Team Structure", href: "/dashboard/hierarchy" });
-      toolItems.push({ icon: Zap, label: "Automation", href: "/dashboard/automation" });
+      sections.push({
+        label: "CONTENT",
+        items: [
+          { icon: Sparkles, label: "Instagram Automation", href: "/dashboard/instagram-automation" },
+        ],
+      });
     }
 
-    toolItems.push({ icon: ShoppingCart, label: "Purchase Leads", href: "/purchase-leads" });
+    // AUTOMATION (admin only)
+    if (isAdmin) {
+      sections.push({
+        label: "AUTOMATION",
+        items: [
+          { icon: Zap, label: "Automation Hub", href: "/dashboard/automation" },
+        ],
+      });
+    }
 
-    sections.push({ label: "TOOLS", items: toolItems });
-
-    // SETTINGS section
-    sections.push({
-      label: "SETTINGS",
-      items: [{ icon: Settings, label: "Settings", href: "/dashboard/settings" }],
-    });
+    // ADMIN
+    const adminItems: NavItem[] = [];
+    if (isAdmin) {
+      adminItems.push({ icon: Crown, label: "Command Center", href: "/dashboard/command" });
+      adminItems.push({ icon: UserCog, label: "Accounts", href: "/dashboard/accounts" });
+    }
+    adminItems.push({ icon: Settings, label: "Settings", href: "/dashboard/settings" });
+    sections.push({ label: "ADMIN", items: adminItems });
 
     return sections;
   }, [isAdmin, isManager, isAgent]);

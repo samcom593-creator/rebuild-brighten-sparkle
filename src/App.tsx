@@ -146,6 +146,7 @@ const App = () => (
                     <Route path="/dashboard/aged-leads" element={<DashboardAgedLeads />} />
                     <Route path="/dashboard/command" element={<ProtectedRoute requireAdmin><DashboardCommandCenter /></ProtectedRoute>} />
                     <Route path="/agent-portal" element={<AgentPortal />} />
+                    <Route path="/agent-dashboard" element={<AgentPortal />} />
                     <Route path="/onboarding-course" element={<OnboardingCourse />} />
                     <Route path="/course-progress" element={<CourseProgress />} />
                     <Route path="/course-progress/content" element={<CourseContent />} />
@@ -157,13 +158,12 @@ const App = () => (
                      <Route path="/agent-pipeline" element={<AgentPipeline />} />
                      <Route path="/dashboard/calendar" element={<CalendarPage />} />
                      <Route path="/dashboard/notifications" element={<ProtectedRoute requireAdmin><NotificationHub /></ProtectedRoute>} />
-                     <Route path="/dashboard/growth" element={<GrowthDashboard />} />
                      <Route path="/dashboard/planner" element={<ProtectedRoute requireAdmin><AdminCalendar /></ProtectedRoute>} />
-                      <Route path="/dashboard/seminar" element={<SeminarAdmin />} />
-                      <Route path="/dashboard/inbox" element={<ProtectedRoute requireAdmin><InboxPage /></ProtectedRoute>} />
-                      <Route path="/dashboard/automation" element={<ProtectedRoute requireAdmin><AutomationHub /></ProtectedRoute>} />
-                       <Route path="/dashboard/hierarchy" element={<ProtectedRoute requireAdmin><TeamHierarchy /></ProtectedRoute>} />
-                       <Route path="/dashboard/pipeline-simple" element={<AgentPipelineSimple />} />
+                       <Route path="/dashboard/inbox" element={<ProtectedRoute requireAdmin><InboxPage /></ProtectedRoute>} />
+                       <Route path="/dashboard/automation" element={<ProtectedRoute requireAdmin><AutomationHub /></ProtectedRoute>} />
+                        <Route path="/dashboard/hierarchy" element={<ProtectedRoute requireAdmin><TeamHierarchy /></ProtectedRoute>} />
+                        <Route path="/dashboard/pipeline-simple" element={<AgentPipelineSimple />} />
+                        <Route path="/dashboard/instagram-automation" element={<ProtectedRoute requireAdmin><InstagramAutomation /></ProtectedRoute>} />
                   </Route>
 
                   {/* Legacy redirect */}

@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Users, Search, RefreshCw, Clock, AlertTriangle, ChevronDown, ChevronRight,
-  Mail, Phone, UserX, Filter, Mic, BookOpen, GraduationCap, Briefcase,
+  Mail, Phone, UserX, Filter, Mic, BookOpen, GraduationCap, Briefcase, Sparkles,
   Instagram, X, Send, CheckSquare, EyeOff, Link2, Eye, FileText,
   CheckCircle2, KeyRound, Copy, StickyNote, ClipboardCheck, Circle, CircleCheck,
 } from "lucide-react";
@@ -55,6 +55,7 @@ interface AgentCRM {
   monthlyALP: number; monthlyDeals: number; prevWeekALP: number;
   lastContactedAt: string | null; standardPaid: boolean; premiumPaid: boolean;
   licenseProgress: string | null; testScheduledDate: string | null; agentLicenseStatus: string;
+  aiScoreTier?: string | null;
 }
 
 const attendanceColors: Record<AttendanceStatus, string> = {
@@ -461,6 +462,8 @@ export default function DashboardCRM() {
   const [managers, setManagers] = useState<Manager[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [managerFilter, setManagerFilter] = useState<string>("all");
+  const [licenseFilter, setLicenseFilter] = useState<string>("all");
+  const [aiScoreFilter, setAiScoreFilter] = useState<string>("all");
   const [showDeactivated, setShowDeactivated] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
   const [deactivateAgent, setDeactivateAgent] = useState<AgentCRM | null>(null);
@@ -538,7 +541,7 @@ export default function DashboardCRM() {
         liveAgentIds.length > 0 ? supabase.from("daily_production").select("agent_id, aop, presentations, deals_closed, production_date").in("agent_id", liveAgentIds).gte("production_date", monthStartStr) : Promise.resolve({ data: [] as any[] }),
         liveAgentIds.length > 0 ? supabase.from("daily_production").select("agent_id, aop").in("agent_id", liveAgentIds).gte("production_date", prevWeekStartStr).lte("production_date", prevWeekEndStr) : Promise.resolve({ data: [] as any[] }),
         supabase.from("applications").select("assigned_agent_id, last_contacted_at").in("assigned_agent_id", allAgentIds).not("last_contacted_at", "is", null).order("last_contacted_at", { ascending: false }),
-        supabase.from("applications").select("id, email, license_progress, test_scheduled_date").is("terminated_at", null),
+        supabase.from("applications").select("id, email, license_progress, test_scheduled_date, ai_score_tier").is("terminated_at", null),
         supabase.from("lead_payment_tracking").select("agent_id, tier, paid").eq("week_start", weekStartStr).eq("paid", true),
       ]);
 
@@ -577,14 +580,14 @@ export default function DashboardCRM() {
       }
 
       const progressOrder = ["unlicensed","course_purchased","finished_course","test_scheduled","passed_test","fingerprints_done","waiting_on_license","licensed"];
-      const emailLicenseMap = new Map<string, { progress: string | null; testDate: string | null; appId: string }>();
+      const emailLicenseMap = new Map<string, { progress: string | null; testDate: string | null; appId: string; aiScore: string | null }>();
       for (const app of appLicenseResult.data || []) {
         const appEmail = app.email?.toLowerCase().trim();
         if (!appEmail) continue;
         const current = emailLicenseMap.get(appEmail);
         const newIdx = progressOrder.indexOf(app.license_progress || "unlicensed");
         const curIdx = current ? progressOrder.indexOf(current.progress || "unlicensed") : -1;
-        if (newIdx > curIdx) emailLicenseMap.set(appEmail, { progress: app.license_progress, testDate: app.test_scheduled_date, appId: app.id });
+        if (newIdx > curIdx) emailLicenseMap.set(appEmail, { progress: app.license_progress, testDate: app.test_scheduled_date, appId: app.id, aiScore: app.ai_score_tier || null });
       }
 
       const paymentMap = new Map<string, { standard: boolean; premium: boolean }>();
@@ -622,11 +625,12 @@ export default function DashboardCRM() {
           lastContactedAt: lastContactMap.get(agent.id) || null, standardPaid: pay.standard, premiumPaid: pay.premium,
           licenseProgress: licenseEntry?.progress || null, testScheduledDate: licenseEntry?.testDate || null,
           agentLicenseStatus: agent.license_status || "unlicensed",
+          aiScoreTier: licenseEntry?.aiScore || null,
         };
       });
 
       let appQuery = supabase.from("applications")
-        .select("id, first_name, last_name, email, phone, license_status, license_progress, test_scheduled_date, status, instagram_handle, started_training")
+        .select("id, first_name, last_name, email, phone, license_status, license_progress, test_scheduled_date, status, instagram_handle, started_training, ai_score_tier")
         .is("terminated_at", null).neq("license_status", "licensed").in("status", ["approved", "contracting"]);
       if (isManager && !isAdmin && currentAgent) appQuery = appQuery.eq("assigned_agent_id", currentAgent.id);
 
@@ -647,6 +651,7 @@ export default function DashboardCRM() {
           lastContactedAt: null, standardPaid: false, premiumPaid: false,
           licenseProgress: app.license_progress || null, testScheduledDate: app.test_scheduled_date || null,
           agentLicenseStatus: app.license_status || "unlicensed",
+          aiScoreTier: app.ai_score_tier || null,
         }));
 
       return [...crmAgents, ...newApplicants];
@@ -754,7 +759,9 @@ export default function DashboardCRM() {
   const filteredAgents = activeAgents.filter(a => {
     const matchesSearch = !searchTerm || a.name.toLowerCase().includes(searchTerm.toLowerCase()) || a.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesManager = managerFilter === "all" || a.managerId === managerFilter;
-    return matchesSearch && matchesManager;
+    const matchesLicense = licenseFilter === "all" || (licenseFilter === "licensed" ? a.agentLicenseStatus === "licensed" : a.agentLicenseStatus !== "licensed");
+    const matchesAiScore = aiScoreFilter === "all" || a.aiScoreTier === aiScoreFilter;
+    return matchesSearch && matchesManager && matchesLicense && matchesAiScore;
   });
 
   const getAgentsForSection = (section: typeof SECTIONS[number]) => {
@@ -763,7 +770,7 @@ export default function DashboardCRM() {
     }
     if (section.key === "needs_followup") {
       return filteredAgents.filter(a => {
-        const isNotLive = !["evaluated", "live"].includes(a.onboardingStage);
+        const isNotLive = !["evaluated", "live", "below_10k"].includes(a.onboardingStage);
         const daysSinceContact = a.lastContactedAt ? (Date.now() - new Date(a.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24) : 999;
         return isNotLive && daysSinceContact >= 6;
       }).sort((a, b) => {
@@ -779,8 +786,25 @@ export default function DashboardCRM() {
     if (section.key === "pre_licensed") {
       return filteredAgents.filter(a => a.agentLicenseStatus !== "licensed" && section.stages.includes(a.onboardingStage));
     }
+    // Live = actively selling + above $10K weekly ALP
     if (section.key === "live") {
-      return filteredAgents.filter(a => section.stages.includes(a.onboardingStage) && a.agentLicenseStatus === "licensed").sort((a, b) => b.weeklyALP - a.weeklyALP);
+      return filteredAgents.filter(a => 
+        (section.stages.includes(a.onboardingStage) || a.onboardingStage === "below_10k") && 
+        a.agentLicenseStatus === "licensed" && 
+        a.weeklyALP >= 10000
+      ).sort((a, b) => b.weeklyALP - a.weeklyALP);
+    }
+    // Below 10K = licensed agents selling but under $10K ALP
+    if (section.key === "below_10k") {
+      return filteredAgents.filter(a => 
+        (["evaluated", "live", "below_10k"].includes(a.onboardingStage)) && 
+        a.agentLicenseStatus === "licensed" && 
+        a.weeklyALP < 10000
+      ).sort((a, b) => b.weeklyALP - a.weeklyALP);
+    }
+    // Transfer = course done, not yet in field training
+    if (section.key === "transfer") {
+      return filteredAgents.filter(a => a.onboardingStage === "transfer");
     }
     return filteredAgents.filter(a => section.stages.includes(a.onboardingStage)).sort((a, b) => {
       if (!a.lastContactedAt && !b.lastContactedAt) return a.sortOrder - b.sortOrder;
@@ -809,8 +833,8 @@ export default function DashboardCRM() {
   const preLicensedCount = filteredAgents.filter(a => a.agentLicenseStatus !== "licensed" && ["pre_licensed", "onboarding", "training_online"].includes(a.onboardingStage)).length;
   const transferCount = filteredAgents.filter(a => a.onboardingStage === "transfer").length;
   const trainingCount = filteredAgents.filter(a => a.onboardingStage === "in_field_training").length;
-  const below10kCount = filteredAgents.filter(a => a.onboardingStage === "below_10k").length;
-  const liveCount = filteredAgents.filter(a => ["evaluated", "live"].includes(a.onboardingStage) && a.agentLicenseStatus === "licensed").length;
+  const below10kCount = getAgentsForSection(SECTIONS.find(s => s.key === "below_10k")!).length;
+  const liveCount = getAgentsForSection(SECTIONS.find(s => s.key === "live")!).length;
   const needsFollowUpCount = getAgentsForSection(SECTIONS.find(s => s.key === "needs_followup")!).length;
   const inactiveCount = filteredAgents.filter(a => a.onboardingStage === "inactive" || a.isInactive).length;
   const staleCount = filteredAgents.filter(isStaleAgent).length;
@@ -1035,20 +1059,22 @@ export default function DashboardCRM() {
           />
         )}
 
-        <div className="grid grid-cols-2 sm:grid-cols-6 gap-2.5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
           {[
-            { label: "Present Today", count: meetingPresentCount, icon: ClipboardCheck, color: "text-sky-500", borderColor: "border-t-sky-500", bgGlow: "bg-sky-500/5" },
+            { label: "Present", count: meetingPresentCount, icon: ClipboardCheck, color: "text-sky-500", borderColor: "border-t-sky-500", bgGlow: "bg-sky-500/5" },
             { label: "Onboarding", count: onboardingCount, icon: BookOpen, color: "text-primary", borderColor: "border-t-primary", bgGlow: "bg-primary/5" },
             { label: "Pre-Licensed", count: preLicensedCount, icon: GraduationCap, color: "text-violet-500", borderColor: "border-t-violet-500", bgGlow: "bg-violet-500/5" },
-            { label: "In Training", count: trainingCount, icon: GraduationCap, color: "text-amber-500", borderColor: "border-t-amber-500", bgGlow: "bg-amber-500/5" },
+            { label: "Transfer", count: transferCount, icon: Users, color: "text-orange-500", borderColor: "border-t-orange-500", bgGlow: "bg-orange-500/5" },
+            { label: "Training", count: trainingCount, icon: GraduationCap, color: "text-amber-500", borderColor: "border-t-amber-500", bgGlow: "bg-amber-500/5" },
+            { label: "Below $10K", count: below10kCount, icon: AlertTriangle, color: "text-red-500", borderColor: "border-t-red-500", bgGlow: "bg-red-500/5" },
             { label: "Live", count: liveCount, icon: Briefcase, color: "text-emerald-500", borderColor: "border-t-emerald-500", bgGlow: "bg-emerald-500/5" },
             { label: "Needs F/U", count: needsFollowUpCount, icon: AlertTriangle, color: "text-red-500", borderColor: "border-t-red-500", bgGlow: "bg-red-500/5" },
           ].map(s => (
-            <div key={s.label} className={cn("flex items-center gap-3 px-4 py-3.5 rounded-xl border border-border/60 bg-card/80 backdrop-blur-sm shadow-sm border-t-2 transition-all hover:-translate-y-0.5 hover:shadow-md cursor-default", s.borderColor, s.bgGlow)}>
-              <div className="p-2 rounded-lg bg-background/60"><s.icon className={cn("h-5 w-5", s.color)} /></div>
+            <div key={s.label} className={cn("flex items-center gap-2 px-3 py-2.5 rounded-xl border border-border/60 bg-card/80 backdrop-blur-sm shadow-sm border-t-2 transition-all hover:-translate-y-0.5 hover:shadow-md cursor-default", s.borderColor, s.bgGlow)}>
+              <div className="p-1.5 rounded-lg bg-background/60"><s.icon className={cn("h-4 w-4", s.color)} /></div>
               <div>
-                <p className="text-2xl font-extrabold leading-none tabular-nums">{s.count}</p>
-                <p className="text-[11px] text-muted-foreground font-semibold mt-0.5">{s.label}</p>
+                <p className="text-xl font-extrabold leading-none tabular-nums">{s.count}</p>
+                <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">{s.label}</p>
               </div>
             </div>
           ))}
@@ -1061,13 +1087,31 @@ export default function DashboardCRM() {
           </div>
           {isAdmin && managers.length > 0 && (
             <Select value={managerFilter} onValueChange={setManagerFilter}>
-              <SelectTrigger className="w-[160px] h-8 text-sm"><Filter className="h-3.5 w-3.5 mr-1.5" /><SelectValue placeholder="All Managers" /></SelectTrigger>
+              <SelectTrigger className="w-[140px] h-8 text-sm"><Filter className="h-3.5 w-3.5 mr-1.5" /><SelectValue placeholder="All Managers" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Managers</SelectItem>
                 {managers.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
               </SelectContent>
             </Select>
           )}
+          <Select value={licenseFilter} onValueChange={setLicenseFilter}>
+            <SelectTrigger className="w-[130px] h-8 text-sm"><SelectValue placeholder="License" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All License</SelectItem>
+              <SelectItem value="licensed">Licensed</SelectItem>
+              <SelectItem value="unlicensed">Unlicensed</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={aiScoreFilter} onValueChange={setAiScoreFilter}>
+            <SelectTrigger className="w-[120px] h-8 text-sm"><Sparkles className="h-3.5 w-3.5 mr-1" /><SelectValue placeholder="AI Score" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Scores</SelectItem>
+              <SelectItem value="hot">🔥 Hot</SelectItem>
+              <SelectItem value="warm">☀️ Warm</SelectItem>
+              <SelectItem value="cool">❄️ Cool</SelectItem>
+              <SelectItem value="cold">🧊 Cold</SelectItem>
+            </SelectContent>
+          </Select>
           <Button variant={showDeactivated ? "secondary" : "outline"} size="sm" onClick={() => setShowDeactivated(!showDeactivated)} className="gap-1.5 h-8">
             <UserX className="h-3.5 w-3.5" /> {showDeactivated ? "Deactivated ✓" : "Deactivated"}
           </Button>
@@ -1135,14 +1179,30 @@ export default function DashboardCRM() {
                                     {/* Agent Header */}
                                     <div className="flex items-center gap-2.5 p-2.5 cursor-pointer"
                                       onClick={() => { setViewAppTarget({ agentId: agent.userId ? agent.id : undefined, applicationId: agent.applicationId || agent.id }); playSound("click"); }}>
-                                      <div className={cn("h-8 w-8 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-xs font-bold shrink-0 ring-2 ring-background shadow-sm", getAvatarColor(agent.name))}>
-                                        {agent.name.charAt(0).toUpperCase()}
-                                      </div>
+                                      {agent.avatarUrl ? (
+                                        <img src={agent.avatarUrl} alt={agent.name} className="h-8 w-8 rounded-full object-cover shrink-0 ring-2 ring-background shadow-sm" />
+                                      ) : (
+                                        <div className={cn("h-8 w-8 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-xs font-bold shrink-0 ring-2 ring-background shadow-sm", getAvatarColor(agent.name))}>
+                                          {agent.name.charAt(0).toUpperCase()}
+                                        </div>
+                                      )}
                                       <div className="min-w-0 flex-1">
                                         <p className="text-sm font-semibold truncate leading-tight">{agent.name}</p>
-                                        {agent.managerId && agent.managerName && agent.managerId !== currentAgentId && (
-                                          <Badge variant="outline" className="text-[9px] h-4 px-1.5 font-semibold bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20 mt-0.5">{agent.managerName.split(" ")[0]}</Badge>
-                                        )}
+                                        <div className="flex items-center gap-1 mt-0.5">
+                                          {agent.aiScoreTier && (
+                                            <Badge variant="outline" className={cn("text-[8px] h-3.5 px-1", {
+                                              "bg-red-500/10 text-red-500 border-red-500/20": agent.aiScoreTier === "hot",
+                                              "bg-orange-500/10 text-orange-500 border-orange-500/20": agent.aiScoreTier === "warm",
+                                              "bg-blue-500/10 text-blue-500 border-blue-500/20": agent.aiScoreTier === "cool",
+                                              "bg-slate-500/10 text-slate-500 border-slate-500/20": agent.aiScoreTier === "cold",
+                                            })}>
+                                              {agent.aiScoreTier === "hot" ? "🔥" : agent.aiScoreTier === "warm" ? "☀️" : agent.aiScoreTier === "cool" ? "❄️" : "🧊"} {agent.aiScoreTier}
+                                            </Badge>
+                                          )}
+                                          {agent.managerId && agent.managerName && agent.managerId !== currentAgentId && (
+                                            <Badge variant="outline" className="text-[9px] h-4 px-1.5 font-semibold bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20">{agent.managerName.split(" ")[0]}</Badge>
+                                          )}
+                                        </div>
                                       </div>
                                     </div>
                                     {/* Contact Row */}
@@ -1236,9 +1296,13 @@ export default function DashboardCRM() {
                                   <TableCell className="py-2">
                                     <div className="flex items-center gap-2 min-w-0">
                                       <div className="relative shrink-0">
-                                        <div className={cn("h-7 w-7 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-xs font-bold ring-2 ring-background shadow-sm", getAvatarColor(agent.name))}>
-                                          {agent.name.charAt(0).toUpperCase()}
-                                        </div>
+                                        {agent.avatarUrl ? (
+                                          <img src={agent.avatarUrl} alt={agent.name} className="h-7 w-7 rounded-full object-cover ring-2 ring-background shadow-sm" />
+                                        ) : (
+                                          <div className={cn("h-7 w-7 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-xs font-bold ring-2 ring-background shadow-sm", getAvatarColor(agent.name))}>
+                                            {agent.name.charAt(0).toUpperCase()}
+                                          </div>
+                                        )}
                                         {isStaleAgent(agent) && (
                                           <div className={cn("absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-red-500")} />
                                         )}
@@ -1248,6 +1312,16 @@ export default function DashboardCRM() {
                                         <div className="flex items-center gap-1 mt-0.5">
                                           {duplicateAgentIds.has(agent.id) && <Badge variant="outline" className="text-[8px] h-3.5 px-1 bg-amber-500/10 text-amber-500 border-amber-500/20">Dupe</Badge>}
                                           {!agent.avatarUrl && <Badge variant="outline" className="text-[8px] h-3.5 px-1 bg-red-500/10 text-red-500 border-red-500/20">📷 Photo</Badge>}
+                                          {agent.aiScoreTier && (
+                                            <Badge variant="outline" className={cn("text-[8px] h-3.5 px-1", {
+                                              "bg-red-500/10 text-red-500 border-red-500/20": agent.aiScoreTier === "hot",
+                                              "bg-orange-500/10 text-orange-500 border-orange-500/20": agent.aiScoreTier === "warm",
+                                              "bg-blue-500/10 text-blue-500 border-blue-500/20": agent.aiScoreTier === "cool",
+                                              "bg-slate-500/10 text-slate-500 border-slate-500/20": agent.aiScoreTier === "cold",
+                                            })}>
+                                              {agent.aiScoreTier === "hot" ? "🔥" : agent.aiScoreTier === "warm" ? "☀️" : agent.aiScoreTier === "cool" ? "❄️" : "🧊"} {agent.aiScoreTier}
+                                            </Badge>
+                                          )}
                                           {agent.managerId && agent.managerName && agent.managerId !== currentAgentId && (
                                             <Badge variant="outline" className="text-[11px] h-4.5 px-2 font-bold bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20">{agent.managerName.split(" ")[0]}</Badge>
                                           )}

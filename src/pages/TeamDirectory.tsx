@@ -153,8 +153,11 @@ export default function TeamDirectory() {
               ? Math.round((progressInfo.passedCount / totalModules) * 100) 
               : 0,
             avatarUrl: memberProfile?.avatar_url || undefined,
+            weeklyAlp: weeklyAlpMap.get(a.id) || 0,
           };
         });
+
+      const totalWeeklyAlp = teamMembers.reduce((sum, m) => sum + m.weeklyAlp, 0);
 
       return {
         manager: {

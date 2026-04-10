@@ -453,7 +453,12 @@ export default function Dashboard() {
             <Activity className="h-4 w-4 text-primary" />
             <span className="text-xs">Run System Check</span>
           </Button>
-        </div>
+      {/* ====== FOMO APPLICATIONS BANNER ====== */}
+      <TotalApplicationsBanner />
+
+      {/* ====== CHURN RISK BANNER ====== */}
+      {(isAdmin || isManager) && <ChurnRiskBanner />}
+
       )}
 
       {/* ====== DATE PERIOD SELECTOR ====== */}

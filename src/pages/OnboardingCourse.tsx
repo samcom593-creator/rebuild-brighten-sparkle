@@ -4,6 +4,7 @@ import { BookOpen, PlayCircle, HelpCircle, Award, Camera, Upload } from "lucide-
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SkeletonLoader } from "@/components/ui/skeleton-loader";
 import { useAuth } from "@/hooks/useAuth";

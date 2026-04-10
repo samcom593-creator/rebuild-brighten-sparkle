@@ -763,9 +763,9 @@ export default function DashboardCRM() {
     }
     if (section.key === "needs_followup") {
       return filteredAgents.filter(a => {
-        const isBelowLive = a.onboardingStage !== "evaluated";
+        const isNotLive = !["evaluated", "live"].includes(a.onboardingStage);
         const daysSinceContact = a.lastContactedAt ? (Date.now() - new Date(a.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24) : 999;
-        return isBelowLive && daysSinceContact >= 6;
+        return isNotLive && daysSinceContact >= 6;
       }).sort((a, b) => {
         if (!a.lastContactedAt && !b.lastContactedAt) return a.sortOrder - b.sortOrder;
         if (!a.lastContactedAt) return -1;
@@ -773,9 +773,11 @@ export default function DashboardCRM() {
         return new Date(a.lastContactedAt).getTime() - new Date(b.lastContactedAt).getTime();
       });
     }
+    if (section.key === "inactive") {
+      return filteredAgents.filter(a => a.onboardingStage === "inactive" || a.isInactive);
+    }
     if (section.key === "pre_licensed") {
-      // All unlicensed agents in the licensing pipeline
-      return filteredAgents.filter(a => a.agentLicenseStatus !== "licensed");
+      return filteredAgents.filter(a => a.agentLicenseStatus !== "licensed" && section.stages.includes(a.onboardingStage));
     }
     if (section.key === "live") {
       return filteredAgents.filter(a => section.stages.includes(a.onboardingStage) && a.agentLicenseStatus === "licensed").sort((a, b) => b.weeklyALP - a.weeklyALP);

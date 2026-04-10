@@ -1280,6 +1280,42 @@ export type Database = {
           },
         ]
       }
+      content_library: {
+        Row: {
+          created_at: string
+          description: string | null
+          file_type: string
+          id: string
+          storage_path: string
+          tags: string[] | null
+          title: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          file_type?: string
+          id?: string
+          storage_path: string
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          file_type?: string
+          id?: string
+          storage_path?: string
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       contracting_links: {
         Row: {
           created_at: string

@@ -4,10 +4,10 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const navItems = [
-  { path: "/agent-portal", icon: Home, label: "Home" },
+  { path: "/agent-dashboard", icon: Home, label: "Home" },
   { path: "/numbers", icon: BarChart3, label: "Numbers" },
-  { path: "/agent-portal", icon: Trophy, label: "Board", hash: "#leaderboard" },
-  { path: "/dashboard/calendar", icon: Calculator, label: "Calendar" },
+  { path: "/agent-dashboard", icon: Trophy, label: "Board", hash: "#leaderboard" },
+  { path: "/awards", icon: Calculator, label: "Awards" },
   { path: "/dashboard/settings", icon: User, label: "Profile" },
 ];
 

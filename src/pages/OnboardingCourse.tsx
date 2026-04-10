@@ -158,7 +158,7 @@ export default function OnboardingCourse() {
     return success;
   };
 
-  if (loading || provisioningInProgress) {
+  if (loading || provisioningInProgress || checkingAvatar) {
     return <SkeletonLoader variant="page" />;
   }
 

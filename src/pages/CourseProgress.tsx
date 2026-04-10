@@ -119,7 +119,7 @@ function ProgressRing({ percent, size = 40, strokeWidth = 4, className }: { perc
 }
 
 export default function CourseProgress() {
-  const [filter, setFilter] = useState<FilterType>("all");
+  const [filter, setFilter] = useState<FilterType>("in_progress");
   const [sendingReminder, setSendingReminder] = useState<string | null>(null);
   const [showContentViewer, setShowContentViewer] = useState(false);
   const queryClient = useQueryClient();

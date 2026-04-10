@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { BookOpen, PlayCircle, HelpCircle, Award } from "lucide-react";
+import { BookOpen, PlayCircle, HelpCircle, Award, Camera, Upload } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { useOnboardingCourse } from "@/hooks/useOnboardingCourse";
 import { CourseModuleSidebar } from "@/components/course/CourseModuleSidebar";
 import { CourseVideoPlayer } from "@/components/course/CourseVideoPlayer";
 import { CourseQuiz } from "@/components/course/CourseQuiz";
+import { AvatarUpload } from "@/components/dashboard/AvatarUpload";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
@@ -25,6 +26,8 @@ export default function OnboardingCourse() {
   const [provisioningInProgress, setProvisioningInProgress] = useState(false);
   const [activeTab, setActiveTab] = useState<"video" | "quiz">("video");
   const [playbackRate, setPlaybackRate] = useState(1);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [checkingAvatar, setCheckingAvatar] = useState(true);
 
   // Fetch agent ID for current user - use limit(1) to handle legacy duplicates
   useEffect(() => {
@@ -71,6 +74,22 @@ export default function OnboardingCourse() {
       }
     };
     fetchAgentId();
+  }, [user?.id]);
+
+  // Check if user has a profile photo
+  useEffect(() => {
+    const checkAvatar = async () => {
+      if (!user?.id) return;
+      setCheckingAvatar(true);
+      const { data } = await supabase
+        .from("profiles")
+        .select("avatar_url")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      setAvatarUrl(data?.avatar_url || null);
+      setCheckingAvatar(false);
+    };
+    checkAvatar();
   }, [user?.id]);
 
   // Auto-provision: call self-enroll-course edge function (works for any authenticated user)
@@ -139,7 +158,7 @@ export default function OnboardingCourse() {
     return success;
   };
 
-  if (loading || provisioningInProgress) {
+  if (loading || provisioningInProgress || checkingAvatar) {
     return <SkeletonLoader variant="page" />;
   }
 
@@ -174,10 +193,31 @@ export default function OnboardingCourse() {
     );
   }
 
+  // Photo gate — must upload profile photo before accessing course
+  if (!avatarUrl) {
+    return (
+      <div className="max-w-lg mx-auto text-center py-20 space-y-6">
+        <div className="h-24 w-24 rounded-full bg-muted mx-auto flex items-center justify-center">
+          <Camera className="h-10 w-10 text-muted-foreground" />
+        </div>
+        <h1 className="text-2xl font-bold" style={{ fontFamily: "Syne" }}>Profile Photo Required</h1>
+        <p className="text-muted-foreground">
+          Before you can access the training course, please upload a professional profile photo. This will be used across the platform.
+        </p>
+        <div className="flex justify-center">
+          <AvatarUpload
+            currentAvatarUrl={null}
+            onAvatarChange={(url) => { if (url) setAvatarUrl(url); }}
+            userId={user?.id || ""}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="max-w-7xl mx-auto">
-        {/* Course Complete Badge */}
         {isCourseComplete() && (
           <div className="flex items-center justify-center gap-2 mb-6 px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 w-fit mx-auto">
             <Award className="h-5 w-5" />

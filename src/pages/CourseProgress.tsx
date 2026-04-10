@@ -399,9 +399,7 @@ export default function CourseProgress() {
         case "not_started":
           return !agent.hasStarted;
         case "in_progress":
-          return agent.hasStarted && agent.percentComplete < 100 && !agent.isStalled;
-        case "stalled":
-          return agent.isStalled || agent.isAtRisk;
+          return agent.hasStarted && agent.percentComplete < 100;
         case "complete":
           return agent.percentComplete >= 100;
         default:

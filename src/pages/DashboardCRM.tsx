@@ -1059,20 +1059,22 @@ export default function DashboardCRM() {
           />
         )}
 
-        <div className="grid grid-cols-2 sm:grid-cols-6 gap-2.5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
           {[
-            { label: "Present Today", count: meetingPresentCount, icon: ClipboardCheck, color: "text-sky-500", borderColor: "border-t-sky-500", bgGlow: "bg-sky-500/5" },
+            { label: "Present", count: meetingPresentCount, icon: ClipboardCheck, color: "text-sky-500", borderColor: "border-t-sky-500", bgGlow: "bg-sky-500/5" },
             { label: "Onboarding", count: onboardingCount, icon: BookOpen, color: "text-primary", borderColor: "border-t-primary", bgGlow: "bg-primary/5" },
             { label: "Pre-Licensed", count: preLicensedCount, icon: GraduationCap, color: "text-violet-500", borderColor: "border-t-violet-500", bgGlow: "bg-violet-500/5" },
-            { label: "In Training", count: trainingCount, icon: GraduationCap, color: "text-amber-500", borderColor: "border-t-amber-500", bgGlow: "bg-amber-500/5" },
+            { label: "Transfer", count: transferCount, icon: Users, color: "text-orange-500", borderColor: "border-t-orange-500", bgGlow: "bg-orange-500/5" },
+            { label: "Training", count: trainingCount, icon: GraduationCap, color: "text-amber-500", borderColor: "border-t-amber-500", bgGlow: "bg-amber-500/5" },
+            { label: "Below $10K", count: below10kCount, icon: AlertTriangle, color: "text-red-500", borderColor: "border-t-red-500", bgGlow: "bg-red-500/5" },
             { label: "Live", count: liveCount, icon: Briefcase, color: "text-emerald-500", borderColor: "border-t-emerald-500", bgGlow: "bg-emerald-500/5" },
             { label: "Needs F/U", count: needsFollowUpCount, icon: AlertTriangle, color: "text-red-500", borderColor: "border-t-red-500", bgGlow: "bg-red-500/5" },
           ].map(s => (
-            <div key={s.label} className={cn("flex items-center gap-3 px-4 py-3.5 rounded-xl border border-border/60 bg-card/80 backdrop-blur-sm shadow-sm border-t-2 transition-all hover:-translate-y-0.5 hover:shadow-md cursor-default", s.borderColor, s.bgGlow)}>
-              <div className="p-2 rounded-lg bg-background/60"><s.icon className={cn("h-5 w-5", s.color)} /></div>
+            <div key={s.label} className={cn("flex items-center gap-2 px-3 py-2.5 rounded-xl border border-border/60 bg-card/80 backdrop-blur-sm shadow-sm border-t-2 transition-all hover:-translate-y-0.5 hover:shadow-md cursor-default", s.borderColor, s.bgGlow)}>
+              <div className="p-1.5 rounded-lg bg-background/60"><s.icon className={cn("h-4 w-4", s.color)} /></div>
               <div>
-                <p className="text-2xl font-extrabold leading-none tabular-nums">{s.count}</p>
-                <p className="text-[11px] text-muted-foreground font-semibold mt-0.5">{s.label}</p>
+                <p className="text-xl font-extrabold leading-none tabular-nums">{s.count}</p>
+                <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">{s.label}</p>
               </div>
             </div>
           ))}
@@ -1085,13 +1087,31 @@ export default function DashboardCRM() {
           </div>
           {isAdmin && managers.length > 0 && (
             <Select value={managerFilter} onValueChange={setManagerFilter}>
-              <SelectTrigger className="w-[160px] h-8 text-sm"><Filter className="h-3.5 w-3.5 mr-1.5" /><SelectValue placeholder="All Managers" /></SelectTrigger>
+              <SelectTrigger className="w-[140px] h-8 text-sm"><Filter className="h-3.5 w-3.5 mr-1.5" /><SelectValue placeholder="All Managers" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Managers</SelectItem>
                 {managers.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
               </SelectContent>
             </Select>
           )}
+          <Select value={licenseFilter} onValueChange={setLicenseFilter}>
+            <SelectTrigger className="w-[130px] h-8 text-sm"><SelectValue placeholder="License" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All License</SelectItem>
+              <SelectItem value="licensed">Licensed</SelectItem>
+              <SelectItem value="unlicensed">Unlicensed</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={aiScoreFilter} onValueChange={setAiScoreFilter}>
+            <SelectTrigger className="w-[120px] h-8 text-sm"><Sparkles className="h-3.5 w-3.5 mr-1" /><SelectValue placeholder="AI Score" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Scores</SelectItem>
+              <SelectItem value="hot">🔥 Hot</SelectItem>
+              <SelectItem value="warm">☀️ Warm</SelectItem>
+              <SelectItem value="cool">❄️ Cool</SelectItem>
+              <SelectItem value="cold">🧊 Cold</SelectItem>
+            </SelectContent>
+          </Select>
           <Button variant={showDeactivated ? "secondary" : "outline"} size="sm" onClick={() => setShowDeactivated(!showDeactivated)} className="gap-1.5 h-8">
             <UserX className="h-3.5 w-3.5" /> {showDeactivated ? "Deactivated ✓" : "Deactivated"}
           </Button>

@@ -55,6 +55,7 @@ interface AgentCRM {
   monthlyALP: number; monthlyDeals: number; prevWeekALP: number;
   lastContactedAt: string | null; standardPaid: boolean; premiumPaid: boolean;
   licenseProgress: string | null; testScheduledDate: string | null; agentLicenseStatus: string;
+  aiScoreTier?: string | null;
 }
 
 const attendanceColors: Record<AttendanceStatus, string> = {

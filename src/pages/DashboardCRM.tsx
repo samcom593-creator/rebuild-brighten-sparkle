@@ -1179,14 +1179,30 @@ export default function DashboardCRM() {
                                     {/* Agent Header */}
                                     <div className="flex items-center gap-2.5 p-2.5 cursor-pointer"
                                       onClick={() => { setViewAppTarget({ agentId: agent.userId ? agent.id : undefined, applicationId: agent.applicationId || agent.id }); playSound("click"); }}>
-                                      <div className={cn("h-8 w-8 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-xs font-bold shrink-0 ring-2 ring-background shadow-sm", getAvatarColor(agent.name))}>
-                                        {agent.name.charAt(0).toUpperCase()}
-                                      </div>
+                                      {agent.avatarUrl ? (
+                                        <img src={agent.avatarUrl} alt={agent.name} className="h-8 w-8 rounded-full object-cover shrink-0 ring-2 ring-background shadow-sm" />
+                                      ) : (
+                                        <div className={cn("h-8 w-8 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-xs font-bold shrink-0 ring-2 ring-background shadow-sm", getAvatarColor(agent.name))}>
+                                          {agent.name.charAt(0).toUpperCase()}
+                                        </div>
+                                      )}
                                       <div className="min-w-0 flex-1">
                                         <p className="text-sm font-semibold truncate leading-tight">{agent.name}</p>
-                                        {agent.managerId && agent.managerName && agent.managerId !== currentAgentId && (
-                                          <Badge variant="outline" className="text-[9px] h-4 px-1.5 font-semibold bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20 mt-0.5">{agent.managerName.split(" ")[0]}</Badge>
-                                        )}
+                                        <div className="flex items-center gap-1 mt-0.5">
+                                          {agent.aiScoreTier && (
+                                            <Badge variant="outline" className={cn("text-[8px] h-3.5 px-1", {
+                                              "bg-red-500/10 text-red-500 border-red-500/20": agent.aiScoreTier === "hot",
+                                              "bg-orange-500/10 text-orange-500 border-orange-500/20": agent.aiScoreTier === "warm",
+                                              "bg-blue-500/10 text-blue-500 border-blue-500/20": agent.aiScoreTier === "cool",
+                                              "bg-slate-500/10 text-slate-500 border-slate-500/20": agent.aiScoreTier === "cold",
+                                            })}>
+                                              {agent.aiScoreTier === "hot" ? "🔥" : agent.aiScoreTier === "warm" ? "☀️" : agent.aiScoreTier === "cool" ? "❄️" : "🧊"} {agent.aiScoreTier}
+                                            </Badge>
+                                          )}
+                                          {agent.managerId && agent.managerName && agent.managerId !== currentAgentId && (
+                                            <Badge variant="outline" className="text-[9px] h-4 px-1.5 font-semibold bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20">{agent.managerName.split(" ")[0]}</Badge>
+                                          )}
+                                        </div>
                                       </div>
                                     </div>
                                     {/* Contact Row */}

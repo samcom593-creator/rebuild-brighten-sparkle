@@ -205,8 +205,17 @@ export default function DailyCheckin() {
             <p className="text-sm text-amber-500 font-medium">
               ⚠️ We couldn't send the notification right now, but your request has been saved. Please call your manager directly.
             </p>
-          )}
-          <Badge variant="outline" className="text-xs">{todayPST}</Badge>
+           )}
+           <a
+             href="https://chat.whatsapp.com/ApexFinancialGroup"
+             target="_blank"
+             rel="noopener noreferrer"
+             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors text-sm font-medium"
+           >
+             <MessageSquare className="h-4 w-4" />
+             Join the WhatsApp Group Chat
+           </a>
+           <Badge variant="outline" className="text-xs">{todayPST}</Badge>
         </GlassCard>
       </div>
     );

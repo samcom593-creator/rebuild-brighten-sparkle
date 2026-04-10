@@ -47,6 +47,7 @@ import { TeamOverviewDashboard } from "@/components/dashboard/TeamOverviewDashbo
 
 import { ChurnRiskBanner } from "@/components/dashboard/ChurnRiskBanner";
 import { AchievementFeed } from "@/components/dashboard/AchievementFeed";
+import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
 import { useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
@@ -367,14 +368,17 @@ export default function Dashboard() {
   return (
     <>
       {/* Welcome */}
-      <div className="mb-6">
-        <h2 className="text-xl font-bold">
-          Welcome back, <span className="text-primary">{userName}</span>! 👋
-        </h2>
-        <div className="h-0.5 w-24 mt-1 bg-gradient-to-r from-primary to-emerald-400 rounded-full" />
-        <p className="text-sm text-muted-foreground mt-2">
-          {isAdmin ? "Here's your agency overview" : isManager ? "Here's your team performance" : "Track your progress"}
-        </p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold">
+            Welcome back, <span className="text-primary">{userName}</span>! 👋
+          </h2>
+          <div className="h-0.5 w-24 mt-1 bg-gradient-to-r from-primary to-emerald-400 rounded-full" />
+          <p className="text-sm text-muted-foreground mt-2">
+            {isAdmin ? "Here's your agency overview" : isManager ? "Here's your team performance" : "Track your progress"}
+          </p>
+        </div>
+        {(isAdmin || isManager) && <AddAgentModal />}
       </div>
 
       {/* ====== TOP METRIC CARDS (Real Data) ====== */}

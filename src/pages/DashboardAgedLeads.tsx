@@ -472,7 +472,7 @@ export default function DashboardAgedLeads() {
     );
   }
 
-  const filteredLeads = leads.filter(lead => {
+  const filteredLeads = useMemo(() => leads.filter(lead => {
     const q = searchTerm.toLowerCase();
     const matchesSearch =
       lead.firstName.toLowerCase().includes(q) ||
@@ -486,7 +486,25 @@ export default function DashboardAgedLeads() {
     const matchesSource = sourceFilter === "all" || lead.leadSource === sourceFilter;
 
     return matchesSearch && matchesStatus && matchesLicense && matchesSource;
-  });
+  }), [leads, searchTerm, statusFilter, licenseFilter, sourceFilter]);
+
+  // Reset page when filters change
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, statusFilter, licenseFilter, sourceFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredLeads.length / PAGE_SIZE));
+  const paginatedLeads = filteredLeads.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  const getLeadAgeDays = (lead: AgedLead) => {
+    const dateStr = lead.originalDate || lead.createdAt;
+    if (!dateStr) return 0;
+    return Math.floor((Date.now() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
+  };
+
+  const getAgeColor = (days: number) => {
+    if (days <= 30) return { border: "border-emerald-500/30", bg: "bg-emerald-500/5", badge: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20" };
+    if (days <= 60) return { border: "border-amber-500/30", bg: "bg-amber-500/5", badge: "bg-amber-500/15 text-amber-400 border-amber-500/20" };
+    return { border: "border-destructive/30", bg: "bg-destructive/5", badge: "bg-destructive/15 text-destructive border-destructive/20" };
+  };
 
   // Stats
   const totalLeads = leads.length;

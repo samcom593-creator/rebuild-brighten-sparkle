@@ -69,6 +69,7 @@ export default defineConfig(({ mode }) => ({
   build: {
     target: "esnext",
     minify: "esbuild",
+    cssMinify: true,
     rollupOptions: {
       output: {
         manualChunks: {
@@ -81,6 +82,9 @@ export default defineConfig(({ mode }) => ({
         },
       },
     },
+  },
+  optimizeDeps: {
+    include: ["react", "react-dom", "@supabase/supabase-js"],
   },
   resolve: {
     dedupe: ["react", "react-dom", "react/jsx-runtime"],

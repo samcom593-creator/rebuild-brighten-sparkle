@@ -337,7 +337,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
     // Build different admin email based on license status
     const adminSubject = isLicensedApplicant 
       ? `🔥 HOT LEAD - CALL NOW: ${sanitized.firstName} ${sanitized.lastName} is LICENSED!`
-      : `New Application: ${sanitized.firstName} ${sanitized.lastName} (${licenseStatusDisplay})`;
+      : `New ${licenseStatusDisplay.toUpperCase()} Application — ${sanitized.firstName} ${sanitized.lastName} | ${sanitized.city}, ${sanitized.state}`;
     
     const urgentBanner = isLicensedApplicant ? `
       <div style="background: linear-gradient(135deg, #dc2626, #991b1b); padding: 15px; text-align: center; margin-bottom: 0;">
@@ -545,12 +545,18 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
             <h2 style="color: #111827; margin-top: 0;">Hi ${sanitized.firstName},</h2>
             
             <p style="color: #4b5563; line-height: 1.6;">
-              Congratulations! As a licensed agent, you're ready to hit the ground running with APEX Financial.
+              You just made a move that most people only talk about.
+            </p>
+            <p style="color: #4b5563; line-height: 1.6;">
+              You're licensed. You have the hardest part done. Now it's time to actually use it to build something real.
             </p>
 
             <div style="background: #d1fae5; border-left: 4px solid #059669; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
               <p style="margin: 0; color: #047857; font-weight: 500;">
-                You're on the fast track! Schedule your call below to get started immediately.
+                Here's exactly what happens next:<br/>
+                1. A manager will call you within 24 hours to walk you through getting contracted<br/>
+                2. You'll receive your APEX portal login via a separate email<br/>
+                3. Once contracted, you'll have access to scripts, leads, and the full training system
               </p>
             </div>
 
@@ -599,14 +605,19 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
             </p>
 
             <p style="color: #4b5563; margin-top: 30px;">
-              Best regards,<br>
-              <strong style="color: #059669;">The APEX Financial Team</strong>
+              We don't do hand-holding here. We do results. And agents on this team are averaging $23,000 per month in production.
+            </p>
+            <p style="color: #4b5563; line-height: 1.6;">
+              You applied. Now show up.
+            </p>
+            <p style="color: #4b5563; margin-top: 25px;">
+              — Sam<br/>
+              <strong style="color: #059669;">Managing Partner, APEX Financial</strong>
             </p>
           </div>
 
           <div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">
-            <p style="margin: 0;">Save this email - it contains your important next steps!</p>
-            <p style="margin-top: 10px;">&copy; ${new Date().getFullYear()} APEX Financial. All rights reserved.</p>
+            <p style="margin: 0;">APEX Financial | apex-financial.org</p>
           </div>
         </div>
       `
@@ -620,12 +631,15 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
             <h2 style="color: #111827; margin-top: 0;">Hi ${sanitized.firstName},</h2>
             
             <p style="color: #4b5563; line-height: 1.6;">
-              Thank you for applying to join APEX Financial! Here's how we'll help you get licensed (at no cost to you).
+              You took the first step. Most people never do.
+            </p>
+            <p style="color: #4b5563; line-height: 1.6;">
+              You don't have your license yet — that's okay. Agents on this team went from exactly where you are right now to earning $5,000, $10,000, even $23,000 a month. The license is just a test. We'll help you pass it.
             </p>
 
             <div style="background: #d1fae5; border-left: 4px solid #059669; padding: 15px 20px; margin: 20px 0; border-radius: 0 8px 8px 0;">
               <p style="margin: 0; color: #047857; font-weight: 500;">
-                Don't worry about not having a license yet - we cover most of the licensing costs and guide you through every step!
+                Your roadmap: Purchase pre-licensing course → Study & schedule exam → Pass and get contracted → Start closing deals
               </p>
             </div>
 
@@ -685,7 +699,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
             </div>
 
             <p style="color: #4b5563; line-height: 1.6; margin-top: 25px;">
-              If you have any questions, don't hesitate to reach out. We're here to help you succeed!
+              You'll hear from a manager within 48 hours.
             </p>
 
             <div style="background: #dcfce7; border: 1px solid #86efac; padding: 20px; border-radius: 8px; margin: 25px 0; text-align: center;">
@@ -710,9 +724,9 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
               </a>
             </div>
 
-            <p style="color: #4b5563; margin-top: 30px;">
-              Best regards,<br>
-              <strong style="color: #059669;">The APEX Financial Team</strong>
+            <p style="color: #4b5563; margin-top: 25px;">
+              — Sam<br/>
+              <strong style="color: #059669;">Managing Partner, APEX Financial</strong>
             </p>
           </div>
 
@@ -734,9 +748,11 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
       from: "APEX Financial <notifications@apex-financial.org>",
       to: [data.email],
       cc: ccList,
-      subject: isLicensed 
-        ? "You're on the Fast Track! - APEX Financial" 
-        : "Your Next Steps - APEX Financial",
+      subject: sanitized.licenseStatus === 'licensed'
+        ? `Welcome to APEX, ${sanitized.firstName} — Your Licensed Agent Journey Starts Now 🔑`
+        : sanitized.licenseStatus === 'pending'
+        ? `Welcome to APEX, ${sanitized.firstName} — You're Almost Ready to Earn 📋`
+        : `Welcome to APEX, ${sanitized.firstName} — Let's Get You Licensed and Earning 🎯`,
       html: emailHtml,
     });
     console.log("Applicant confirmation sent:", applicantEmailResponse);

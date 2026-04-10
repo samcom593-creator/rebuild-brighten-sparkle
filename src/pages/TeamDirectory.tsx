@@ -354,12 +354,7 @@ export default function TeamDirectory() {
                           className="p-3 pl-8 flex items-center gap-4 hover:bg-muted/30 transition-colors"
                         >
                           <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
-                          <Avatar className="h-9 w-9">
-                            <AvatarImage src={member.avatarUrl} alt={member.name} />
-                            <AvatarFallback className="text-xs bg-muted">
-                              {member.name.split(" ").map(n => n[0]).join("").toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
+                          <AgentAvatar avatarUrl={getAvatarUrl(member.avatarUrl)} name={member.name} size="sm" />
                           <div className="flex-1 min-w-0">
                             <p className="font-medium truncate">{member.name}</p>
                             <p className="text-xs text-muted-foreground truncate">{member.email}</p>

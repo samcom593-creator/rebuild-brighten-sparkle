@@ -299,9 +299,12 @@ export function GlobalSidebar({
                   <Crown className="h-7 w-7 text-primary transition-transform group-hover:scale-110" />
                   <div className="absolute inset-0 bg-primary/20 blur-lg rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-lg font-bold gradient-text leading-tight">APEX</span>
-                  <span className="text-[8px] text-muted-foreground uppercase tracking-widest">Financial</span>
+                <div className="flex items-center gap-1.5">
+                  <div className="flex flex-col">
+                    <span className="text-lg font-bold gradient-text leading-tight">APEX</span>
+                    <span className="text-[8px] text-muted-foreground uppercase tracking-widest">Financial</span>
+                  </div>
+                  <div className="live-indicator" title="Live" />
                 </div>
               </Link>
             )}

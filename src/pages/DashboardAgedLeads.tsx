@@ -214,6 +214,8 @@ function QuickAssignPanel({ managers, unassignedCount, onAssign }: {
   );
 }
 
+const PAGE_SIZE = 25;
+
 export default function DashboardAgedLeads() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const { user, isAdmin, isManager, isLoading: authLoading } = useAuth();
@@ -230,6 +232,7 @@ export default function DashboardAgedLeads() {
   const [callModeLicense, setCallModeLicense] = useState<"licensed" | "unlicensed">("unlicensed");
   const [callModeSelectOpen, setCallModeSelectOpen] = useState(false);
   const [myAgentId, setMyAgentId] = useState<string | undefined>(undefined);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Ban state
   const [banTarget, setBanTarget] = useState<AgedLead | null>(null);

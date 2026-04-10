@@ -8,8 +8,8 @@ const corsHeaders = {
 };
 
 const PRICE_MAP: Record<string, string> = {
-  gold: "price_1TKlA4C3Khd8IPVm3o68Pd1p",
-  platinum: "price_1TKlAvC3Khd8IPVmtLStHtgF",
+  gold: "price_1TKmDqC3Khd8IPVmNDSHuNu7",
+  platinum: "price_1TKmLhC3Khd8IPVmoAMmtBuM",
 };
 
 serve(async (req) => {

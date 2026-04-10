@@ -43,7 +43,7 @@ import { DatePeriodSelector, type DatePeriod } from "@/components/ui/date-period
 import { TotalApplicationsBanner } from "@/components/dashboard/TotalApplicationsBanner";
 import { EstimatedEarningsCard } from "@/components/dashboard/EstimatedEarningsCard";
 import { TeamOverviewDashboard } from "@/components/dashboard/TeamOverviewDashboard";
-import { SystemHealthMonitor } from "@/components/dashboard/SystemHealthMonitor";
+
 import { ChurnRiskBanner } from "@/components/dashboard/ChurnRiskBanner";
 import { AchievementFeed } from "@/components/dashboard/AchievementFeed";
 import { useNavigate, Link } from "react-router-dom";
@@ -684,10 +684,9 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ====== ADMIN SIDEBAR: System Health + Achievement Feed ====== */}
+      {/* ====== ACHIEVEMENT FEED (Admin/Manager) ====== */}
       {(isAdmin || isManager) && (
-        <div className="grid md:grid-cols-2 gap-4 mb-6">
-          <SystemHealthMonitor />
+        <div className="mb-6">
           <AchievementFeed />
         </div>
       )}

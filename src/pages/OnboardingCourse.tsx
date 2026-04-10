@@ -76,6 +76,22 @@ export default function OnboardingCourse() {
     fetchAgentId();
   }, [user?.id]);
 
+  // Check if user has a profile photo
+  useEffect(() => {
+    const checkAvatar = async () => {
+      if (!user?.id) return;
+      setCheckingAvatar(true);
+      const { data } = await supabase
+        .from("profiles")
+        .select("avatar_url")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      setAvatarUrl(data?.avatar_url || null);
+      setCheckingAvatar(false);
+    };
+    checkAvatar();
+  }, [user?.id]);
+
   // Auto-provision: call self-enroll-course edge function (works for any authenticated user)
   useEffect(() => {
     const autoProvision = async () => {

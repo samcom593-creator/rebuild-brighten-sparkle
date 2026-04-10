@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { AgentAvatar, getAvatarUrl } from "@/components/ui/AgentAvatar";
 import { useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -1179,13 +1180,7 @@ export default function DashboardCRM() {
                                     {/* Agent Header */}
                                     <div className="flex items-center gap-2.5 p-2.5 cursor-pointer"
                                       onClick={() => { setViewAppTarget({ agentId: agent.userId ? agent.id : undefined, applicationId: agent.applicationId || agent.id }); playSound("click"); }}>
-                                      {agent.avatarUrl ? (
-                                        <img src={agent.avatarUrl} alt={agent.name} className="h-8 w-8 rounded-full object-cover shrink-0 ring-2 ring-background shadow-sm" />
-                                      ) : (
-                                        <div className={cn("h-8 w-8 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-xs font-bold shrink-0 ring-2 ring-background shadow-sm", getAvatarColor(agent.name))}>
-                                          {agent.name.charAt(0).toUpperCase()}
-                                        </div>
-                                      )}
+                                      <AgentAvatar avatarUrl={getAvatarUrl(agent.avatarUrl)} name={agent.name} size="sm" className="ring-2 ring-background shadow-sm" />
                                       <div className="min-w-0 flex-1">
                                         <p className="text-sm font-semibold truncate leading-tight">{agent.name}</p>
                                         <div className="flex items-center gap-1 mt-0.5">
@@ -1296,13 +1291,7 @@ export default function DashboardCRM() {
                                   <TableCell className="py-2">
                                     <div className="flex items-center gap-2 min-w-0">
                                       <div className="relative shrink-0">
-                                        {agent.avatarUrl ? (
-                                          <img src={agent.avatarUrl} alt={agent.name} className="h-7 w-7 rounded-full object-cover ring-2 ring-background shadow-sm" />
-                                        ) : (
-                                          <div className={cn("h-7 w-7 rounded-full bg-gradient-to-br flex items-center justify-center text-white text-xs font-bold ring-2 ring-background shadow-sm", getAvatarColor(agent.name))}>
-                                            {agent.name.charAt(0).toUpperCase()}
-                                          </div>
-                                        )}
+                                        <AgentAvatar avatarUrl={getAvatarUrl(agent.avatarUrl)} name={agent.name} size="sm" className="ring-2 ring-background shadow-sm" />
                                         {isStaleAgent(agent) && (
                                           <div className={cn("absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background bg-red-500")} />
                                         )}

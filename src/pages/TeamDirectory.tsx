@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { AgentAvatar, getAvatarUrl } from "@/components/ui/AgentAvatar";
 import { startOfWeek, endOfWeek } from "date-fns";
 import {
   Mail,
@@ -318,12 +319,7 @@ export default function TeamDirectory() {
                     item.isCurrentUser && "bg-primary/5"
                   )}>
                     <div className="flex items-center gap-4">
-                      <Avatar className="h-12 w-12 border-2 border-primary/20">
-                        <AvatarImage src={item.manager.avatarUrl} alt={item.manager.fullName} />
-                        <AvatarFallback className="bg-primary/20 text-primary font-semibold">
-                          {item.manager.fullName.split(" ").map(n => n[0]).join("").toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
+                      <AgentAvatar avatarUrl={getAvatarUrl(item.manager.avatarUrl)} name={item.manager.fullName} size="lg" className="border-2 border-primary/20" />
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <h3 className="font-semibold text-lg">{item.manager.fullName}</h3>
@@ -358,12 +354,7 @@ export default function TeamDirectory() {
                           className="p-3 pl-8 flex items-center gap-4 hover:bg-muted/30 transition-colors"
                         >
                           <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
-                          <Avatar className="h-9 w-9">
-                            <AvatarImage src={member.avatarUrl} alt={member.name} />
-                            <AvatarFallback className="text-xs bg-muted">
-                              {member.name.split(" ").map(n => n[0]).join("").toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
+                          <AgentAvatar avatarUrl={getAvatarUrl(member.avatarUrl)} name={member.name} size="sm" />
                           <div className="flex-1 min-w-0">
                             <p className="font-medium truncate">{member.name}</p>
                             <p className="text-xs text-muted-foreground truncate">{member.email}</p>

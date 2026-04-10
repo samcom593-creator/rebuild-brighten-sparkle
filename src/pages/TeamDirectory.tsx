@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { AgentAvatar, getAvatarUrl } from "@/components/ui/AgentAvatar";
 import { startOfWeek, endOfWeek } from "date-fns";
 import {
   Mail,
@@ -318,10 +319,7 @@ export default function TeamDirectory() {
                     item.isCurrentUser && "bg-primary/5"
                   )}>
                     <div className="flex items-center gap-4">
-                      <Avatar className="h-12 w-12 border-2 border-primary/20">
-                        <AvatarImage src={item.manager.avatarUrl} alt={item.manager.fullName} />
-                        <AvatarFallback className="bg-primary/20 text-primary font-semibold">
-                          {item.manager.fullName.split(" ").map(n => n[0]).join("").toUpperCase()}
+                      <AgentAvatar avatarUrl={getAvatarUrl(item.manager.avatarUrl)} name={item.manager.fullName} size="lg" className="border-2 border-primary/20" />
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">

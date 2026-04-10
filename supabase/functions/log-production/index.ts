@@ -121,6 +121,34 @@ Deno.serve(async (req) => {
         throw error;
       }
 
+      // Auto-promote: check if agent's total ALP >= $10,000 and stage is below_10k
+      try {
+        const { data: agentRow } = await supabaseAdmin
+          .from("agents")
+          .select("onboarding_stage")
+          .eq("id", agentId)
+          .single();
+
+        if (agentRow?.onboarding_stage === "below_10k") {
+          const { data: totalProd } = await supabaseAdmin
+            .from("daily_production")
+            .select("aop")
+            .eq("agent_id", agentId);
+
+          const totalALP = (totalProd || []).reduce((sum: number, r: any) => sum + (Number(r.aop) || 0), 0);
+
+          if (totalALP >= 10000) {
+            await supabaseAdmin
+              .from("agents")
+              .update({ onboarding_stage: "live" })
+              .eq("id", agentId);
+            console.log(`Auto-promoted agent ${agentId} to live (ALP: $${totalALP})`);
+          }
+        }
+      } catch (promoErr) {
+        console.error("Auto-promote check error:", promoErr);
+      }
+
       return new Response(JSON.stringify({ success: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

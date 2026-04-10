@@ -24,7 +24,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+// Table imports removed - using card grid layout
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

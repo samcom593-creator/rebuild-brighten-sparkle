@@ -206,8 +206,8 @@ export default function OnboardingCourse() {
         </p>
         <div className="flex justify-center">
           <AvatarUpload
-            currentUrl={null}
-            onUpload={(url) => setAvatarUrl(url)}
+            currentAvatarUrl={null}
+            onAvatarChange={(url) => { if (url) setAvatarUrl(url); }}
             userId={user?.id || ""}
           />
         </div>

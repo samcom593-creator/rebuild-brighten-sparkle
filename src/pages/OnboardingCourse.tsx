@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { BookOpen, PlayCircle, HelpCircle, Award } from "lucide-react";
+import { BookOpen, PlayCircle, HelpCircle, Award, Camera, Upload } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -11,6 +11,7 @@ import { useOnboardingCourse } from "@/hooks/useOnboardingCourse";
 import { CourseModuleSidebar } from "@/components/course/CourseModuleSidebar";
 import { CourseVideoPlayer } from "@/components/course/CourseVideoPlayer";
 import { CourseQuiz } from "@/components/course/CourseQuiz";
+import { AvatarUpload } from "@/components/dashboard/AvatarUpload";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
@@ -25,6 +26,8 @@ export default function OnboardingCourse() {
   const [provisioningInProgress, setProvisioningInProgress] = useState(false);
   const [activeTab, setActiveTab] = useState<"video" | "quiz">("video");
   const [playbackRate, setPlaybackRate] = useState(1);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [checkingAvatar, setCheckingAvatar] = useState(true);
 
   // Fetch agent ID for current user - use limit(1) to handle legacy duplicates
   useEffect(() => {

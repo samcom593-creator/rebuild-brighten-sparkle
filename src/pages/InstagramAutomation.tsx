@@ -42,20 +42,33 @@ export default function InstagramAutomation() {
   const fetchSubscriptions = async () => {
     setLoading(true);
     try {
+      // Use rpc or raw query since types may not be generated yet
       const { data, error } = await supabase
-        .from("instagram_subscriptions")
+        .from("instagram_subscriptions" as any)
         .select(`
-          id, agent_id, status, amount, last_paid, next_due,
-          agents!inner(id, display_name, profiles:profile_id(full_name))
+          id, agent_id, status, amount, last_paid, next_due
         `)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
 
+      // Fetch agent names separately
+      const agentIds = (data || []).map((s: any) => s.agent_id);
+      let agentNames: Record<string, string> = {};
+      if (agentIds.length > 0) {
+        const { data: agents } = await supabase
+          .from("agents")
+          .select("id, display_name, profiles:profile_id(full_name)")
+          .in("id", agentIds);
+        agents?.forEach((a: any) => {
+          agentNames[a.id] = a.display_name || a.profiles?.full_name || "Agent";
+        });
+      }
+
       const subs: Subscription[] = (data || []).map((s: any) => ({
         id: s.id,
         agent_id: s.agent_id,
-        agent_name: s.agents?.display_name || s.agents?.profiles?.full_name || "Agent",
+        agent_name: agentNames[s.agent_id] || "Agent",
         status: s.status || "active",
         amount: Number(s.amount) || 97,
         last_paid: s.last_paid,
@@ -73,7 +86,7 @@ export default function InstagramAutomation() {
   const toggleSubscription = async (sub: Subscription) => {
     const newStatus = sub.status === "active" ? "paused" : "active";
     const { error } = await supabase
-      .from("instagram_subscriptions")
+      .from("instagram_subscriptions" as any)
       .update({ status: newStatus, updated_at: new Date().toISOString() })
       .eq("id", sub.id);
 

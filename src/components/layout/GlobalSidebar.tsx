@@ -150,7 +150,7 @@ export function GlobalSidebar({
 
     // TRAINING
     const trainingItems: NavItem[] = [
-      { icon: BarChart3, label: "Course Catalog", href: "/onboarding-course" },
+      { icon: BarChart3, label: "Course Catalog", href: "/course-catalog" },
     ];
     if (isAdmin || isManager) {
       trainingItems.push({ icon: BarChart3, label: "Course Progress", href: "/course-progress" });

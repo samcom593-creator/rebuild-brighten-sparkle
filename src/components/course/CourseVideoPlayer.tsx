@@ -54,6 +54,8 @@ function getYouTubeId(url: string): string | null {
   return match ? match[1] : null;
 }
 
+const UNLOCK_THRESHOLD = 80;
+
 export function CourseVideoPlayer({
   videoUrl,
   onProgressUpdate,
@@ -114,7 +116,7 @@ function YouTubePlayer({
   const [apiReady, setApiReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showFallback, setShowFallback] = useState(false);
-  const completedRef = useRef(watchedPercent >= 90);
+  const completedRef = useRef(watchedPercent >= UNLOCK_THRESHOLD);
   const mountedRef = useRef(true);
   const startTimeRef = useRef<number | null>(null);
 
@@ -129,10 +131,10 @@ function YouTubePlayer({
     };
   }, []);
 
-  // Show fallback button after 2 minutes
+  // Show fallback button after 30s
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (mountedRef.current && localProgress < 90) {
+      if (mountedRef.current && localProgress < UNLOCK_THRESHOLD) {
         setShowFallback(true);
       }
     }, 30_000);
@@ -143,7 +145,6 @@ function YouTubePlayer({
   useEffect(() => {
     if (!apiReady || !containerRef.current) return;
 
-    // Create a div for the player inside the container
     const playerDiv = document.createElement("div");
     playerDiv.id = `yt-player-${videoId}`;
     containerRef.current.innerHTML = "";
@@ -162,7 +163,6 @@ function YouTubePlayer({
         onStateChange: (event: any) => {
           if (!mountedRef.current) return;
           const state = event.data;
-          // 1 = playing
           if (state === 1) {
             setIsPlaying(true);
             if (!startTimeRef.current) startTimeRef.current = Date.now();
@@ -198,7 +198,7 @@ function YouTubePlayer({
           setLocalProgress((prev) => {
             if (percent > prev) {
               onProgressUpdate(percent);
-              if (percent >= 90 && !completedRef.current) {
+              if (percent >= UNLOCK_THRESHOLD && !completedRef.current) {
                 completedRef.current = true;
                 onVideoComplete();
               }
@@ -269,15 +269,15 @@ function YouTubePlayer({
         <div className="flex items-center gap-2">
           <Progress value={localProgress} className="flex-1 h-2" />
           <span className="text-xs text-white/80">{localProgress}% watched</span>
-          {localProgress >= 90 && (
+          {localProgress >= UNLOCK_THRESHOLD && (
             <CheckCircle className="h-4 w-4 text-emerald-400" />
           )}
         </div>
         <div className="flex items-center justify-between mt-2">
           <p className="text-xs text-white/60">
-            {localProgress >= 90
+            {localProgress >= UNLOCK_THRESHOLD
               ? "✅ Quiz unlocked! You can proceed."
-              : "Watch at least 90% to unlock the quiz."}
+              : `Watch at least ${UNLOCK_THRESHOLD}% to unlock the quiz.`}
           </p>
           {isPlaying && (
             <div className="flex items-center gap-1 text-xs text-white/60 pointer-events-none">
@@ -289,7 +289,7 @@ function YouTubePlayer({
       </div>
 
       {/* Fallback button */}
-      {showFallback && localProgress < 90 && (
+      {showFallback && localProgress < UNLOCK_THRESHOLD && (
         <div className="absolute top-3 right-3 z-20 pointer-events-auto">
           <Button
             size="sm"
@@ -323,27 +323,65 @@ function NativeVideoPlayer({
 }: NativeVideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [localProgress, setLocalProgress] = useState(watchedPercent);
-  const completedRef = useRef(watchedPercent >= 90);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const completedRef = useRef(watchedPercent >= UNLOCK_THRESHOLD);
+  const maxWatchedRef = useRef(0);
+  const saveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
     const handleTimeUpdate = () => {
-      const percent = Math.round((video.currentTime / video.duration) * 100);
+      // Update max watched position
+      if (video.currentTime > maxWatchedRef.current) {
+        maxWatchedRef.current = video.currentTime;
+      }
+
+      const percent = Math.round((maxWatchedRef.current / video.duration) * 100);
       if (percent > localProgress) {
         setLocalProgress(percent);
         onProgressUpdate(percent);
       }
-      if (percent >= 90 && !completedRef.current) {
+      if (percent >= UNLOCK_THRESHOLD && !completedRef.current) {
         completedRef.current = true;
         onVideoComplete();
       }
     };
 
+    const handleSeeking = () => {
+      // Snap back if user tries to skip ahead
+      if (video.currentTime > maxWatchedRef.current + 1) {
+        video.currentTime = maxWatchedRef.current;
+      }
+    };
+
     video.addEventListener("timeupdate", handleTimeUpdate);
-    return () => video.removeEventListener("timeupdate", handleTimeUpdate);
+    video.addEventListener("seeking", handleSeeking);
+
+    // Save progress to DB every 15 seconds
+    saveTimerRef.current = setInterval(() => {
+      if (video.duration > 0) {
+        const pct = Math.round((maxWatchedRef.current / video.duration) * 100);
+        if (pct > 0) onProgressUpdate(pct);
+      }
+    }, 15000);
+
+    return () => {
+      video.removeEventListener("timeupdate", handleTimeUpdate);
+      video.removeEventListener("seeking", handleSeeking);
+      if (saveTimerRef.current) clearInterval(saveTimerRef.current);
+    };
   }, [localProgress, onProgressUpdate, onVideoComplete]);
+
+  const handleSpeedChange = (speed: number) => {
+    setPlaybackSpeed(speed);
+    if (videoRef.current) {
+      videoRef.current.playbackRate = speed;
+    }
+  };
+
+  const SPEEDS = [0.5, 1, 1.5, 2];
 
   return (
     <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black group">
@@ -351,16 +389,40 @@ function NativeVideoPlayer({
         ref={videoRef}
         src={videoUrl}
         controls
-        className="w-full h-full object-contain"
+        className="w-full h-full object-contain native-video-no-seek"
       />
+
+      {/* Speed controls */}
+      <div className="absolute top-3 left-3 z-20 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        {SPEEDS.map(s => (
+          <button
+            key={s}
+            onClick={() => handleSpeedChange(s)}
+            className={cn(
+              "px-2 py-0.5 rounded text-[10px] font-bold transition-all",
+              playbackSpeed === s
+                ? "bg-primary text-primary-foreground"
+                : "bg-black/60 text-white/70 hover:bg-black/80"
+            )}
+          >
+            {s}x
+          </button>
+        ))}
+      </div>
+
       <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/80 to-transparent pointer-events-none">
         <div className="flex items-center gap-2">
           <Progress value={localProgress} className="flex-1 h-2" />
           <span className="text-xs text-white/80">{localProgress}%</span>
-          {localProgress >= 90 && (
+          {localProgress >= UNLOCK_THRESHOLD && (
             <CheckCircle className="h-4 w-4 text-emerald-400" />
           )}
         </div>
+        <p className="text-[10px] text-white/50 mt-1">
+          {localProgress >= UNLOCK_THRESHOLD
+            ? "✅ Quiz unlocked!"
+            : `Watched ${localProgress}% — need ${UNLOCK_THRESHOLD}% to unlock quiz`}
+        </p>
       </div>
     </div>
   );

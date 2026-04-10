@@ -52,7 +52,7 @@ export default function SeminarPage() {
 
       {/* Bottom Info */}
       <div className="p-4 text-center">
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-muted-foreground">
           New recordings are posted every Friday morning. Check back each week for the latest session.
         </p>
       </div>

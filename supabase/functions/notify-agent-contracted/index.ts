@@ -31,7 +31,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Fetch application details
     const { data: application, error: appError } = await supabase
       .from("applications")
-      .select("first_name, last_name, email")
+      .select("first_name, last_name, email, license_status")
       .eq("id", applicationId)
       .single();
 

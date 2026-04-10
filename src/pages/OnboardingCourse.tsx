@@ -193,10 +193,31 @@ export default function OnboardingCourse() {
     );
   }
 
+  // Photo gate — must upload profile photo before accessing course
+  if (!avatarUrl) {
+    return (
+      <div className="max-w-lg mx-auto text-center py-20 space-y-6">
+        <div className="h-24 w-24 rounded-full bg-muted mx-auto flex items-center justify-center">
+          <Camera className="h-10 w-10 text-muted-foreground" />
+        </div>
+        <h1 className="text-2xl font-bold" style={{ fontFamily: "Syne" }}>Profile Photo Required</h1>
+        <p className="text-muted-foreground">
+          Before you can access the training course, please upload a professional profile photo. This will be used across the platform.
+        </p>
+        <div className="flex justify-center">
+          <AvatarUpload
+            currentUrl={null}
+            onUpload={(url) => setAvatarUrl(url)}
+            userId={user?.id || ""}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="max-w-7xl mx-auto">
-        {/* Course Complete Badge */}
         {isCourseComplete() && (
           <div className="flex items-center justify-center gap-2 mb-6 px-4 py-2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 w-fit mx-auto">
             <Award className="h-5 w-5" />

@@ -58,11 +58,9 @@ const AgentPipeline = lazy(() => import("./pages/AgentPipeline"));
 const CalendarPage = lazy(() => import("./pages/CalendarPage"));
 const NotificationHub = lazy(() => import("./pages/NotificationHub"));
 const LinksPage = lazy(() => import("./pages/LinksPage"));
-const GrowthDashboard = lazy(() => import("./pages/GrowthDashboard"));
 const AdminCalendar = lazy(() => import("./pages/AdminCalendar"));
 const AwardGraphics = lazy(() => import("./pages/AwardGraphics"));
 const SeminarPage = lazy(() => import("./pages/SeminarPage"));
-const SeminarAdmin = lazy(() => import("./pages/SeminarAdmin"));
 const ApplicantCheckin = lazy(() => import("./pages/ApplicantCheckin"));
 const DailyCheckin = lazy(() => import("./pages/DailyCheckin"));
 const FieldCheckin = lazy(() => import("./pages/FieldCheckin"));
@@ -71,6 +69,7 @@ const InboxPage = lazy(() => import("./pages/InboxPage"));
 const AutomationHub = lazy(() => import("./pages/AutomationHub"));
 const TeamHierarchy = lazy(() => import("./pages/TeamHierarchy"));
 const AgentPipelineSimple = lazy(() => import("./pages/AgentPipelineSimple"));
+const InstagramAutomation = lazy(() => import("./pages/InstagramAutomation"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -147,6 +146,7 @@ const App = () => (
                     <Route path="/dashboard/aged-leads" element={<DashboardAgedLeads />} />
                     <Route path="/dashboard/command" element={<ProtectedRoute requireAdmin><DashboardCommandCenter /></ProtectedRoute>} />
                     <Route path="/agent-portal" element={<AgentPortal />} />
+                    <Route path="/agent-dashboard" element={<AgentPortal />} />
                     <Route path="/onboarding-course" element={<OnboardingCourse />} />
                     <Route path="/course-progress" element={<CourseProgress />} />
                     <Route path="/course-progress/content" element={<CourseContent />} />
@@ -158,13 +158,12 @@ const App = () => (
                      <Route path="/agent-pipeline" element={<AgentPipeline />} />
                      <Route path="/dashboard/calendar" element={<CalendarPage />} />
                      <Route path="/dashboard/notifications" element={<ProtectedRoute requireAdmin><NotificationHub /></ProtectedRoute>} />
-                     <Route path="/dashboard/growth" element={<GrowthDashboard />} />
                      <Route path="/dashboard/planner" element={<ProtectedRoute requireAdmin><AdminCalendar /></ProtectedRoute>} />
-                      <Route path="/dashboard/seminar" element={<SeminarAdmin />} />
-                      <Route path="/dashboard/inbox" element={<ProtectedRoute requireAdmin><InboxPage /></ProtectedRoute>} />
-                      <Route path="/dashboard/automation" element={<ProtectedRoute requireAdmin><AutomationHub /></ProtectedRoute>} />
-                       <Route path="/dashboard/hierarchy" element={<ProtectedRoute requireAdmin><TeamHierarchy /></ProtectedRoute>} />
-                       <Route path="/dashboard/pipeline-simple" element={<AgentPipelineSimple />} />
+                       <Route path="/dashboard/inbox" element={<ProtectedRoute requireAdmin><InboxPage /></ProtectedRoute>} />
+                       <Route path="/dashboard/automation" element={<ProtectedRoute requireAdmin><AutomationHub /></ProtectedRoute>} />
+                        <Route path="/dashboard/hierarchy" element={<ProtectedRoute requireAdmin><TeamHierarchy /></ProtectedRoute>} />
+                        <Route path="/dashboard/pipeline-simple" element={<AgentPipelineSimple />} />
+                        <Route path="/dashboard/instagram-automation" element={<ProtectedRoute requireAdmin><InstagramAutomation /></ProtectedRoute>} />
                   </Route>
 
                   {/* Legacy redirect */}

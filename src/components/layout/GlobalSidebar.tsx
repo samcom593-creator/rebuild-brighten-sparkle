@@ -14,7 +14,6 @@ import {
   Briefcase,
   Archive,
   BarChart3,
-  TrendingUp,
   Maximize2,
   Minimize2,
   Plus,
@@ -169,14 +168,6 @@ export function GlobalSidebar({
     }
     sections.push({ label: "LEADS", items: leadItems });
 
-    // EVENTS
-    const eventItems: NavItem[] = [
-      { icon: CalendarDays, label: "Calendar", href: "/dashboard/calendar" },
-    ];
-    eventItems.push({ icon: CalendarDays, label: "Daily Check-In", href: "/daily-checkin" });
-    // Field Check-In removed
-    sections.push({ label: "EVENTS", items: eventItems });
-
     // CONTENT
     const contentItems: NavItem[] = [
       { icon: Library, label: "Content Library", href: "/dashboard/content" },
@@ -185,6 +176,13 @@ export function GlobalSidebar({
       contentItems.push({ icon: Sparkles, label: "Instagram Automation", href: "/dashboard/instagram-automation" });
     }
     sections.push({ label: "CONTENT", items: contentItems });
+
+    // EVENTS
+    const eventItems: NavItem[] = [
+      { icon: CalendarDays, label: "Calendar", href: "/dashboard/calendar" },
+      { icon: CalendarDays, label: "Daily Check-In", href: "/daily-checkin" },
+    ];
+    sections.push({ label: "EVENTS", items: eventItems });
 
     // AUTOMATION (admin only)
     if (isAdmin) {
@@ -240,34 +238,39 @@ export function GlobalSidebar({
         to={item.href}
         onClick={() => { if (!isActive) playSound("click"); }}
         className={cn(
-          "flex items-center gap-3 px-3 py-2.5 rounded-r-lg transition-all duration-200 min-h-[44px] lg:min-h-[40px]",
+          "flex items-center gap-3 px-3 py-2.5 transition-all duration-200 min-h-[44px] lg:min-h-[40px]",
           "touch-action-manipulation select-none group/nav",
           isActive
-            ? "nav-item-active"
+            ? "text-[#22d3a5] border-l-2 border-[#22d3a5] bg-[#22d3a5]/5"
             : item.special
-              ? "bg-gradient-to-r from-primary/15 to-primary/5 text-primary border border-primary/25 hover:from-primary/25 hover:to-primary/10 hover:border-primary/40 shadow-sm rounded-lg"
-              : "text-muted-foreground hover:bg-muted hover:text-foreground active:bg-muted/80 rounded-lg",
-          isCollapsed && "justify-center px-2 rounded-lg"
+              ? "bg-gradient-to-r from-[#22d3a5]/10 to-transparent text-[#22d3a5] border border-[#22d3a5]/20 hover:from-[#22d3a5]/20 hover:border-[#22d3a5]/40 shadow-sm rounded-lg mx-1"
+              : "text-[#64748b] hover:text-[#94a3b8] hover:bg-white/[0.03]",
+          isCollapsed && "justify-center px-2"
         )}
         style={{ touchAction: "manipulation" }}
       >
         <item.icon
           className={cn(
-            "h-5 w-5 flex-shrink-0 transition-transform duration-150",
-            item.special && !isActive && "text-primary",
+            "h-[18px] w-[18px] flex-shrink-0 transition-transform duration-150",
+            item.special && !isActive && "text-[#22d3a5]",
             isCollapsed && "group-hover/nav:scale-110"
           )}
         />
         {!isCollapsed && (
-          <span className={cn("font-medium text-sm truncate", item.special && !isActive && "font-semibold")}>
+          <span className={cn(
+            "font-semibold text-[13px] truncate tracking-wide",
+            item.special && !isActive && "font-bold"
+          )}
+          style={{ fontFamily: "'Syne', sans-serif" }}
+          >
             {item.label}
           </span>
         )}
         {isActive && !isCollapsed && (
-          <ChevronRight className="h-4 w-4 ml-auto flex-shrink-0" />
+          <ChevronRight className="h-4 w-4 ml-auto flex-shrink-0 text-[#22d3a5]" />
         )}
         {item.special && !isActive && !isCollapsed && (
-          <span className="ml-auto h-2 w-2 rounded-full bg-primary animate-pulse flex-shrink-0" />
+          <span className="ml-auto h-2 w-2 rounded-full bg-[#22d3a5] animate-pulse flex-shrink-0" />
         )}
       </Link>
     );
@@ -281,40 +284,50 @@ export function GlobalSidebar({
     <>
       <aside
         className={cn(
-          "fixed top-0 left-0 z-40 h-full glass-strong border-r border-border overflow-hidden",
+          "fixed top-0 left-0 z-40 h-full overflow-hidden border-r border-[#1e293b]",
           "transition-all duration-150 ease-in-out",
           isFullscreen && "pointer-events-none opacity-0"
         )}
-        style={{ width: sidebarWidth }}
+        style={{
+          width: sidebarWidth,
+          background: "linear-gradient(180deg, #070d1b 0%, #030712 100%)",
+        }}
       >
         <div className="flex flex-col h-full">
-          {/* Logo & Toggle - collapse toggle integrated into header */}
+          {/* Logo & Toggle */}
           <div className={cn(
-            "flex items-center border-b border-border transition-all",
+            "flex items-center border-b border-[#1e293b] transition-all",
             isCollapsed ? "justify-center p-4" : "justify-between p-4"
           )}>
             {!isCollapsed && (
               <Link to="/dashboard" className="flex items-center gap-2 group">
-                <div className="relative">
-                  <Crown className="h-7 w-7 text-primary transition-transform group-hover:scale-110" />
-                  <div className="absolute inset-0 bg-primary/20 blur-lg rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
                 <div className="flex items-center gap-1.5">
-                  <div className="flex flex-col">
-                    <span className="text-lg font-bold gradient-text leading-tight">APEX</span>
-                    <span className="text-[8px] text-muted-foreground uppercase tracking-widest">Financial</span>
-                  </div>
-                  <div className="live-indicator" title="Live" />
+                  <span
+                    className="text-[22px] font-extrabold text-white leading-tight"
+                    style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800 }}
+                  >
+                    APEX
+                  </span>
+                  <div className="h-2.5 w-2.5 rounded-full bg-[#22d3a5] animate-pulse" title="Live" />
+                  <span
+                    className="text-[22px] font-extrabold text-[#22d3a5] leading-tight"
+                    style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800 }}
+                  >
+                    Financial
+                  </span>
                 </div>
               </Link>
             )}
             {isCollapsed && (
               <Link to="/dashboard" className="group relative">
-                <Crown className="h-7 w-7 text-primary transition-transform group-hover:scale-110" />
-                <div className="absolute inset-0 bg-primary/20 blur-lg rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+                <span
+                  className="text-lg font-extrabold text-white"
+                  style={{ fontFamily: "'Syne', sans-serif" }}
+                >
+                  A
+                </span>
               </Link>
             )}
-            {/* Slim collapse toggle in header row */}
             <div className="flex items-center gap-1">
               {!isCollapsed && (isAdmin || isManager) && (
                 <ConditionalTooltip label="Add Team Member">
@@ -322,7 +335,7 @@ export function GlobalSidebar({
                     variant="ghost"
                     size="icon"
                     onClick={() => setShowInviteModal(true)}
-                    className="h-7 w-7 text-primary hover:bg-primary/10"
+                    className="h-7 w-7 text-[#22d3a5] hover:bg-[#22d3a5]/10"
                     style={{ touchAction: "manipulation" }}
                   >
                     <Plus className="h-4 w-4" />
@@ -334,7 +347,7 @@ export function GlobalSidebar({
                   variant="ghost"
                   size="icon"
                   onClick={onToggle}
-                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                  className="h-7 w-7 text-[#64748b] hover:text-[#94a3b8]"
                   style={{ touchAction: "manipulation" }}
                 >
                   {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
@@ -345,13 +358,13 @@ export function GlobalSidebar({
 
           {/* Quick Add Button - Collapsed State */}
           {isCollapsed && (isAdmin || isManager) && (
-            <div className="px-2 py-2 border-b border-border">
+            <div className="px-2 py-2 border-b border-[#1e293b]">
               <ConditionalTooltip label="Add Team Member">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowInviteModal(true)}
-                  className="w-full justify-center text-primary hover:bg-primary/10"
+                  className="w-full justify-center text-[#22d3a5] hover:bg-[#22d3a5]/10"
                   style={{ touchAction: "manipulation" }}
                 >
                   <Plus className="h-5 w-5" />
@@ -362,14 +375,14 @@ export function GlobalSidebar({
 
           {/* Agent Search */}
           {(isAdmin || isManager) && (
-            <div className="px-2 py-2 border-b border-border" ref={searchRef}>
+            <div className="px-2 py-2 border-b border-[#1e293b]" ref={searchRef}>
               {isCollapsed ? (
                 <ConditionalTooltip label="Search Agents">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => { onToggle(); setTimeout(() => setShowSearch(true), 200); }}
-                    className="w-full justify-center text-muted-foreground hover:text-foreground"
+                    className="w-full justify-center text-[#64748b] hover:text-[#94a3b8]"
                     style={{ touchAction: "manipulation" }}
                   >
                     <Search className="h-4 w-4" />
@@ -378,13 +391,13 @@ export function GlobalSidebar({
               ) : (
                 <div className="relative">
                   <div className="relative">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#475569]" />
                     <Input
                       placeholder="Search agents..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       onFocus={() => setShowSearch(true)}
-                      className="h-8 pl-8 pr-8 text-sm bg-muted/50 border-border/50"
+                      className="h-8 pl-8 pr-8 text-sm bg-[#0f172a] border-[#1e293b] text-[#94a3b8] placeholder:text-[#334155]"
                     />
                     {searchQuery && (
                       <Button
@@ -398,7 +411,7 @@ export function GlobalSidebar({
                     )}
                   </div>
                   {showSearch && searchResults.length > 0 && (
-                    <div className="absolute z-50 left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    <div className="absolute z-50 left-0 right-0 mt-1 bg-[#0f172a] border border-[#1e293b] rounded-lg shadow-lg max-h-48 overflow-y-auto">
                       {searchResults.map((result) => (
                         <button
                           key={result.id}
@@ -408,10 +421,10 @@ export function GlobalSidebar({
                             setSearchResults([]);
                             setShowSearch(false);
                           }}
-                          className="w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors"
+                          className="w-full text-left px-3 py-2 hover:bg-white/[0.03] transition-colors"
                         >
-                          <p className="text-sm font-medium truncate">{result.name}</p>
-                          <p className="text-xs text-muted-foreground truncate">{result.email}</p>
+                          <p className="text-sm font-medium truncate text-[#e2e8f0]">{result.name}</p>
+                          <p className="text-xs text-[#64748b] truncate">{result.email}</p>
                         </button>
                       ))}
                     </div>
@@ -425,13 +438,17 @@ export function GlobalSidebar({
           <nav className="flex-1 p-2 overflow-y-auto sidebar-nav-scroll relative">
             {navSections.map((section, sIdx) => (
               <div key={section.label}>
-                {/* Section label - only when expanded */}
+                {/* Section label */}
                 {!isCollapsed && (
-                  <div className="nav-section-label">{section.label}</div>
+                  <div
+                    className="px-3 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-[2px] text-[#334155]"
+                    style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700 }}
+                  >
+                    {section.label}
+                  </div>
                 )}
-                {/* Divider for collapsed state between sections */}
                 {isCollapsed && sIdx > 0 && (
-                  <div className="my-2 mx-2 border-t border-border/50" />
+                  <div className="my-2 mx-2 border-t border-[#1e293b]/50" />
                 )}
                 <div className="space-y-0.5">
                   {section.items.map((item) => {
@@ -439,7 +456,6 @@ export function GlobalSidebar({
                     return <NavItemComponent key={item.href} item={item} isActive={isActive} />;
                   })}
                 </div>
-                {/* Add Agent button after NAVIGATION section */}
                 {section.label === "NAVIGATION" && isAdmin && (
                   <div className={cn("mt-1", isCollapsed ? "px-1" : "px-1")}>
                     <AddAgentModal />
@@ -447,18 +463,17 @@ export function GlobalSidebar({
                 )}
               </div>
             ))}
-            {/* Gradient fade at bottom when content overflows */}
-            <div className="pointer-events-none sticky bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-sidebar-background to-transparent" />
+            <div className="pointer-events-none sticky bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-[#030712] to-transparent" />
           </nav>
 
           {/* User & Actions */}
-          <div className="border-t border-border p-2">
+          <div className="border-t border-[#1e293b] p-2">
             {user && !isCollapsed && (
               <div className="mb-2 px-3 py-2">
-                <p className="text-sm font-medium truncate">
+                <p className="text-sm font-medium truncate text-[#e2e8f0]">
                   {user.user_metadata?.full_name || user.email}
                 </p>
-                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                <p className="text-xs text-[#64748b] truncate">{user.email}</p>
               </div>
             )}
 
@@ -466,7 +481,7 @@ export function GlobalSidebar({
               "flex items-center mb-2",
               isCollapsed ? "justify-center px-2" : "justify-between px-3"
             )}>
-              {!isCollapsed && <span className="text-sm text-muted-foreground">Theme</span>}
+              {!isCollapsed && <span className="text-sm text-[#64748b]">Theme</span>}
               <ThemeToggle />
             </div>
 
@@ -476,7 +491,7 @@ export function GlobalSidebar({
                 size="sm"
                 onClick={onFullscreenToggle}
                 className={cn(
-                  "w-full mb-1",
+                  "w-full mb-1 text-[#64748b] hover:text-[#94a3b8] hover:bg-white/[0.03]",
                   isCollapsed ? "justify-center" : "justify-start px-3"
                 )}
                 style={{ touchAction: "manipulation" }}
@@ -501,7 +516,7 @@ export function GlobalSidebar({
                 size="sm"
                 onClick={handleLogout}
                 className={cn(
-                  "w-full text-muted-foreground hover:text-destructive hover:bg-destructive/10",
+                  "w-full text-[#64748b] hover:text-red-400 hover:bg-red-500/10",
                   isCollapsed ? "justify-center" : "justify-start px-3"
                 )}
                 style={{ touchAction: "manipulation" }}
@@ -512,9 +527,9 @@ export function GlobalSidebar({
             </ConditionalTooltip>
 
             {!isCollapsed && (
-              <div className="mt-3 pt-3 border-t border-border/50 text-center">
-                <p className="text-[9px] text-muted-foreground/70 uppercase tracking-widest">
-                  Powered by <span className="font-semibold text-primary/80">Apex Financial</span>
+              <div className="mt-3 pt-3 border-t border-[#1e293b]/50 text-center">
+                <p className="text-[9px] text-[#475569] uppercase tracking-widest">
+                  Powered by <span className="font-semibold text-[#22d3a5]/80">Apex Financial</span>
                 </p>
               </div>
             )}

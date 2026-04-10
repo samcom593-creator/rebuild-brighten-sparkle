@@ -320,8 +320,6 @@ export default function TeamDirectory() {
                   )}>
                     <div className="flex items-center gap-4">
                       <AgentAvatar avatarUrl={getAvatarUrl(item.manager.avatarUrl)} name={item.manager.fullName} size="lg" className="border-2 border-primary/20" />
-                        </AvatarFallback>
-                      </Avatar>
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
                           <h3 className="font-semibold text-lg">{item.manager.fullName}</h3>

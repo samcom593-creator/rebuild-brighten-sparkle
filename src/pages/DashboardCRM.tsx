@@ -599,17 +599,45 @@ export default function DashboardCRM() {
         paymentMap.set(p.agent_id, e);
       });
 
+      // Fetch last production date per agent for 35-day dormancy check
+      const { data: lastProdData } = await supabase
+        .from("daily_production")
+        .select("agent_id, production_date")
+        .in("agent_id", allAgentIds)
+        .order("production_date", { ascending: false });
+      const lastProdMap = new Map<string, string>();
+      for (const p of lastProdData || []) {
+        if (!lastProdMap.has(p.agent_id)) lastProdMap.set(p.agent_id, p.production_date);
+      }
+
+      const DORMANT_DAYS = 35;
+      const now = Date.now();
+
       const crmAgents: AgentCRM[] = agentData.map((agent, index) => {
         const profile = profileMapData.get(agent.user_id);
         const ws = weeklyProductionMap.get(agent.id) || { aop: 0, presentations: 0, deals: 0 };
         const pay = paymentMap.get(agent.id) || { standard: false, premium: false };
         const emailKey = profile?.email?.toLowerCase().trim() || "";
         const licenseEntry = emailLicenseMap.get(emailKey);
+
+        // Auto-detect 35-day dormancy → move to inactive
+        let effectiveStage: OnboardingStage = agent.onboarding_stage || "onboarding";
+        if (!agent.is_deactivated && effectiveStage !== "inactive") {
+          const lastProd = lastProdMap.get(agent.id);
+          const lastContact = lastContactMap.get(agent.id);
+          const lastActivity = [lastProd, lastContact, agent.updated_at].filter(Boolean).map(d => new Date(d!).getTime());
+          const mostRecent = lastActivity.length > 0 ? Math.max(...lastActivity) : new Date(agent.created_at).getTime();
+          const daysSince = (now - mostRecent) / (1000 * 60 * 60 * 24);
+          if (daysSince >= DORMANT_DAYS) {
+            effectiveStage = "inactive" as OnboardingStage;
+          }
+        }
+
         return {
           id: agent.id, userId: agent.user_id || "", name: profile?.full_name || agent.display_name || "Unknown Agent",
           applicationId: licenseEntry?.appId || undefined,
           email: profile?.email || "", phone: profile?.phone || undefined, avatarUrl: profile?.avatar_url || undefined,
-          instagramHandle: profile?.instagram_handle || undefined, onboardingStage: agent.onboarding_stage || "onboarding",
+          instagramHandle: profile?.instagram_handle || undefined, onboardingStage: effectiveStage,
           attendanceStatus: agent.attendance_status || "good", performanceTier: agent.performance_tier || "below_10k",
           fieldTrainingStartedAt: agent.field_training_started_at || undefined, startDate: agent.start_date || undefined,
           onboardingCompletedAt: agent.onboarding_completed_at || undefined,

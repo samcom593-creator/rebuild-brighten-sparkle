@@ -747,6 +747,11 @@ export function ProfileSettings() {
         </GlassCard>
       )}
 
+      {/* Admin Only: Discord Webhook */}
+      {isAdmin && (
+        <DiscordWebhookSection />
+      )}
+
       {/* Admin Only: Deleted Leads Vault */}
       {isAdmin && (
         <GlassCard className="p-6">

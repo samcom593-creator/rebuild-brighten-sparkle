@@ -334,9 +334,17 @@ export default function TeamDirectory() {
                         </div>
                         <p className="text-sm text-muted-foreground">{item.manager.email}</p>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right space-y-1">
                         <p className="text-2xl font-bold text-primary">{item.teamMembers.length}</p>
                         <p className="text-xs text-muted-foreground">team members</p>
+                        {item.totalWeeklyAlp > 0 && (
+                          <div className="flex items-center gap-1 justify-end">
+                            <DollarSign className="h-3 w-3 text-emerald-500" />
+                            <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                              {item.totalWeeklyAlp.toLocaleString()} ALP
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -361,8 +369,14 @@ export default function TeamDirectory() {
                             <p className="text-xs text-muted-foreground truncate">{member.email}</p>
                           </div>
                           
-                          {/* Course Progress */}
+                          {/* Weekly ALP + Course Progress */}
                           <div className="flex items-center gap-3">
+                            {member.weeklyAlp > 0 && (
+                              <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                                ${member.weeklyAlp.toLocaleString()}
+                              </span>
+                            )}
+                            
                             {member.courseProgress === 100 ? (
                               <Badge className="bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
                                 ✓ Complete

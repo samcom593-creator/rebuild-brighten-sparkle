@@ -296,20 +296,20 @@ export function GlobalSidebar({
           {/* Logo & Toggle */}
           <div className={cn(
             "flex items-center border-b border-[#1e293b] transition-all",
-            isCollapsed ? "justify-center p-4" : "justify-between p-4"
+            isCollapsed ? "justify-center p-4" : "justify-between px-4 py-4"
           )}>
             {!isCollapsed && (
-              <Link to="/dashboard" className="flex items-center gap-2 group">
+              <Link to="/dashboard" className="flex items-center gap-2 group overflow-hidden whitespace-nowrap">
                 <div className="flex items-center gap-1.5">
                   <span
-                    className="text-[22px] font-extrabold text-white leading-tight"
+                    className="text-[18px] font-extrabold text-white leading-tight"
                     style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800 }}
                   >
                     APEX
                   </span>
-                  <div className="h-2.5 w-2.5 rounded-full bg-[#22d3a5] animate-pulse" title="Live" />
+                  <div className="h-2 w-2 rounded-full bg-[#22d3a5] animate-pulse flex-shrink-0" title="Live" />
                   <span
-                    className="text-[22px] font-extrabold text-[#22d3a5] leading-tight"
+                    className="text-[18px] font-extrabold text-[#22d3a5] leading-tight"
                     style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800 }}
                   >
                     Financial
@@ -444,7 +444,7 @@ export function GlobalSidebar({
                 {/* Section label */}
                 {!isCollapsed && (
                   <div
-                    className="px-3 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-[2px] text-[#334155]"
+                    className="px-3 pt-4 pb-1.5 text-[10px] font-bold uppercase tracking-[3px] text-[#334155]"
                     style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700 }}
                   >
                     {section.label}

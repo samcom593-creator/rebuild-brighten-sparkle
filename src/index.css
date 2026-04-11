@@ -751,3 +751,12 @@ a, button, [role="button"], .cursor-pointer {
   @apply h-2 w-2 rounded-full bg-primary;
   animation: live-indicator 2s ease-in-out infinite;
 }
+
+/* Hide native video seek bar to prevent skipping */
+.native-video-no-seek::-webkit-media-controls-timeline {
+  display: none !important;
+}
+.native-video-no-seek::-webkit-media-controls-current-time-display,
+.native-video-no-seek::-webkit-media-controls-time-remaining-display {
+  display: none !important;
+}

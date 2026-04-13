@@ -213,6 +213,14 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
             
             // Batch notifications (deal alert removed - now sent as daily leaderboard at 9 PM)
             await Promise.allSettled([
+              supabase.functions.invoke("check-daily-awards", {
+                body: {
+                  agentId,
+                  alp: Number(formData.aop),
+                  deals: formData.deals_closed,
+                  date: productionDate,
+                },
+              }),
               supabase.functions.invoke("notify-streak-alert", {
                 body: {
                   agentId,

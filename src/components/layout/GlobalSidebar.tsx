@@ -31,6 +31,7 @@ import {
   Network,
   Library,
   TrendingUp,
+  Shield,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -83,6 +84,26 @@ export function GlobalSidebar({
   const searchRef = useRef<HTMLDivElement>(null);
   const isTouch = useIsTouchDevice();
   const { playSound } = useSoundEffects();
+  const [healthStatus, setHealthStatus] = useState<'healthy'|'degraded'|'critical'>('healthy');
+
+  // Poll system health status every 5 min (admin only)
+  useEffect(() => {
+    if (!isAdmin) return;
+    const checkHealth = async () => {
+      try {
+        const { data } = await supabase
+          .from("system_health_logs")
+          .select("overall_status")
+          .order("checked_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (data?.overall_status) setHealthStatus(data.overall_status as any);
+      } catch {}
+    };
+    checkHealth();
+    const interval = setInterval(checkHealth, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [isAdmin]);
 
   // Search agents
   useEffect(() => {
@@ -202,6 +223,7 @@ export function GlobalSidebar({
     if (isAdmin) {
       adminItems.push({ icon: Crown, label: "Command Center", href: "/dashboard/command" });
       adminItems.push({ icon: UserCog, label: "Accounts", href: "/dashboard/accounts" });
+      adminItems.push({ icon: Shield, label: "System Health", href: "/dashboard/system-health" });
     }
     adminItems.push({ icon: Settings, label: "Settings", href: "/dashboard/settings" });
     sections.push({ label: "ADMIN", items: adminItems });
@@ -274,6 +296,13 @@ export function GlobalSidebar({
         )}
         {item.special && !isActive && !isCollapsed && (
           <span className="ml-auto h-2 w-2 rounded-full bg-[#22d3a5] animate-pulse flex-shrink-0" />
+        )}
+        {item.label === "System Health" && !isCollapsed && (
+          <span className={`ml-auto h-2 w-2 rounded-full flex-shrink-0 ${
+            healthStatus === 'critical' ? 'bg-red-500 animate-pulse' :
+            healthStatus === 'degraded' ? 'bg-yellow-500 animate-pulse' :
+            'bg-emerald-500'
+          }`} />
         )}
       </Link>
     );

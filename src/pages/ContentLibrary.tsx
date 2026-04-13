@@ -828,6 +828,49 @@ export default function ContentLibrary() {
             </div>
           </TabsContent>
 
+          {/* ═══ SENSITIVE TAB (Admin Only) ═══ */}
+          {isAdmin && (
+            <TabsContent value="sensitive" className="space-y-4 mt-4">
+              <div className="glass-card p-4 border-red-500/30 border">
+                <div className="flex items-center gap-2 mb-3">
+                  <ShieldAlert className="h-5 w-5 text-red-500" />
+                  <h3 className="font-bold text-sm" style={{ fontFamily: "Syne" }}>Sensitive Content Review</h3>
+                  <Badge variant="destructive" className="text-xs">{sensitiveCount} flagged</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mb-4">
+                  These items were automatically flagged by AI as potentially inappropriate for the professional library. 
+                  They are hidden from all agents and managers.
+                </p>
+
+                {filtered.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <ShieldCheck className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                    <p className="font-medium">No sensitive content flagged</p>
+                    <p className="text-sm">All uploaded content has passed safety checks</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {filtered.map((item) => (
+                      <SensitiveContentCard
+                        key={item.id}
+                        item={item}
+                        onMarkSafe={async () => {
+                          await supabase.from("content_library").update({
+                            is_sensitive: false,
+                            sensitive_checked: true,
+                          }).eq("id", item.id);
+                          toast.success("Marked as safe — now visible in library");
+                          fetchContent();
+                        }}
+                        onDelete={() => handleDelete(item)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          )}
+
           {/* ═══ AWARDS TAB ═══ */}
           <TabsContent value="awards" className="space-y-6 mt-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

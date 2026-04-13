@@ -62,9 +62,7 @@ const LinksPage = lazy(() => import("./pages/LinksPage"));
 const AdminCalendar = lazy(() => import("./pages/AdminCalendar"));
 const AwardGraphics = lazy(() => import("./pages/AwardGraphics"));
 const SeminarPage = lazy(() => import("./pages/SeminarPage"));
-const ApplicantCheckin = lazy(() => import("./pages/ApplicantCheckin"));
-const DailyCheckin = lazy(() => import("./pages/DailyCheckin"));
-// FieldCheckin removed per Phase 8
+// DailyCheckin and ApplicantCheckin removed per Fix 9
 const AgentFlow = lazy(() => import("./pages/AgentFlow"));
 const InboxPage = lazy(() => import("./pages/InboxPage"));
 const AutomationHub = lazy(() => import("./pages/AutomationHub"));
@@ -130,8 +128,7 @@ const App = () => (
                   <Route path="/apex-daily-numbers" element={<LogNumbers />} />
                   <Route path="/links" element={<LinksPage />} />
                   <Route path="/seminar" element={<SeminarPage />} />
-                  <Route path="/checkin" element={<ApplicantCheckin />} />
-                  <Route path="/daily-checkin" element={<DailyCheckin />} />
+                  {/* checkin and daily-checkin routes removed */}
                   {/* field-checkin route removed */}
                   <Route path="/agent-flow" element={<AgentFlow />} />
                   <Route path="/awards" element={<AwardGraphics />} />

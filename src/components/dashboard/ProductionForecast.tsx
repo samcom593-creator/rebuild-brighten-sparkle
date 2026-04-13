@@ -70,25 +70,22 @@ export function ProductionForecast({ agentId: _agentId }: ProductionForecastProp
 
     const last30 = production.reduce((s, p) => s + Number(p.aop || 0), 0);
 
-    // Simple linear regression on daily AOP
-    const n = production.length;
-    const xs = production.map((_, i) => i);
-    const ys = production.map((p) => Number(p.aop || 0));
-    const xMean = xs.reduce((a, b) => a + b, 0) / n;
-    const yMean = ys.reduce((a, b) => a + b, 0) / n;
-    const num = xs.reduce((s, x, i) => s + (x - xMean) * (ys[i] - yMean), 0);
-    const den = xs.reduce((s, x) => s + (x - xMean) ** 2, 0);
-    const slope = den !== 0 ? num / den : 0;
-    const intercept = yMean - slope * xMean;
+    // Count days with actual production (non-zero) for pace-based projection
+    const activeDays = production.filter(p => Number(p.aop || 0) > 0).length;
+    const dailyPace = activeDays > 0 ? last30 / activeDays : 0;
+    
+    // Use last 7 days pace if available (more recent = more accurate)
+    const last7ActiveDays = production.slice(-7).filter(p => Number(p.aop || 0) > 0).length;
+    const recentPace = last7ActiveDays > 0 ? last7 / last7ActiveDays : dailyPace;
+    
+    // Assume ~5 working days per week, 4.3 weeks per month ≈ 21.5 working days
+    const workingDaysPerMonth = 22;
+    const projected = Math.max(0, Math.round(recentPace * workingDaysPerMonth));
 
-    // Project 30 days from last data point
-    const projected = Math.max(0, Math.round(
-      Array.from({ length: 30 }, (_, i) => intercept + slope * (n + i))
-        .reduce((a, b) => a + b, 0)
-    ));
-
-    const trend = slope > 0.5 ? "up" : slope < -0.5 ? "down" : "flat";
-    const confidence = n >= 14 ? "high" : n >= 7 ? "medium" : "low";
+    // Trend based on comparing last 7d pace vs previous 7d pace
+    const prev7 = production.slice(-14, -7).reduce((s, p) => s + Number(p.aop || 0), 0);
+    const trend = last7 > prev7 * 1.1 ? "up" : last7 < prev7 * 0.9 ? "down" : "flat";
+    const confidence = activeDays >= 14 ? "high" : activeDays >= 7 ? "medium" : "low";
 
     return { projected, trend, confidence, last7, last30 };
   }, [production]);

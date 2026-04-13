@@ -61,6 +61,8 @@ export default function TeamDirectory() {
   const [hierarchy, setHierarchy] = useState<ManagerWithTeam[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [stageFilter, setStageFilter] = useState<string>("all");
 
   useEffect(() => {
     const fetchData = async () => {

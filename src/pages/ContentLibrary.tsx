@@ -143,7 +143,7 @@ export default function ContentLibrary() {
       setContent(items);
     }
     setLoading(false);
-  }, []);
+  }, [isAdmin]);
 
   const fetchAgents = useCallback(async () => {
     const { data: agentsData } = await supabase

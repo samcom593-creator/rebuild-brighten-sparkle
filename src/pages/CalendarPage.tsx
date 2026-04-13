@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, isToday, isBefore, startOfWeek, addDays, getHours, getMinutes } from "date-fns";
 import { motion } from "framer-motion";
 import {
-  Calendar, Video, Phone, MapPin, Clock, Plus,
+  Calendar, Video, Phone, MapPin, Clock, Plus, Download,
   AlertTriangle, CheckCircle2, CalendarPlus, ExternalLink, Search, User,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -248,6 +248,33 @@ export default function CalendarPage() {
     window.open(url, "_blank");
   };
 
+  const handleExportIcs = (iv: InterviewRow) => {
+    const name = iv.applications ? `${iv.applications.first_name} ${iv.applications.last_name}` : "Applicant";
+    const start = new Date(iv.interview_date);
+    const end = new Date(start.getTime() + 30 * 60000);
+    const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+    const icsContent = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//APEX Financial//Calendar//EN",
+      "BEGIN:VEVENT",
+      `DTSTART:${fmt(start)}`,
+      `DTEND:${fmt(end)}`,
+      `SUMMARY:Interview: ${name} - Apex Financial`,
+      `DESCRIPTION:Type: ${typeLabels[iv.interview_type] || iv.interview_type}\\n${iv.notes || ""}`,
+      iv.meeting_link ? `URL:${iv.meeting_link}` : "",
+      "END:VEVENT",
+      "END:VCALENDAR",
+    ].filter(Boolean).join("\r\n");
+    const blob = new Blob([icsContent], { type: "text/calendar" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `interview-${name.replace(/\s+/g, "-").toLowerCase()}.ics`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    toast.success("Downloaded .ics file — open it to add to Apple Calendar");
+  };
+
   const todayCount = interviews?.filter((iv) => isToday(new Date(iv.interview_date))).length || 0;
   const overdueCount = interviews?.filter((iv) => isBefore(new Date(iv.interview_date), now) && iv.status === "scheduled" && !isToday(new Date(iv.interview_date))).length || 0;
 
@@ -459,8 +486,11 @@ export default function CalendarPage() {
                                   <ExternalLink className="h-3.5 w-3.5" />
                                 </Button>
                               )}
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleCalendarLink(iv)}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleCalendarLink(iv)} title="Add to Google Calendar">
                                 <CalendarPlus className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleExportIcs(iv)} title="Download .ics (Apple Calendar)">
+                                <Download className="h-3.5 w-3.5" />
                               </Button>
                               {isOverdue && (
                                 <Button

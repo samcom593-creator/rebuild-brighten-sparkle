@@ -607,6 +607,7 @@ export type Database = {
           field_training_started_at: string | null
           has_dialer_login: boolean | null
           has_discord_access: boolean | null
+          has_production_access: boolean | null
           has_training_course: boolean | null
           id: string
           invited_by_manager_id: string | null
@@ -626,6 +627,7 @@ export type Database = {
             | null
           portal_password_set: boolean | null
           potential_rating: number | null
+          production_unlocked_at: string | null
           profile_id: string | null
           sort_order: number | null
           start_date: string | null
@@ -657,6 +659,7 @@ export type Database = {
           field_training_started_at?: string | null
           has_dialer_login?: boolean | null
           has_discord_access?: boolean | null
+          has_production_access?: boolean | null
           has_training_course?: boolean | null
           id?: string
           invited_by_manager_id?: string | null
@@ -676,6 +679,7 @@ export type Database = {
             | null
           portal_password_set?: boolean | null
           potential_rating?: number | null
+          production_unlocked_at?: string | null
           profile_id?: string | null
           sort_order?: number | null
           start_date?: string | null
@@ -707,6 +711,7 @@ export type Database = {
           field_training_started_at?: string | null
           has_dialer_login?: boolean | null
           has_discord_access?: boolean | null
+          has_production_access?: boolean | null
           has_training_course?: boolean | null
           id?: string
           invited_by_manager_id?: string | null
@@ -726,6 +731,7 @@ export type Database = {
             | null
           portal_password_set?: boolean | null
           potential_rating?: number | null
+          production_unlocked_at?: string | null
           profile_id?: string | null
           sort_order?: number | null
           start_date?: string | null
@@ -3265,6 +3271,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      scheduled_tasks: {
+        Row: {
+          agent_id: string
+          completed_at: string | null
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          scheduled_for: string
+          status: string
+          task_type: string
+        }
+        Insert: {
+          agent_id: string
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          scheduled_for: string
+          status?: string
+          task_type: string
+        }
+        Update: {
+          agent_id?: string
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          scheduled_for?: string
+          status?: string
+          task_type?: string
+        }
+        Relationships: []
       }
       seminar_registrations: {
         Row: {

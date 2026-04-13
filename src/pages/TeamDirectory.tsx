@@ -11,6 +11,7 @@ import {
   RefreshCw,
   ChevronRight,
   DollarSign,
+  Search,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -20,6 +21,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
 import { AddToCourseButton } from "@/components/dashboard/AddToCourseButton";
 import { cn } from "@/lib/utils";
 
@@ -59,6 +61,8 @@ export default function TeamDirectory() {
   const [hierarchy, setHierarchy] = useState<ManagerWithTeam[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [stageFilter, setStageFilter] = useState<string>("all");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -306,9 +310,47 @@ export default function TeamDirectory() {
             </div>
           </div>
 
+          {/* Search & Filter */}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search agents or managers..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {["all", "onboarding", "training_online", "in_field_training", "evaluated"].map(stage => (
+                <Button
+                  key={stage}
+                  size="sm"
+                  variant={stageFilter === stage ? "default" : "outline"}
+                  onClick={() => setStageFilter(stage)}
+                >
+                  {stage === "all" ? "All Stages" : getStageName(stage)}
+                </Button>
+              ))}
+            </div>
+          </div>
+
           {/* Hierarchy Tree View */}
           <div className="space-y-4">
-            {hierarchy.map((item, index) => (
+            {hierarchy
+              .map(item => {
+                const q = searchQuery.toLowerCase();
+                const filteredMembers = item.teamMembers.filter(m => {
+                  const matchesSearch = !q || m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q);
+                  const matchesStage = stageFilter === "all" || m.onboardingStage === stageFilter;
+                  return matchesSearch && matchesStage;
+                });
+                const managerMatches = !q || item.manager.fullName.toLowerCase().includes(q);
+                if (!managerMatches && filteredMembers.length === 0) return null;
+                return { ...item, teamMembers: managerMatches && !q ? item.teamMembers.filter(m => stageFilter === "all" || m.onboardingStage === stageFilter) : filteredMembers };
+              })
+              .filter(Boolean)
+              .map((item) => (
               <div
                 key={item.agentId}
               >

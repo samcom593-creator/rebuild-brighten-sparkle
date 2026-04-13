@@ -107,6 +107,25 @@ export default function ContentLibrary() {
     dropboxBackup: false,
   });
 
+  // iCloud shared album link
+  const [icloudLink, setIcloudLink] = useState("");
+  const [icloudLinkLoading, setIcloudLinkLoading] = useState(false);
+
+  // Load iCloud link from system_settings
+  useEffect(() => {
+    supabase.from("system_settings").select("value").eq("key", "icloud_photos_link").maybeSingle()
+      .then(({ data }) => { if (data?.value) setIcloudLink(data.value); });
+  }, []);
+
+  const saveIcloudLink = async () => {
+    setIcloudLinkLoading(true);
+    try {
+      await supabase.from("system_settings").upsert({ key: "icloud_photos_link", value: icloudLink }, { onConflict: "key" });
+      toast.success("iCloud link saved");
+    } catch { toast.error("Failed to save"); }
+    setIcloudLinkLoading(false);
+  };
+
   /* ─── Fetch Content ─── */
   const fetchContent = useCallback(async () => {
     setLoading(true);
@@ -612,6 +631,34 @@ export default function ContentLibrary() {
                 <Progress value={uploadProgress[f.name] || 0} className="h-1" />
               </div>
             ))}
+          </div>
+        )}
+
+        {/* iCloud Shared Album Link */}
+        {canManage && (
+          <div className="glass-card p-4">
+            <div className="text-xs text-primary font-bold uppercase tracking-widest mb-2">iCloud Photo Library</div>
+            <p className="text-xs text-muted-foreground mb-3">
+              Create a Shared Album on your iPhone → share link → paste below. Opens your full iCloud library when importing.
+            </p>
+            <div className="flex gap-2">
+              <Input
+                type="url"
+                value={icloudLink}
+                onChange={e => setIcloudLink(e.target.value)}
+                placeholder="https://www.icloud.com/photos/..."
+                className="flex-1"
+              />
+              <Button onClick={saveIcloudLink} disabled={icloudLinkLoading} className="shrink-0 bg-primary">
+                {icloudLinkLoading ? "Saving..." : "Save"}
+              </Button>
+            </div>
+            {icloudLink && (
+              <div className="flex items-center gap-4 mt-2">
+                <a href={icloudLink} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">View iCloud album →</a>
+                <span className="text-xs text-muted-foreground">Tap "Import from iPhone" to select photos from this album</span>
+              </div>
+            )}
           </div>
         )}
 

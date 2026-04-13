@@ -179,7 +179,6 @@ export function GlobalSidebar({
     // EVENTS
     const eventItems: NavItem[] = [
       { icon: CalendarDays, label: "Calendar", href: "/dashboard/calendar" },
-      { icon: CalendarDays, label: "Daily Check-In", href: "/daily-checkin" },
     ];
     sections.push({ label: "EVENTS", items: eventItems });
 
@@ -277,7 +276,7 @@ export function GlobalSidebar({
     return <ConditionalTooltip label={item.label}>{linkContent}</ConditionalTooltip>;
   };
 
-  const sidebarWidth = isFullscreen ? 0 : isCollapsed ? 64 : 256;
+  const sidebarWidth = isFullscreen ? 0 : isCollapsed ? 64 : 220;
 
   return (
     <>

@@ -330,7 +330,7 @@ export default function CourseProgress() {
       }
     },
     onSuccess: (_, agentId) => {
-      const agent = agents?.find(a => a.id === agentId);
+      const agent = agentProgress?.find(a => a.id === agentId);
       toast.success(`${agent?.name || 'Agent'} is now LIVE — welcome email and SMS sent automatically`);
       queryClient.invalidateQueries({ queryKey: ["course-progress-full"] });
     },

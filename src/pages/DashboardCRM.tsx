@@ -833,7 +833,10 @@ export default function DashboardCRM() {
     }
     // Transfer = course done, not yet in field training
     if (section.key === "transfer") {
-      return filteredAgents.filter(a => a.onboardingStage === "transfer");
+      return filteredAgents.filter(a => 
+        a.onboardingStage === "transfer" || 
+        (a.hasTrainingCourse && a.agentLicenseStatus === "licensed" && !["in_field_training", "evaluated", "live", "below_10k"].includes(a.onboardingStage))
+      );
     }
     return filteredAgents.filter(a => section.stages.includes(a.onboardingStage)).sort((a, b) => {
       if (!a.lastContactedAt && !b.lastContactedAt) return a.sortOrder - b.sortOrder;

@@ -53,27 +53,40 @@ export default function Login() {
 
       if (error) throw error;
 
-      // Check if agent should go to course or force password change
+      // After successful login, determine where to send the user
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        // Check role
+        const { data: roles } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id);
+
+        const isAdmin = roles?.some(r => r.role === "admin");
+        const isManager = roles?.some(r => r.role === "manager");
+
+        // Force password change if default password
         const { data: agent } = await supabase
           .from("agents")
-          .select("has_training_course, onboarding_stage, portal_password_set")
+          .select("portal_password_set, onboarding_stage")
           .eq("user_id", user.id)
           .maybeSingle();
 
-        // Force password change if they used the default "123456"
         if (data.password === "123456" && agent && !agent.portal_password_set) {
           navigate("/dashboard/settings?force_password_change=true");
           return;
         }
-        
-        if (agent?.has_training_course) {
-          playSound("success");
-          toast.success("Welcome! Taking you to your course 📚");
-          navigate("/onboarding-course");
-          return;
+
+        playSound("success");
+        toast.success("Welcome back!");
+
+        // Route by role — NEVER auto-route to course
+        if (isAdmin || isManager) {
+          navigate("/dashboard");
+        } else {
+          navigate("/agent-portal");
         }
+        return;
       }
 
       playSound("success");

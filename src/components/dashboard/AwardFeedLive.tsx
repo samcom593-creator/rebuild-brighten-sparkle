@@ -8,9 +8,9 @@ interface PlaqueAward {
   id: string;
   agent_id: string;
   milestone_type: string;
-  milestone_date: string | null;
+  milestone_date: string;
   amount: number | null;
-  created_at: string;
+  awarded_at: string | null;
   agent_name?: string;
 }
 

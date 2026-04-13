@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
-import { Loader2, Link2, AlertCircle } from "lucide-react";
+import { Link2, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { CompactProductionEntry } from "@/components/dashboard/CompactProductionEntry";
 import { CompactLeaderboard } from "@/components/dashboard/CompactLeaderboard";
 import { AgentRankBadge } from "@/components/dashboard/AgentRankBadge";
 import { SkeletonLoader } from "@/components/ui/skeleton-loader";
+import { GlassCard } from "@/components/ui/glass-card";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function Numbers() {
@@ -15,6 +16,7 @@ export default function Numbers() {
   const [loading, setLoading] = useState(true);
   const [noAgent, setNoAgent] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [weeklyStats, setWeeklyStats] = useState({ alp: 0, deals: 0, rank: 0 });
 
   useEffect(() => {
     if (authLoading || !user) return;
@@ -27,14 +29,7 @@ export default function Numbers() {
           .eq("user_id", user.id)
           .maybeSingle();
 
-        if (error) {
-          console.error("Agent query error:", error);
-          setNoAgent(true);
-          setLoading(false);
-          return;
-        }
-
-        if (!agent) {
+        if (error || !agent) {
           setNoAgent(true);
           setLoading(false);
           return;
@@ -42,7 +37,6 @@ export default function Numbers() {
 
         setAgentId(agent.id);
 
-        // Fetch profile name
         let name = "Agent";
         if (agent.profile_id) {
           const { data: profile } = await supabase
@@ -72,6 +66,44 @@ export default function Numbers() {
     loadAgentData();
   }, [user, authLoading]);
 
+  useEffect(() => {
+    if (!agentId) return;
+    let mounted = true;
+
+    const loadWeekly = async () => {
+      const weekStart = new Date();
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+      const weekStartStr = weekStart.toISOString().split("T")[0];
+
+      const { data: myProd } = await supabase
+        .from("daily_production")
+        .select("aop, deals_closed")
+        .eq("agent_id", agentId)
+        .gte("production_date", weekStartStr);
+
+      const alp = myProd?.reduce((s, r) => s + Number(r.aop || 0), 0) || 0;
+      const deals = myProd?.reduce((s, r) => s + Number(r.deals_closed || 0), 0) || 0;
+
+      const { data: allProd } = await supabase
+        .from("daily_production")
+        .select("agent_id, aop")
+        .gte("production_date", weekStartStr);
+
+      const agentTotals: Record<string, number> = {};
+      (allProd || []).forEach((r: any) => {
+        agentTotals[r.agent_id] = (agentTotals[r.agent_id] || 0) + Number(r.aop || 0);
+      });
+
+      const sorted = Object.entries(agentTotals).sort(([, a], [, b]) => b - a);
+      const rank = sorted.findIndex(([id]) => id === agentId) + 1;
+
+      if (mounted) setWeeklyStats({ alp, deals, rank: rank || 0 });
+    };
+
+    loadWeekly();
+    return () => { mounted = false; };
+  }, [agentId, refreshKey]);
+
   if (authLoading || loading) {
     return <SkeletonLoader variant="page" />;
   }
@@ -98,9 +130,7 @@ export default function Numbers() {
             APEX Daily Numbers
           </h1>
           <div className="flex items-center justify-center gap-2 mt-0.5">
-            <p className="text-xs text-muted-foreground">
-              Welcome, {agentName}
-            </p>
+            <p className="text-xs text-muted-foreground">Welcome, {agentName}</p>
             <AgentRankBadge agentId={agentId} size="sm" />
           </div>
         </div>
@@ -110,6 +140,34 @@ export default function Numbers() {
           agentName={agentName}
           onSaved={() => setRefreshKey((k) => k + 1)}
         />
+
+        {/* Weekly Summary */}
+        <GlassCard className="p-4">
+          <div className="text-[10px] text-muted-foreground uppercase tracking-widest mb-3">This Week</div>
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div>
+              <div className="text-xl font-bold text-primary">
+                ${(weeklyStats.alp / 1000).toFixed(1)}k
+              </div>
+              <div className="text-[10px] text-muted-foreground">ALP</div>
+              {weeklyStats.alp > 0 && (
+                <div className="text-[10px] text-muted-foreground mt-0.5">
+                  ~${Math.round(weeklyStats.alp * 0.55).toLocaleString()} est.
+                </div>
+              )}
+            </div>
+            <div>
+              <div className="text-xl font-bold">{weeklyStats.deals}</div>
+              <div className="text-[10px] text-muted-foreground">Deals</div>
+            </div>
+            <div>
+              <div className="text-xl font-bold">
+                {weeklyStats.rank > 0 ? `#${weeklyStats.rank}` : "—"}
+              </div>
+              <div className="text-[10px] text-muted-foreground">Rank</div>
+            </div>
+          </div>
+        </GlassCard>
 
         <CompactLeaderboard currentAgentId={agentId} refreshKey={refreshKey} />
 

@@ -330,8 +330,8 @@ export default function CourseProgress() {
       }
     },
     onSuccess: (_, agentId) => {
-      const agent = agentProgress?.find(a => a.id === agentId);
-      toast.success(`${agent?.name || 'Agent'} is now LIVE — welcome email and SMS sent automatically`);
+      const agent = agentProgress?.find(a => a.agentId === agentId);
+      toast.success(`${agent?.agentName || 'Agent'} is now LIVE — welcome email and SMS sent automatically`);
       queryClient.invalidateQueries({ queryKey: ["course-progress-full"] });
     },
     onError: (error) => {

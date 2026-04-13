@@ -170,10 +170,16 @@ export default function ContentLibrary() {
   const filtered = useMemo(() => {
     let items = content;
 
+    // Hide sensitive content from non-admins (never show in main tabs)
+    if (activeTab !== "sensitive") {
+      items = items.filter(c => !c.is_sensitive);
+    }
+
     // Tab filter
     if (activeTab === "photos") items = items.filter(c => c.file_type === "image");
     else if (activeTab === "videos") items = items.filter(c => c.file_type === "video");
     else if (activeTab === "duplicates") items = items.filter(c => c.duplicate_flagged);
+    else if (activeTab === "sensitive") items = items.filter(c => c.is_sensitive);
 
     // Search
     if (search) {

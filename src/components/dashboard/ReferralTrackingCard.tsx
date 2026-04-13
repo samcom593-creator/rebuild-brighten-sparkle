@@ -17,8 +17,8 @@ export function ReferralTrackingCard() {
       // Count applications by referral source
       const { data: apps, error } = await supabase
         .from("applications")
-        .select("id, source, referral_source_detail, referral_manager_id, license_status, contracted_at")
-        .not("contracted_at", "is", null);
+        .select("id, referral_source_detail, referral_manager_id, license_status, contracted_at")
+        .not("contracted_at", "is", null) as any;
 
       if (error) throw error;
 

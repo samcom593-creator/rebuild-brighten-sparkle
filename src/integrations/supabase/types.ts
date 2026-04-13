@@ -1295,10 +1295,14 @@ export type Database = {
           height: number | null
           id: string
           is_private: boolean | null
+          is_sensitive: boolean | null
           original_name: string | null
           possible_duplicate_of: string | null
           public_url: string | null
           search_vector: unknown
+          sensitive_checked: boolean | null
+          sensitive_flags: string[] | null
+          sensitive_reason: string | null
           source: string | null
           storage_path: string
           tags: string[] | null
@@ -1321,10 +1325,14 @@ export type Database = {
           height?: number | null
           id?: string
           is_private?: boolean | null
+          is_sensitive?: boolean | null
           original_name?: string | null
           possible_duplicate_of?: string | null
           public_url?: string | null
           search_vector?: unknown
+          sensitive_checked?: boolean | null
+          sensitive_flags?: string[] | null
+          sensitive_reason?: string | null
           source?: string | null
           storage_path: string
           tags?: string[] | null
@@ -1347,10 +1355,14 @@ export type Database = {
           height?: number | null
           id?: string
           is_private?: boolean | null
+          is_sensitive?: boolean | null
           original_name?: string | null
           possible_duplicate_of?: string | null
           public_url?: string | null
           search_vector?: unknown
+          sensitive_checked?: boolean | null
+          sensitive_flags?: string[] | null
+          sensitive_reason?: string | null
           source?: string | null
           storage_path?: string
           tags?: string[] | null

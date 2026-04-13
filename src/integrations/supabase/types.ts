@@ -881,11 +881,15 @@ export type Database = {
           consent_user_agent: string | null
           contacted_at: string | null
           contracted_at: string | null
+          course_purchased_at: string | null
           created_at: string
           desired_income: number | null
           email: string
           email_consent_given: boolean | null
           email_consent_text: string | null
+          exam_passed_at: string | null
+          exam_scheduled_at: string | null
+          fingerprints_submitted_at: string | null
           first_name: string
           followup_licensed_sent_at: string | null
           followup_sent_at: string | null
@@ -896,6 +900,7 @@ export type Database = {
           last_contacted_at: string | null
           last_name: string
           lead_score: number | null
+          license_approved_at: string | null
           license_doc_url: string | null
           license_progress:
             | Database["public"]["Enums"]["license_progress"]
@@ -911,7 +916,9 @@ export type Database = {
           previous_company: string | null
           previous_production: number | null
           qualified_at: string | null
+          referral_manager_id: string | null
           referral_source: string | null
+          referral_source_detail: string | null
           resume_url: string | null
           reviewed_at: string | null
           reviewed_by: string | null
@@ -941,11 +948,15 @@ export type Database = {
           consent_user_agent?: string | null
           contacted_at?: string | null
           contracted_at?: string | null
+          course_purchased_at?: string | null
           created_at?: string
           desired_income?: number | null
           email: string
           email_consent_given?: boolean | null
           email_consent_text?: string | null
+          exam_passed_at?: string | null
+          exam_scheduled_at?: string | null
+          fingerprints_submitted_at?: string | null
           first_name: string
           followup_licensed_sent_at?: string | null
           followup_sent_at?: string | null
@@ -956,6 +967,7 @@ export type Database = {
           last_contacted_at?: string | null
           last_name: string
           lead_score?: number | null
+          license_approved_at?: string | null
           license_doc_url?: string | null
           license_progress?:
             | Database["public"]["Enums"]["license_progress"]
@@ -971,7 +983,9 @@ export type Database = {
           previous_company?: string | null
           previous_production?: number | null
           qualified_at?: string | null
+          referral_manager_id?: string | null
           referral_source?: string | null
+          referral_source_detail?: string | null
           resume_url?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -1001,11 +1015,15 @@ export type Database = {
           consent_user_agent?: string | null
           contacted_at?: string | null
           contracted_at?: string | null
+          course_purchased_at?: string | null
           created_at?: string
           desired_income?: number | null
           email?: string
           email_consent_given?: boolean | null
           email_consent_text?: string | null
+          exam_passed_at?: string | null
+          exam_scheduled_at?: string | null
+          fingerprints_submitted_at?: string | null
           first_name?: string
           followup_licensed_sent_at?: string | null
           followup_sent_at?: string | null
@@ -1016,6 +1034,7 @@ export type Database = {
           last_contacted_at?: string | null
           last_name?: string
           lead_score?: number | null
+          license_approved_at?: string | null
           license_doc_url?: string | null
           license_progress?:
             | Database["public"]["Enums"]["license_progress"]
@@ -1031,7 +1050,9 @@ export type Database = {
           previous_company?: string | null
           previous_production?: number | null
           qualified_at?: string | null
+          referral_manager_id?: string | null
           referral_source?: string | null
+          referral_source_detail?: string | null
           resume_url?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -1972,6 +1993,33 @@ export type Database = {
           },
         ]
       }
+      licensing_nudges: {
+        Row: {
+          application_id: string
+          channel: string
+          day_number: number
+          id: string
+          nudge_type: string
+          sent_at: string
+        }
+        Insert: {
+          application_id: string
+          channel?: string
+          day_number: number
+          id?: string
+          nudge_type: string
+          sent_at?: string
+        }
+        Update: {
+          application_id?: string
+          channel?: string
+          day_number?: number
+          id?: string
+          nudge_type?: string
+          sent_at?: string
+        }
+        Relationships: []
+      }
       magic_login_tokens: {
         Row: {
           agent_id: string
@@ -2365,6 +2413,33 @@ export type Database = {
           step_completed?: number
           updated_at?: string
           user_agent?: string | null
+        }
+        Relationships: []
+      }
+      pipeline_metrics: {
+        Row: {
+          application_id: string
+          created_at: string
+          entered_at: string
+          exited_at: string | null
+          id: string
+          stage: string
+        }
+        Insert: {
+          application_id: string
+          created_at?: string
+          entered_at?: string
+          exited_at?: string | null
+          id?: string
+          stage: string
+        }
+        Update: {
+          application_id?: string
+          created_at?: string
+          entered_at?: string
+          exited_at?: string | null
+          id?: string
+          stage?: string
         }
         Relationships: []
       }

@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   Search, Download, Upload, Trash2, Plus, Image, Video, Tag, X, Loader2,
   Cloud, FolderOpen, HardDrive, AlertTriangle, CheckCircle2, BarChart3,
-  Sparkles, Copy, FileVideo, FileImage, RefreshCw, Smartphone
+  Sparkles, Copy, FileVideo, FileImage, RefreshCw, Smartphone, ShieldAlert,
+  Eye, EyeOff, ShieldCheck
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,10 @@ interface ContentItem {
   ai_analyzed_at: string | null;
   duplicate_flagged: boolean;
   possible_duplicate_of: string | null;
+  is_sensitive: boolean;
+  sensitive_flags: string[];
+  sensitive_reason: string | null;
+  sensitive_checked: boolean;
   created_at: string;
   publicUrl: string;
 }
@@ -122,6 +127,9 @@ export default function ContentLibrary() {
           ...item,
           tags: item.tags || [],
           ai_tags: item.ai_tags || [],
+          is_sensitive: item.is_sensitive || false,
+          sensitive_flags: item.sensitive_flags || [],
+          sensitive_checked: item.sensitive_checked || false,
           publicUrl: urlData?.publicUrl || "",
         };
       });
@@ -162,10 +170,16 @@ export default function ContentLibrary() {
   const filtered = useMemo(() => {
     let items = content;
 
+    // Hide sensitive content from non-admins (never show in main tabs)
+    if (activeTab !== "sensitive") {
+      items = items.filter(c => !c.is_sensitive);
+    }
+
     // Tab filter
     if (activeTab === "photos") items = items.filter(c => c.file_type === "image");
     else if (activeTab === "videos") items = items.filter(c => c.file_type === "video");
     else if (activeTab === "duplicates") items = items.filter(c => c.duplicate_flagged);
+    else if (activeTab === "sensitive") items = items.filter(c => c.is_sensitive);
 
     // Search
     if (search) {
@@ -266,12 +280,18 @@ export default function ContentLibrary() {
       // Fire AI analysis + duplicate detection in background
       if (inserted?.id) {
         const publicUrl = urlData?.publicUrl || "";
-        // AI analyze
+        // AI analyze (includes safety check first, then tagging)
         supabase.functions.invoke("analyze-content-item", {
           body: { contentItemId: inserted.id, fileUrl: publicUrl, fileType }
-        }).then(() => {
-          console.log(`AI analysis complete for ${file.name}`);
-          fetchContent(); // Refresh to show tags
+        }).then((res) => {
+          const result = res.data;
+          if (result && result.safe === false) {
+            console.warn(`⚠️ ${file.name} flagged as sensitive: ${result.reason}`);
+            toast.warning(`⚠️ "${file.name}" was flagged as sensitive and hidden`, { duration: 6000 });
+          } else {
+            console.log(`AI analysis complete for ${file.name}`);
+          }
+          fetchContent();
         }).catch(e => console.error("AI analysis failed:", e));
 
         // Duplicate detection
@@ -502,6 +522,7 @@ export default function ContentLibrary() {
   };
 
   const duplicateCount = content.filter(c => c.duplicate_flagged).length;
+  const sensitiveCount = content.filter(c => c.is_sensitive).length;
 
   /* ─── Render ─── */
   return (
@@ -573,7 +594,7 @@ export default function ContentLibrary() {
           <div className="glass-card p-4 space-y-2">
             <p className="text-sm font-medium flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Uploading {uploadQueue.length} files...
+              Uploading & scanning {uploadQueue.length} files... 🔍
             </p>
             {uploadQueue.map(f => (
               <div key={f.name} className="space-y-1">
@@ -601,6 +622,16 @@ export default function ContentLibrary() {
                 </span>
               )}
             </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="sensitive" className="relative">
+                <ShieldAlert className="h-4 w-4 mr-1" /> Sensitive
+                {sensitiveCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] rounded-full h-4 w-4 flex items-center justify-center">
+                    {sensitiveCount}
+                  </span>
+                )}
+              </TabsTrigger>
+            )}
             <TabsTrigger value="storage"><HardDrive className="h-4 w-4 mr-1" /> Storage</TabsTrigger>
             <TabsTrigger value="awards"><Tag className="h-4 w-4 mr-1" /> Awards</TabsTrigger>
           </TabsList>
@@ -802,6 +833,49 @@ export default function ContentLibrary() {
               )}
             </div>
           </TabsContent>
+
+          {/* ═══ SENSITIVE TAB (Admin Only) ═══ */}
+          {isAdmin && (
+            <TabsContent value="sensitive" className="space-y-4 mt-4">
+              <div className="glass-card p-4 border-red-500/30 border">
+                <div className="flex items-center gap-2 mb-3">
+                  <ShieldAlert className="h-5 w-5 text-red-500" />
+                  <h3 className="font-bold text-sm" style={{ fontFamily: "Syne" }}>Sensitive Content Review</h3>
+                  <Badge variant="destructive" className="text-xs">{sensitiveCount} flagged</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mb-4">
+                  These items were automatically flagged by AI as potentially inappropriate for the professional library. 
+                  They are hidden from all agents and managers.
+                </p>
+
+                {filtered.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <ShieldCheck className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                    <p className="font-medium">No sensitive content flagged</p>
+                    <p className="text-sm">All uploaded content has passed safety checks</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {filtered.map((item) => (
+                      <SensitiveContentCard
+                        key={item.id}
+                        item={item}
+                        onMarkSafe={async () => {
+                          await supabase.from("content_library").update({
+                            is_sensitive: false,
+                            sensitive_checked: true,
+                          }).eq("id", item.id);
+                          toast.success("Marked as safe — now visible in library");
+                          fetchContent();
+                        }}
+                        onDelete={() => handleDelete(item)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          )}
 
           {/* ═══ AWARDS TAB ═══ */}
           <TabsContent value="awards" className="space-y-6 mt-4">
@@ -1038,6 +1112,75 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
       <div>
         <p className="text-lg font-bold">{value}</p>
         <p className="text-xs text-muted-foreground">{label}</p>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Sensitive Content Card ─── */
+function SensitiveContentCard({
+  item,
+  onMarkSafe,
+  onDelete,
+}: {
+  item: ContentItem;
+  onMarkSafe: () => void;
+  onDelete: () => void;
+}) {
+  const [revealed, setRevealed] = useState(false);
+
+  return (
+    <div className="glass-card p-2 space-y-2 border border-red-500/20">
+      <div className="aspect-square bg-muted rounded-lg relative overflow-hidden">
+        {item.file_type === "video" ? (
+          <video src={item.publicUrl} preload="metadata" className={cn("w-full h-full object-cover rounded-lg", !revealed && "blur-xl")} />
+        ) : (
+          <img
+            src={item.publicUrl}
+            alt="Flagged content"
+            className={cn("w-full h-full object-cover rounded-lg transition-all", !revealed && "blur-xl")}
+            loading="lazy"
+          />
+        )}
+
+        {/* Reveal toggle */}
+        <button
+          onClick={() => setRevealed(!revealed)}
+          className="absolute top-1.5 right-1.5 bg-black/60 text-white p-1.5 rounded-full hover:bg-black/80 transition-colors"
+        >
+          {revealed ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+        </button>
+
+        {/* Flag badge */}
+        <div className="absolute top-1.5 left-1.5">
+          <span className="bg-red-600/90 text-white text-[9px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5 backdrop-blur-sm">
+            <ShieldAlert className="h-2 w-2" /> Flagged
+          </span>
+        </div>
+      </div>
+
+      {/* Reason */}
+      {item.sensitive_reason && (
+        <p className="text-[10px] text-red-400 px-0.5 line-clamp-2">{item.sensitive_reason}</p>
+      )}
+
+      {/* Flags */}
+      {item.sensitive_flags?.length > 0 && (
+        <div className="flex flex-wrap gap-0.5 px-0.5">
+          {item.sensitive_flags.map((f, i) => (
+            <Badge key={i} variant="destructive" className="text-[8px] h-3.5 px-1">{f}</Badge>
+          ))}
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="flex gap-1">
+        <Button variant="outline" size="sm" className="flex-1 text-[10px] h-7 gap-1" onClick={onMarkSafe}>
+          <ShieldCheck className="h-3 w-3" /> Mark Safe
+        </Button>
+        <Button variant="destructive" size="sm" className="flex-1 text-[10px] h-7 gap-1" onClick={onDelete}>
+          <Trash2 className="h-3 w-3" /> Delete
+        </Button>
       </div>
     </div>
   );

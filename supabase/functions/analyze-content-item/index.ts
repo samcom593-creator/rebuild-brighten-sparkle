@@ -27,14 +27,111 @@ Deno.serve(async (req) => {
 
     console.log(`🔍 Analyzing content item: ${contentItemId}, type: ${fileType}`);
 
+    // ═══ STEP 1: SENSITIVE CONTENT CHECK (runs FIRST) ═══
+    if (fileType === "image" && lovableApiKey) {
+      console.log(`🛡️ Running content safety check for ${contentItemId}`);
+
+      const moderationResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${lovableApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          max_tokens: 200,
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "image_url", image_url: { url: fileUrl } },
+                {
+                  type: "text",
+                  text: `Is this image safe for a professional business website? Check for:
+- Nudity or sexual content
+- Explicit or suggestive content
+- Private/intimate photos
+- Graphic violence
+
+Context: Gym/fitness photos showing torso are OK (professional context). Beach/pool in appropriate swimwear is OK. Normal lifestyle content is OK.
+
+Return ONLY this JSON format, nothing else:
+{
+  "is_safe": true or false,
+  "flags": ["list any issues found, empty array if safe"],
+  "confidence": "high/medium/low",
+  "reason": "brief reason if not safe, empty string if safe"
+}`
+                },
+              ],
+            },
+          ],
+        }),
+      });
+
+      if (moderationResponse.ok) {
+        const modData = await moderationResponse.json();
+        const modRaw = modData.choices?.[0]?.message?.content || "";
+        const modJsonMatch = modRaw.match(/\{[\s\S]*\}/);
+
+        if (modJsonMatch) {
+          try {
+            const modResult = JSON.parse(modJsonMatch[0]);
+
+            if (!modResult.is_safe) {
+              console.log(`⚠️ Sensitive content detected for ${contentItemId}: ${modResult.reason}`);
+
+              // Mark as sensitive — hide from library
+              await supabase.from("content_library").update({
+                is_sensitive: true,
+                is_private: true,
+                sensitive_flags: modResult.flags || [],
+                sensitive_reason: modResult.reason || "Flagged by AI",
+                sensitive_checked: true,
+                ai_analyzed: true,
+                ai_analyzed_at: new Date().toISOString(),
+              }).eq("id", contentItemId);
+
+              return new Response(
+                JSON.stringify({
+                  success: true,
+                  safe: false,
+                  reason: modResult.reason,
+                  flags: modResult.flags,
+                }),
+                { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+
+            // Image is safe — mark as checked and continue
+            await supabase.from("content_library").update({
+              is_sensitive: false,
+              sensitive_checked: true,
+            }).eq("id", contentItemId);
+
+            console.log(`✅ Content safety check passed for ${contentItemId}`);
+          } catch (e) {
+            console.error("Moderation parse error:", e, "Raw:", modRaw);
+            // On parse error, mark as checked but don't block
+            await supabase.from("content_library").update({
+              sensitive_checked: true,
+            }).eq("id", contentItemId);
+          }
+        }
+      } else {
+        console.error("Moderation API error:", moderationResponse.status);
+        // Don't block on moderation failure — mark as unchecked
+      }
+    }
+
+    // ═══ STEP 2: AI TAGGING (only if content passed safety check) ═══
     let aiTags: string[] = [];
     let aiDescription = "";
     let suggestedTitle = "";
     let contentType = "";
 
     if (fileType === "image" && lovableApiKey) {
-      // Use Gemini via Lovable AI Gateway to analyze the image
-      const response = await fetch("https://ai.lovable.dev/api/v1/chat/completions", {
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${lovableApiKey}`,
@@ -47,10 +144,7 @@ Deno.serve(async (req) => {
             {
               role: "user",
               content: [
-                {
-                  type: "image_url",
-                  image_url: { url: fileUrl },
-                },
+                { type: "image_url", image_url: { url: fileUrl } },
                 {
                   type: "text",
                   text: `Analyze this image for an insurance sales agency content library. Return JSON only with these fields:
@@ -71,7 +165,6 @@ Return ONLY valid JSON, no other text.`,
       if (response.ok) {
         const data = await response.json();
         const raw = data.choices?.[0]?.message?.content || "";
-        // Extract JSON from potential markdown code block
         const jsonMatch = raw.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           try {
@@ -88,7 +181,6 @@ Return ONLY valid JSON, no other text.`,
         console.error("AI API error:", response.status, await response.text());
       }
     } else if (fileType === "video") {
-      // For videos: basic tag inference from filename
       aiTags = ["video"];
       const lower = fileUrl.toLowerCase();
       if (lower.includes("gym") || lower.includes("workout")) aiTags.push("gym", "lifestyle");
@@ -99,7 +191,7 @@ Return ONLY valid JSON, no other text.`,
       contentType = "personal";
     }
 
-    // Update the content_library record
+    // Update the content_library record with AI tags
     const updateData: Record<string, unknown> = {
       ai_analyzed: true,
       ai_analyzed_at: new Date().toISOString(),
@@ -107,7 +199,6 @@ Return ONLY valid JSON, no other text.`,
       ai_description: aiDescription,
     };
 
-    // Only set title/content_type if not already set
     const { data: existing } = await supabase
       .from("content_library")
       .select("title, content_type")
@@ -134,7 +225,7 @@ Return ONLY valid JSON, no other text.`,
     console.log(`✅ Analysis complete for ${contentItemId}: ${aiTags.join(", ")}`);
 
     return new Response(
-      JSON.stringify({ success: true, tags: aiTags, description: aiDescription, contentType }),
+      JSON.stringify({ success: true, safe: true, tags: aiTags, description: aiDescription, contentType }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {

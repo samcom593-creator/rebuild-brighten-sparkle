@@ -12,61 +12,47 @@ interface Achievement {
   icon: string | null;
 }
 
+const mapAchievements = (data: any[]): Achievement[] =>
+  data.map((a: any) => ({
+    id: a.id,
+    agent_name: a.agents?.profiles?.full_name || a.agents?.display_name || "Agent",
+    achievement_name: a.achievements?.name || "Achievement",
+    earned_at: a.earned_at,
+    icon: a.achievements?.icon,
+  }));
+
+const QUERY = `id, earned_at,
+  agents!agent_achievements_agent_id_fkey(display_name, profiles!agents_profile_id_fkey(full_name)),
+  achievements!agent_achievements_achievement_id_fkey(name, icon)`;
+
 export function AchievementFeed() {
   const [achievements, setAchievements] = useState<Achievement[]>([]);
 
   useEffect(() => {
-    (async () => {
+    let mounted = true;
+
+    const fetchData = async () => {
       const { data } = await supabase
         .from("agent_achievements")
-        .select(`
-          id, earned_at,
-          agents!agent_achievements_agent_id_fkey(display_name, profiles!agents_profile_id_fkey(full_name)),
-          achievements!agent_achievements_achievement_id_fkey(name, icon)
-        `)
+        .select(QUERY)
         .order("earned_at", { ascending: false })
         .limit(10);
+      if (data && mounted) setAchievements(mapAchievements(data));
+    };
 
-      if (data) {
-        setAchievements(data.map((a: any) => ({
-          id: a.id,
-          agent_name: a.agents?.profiles?.full_name || a.agents?.display_name || "Agent",
-          achievement_name: a.achievements?.name || "Achievement",
-          earned_at: a.earned_at,
-          icon: a.achievements?.icon,
-        })));
-      }
-    })();
+    fetchData();
 
-    // Real-time subscription
     const channel = supabase
-      .channel("achievement-feed")
+      .channel(`achievement-feed-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "agent_achievements" }, () => {
-        // Refetch on new achievement
-        supabase
-          .from("agent_achievements")
-          .select(`
-            id, earned_at,
-            agents!agent_achievements_agent_id_fkey(display_name, profiles!agents_profile_id_fkey(full_name)),
-            achievements!agent_achievements_achievement_id_fkey(name, icon)
-          `)
-          .order("earned_at", { ascending: false })
-          .limit(10)
-          .then(({ data }) => {
-            if (data) {
-              setAchievements(data.map((a: any) => ({
-                id: a.id,
-                agent_name: a.agents?.profiles?.full_name || a.agents?.display_name || "Agent",
-                achievement_name: a.achievements?.name || "Achievement",
-                earned_at: a.earned_at,
-                icon: a.achievements?.icon,
-              })));
-            }
-          });
+        if (mounted) fetchData();
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      mounted = false;
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const getTimeAgo = (date: string) => {

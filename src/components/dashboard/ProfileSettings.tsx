@@ -177,6 +177,7 @@ function WhatsAppGroupSection() {
   );
 }
 
+export function ProfileSettings() {
   const { user, profile, refreshProfile, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();

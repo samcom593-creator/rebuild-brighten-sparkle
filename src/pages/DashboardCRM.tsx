@@ -539,8 +539,8 @@ export default function DashboardCRM() {
       const [profilesResult, managerAgentsResult, monthlyProductionResult, prevWeekProductionResult, appContactsResult, appLicenseResult, paymentsResult] = await Promise.all([
         supabase.from("profiles").select("user_id, full_name, email, phone, avatar_url, instagram_handle").in("user_id", userIds),
         managerIds.length > 0 ? supabase.from("agents").select("id, user_id").in("id", managerIds) : Promise.resolve({ data: [] as any[] }),
-        liveAgentIds.length > 0 ? supabase.from("daily_production").select("agent_id, aop, presentations, deals_closed, production_date").in("agent_id", liveAgentIds).gte("production_date", monthStartStr) : Promise.resolve({ data: [] as any[] }),
-        liveAgentIds.length > 0 ? supabase.from("daily_production").select("agent_id, aop").in("agent_id", liveAgentIds).gte("production_date", prevWeekStartStr).lte("production_date", prevWeekEndStr) : Promise.resolve({ data: [] as any[] }),
+        allAgentIds.length > 0 ? supabase.from("daily_production").select("agent_id, aop, presentations, deals_closed, production_date").in("agent_id", allAgentIds).gte("production_date", monthStartStr) : Promise.resolve({ data: [] as any[] }),
+        allAgentIds.length > 0 ? supabase.from("daily_production").select("agent_id, aop").in("agent_id", allAgentIds).gte("production_date", prevWeekStartStr).lte("production_date", prevWeekEndStr) : Promise.resolve({ data: [] as any[] }),
         supabase.from("applications").select("assigned_agent_id, last_contacted_at").in("assigned_agent_id", allAgentIds).not("last_contacted_at", "is", null).order("last_contacted_at", { ascending: false }),
         supabase.from("applications").select("id, email, license_progress, test_scheduled_date, ai_score_tier").is("terminated_at", null),
         supabase.from("lead_payment_tracking").select("agent_id, tier, paid").eq("week_start", weekStartStr).eq("paid", true),
@@ -833,7 +833,10 @@ export default function DashboardCRM() {
     }
     // Transfer = course done, not yet in field training
     if (section.key === "transfer") {
-      return filteredAgents.filter(a => a.onboardingStage === "transfer");
+      return filteredAgents.filter(a => 
+        a.onboardingStage === "transfer" || 
+        (a.hasTrainingCourse && a.agentLicenseStatus === "licensed" && !["in_field_training", "evaluated", "live", "below_10k"].includes(a.onboardingStage))
+      );
     }
     return filteredAgents.filter(a => section.stages.includes(a.onboardingStage)).sort((a, b) => {
       if (!a.lastContactedAt && !b.lastContactedAt) return a.sortOrder - b.sortOrder;

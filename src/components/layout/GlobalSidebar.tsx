@@ -461,6 +461,36 @@ export function GlobalSidebar({
             <div className="pointer-events-none sticky bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-[#030712] to-transparent" />
           </nav>
 
+          {/* Add Agent FAB */}
+          {(isAdmin || isManager) && (
+            <div style={{ padding: '8px 12px', borderTop: '0.5px solid #1e293b' }}>
+              <AddAgentModal
+                trigger={
+                  <button
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '10px 12px',
+                      borderRadius: '10px',
+                      background: 'rgba(34,211,165,0.1)',
+                      border: '1px solid rgba(34,211,165,0.2)',
+                      color: '#22d3a5',
+                      fontFamily: "'Syne', sans-serif",
+                      fontWeight: 700,
+                      fontSize: '13px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <Plus size={16} />
+                    {!isCollapsed && "Add Agent"}
+                  </button>
+                }
+              />
+            </div>
+          )}
+
           {/* User & Actions */}
           <div className="border-t border-[#1e293b] p-2">
             {user && !isCollapsed && (

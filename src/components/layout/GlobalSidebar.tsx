@@ -84,6 +84,26 @@ export function GlobalSidebar({
   const searchRef = useRef<HTMLDivElement>(null);
   const isTouch = useIsTouchDevice();
   const { playSound } = useSoundEffects();
+  const [healthStatus, setHealthStatus] = useState<'healthy'|'degraded'|'critical'>('healthy');
+
+  // Poll system health status every 5 min (admin only)
+  useEffect(() => {
+    if (!isAdmin) return;
+    const checkHealth = async () => {
+      try {
+        const { data } = await supabase
+          .from("system_health_logs")
+          .select("overall_status")
+          .order("checked_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (data?.overall_status) setHealthStatus(data.overall_status as any);
+      } catch {}
+    };
+    checkHealth();
+    const interval = setInterval(checkHealth, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [isAdmin]);
 
   // Search agents
   useEffect(() => {

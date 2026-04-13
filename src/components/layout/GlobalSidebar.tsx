@@ -297,6 +297,13 @@ export function GlobalSidebar({
         {item.special && !isActive && !isCollapsed && (
           <span className="ml-auto h-2 w-2 rounded-full bg-[#22d3a5] animate-pulse flex-shrink-0" />
         )}
+        {item.label === "System Health" && !isCollapsed && (
+          <span className={`ml-auto h-2 w-2 rounded-full flex-shrink-0 ${
+            healthStatus === 'critical' ? 'bg-red-500 animate-pulse' :
+            healthStatus === 'degraded' ? 'bg-yellow-500 animate-pulse' :
+            'bg-emerald-500'
+          }`} />
+        )}
       </Link>
     );
 

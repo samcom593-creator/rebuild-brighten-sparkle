@@ -1282,39 +1282,92 @@ export type Database = {
       }
       content_library: {
         Row: {
+          ai_analyzed: boolean | null
+          ai_analyzed_at: string | null
+          ai_description: string | null
+          ai_tags: string[] | null
+          content_type: string | null
           created_at: string
           description: string | null
+          duplicate_flagged: boolean | null
+          file_size: number | null
           file_type: string
+          height: number | null
           id: string
+          is_private: boolean | null
+          original_name: string | null
+          possible_duplicate_of: string | null
+          public_url: string | null
+          search_vector: unknown
+          source: string | null
           storage_path: string
           tags: string[] | null
           title: string
           updated_at: string
           uploaded_by: string | null
+          width: number | null
         }
         Insert: {
+          ai_analyzed?: boolean | null
+          ai_analyzed_at?: string | null
+          ai_description?: string | null
+          ai_tags?: string[] | null
+          content_type?: string | null
           created_at?: string
           description?: string | null
+          duplicate_flagged?: boolean | null
+          file_size?: number | null
           file_type?: string
+          height?: number | null
           id?: string
+          is_private?: boolean | null
+          original_name?: string | null
+          possible_duplicate_of?: string | null
+          public_url?: string | null
+          search_vector?: unknown
+          source?: string | null
           storage_path: string
           tags?: string[] | null
           title: string
           updated_at?: string
           uploaded_by?: string | null
+          width?: number | null
         }
         Update: {
+          ai_analyzed?: boolean | null
+          ai_analyzed_at?: string | null
+          ai_description?: string | null
+          ai_tags?: string[] | null
+          content_type?: string | null
           created_at?: string
           description?: string | null
+          duplicate_flagged?: boolean | null
+          file_size?: number | null
           file_type?: string
+          height?: number | null
           id?: string
+          is_private?: boolean | null
+          original_name?: string | null
+          possible_duplicate_of?: string | null
+          public_url?: string | null
+          search_vector?: unknown
+          source?: string | null
           storage_path?: string
           tags?: string[] | null
           title?: string
           updated_at?: string
           uploaded_by?: string | null
+          width?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "content_library_possible_duplicate_of_fkey"
+            columns: ["possible_duplicate_of"]
+            isOneToOne: false
+            referencedRelation: "content_library"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       contracting_links: {
         Row: {

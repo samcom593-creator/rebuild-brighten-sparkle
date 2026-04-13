@@ -516,6 +516,7 @@ export default function ContentLibrary() {
   };
 
   const duplicateCount = content.filter(c => c.duplicate_flagged).length;
+  const sensitiveCount = content.filter(c => c.is_sensitive).length;
 
   /* ─── Render ─── */
   return (

@@ -1159,6 +1159,39 @@ export type Database = {
           },
         ]
       }
+      automation_runs: {
+        Row: {
+          agents_affected: number | null
+          automation_name: string
+          created_at: string | null
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          ran_at: string | null
+          status: string | null
+        }
+        Insert: {
+          agents_affected?: number | null
+          automation_name: string
+          created_at?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          ran_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          agents_affected?: number | null
+          automation_name?: string
+          created_at?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          ran_at?: string | null
+          status?: string | null
+        }
+        Relationships: []
+      }
       automation_settings: {
         Row: {
           created_at: string | null
@@ -3506,6 +3539,39 @@ export type Database = {
           registered_at?: string
           seminar_date?: string | null
           source?: string | null
+        }
+        Relationships: []
+      }
+      system_health_logs: {
+        Row: {
+          auto_fixed: string[] | null
+          checked_at: string | null
+          created_at: string | null
+          critical_count: number | null
+          id: string
+          overall_status: string | null
+          results: Json | null
+          warning_count: number | null
+        }
+        Insert: {
+          auto_fixed?: string[] | null
+          checked_at?: string | null
+          created_at?: string | null
+          critical_count?: number | null
+          id?: string
+          overall_status?: string | null
+          results?: Json | null
+          warning_count?: number | null
+        }
+        Update: {
+          auto_fixed?: string[] | null
+          checked_at?: string | null
+          created_at?: string | null
+          critical_count?: number | null
+          id?: string
+          overall_status?: string | null
+          results?: Json | null
+          warning_count?: number | null
         }
         Relationships: []
       }

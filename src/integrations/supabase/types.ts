@@ -589,6 +589,51 @@ export type Database = {
           },
         ]
       }
+      agent_tasks: {
+        Row: {
+          agent_id: string
+          agent_notes: string | null
+          assigned_by: string | null
+          completed_at: string | null
+          created_at: string | null
+          description: string | null
+          due_date: string | null
+          id: string
+          priority: string | null
+          status: string | null
+          task_type: string | null
+          title: string
+        }
+        Insert: {
+          agent_id: string
+          agent_notes?: string | null
+          assigned_by?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: string | null
+          status?: string | null
+          task_type?: string | null
+          title: string
+        }
+        Update: {
+          agent_id?: string
+          agent_notes?: string | null
+          assigned_by?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          priority?: string | null
+          status?: string | null
+          task_type?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
       agents: {
         Row: {
           agent_code: string | null

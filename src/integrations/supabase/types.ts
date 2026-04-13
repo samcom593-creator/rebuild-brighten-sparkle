@@ -616,6 +616,7 @@ export type Database = {
           license_states: string[] | null
           license_status: Database["public"]["Enums"]["license_status"]
           manager_id: string | null
+          max_recruits: number | null
           nipr_number: string | null
           onboarding_completed_at: string | null
           onboarding_stage:
@@ -668,6 +669,7 @@ export type Database = {
           license_states?: string[] | null
           license_status?: Database["public"]["Enums"]["license_status"]
           manager_id?: string | null
+          max_recruits?: number | null
           nipr_number?: string | null
           onboarding_completed_at?: string | null
           onboarding_stage?:
@@ -720,6 +722,7 @@ export type Database = {
           license_states?: string[] | null
           license_status?: Database["public"]["Enums"]["license_status"]
           manager_id?: string | null
+          max_recruits?: number | null
           nipr_number?: string | null
           onboarding_completed_at?: string | null
           onboarding_stage?:
@@ -882,14 +885,20 @@ export type Database = {
           contacted_at: string | null
           contracted_at: string | null
           course_purchased_at: string | null
+          course_started_at: string | null
           created_at: string
           desired_income: number | null
+          duplicate_of: string | null
           email: string
           email_consent_given: boolean | null
           email_consent_text: string | null
           exam_passed_at: string | null
           exam_scheduled_at: string | null
+          fingerprint_date: string | null
+          fingerprint_done: boolean | null
           fingerprints_submitted_at: string | null
+          first_contact_attempt_at: string | null
+          first_deal_at: string | null
           first_name: string
           followup_licensed_sent_at: string | null
           followup_sent_at: string | null
@@ -897,8 +906,11 @@ export type Database = {
           has_insurance_experience: boolean | null
           id: string
           instagram_handle: string | null
+          is_duplicate: boolean | null
+          is_ghosted: boolean | null
           last_contacted_at: string | null
           last_name: string
+          last_response_at: string | null
           lead_score: number | null
           license_approved_at: string | null
           license_doc_url: string | null
@@ -906,6 +918,7 @@ export type Database = {
             | Database["public"]["Enums"]["license_progress"]
             | null
           license_status: Database["public"]["Enums"]["license_status"]
+          licensed_at: string | null
           licensed_states: string[] | null
           manual_followup_sent_at: string | null
           next_action_at: string | null
@@ -932,6 +945,7 @@ export type Database = {
           termination_reason: string | null
           test_scheduled_date: string | null
           updated_at: string
+          winback_sent_at: string | null
           years_experience: number | null
         }
         Insert: {
@@ -949,14 +963,20 @@ export type Database = {
           contacted_at?: string | null
           contracted_at?: string | null
           course_purchased_at?: string | null
+          course_started_at?: string | null
           created_at?: string
           desired_income?: number | null
+          duplicate_of?: string | null
           email: string
           email_consent_given?: boolean | null
           email_consent_text?: string | null
           exam_passed_at?: string | null
           exam_scheduled_at?: string | null
+          fingerprint_date?: string | null
+          fingerprint_done?: boolean | null
           fingerprints_submitted_at?: string | null
+          first_contact_attempt_at?: string | null
+          first_deal_at?: string | null
           first_name: string
           followup_licensed_sent_at?: string | null
           followup_sent_at?: string | null
@@ -964,8 +984,11 @@ export type Database = {
           has_insurance_experience?: boolean | null
           id?: string
           instagram_handle?: string | null
+          is_duplicate?: boolean | null
+          is_ghosted?: boolean | null
           last_contacted_at?: string | null
           last_name: string
+          last_response_at?: string | null
           lead_score?: number | null
           license_approved_at?: string | null
           license_doc_url?: string | null
@@ -973,6 +996,7 @@ export type Database = {
             | Database["public"]["Enums"]["license_progress"]
             | null
           license_status?: Database["public"]["Enums"]["license_status"]
+          licensed_at?: string | null
           licensed_states?: string[] | null
           manual_followup_sent_at?: string | null
           next_action_at?: string | null
@@ -999,6 +1023,7 @@ export type Database = {
           termination_reason?: string | null
           test_scheduled_date?: string | null
           updated_at?: string
+          winback_sent_at?: string | null
           years_experience?: number | null
         }
         Update: {
@@ -1016,14 +1041,20 @@ export type Database = {
           contacted_at?: string | null
           contracted_at?: string | null
           course_purchased_at?: string | null
+          course_started_at?: string | null
           created_at?: string
           desired_income?: number | null
+          duplicate_of?: string | null
           email?: string
           email_consent_given?: boolean | null
           email_consent_text?: string | null
           exam_passed_at?: string | null
           exam_scheduled_at?: string | null
+          fingerprint_date?: string | null
+          fingerprint_done?: boolean | null
           fingerprints_submitted_at?: string | null
+          first_contact_attempt_at?: string | null
+          first_deal_at?: string | null
           first_name?: string
           followup_licensed_sent_at?: string | null
           followup_sent_at?: string | null
@@ -1031,8 +1062,11 @@ export type Database = {
           has_insurance_experience?: boolean | null
           id?: string
           instagram_handle?: string | null
+          is_duplicate?: boolean | null
+          is_ghosted?: boolean | null
           last_contacted_at?: string | null
           last_name?: string
+          last_response_at?: string | null
           lead_score?: number | null
           license_approved_at?: string | null
           license_doc_url?: string | null
@@ -1040,6 +1074,7 @@ export type Database = {
             | Database["public"]["Enums"]["license_progress"]
             | null
           license_status?: Database["public"]["Enums"]["license_status"]
+          licensed_at?: string | null
           licensed_states?: string[] | null
           manual_followup_sent_at?: string | null
           next_action_at?: string | null
@@ -1066,6 +1101,7 @@ export type Database = {
           termination_reason?: string | null
           test_scheduled_date?: string | null
           updated_at?: string
+          winback_sent_at?: string | null
           years_experience?: number | null
         }
         Relationships: [

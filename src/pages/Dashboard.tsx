@@ -386,12 +386,23 @@ export default function Dashboard() {
       {/* ====== TOP METRIC CARDS (Real Data) ====== */}
       {(isAdmin || isManager) && topMetrics && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <StatCard title="Active Agents" value={topMetrics.activeAgents} icon={Users} variant="primary" />
-          <StatCard title="Weekly ALP" value={`$${topMetrics.weeklyALP.toLocaleString()}`} icon={DollarSign} variant="success" />
-          <StatCard title="Apps This Week" value={topMetrics.appsThisWeek} icon={UserPlus} variant="default" />
-          <StatCard title="Close Rate" value={`${topMetrics.closeRate}%`} icon={Percent} variant="success" />
+          <div onClick={() => setActiveDrilldown("agents")} className="cursor-pointer hover:ring-2 ring-primary/30 rounded-xl transition-all">
+            <StatCard title="Active Agents" value={topMetrics.activeAgents} icon={Users} variant="primary" />
+          </div>
+          <div onClick={() => setActiveDrilldown("alp")} className="cursor-pointer hover:ring-2 ring-primary/30 rounded-xl transition-all">
+            <StatCard title="Weekly ALP" value={`$${topMetrics.weeklyALP.toLocaleString()}`} icon={DollarSign} variant="success" />
+          </div>
+          <div onClick={() => setActiveDrilldown("apps")} className="cursor-pointer hover:ring-2 ring-primary/30 rounded-xl transition-all">
+            <StatCard title="Apps This Week" value={topMetrics.appsThisWeek} icon={UserPlus} variant="default" />
+          </div>
+          <div onClick={() => setActiveDrilldown("closerate")} className="cursor-pointer hover:ring-2 ring-primary/30 rounded-xl transition-all">
+            <StatCard title="Close Rate" value={`${topMetrics.closeRate}%`} icon={Percent} variant="success" />
+          </div>
         </div>
       )}
+
+      {/* Stat Card Drilldown */}
+      <StatCardDrilldown activeModal={activeDrilldown} onClose={() => setActiveDrilldown(null)} />
 
       {/* ====== ALERT BANNERS (Admin) ====== */}
       {isAdmin && staleAgents && staleAgents.length > 0 && (

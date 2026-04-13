@@ -49,6 +49,9 @@ import { ChurnRiskBanner } from "@/components/dashboard/ChurnRiskBanner";
 import { AchievementFeed } from "@/components/dashboard/AchievementFeed";
 import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
 import { DashboardInsightCards } from "@/components/dashboard/DashboardInsightCards";
+import { PipelineVelocityCard } from "@/components/dashboard/PipelineVelocityCard";
+import { StalledAgentsAlert } from "@/components/dashboard/StalledAgentsAlert";
+import { ReferralTrackingCard } from "@/components/dashboard/ReferralTrackingCard";
 import { StatCardDrilldown } from "@/components/dashboard/StatCardDrilldown";
 import { useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -602,6 +605,17 @@ export default function Dashboard() {
 
           {/* Onboarding Pipeline for Admin/Manager */}
           {(isManager || isAdmin) && <OnboardingPipelineCard />}
+
+          {/* Pipeline Velocity & Referral Tracking */}
+          {(isManager || isAdmin) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <PipelineVelocityCard />
+              <ReferralTrackingCard />
+            </div>
+          )}
+
+          {/* Stalled Agents Alert */}
+          {(isManager || isAdmin) && <StalledAgentsAlert />}
 
           {/* Recruiting Quick-View Table */}
           {(isManager || isAdmin) && <RecruitingQuickView />}

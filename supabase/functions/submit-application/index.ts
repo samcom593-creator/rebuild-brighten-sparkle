@@ -979,35 +979,66 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Auto-merge: if person reapplied and old apps are assigned to Samuel James, mark them as merged
+    // Auto-merge: if person reapplied, terminate all old open apps and assign new one to Sam
     const SAMUEL_JAMES_ID = "7c3c5581-3544-437f-bfe2-91391afb217d";
     try {
-      const { data: oldApps } = await supabaseAdmin
+      const { data: previousApps } = await supabaseAdmin
         .from("applications")
-        .select("id")
+        .select("id, assigned_agent_id, created_at, contracted_at")
         .eq("email", data.email)
-        .eq("assigned_agent_id", SAMUEL_JAMES_ID)
-        .is("terminated_at", null)
-        .neq("id", inserted.id);
+        .neq("id", inserted.id)
+        .order("created_at", { ascending: false });
 
-      if (oldApps && oldApps.length > 0) {
-        const oldIds = oldApps.map(a => a.id);
+      if (previousApps && previousApps.length > 0) {
+        const mostRecent = previousApps[0];
+
+        // Always reassign reapplicants to Sam
         await supabaseAdmin
           .from("applications")
-          .update({ terminated_at: new Date().toISOString(), termination_reason: "reapplied_merged" })
-          .in("id", oldIds);
+          .update({ assigned_agent_id: SAMUEL_JAMES_ID })
+          .eq("id", inserted.id);
+
+        // If previously contracted, notify Sam about rehire
+        if (mostRecent.contracted_at && resend) {
+          try {
+            await resend.emails.send({
+              from: "APEX Financial <notifications@apex-financial.org>",
+              to: ["sam@apex-financial.org"],
+              subject: `🔄 Rehire Application — ${data.firstName} ${data.lastName}`,
+              html: `<p><strong>${data.firstName} ${data.lastName}</strong> previously contracted with APEX and has reapplied. Assigned directly to you. Original application: ${mostRecent.id}</p>`,
+            });
+          } catch (e) { console.error("Rehire notification failed:", e); }
+        }
+
+        // Terminate all previous open (non-contracted) applications
+        const openIds = previousApps
+          .filter(a => !a.contracted_at && !inserted.id)
+          .map(a => a.id);
+
+        // Actually filter properly
+        const idsToClose = previousApps
+          .filter(a => a.id !== inserted.id)
+          .map(a => a.id);
+
+        if (idsToClose.length > 0) {
+          await supabaseAdmin
+            .from("applications")
+            .update({ terminated_at: new Date().toISOString(), termination_reason: "reapplied_merged" })
+            .in("id", idsToClose)
+            .is("terminated_at", null);
+        }
 
         // Log the merge
-        for (const oldId of oldIds) {
+        for (const old of previousApps) {
           await supabaseAdmin.from("lead_activity").insert({
             lead_id: inserted.id,
-            activity_type: "merge",
-            title: `Merged duplicate application (old ID: ${oldId.slice(0, 8)}…)`,
+            activity_type: "reapplication",
+            title: `Reapplication — previous app merged (${old.id.slice(0, 8)}…). Assigned to Sam.`,
             actor_name: "System",
             actor_role: "system",
           });
         }
-        console.log(`Auto-merged ${oldIds.length} duplicate Samuel James applications for ${data.email}`);
+        console.log(`Reapplicant ${data.email}: merged ${previousApps.length} old apps, assigned to Sam`);
       }
     } catch (mergeErr) {
       console.error("Auto-merge error (non-fatal):", mergeErr);

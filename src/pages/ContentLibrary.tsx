@@ -616,6 +616,16 @@ export default function ContentLibrary() {
                 </span>
               )}
             </TabsTrigger>
+            {isAdmin && (
+              <TabsTrigger value="sensitive" className="relative">
+                <ShieldAlert className="h-4 w-4 mr-1" /> Sensitive
+                {sensitiveCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] rounded-full h-4 w-4 flex items-center justify-center">
+                    {sensitiveCount}
+                  </span>
+                )}
+              </TabsTrigger>
+            )}
             <TabsTrigger value="storage"><HardDrive className="h-4 w-4 mr-1" /> Storage</TabsTrigger>
             <TabsTrigger value="awards"><Tag className="h-4 w-4 mr-1" /> Awards</TabsTrigger>
           </TabsList>

@@ -320,9 +320,18 @@ export default function CourseProgress() {
         })
         .eq("id", agentId);
       if (error) throw error;
+      // Trigger new hire auto-flow
+      try {
+        await supabase.functions.invoke("trigger-new-hire-flow", {
+          body: { agentId, triggerType: "course_complete" }
+        });
+      } catch (e) {
+        console.error("New hire flow trigger failed:", e);
+      }
     },
-    onSuccess: () => {
-      toast.success("Agent moved to field training!");
+    onSuccess: (_, agentId) => {
+      const agent = agents?.find(a => a.id === agentId);
+      toast.success(`${agent?.name || 'Agent'} is now LIVE — welcome email and SMS sent automatically`);
       queryClient.invalidateQueries({ queryKey: ["course-progress-full"] });
     },
     onError: (error) => {

@@ -280,12 +280,18 @@ export default function ContentLibrary() {
       // Fire AI analysis + duplicate detection in background
       if (inserted?.id) {
         const publicUrl = urlData?.publicUrl || "";
-        // AI analyze
+        // AI analyze (includes safety check first, then tagging)
         supabase.functions.invoke("analyze-content-item", {
           body: { contentItemId: inserted.id, fileUrl: publicUrl, fileType }
-        }).then(() => {
-          console.log(`AI analysis complete for ${file.name}`);
-          fetchContent(); // Refresh to show tags
+        }).then((res) => {
+          const result = res.data;
+          if (result && result.safe === false) {
+            console.warn(`⚠️ ${file.name} flagged as sensitive: ${result.reason}`);
+            toast.warning(`⚠️ "${file.name}" was flagged as sensitive and hidden`, { duration: 6000 });
+          } else {
+            console.log(`AI analysis complete for ${file.name}`);
+          }
+          fetchContent();
         }).catch(e => console.error("AI analysis failed:", e));
 
         // Duplicate detection

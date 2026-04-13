@@ -822,6 +822,11 @@ export function ProfileSettings() {
         </GlassCard>
       )}
 
+      {/* Admin Only: WhatsApp Group Link */}
+      {isAdmin && (
+        <WhatsAppGroupSection />
+      )}
+
       {/* Admin Only: Discord Webhook */}
       {isAdmin && (
         <DiscordWebhookSection />

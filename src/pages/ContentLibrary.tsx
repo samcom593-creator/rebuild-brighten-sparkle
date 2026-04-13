@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   Search, Download, Upload, Trash2, Plus, Image, Video, Tag, X, Loader2,
   Cloud, FolderOpen, HardDrive, AlertTriangle, CheckCircle2, BarChart3,
-  Sparkles, Copy, FileVideo, FileImage, RefreshCw, Smartphone
+  Sparkles, Copy, FileVideo, FileImage, RefreshCw, Smartphone, ShieldAlert,
+  Eye, EyeOff, ShieldCheck
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,10 @@ interface ContentItem {
   ai_analyzed_at: string | null;
   duplicate_flagged: boolean;
   possible_duplicate_of: string | null;
+  is_sensitive: boolean;
+  sensitive_flags: string[];
+  sensitive_reason: string | null;
+  sensitive_checked: boolean;
   created_at: string;
   publicUrl: string;
 }

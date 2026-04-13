@@ -100,6 +100,9 @@ interface Application {
   assigned_agent_id: string | null;
   lead_score: number | null;
   ai_score_tier: string | null;
+  is_duplicate?: boolean;
+  is_ghosted?: boolean;
+  first_contact_attempt_at?: string | null;
 }
 
 const statusColors: Record<string, string> = {

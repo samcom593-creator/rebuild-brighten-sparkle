@@ -127,6 +127,9 @@ export default function ContentLibrary() {
           ...item,
           tags: item.tags || [],
           ai_tags: item.ai_tags || [],
+          is_sensitive: item.is_sensitive || false,
+          sensitive_flags: item.sensitive_flags || [],
+          sensitive_checked: item.sensitive_checked || false,
           publicUrl: urlData?.publicUrl || "",
         };
       });

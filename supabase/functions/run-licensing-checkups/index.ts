@@ -319,6 +319,37 @@ serve(async (req: Request) => {
           });
         }
       }
+
+      // Day 60: Auto-move to need_follow_up and send final email
+      if (daysSinceContracted >= 60 && stage !== "need_follow_up" && !["exam_passed", "test_scheduled", "finished_course", "licensed"].includes(stage)) {
+        await supabase.from("applications")
+          .update({ license_progress: "need_follow_up" })
+          .eq("id", app.id);
+
+        if (resend && app.email) {
+          try {
+            await resend.emails.send({
+              from: "Apex Financial <notifications@apex-financial.org>",
+              to: [app.email],
+              cc: ["sam@apex-financial.org"],
+              subject: `${firstName}, let's remove the blockers`,
+              html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+                <h2>Hey ${firstName},</h2>
+                <p>It's been 60 days. I know there's something holding you back, and I want to help remove it.</p>
+                <p>Let's get on a quick call — no pressure, just a conversation about what's going on and how we can get you across the finish line.</p>
+                <p><a href="https://calendly.com/sam-com593/1on1-call-clone" style="background:#059669;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">Book a Call with Sam →</a></p>
+                <p>— Sam James</p>
+              </div>`,
+            });
+          } catch (e) { console.error("Day 60 email failed:", e); }
+        }
+
+        results.push({
+          appId: app.id, name: `${firstName} ${app.last_name}`,
+          stage, urgency: "critical", day: 60, type: "day60_auto_move",
+          emailSent: true, smsSent: false,
+        });
+      }
     }
 
     console.log(`Licensing checkups complete. Processed: ${results.length} nudges for ${unlicensed?.length || 0} applications.`);

@@ -1110,3 +1110,72 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
     </div>
   );
 }
+
+/* ─── Sensitive Content Card ─── */
+function SensitiveContentCard({
+  item,
+  onMarkSafe,
+  onDelete,
+}: {
+  item: ContentItem;
+  onMarkSafe: () => void;
+  onDelete: () => void;
+}) {
+  const [revealed, setRevealed] = useState(false);
+
+  return (
+    <div className="glass-card p-2 space-y-2 border border-red-500/20">
+      <div className="aspect-square bg-muted rounded-lg relative overflow-hidden">
+        {item.file_type === "video" ? (
+          <video src={item.publicUrl} preload="metadata" className={cn("w-full h-full object-cover rounded-lg", !revealed && "blur-xl")} />
+        ) : (
+          <img
+            src={item.publicUrl}
+            alt="Flagged content"
+            className={cn("w-full h-full object-cover rounded-lg transition-all", !revealed && "blur-xl")}
+            loading="lazy"
+          />
+        )}
+
+        {/* Reveal toggle */}
+        <button
+          onClick={() => setRevealed(!revealed)}
+          className="absolute top-1.5 right-1.5 bg-black/60 text-white p-1.5 rounded-full hover:bg-black/80 transition-colors"
+        >
+          {revealed ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+        </button>
+
+        {/* Flag badge */}
+        <div className="absolute top-1.5 left-1.5">
+          <span className="bg-red-600/90 text-white text-[9px] px-1.5 py-0.5 rounded-full flex items-center gap-0.5 backdrop-blur-sm">
+            <ShieldAlert className="h-2 w-2" /> Flagged
+          </span>
+        </div>
+      </div>
+
+      {/* Reason */}
+      {item.sensitive_reason && (
+        <p className="text-[10px] text-red-400 px-0.5 line-clamp-2">{item.sensitive_reason}</p>
+      )}
+
+      {/* Flags */}
+      {item.sensitive_flags?.length > 0 && (
+        <div className="flex flex-wrap gap-0.5 px-0.5">
+          {item.sensitive_flags.map((f, i) => (
+            <Badge key={i} variant="destructive" className="text-[8px] h-3.5 px-1">{f}</Badge>
+          ))}
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="flex gap-1">
+        <Button variant="outline" size="sm" className="flex-1 text-[10px] h-7 gap-1" onClick={onMarkSafe}>
+          <ShieldCheck className="h-3 w-3" /> Mark Safe
+        </Button>
+        <Button variant="destructive" size="sm" className="flex-1 text-[10px] h-7 gap-1" onClick={onDelete}>
+          <Trash2 className="h-3 w-3" /> Delete
+        </Button>
+      </div>
+    </div>
+  );
+}

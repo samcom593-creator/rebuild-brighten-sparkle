@@ -39,28 +39,49 @@ export function AddAgentToCourseDialog({ onSuccess }: AddAgentToCourseDialogProp
   const { data: eligibleAgents = [], isLoading } = useQuery({
     queryKey: ["eligible-agents-for-course"],
     queryFn: async () => {
-      // Get agents in onboarding stage
+      // Get agents not yet enrolled
       const { data: agents } = await supabase
         .from("agents")
-        .select(`
-          id,
-          onboarding_stage,
-          has_training_course,
-          profiles!agents_profile_id_fkey (
-            full_name,
-            email
-          )
-        `)
+        .select("id, user_id, onboarding_stage, has_training_course, display_name")
         .eq("is_deactivated", false);
 
       if (!agents?.length) return [];
 
-      return agents.map(a => ({
-          id: a.id,
-          name: a.profiles?.full_name || "Unknown",
-          email: a.profiles?.email || "",
-          managerId: null,
-        })) as EligibleAgent[];
+      // Get all agent user_ids to fetch profiles
+      const userIds = agents.map(a => a.user_id).filter(Boolean) as string[];
+      
+      let profileMap: Record<string, { full_name: string; email: string }> = {};
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("user_id, full_name, email")
+          .in("user_id", userIds);
+        
+        if (profiles) {
+          for (const p of profiles) {
+            if (p.user_id) profileMap[p.user_id] = { full_name: p.full_name || "", email: p.email || "" };
+          }
+        }
+      }
+
+      // Get agents that already have progress
+      const { data: existingProgress } = await supabase
+        .from("onboarding_progress")
+        .select("agent_id");
+      
+      const enrolledIds = new Set((existingProgress || []).map(p => p.agent_id));
+
+      return agents
+        .filter(a => !enrolledIds.has(a.id))
+        .map(a => {
+          const profile = a.user_id ? profileMap[a.user_id] : null;
+          return {
+            id: a.id,
+            name: a.display_name || profile?.full_name || "Unknown",
+            email: profile?.email || "",
+            managerId: null,
+          };
+        }) as EligibleAgent[];
     },
     enabled: open,
   });

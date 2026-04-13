@@ -48,6 +48,7 @@ import { TeamOverviewDashboard } from "@/components/dashboard/TeamOverviewDashbo
 import { ChurnRiskBanner } from "@/components/dashboard/ChurnRiskBanner";
 import { AchievementFeed } from "@/components/dashboard/AchievementFeed";
 import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
+import { DashboardInsightCards } from "@/components/dashboard/DashboardInsightCards";
 import { StatCardDrilldown } from "@/components/dashboard/StatCardDrilldown";
 import { useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";

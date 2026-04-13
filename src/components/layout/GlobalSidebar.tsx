@@ -299,18 +299,16 @@ export function GlobalSidebar({
             isCollapsed ? "justify-center p-4" : "justify-between px-4 py-4"
           )}>
             {!isCollapsed && (
-              <Link to="/dashboard" className="flex items-center gap-2 group overflow-hidden whitespace-nowrap">
-                <div className="flex items-center gap-1.5">
+              <Link to="/dashboard" className="flex items-center gap-2 group" style={{ overflow: 'visible', whiteSpace: 'nowrap', minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'visible', whiteSpace: 'nowrap' }}>
                   <span
-                    className="text-[18px] font-extrabold text-white leading-tight"
-                    style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800 }}
+                    style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: '16px', color: 'white', letterSpacing: '1px', flexShrink: 0 }}
                   >
                     APEX
                   </span>
-                  <div className="h-2 w-2 rounded-full bg-[#22d3a5] animate-pulse flex-shrink-0" title="Live" />
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22d3a5', flexShrink: 0, animation: 'pulse 2s infinite' }} />
                   <span
-                    className="text-[18px] font-extrabold text-[#22d3a5] leading-tight"
-                    style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800 }}
+                    style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: '16px', color: '#22d3a5', flexShrink: 0 }}
                   >
                     Financial
                   </span>

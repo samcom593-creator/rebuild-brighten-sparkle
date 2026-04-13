@@ -405,6 +405,9 @@ export default function Dashboard() {
       {/* Stat Card Drilldown */}
       <StatCardDrilldown activeModal={activeDrilldown} onClose={() => setActiveDrilldown(null)} />
 
+      {/* Insight Data Cards */}
+      {(isAdmin || isManager) && <DashboardInsightCards />}
+
       {/* ====== ALERT BANNERS (Admin) ====== */}
       {isAdmin && staleAgents && staleAgents.length > 0 && (
         <div className="mb-4 p-3 rounded-lg border border-destructive/30 bg-destructive/5">

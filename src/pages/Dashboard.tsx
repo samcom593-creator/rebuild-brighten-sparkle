@@ -47,6 +47,8 @@ import { TeamOverviewDashboard } from "@/components/dashboard/TeamOverviewDashbo
 
 import { ChurnRiskBanner } from "@/components/dashboard/ChurnRiskBanner";
 import { AchievementFeed } from "@/components/dashboard/AchievementFeed";
+import { TeamTasksWidget } from "@/components/dashboard/TeamTasksWidget";
+import { AwardFeedLive } from "@/components/dashboard/AwardFeedLive";
 import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
 import { DashboardInsightCards } from "@/components/dashboard/DashboardInsightCards";
 import { PipelineVelocityCard } from "@/components/dashboard/PipelineVelocityCard";
@@ -728,9 +730,13 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ====== ACHIEVEMENT FEED (Admin/Manager) ====== */}
+      {/* ====== ACHIEVEMENT FEED + TASKS + AWARDS (Admin/Manager) ====== */}
       {(isAdmin || isManager) && (
-        <div className="mb-6">
+        <div className="mb-6 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <TeamTasksWidget />
+            <AwardFeedLive />
+          </div>
           <AchievementFeed />
         </div>
       )}

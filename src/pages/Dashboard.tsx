@@ -273,11 +273,19 @@ export default function Dashboard() {
       weekStart.setDate(now.getDate() - now.getDay());
       const weekStartStr = weekStart.toISOString().split("T")[0];
 
-      const [agentsRes, prodRes, appsRes] = await Promise.all([
-        supabase.from("agents").select("id", { count: "exact", head: true }).eq("is_deactivated", false),
+      // Active = at least 1 deal in last 30 days
+      const thirtyDaysAgo = new Date(now);
+      thirtyDaysAgo.setDate(now.getDate() - 30);
+      const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split("T")[0];
+
+      const [activeProducersRes, prodRes, appsRes] = await Promise.all([
+        supabase.from("daily_production").select("agent_id").gte("production_date", thirtyDaysAgoStr).gt("deals_closed", 0),
         supabase.from("daily_production").select("aop, deals_closed, presentations").gte("production_date", weekStartStr),
         supabase.from("applications").select("id", { count: "exact", head: true }).gte("created_at", weekStart.toISOString()),
       ]);
+
+      // Count distinct agents with deals in last 30 days
+      const activeAgentIds = new Set((activeProducersRes.data || []).map((r: any) => r.agent_id));
 
       const weeklyALP = (prodRes.data || []).reduce((s: number, r: any) => s + (Number(r.aop) || 0), 0);
       const totalDeals = (prodRes.data || []).reduce((s: number, r: any) => s + (Number(r.deals_closed) || 0), 0);
@@ -285,7 +293,7 @@ export default function Dashboard() {
       const closeRate = totalPres > 0 ? (totalDeals / totalPres) * 100 : 0;
 
       return {
-        activeAgents: agentsRes.count || 0,
+        activeAgents: activeAgentIds.size,
         weeklyALP,
         appsThisWeek: appsRes.count || 0,
         closeRate: Math.round(closeRate * 10) / 10,

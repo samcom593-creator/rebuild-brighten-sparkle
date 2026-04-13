@@ -606,6 +606,17 @@ export default function Dashboard() {
           {/* Onboarding Pipeline for Admin/Manager */}
           {(isManager || isAdmin) && <OnboardingPipelineCard />}
 
+          {/* Pipeline Velocity & Referral Tracking */}
+          {(isManager || isAdmin) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <PipelineVelocityCard />
+              <ReferralTrackingCard />
+            </div>
+          )}
+
+          {/* Stalled Agents Alert */}
+          {(isManager || isAdmin) && <StalledAgentsAlert />}
+
           {/* Recruiting Quick-View Table */}
           {(isManager || isAdmin) && <RecruitingQuickView />}
 

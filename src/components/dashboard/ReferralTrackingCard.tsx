@@ -22,8 +22,8 @@ export function ReferralTrackingCard() {
 
       if (error) throw error;
 
-      const referralApps = (apps || []).filter(a => a.source === "referral" || a.referral_manager_id);
-      const directApps = (apps || []).filter(a => a.source !== "referral" && !a.referral_manager_id);
+      const referralApps = (apps || []).filter((a: any) => a.referral_manager_id || a.referral_source_detail);
+      const directApps = (apps || []).filter((a: any) => !a.referral_manager_id && !a.referral_source_detail);
 
       // Referral conversion rate
       const referralLicensed = referralApps.filter(a => a.license_status === "licensed").length;

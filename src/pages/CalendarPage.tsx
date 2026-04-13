@@ -486,8 +486,11 @@ export default function CalendarPage() {
                                   <ExternalLink className="h-3.5 w-3.5" />
                                 </Button>
                               )}
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleCalendarLink(iv)}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleCalendarLink(iv)} title="Add to Google Calendar">
                                 <CalendarPlus className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleExportIcs(iv)} title="Download .ics (Apple Calendar)">
+                                <Download className="h-3.5 w-3.5" />
                               </Button>
                               {isOverdue && (
                                 <Button

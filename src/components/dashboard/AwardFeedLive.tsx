@@ -57,7 +57,7 @@ export function AwardFeedLive() {
       const { data } = await supabase
         .from("plaque_awards")
         .select("*")
-        .order("created_at", { ascending: false })
+        .order("awarded_at", { ascending: false })
         .limit(20);
 
       if (mounted) setAwards(data || []);
@@ -115,7 +115,7 @@ export function AwardFeedLive() {
               </div>
             </div>
             <div className="text-[10px] text-muted-foreground shrink-0">
-              {formatDistanceToNow(new Date(award.created_at), { addSuffix: true })}
+              {award.awarded_at ? formatDistanceToNow(new Date(award.awarded_at), { addSuffix: true }) : "recently"}
             </div>
           </div>
         ))}

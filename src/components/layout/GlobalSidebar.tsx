@@ -122,6 +122,9 @@ export function GlobalSidebar({
       opsItems.push({ icon: Headphones, label: "Call Center", href: "/dashboard/call-center" });
     }
     opsItems.push({ icon: Users, label: "Pipeline", href: isAgent && !isAdmin && !isManager ? "/agent-pipeline" : "/dashboard/applicants" });
+    if (isAdmin || isManager) {
+      opsItems.push({ icon: TrendingUp, label: "Hiring Pipeline", href: "/dashboard/hiring-pipeline" });
+    }
     opsItems.push({ icon: Edit3, label: "Log Numbers", href: "/numbers", special: true });
     sections.push({ label: "OPERATIONS", items: opsItems });
 

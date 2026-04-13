@@ -871,7 +871,41 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Duplicate checks removed — allow multiple applications from same person
+    // ── HOLE 1: Duplicate Application Detection ──
+    const { data: existingApp } = await supabaseAdmin
+      .from("applications")
+      .select("id, created_at, license_progress, status")
+      .or(`email.ilike.${normalizedEmail},phone.eq.${normalizedPhone}`)
+      .is("terminated_at", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingApp) {
+      // Update existing record timestamp and flag as duplicate
+      await supabaseAdmin.from("applications")
+        .update({ updated_at: new Date().toISOString(), is_duplicate: true })
+        .eq("id", existingApp.id);
+
+      // Notify Sam about the duplicate
+      if (resend) {
+        try {
+          await resend.emails.send({
+            from: "APEX Financial <notifications@apex-financial.org>",
+            to: ["sam@apex-financial.org"],
+            subject: `🔄 Duplicate Application: ${data.firstName} ${data.lastName}`,
+            html: `<p><strong>${data.firstName} ${data.lastName}</strong> applied again. They're already in your pipeline since ${new Date(existingApp.created_at).toLocaleDateString()}.</p>
+                   <p>Current stage: ${existingApp.license_progress || existingApp.status}</p>
+                   <p>Email: ${data.email} | Phone: ${data.phone}</p>`,
+          });
+        } catch (e) { console.error("Duplicate notification failed:", e); }
+      }
+
+      return new Response(
+        JSON.stringify({ applicationId: existingApp.id, isDuplicate: true }),
+        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
 
     // Extract consent data
     const consent = data.consent;

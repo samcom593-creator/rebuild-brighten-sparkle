@@ -34,6 +34,7 @@ import { WeeklyBadgesCard } from "@/components/dashboard/WeeklyBadges";
 import { YearPerformanceCard } from "@/components/dashboard/YearPerformanceCard";
 import { AccountLinkForm } from "@/components/dashboard/AccountLinkForm";
 import { AgentRankBadge } from "@/components/dashboard/AgentRankBadge";
+import { AgentTaskManager } from "@/components/dashboard/AgentTaskManager";
 
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
 import { supabase } from "@/integrations/supabase/client";
@@ -711,6 +712,17 @@ export default function AgentPortal() {
             </Button>
           </GlassCard>
         </section>
+
+        {/* My Tasks */}
+        {agentId && (
+          <section>
+            <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
+              <Target className="h-5 w-5 text-primary" />
+              My Tasks
+            </h2>
+            <AgentTaskManager viewMode="list" agentFilter={agentId} showAssignButton={false} />
+          </section>
+        )}
 
         {/* Weekly Badges Card - MOVED TO BOTTOM */}
         {agentId && (

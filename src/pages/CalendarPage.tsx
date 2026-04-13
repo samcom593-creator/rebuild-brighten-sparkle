@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, isToday, isBefore, startOfWeek, addDays, getHours, getMinutes } from "date-fns";
 import { motion } from "framer-motion";
 import {
-  Calendar, Video, Phone, MapPin, Clock, Plus,
+  Calendar, Video, Phone, MapPin, Clock, Plus, Download,
   AlertTriangle, CheckCircle2, CalendarPlus, ExternalLink, Search, User,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";

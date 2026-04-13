@@ -106,6 +106,77 @@ function DiscordWebhookSection() {
   );
 }
 
+function WhatsAppGroupSection() {
+  const [groupLink, setGroupLink] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase
+        .from("system_settings" as any)
+        .select("*")
+        .eq("key", "whatsapp_group_link")
+        .maybeSingle();
+      if (data) setGroupLink((data as any).value || "");
+      setLoaded(true);
+    };
+    load();
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const { data: existing } = await supabase
+        .from("system_settings" as any)
+        .select("id")
+        .eq("key", "whatsapp_group_link")
+        .maybeSingle();
+
+      if (existing) {
+        await (supabase.from("system_settings" as any) as any)
+          .update({ value: groupLink })
+          .eq("id", (existing as any).id);
+      } else {
+        await supabase.from("system_settings" as any).insert({
+          key: "whatsapp_group_link",
+          value: groupLink,
+        } as any);
+      }
+      toast({ title: "WhatsApp group link saved" });
+    } catch {
+      toast({ title: "Failed to save", variant: "destructive" });
+    }
+    setSaving(false);
+  };
+
+  if (!loaded) return null;
+
+  return (
+    <GlassCard className="p-6">
+      <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
+        <Phone className="h-5 w-5 text-green-500" />
+        WhatsApp Group
+      </h3>
+      <p className="text-sm text-muted-foreground mb-4">
+        Paste your WhatsApp group invite link. New hires will receive this link in their Day 1 welcome sequence.
+      </p>
+      <div className="flex gap-2">
+        <Input
+          placeholder="https://chat.whatsapp.com/..."
+          value={groupLink}
+          onChange={(e) => setGroupLink(e.target.value)}
+          className="flex-1"
+        />
+        <Button onClick={handleSave} disabled={saving} size="sm">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
+          Save
+        </Button>
+      </div>
+    </GlassCard>
+  );
+}
+
 export function ProfileSettings() {
   const { user, profile, refreshProfile, isAdmin } = useAuth();
   const navigate = useNavigate();
@@ -820,6 +891,11 @@ export function ProfileSettings() {
             ))}
           </div>
         </GlassCard>
+      )}
+
+      {/* Admin Only: WhatsApp Group Link */}
+      {isAdmin && (
+        <WhatsAppGroupSection />
       )}
 
       {/* Admin Only: Discord Webhook */}

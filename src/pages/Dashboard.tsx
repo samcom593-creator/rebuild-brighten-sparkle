@@ -48,6 +48,8 @@ import { TeamOverviewDashboard } from "@/components/dashboard/TeamOverviewDashbo
 import { ChurnRiskBanner } from "@/components/dashboard/ChurnRiskBanner";
 import { AchievementFeed } from "@/components/dashboard/AchievementFeed";
 import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
+import { DashboardInsightCards } from "@/components/dashboard/DashboardInsightCards";
+import { StatCardDrilldown } from "@/components/dashboard/StatCardDrilldown";
 import { useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
@@ -246,6 +248,7 @@ export default function Dashboard() {
   const isMobile = useIsMobile();
   const { playSound } = useSoundEffects();
   const [datePeriod, setDatePeriod] = useState<DatePeriod>("month");
+  const [activeDrilldown, setActiveDrilldown] = useState<"agents" | "alp" | "apps" | "closerate" | null>(null);
   const [dateRange, setDateRange] = useState<{ start: Date; end: Date }>({
     start: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
     end: new Date(),
@@ -384,12 +387,26 @@ export default function Dashboard() {
       {/* ====== TOP METRIC CARDS (Real Data) ====== */}
       {(isAdmin || isManager) && topMetrics && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <StatCard title="Active Agents" value={topMetrics.activeAgents} icon={Users} variant="primary" />
-          <StatCard title="Weekly ALP" value={`$${topMetrics.weeklyALP.toLocaleString()}`} icon={DollarSign} variant="success" />
-          <StatCard title="Apps This Week" value={topMetrics.appsThisWeek} icon={UserPlus} variant="default" />
-          <StatCard title="Close Rate" value={`${topMetrics.closeRate}%`} icon={Percent} variant="success" />
+          <div onClick={() => setActiveDrilldown("agents")} className="cursor-pointer hover:ring-2 ring-primary/30 rounded-xl transition-all">
+            <StatCard title="Active Agents" value={topMetrics.activeAgents} icon={Users} variant="primary" />
+          </div>
+          <div onClick={() => setActiveDrilldown("alp")} className="cursor-pointer hover:ring-2 ring-primary/30 rounded-xl transition-all">
+            <StatCard title="Weekly ALP" value={`$${topMetrics.weeklyALP.toLocaleString()}`} icon={DollarSign} variant="success" />
+          </div>
+          <div onClick={() => setActiveDrilldown("apps")} className="cursor-pointer hover:ring-2 ring-primary/30 rounded-xl transition-all">
+            <StatCard title="Apps This Week" value={topMetrics.appsThisWeek} icon={UserPlus} variant="default" />
+          </div>
+          <div onClick={() => setActiveDrilldown("closerate")} className="cursor-pointer hover:ring-2 ring-primary/30 rounded-xl transition-all">
+            <StatCard title="Close Rate" value={`${topMetrics.closeRate}%`} icon={Percent} variant="success" />
+          </div>
         </div>
       )}
+
+      {/* Stat Card Drilldown */}
+      <StatCardDrilldown activeModal={activeDrilldown} onClose={() => setActiveDrilldown(null)} />
+
+      {/* Insight Data Cards */}
+      {(isAdmin || isManager) && <DashboardInsightCards />}
 
       {/* ====== ALERT BANNERS (Admin) ====== */}
       {isAdmin && staleAgents && staleAgents.length > 0 && (

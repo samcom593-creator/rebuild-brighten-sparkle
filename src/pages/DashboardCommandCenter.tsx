@@ -484,7 +484,7 @@ export default function DashboardCommandCenter() {
   const summaryStats = useMemo(() => {
     if (!agentsData) return { totalAlp: 0, activeAgents: 0, producers: 0, weakPerformers: 0, totalDeals: 0 };
     
-    const activeAgents = agentsData.filter((a) => !a.isDeactivated && !a.isInactive);
+    const activeAgents = agentsData.filter((a) => !a.isDeactivated && !a.isInactive && a.totalDeals > 0);
     const producers = agentsData.filter((a) => a.totalAlp > 0);
     // "Needs Attention" = LIVE agents under $5,000 for the week
     const dayOfWeek = new Date().getDay();

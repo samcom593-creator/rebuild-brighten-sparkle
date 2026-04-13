@@ -223,6 +223,7 @@ export function GlobalSidebar({
     if (isAdmin) {
       adminItems.push({ icon: Crown, label: "Command Center", href: "/dashboard/command" });
       adminItems.push({ icon: UserCog, label: "Accounts", href: "/dashboard/accounts" });
+      adminItems.push({ icon: Shield, label: "System Health", href: "/dashboard/system-health" });
     }
     adminItems.push({ icon: Settings, label: "Settings", href: "/dashboard/settings" });
     sections.push({ label: "ADMIN", items: adminItems });

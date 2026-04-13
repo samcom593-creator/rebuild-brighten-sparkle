@@ -247,6 +247,7 @@ export default function Dashboard() {
   const isMobile = useIsMobile();
   const { playSound } = useSoundEffects();
   const [datePeriod, setDatePeriod] = useState<DatePeriod>("month");
+  const [activeDrilldown, setActiveDrilldown] = useState<"agents" | "alp" | "apps" | "closerate" | null>(null);
   const [dateRange, setDateRange] = useState<{ start: Date; end: Date }>({
     start: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
     end: new Date(),

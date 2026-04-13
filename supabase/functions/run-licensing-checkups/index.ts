@@ -130,13 +130,37 @@ const NUDGE_SCHEDULE: NudgeScheduleItem[] = [
     emailBody: (name) => `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
         <h2>${name},</h2>
-        <p>It's been 3 weeks. I'm reaching out one more time because I believe in you.</p>
-        <p>If you're still committed to getting licensed, let's get on a quick call this week and map out your exact timeline. I'll make sure nothing else gets in the way.</p>
+        <p>It's been 3 weeks. Most agents who haven't scheduled their exam by day 21 end up taking 2-3 months. The ones who pass quickly all say the same thing: they just committed to a date even before they felt ready.</p>
+        <p><strong>Book your exam today.</strong></p>
         <p>If your plans have changed, that's okay too — just let me know so we can update our records.</p>
-        <p><strong>Reply to this email or text me back.</strong></p>
         <p>— Sam James</p>
       </div>`,
-    smsBody: (name) => `APEX: ${name}, it's been 3 weeks. Are you still committed? Let's jump on a quick call to map out your timeline. Reply to this. -Sam`,
+    smsBody: (name) => `APEX: ${name}, day 21. Have you scheduled your exam yet? The agents ahead of you booked before they felt ready. Reply YES or NO -Sam`,
+  },
+  {
+    day: 30, type: "month_checkin", stages: ["unlicensed", "pre_course", "course_purchased"],
+    emailSubject: "One month. Still worth it?",
+    emailBody: (name) => `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+        <h2>${name}, one month in.</h2>
+        <p>I still believe in you. But I need you to show me you believe in yourself.</p>
+        <p>Reply to this email with your exam date. If you don't have one, reply <strong>"I need help"</strong> and I'll call you personally within 24 hours.</p>
+        <p>— Sam James<br/>Managing Partner, APEX Financial</p>
+      </div>`,
+    smsBody: (name) => `APEX: ${name}, 30 days. Reply to Sam's email with your exam date or reply HELP for a personal call. -Sam`,
+  },
+  {
+    day: 45, type: "last_call", stages: ["unlicensed", "pre_course", "course_purchased"],
+    emailSubject: "Last call — are you in or out?",
+    emailBody: (name) => `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+        <h2>This is my last automated email, ${name}.</h2>
+        <p>6 weeks. I've sent you everything you need. At this point the only thing between you and a license is a decision.</p>
+        <p>Your teammates who started after you are already in the field closing deals. Are you in or out?</p>
+        <p><strong>Reply and let me know.</strong></p>
+        <p>— Sam James</p>
+      </div>`,
+    smsBody: (name) => `APEX: Last automated message ${name}. Reply YES to continue or we'll close your file. -Sam`,
   },
 ];
 

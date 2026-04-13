@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import { Outlet } from "react-router-dom";
 import { SidebarLayout } from "./SidebarLayout";
-import { ScheduleBar } from "./ScheduleBar";
 import { PushNotificationPrompt } from "./PushNotificationPrompt";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ComponentErrorBoundary } from "@/components/ComponentErrorBoundary";

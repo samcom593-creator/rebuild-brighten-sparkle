@@ -130,13 +130,37 @@ const NUDGE_SCHEDULE: NudgeScheduleItem[] = [
     emailBody: (name) => `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
         <h2>${name},</h2>
-        <p>It's been 3 weeks. I'm reaching out one more time because I believe in you.</p>
-        <p>If you're still committed to getting licensed, let's get on a quick call this week and map out your exact timeline. I'll make sure nothing else gets in the way.</p>
+        <p>It's been 3 weeks. Most agents who haven't scheduled their exam by day 21 end up taking 2-3 months. The ones who pass quickly all say the same thing: they just committed to a date even before they felt ready.</p>
+        <p><strong>Book your exam today.</strong></p>
         <p>If your plans have changed, that's okay too — just let me know so we can update our records.</p>
-        <p><strong>Reply to this email or text me back.</strong></p>
         <p>— Sam James</p>
       </div>`,
-    smsBody: (name) => `APEX: ${name}, it's been 3 weeks. Are you still committed? Let's jump on a quick call to map out your timeline. Reply to this. -Sam`,
+    smsBody: (name) => `APEX: ${name}, day 21. Have you scheduled your exam yet? The agents ahead of you booked before they felt ready. Reply YES or NO -Sam`,
+  },
+  {
+    day: 30, type: "month_checkin", stages: ["unlicensed", "pre_course", "course_purchased"],
+    emailSubject: "One month. Still worth it?",
+    emailBody: (name) => `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+        <h2>${name}, one month in.</h2>
+        <p>I still believe in you. But I need you to show me you believe in yourself.</p>
+        <p>Reply to this email with your exam date. If you don't have one, reply <strong>"I need help"</strong> and I'll call you personally within 24 hours.</p>
+        <p>— Sam James<br/>Managing Partner, APEX Financial</p>
+      </div>`,
+    smsBody: (name) => `APEX: ${name}, 30 days. Reply to Sam's email with your exam date or reply HELP for a personal call. -Sam`,
+  },
+  {
+    day: 45, type: "last_call", stages: ["unlicensed", "pre_course", "course_purchased"],
+    emailSubject: "Last call — are you in or out?",
+    emailBody: (name) => `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+        <h2>This is my last automated email, ${name}.</h2>
+        <p>6 weeks. I've sent you everything you need. At this point the only thing between you and a license is a decision.</p>
+        <p>Your teammates who started after you are already in the field closing deals. Are you in or out?</p>
+        <p><strong>Reply and let me know.</strong></p>
+        <p>— Sam James</p>
+      </div>`,
+    smsBody: (name) => `APEX: Last automated message ${name}. Reply YES to continue or we'll close your file. -Sam`,
   },
 ];
 
@@ -294,6 +318,37 @@ serve(async (req: Request) => {
             channel: "email",
           });
         }
+      }
+
+      // Day 60: Auto-move to need_follow_up and send final email
+      if (daysSinceContracted >= 60 && stage !== "need_follow_up" && !["exam_passed", "test_scheduled", "finished_course", "licensed"].includes(stage)) {
+        await supabase.from("applications")
+          .update({ license_progress: "need_follow_up" })
+          .eq("id", app.id);
+
+        if (resend && app.email) {
+          try {
+            await resend.emails.send({
+              from: "Apex Financial <notifications@apex-financial.org>",
+              to: [app.email],
+              cc: ["sam@apex-financial.org"],
+              subject: `${firstName}, let's remove the blockers`,
+              html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+                <h2>Hey ${firstName},</h2>
+                <p>It's been 60 days. I know there's something holding you back, and I want to help remove it.</p>
+                <p>Let's get on a quick call — no pressure, just a conversation about what's going on and how we can get you across the finish line.</p>
+                <p><a href="https://calendly.com/sam-com593/1on1-call-clone" style="background:#059669;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">Book a Call with Sam →</a></p>
+                <p>— Sam James</p>
+              </div>`,
+            });
+          } catch (e) { console.error("Day 60 email failed:", e); }
+        }
+
+        results.push({
+          appId: app.id, name: `${firstName} ${app.last_name}`,
+          stage, urgency: "critical", day: 60, type: "day60_auto_move",
+          emailSent: true, smsSent: false,
+        });
       }
     }
 

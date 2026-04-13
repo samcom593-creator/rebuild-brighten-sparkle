@@ -70,6 +70,7 @@ const TeamHierarchy = lazy(() => import("./pages/TeamHierarchy"));
 const AgentPipelineSimple = lazy(() => import("./pages/AgentPipelineSimple"));
 const InstagramAutomation = lazy(() => import("./pages/InstagramAutomation"));
 const ContentLibrary = lazy(() => import("./pages/ContentLibrary"));
+const HiringPipeline = lazy(() => import("./pages/HiringPipeline"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -164,7 +165,8 @@ const App = () => (
                         <Route path="/dashboard/hierarchy" element={<ProtectedRoute requireAdmin><TeamHierarchy /></ProtectedRoute>} />
                         <Route path="/dashboard/pipeline-simple" element={<AgentPipelineSimple />} />
                          <Route path="/dashboard/instagram-automation" element={<ProtectedRoute requireAdmin><InstagramAutomation /></ProtectedRoute>} />
-                         <Route path="/dashboard/content" element={<ContentLibrary />} />
+                          <Route path="/dashboard/content" element={<ContentLibrary />} />
+                          <Route path="/dashboard/hiring-pipeline" element={<ProtectedRoute requireAdmin><HiringPipeline /></ProtectedRoute>} />
                   </Route>
 
                   {/* Legacy redirect */}

@@ -100,6 +100,9 @@ interface Application {
   assigned_agent_id: string | null;
   lead_score: number | null;
   ai_score_tier: string | null;
+  is_duplicate?: boolean;
+  is_ghosted?: boolean;
+  first_contact_attempt_at?: string | null;
 }
 
 const statusColors: Record<string, string> = {
@@ -1060,8 +1063,10 @@ export default function DashboardApplicants() {
                               )}>
                                 <Users className={cn("h-4 w-4", isTerminated ? "text-destructive" : "text-primary")} />
                               </div>
-                              <div className="min-w-0">
+                              <div className="min-w-0 flex items-center gap-1.5">
                                 <p className="font-medium truncate">{app.first_name} {app.last_name}</p>
+                                {app.is_duplicate && <Badge variant="outline" className="text-[9px] bg-amber-500/20 text-amber-400 border-amber-500/30 px-1">DUP</Badge>}
+                                {app.is_ghosted && <Badge variant="outline" className="text-[9px] bg-red-500/20 text-red-400 border-red-500/30 px-1">👻</Badge>}
                               </div>
                             </div>
                           </td>

@@ -594,7 +594,7 @@ export default function ContentLibrary() {
           <div className="glass-card p-4 space-y-2">
             <p className="text-sm font-medium flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Uploading {uploadQueue.length} files...
+              Uploading & scanning {uploadQueue.length} files... 🔍
             </p>
             {uploadQueue.map(f => (
               <div key={f.name} className="space-y-1">

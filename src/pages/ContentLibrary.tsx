@@ -107,6 +107,25 @@ export default function ContentLibrary() {
     dropboxBackup: false,
   });
 
+  // iCloud shared album link
+  const [icloudLink, setIcloudLink] = useState("");
+  const [icloudLinkLoading, setIcloudLinkLoading] = useState(false);
+
+  // Load iCloud link from system_settings
+  useEffect(() => {
+    supabase.from("system_settings").select("value").eq("key", "icloud_photos_link").maybeSingle()
+      .then(({ data }) => { if (data?.value) setIcloudLink(data.value); });
+  }, []);
+
+  const saveIcloudLink = async () => {
+    setIcloudLinkLoading(true);
+    try {
+      await supabase.from("system_settings").upsert({ key: "icloud_photos_link", value: icloudLink }, { onConflict: "key" });
+      toast.success("iCloud link saved");
+    } catch { toast.error("Failed to save"); }
+    setIcloudLinkLoading(false);
+  };
+
   /* ─── Fetch Content ─── */
   const fetchContent = useCallback(async () => {
     setLoading(true);

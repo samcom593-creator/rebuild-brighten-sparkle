@@ -110,10 +110,17 @@ export default function ContentLibrary() {
   /* ─── Fetch Content ─── */
   const fetchContent = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    let query = supabase
       .from("content_library")
       .select("*")
       .order("created_at", { ascending: false });
+
+    // Non-admins never receive sensitive content from DB
+    if (!isAdmin) {
+      query = query.eq("is_sensitive", false);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error(error);
@@ -136,7 +143,7 @@ export default function ContentLibrary() {
       setContent(items);
     }
     setLoading(false);
-  }, []);
+  }, [isAdmin]);
 
   const fetchAgents = useCallback(async () => {
     const { data: agentsData } = await supabase

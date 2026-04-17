@@ -7,6 +7,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AgentTaskManager } from "@/components/dashboard/AgentTaskManager";
+import { CourseProgressPanel } from "@/components/admin/CourseProgressPanel";
 import {
   BarChart3,
   ListTodo,
@@ -15,6 +16,7 @@ import {
   Clock,
   Send,
   Eye,
+  GraduationCap,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -167,6 +169,9 @@ export default function AgentManagement() {
           <TabsTrigger value="tasks">
             <ListTodo className="h-4 w-4 mr-1" /> Task Board
           </TabsTrigger>
+          <TabsTrigger value="course">
+            <GraduationCap className="h-4 w-4 mr-1" /> Course
+          </TabsTrigger>
           <TabsTrigger value="alerts">
             <AlertTriangle className="h-4 w-4 mr-1" /> Alerts
             {alerts.length > 0 && (
@@ -241,6 +246,10 @@ export default function AgentManagement() {
 
         <TabsContent value="tasks" className="mt-4">
           <AgentTaskManager />
+        </TabsContent>
+
+        <TabsContent value="course" className="mt-4">
+          <CourseProgressPanel />
         </TabsContent>
 
         <TabsContent value="alerts" className="mt-4 space-y-2">

@@ -1,120 +1,55 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-import { corsHeaders } from "../_shared/cors.ts";
-import { logFunctionError } from "../_shared/audit.ts";
-import { checkRateLimit, RateLimitError } from "../_shared/rateLimit.ts";
+import { createHandler } from "../_shared/handler.ts";
+import { jsonResponse } from "../_shared/cors.ts";
+import { parseBody, v } from "../_shared/validate.ts";
 
-interface ValidateRequest {
-  token: string;
-}
+const BodySchema = v.object({
+  token: v.string({ required: true, min: 32, max: 256 }),
+});
 
-Deno.serve(async (req) => {
-  // Handle CORS preflight
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+Deno.serve(
+  createHandler(
+    {
+      functionName: "validate-signup-token",
+      // Brute-force protection on token guessing
+      rateLimit: { maxRequests: 30, windowSeconds: 60 },
+    },
+    async (req) => {
+      if (req.method !== "POST") {
+        return jsonResponse({ error: "Method not allowed" }, 405);
+      }
 
-  try {
-    // Only allow POST
-    if (req.method !== "POST") {
-      return new Response(
-        JSON.stringify({ error: "Method not allowed" }),
-        { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      const { token } = await parseBody(req, BodySchema);
+
+      const supabaseAdmin = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+        { auth: { persistSession: false } }
       );
-    }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      const { data, error } = await supabaseAdmin
+        .from("manager_signup_tokens")
+        .select("id, manager_name, manager_email, is_used, expires_at")
+        .eq("token", token)
+        .maybeSingle();
 
-    if (!supabaseUrl || !supabaseServiceKey) {
-      console.error("Missing environment variables");
-      return new Response(
-        JSON.stringify({ error: "Server configuration error" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+      if (error || !data) {
+        return jsonResponse({ valid: false, error: "Token not found" });
+      }
 
-    // Parse request body
-    const body: ValidateRequest = await req.json();
-    const { token } = body;
+      if (data.is_used) {
+        return jsonResponse({ valid: false, error: "This invite link has already been used" });
+      }
 
-    if (!token || typeof token !== "string" || token.length < 32) {
-      return new Response(
-        JSON.stringify({ 
-          valid: false, 
-          error: "Invalid token format" 
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+      if (new Date(data.expires_at) < new Date()) {
+        return jsonResponse({ valid: false, error: "This invite link has expired" });
+      }
 
-    // Create admin client with service role
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Rate limit: 30 token validation attempts/min per IP (brute-force protection)
-    const ip = req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for") ?? "unknown";
-    await checkRateLimit(supabaseAdmin, { bucketKey: `validate-token:${ip}`, maxRequests: 30, windowSeconds: 60 });
-
-    // Validate the token server-side
-    const { data, error } = await supabaseAdmin
-      .from("manager_signup_tokens")
-      .select("id, manager_name, manager_email, is_used, expires_at")
-      .eq("token", token)
-      .single();
-
-    if (error || !data) {
-      return new Response(
-        JSON.stringify({ 
-          valid: false, 
-          error: "Token not found" 
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    if (data.is_used) {
-      return new Response(
-        JSON.stringify({ 
-          valid: false, 
-          error: "This invite link has already been used" 
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    if (new Date(data.expires_at) < new Date()) {
-      return new Response(
-        JSON.stringify({ 
-          valid: false, 
-          error: "This invite link has expired" 
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Token is valid - return safe data only
-    return new Response(
-      JSON.stringify({
+      return jsonResponse({
         valid: true,
         manager_name: data.manager_name,
         manager_email: data.manager_email,
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  } catch (error) {
-    console.error("Validation error:", error);
-    if (error instanceof RateLimitError) {
-      return new Response(
-        JSON.stringify({ valid: false, error: "Too many attempts. Please wait a minute." }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      });
     }
-    try {
-      const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-      await logFunctionError(sb, "validate-signup-token", error);
-    } catch (_) { /* swallow */ }
-    return new Response(
-      JSON.stringify({ valid: false, error: "Validation failed" }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-});
+  )
+);

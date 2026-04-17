@@ -11,6 +11,32 @@ import { useState } from "react";
 export function ReferralTrackingCard() {
   const [copied, setCopied] = useState(false);
 
+  // Fetch current user's agent ref_slug
+  const { data: refSlug } = useQuery({
+    queryKey: ["my-ref-slug"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      const { data: agent } = await supabase
+        .from("agents")
+        .select("id, ref_slug, display_name")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!agent) return null;
+      let slug = (agent as any).ref_slug as string | null;
+      if (!slug) {
+        const base = ((agent as any).display_name || "agent")
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-|-$)/g, "") || "agent";
+        slug = `${base}-${(agent as any).id.slice(0, 6)}`;
+        await supabase.from("agents").update({ ref_slug: slug }).eq("id", (agent as any).id);
+      }
+      return slug;
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+
   const { data, isLoading } = useQuery({
     queryKey: ["referral-stats"],
     queryFn: async () => {
@@ -55,13 +81,20 @@ export function ReferralTrackingCard() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const referralLink = "https://rebuild-brighten-sparkle.lovable.app/apply?ref=team";
+  const referralLink = refSlug
+    ? `https://apex-financial.org/apply?ref=${refSlug}`
+    : "https://apex-financial.org/apply";
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(referralLink);
-    setCopied(true);
-    toast.success("Referral link copied!");
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(referralLink);
+      setCopied(true);
+      toast.success("Referral link copied!");
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("[ReferralTrackingCard] copy failed:", err);
+      toast.error(`Copy failed. Your URL: ${referralLink}`);
+    }
   };
 
   if (isLoading) {

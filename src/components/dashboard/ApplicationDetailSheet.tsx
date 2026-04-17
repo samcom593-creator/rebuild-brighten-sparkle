@@ -19,6 +19,8 @@ import { cn } from "@/lib/utils";
 import { logLeadActivity } from "@/lib/logLeadActivity";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { LicensingDelegateSection } from "./LicensingDelegateSection";
+import { CallTranscriptsSection } from "./CallTranscriptsSection";
 
 interface ApplicationDetailSheetProps {
   open: boolean;

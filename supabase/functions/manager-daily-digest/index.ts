@@ -420,14 +420,16 @@ serve(async (req) => {
     }
 
     console.log(`Sent ${sentCount} manager daily digests`);
+    await logRun(supabase, "success", sentCount, Date.now() - startedAt);
 
     return new Response(
       JSON.stringify({ success: true, sent: sentCount }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: unknown) {
-    console.error("Error in manager-daily-digest:", error);
+    console.error("Error in manager-daily-digest:", error, error instanceof Error ? error.stack : "");
     const message = error instanceof Error ? error.message : "Unknown error";
+    await logRun(supabase, "error", 0, Date.now() - startedAt, message);
     return new Response(
       JSON.stringify({ error: message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

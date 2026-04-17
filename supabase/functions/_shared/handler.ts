@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders, errorResponse, jsonResponse } from "./cors.ts";
 import { AuthContext, AuthError, requireAuth } from "./auth.ts";
 import { RateLimitError, checkRateLimit } from "./rateLimit.ts";
+import { ValidationError } from "./validate.ts";
 import { logFunctionError } from "./audit.ts";
 
 export interface HandlerOptions {

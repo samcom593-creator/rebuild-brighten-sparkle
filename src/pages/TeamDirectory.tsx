@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useMountedRef } from "@/hooks/useMountedRef";
 import { AgentAvatar, getAvatarUrl } from "@/components/ui/AgentAvatar";
 import { startOfWeek, endOfWeek } from "date-fns";
 import {

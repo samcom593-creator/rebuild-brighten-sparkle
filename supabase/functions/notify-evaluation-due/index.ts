@@ -1,6 +1,7 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { createHandler } from "../_shared/handler.ts";
+import { jsonResponse } from "../_shared/cors.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -8,20 +9,16 @@ const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const ADMIN_EMAIL = "sam@apex-financial.org";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-const handler = async (req: Request): Promise<Response> => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  try {
-    const supabase = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false },
-    });
+Deno.serve(
+  createHandler(
+    {
+      functionName: "notify-evaluation-due",
+      rateLimit: { maxRequests: 20, windowSeconds: 60 },
+    },
+    async () => {
+      const supabase = createClient(supabaseUrl, serviceRoleKey, {
+        auth: { persistSession: false },
+      });
 
     const now = new Date();
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -36,13 +33,10 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (error) throw error;
 
-    if (!dueAgents?.length) {
-      console.log("No agents due for evaluation");
-      return new Response(
-        JSON.stringify({ success: true, notified: 0 }),
-        { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
+      if (!dueAgents?.length) {
+        console.log("No agents due for evaluation");
+        return jsonResponse({ success: true, notified: 0 });
+      }
 
     let notifiedCount = 0;
 
@@ -170,19 +164,8 @@ const handler = async (req: Request): Promise<Response> => {
       notifiedCount++;
     }
 
-    console.log(`Evaluation due notifications sent for ${notifiedCount} agents, CC: ${ADMIN_EMAIL}`);
-
-    return new Response(
-      JSON.stringify({ success: true, notified: notifiedCount }),
-      { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-    );
-  } catch (error: any) {
-    console.error("Error in notify-evaluation-due:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-    );
-  }
-};
-
-serve(handler);
+      console.log(`Evaluation due notifications sent for ${notifiedCount} agents, CC: ${ADMIN_EMAIL}`);
+      return jsonResponse({ success: true, notified: notifiedCount });
+    }
+  )
+);

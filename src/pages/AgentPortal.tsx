@@ -35,6 +35,7 @@ import { YearPerformanceCard } from "@/components/dashboard/YearPerformanceCard"
 import { AccountLinkForm } from "@/components/dashboard/AccountLinkForm";
 import { AgentRankBadge } from "@/components/dashboard/AgentRankBadge";
 import { AgentTaskManager } from "@/components/dashboard/AgentTaskManager";
+import { AgentReferralLinkCard } from "@/components/agent/AgentReferralLinkCard";
 
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
 import { supabase } from "@/integrations/supabase/client";

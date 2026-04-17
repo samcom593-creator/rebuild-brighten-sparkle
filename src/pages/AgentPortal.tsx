@@ -649,32 +649,7 @@ export default function AgentPortal() {
         {/* Referral & Sharing Section */}
         <section className="grid gap-4">
           {/* Agent Referral Link */}
-          <GlassCard className="p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <UserPlus className="h-5 w-5 text-primary shrink-0" />
-              <h3 className="font-semibold">Refer a Friend</h3>
-            </div>
-            <p className="text-xs text-muted-foreground mb-3">
-              Know someone who'd be great at this? Share your referral link!
-            </p>
-            <div className="flex items-center gap-2">
-              <code className="flex-1 text-xs bg-muted p-2 rounded truncate min-w-0">
-                {typeof window !== 'undefined' ? `${window.location.origin}/apply?ref=${profile?.full_name?.replace(/\s+/g, '-').toLowerCase() || 'agent'}` : ''}
-              </code>
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="shrink-0"
-                onClick={() => {
-                  const refLink = `${window.location.origin}/apply?ref=${profile?.full_name?.replace(/\s+/g, '-').toLowerCase() || 'agent'}`;
-                  navigator.clipboard.writeText(refLink);
-                  toast.success("Referral link copied!"); playSound("click");
-                }}
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
-            </div>
-          </GlassCard>
+          <AgentReferralLinkCard agentId={agentId} />
 
           {/* Direct Portal Link */}
           <GlassCard className="p-4 overflow-hidden">

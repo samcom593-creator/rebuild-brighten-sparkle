@@ -144,12 +144,13 @@ serve(async (req) => {
     results.push({ service: "Production Logging", status: "degraded", responseTime: 0, message: String(err) });
   }
 
-  // ─── CHECK 6: Cron jobs running ───
+  // ─── CHECK 6: Cron jobs running (with auto-restart if >26h) ───
   try {
     const cronChecks = [
-      { name: "Manager Daily Digest" },
-      { name: "Licensing Sequences" },
-      { name: "Daily Churn Check" },
+      { name: "Manager Daily Digest", endpoint: "manager-daily-digest" },
+      { name: "Licensing Sequences", endpoint: "send-licensing-sequence" },
+      { name: "Daily Churn Check", endpoint: "check-churn-risk" },
+      { name: "Numbers Reminder", endpoint: "send-numbers-reminder" },
     ];
     for (const check of cronChecks) {
       const { data } = await supabase
@@ -161,15 +162,38 @@ serve(async (req) => {
         .maybeSingle();
 
       const hoursAgo = data ? (Date.now() - new Date(data.ran_at).getTime()) / 3600000 : 999;
+
+      // AUTO-RESTART: if cron hasn't run in 26+ hours, fire it now
+      let restarted = false;
+      if (hoursAgo > 26) {
+        try {
+          await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/${check.endpoint}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            },
+            body: "{}",
+          });
+          restarted = true;
+          autoFixed.push(`Auto-restarted ${check.name} after ${Math.round(hoursAgo)}hr gap`);
+        } catch (restartErr) {
+          console.error(`Auto-restart failed for ${check.endpoint}:`, restartErr);
+        }
+      }
+
       results.push({
         service: `Cron: ${check.name}`,
-        status: hoursAgo > 26 ? "down" : data?.status === "error" ? "degraded" : "healthy",
+        status: hoursAgo > 26 ? (restarted ? "degraded" : "down") : data?.status === "error" ? "degraded" : "healthy",
         responseTime: 0,
-        message: hoursAgo > 26 ? `Not run in ${Math.round(hoursAgo)}hrs` : `Last ran ${Math.round(hoursAgo)}hrs ago`,
-        requiresAction: hoursAgo > 26,
-        actionRequired: hoursAgo > 26 ? "Check cron schedule" : undefined,
+        message: hoursAgo > 26
+          ? restarted ? `Was down ${Math.round(hoursAgo)}hrs — auto-restarted` : `Not run in ${Math.round(hoursAgo)}hrs`
+          : `Last ran ${Math.round(hoursAgo)}hrs ago`,
+        autoFixed: restarted,
+        requiresAction: hoursAgo > 26 && !restarted,
+        actionRequired: hoursAgo > 26 && !restarted ? "Check cron schedule" : undefined,
       });
-      if (hoursAgo > 26) criticalIssues.push(`Cron job not running: ${check.name}`);
+      if (hoursAgo > 26 && !restarted) criticalIssues.push(`Cron job not running: ${check.name}`);
     }
   } catch (err) {
     results.push({ service: "Cron Jobs", status: "degraded", responseTime: 0, message: String(err) });

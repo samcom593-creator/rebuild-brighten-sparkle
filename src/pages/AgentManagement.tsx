@@ -248,6 +248,10 @@ export default function AgentManagement() {
           <AgentTaskManager />
         </TabsContent>
 
+        <TabsContent value="course" className="mt-4">
+          <CourseProgressPanel />
+        </TabsContent>
+
         <TabsContent value="alerts" className="mt-4 space-y-2">
           {alerts.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">

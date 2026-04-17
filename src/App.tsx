@@ -2,7 +2,8 @@ import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "@/shared/api/queryClient";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ScrollToTop } from "@/components/ui/scroll-to-top";
@@ -74,16 +75,7 @@ const HiringPipeline = lazy(() => import("./pages/HiringPipeline"));
 const AgentManagement = lazy(() => import("./pages/AgentManagement"));
 const SystemHealth = lazy(() => import("./pages/SystemHealth"));
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 120000, // 2 minutes - data stays "fresh"
-      gcTime: 300000,    // 5 minutes - keep in cache
-      refetchOnWindowFocus: false, // Prevent focus-triggered refetches
-      retry: 1,
-    },
-  },
-});
+// queryClient now lives in src/shared/api/queryClient.ts (smart retry + global error logging)
 
 // Page loading fallback
 function PageLoader() {

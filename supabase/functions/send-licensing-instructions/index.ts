@@ -1,15 +1,11 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders } from "../_shared/cors.ts";
+import { logFunctionError, writeAudit } from "../_shared/audit.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const ADMIN_EMAIL = "sam@apex-financial.org";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
 
 interface LicensingEmailRequest {
   email: string;
@@ -392,12 +388,26 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
+    try {
+      const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      await writeAudit(sb, {
+        action: "licensing.instructions_sent",
+        entityType: "agent",
+        entityId: agentId ?? email,
+        afterData: { licenseStatus, channels, ccList },
+      });
+    } catch (_) { /* swallow */ }
+
     return new Response(JSON.stringify({ success: true, data: emailResponse, channels }), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });
   } catch (error: any) {
     console.error("[send-licensing-instructions] Error:", error);
+    try {
+      const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      await logFunctionError(sb, "send-licensing-instructions", error);
+    } catch (_) { /* swallow */ }
     return new Response(
       JSON.stringify({ success: false, error: error.message }),
       {

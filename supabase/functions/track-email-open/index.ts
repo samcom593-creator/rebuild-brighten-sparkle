@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logFunctionError } from "../_shared/audit.ts";
 
 // 1x1 transparent GIF
 const TRACKING_PIXEL = new Uint8Array([
@@ -60,6 +61,10 @@ const handler = async (req: Request): Promise<Response> => {
     }
   } catch (error) {
     console.error("Error tracking email open:", error);
+    try {
+      const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      await logFunctionError(sb, "track-email-open", error, { trackingId });
+    } catch (_) { /* swallow */ }
   }
 
   // Always return the tracking pixel regardless of errors

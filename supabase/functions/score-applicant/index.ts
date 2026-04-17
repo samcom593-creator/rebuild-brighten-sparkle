@@ -1,9 +1,7 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+import { createHandler } from "../_shared/handler.ts";
+import { jsonResponse, errorResponse } from "../_shared/cors.ts";
+import { parseBody, v } from "../_shared/validate.ts";
 
 interface ScoringFactors {
   hasLicense: boolean;
@@ -73,103 +71,103 @@ function calculateScore(factors: ScoringFactors): { score: number; tier: string 
   return { score, tier };
 }
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+const BodySchema = v.object({
+  applicationId: v.string({ max: 64 }),
+  scoreAll: v.any(),
+});
 
-  try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, serviceKey);
+Deno.serve(
+  createHandler(
+    {
+      functionName: "score-applicant",
+      // 30 calls per minute is generous for both per-app and bulk scoring
+      rateLimit: { maxRequests: 30, windowSeconds: 60 },
+    },
+    async (req) => {
+      const body = await parseBody(req, BodySchema);
+      const applicationId = body.applicationId;
+      const scoreAll = !!body.scoreAll;
 
-    const { applicationId, scoreAll } = await req.json();
+      const supabase = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+        { auth: { persistSession: false } }
+      );
 
-    if (scoreAll) {
-      // Score all unscored applications
-      const { data: apps, error } = await supabase
-        .from("applications")
-        .select("id, license_status, has_insurance_experience, years_experience, previous_production, desired_income, phone, instagram_handle, city, state, license_progress, referral_source")
-        .is("ai_score_tier", null)
-        .is("terminated_at", null)
-        .limit(500);
-
-      if (error) throw error;
-
-      let updated = 0;
-      for (const app of apps || []) {
-        const { score, tier } = calculateScore({
-          hasLicense: app.license_status === "licensed",
-          hasExperience: !!app.has_insurance_experience,
-          yearsExperience: app.years_experience || 0,
-          hasPhone: !!app.phone,
-          hasInstagram: !!app.instagram_handle,
-          previousProduction: app.previous_production || 0,
-          desiredIncome: app.desired_income || 0,
-          hasCity: !!app.city,
-          hasState: !!app.state,
-          licenseProgress: app.license_progress,
-          referralSource: app.referral_source,
-        });
-
-        await supabase
+      if (scoreAll) {
+        const { data: apps, error } = await supabase
           .from("applications")
-          .update({ lead_score: score, ai_score_tier: tier })
-          .eq("id", app.id);
-        updated++;
+          .select(
+            "id, license_status, has_insurance_experience, years_experience, previous_production, desired_income, phone, instagram_handle, city, state, license_progress, referral_source"
+          )
+          .is("ai_score_tier", null)
+          .is("terminated_at", null)
+          .limit(500);
+
+        if (error) throw error;
+
+        let updated = 0;
+        for (const app of apps || []) {
+          const { score, tier } = calculateScore({
+            hasLicense: app.license_status === "licensed",
+            hasExperience: !!app.has_insurance_experience,
+            yearsExperience: app.years_experience || 0,
+            hasPhone: !!app.phone,
+            hasInstagram: !!app.instagram_handle,
+            previousProduction: app.previous_production || 0,
+            desiredIncome: app.desired_income || 0,
+            hasCity: !!app.city,
+            hasState: !!app.state,
+            licenseProgress: app.license_progress,
+            referralSource: app.referral_source,
+          });
+
+          await supabase
+            .from("applications")
+            .update({ lead_score: score, ai_score_tier: tier })
+            .eq("id", app.id);
+          updated++;
+        }
+
+        return jsonResponse({ success: true, updated });
       }
 
-      return new Response(JSON.stringify({ success: true, updated }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      if (!applicationId) {
+        return errorResponse("applicationId required", 400, "MISSING_APP_ID");
+      }
+
+      const { data: app, error } = await supabase
+        .from("applications")
+        .select(
+          "id, license_status, has_insurance_experience, years_experience, previous_production, desired_income, phone, instagram_handle, city, state, license_progress, referral_source"
+        )
+        .eq("id", applicationId)
+        .maybeSingle();
+
+      if (error || !app) {
+        return errorResponse("Application not found", 404, "NOT_FOUND");
+      }
+
+      const { score, tier } = calculateScore({
+        hasLicense: app.license_status === "licensed",
+        hasExperience: !!app.has_insurance_experience,
+        yearsExperience: app.years_experience || 0,
+        hasPhone: !!app.phone,
+        hasInstagram: !!app.instagram_handle,
+        previousProduction: app.previous_production || 0,
+        desiredIncome: app.desired_income || 0,
+        hasCity: !!app.city,
+        hasState: !!app.state,
+        licenseProgress: app.license_progress,
+        referralSource: app.referral_source,
       });
+
+      await supabase
+        .from("applications")
+        .update({ lead_score: score, ai_score_tier: tier })
+        .eq("id", applicationId);
+
+      return jsonResponse({ success: true, score, tier });
     }
-
-    if (!applicationId) {
-      return new Response(JSON.stringify({ error: "applicationId required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const { data: app, error } = await supabase
-      .from("applications")
-      .select("id, license_status, has_insurance_experience, years_experience, previous_production, desired_income, phone, instagram_handle, city, state, license_progress, referral_source")
-      .eq("id", applicationId)
-      .single();
-
-    if (error || !app) {
-      return new Response(JSON.stringify({ error: "Application not found" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const { score, tier } = calculateScore({
-      hasLicense: app.license_status === "licensed",
-      hasExperience: !!app.has_insurance_experience,
-      yearsExperience: app.years_experience || 0,
-      hasPhone: !!app.phone,
-      hasInstagram: !!app.instagram_handle,
-      previousProduction: app.previous_production || 0,
-      desiredIncome: app.desired_income || 0,
-      hasCity: !!app.city,
-      hasState: !!app.state,
-      licenseProgress: app.license_progress,
-      referralSource: app.referral_source,
-    });
-
-    await supabase
-      .from("applications")
-      .update({ lead_score: score, ai_score_tier: tier })
-      .eq("id", applicationId);
-
-    return new Response(JSON.stringify({ success: true, score, tier }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-});
+  )
+);

@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
+import { createClient } from "npm:@supabase/supabase-js@2.50.0";
 import { createHandler } from "../_shared/handler.ts";
 import { jsonResponse } from "../_shared/cors.ts";
 

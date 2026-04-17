@@ -45,6 +45,31 @@ button, [role="button"] { font-family: 'Syne', system-ui, sans-serif; font-weigh
 
     --radius: 0.75rem;
 
+    /* === Design Tokens v2 — spacing / motion / elevation === */
+    /* Spacing scale (rem) — use as var(--space-3) etc. */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-12: 3rem;
+    --space-16: 4rem;
+
+    /* Motion scale */
+    --motion-fast: 120ms;
+    --motion-base: 200ms;
+    --motion-slow: 320ms;
+    --motion-shimmer: 1.6s;
+    --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --ease-emphasized: cubic-bezier(0.3, 0, 0.1, 1);
+
+    /* Elevation scale (light mode) */
+    --elev-1: 0 1px 2px hsl(220 15% 25% / 0.04);
+    --elev-2: 0 2px 8px hsl(220 15% 25% / 0.06), 0 1px 2px hsl(220 15% 25% / 0.04);
+    --elev-3: 0 8px 24px hsl(220 15% 25% / 0.08), 0 2px 6px hsl(220 15% 25% / 0.04);
+    --elev-4: 0 16px 48px hsl(220 15% 25% / 0.12), 0 4px 12px hsl(220 15% 25% / 0.06);
+
     /* Custom APEX tokens - softer for light mode */
     --apex-navy: 222 47% 6%;
     --apex-navy-light: 222 40% 12%;
@@ -173,6 +198,28 @@ button, [role="button"] { font-family: 'Syne', system-ui, sans-serif; font-weigh
     --glass-bg: hsl(222 47% 5% / 0.8);
     --glass-border: hsl(222 30% 20% / 0.5);
     --glass-shadow: 0 8px 32px hsl(222 47% 2% / 0.6);
+
+    /* Elevation scale (dark mode — deeper shadows) */
+    --elev-1: 0 1px 2px hsl(222 47% 0% / 0.4);
+    --elev-2: 0 2px 8px hsl(222 47% 0% / 0.5), 0 1px 2px hsl(222 47% 0% / 0.4);
+    --elev-3: 0 8px 24px hsl(222 47% 0% / 0.55), 0 2px 6px hsl(222 47% 0% / 0.45);
+    --elev-4: 0 16px 48px hsl(222 47% 0% / 0.6), 0 4px 12px hsl(222 47% 0% / 0.5);
+  }
+}
+
+/* Shimmer keyframes (used by Skeleton primitive) */
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Global motion preference: respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

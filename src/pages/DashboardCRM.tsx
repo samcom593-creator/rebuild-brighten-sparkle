@@ -1546,6 +1546,19 @@ export default function DashboardCRM() {
       {editLoginAgent && (
         <AgentQuickEditDialog open={!!editLoginAgent} onOpenChange={(o) => !o && setEditLoginAgent(null)} agentId={editLoginAgent.id} currentName={editLoginAgent.name} onUpdate={fetchAgents} />
       )}
+      <BulkComposeDrawer
+        open={composeOpen}
+        onOpenChange={setComposeOpen}
+        defaultChannel={composeChannel}
+        title={`Message ${selectedAgents.size} agent${selectedAgents.size === 1 ? "" : "s"}`}
+        recipients={filteredAgents
+          .filter((a) => selectedAgents.has(a.id))
+          .map((a) => ({ id: a.id, name: a.name, email: a.email, phone: a.phone }))}
+        onSent={() => {
+          setComposeOpen(false);
+          setSelectedAgents(new Set());
+        }}
+      />
     </>
   );
 }

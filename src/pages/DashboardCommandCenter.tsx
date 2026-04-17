@@ -88,6 +88,22 @@ const ONBOARDING_STAGES = [
   { value: "evaluated", label: "Evaluated" },
 ] as const;
 
+// Catalog of hideable cards on this page (key → friendly label for the restore menu)
+const HIDEABLE_CARDS: Record<string, string> = {
+  "admin.stat.totalAlp": "Stat: Total ALP",
+  "admin.stat.activeAgents": "Stat: Active Agents",
+  "admin.stat.producers": "Stat: Producers",
+  "admin.stat.needsAttention": "Stat: Needs Attention",
+  "admin.stat.totalDeals": "Stat: Total Deals",
+  "admin.ai-summary": "AI Summary Report",
+  "admin.recognition-queue": "Recognition Queue",
+  "admin.course-progress": "Course Progress",
+  "admin.activity-feed": "Activity Feed",
+  "admin.team-hierarchy": "Team Hierarchy Manager",
+  "admin.manager-invites": "Manager Invites",
+  "admin.bulk-lead-assignment": "Bulk Lead Assignment",
+};
+
 interface AgentWithStats {
   id: string;
   profileId: string | null;
@@ -629,21 +645,24 @@ export default function DashboardCommandCenter() {
             </CardContent>
           </Card>
 
-          <Card 
-            className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
-          >
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-emerald-500/10">
-                  <TrendingUp className="h-5 w-5 text-emerald-500" />
+          <HideableCard cardKey="admin.stat.totalDeals" label="Total Deals">
+            <Card
+              className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+              onClick={() => setStatPopup({ type: "totalDeals", open: true })}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-emerald-500/10">
+                    <TrendingUp className="h-5 w-5 text-emerald-500" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Deals</p>
+                    <p className="text-2xl font-bold">{summaryStats.totalDeals}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Deals</p>
-                  <p className="text-2xl font-bold">{summaryStats.totalDeals}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </HideableCard>
         </div>
 
         {/* Time Period Toggle + Custom Date Range */}

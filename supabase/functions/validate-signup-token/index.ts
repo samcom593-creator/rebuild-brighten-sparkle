@@ -50,6 +50,10 @@ Deno.serve(async (req) => {
     // Create admin client with service role
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Rate limit: 30 token validation attempts/min per IP (brute-force protection)
+    const ip = req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for") ?? "unknown";
+    await checkRateLimit(supabaseAdmin, { bucketKey: `validate-token:${ip}`, maxRequests: 30, windowSeconds: 60 });
+
     // Validate the token server-side
     const { data, error } = await supabaseAdmin
       .from("manager_signup_tokens")

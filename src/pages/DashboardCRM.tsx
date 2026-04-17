@@ -1193,12 +1193,47 @@ export default function DashboardCRM() {
         </div>
 
         {bulkMode && (
-          <BulkStageActions
-            agents={filteredAgents.map(a => ({ id: a.id, name: a.name, onboardingStage: a.onboardingStage }))}
-            selectedIds={selectedAgents} onSelectionChange={setSelectedAgents}
-            onBulkUpdate={() => { fetchAgents(); setSelectedAgents(new Set()); }}
-            isEnabled={bulkMode} onToggle={() => { setBulkMode(false); setSelectedAgents(new Set()); }}
-          />
+          <div className="space-y-2">
+            <BulkStageActions
+              agents={filteredAgents.map(a => ({ id: a.id, name: a.name, onboardingStage: a.onboardingStage }))}
+              selectedIds={selectedAgents} onSelectionChange={setSelectedAgents}
+              onBulkUpdate={() => { fetchAgents(); setSelectedAgents(new Set()); }}
+              isEnabled={bulkMode} onToggle={() => { setBulkMode(false); setSelectedAgents(new Set()); }}
+            />
+            {selectedAgents.size > 0 && (
+              <div className="flex flex-wrap items-center gap-2 px-3 py-2 rounded-lg border border-border/60 bg-muted/30">
+                <span className="text-xs text-muted-foreground mr-1">More actions:</span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 h-8"
+                  onClick={() => { setComposeChannel("email"); setComposeOpen(true); }}
+                >
+                  <Mail className="h-3.5 w-3.5" /> Compose Email
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 h-8"
+                  onClick={() => { setComposeChannel("sms"); setComposeOpen(true); }}
+                >
+                  <Send className="h-3.5 w-3.5" /> Compose SMS
+                </Button>
+                {ENABLE_BULK_DELETE && isAdmin && (
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="gap-1.5 h-8 ml-auto"
+                    disabled={bulkDeleting}
+                    onClick={handleBulkDelete}
+                  >
+                    <UserX className="h-3.5 w-3.5" />
+                    {bulkDeleting ? "Deactivating…" : `Deactivate (${selectedAgents.size})`}
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
         )}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">

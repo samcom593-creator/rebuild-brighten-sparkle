@@ -70,6 +70,9 @@ export function createHandler(opts: HandlerOptions, fn: HandlerFn): (req: Reques
       if (err instanceof RateLimitError) {
         return errorResponse("Too many requests", 429, "RATE_LIMIT", { retryAfter: err.retryAfter });
       }
+      if (err instanceof ValidationError) {
+        return errorResponse(err.message, 400, "VALIDATION_ERROR", { field: err.field });
+      }
       await logFunctionError(serviceClient, opts.functionName, err, undefined, auth?.userId, requestId);
       const message = err instanceof Error ? err.message : "Internal server error";
       return errorResponse(message, 500, "INTERNAL_ERROR");

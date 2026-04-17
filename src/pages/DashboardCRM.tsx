@@ -35,6 +35,41 @@ import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetail
 import { AgentQuickEditDialog } from "@/components/dashboard/AgentQuickEditDialog";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { differenceInDays } from "date-fns";
+import { BulkComposeDrawer } from "@/components/dashboard/BulkComposeDrawer";
+
+/** Feature flag: hide destructive bulk delete by default. Set VITE_ENABLE_CRM_BULK_DELETE=true to enable. */
+const ENABLE_BULK_DELETE = import.meta.env.VITE_ENABLE_CRM_BULK_DELETE === "true";
+
+/** localStorage key for persisted CRM filter state */
+const CRM_FILTERS_STORAGE_KEY = "crm.filters.v1";
+
+interface PersistedCrmFilters {
+  searchTerm: string;
+  managerFilter: string;
+  licenseFilter: string;
+  aiScoreFilter: string;
+  showDeactivated: boolean;
+  showInactive: boolean;
+}
+
+const DEFAULT_FILTERS: PersistedCrmFilters = {
+  searchTerm: "",
+  managerFilter: "all",
+  licenseFilter: "all",
+  aiScoreFilter: "all",
+  showDeactivated: false,
+  showInactive: false,
+};
+
+function loadPersistedFilters(): PersistedCrmFilters {
+  try {
+    const raw = localStorage.getItem(CRM_FILTERS_STORAGE_KEY);
+    if (!raw) return { ...DEFAULT_FILTERS };
+    return { ...DEFAULT_FILTERS, ...JSON.parse(raw) };
+  } catch {
+    return { ...DEFAULT_FILTERS };
+  }
+}
 
 type AttendanceStatus = Database["public"]["Enums"]["attendance_status"];
 type PerformanceTier = Database["public"]["Enums"]["performance_tier"];

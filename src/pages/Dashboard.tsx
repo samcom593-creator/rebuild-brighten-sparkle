@@ -438,7 +438,11 @@ export default function Dashboard() {
       <StatCardDrilldown activeModal={activeDrilldown} onClose={() => setActiveDrilldown(null)} />
 
       {/* Insight Data Cards */}
-      {(isAdmin || isManager) && <DashboardInsightCards />}
+      {(isAdmin || isManager) && (
+        <HideableCard cardKey="dashboard.insight-cards" label={HIDEABLE_CARDS["dashboard.insight-cards"]}>
+          <DashboardInsightCards />
+        </HideableCard>
+      )}
 
       {/* ====== ALERT BANNERS (Admin) ====== */}
       {isAdmin && staleAgents && staleAgents.length > 0 && (
@@ -511,10 +515,16 @@ export default function Dashboard() {
       )}
 
       {/* ====== FOMO APPLICATIONS BANNER ====== */}
-      <TotalApplicationsBanner />
+      <HideableCard cardKey="dashboard.applications-banner" label={HIDEABLE_CARDS["dashboard.applications-banner"]}>
+        <TotalApplicationsBanner />
+      </HideableCard>
 
       {/* ====== CHURN RISK BANNER ====== */}
-      {(isAdmin || isManager) && <ChurnRiskBanner />}
+      {(isAdmin || isManager) && (
+        <HideableCard cardKey="dashboard.churn-risk" label={HIDEABLE_CARDS["dashboard.churn-risk"]}>
+          <ChurnRiskBanner />
+        </HideableCard>
+      )}
 
       {/* ====== DATE PERIOD SELECTOR ====== */}
       <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
@@ -559,28 +569,28 @@ export default function Dashboard() {
       </div>
 
       {/* ====== 1. PRODUCTION SNAPSHOT (Top Priority - Role-based) ====== */}
-      <div className="mb-6">
+      <HideableCard cardKey="dashboard.team-snapshot" label={HIDEABLE_CARDS["dashboard.team-snapshot"]} className="mb-6 block">
         <TeamSnapshotCard />
-      </div>
+      </HideableCard>
 
       {/* ====== Activation Risk Banner (Admin/Manager) ====== */}
       {(isAdmin || isManager) && (
-        <div className="mb-6">
+        <HideableCard cardKey="dashboard.activation-risk" label={HIDEABLE_CARDS["dashboard.activation-risk"]} className="mb-6 block">
           <ActivationRiskBanner />
-        </div>
+        </HideableCard>
       )}
 
       {/* ====== TEAM OVERVIEW (Admin Only) ====== */}
       {isAdmin && (
-        <div className="mb-6">
+        <HideableCard cardKey="dashboard.team-overview" label={HIDEABLE_CARDS["dashboard.team-overview"]} className="mb-6 block">
           <TeamOverviewDashboard />
-        </div>
+        </HideableCard>
       )}
 
 
       {/* ====== 1.5. WEEKLY PERFORMANCE BREAKDOWN (Managers/Admins) ====== */}
       {(isManager || isAdmin) && (
-        <div className="mb-6">
+        <HideableCard cardKey="dashboard.performance-breakdown" label={HIDEABLE_CARDS["dashboard.performance-breakdown"]} className="mb-6 block">
           {isMobile ? (
             <Collapsible>
               <CollapsibleTrigger asChild>
@@ -597,7 +607,7 @@ export default function Dashboard() {
           ) : (
             <TeamPerformanceBreakdown />
           )}
-        </div>
+        </HideableCard>
       )}
 
       {/* ====== 2. MAIN CONTENT LAYOUT ====== */}
@@ -692,13 +702,13 @@ export default function Dashboard() {
 
       {/* ====== 4. TEAM VIEW (Managers & Admins) ====== */}
       {(isManager || isAdmin) && (
-        <div className="mb-6">
+        <HideableCard cardKey="dashboard.team-view" label={HIDEABLE_CARDS["dashboard.team-view"]} className="mb-6 block">
           <div className="flex items-center gap-2 mb-4">
             <Users className="h-4 w-4 text-primary" />
             <h3 className="text-base font-bold">Your Team</h3>
           </div>
           <ManagerTeamView />
-        </div>
+        </HideableCard>
       )}
 
       {/* ====== 5. PERSONAL STATS (Agents only - NOT Admin) ====== */}
@@ -751,13 +761,15 @@ export default function Dashboard() {
 
       {/* ====== ACHIEVEMENT FEED + TASKS + AWARDS (Admin/Manager) ====== */}
       {(isAdmin || isManager) && (
-        <div className="mb-6 space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <TeamTasksWidget />
-            <AwardFeedLive />
+        <HideableCard cardKey="dashboard.achievement-feed" label={HIDEABLE_CARDS["dashboard.achievement-feed"]} className="mb-6 block">
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <TeamTasksWidget />
+              <AwardFeedLive />
+            </div>
+            <AchievementFeed />
           </div>
-          <AchievementFeed />
-        </div>
+        </HideableCard>
       )}
     </>
   );

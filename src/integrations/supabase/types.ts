@@ -864,6 +864,258 @@ export type Database = {
         }
         Relationships: []
       }
+      analytics_events_2026_02: {
+        Row: {
+          created_at: string
+          event_category: string | null
+          event_name: string
+          id: string
+          properties: Json | null
+          session_id: string | null
+          url: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_category?: string | null
+          event_name: string
+          id?: string
+          properties?: Json | null
+          session_id?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_category?: string | null
+          event_name?: string
+          id?: string
+          properties?: Json | null
+          session_id?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      analytics_events_2026_03: {
+        Row: {
+          created_at: string
+          event_category: string | null
+          event_name: string
+          id: string
+          properties: Json | null
+          session_id: string | null
+          url: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_category?: string | null
+          event_name: string
+          id?: string
+          properties?: Json | null
+          session_id?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_category?: string | null
+          event_name?: string
+          id?: string
+          properties?: Json | null
+          session_id?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      analytics_events_2026_04: {
+        Row: {
+          created_at: string
+          event_category: string | null
+          event_name: string
+          id: string
+          properties: Json | null
+          session_id: string | null
+          url: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_category?: string | null
+          event_name: string
+          id?: string
+          properties?: Json | null
+          session_id?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_category?: string | null
+          event_name?: string
+          id?: string
+          properties?: Json | null
+          session_id?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      analytics_events_2026_05: {
+        Row: {
+          created_at: string
+          event_category: string | null
+          event_name: string
+          id: string
+          properties: Json | null
+          session_id: string | null
+          url: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_category?: string | null
+          event_name: string
+          id?: string
+          properties?: Json | null
+          session_id?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_category?: string | null
+          event_name?: string
+          id?: string
+          properties?: Json | null
+          session_id?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      analytics_events_2026_06: {
+        Row: {
+          created_at: string
+          event_category: string | null
+          event_name: string
+          id: string
+          properties: Json | null
+          session_id: string | null
+          url: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_category?: string | null
+          event_name: string
+          id?: string
+          properties?: Json | null
+          session_id?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_category?: string | null
+          event_name?: string
+          id?: string
+          properties?: Json | null
+          session_id?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      analytics_events_2026_07: {
+        Row: {
+          created_at: string
+          event_category: string | null
+          event_name: string
+          id: string
+          properties: Json | null
+          session_id: string | null
+          url: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_category?: string | null
+          event_name: string
+          id?: string
+          properties?: Json | null
+          session_id?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_category?: string | null
+          event_name?: string
+          id?: string
+          properties?: Json | null
+          session_id?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      analytics_events_default: {
+        Row: {
+          created_at: string
+          event_category: string | null
+          event_name: string
+          id: string
+          properties: Json | null
+          session_id: string | null
+          url: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_category?: string | null
+          event_name: string
+          id?: string
+          properties?: Json | null
+          session_id?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_category?: string | null
+          event_name?: string
+          id?: string
+          properties?: Json | null
+          session_id?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       announcements: {
         Row: {
           content: string
@@ -1209,6 +1461,321 @@ export type Database = {
         ]
       }
       audit_log: {
+        Row: {
+          action: string
+          actor_role: string | null
+          actor_user_id: string | null
+          after_data: Json | null
+          before_data: Json | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          ip_address: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_role?: string | null
+          actor_user_id?: string | null
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_role?: string | null
+          actor_user_id?: string | null
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2026_02: {
+        Row: {
+          action: string
+          actor_role: string | null
+          actor_user_id: string | null
+          after_data: Json | null
+          before_data: Json | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          ip_address: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_role?: string | null
+          actor_user_id?: string | null
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_role?: string | null
+          actor_user_id?: string | null
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2026_03: {
+        Row: {
+          action: string
+          actor_role: string | null
+          actor_user_id: string | null
+          after_data: Json | null
+          before_data: Json | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          ip_address: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_role?: string | null
+          actor_user_id?: string | null
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_role?: string | null
+          actor_user_id?: string | null
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2026_04: {
+        Row: {
+          action: string
+          actor_role: string | null
+          actor_user_id: string | null
+          after_data: Json | null
+          before_data: Json | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          ip_address: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_role?: string | null
+          actor_user_id?: string | null
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_role?: string | null
+          actor_user_id?: string | null
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2026_05: {
+        Row: {
+          action: string
+          actor_role: string | null
+          actor_user_id: string | null
+          after_data: Json | null
+          before_data: Json | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          ip_address: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_role?: string | null
+          actor_user_id?: string | null
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_role?: string | null
+          actor_user_id?: string | null
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2026_06: {
+        Row: {
+          action: string
+          actor_role: string | null
+          actor_user_id: string | null
+          after_data: Json | null
+          before_data: Json | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          ip_address: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_role?: string | null
+          actor_user_id?: string | null
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_role?: string | null
+          actor_user_id?: string | null
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_2026_07: {
+        Row: {
+          action: string
+          actor_role: string | null
+          actor_user_id: string | null
+          after_data: Json | null
+          before_data: Json | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          ip_address: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_role?: string | null
+          actor_user_id?: string | null
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_role?: string | null
+          actor_user_id?: string | null
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
+      audit_log_default: {
         Row: {
           action: string
           actor_role: string | null
@@ -3996,6 +4563,7 @@ export type Database = {
       cleanup_expired_idempotency_keys: { Args: never; Returns: undefined }
       current_agent_id: { Args: never; Returns: string }
       current_manager_agent_id: { Args: never; Returns: string }
+      ensure_next_month_partitions: { Args: never; Returns: undefined }
       get_agent_id: { Args: { _user_id: string }; Returns: string }
       get_agent_production_stats: {
         Args: { end_date: string; start_date: string }

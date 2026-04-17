@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef, createContext, useContext, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
+import { useIdleSession } from "@/shared/auth/useIdleSession";
+import { SessionWarningDialog } from "@/shared/auth/SessionWarningDialog";
 
 interface Profile {
   id: string;
@@ -238,11 +240,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// Lazy import keeps useAuth.ts free of UI deps for tooling that imports the hook.
 function IdleSessionGate({ enabled, onTimeout }: { enabled: boolean; onTimeout: () => Promise<{ error: any }> }) {
-  const { useIdleSession } = require("@/shared/auth/useIdleSession") as typeof import("@/shared/auth/useIdleSession");
-  const { SessionWarningDialog } = require("@/shared/auth/SessionWarningDialog") as typeof import("@/shared/auth/SessionWarningDialog");
-
   const { showWarning, secondsRemaining, extendSession } = useIdleSession({
     enabled,
     onTimeout: async () => {

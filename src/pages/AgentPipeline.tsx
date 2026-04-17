@@ -38,6 +38,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { KanbanBoard, KanbanApplication, KanbanStage, KANBAN_COLUMNS, getColumnForStage } from "@/components/pipeline/KanbanBoard";
 import { InterviewScheduler } from "@/components/dashboard/InterviewScheduler";
+import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
 import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressSelector";
 import { LastContactedBadge } from "@/components/dashboard/LastContactedBadge";
 import { QuickEmailMenu } from "@/components/dashboard/QuickEmailMenu";

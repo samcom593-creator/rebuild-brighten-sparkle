@@ -19,6 +19,8 @@ import { cn } from "@/lib/utils";
 import { logLeadActivity } from "@/lib/logLeadActivity";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { LicensingDelegateSection } from "./LicensingDelegateSection";
+import { CallTranscriptsSection } from "./CallTranscriptsSection";
 
 interface ApplicationDetailSheetProps {
   open: boolean;
@@ -470,7 +472,22 @@ export function ApplicationDetailSheet({
                 )}
               </div>
 
-              {/* ═══ ACCOUNT MANAGEMENT (Admin only) ═══ */}
+              {/* ═══ LICENSING DELEGATES ═══ */}
+              {!isEditing && (
+                <>
+                  <Separator />
+                  <LicensingDelegateSection applicationId={app.id} />
+                </>
+              )}
+
+              {/* ═══ CALL TRANSCRIPTS (AI) ═══ */}
+              {!isEditing && (
+                <>
+                  <Separator />
+                  <CallTranscriptsSection applicationId={app.id} agentId={linkedAgentId} />
+                </>
+              )}
+
               {isAdmin && linkedAgent && !isEditing && (
                 <>
                   <Separator />

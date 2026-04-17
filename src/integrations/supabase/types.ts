@@ -1339,6 +1339,75 @@ export type Database = {
         }
         Relationships: []
       }
+      call_transcripts: {
+        Row: {
+          agent_id: string | null
+          ai_model: string | null
+          application_id: string | null
+          audio_url: string | null
+          call_outcome: string | null
+          created_at: string
+          duration_seconds: number | null
+          error_message: string | null
+          id: string
+          recorded_by: string | null
+          sentiment: string | null
+          status: string
+          summary: string | null
+          transcript: string | null
+          updated_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          ai_model?: string | null
+          application_id?: string | null
+          audio_url?: string | null
+          call_outcome?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          error_message?: string | null
+          id?: string
+          recorded_by?: string | null
+          sentiment?: string | null
+          status?: string
+          summary?: string | null
+          transcript?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          ai_model?: string | null
+          application_id?: string | null
+          audio_url?: string | null
+          call_outcome?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          error_message?: string | null
+          id?: string
+          recorded_by?: string | null
+          sentiment?: string | null
+          status?: string
+          summary?: string | null
+          transcript?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_transcripts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "call_transcripts_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       churn_risk_alerts: {
         Row: {
           action_taken: string | null
@@ -2152,6 +2221,53 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      licensing_delegates: {
+        Row: {
+          application_id: string
+          assigned_at: string
+          assigned_by: string | null
+          created_at: string
+          delegate_name: string | null
+          delegate_user_id: string
+          id: string
+          is_active: boolean
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          application_id: string
+          assigned_at?: string
+          assigned_by?: string | null
+          created_at?: string
+          delegate_name?: string | null
+          delegate_user_id: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          application_id?: string
+          assigned_at?: string
+          assigned_by?: string | null
+          created_at?: string
+          delegate_name?: string | null
+          delegate_user_id?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "licensing_delegates_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
             referencedColumns: ["id"]
           },
         ]

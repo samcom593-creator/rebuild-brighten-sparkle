@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +7,7 @@ import { formatDistanceToNow } from "date-fns";
 import { Activity, ArrowUpRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useMemo } from "react";
+import { useRealtimeTable } from "@/shared/realtime/useRealtimeTable";
 
 interface AuditEntry {
   id: string;
@@ -51,8 +52,11 @@ export function ActivityFeedWidget({
   title = "Recent Activity",
   entityType,
 }: ActivityFeedWidgetProps) {
+  const queryClient = useQueryClient();
+  const queryKey = ["audit_log", "feed", limit, entityType ?? "all"];
+
   const { data, isLoading } = useQuery({
-    queryKey: ["audit_log", "feed", limit, entityType ?? "all"],
+    queryKey,
     queryFn: async () => {
       let q = supabase
         .from("audit_log")
@@ -81,9 +85,22 @@ export function ActivityFeedWidget({
         actor_name: r.actor_user_id ? profileMap.get(r.actor_user_id) ?? null : null,
       }));
     },
-    refetchInterval: 30_000,
-    staleTime: 15_000,
+    refetchInterval: 60_000, // backstop poll; realtime push handles most updates
+    staleTime: 30_000,
   });
+
+  // Realtime: invalidate on any new audit row so the feed updates instantly.
+  useRealtimeTable(
+    {
+      table: "audit_log",
+      event: "INSERT",
+      filter: entityType ? `entity_type=eq.${entityType}` : undefined,
+      channelSuffix: `feed-${entityType ?? "all"}`,
+    },
+    () => {
+      queryClient.invalidateQueries({ queryKey });
+    }
+  );
 
   const items = useMemo(() => data ?? [], [data]);
 

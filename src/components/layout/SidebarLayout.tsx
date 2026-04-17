@@ -1,5 +1,6 @@
 import { ReactNode, useState, useEffect, useRef, memo } from "react";
-import { Menu, Crown, Plus } from "lucide-react";
+import { Menu, Crown, Plus, Search } from "lucide-react";
+import { useUIStore } from "@/shared/store/uiStore";
 import { Link, useLocation } from "react-router-dom";
 import { GlobalSidebar } from "./GlobalSidebar";
 import { PhonePromptBanner } from "@/components/dashboard/PhonePromptBanner";
@@ -59,6 +60,14 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
             <span className="text-lg font-bold gradient-text">APEX</span>
           </Link>
           <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Open command palette (⌘K)"
+              onClick={() => useUIStore.getState().setCommandPaletteOpen(true)}
+            >
+              <Search className="h-5 w-5" />
+            </Button>
             {!authLoading && (isAdmin || isManager) && (
               <AddAgentModal
                 trigger={

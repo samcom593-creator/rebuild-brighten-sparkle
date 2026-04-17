@@ -828,6 +828,42 @@ export type Database = {
           },
         ]
       }
+      analytics_events: {
+        Row: {
+          created_at: string
+          event_category: string | null
+          event_name: string
+          id: string
+          properties: Json | null
+          session_id: string | null
+          url: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_category?: string | null
+          event_name: string
+          id?: string
+          properties?: Json | null
+          session_id?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_category?: string | null
+          event_name?: string
+          id?: string
+          properties?: Json | null
+          session_id?: string | null
+          url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       announcements: {
         Row: {
           content: string
@@ -1171,6 +1207,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      audit_log: {
+        Row: {
+          action: string
+          actor_role: string | null
+          actor_user_id: string | null
+          after_data: Json | null
+          before_data: Json | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          ip_address: string | null
+          request_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_role?: string | null
+          actor_user_id?: string | null
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_role?: string | null
+          actor_user_id?: string | null
+          after_data?: Json | null
+          before_data?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          ip_address?: string | null
+          request_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
       }
       automation_runs: {
         Row: {
@@ -1939,6 +2020,39 @@ export type Database = {
           },
         ]
       }
+      function_errors: {
+        Row: {
+          created_at: string
+          error_message: string
+          error_stack: string | null
+          function_name: string
+          id: string
+          request_id: string | null
+          request_payload: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message: string
+          error_stack?: string | null
+          function_name: string
+          id?: string
+          request_id?: string | null
+          request_payload?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string
+          error_stack?: string | null
+          function_name?: string
+          id?: string
+          request_id?: string | null
+          request_payload?: Json | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       health_check_log: {
         Row: {
           check_name: string
@@ -1963,6 +2077,39 @@ export type Database = {
           id?: string
           response_time_ms?: number
           status?: string
+        }
+        Relationships: []
+      }
+      idempotency_keys: {
+        Row: {
+          created_at: string
+          expires_at: string
+          function_name: string
+          id: string
+          idempotency_key: string
+          response_payload: Json | null
+          status_code: number | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          function_name: string
+          id?: string
+          idempotency_key: string
+          response_payload?: Json | null
+          status_code?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          function_name?: string
+          id?: string
+          idempotency_key?: string
+          response_payload?: Json | null
+          status_code?: number | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -3492,6 +3639,30 @@ export type Database = {
           },
         ]
       }
+      rate_limits: {
+        Row: {
+          bucket_key: string
+          created_at: string
+          id: string
+          request_count: number
+          window_start: string
+        }
+        Insert: {
+          bucket_key: string
+          created_at?: string
+          id?: string
+          request_count?: number
+          window_start: string
+        }
+        Update: {
+          bucket_key?: string
+          created_at?: string
+          id?: string
+          request_count?: number
+          window_start?: string
+        }
+        Relationships: []
+      }
       recurring_calendar_blocks: {
         Row: {
           category: string
@@ -3790,6 +3961,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      check_rate_limit: {
+        Args: {
+          _bucket_key: string
+          _max_requests: number
+          _window_seconds: number
+        }
+        Returns: boolean
+      }
+      cleanup_expired_idempotency_keys: { Args: never; Returns: undefined }
       current_agent_id: { Args: never; Returns: string }
       current_manager_agent_id: { Args: never; Returns: string }
       get_agent_id: { Args: { _user_id: string }; Returns: string }

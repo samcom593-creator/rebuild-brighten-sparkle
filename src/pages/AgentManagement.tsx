@@ -169,6 +169,9 @@ export default function AgentManagement() {
           <TabsTrigger value="tasks">
             <ListTodo className="h-4 w-4 mr-1" /> Task Board
           </TabsTrigger>
+          <TabsTrigger value="course">
+            <GraduationCap className="h-4 w-4 mr-1" /> Course
+          </TabsTrigger>
           <TabsTrigger value="alerts">
             <AlertTriangle className="h-4 w-4 mr-1" /> Alerts
             {alerts.length > 0 && (

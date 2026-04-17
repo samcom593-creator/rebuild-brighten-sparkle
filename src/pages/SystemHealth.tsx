@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { FunctionErrorsPanel, AuditLogPanel } from "@/components/system-health/ObservabilityPanels";
 
 interface HealthResult {
   service: string;
@@ -270,6 +271,12 @@ export default function SystemHealth() {
           </div>
         </GlassCard>
       )}
+
+      {/* New observability panels — populated as functions migrate to createHandler() */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <FunctionErrorsPanel />
+        <AuditLogPanel />
+      </div>
     </div>
   );
 }

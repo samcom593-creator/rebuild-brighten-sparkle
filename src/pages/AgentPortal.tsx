@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useMountedRef } from "@/hooks/useMountedRef";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays } from "date-fns";
@@ -131,6 +132,8 @@ export default function AgentPortal() {
     motivationalQuotes[Math.floor(Math.random() * motivationalQuotes.length)]
   );
 
+  const mounted = useMountedRef();
+
   useEffect(() => {
     // Don't redirect if not logged in - we'll show a login prompt instead
     if (user && !authLoading) {
@@ -206,6 +209,7 @@ export default function AgentPortal() {
         ? Math.round((totalDeals / totalPresentations) * 100) 
         : 0;
       
+      if (!mounted.current) return;
       setTeamTodayStats({ totalALP, totalDeals, totalPresentations, avgCloseRate });
     } catch (error) {
       console.error("Error fetching team stats:", error);
@@ -232,6 +236,7 @@ export default function AgentPortal() {
           .eq("user_id", user!.id)
           .maybeSingle();
         
+        if (!mounted.current) return;
         if (agent) {
           setAgentId(agent.id);
           // Fetch today's production for their agent record (PST timezone)
@@ -242,7 +247,7 @@ export default function AgentPortal() {
             .eq("agent_id", agent.id)
           .eq("production_date", today)
           .maybeSingle();
-          if (production) setTodayProduction(production);
+          if (mounted.current && production) setTodayProduction(production);
           
           // Fetch team stats for managers/admins
           await fetchTeamStats(agent.id);
@@ -251,7 +256,7 @@ export default function AgentPortal() {
           await fetchTeamStats(null);
         }
         // No redirect - admins can view even without agent record
-        setLoading(false);
+        if (mounted.current) setLoading(false);
         return;
       }
 
@@ -300,13 +305,13 @@ export default function AgentPortal() {
         .eq("production_date", today)
         .maybeSingle();
 
-      if (production) {
+      if (mounted.current && production) {
         setTodayProduction(production);
       }
     } catch (error) {
       console.error("Error fetching agent data:", error);
     } finally {
-      setLoading(false);
+      if (mounted.current) setLoading(false);
     }
   };
 

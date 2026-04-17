@@ -64,6 +64,8 @@ import { TerminatedAgentLeadsPanel } from "@/components/dashboard/TerminatedAgen
 import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
 import { AbandonedLeadsPanel } from "@/components/dashboard/AbandonedLeadsPanel";
 import { AllLeadsPanel } from "@/components/dashboard/AllLeadsPanel";
+import { HideableCard } from "@/components/dashboard/HideableCard";
+import { HiddenCardsManager } from "@/components/dashboard/HiddenCardsManager";
 
 import { AISummaryReport } from "@/components/admin/AISummaryReport";
 import { DateRangePicker, type DateRange } from "@/components/ui/date-range-picker";
@@ -85,6 +87,22 @@ const ONBOARDING_STAGES = [
   { value: "in_field_training", label: "In Field Training" },
   { value: "evaluated", label: "Evaluated" },
 ] as const;
+
+// Catalog of hideable cards on this page (key → friendly label for the restore menu)
+const HIDEABLE_CARDS: Record<string, string> = {
+  "admin.stat.totalAlp": "Stat: Total ALP",
+  "admin.stat.activeAgents": "Stat: Active Agents",
+  "admin.stat.producers": "Stat: Producers",
+  "admin.stat.needsAttention": "Stat: Needs Attention",
+  "admin.stat.totalDeals": "Stat: Total Deals",
+  "admin.ai-summary": "AI Summary Report",
+  "admin.recognition-queue": "Recognition Queue",
+  "admin.course-progress": "Course Progress",
+  "admin.activity-feed": "Activity Feed",
+  "admin.team-hierarchy": "Team Hierarchy Manager",
+  "admin.manager-invites": "Manager Invites",
+  "admin.bulk-lead-assignment": "Bulk Lead Assignment",
+};
 
 interface AgentWithStats {
   id: string;
@@ -535,6 +553,7 @@ export default function DashboardCommandCenter() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <HiddenCardsManager catalog={HIDEABLE_CARDS} />
             <LeadImporter />
             <LeadExporter />
             <AddAgentModal onAgentAdded={() => refetch()} />
@@ -559,89 +578,100 @@ export default function DashboardCommandCenter() {
 
         {/* Summary Stats - Clickable */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 card-hover-lift">
-          <Card 
-            className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
-            onClick={() => setStatPopup({ type: "totalAlp", open: true })}
-          >
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <DollarSign className="h-5 w-5 text-primary" />
+          <HideableCard cardKey="admin.stat.totalAlp" label="Total ALP">
+            <Card
+              className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+              onClick={() => setStatPopup({ type: "totalAlp", open: true })}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <DollarSign className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Total ALP</p>
+                    <p className="text-2xl font-bold">${Math.round(summaryStats.totalAlp).toLocaleString()}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Total ALP</p>
-                  <p className="text-2xl font-bold">${Math.round(summaryStats.totalAlp).toLocaleString()}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </HideableCard>
 
-          <Card 
-            className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
-            onClick={() => setStatPopup({ type: "activeAgents", open: true })}
-          >
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <Users className="h-5 w-5 text-primary" />
+          <HideableCard cardKey="admin.stat.activeAgents" label="Active Agents">
+            <Card
+              className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+              onClick={() => setStatPopup({ type: "activeAgents", open: true })}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Users className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Active Agents</p>
+                    <p className="text-2xl font-bold">{summaryStats.activeAgents}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Active Agents</p>
-                  <p className="text-2xl font-bold">{summaryStats.activeAgents}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </HideableCard>
 
-          <Card 
-            className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
-            onClick={() => setStatPopup({ type: "producers", open: true })}
-          >
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <TrendingUp className="h-5 w-5 text-primary" />
+          <HideableCard cardKey="admin.stat.producers" label="Producers">
+            <Card
+              className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+              onClick={() => setStatPopup({ type: "producers", open: true })}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <TrendingUp className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Producers</p>
+                    <p className="text-2xl font-bold">{summaryStats.producers}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Producers</p>
-                  <p className="text-2xl font-bold">{summaryStats.producers}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </HideableCard>
 
-          <Card 
-            className="stat-card border-destructive/20 cursor-pointer hover:ring-2 hover:ring-destructive/50 transition-all"
-            onClick={() => setStatPopup({ type: "needsAttention", open: true })}
-          >
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-destructive/10">
-                  <AlertTriangle className="h-5 w-5 text-destructive" />
+          <HideableCard cardKey="admin.stat.needsAttention" label="Needs Attention">
+            <Card
+              className="stat-card border-destructive/20 cursor-pointer hover:ring-2 hover:ring-destructive/50 transition-all"
+              onClick={() => setStatPopup({ type: "needsAttention", open: true })}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-destructive/10">
+                    <AlertTriangle className="h-5 w-5 text-destructive" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Needs Attention</p>
+                    <p className="text-2xl font-bold text-destructive">{summaryStats.weakPerformers}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Needs Attention</p>
-                  <p className="text-2xl font-bold text-destructive">{summaryStats.weakPerformers}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </HideableCard>
 
-          <Card 
-            className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
-          >
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-emerald-500/10">
-                  <TrendingUp className="h-5 w-5 text-emerald-500" />
+          <HideableCard cardKey="admin.stat.totalDeals" label="Total Deals">
+            <Card
+              className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+              onClick={() => setStatPopup({ type: "totalDeals", open: true })}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-emerald-500/10">
+                    <TrendingUp className="h-5 w-5 text-emerald-500" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Deals</p>
+                    <p className="text-2xl font-bold">{summaryStats.totalDeals}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Deals</p>
-                  <p className="text-2xl font-bold">{summaryStats.totalDeals}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </HideableCard>
         </div>
 
         {/* Time Period Toggle + Custom Date Range */}
@@ -944,21 +974,35 @@ export default function DashboardCommandCenter() {
 
           {/* Recognition Queue & Course Progress - 30% on desktop */}
           <div className="w-full lg:w-[30%] space-y-6">
-            <AISummaryReport />
+            <HideableCard cardKey="admin.ai-summary" label="AI Summary Report">
+              <AISummaryReport />
+            </HideableCard>
 
-            <RecognitionQueue />
-            <CourseProgressPanel />
-            <ActivityFeedWidget limit={12} />
+            <HideableCard cardKey="admin.recognition-queue" label="Recognition Queue">
+              <RecognitionQueue />
+            </HideableCard>
+            <HideableCard cardKey="admin.course-progress" label="Course Progress">
+              <CourseProgressPanel />
+            </HideableCard>
+            <HideableCard cardKey="admin.activity-feed" label="Activity Feed">
+              <ActivityFeedWidget limit={12} />
+            </HideableCard>
           </div>
         </div>
 
         {/* Team Hierarchy Manager */}
-        <TeamHierarchyManager />
+        <HideableCard cardKey="admin.team-hierarchy" label="Team Hierarchy Manager">
+          <TeamHierarchyManager />
+        </HideableCard>
 
         {/* Manager Invites + Bulk Assignment (side by side) */}
         <div className="grid lg:grid-cols-2 gap-4">
-          <AdminManagerInvites />
-          <BulkLeadAssignment />
+          <HideableCard cardKey="admin.manager-invites" label="Manager Invites">
+            <AdminManagerInvites />
+          </HideableCard>
+          <HideableCard cardKey="admin.bulk-lead-assignment" label="Bulk Lead Assignment">
+            <BulkLeadAssignment />
+          </HideableCard>
         </div>
 
         {/* Collapsible: Invite Links + Lead Reassignment */}

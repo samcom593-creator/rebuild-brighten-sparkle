@@ -7,6 +7,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AgentTaskManager } from "@/components/dashboard/AgentTaskManager";
+import { CourseProgressPanel } from "@/components/admin/CourseProgressPanel";
 import {
   BarChart3,
   ListTodo,
@@ -15,6 +16,7 @@ import {
   Clock,
   Send,
   Eye,
+  GraduationCap,
 } from "lucide-react";
 import { toast } from "sonner";
 

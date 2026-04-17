@@ -56,6 +56,7 @@ export default function AgentPipeline() {
   const navigate = useNavigate();
   const { user, isAdmin, isManager } = useAuth();
   const { playSound } = useSoundEffects();
+  const mounted = useMountedRef();
   const [applications, setApplications] = useState<Application[]>([]);
   const [agentId, setAgentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);

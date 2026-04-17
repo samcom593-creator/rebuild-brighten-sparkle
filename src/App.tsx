@@ -11,8 +11,12 @@ import { SidebarProvider } from "@/hooks/useSidebarState";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AuthenticatedShell } from "@/components/layout/AuthenticatedShell";
+import { RouteTelemetry } from "@/shared/telemetry/useRouteTelemetry";
+import { initTelemetry } from "@/shared/telemetry/track";
 
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+
+initTelemetry();
 
 // Eagerly loaded pages (critical path)
 import Index from "./pages/Index";
@@ -100,6 +104,7 @@ const App = () => (
             <Sonner />
             <BrowserRouter>
               <ScrollToTop />
+              <RouteTelemetry />
               <Suspense fallback={<PageLoader />}>
                 <Routes>
                   {/* Public routes */}

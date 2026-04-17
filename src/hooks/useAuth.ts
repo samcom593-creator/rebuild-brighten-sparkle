@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { useIdleSession } from "@/shared/auth/useIdleSession";
 import { SessionWarningDialog } from "@/shared/auth/SessionWarningDialog";
+import { setTelemetryUser, track } from "@/shared/telemetry/track";
 
 interface Profile {
   id: string;
@@ -137,7 +138,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!isMounted) return;
-        
+
+        // Telemetry: capture lifecycle events (excluding noisy refreshes)
+        if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "PASSWORD_RECOVERY" || event === "USER_UPDATED") {
+          setTelemetryUser(session?.user?.id ?? null);
+          track(`auth.${event.toLowerCase()}`, "auth", { hasSession: !!session });
+        }
+
         // Handle password recovery event - redirect to settings
         if (event === "PASSWORD_RECOVERY") {
           console.log("PASSWORD_RECOVERY event detected, redirecting to settings");

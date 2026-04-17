@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -94,6 +94,10 @@ const steps = [
 
 export default function Apply() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const refSlug = searchParams.get("ref");
+  const [referrerId, setReferrerId] = useState<string | null>(null);
+  const [referrerName, setReferrerName] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [vslWatchPercent, setVslWatchPercent] = useState(0);
@@ -305,6 +309,37 @@ export default function Apply() {
     fetchActiveManagers();
   }, []);
 
+  // Capture ?ref= referral slug from URL — look up referring agent and pre-fill
+  useEffect(() => {
+    if (!refSlug) return;
+    console.log("[Apply] Detected ?ref= slug:", refSlug);
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("agents")
+          .select("id, profile_id, profiles:profile_id(full_name)")
+          .eq("ref_slug", refSlug)
+          .maybeSingle();
+        if (error) {
+          console.error("[Apply] ref_slug lookup error:", error);
+          return;
+        }
+        if (data) {
+          const name = (data as any)?.profiles?.full_name || "";
+          console.log("[Apply] Referred by", data.id, name);
+          setReferrerId(data.id);
+          setReferrerName(name);
+          setSelectedReferrer(data.id);
+          toast.success(name ? `Referred by ${name} — we'll credit them.` : "Referral link detected!");
+        } else {
+          console.warn("[Apply] No agent found for ref slug:", refSlug);
+        }
+      } catch (err) {
+        console.error("[Apply] ref_slug fetch failed:", err);
+      }
+    })();
+  }, [refSlug]);
+
   const validateStep = async (step: number): Promise<boolean> => {
     let fieldsToValidate: (keyof ApplicationFormData)[] = [];
     
@@ -394,6 +429,10 @@ export default function Apply() {
 
             availability: data.availability,
             referralSource: data.referralSource,
+
+            // Referral attribution from ?ref= URL slug
+            recruiterId: referrerId,
+            selectedReferralAgentId: referrerId,
 
             // Consent data for Twilio compliance
             consent: {
@@ -952,7 +991,11 @@ export default function Apply() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label>How did you hear about us?</Label>
+                        <Label>
+                          {referrerName
+                            ? `Referred by ${referrerName} ✓`
+                            : "Who referred you? (optional)"}
+                        </Label>
                         <Select value={watch("referralSource") || undefined} onValueChange={(value) => setValue("referralSource", value, { shouldValidate: true })}>
                           <SelectTrigger className="bg-input">
                             <SelectValue placeholder="Select source" />

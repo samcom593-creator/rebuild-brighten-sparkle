@@ -481,6 +481,14 @@ export function ApplicationDetailSheet({
                 </>
               )}
 
+              {/* ═══ AI INSIGHTS ═══ */}
+              {!isEditing && (
+                <>
+                  <Separator />
+                  <LeadInsightsPanel applicationId={app.id} />
+                </>
+              )}
+
               {/* ═══ CALL TRANSCRIPTS (AI) ═══ */}
               {!isEditing && (
                 <>

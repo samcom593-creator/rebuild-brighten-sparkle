@@ -46,7 +46,7 @@ const ROUTES = [
   { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard, group: "Navigate" },
   { label: "Command Center", path: "/dashboard/command-center", icon: Activity, group: "Navigate" },
   { label: "Team Directory", path: "/dashboard/team", icon: Users, group: "Navigate" },
-  { label: "Hiring Pipeline", path: "/dashboard/hiring", icon: UserPlus, group: "Navigate" },
+  { label: "Hiring Pipeline", path: "/dashboard/hiring-pipeline", icon: UserPlus, group: "Navigate" },
   { label: "Agent CRM", path: "/dashboard/crm", icon: Briefcase, group: "Navigate" },
   { label: "Lead Center", path: "/dashboard/lead-center", icon: TrendingUp, group: "Navigate" },
   { label: "Aged Leads", path: "/dashboard/aged-leads", icon: Users, group: "Navigate" },

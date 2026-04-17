@@ -860,6 +860,35 @@ export default function DashboardCRM() {
     setAgents(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
   };
 
+  /**
+   * Bulk delete (flag-gated). Marks selected agents as deactivated rather than
+   * hard-deleting rows — preserves referential integrity for production data,
+   * applications, etc. Hidden behind VITE_ENABLE_CRM_BULK_DELETE.
+   */
+  const handleBulkDelete = async () => {
+    if (!ENABLE_BULK_DELETE) return;
+    if (selectedAgents.size === 0) return;
+    const count = selectedAgents.size;
+    if (!confirm(`Deactivate ${count} selected agent${count === 1 ? "" : "s"}? This can be reversed by toggling "Deactivated" on.`)) return;
+    setBulkDeleting(true);
+    try {
+      const ids = Array.from(selectedAgents);
+      const { error } = await supabase
+        .from("agents")
+        .update({ is_deactivated: true })
+        .in("id", ids);
+      if (error) throw error;
+      toast.success(`Deactivated ${count} agent${count === 1 ? "" : "s"}`);
+      setSelectedAgents(new Set());
+      fetchAgents();
+    } catch (err) {
+      console.error("Bulk delete failed:", err);
+      toast.error("Failed to deactivate selected agents");
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
+
   const activeAgents = agents.filter(a => {
     if (!showDeactivated && a.isDeactivated) return false;
     if (!showInactive && a.isInactive) return false;

@@ -213,7 +213,7 @@ export function ALPCalculator({ onALPChange, onDealsChange, initialALP = 0, init
                   : "bg-background text-muted-foreground hover:bg-muted"
               )}
             >
-              AOP
+              ALP
             </button>
           </div>
 

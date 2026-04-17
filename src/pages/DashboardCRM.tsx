@@ -35,6 +35,41 @@ import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetail
 import { AgentQuickEditDialog } from "@/components/dashboard/AgentQuickEditDialog";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { differenceInDays } from "date-fns";
+import { BulkComposeDrawer } from "@/components/dashboard/BulkComposeDrawer";
+
+/** Feature flag: hide destructive bulk delete by default. Set VITE_ENABLE_CRM_BULK_DELETE=true to enable. */
+const ENABLE_BULK_DELETE = import.meta.env.VITE_ENABLE_CRM_BULK_DELETE === "true";
+
+/** localStorage key for persisted CRM filter state */
+const CRM_FILTERS_STORAGE_KEY = "crm.filters.v1";
+
+interface PersistedCrmFilters {
+  searchTerm: string;
+  managerFilter: string;
+  licenseFilter: string;
+  aiScoreFilter: string;
+  showDeactivated: boolean;
+  showInactive: boolean;
+}
+
+const DEFAULT_FILTERS: PersistedCrmFilters = {
+  searchTerm: "",
+  managerFilter: "all",
+  licenseFilter: "all",
+  aiScoreFilter: "all",
+  showDeactivated: false,
+  showInactive: false,
+};
+
+function loadPersistedFilters(): PersistedCrmFilters {
+  try {
+    const raw = localStorage.getItem(CRM_FILTERS_STORAGE_KEY);
+    if (!raw) return { ...DEFAULT_FILTERS };
+    return { ...DEFAULT_FILTERS, ...JSON.parse(raw) };
+  } catch {
+    return { ...DEFAULT_FILTERS };
+  }
+}
 
 type AttendanceStatus = Database["public"]["Enums"]["attendance_status"];
 type PerformanceTier = Database["public"]["Enums"]["performance_tier"];
@@ -461,17 +496,22 @@ export default function DashboardCRM() {
   const queryClient = useQueryClient();
   const [agents, setAgents] = useState<AgentCRM[]>([]);
   const [managers, setManagers] = useState<Manager[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [managerFilter, setManagerFilter] = useState<string>("all");
-  const [licenseFilter, setLicenseFilter] = useState<string>("all");
-  const [aiScoreFilter, setAiScoreFilter] = useState<string>("all");
-  const [showDeactivated, setShowDeactivated] = useState(false);
-  const [showInactive, setShowInactive] = useState(false);
+  // Persisted filter state — survives page reload via localStorage
+  const [persistedFilters] = useState<PersistedCrmFilters>(() => loadPersistedFilters());
+  const [searchTerm, setSearchTerm] = useState(persistedFilters.searchTerm);
+  const [managerFilter, setManagerFilter] = useState<string>(persistedFilters.managerFilter);
+  const [licenseFilter, setLicenseFilter] = useState<string>(persistedFilters.licenseFilter);
+  const [aiScoreFilter, setAiScoreFilter] = useState<string>(persistedFilters.aiScoreFilter);
+  const [showDeactivated, setShowDeactivated] = useState(persistedFilters.showDeactivated);
+  const [showInactive, setShowInactive] = useState(persistedFilters.showInactive);
   const [deactivateAgent, setDeactivateAgent] = useState<AgentCRM | null>(null);
   const [instagramPromptAgent, setInstagramPromptAgent] = useState<AgentCRM | null>(null);
   const [sendingBulkLogins, setSendingBulkLogins] = useState(false);
   const [bulkMode, setBulkMode] = useState(false);
   const [selectedAgents, setSelectedAgents] = useState<Set<string>>(new Set());
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [composeChannel, setComposeChannel] = useState<"sms" | "email">("email");
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [sendingCourseLogin, setSendingCourseLogin] = useState<string | null>(null);
   const [recorderAgent, setRecorderAgent] = useState<AgentCRM | null>(null);
   const [viewAppTarget, setViewAppTarget] = useState<{ agentId?: string; applicationId?: string } | null>(null);
@@ -492,6 +532,47 @@ export default function DashboardCRM() {
       }, 500);
     }
   }, [focusAgentId, agents.length]);
+
+  // Persist filter state to localStorage on every change
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        CRM_FILTERS_STORAGE_KEY,
+        JSON.stringify({
+          searchTerm,
+          managerFilter,
+          licenseFilter,
+          aiScoreFilter,
+          showDeactivated,
+          showInactive,
+        } satisfies PersistedCrmFilters),
+      );
+    } catch {
+      /* ignore quota / disabled storage */
+    }
+  }, [searchTerm, managerFilter, licenseFilter, aiScoreFilter, showDeactivated, showInactive]);
+
+  // Count active (non-default) filters for the "Clear filters" affordance
+  const activeFilterCount = useMemo(() => {
+    let n = 0;
+    if (searchTerm.trim() !== "") n++;
+    if (managerFilter !== "all") n++;
+    if (licenseFilter !== "all") n++;
+    if (aiScoreFilter !== "all") n++;
+    if (showDeactivated) n++;
+    if (showInactive) n++;
+    return n;
+  }, [searchTerm, managerFilter, licenseFilter, aiScoreFilter, showDeactivated, showInactive]);
+
+  const clearAllFilters = useCallback(() => {
+    setSearchTerm("");
+    setManagerFilter("all");
+    setLicenseFilter("all");
+    setAiScoreFilter("all");
+    setShowDeactivated(false);
+    setShowInactive(false);
+    playSound("click");
+  }, [playSound]);
 
   const fetchAgentsQuery = useCallback(async () => {
     try {
@@ -777,6 +858,35 @@ export default function DashboardCRM() {
 
   const onAgentUpdate = (id: string, updates: Partial<AgentCRM>) => {
     setAgents(prev => prev.map(a => a.id === id ? { ...a, ...updates } : a));
+  };
+
+  /**
+   * Bulk delete (flag-gated). Marks selected agents as deactivated rather than
+   * hard-deleting rows — preserves referential integrity for production data,
+   * applications, etc. Hidden behind VITE_ENABLE_CRM_BULK_DELETE.
+   */
+  const handleBulkDelete = async () => {
+    if (!ENABLE_BULK_DELETE) return;
+    if (selectedAgents.size === 0) return;
+    const count = selectedAgents.size;
+    if (!confirm(`Deactivate ${count} selected agent${count === 1 ? "" : "s"}? This can be reversed by toggling "Deactivated" on.`)) return;
+    setBulkDeleting(true);
+    try {
+      const ids = Array.from(selectedAgents);
+      const { error } = await supabase
+        .from("agents")
+        .update({ is_deactivated: true })
+        .in("id", ids);
+      if (error) throw error;
+      toast.success(`Deactivated ${count} agent${count === 1 ? "" : "s"}`);
+      setSelectedAgents(new Set());
+      fetchAgents();
+    } catch (err) {
+      console.error("Bulk delete failed:", err);
+      toast.error("Failed to deactivate selected agents");
+    } finally {
+      setBulkDeleting(false);
+    }
   };
 
   const activeAgents = agents.filter(a => {
@@ -1083,12 +1193,47 @@ export default function DashboardCRM() {
         </div>
 
         {bulkMode && (
-          <BulkStageActions
-            agents={filteredAgents.map(a => ({ id: a.id, name: a.name, onboardingStage: a.onboardingStage }))}
-            selectedIds={selectedAgents} onSelectionChange={setSelectedAgents}
-            onBulkUpdate={() => { fetchAgents(); setSelectedAgents(new Set()); }}
-            isEnabled={bulkMode} onToggle={() => { setBulkMode(false); setSelectedAgents(new Set()); }}
-          />
+          <div className="space-y-2">
+            <BulkStageActions
+              agents={filteredAgents.map(a => ({ id: a.id, name: a.name, onboardingStage: a.onboardingStage }))}
+              selectedIds={selectedAgents} onSelectionChange={setSelectedAgents}
+              onBulkUpdate={() => { fetchAgents(); setSelectedAgents(new Set()); }}
+              isEnabled={bulkMode} onToggle={() => { setBulkMode(false); setSelectedAgents(new Set()); }}
+            />
+            {selectedAgents.size > 0 && (
+              <div className="flex flex-wrap items-center gap-2 px-3 py-2 rounded-lg border border-border/60 bg-muted/30">
+                <span className="text-xs text-muted-foreground mr-1">More actions:</span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 h-8"
+                  onClick={() => { setComposeChannel("email"); setComposeOpen(true); }}
+                >
+                  <Mail className="h-3.5 w-3.5" /> Compose Email
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 h-8"
+                  onClick={() => { setComposeChannel("sms"); setComposeOpen(true); }}
+                >
+                  <Send className="h-3.5 w-3.5" /> Compose SMS
+                </Button>
+                {ENABLE_BULK_DELETE && isAdmin && (
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="gap-1.5 h-8 ml-auto"
+                    disabled={bulkDeleting}
+                    onClick={handleBulkDelete}
+                  >
+                    <UserX className="h-3.5 w-3.5" />
+                    {bulkDeleting ? "Deactivating…" : `Deactivate (${selectedAgents.size})`}
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
         )}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
@@ -1150,6 +1295,20 @@ export default function DashboardCRM() {
           <Button variant={showInactive ? "secondary" : "outline"} size="sm" onClick={() => setShowInactive(!showInactive)} className="gap-1.5 h-8">
             <Eye className="h-3.5 w-3.5" /> {showInactive ? "Inactive ✓" : "Inactive"}
           </Button>
+          {activeFilterCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearAllFilters}
+              className="gap-1.5 h-8 text-muted-foreground hover:text-foreground ml-auto"
+            >
+              <X className="h-3.5 w-3.5" />
+              Clear filters
+              <Badge variant="secondary" className="ml-1 h-4 px-1.5 text-[10px] font-semibold">
+                {activeFilterCount}
+              </Badge>
+            </Button>
+          )}
         </div>
 
         {loading ? (
@@ -1387,6 +1546,19 @@ export default function DashboardCRM() {
       {editLoginAgent && (
         <AgentQuickEditDialog open={!!editLoginAgent} onOpenChange={(o) => !o && setEditLoginAgent(null)} agentId={editLoginAgent.id} currentName={editLoginAgent.name} onUpdate={fetchAgents} />
       )}
+      <BulkComposeDrawer
+        open={composeOpen}
+        onOpenChange={setComposeOpen}
+        defaultChannel={composeChannel}
+        title={`Message ${selectedAgents.size} agent${selectedAgents.size === 1 ? "" : "s"}`}
+        recipients={filteredAgents
+          .filter((a) => selectedAgents.has(a.id))
+          .map((a) => ({ id: a.id, name: a.name, email: a.email, phone: a.phone }))}
+        onSent={() => {
+          setComposeOpen(false);
+          setSelectedAgents(new Set());
+        }}
+      />
     </>
   );
 }

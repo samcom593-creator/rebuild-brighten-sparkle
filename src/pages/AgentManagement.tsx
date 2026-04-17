@@ -30,6 +30,7 @@ interface AgentProdCard {
 
 export default function AgentManagement() {
   const { user } = useAuth();
+  const mounted = useMountedRef();
   const [agents, setAgents] = useState<AgentProdCard[]>([]);
   const [alerts, setAlerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,6 +49,8 @@ export default function AgentManagement() {
         .select("id, display_name, profiles(full_name)")
         .eq("is_deactivated", false)
         .eq("status", "active");
+
+      if (!mounted.current) return;
 
       if (!agentData) return;
 

@@ -472,7 +472,22 @@ export function ApplicationDetailSheet({
                 )}
               </div>
 
-              {/* ═══ ACCOUNT MANAGEMENT (Admin only) ═══ */}
+              {/* ═══ LICENSING DELEGATES ═══ */}
+              {!isEditing && (
+                <>
+                  <Separator />
+                  <LicensingDelegateSection applicationId={app.id} />
+                </>
+              )}
+
+              {/* ═══ CALL TRANSCRIPTS (AI) ═══ */}
+              {!isEditing && (
+                <>
+                  <Separator />
+                  <CallTranscriptsSection applicationId={app.id} agentId={linkedAgentId} />
+                </>
+              )}
+
               {isAdmin && linkedAgent && !isEditing && (
                 <>
                   <Separator />

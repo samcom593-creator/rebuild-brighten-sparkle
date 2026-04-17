@@ -1,11 +1,15 @@
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createHandler } from "../_shared/handler.ts";
 import { jsonResponse, errorResponse } from "../_shared/cors.ts";
+import { parseBody, v } from "../_shared/validate.ts";
 
 const PRICE_MAP: Record<string, string> = {
   gold: "price_1TKmDqC3Khd8IPVmNDSHuNu7",
   platinum: "price_1TKmLhC3Khd8IPVmoAMmtBuM",
 };
+
+const TIERS = ["gold", "platinum"] as const;
+const BodySchema = v.object({ tier: v.enum(TIERS) });
 
 Deno.serve(
   createHandler(
@@ -16,9 +20,8 @@ Deno.serve(
       rateLimit: { maxRequests: 10, windowSeconds: 60 },
     },
     async (req, { auth }) => {
-      const { tier } = await req.json();
+      const { tier } = await parseBody(req, BodySchema);
       const priceId = PRICE_MAP[tier];
-      if (!priceId) return errorResponse(`Invalid tier: ${tier}`, 400, "INVALID_TIER");
 
       const email = auth!.email;
       if (!email) return errorResponse("User has no email on record", 400, "NO_EMAIL");

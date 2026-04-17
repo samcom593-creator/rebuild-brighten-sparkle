@@ -1,75 +1,100 @@
+import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AlertCircle, BarChart3, BookOpen, TrendingUp, TrendingDown, ArrowRight } from "lucide-react";
+import { CheckCircle2, BarChart3, BookOpen, TrendingUp, TrendingDown, ArrowRight, DollarSign } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
-import { startOfWeek, subWeeks, format } from "date-fns";
+import { startOfWeek, startOfMonth, subWeeks, format } from "date-fns";
 import { cn } from "@/lib/utils";
 
 export function DashboardInsightCards() {
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
   const now = new Date();
   const weekStart = startOfWeek(now);
   const lastWeekStart = subWeeks(weekStart, 1);
+  const monthStart = startOfMonth(now);
   const weekStartStr = format(weekStart, "yyyy-MM-dd");
   const lastWeekStartStr = format(lastWeekStart, "yyyy-MM-dd");
+  const monthStartStr = format(monthStart, "yyyy-MM-dd");
+  const sevenDaysAgoIso = new Date(Date.now() - 7 * 86400000).toISOString();
 
   const { data } = useQuery({
-    queryKey: ["dashboard-insight-cards", weekStartStr],
+    queryKey: ["dashboard-insight-cards-v2", weekStartStr, monthStartStr],
     queryFn: async () => {
-      const [unreachedRes, agentsRes, recentProdRes, appsRes, thisWeekProdRes, lastWeekProdRes] = await Promise.all([
-        // Unreached applicants (no contact)
-        supabase.from("applications").select("id, first_name, last_name, created_at")
-          .is("contacted_at", null).is("terminated_at", null).eq("status", "new").order("created_at", { ascending: true }).limit(10),
-        // All active agents
-        supabase.from("agents").select("id, display_name, profile_id").eq("is_deactivated", false),
-        // Recent production (last 3 days)
-        supabase.from("daily_production").select("agent_id")
-          .gte("production_date", format(new Date(Date.now() - 3 * 86400000), "yyyy-MM-dd")),
-        // License progress
-        supabase.from("applications").select("license_status, license_progress")
-          .is("terminated_at", null).eq("license_status", "unlicensed"),
+      const [
+        newContractsRes,
+        weeklyAppsRes,
+        licenseStagesRes,
+        thisWeekProdRes,
+        lastWeekProdRes,
+        monthProdRes,
+      ] = await Promise.all([
+        // New contracts this week (real)
+        supabase.from("applications")
+          .select("id, first_name, last_name, contracted_at", { count: "exact" })
+          .not("contracted_at", "is", null)
+          .gte("contracted_at", sevenDaysAgoIso)
+          .order("contracted_at", { ascending: false })
+          .limit(10),
+        // Applications this week (active only)
+        supabase.from("applications")
+          .select("id", { count: "exact", head: true })
+          .gte("created_at", sevenDaysAgoIso)
+          .is("terminated_at", null),
+        // License progress on contracted-but-unlicensed
+        supabase.from("applications")
+          .select("license_progress")
+          .is("terminated_at", null)
+          .not("contracted_at", "is", null)
+          .neq("license_status", "licensed"),
         // This week ALP
         supabase.from("daily_production").select("aop").gte("production_date", weekStartStr),
         // Last week ALP
         supabase.from("daily_production").select("aop")
           .gte("production_date", lastWeekStartStr).lt("production_date", weekStartStr),
+        // Month-to-date ALP
+        supabase.from("daily_production").select("aop").gte("production_date", monthStartStr),
       ]);
 
-      const unreached = unreachedRes.data || [];
-      const urgentCount = unreached.filter(a => {
-        const days = (Date.now() - new Date(a.created_at).getTime()) / 86400000;
-        return days >= 3;
-      }).length;
-
-      const activeAgentIds = new Set((recentProdRes.data || []).map((p: any) => p.agent_id));
-      const notLogging = (agentsRes.data || []).filter((a: any) => !activeAgentIds.has(a.id));
-
+      const stages = licenseStagesRes.data || [];
       const licenseBreakdown = {
-        studying: (appsRes.data || []).filter((a: any) => a.license_progress === "studying").length,
-        examScheduled: (appsRes.data || []).filter((a: any) => a.license_progress === "exam_scheduled").length,
-        inCourse: (appsRes.data || []).filter((a: any) => a.license_progress === "in_course" || a.license_progress === "pre_licensing").length,
-        total: (appsRes.data || []).length,
+        preCourse: stages.filter((a: any) => !a.license_progress || a.license_progress === "unlicensed").length,
+        inCourse: stages.filter((a: any) => a.license_progress === "course_purchased" || a.license_progress === "in_course").length,
+        examScheduled: stages.filter((a: any) => a.license_progress === "test_scheduled" || a.license_progress === "exam_scheduled").length,
+        passed: stages.filter((a: any) => a.license_progress === "passed_test" || a.license_progress === "exam_passed").length,
+        pendingState: stages.filter((a: any) => a.license_progress === "fingerprints_done" || a.license_progress === "waiting_on_license").length,
+        total: stages.length,
       };
 
       const thisWeekAlp = (thisWeekProdRes.data || []).reduce((s: number, r: any) => s + Number(r.aop || 0), 0);
       const lastWeekAlp = (lastWeekProdRes.data || []).reduce((s: number, r: any) => s + Number(r.aop || 0), 0);
-      const weekChange = lastWeekAlp > 0 ? ((thisWeekAlp - lastWeekAlp) / lastWeekAlp) * 100 : thisWeekAlp > 0 ? 100 : 0;
+      const weekChange = lastWeekAlp > 0
+        ? ((thisWeekAlp - lastWeekAlp) / lastWeekAlp) * 100
+        : thisWeekAlp > 0 ? 100 : 0;
+
+      const monthlyAlp = (monthProdRes.data || []).reduce((s: number, r: any) => s + Number(r.aop || 0), 0);
+      const samEarnings = monthlyAlp * 0.03; // 3% override
 
       return {
-        unreachedCount: unreached.length,
-        urgentCount,
-        unreachedTop5: unreached.slice(0, 5).map(a => ({
+        newContractsCount: newContractsRes.count ?? newContractsRes.data?.length ?? 0,
+        newContractsTop5: (newContractsRes.data || []).slice(0, 5).map((a: any) => ({
           name: `${a.first_name} ${a.last_name}`,
-          days: Math.floor((Date.now() - new Date(a.created_at).getTime()) / 86400000),
+          when: a.contracted_at ? formatRelative(a.contracted_at) : "",
         })),
-        notLoggingCount: notLogging.length,
-        notLoggingNames: notLogging.slice(0, 5).map((a: any) => a.display_name || "Agent"),
+        weeklyAppsCount: weeklyAppsRes.count || 0,
         licenseBreakdown,
         thisWeekAlp,
         lastWeekAlp,
         weekChange: Math.round(weekChange),
+        monthlyAlp,
+        samEarnings,
       };
     },
     staleTime: 120000,
@@ -79,56 +104,51 @@ export function DashboardInsightCards() {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-      {/* Unreached Applicants */}
-      <GlassCard className={cn("p-4", data.urgentCount > 0 && "border-red-500/30")}>
-        <div className="flex items-center gap-2 mb-2">
-          <AlertCircle className={cn("h-4 w-4", data.urgentCount > 0 ? "text-red-400" : "text-amber-400")} />
-          <h4 className="font-semibold text-sm">Unreached Applicants</h4>
-          <Badge variant="outline" className={cn("ml-auto text-xs",
-            data.urgentCount > 0 ? "text-red-400 border-red-500/30" : "text-muted-foreground"
-          )}>
-            {data.unreachedCount}
-          </Badge>
-        </div>
-        <div className="space-y-1 mb-2">
-          {data.unreachedTop5.map((a, i) => (
-            <div key={i} className="flex justify-between text-xs">
-              <span className="text-muted-foreground truncate">{a.name}</span>
-              <span className={cn(a.days >= 3 ? "text-red-400 font-bold" : "text-muted-foreground")}>
-                {a.days}d waiting
-              </span>
-            </div>
-          ))}
-        </div>
-        <Link to="/dashboard/crm">
-          <Button variant="outline" size="sm" className="w-full text-xs">
-            View All <ArrowRight className="h-3 w-3 ml-1" />
-          </Button>
-        </Link>
-      </GlassCard>
-
-      {/* Agents Not Logging */}
+      {/* New Contracts This Week */}
       <GlassCard className="p-4">
         <div className="flex items-center gap-2 mb-2">
-          <BarChart3 className="h-4 w-4 text-amber-400" />
-          <h4 className="font-semibold text-sm">Not Logging (3+ Days)</h4>
-          <Badge variant="outline" className="ml-auto text-xs text-amber-400 border-amber-500/30">
-            {data.notLoggingCount}
+          <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+          <h4 className="font-semibold text-sm">New Contracts This Week</h4>
+          <Badge variant="outline" className="ml-auto text-xs text-emerald-400 border-emerald-500/30">
+            {data.newContractsCount}
           </Badge>
         </div>
-        <div className="space-y-1 mb-2">
-          {data.notLoggingNames.map((name, i) => (
-            <p key={i} className="text-xs text-muted-foreground truncate">{name}</p>
-          ))}
-          {data.notLoggingCount > 5 && (
-            <p className="text-xs text-muted-foreground">+{data.notLoggingCount - 5} more</p>
+        <div className="space-y-1 mb-2 min-h-[80px]">
+          {data.newContractsTop5.length === 0 ? (
+            <p className="text-xs text-muted-foreground italic">No new contracts yet this week</p>
+          ) : (
+            data.newContractsTop5.map((a, i) => (
+              <div key={i} className="flex justify-between text-xs">
+                <span className="text-muted-foreground truncate">{a.name}</span>
+                <span className="text-emerald-400">{a.when}</span>
+              </div>
+            ))
           )}
         </div>
         <Link to="/dashboard/crm">
           <Button variant="outline" size="sm" className="w-full text-xs">
-            View in CRM <ArrowRight className="h-3 w-3 ml-1" />
+            View Contracts <ArrowRight className="h-3 w-3 ml-1" />
           </Button>
         </Link>
+      </GlassCard>
+
+      {/* Revenue This Month */}
+      <GlassCard className="p-4">
+        <div className="flex items-center gap-2 mb-3">
+          <DollarSign className="h-4 w-4 text-emerald-400" />
+          <h4 className="font-semibold text-sm">Revenue This Month</h4>
+          <Badge variant="outline" className="ml-auto text-xs text-muted-foreground">MTD</Badge>
+        </div>
+        <div className="space-y-2">
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Team ALP</p>
+            <p className="text-2xl font-bold text-emerald-400">${data.monthlyAlp.toLocaleString()}</p>
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Estimated Override (3%)</p>
+            <p className="text-base font-semibold">${Math.round(data.samEarnings).toLocaleString()}</p>
+          </div>
+        </div>
       </GlassCard>
 
       {/* License Progress */}
@@ -136,13 +156,15 @@ export function DashboardInsightCards() {
         <div className="flex items-center gap-2 mb-3">
           <BookOpen className="h-4 w-4 text-blue-400" />
           <h4 className="font-semibold text-sm">License Progress</h4>
-          <Badge variant="outline" className="ml-auto text-xs">{data.licenseBreakdown.total} unlicensed</Badge>
+          <Badge variant="outline" className="ml-auto text-xs">{data.licenseBreakdown.total} contracted</Badge>
         </div>
         <div className="space-y-2">
           {[
+            { label: "Pre-Course", count: data.licenseBreakdown.preCourse, color: "bg-slate-400" },
             { label: "In Course", count: data.licenseBreakdown.inCourse, color: "bg-blue-400" },
-            { label: "Studying", count: data.licenseBreakdown.studying, color: "bg-amber-400" },
-            { label: "Exam Scheduled", count: data.licenseBreakdown.examScheduled, color: "bg-emerald-400" },
+            { label: "Exam Scheduled", count: data.licenseBreakdown.examScheduled, color: "bg-amber-400" },
+            { label: "Passed", count: data.licenseBreakdown.passed, color: "bg-emerald-400" },
+            { label: "Pending State", count: data.licenseBreakdown.pendingState, color: "bg-violet-400" },
           ].map(item => (
             <div key={item.label} className="flex items-center gap-2 text-xs">
               <div className={cn("h-2 w-2 rounded-full", item.color)} />
@@ -162,6 +184,9 @@ export function DashboardInsightCards() {
             <TrendingDown className="h-4 w-4 text-red-400" />
           )}
           <h4 className="font-semibold text-sm">Week vs Week</h4>
+          <Badge variant="outline" className="ml-auto text-xs text-muted-foreground">
+            {data.weeklyAppsCount} apps
+          </Badge>
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -183,4 +208,11 @@ export function DashboardInsightCards() {
       </GlassCard>
     </div>
   );
+}
+
+function formatRelative(iso: string): string {
+  const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  if (days === 0) return "today";
+  if (days === 1) return "yesterday";
+  return `${days}d ago`;
 }

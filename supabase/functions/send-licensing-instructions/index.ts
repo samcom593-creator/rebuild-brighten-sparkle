@@ -388,12 +388,26 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
+    try {
+      const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      await writeAudit(sb, {
+        action: "licensing.instructions_sent",
+        entityType: "agent",
+        entityId: agentId ?? email,
+        afterData: { licenseStatus, channels, ccList },
+      });
+    } catch (_) { /* swallow */ }
+
     return new Response(JSON.stringify({ success: true, data: emailResponse, channels }), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });
   } catch (error: any) {
     console.error("[send-licensing-instructions] Error:", error);
+    try {
+      const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      await logFunctionError(sb, "send-licensing-instructions", error);
+    } catch (_) { /* swallow */ }
     return new Response(
       JSON.stringify({ success: false, error: error.message }),
       {

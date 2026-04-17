@@ -55,9 +55,25 @@ import { PipelineVelocityCard } from "@/components/dashboard/PipelineVelocityCar
 import { StalledAgentsAlert } from "@/components/dashboard/StalledAgentsAlert";
 import { ReferralTrackingCard } from "@/components/dashboard/ReferralTrackingCard";
 import { StatCardDrilldown } from "@/components/dashboard/StatCardDrilldown";
+import { HideableCard } from "@/components/dashboard/HideableCard";
+import { HiddenCardsManager } from "@/components/dashboard/HiddenCardsManager";
 import { useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+
+const HIDEABLE_CARDS: Record<string, string> = {
+  "dashboard.insight-cards": "Insight Cards",
+  "dashboard.applications-banner": "Total Applications Banner",
+  "dashboard.churn-risk": "Churn Risk Banner",
+  "dashboard.team-snapshot": "Production Snapshot",
+  "dashboard.activation-risk": "Activation Risk Banner",
+  "dashboard.team-overview": "Team Overview",
+  "dashboard.performance-breakdown": "Performance Breakdown",
+  "dashboard.top-producers": "Top Producers Section",
+  "dashboard.recruiting": "Recruiting & Growth Section",
+  "dashboard.team-view": "Your Team",
+  "dashboard.achievement-feed": "Achievements & Tasks",
+};
 
 interface DashboardStats {
   totalLeads: number;

@@ -37,8 +37,24 @@ import { AccountLinkForm } from "@/components/dashboard/AccountLinkForm";
 import { AgentRankBadge } from "@/components/dashboard/AgentRankBadge";
 import { AgentTaskManager } from "@/components/dashboard/AgentTaskManager";
 import { AgentReferralLinkCard } from "@/components/agent/AgentReferralLinkCard";
+import { HideableCard } from "@/components/dashboard/HideableCard";
+import { HiddenCardsManager } from "@/components/dashboard/HiddenCardsManager";
 
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
+
+const HIDEABLE_CARDS: Record<string, string> = {
+  "agent.performance-section": "Performance Dashboard Section",
+  "agent.personal-stats": "Personal Stats",
+  "agent.year-performance": "Year Performance",
+  "agent.production-history": "Production History Chart",
+  "agent.income-goals": "Income Goal Tracker",
+  "agent.team-goals": "Team Goals",
+  "agent.extra-leaderboards": "Closing & Referral Leaderboards",
+  "agent.referral-section": "Referral & Sharing",
+  "agent.my-tasks": "My Tasks",
+  "agent.weekly-badges": "Weekly Badges",
+  "agent.motivational-footer": "Motivational Quote",
+};
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";

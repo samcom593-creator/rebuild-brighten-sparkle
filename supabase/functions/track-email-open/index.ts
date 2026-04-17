@@ -61,6 +61,10 @@ const handler = async (req: Request): Promise<Response> => {
     }
   } catch (error) {
     console.error("Error tracking email open:", error);
+    try {
+      const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      await logFunctionError(sb, "track-email-open", error, { trackingId });
+    } catch (_) { /* swallow */ }
   }
 
   // Always return the tracking pixel regardless of errors

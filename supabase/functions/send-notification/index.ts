@@ -1,17 +1,15 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { corsHeaders } from "../_shared/cors.ts";
+import { logFunctionError, writeAudit } from "../_shared/audit.ts";
+import { checkRateLimit, RateLimitError } from "../_shared/rateLimit.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const ADMIN_EMAIL = "sam@apex-financial.org";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
 
 const CARRIER_GATEWAYS: Record<string, string> = {
   att: "txt.att.net",
@@ -47,7 +45,16 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = req.headers.get("x-request-id") ?? crypto.randomUUID();
+  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false },
+  });
+
   try {
+    // Rate limit: 60 req/min per IP (best effort, fails open)
+    const ip = req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for") ?? "unknown";
+    await checkRateLimit(supabase, { bucketKey: `send-notification:${ip}`, maxRequests: 60, windowSeconds: 60 });
+
     const { userId, title, message, url, email } = await req.json();
 
     if (!userId && !email) {
@@ -56,10 +63,6 @@ const handler = async (req: Request): Promise<Response> => {
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
-
-    const supabase = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false },
-    });
 
     const results = { push: false, sms: false, email: false };
 
@@ -230,14 +233,29 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    await writeAudit(supabase, {
+      action: "notification.sent",
+      entityType: "notification",
+      entityId: userId ?? email,
+      afterData: { channels: results, title },
+      requestId,
+    });
+
     return new Response(
-      JSON.stringify({ success: true, channels: results }),
+      JSON.stringify({ success: true, channels: results, requestId }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (error: any) {
+    if (error instanceof RateLimitError) {
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded", retryAfter: error.retryAfter }),
+        { status: 429, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
     console.error("Error in send-notification:", error);
+    await logFunctionError(supabase, "send-notification", error, undefined, undefined, requestId);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message, requestId }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }

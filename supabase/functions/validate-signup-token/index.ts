@@ -1,11 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+import { corsHeaders } from "../_shared/cors.ts";
+import { logFunctionError } from "../_shared/audit.ts";
+import { checkRateLimit, RateLimitError } from "../_shared/rateLimit.ts";
 
 interface ValidateRequest {
   token: string;
@@ -53,6 +49,10 @@ Deno.serve(async (req) => {
 
     // Create admin client with service role
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Rate limit: 30 token validation attempts/min per IP (brute-force protection)
+    const ip = req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for") ?? "unknown";
+    await checkRateLimit(supabaseAdmin, { bucketKey: `validate-token:${ip}`, maxRequests: 30, windowSeconds: 60 });
 
     // Validate the token server-side
     const { data, error } = await supabaseAdmin
@@ -102,6 +102,16 @@ Deno.serve(async (req) => {
     );
   } catch (error) {
     console.error("Validation error:", error);
+    if (error instanceof RateLimitError) {
+      return new Response(
+        JSON.stringify({ valid: false, error: "Too many attempts. Please wait a minute." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    try {
+      const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      await logFunctionError(sb, "validate-signup-token", error);
+    } catch (_) { /* swallow */ }
     return new Response(
       JSON.stringify({ valid: false, error: "Validation failed" }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

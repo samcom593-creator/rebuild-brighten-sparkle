@@ -8,18 +8,49 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+async function logRun(
+  supabase: any,
+  status: "success" | "error",
+  affected: number,
+  duration: number,
+  errorMessage?: string,
+) {
+  try {
+    await supabase.from("automation_runs").insert({
+      automation_name: "Manager Daily Digest",
+      ran_at: new Date().toISOString(),
+      status,
+      agents_affected: affected,
+      duration_ms: duration,
+      error_message: errorMessage ?? null,
+    });
+  } catch (e) {
+    console.error("Failed to log automation_run:", e);
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+  const startedAt = Date.now();
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
 
-    const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+  try {
+    const resendKey = Deno.env.get("RESEND_API_KEY");
+    if (!resendKey) {
+      console.error("RESEND_API_KEY missing — cannot send digests");
+      await logRun(supabase, "error", 0, Date.now() - startedAt, "RESEND_API_KEY missing");
+      return new Response(
+        JSON.stringify({ error: "RESEND_API_KEY not configured" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const resend = new Resend(resendKey);
 
     console.log("Generating manager daily digests...");
 

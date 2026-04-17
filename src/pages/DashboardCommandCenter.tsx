@@ -64,6 +64,8 @@ import { TerminatedAgentLeadsPanel } from "@/components/dashboard/TerminatedAgen
 import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
 import { AbandonedLeadsPanel } from "@/components/dashboard/AbandonedLeadsPanel";
 import { AllLeadsPanel } from "@/components/dashboard/AllLeadsPanel";
+import { HideableCard } from "@/components/dashboard/HideableCard";
+import { HiddenCardsManager } from "@/components/dashboard/HiddenCardsManager";
 
 import { AISummaryReport } from "@/components/admin/AISummaryReport";
 import { DateRangePicker, type DateRange } from "@/components/ui/date-range-picker";

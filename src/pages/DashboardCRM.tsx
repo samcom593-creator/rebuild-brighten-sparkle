@@ -533,6 +533,47 @@ export default function DashboardCRM() {
     }
   }, [focusAgentId, agents.length]);
 
+  // Persist filter state to localStorage on every change
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        CRM_FILTERS_STORAGE_KEY,
+        JSON.stringify({
+          searchTerm,
+          managerFilter,
+          licenseFilter,
+          aiScoreFilter,
+          showDeactivated,
+          showInactive,
+        } satisfies PersistedCrmFilters),
+      );
+    } catch {
+      /* ignore quota / disabled storage */
+    }
+  }, [searchTerm, managerFilter, licenseFilter, aiScoreFilter, showDeactivated, showInactive]);
+
+  // Count active (non-default) filters for the "Clear filters" affordance
+  const activeFilterCount = useMemo(() => {
+    let n = 0;
+    if (searchTerm.trim() !== "") n++;
+    if (managerFilter !== "all") n++;
+    if (licenseFilter !== "all") n++;
+    if (aiScoreFilter !== "all") n++;
+    if (showDeactivated) n++;
+    if (showInactive) n++;
+    return n;
+  }, [searchTerm, managerFilter, licenseFilter, aiScoreFilter, showDeactivated, showInactive]);
+
+  const clearAllFilters = useCallback(() => {
+    setSearchTerm("");
+    setManagerFilter("all");
+    setLicenseFilter("all");
+    setAiScoreFilter("all");
+    setShowDeactivated(false);
+    setShowInactive(false);
+    playSound("click");
+  }, [playSound]);
+
   const fetchAgentsQuery = useCallback(async () => {
     try {
       const { data: managerRoles } = await supabase.from("user_roles").select("user_id").eq("role", "manager");

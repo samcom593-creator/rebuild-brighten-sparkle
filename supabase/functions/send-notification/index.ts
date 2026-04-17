@@ -233,14 +233,29 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    await writeAudit(supabase, {
+      action: "notification.sent",
+      entityType: "notification",
+      entityId: userId ?? email,
+      afterData: { channels: results, title },
+      requestId,
+    });
+
     return new Response(
-      JSON.stringify({ success: true, channels: results }),
+      JSON.stringify({ success: true, channels: results, requestId }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   } catch (error: any) {
+    if (error instanceof RateLimitError) {
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded", retryAfter: error.retryAfter }),
+        { status: 429, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
     console.error("Error in send-notification:", error);
+    await logFunctionError(supabase, "send-notification", error, undefined, undefined, requestId);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message, requestId }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }

@@ -577,56 +577,62 @@ export default function DashboardCommandCenter() {
 
         {/* Summary Stats - Clickable */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 card-hover-lift">
-          <Card 
-            className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
-            onClick={() => setStatPopup({ type: "totalAlp", open: true })}
-          >
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <DollarSign className="h-5 w-5 text-primary" />
+          <HideableCard cardKey="admin.stat.totalAlp" label="Total ALP">
+            <Card
+              className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+              onClick={() => setStatPopup({ type: "totalAlp", open: true })}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <DollarSign className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Total ALP</p>
+                    <p className="text-2xl font-bold">${Math.round(summaryStats.totalAlp).toLocaleString()}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Total ALP</p>
-                  <p className="text-2xl font-bold">${Math.round(summaryStats.totalAlp).toLocaleString()}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </HideableCard>
 
-          <Card 
-            className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
-            onClick={() => setStatPopup({ type: "activeAgents", open: true })}
-          >
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <Users className="h-5 w-5 text-primary" />
+          <HideableCard cardKey="admin.stat.activeAgents" label="Active Agents">
+            <Card
+              className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+              onClick={() => setStatPopup({ type: "activeAgents", open: true })}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Users className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Active Agents</p>
+                    <p className="text-2xl font-bold">{summaryStats.activeAgents}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Active Agents</p>
-                  <p className="text-2xl font-bold">{summaryStats.activeAgents}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </HideableCard>
 
-          <Card 
-            className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
-            onClick={() => setStatPopup({ type: "producers", open: true })}
-          >
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-primary/10">
-                  <TrendingUp className="h-5 w-5 text-primary" />
+          <HideableCard cardKey="admin.stat.producers" label="Producers">
+            <Card
+              className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+              onClick={() => setStatPopup({ type: "producers", open: true })}
+            >
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <TrendingUp className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Producers</p>
+                    <p className="text-2xl font-bold">{summaryStats.producers}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wide">Producers</p>
-                  <p className="text-2xl font-bold">{summaryStats.producers}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </HideableCard>
 
           <Card 
             className="stat-card border-destructive/20 cursor-pointer hover:ring-2 hover:ring-destructive/50 transition-all"

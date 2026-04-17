@@ -496,17 +496,22 @@ export default function DashboardCRM() {
   const queryClient = useQueryClient();
   const [agents, setAgents] = useState<AgentCRM[]>([]);
   const [managers, setManagers] = useState<Manager[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [managerFilter, setManagerFilter] = useState<string>("all");
-  const [licenseFilter, setLicenseFilter] = useState<string>("all");
-  const [aiScoreFilter, setAiScoreFilter] = useState<string>("all");
-  const [showDeactivated, setShowDeactivated] = useState(false);
-  const [showInactive, setShowInactive] = useState(false);
+  // Persisted filter state — survives page reload via localStorage
+  const [persistedFilters] = useState<PersistedCrmFilters>(() => loadPersistedFilters());
+  const [searchTerm, setSearchTerm] = useState(persistedFilters.searchTerm);
+  const [managerFilter, setManagerFilter] = useState<string>(persistedFilters.managerFilter);
+  const [licenseFilter, setLicenseFilter] = useState<string>(persistedFilters.licenseFilter);
+  const [aiScoreFilter, setAiScoreFilter] = useState<string>(persistedFilters.aiScoreFilter);
+  const [showDeactivated, setShowDeactivated] = useState(persistedFilters.showDeactivated);
+  const [showInactive, setShowInactive] = useState(persistedFilters.showInactive);
   const [deactivateAgent, setDeactivateAgent] = useState<AgentCRM | null>(null);
   const [instagramPromptAgent, setInstagramPromptAgent] = useState<AgentCRM | null>(null);
   const [sendingBulkLogins, setSendingBulkLogins] = useState(false);
   const [bulkMode, setBulkMode] = useState(false);
   const [selectedAgents, setSelectedAgents] = useState<Set<string>>(new Set());
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [composeChannel, setComposeChannel] = useState<"sms" | "email">("email");
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [sendingCourseLogin, setSendingCourseLogin] = useState<string | null>(null);
   const [recorderAgent, setRecorderAgent] = useState<AgentCRM | null>(null);
   const [viewAppTarget, setViewAppTarget] = useState<{ agentId?: string; applicationId?: string } | null>(null);

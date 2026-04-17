@@ -95,8 +95,10 @@ const SubmitApplicationSchema = z.object({
   availability: z.string().min(1).max(500),
   referralSource: z.string().max(500).optional().nullable(),
   
-  // New: selected referral agent ID
+  // New: selected referral agent ID (the manager assigned)
   selectedReferralAgentId: z.string().uuid().optional().nullable(),
+  // Recruiter (the agent whose ?ref= link was used) — saved separately from manager
+  recruiterId: z.string().uuid().optional().nullable(),
   
   // Consent data for Twilio compliance
   consent: ConsentSchema.optional().nullable(),
@@ -941,7 +943,9 @@ const handler = async (req: Request): Promise<Response> => {
       
       // Assign to the selected referral agent, or leave null for manual routing
       // (DB trigger auto_assign_unassigned_application will assign to admin if still null)
-      assigned_agent_id: data.selectedReferralAgentId || null,
+      assigned_agent_id: data.selectedReferralAgentId || data.recruiterId || null,
+      // Track recruiter (link sharer) separately from assigned manager
+      recruiter_id: data.recruiterId || null,
 
       status: "new",
       reviewed_at: null,

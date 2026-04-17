@@ -838,6 +838,14 @@ export default function DashboardCRM() {
   const loading = agentsLoading;
   const fetchAgents = useCallback(() => { queryClient.invalidateQueries({ queryKey: ["crm-agents"] }); }, [queryClient]);
 
+  // Phase 5: Live updates — invalidate when agents/applications change anywhere
+  useRealtimeTable({ table: "agents", channelSuffix: "crm" }, () => {
+    queryClient.invalidateQueries({ queryKey: ["crm-agents"] });
+  });
+  useRealtimeTable({ table: "applications", channelSuffix: "crm" }, () => {
+    queryClient.invalidateQueries({ queryKey: ["crm-agents"] });
+  });
+
   const handleOptimisticStageUpdate = async (agentId: string) => {
     try {
       const { data } = await supabase.from("agents").select("onboarding_stage, onboarding_completed_at, field_training_started_at").eq("id", agentId).maybeSingle();

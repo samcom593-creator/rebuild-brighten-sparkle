@@ -38,6 +38,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { KanbanBoard, KanbanApplication, KanbanStage, KANBAN_COLUMNS, getColumnForStage } from "@/components/pipeline/KanbanBoard";
 import { InterviewScheduler } from "@/components/dashboard/InterviewScheduler";
+import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
 import { LicenseProgressSelector } from "@/components/dashboard/LicenseProgressSelector";
 import { LastContactedBadge } from "@/components/dashboard/LastContactedBadge";
 import { QuickEmailMenu } from "@/components/dashboard/QuickEmailMenu";
@@ -69,6 +70,9 @@ export default function AgentPipeline() {
   // Interview scheduler
   const [schedulerOpen, setSchedulerOpen] = useState(false);
   const [schedulerApp, setSchedulerApp] = useState<Application | null>(null);
+
+  // Application detail sheet
+  const [detailAppId, setDetailAppId] = useState<string | null>(null);
 
   const fetchApplications = useCallback(async () => {
     if (!user) return;
@@ -510,7 +514,7 @@ export default function AgentPipeline() {
           <KanbanBoard
             applications={filteredApps}
             onStageChange={handleStageChange}
-            onCardClick={(app) => {/* TODO: open detail drawer */}}
+            onCardClick={(app) => setDetailAppId(app.id)}
             onScheduleInterview={(app) => openScheduler(app as Application)}
           />
         ) : (
@@ -595,6 +599,13 @@ export default function AgentPipeline() {
           onScheduled={fetchApplications}
         />
       )}
+
+      <ApplicationDetailSheet
+        open={!!detailAppId}
+        onOpenChange={(o) => !o && setDetailAppId(null)}
+        applicationId={detailAppId ?? undefined}
+        onRefresh={fetchApplications}
+      />
     </>
   );
 }

@@ -13,6 +13,11 @@ interface LinkAccountRequest {
   phone?: string;
 }
 
+const HUMAN_NOT_FOUND =
+  "We couldn't find an application matching your email or phone. Make sure you're using the same details you applied with — or contact sam@apex-financial.org for help.";
+const HUMAN_GENERIC =
+  "Something went wrong linking your account. Please contact sam@apex-financial.org and we'll get you set up.";
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -21,7 +26,7 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      return new Response(JSON.stringify({ error: "Please sign in first, then try linking your account." }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -33,14 +38,12 @@ const handler = async (req: Request): Promise<Response> => {
       { auth: { autoRefreshToken: false, persistSession: false } }
     );
 
-    // Verify calling user via JWT
     const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } =
-      await supabaseAdmin.auth.getUser(token);
+    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
 
     if (userError || !userData?.user) {
-      console.error("Invalid token:", userError);
-      return new Response(JSON.stringify({ error: "Invalid token" }), {
+      console.error("[link-account] Invalid token:", userError);
+      return new Response(JSON.stringify({ error: "Your session expired. Please sign in again." }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -53,14 +56,17 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (!email && !agentCode && !phone) {
       return new Response(
-        JSON.stringify({ error: "Email, phone, or agent code required" }),
+        JSON.stringify({ error: "Please enter your email, phone, or agent code." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log(`Link request from user ${userId}: email=${email}, code=${agentCode}, phone=${phone}`);
+    const normalizedEmail = email?.toLowerCase().trim() || null;
+    const normalizedPhone = phone?.replace(/\D/g, "").slice(-10) || null;
 
-    // Check if user already has an agent record
+    console.log(`[link-account] User=${userId} email=${normalizedEmail} phone=${normalizedPhone} code=${agentCode}`);
+
+    // If already linked, succeed silently
     const { data: existingAgent } = await supabaseAdmin
       .from("agents")
       .select("id")
@@ -69,133 +75,153 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (existingAgent) {
       return new Response(
-        JSON.stringify({ error: "Your account is already linked to an agent profile", alreadyLinked: true }),
+        JSON.stringify({
+          error: "Your account is already linked. Try refreshing the page.",
+          alreadyLinked: true,
+          agentId: existingAgent.id,
+        }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Find matching agent by email or code
-    let agentQuery = supabaseAdmin
-      .from("agents")
-      .select("id, user_id, profile_id, status, display_name, profiles(id, email, full_name)")
-      .is("user_id", null); // Only unlinked agents
+    // ----- STEP 1: Find application by email OR phone -----
+    let application: any = null;
 
-    if (email) {
-      // Look for agent with matching profile email
-      const normalizedEmail = email.toLowerCase().trim();
+    if (normalizedEmail) {
+      const { data, error } = await supabaseAdmin
+        .from("applications")
+        .select("*")
+        .ilike("email", normalizedEmail)
+        .is("terminated_at", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) console.error("[link-account] Email lookup error:", error);
+      application = data;
+    }
+
+    if (!application && normalizedPhone && normalizedPhone.length === 10) {
+      const { data: allApps, error } = await supabaseAdmin
+        .from("applications")
+        .select("*")
+        .is("terminated_at", null)
+        .order("created_at", { ascending: false })
+        .limit(2000);
+      if (error) console.error("[link-account] Phone lookup error:", error);
+      application =
+        allApps?.find(
+          (a: any) => a.phone?.replace(/\D/g, "").slice(-10) === normalizedPhone
+        ) || null;
+    }
+
+    // ----- STEP 2: Find agent records (handle duplicates) -----
+    let agentRecords: any[] | null = null;
+
+    if (application) {
+      // Look up via profile linked to this application's email
       const { data: profile } = await supabaseAdmin
         .from("profiles")
         .select("id")
-        .ilike("email", normalizedEmail)
-        .maybeSingle();
+        .ilike("email", application.email)
+        .order("created_at", { ascending: false });
 
-      if (profile) {
-        agentQuery = agentQuery.eq("profile_id", profile.id);
-      } else {
-        // No profile with that email - try checking if there's an agent with matching display name or check applications
-        const { data: application } = await supabaseAdmin
-          .from("applications")
-          .select("id, first_name, last_name, email, phone, status, contracted_at")
-          .ilike("email", normalizedEmail)
-          .maybeSingle();
-
-        if (application && application.contracted_at) {
-          // Find agent created from this application (via display_name match or other heuristic)
-          const fullName = `${application.first_name} ${application.last_name}`.trim();
-          agentQuery = agentQuery.ilike("display_name", fullName);
-        } else {
-          return new Response(
-            JSON.stringify({ error: "No agent profile found with this email" }),
-            { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-      }
-    } else if (phone) {
-      // Phone number linking - normalize to last 10 digits
-      const digitsOnly = phone.replace(/\D/g, "").slice(-10);
-      
-      if (digitsOnly.length < 10) {
-        return new Response(
-          JSON.stringify({ error: "Please enter a valid 10-digit phone number" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      // Search profiles by phone (multiple format variations)
-      const { data: profilesByPhone } = await supabaseAdmin
-        .from("profiles")
-        .select("id")
-        .or(`phone.ilike.%${digitsOnly}%,phone.ilike.%${digitsOnly.slice(0,3)}-${digitsOnly.slice(3,6)}-${digitsOnly.slice(6)}%,phone.ilike.%(${digitsOnly.slice(0,3)})%${digitsOnly.slice(3)}%`)
-        .limit(5);
-
-      if (profilesByPhone && profilesByPhone.length > 0) {
-        const profileIds = profilesByPhone.map(p => p.id);
-        agentQuery = agentQuery.in("profile_id", profileIds);
-      } else {
-        // Fallback: search applications by phone
-        const { data: application } = await supabaseAdmin
-          .from("applications")
-          .select("id, first_name, last_name, phone, contracted_at")
-          .or(`phone.ilike.%${digitsOnly}%`)
-          .not("contracted_at", "is", null)
-          .maybeSingle();
-
-        if (application) {
-          const fullName = `${application.first_name} ${application.last_name}`.trim();
-          agentQuery = agentQuery.ilike("display_name", fullName);
-        } else {
-          return new Response(
-            JSON.stringify({ error: "No agent profile found with this phone number" }),
-            { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
+      const profileIds = (profile || []).map((p: any) => p.id);
+      if (profileIds.length > 0) {
+        const { data } = await supabaseAdmin
+          .from("agents")
+          .select("*")
+          .in("profile_id", profileIds)
+          .order("created_at", { ascending: false });
+        agentRecords = data || [];
       }
     } else if (agentCode) {
-      agentQuery = agentQuery.ilike("agent_code", agentCode.trim());
+      const { data } = await supabaseAdmin
+        .from("agents")
+        .select("*")
+        .ilike("agent_code", agentCode.trim())
+        .order("created_at", { ascending: false });
+      agentRecords = data || [];
     }
 
-    const { data: agents, error: agentError } = await agentQuery.limit(1);
-
-    if (agentError) {
-      console.error("Error finding agent:", agentError);
+    if (!application && (!agentRecords || agentRecords.length === 0)) {
+      console.warn(`[link-account] No application/agent found for ${normalizedEmail || normalizedPhone || agentCode}`);
       return new Response(
-        JSON.stringify({ error: "Database error" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    if (!agents || agents.length === 0) {
-      return new Response(
-        JSON.stringify({ 
-          error: "No matching agent profile found. If you're new, please create an account on the /numbers page instead.",
-          notFound: true
-        }),
+        JSON.stringify({ error: HUMAN_NOT_FOUND, code: "APPLICATION_NOT_FOUND" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const agent = agents[0];
-    console.log(`Found agent ${agent.id} to link with user ${userId}`);
+    let agent: any = null;
 
-    // Link the agent to this user
+    if (agentRecords && agentRecords.length > 1) {
+      // Multiple agents — pick most recent active one, flag others
+      agent = agentRecords.find((a: any) => !a.is_deactivated) || agentRecords[0];
+      console.warn(
+        `[link-account] DUPLICATE agents for ${normalizedEmail}: ${agentRecords.map((a: any) => a.id).join(", ")} — keeping ${agent.id}`
+      );
+      await supabaseAdmin.from("duplicate_agent_flags").insert({
+        agent_ids: agentRecords.map((a: any) => a.id),
+        email: normalizedEmail,
+        phone: normalizedPhone,
+        reason: "Multiple agent records found during account linking",
+      });
+    } else if (agentRecords && agentRecords.length === 1) {
+      agent = agentRecords[0];
+    }
+
+    // ----- STEP 3: Create agent record if none exists -----
+    if (!agent && application) {
+      console.log(`[link-account] Creating new agent for application ${application.id}`);
+      const { data: newAgent, error: createErr } = await supabaseAdmin
+        .from("agents")
+        .insert({
+          user_id: userId,
+          profile_id: null, // linked below
+          status: "active",
+          license_status: application.license_status || "unlicensed",
+          onboarding_stage:
+            application.license_status === "licensed" ? "in_field_training" : "pre_licensed",
+          invited_by_manager_id: application.assigned_agent_id,
+        })
+        .select()
+        .single();
+      if (createErr) {
+        console.error("[link-account] Create agent failed:", createErr);
+        return new Response(JSON.stringify({ error: HUMAN_GENERIC }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      agent = newAgent;
+    }
+
+    if (!agent) {
+      return new Response(
+        JSON.stringify({ error: HUMAN_NOT_FOUND, code: "APPLICATION_NOT_FOUND" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ----- STEP 4: Link agent to current user -----
     const { error: updateError } = await supabaseAdmin
       .from("agents")
       .update({
         user_id: userId,
         status: "active",
         portal_password_set: true,
+        is_deactivated: false,
       })
       .eq("id", agent.id);
 
     if (updateError) {
-      console.error("Error linking agent:", updateError);
-      return new Response(
-        JSON.stringify({ error: "Failed to link account" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      console.error("[link-account] Update agent failed:", updateError);
+      return new Response(JSON.stringify({ error: HUMAN_GENERIC }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // Update or create profile for this user if needed
+    // Ensure profile linked to this user
     const { data: existingProfile } = await supabaseAdmin
       .from("profiles")
       .select("id")
@@ -203,51 +229,44 @@ const handler = async (req: Request): Promise<Response> => {
       .maybeSingle();
 
     if (!existingProfile && agent.profile_id) {
-      // Update the agent's profile to point to this user
       await supabaseAdmin
         .from("profiles")
         .update({ user_id: userId })
         .eq("id", agent.profile_id);
     } else if (!existingProfile) {
-      // Create a new profile
+      const fallbackName =
+        agent.display_name ||
+        (application ? `${application.first_name} ${application.last_name}`.trim() : "Agent");
       await supabaseAdmin.from("profiles").insert({
         user_id: userId,
-        email: userEmail || email || "",
-        full_name: agent.display_name || "Agent",
+        email: userEmail || normalizedEmail || application?.email || "",
+        full_name: fallbackName,
       });
     }
 
-    // Ensure agent role exists
+    // Ensure agent role
     const { data: roleCheck } = await supabaseAdmin
       .from("user_roles")
       .select("id")
       .eq("user_id", userId)
       .eq("role", "agent")
       .maybeSingle();
-
     if (!roleCheck) {
-      await supabaseAdmin.from("user_roles").insert({
-        user_id: userId,
-        role: "agent",
-      });
+      await supabaseAdmin.from("user_roles").insert({ user_id: userId, role: "agent" });
     }
 
-    console.log(`Successfully linked user ${userId} to agent ${agent.id}`);
+    console.log(`[link-account] ✅ Linked user ${userId} -> agent ${agent.id}`);
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        message: "Account linked successfully",
-        agentId: agent.id,
-      }),
+      JSON.stringify({ success: true, message: "Account linked successfully", agentId: agent.id }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: any) {
-    console.error("Error in link-account:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    console.error("[link-account] Unhandled error:", error);
+    return new Response(JSON.stringify({ error: HUMAN_GENERIC }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 };
 

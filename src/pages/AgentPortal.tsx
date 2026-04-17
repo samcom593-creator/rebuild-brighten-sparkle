@@ -443,6 +443,9 @@ export default function AgentPortal() {
                 </p>
               </div>
             </div>
+            <div className="ml-auto">
+              <HiddenCardsManager catalog={HIDEABLE_CARDS} />
+            </div>
           </div>
 
           <div className="text-center sm:text-left">
@@ -601,7 +604,9 @@ export default function AgentPortal() {
         </AnimatePresence>
 
         {/* Performance Dashboard */}
-        <PerformanceDashboardSection />
+        <HideableCard cardKey="agent.performance-section" label={HIDEABLE_CARDS["agent.performance-section"]}>
+          <PerformanceDashboardSection />
+        </HideableCard>
 
         {/* Personal Stats */}
         <AnimatePresence initial={false}>
@@ -628,126 +633,144 @@ export default function AgentPortal() {
 
         {/* Year Performance Card - ADMIN ONLY */}
         {agentId && isAdmin && (
-          <section id="year-performance" className="hidden sm:block">
-            <YearPerformanceCard key={`year-${refreshKey}`} agentId={agentId} isAdmin={isAdmin} isManager={isManager} />
-          </section>
+          <HideableCard cardKey="agent.year-performance" label={HIDEABLE_CARDS["agent.year-performance"]} className="hidden sm:block">
+            <section id="year-performance">
+              <YearPerformanceCard key={`year-${refreshKey}`} agentId={agentId} isAdmin={isAdmin} isManager={isManager} />
+            </section>
+          </HideableCard>
         )}
 
         {/* Production History Chart */}
         {agentId && (
-          <section id="production-history" className="hidden sm:block">
-            <ProductionHistoryChart key={`history-${refreshKey}`} agentId={agentId} showAgencyWide={isAdmin} />
-          </section>
+          <HideableCard cardKey="agent.production-history" label={HIDEABLE_CARDS["agent.production-history"]} className="hidden sm:block">
+            <section id="production-history">
+              <ProductionHistoryChart key={`history-${refreshKey}`} agentId={agentId} showAgencyWide={isAdmin} />
+            </section>
+          </HideableCard>
         )}
 
         {/* Income Goal Tracker */}
         {agentId && (
-          <section id="income-goals" className="hidden sm:block">
-            <IncomeGoalTracker key={`income-goal-${refreshKey}`} agentId={agentId} />
-          </section>
+          <HideableCard cardKey="agent.income-goals" label={HIDEABLE_CARDS["agent.income-goals"]} className="hidden sm:block">
+            <section id="income-goals">
+              <IncomeGoalTracker key={`income-goal-${refreshKey}`} agentId={agentId} />
+            </section>
+          </HideableCard>
         )}
 
         {/* Team Goals */}
-        <section id="team-goals" className="hidden sm:block">
-          <TeamGoalsTracker key={`goals-${refreshKey}`} />
-        </section>
+        <HideableCard cardKey="agent.team-goals" label={HIDEABLE_CARDS["agent.team-goals"]} className="hidden sm:block">
+          <section id="team-goals">
+            <TeamGoalsTracker key={`goals-${refreshKey}`} />
+          </section>
+        </HideableCard>
 
         {/* Additional Leaderboards */}
-        <section className="hidden sm:block">
-          <div className="grid md:grid-cols-2 gap-4">
-            <ClosingRateLeaderboard 
-              key={`closing-${refreshKey}`}
-              currentAgentId={agentId || undefined}
-              period="week" 
-            />
-            <ReferralLeaderboard 
-              key={`referral-${refreshKey}`}
-              currentAgentId={agentId || undefined} 
-              period="week" 
-            />
-          </div>
-        </section>
+        <HideableCard cardKey="agent.extra-leaderboards" label={HIDEABLE_CARDS["agent.extra-leaderboards"]} className="hidden sm:block">
+          <section>
+            <div className="grid md:grid-cols-2 gap-4">
+              <ClosingRateLeaderboard 
+                key={`closing-${refreshKey}`}
+                currentAgentId={agentId || undefined}
+                period="week" 
+              />
+              <ReferralLeaderboard 
+                key={`referral-${refreshKey}`}
+                currentAgentId={agentId || undefined} 
+                period="week" 
+              />
+            </div>
+          </section>
+        </HideableCard>
 
         {/* Referral & Sharing Section */}
-        <section className="grid gap-4">
-          {/* Agent Referral Link */}
-          <AgentReferralLinkCard agentId={agentId} />
+        <HideableCard cardKey="agent.referral-section" label={HIDEABLE_CARDS["agent.referral-section"]}>
+          <section className="grid gap-4">
+            {/* Agent Referral Link */}
+            <AgentReferralLinkCard agentId={agentId} />
 
-          {/* Direct Portal Link */}
-          <GlassCard className="p-4 overflow-hidden">
-            <div className="flex items-center gap-3 mb-4">
-              <img src={apexIcon} alt="Apex" className="h-10 w-10 rounded-xl shadow-lg shrink-0" />
-              <div className="min-w-0">
-                <h3 className="font-semibold">Agent Portal</h3>
-                <p className="text-xs text-muted-foreground truncate">
-                  Share with your team for daily entry
-                </p>
-              </div>
-            </div>
-            
-            {/* Branded Preview Card */}
-            <div className="bg-gradient-to-br from-primary/10 via-violet-500/10 to-amber-500/10 border border-border/50 rounded-xl p-4 mb-4">
-              <div className="flex items-center gap-3">
-                <img src={apexIcon} alt="Apex" className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm">Agent Portal</p>
-                  <p className="text-xs text-muted-foreground truncate">apex-financial.org/agent-portal</p>
+            {/* Direct Portal Link */}
+            <GlassCard className="p-4 overflow-hidden">
+              <div className="flex items-center gap-3 mb-4">
+                <img src={apexIcon} alt="Apex" className="h-10 w-10 rounded-xl shadow-lg shrink-0" />
+                <div className="min-w-0">
+                  <h3 className="font-semibold">Agent Portal</h3>
+                  <p className="text-xs text-muted-foreground truncate">
+                    Share with your team for daily entry
+                  </p>
                 </div>
               </div>
-            </div>
-            
-            <Button 
-              className="w-full gap-2"
-              onClick={() => {
-                const logLink = "https://apex-financial.org/agent-portal";
-                navigator.clipboard.writeText(logLink);
-                toast.success("Link copied to clipboard!"); playSound("click");
-              }}
-            >
-              <Copy className="h-4 w-4" />
-              Copy Link
-            </Button>
-          </GlassCard>
-        </section>
+              
+              {/* Branded Preview Card */}
+              <div className="bg-gradient-to-br from-primary/10 via-violet-500/10 to-amber-500/10 border border-border/50 rounded-xl p-4 mb-4">
+                <div className="flex items-center gap-3">
+                  <img src={apexIcon} alt="Apex" className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm">Agent Portal</p>
+                    <p className="text-xs text-muted-foreground truncate">apex-financial.org/agent-portal</p>
+                  </div>
+                </div>
+              </div>
+              
+              <Button 
+                className="w-full gap-2"
+                onClick={() => {
+                  const logLink = "https://apex-financial.org/agent-portal";
+                  navigator.clipboard.writeText(logLink);
+                  toast.success("Link copied to clipboard!"); playSound("click");
+                }}
+              >
+                <Copy className="h-4 w-4" />
+                Copy Link
+              </Button>
+            </GlassCard>
+          </section>
+        </HideableCard>
 
         {/* My Tasks */}
         {agentId && (
-          <section>
-            <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
-              <Target className="h-5 w-5 text-primary" />
-              My Tasks
-            </h2>
-            <AgentTaskManager viewMode="list" agentFilter={agentId} showAssignButton={false} />
-          </section>
+          <HideableCard cardKey="agent.my-tasks" label={HIDEABLE_CARDS["agent.my-tasks"]}>
+            <section>
+              <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
+                <Target className="h-5 w-5 text-primary" />
+                My Tasks
+              </h2>
+              <AgentTaskManager viewMode="list" agentFilter={agentId} showAssignButton={false} />
+            </section>
+          </HideableCard>
         )}
 
         {/* Weekly Badges Card - MOVED TO BOTTOM */}
         {agentId && (
-          <section id="weekly-badges" className="hidden sm:block">
-            <WeeklyBadgesCard key={`badges-${refreshKey}`} agentId={agentId} />
-          </section>
+          <HideableCard cardKey="agent.weekly-badges" label={HIDEABLE_CARDS["agent.weekly-badges"]} className="hidden sm:block">
+            <section id="weekly-badges">
+              <WeeklyBadgesCard key={`badges-${refreshKey}`} agentId={agentId} />
+            </section>
+          </HideableCard>
         )}
 
         {/* Motivational Footer */}
-        <section>
-          <GlassCard className="p-6 text-center relative overflow-hidden">
-            {/* Gradient background */}
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-violet-500/5" />
-            
-            <div className="relative">
-              <Quote className="h-8 w-8 mx-auto mb-4 text-primary/30" />
-              <p className="text-base sm:text-lg italic text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-                "{quote}"
-              </p>
-              <div className="mt-6 flex items-center justify-center gap-2">
-                <Award className="h-5 w-5 text-amber-400" />
-                <span className="text-sm text-muted-foreground font-medium">
-                  Keep grinding. Your success is built one day at a time.
-                </span>
+        <HideableCard cardKey="agent.motivational-footer" label={HIDEABLE_CARDS["agent.motivational-footer"]}>
+          <section>
+            <GlassCard className="p-6 text-center relative overflow-hidden">
+              {/* Gradient background */}
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-violet-500/5" />
+              
+              <div className="relative">
+                <Quote className="h-8 w-8 mx-auto mb-4 text-primary/30" />
+                <p className="text-base sm:text-lg italic text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+                  "{quote}"
+                </p>
+                <div className="mt-6 flex items-center justify-center gap-2">
+                  <Award className="h-5 w-5 text-amber-400" />
+                  <span className="text-sm text-muted-foreground font-medium">
+                    Keep grinding. Your success is built one day at a time.
+                  </span>
+                </div>
               </div>
-            </div>
-          </GlassCard>
-        </section>
+            </GlassCard>
+          </section>
+        </HideableCard>
       </div>
 
       {/* Mobile Bottom Navigation */}

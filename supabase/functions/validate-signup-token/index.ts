@@ -102,6 +102,16 @@ Deno.serve(async (req) => {
     );
   } catch (error) {
     console.error("Validation error:", error);
+    if (error instanceof RateLimitError) {
+      return new Response(
+        JSON.stringify({ valid: false, error: "Too many attempts. Please wait a minute." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    try {
+      const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      await logFunctionError(sb, "validate-signup-token", error);
+    } catch (_) { /* swallow */ }
     return new Response(
       JSON.stringify({ valid: false, error: "Validation failed" }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

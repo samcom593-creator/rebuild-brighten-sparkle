@@ -58,6 +58,7 @@ interface ManagerWithTeam {
 
 export default function TeamDirectory() {
   const { user, isAdmin, isManager, isLoading: authLoading } = useAuth();
+  const mounted = useMountedRef();
   const [manager, setManager] = useState<ManagerProfile | null>(null);
   const [hierarchy, setHierarchy] = useState<ManagerWithTeam[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,9 +81,9 @@ export default function TeamDirectory() {
         }
       } catch (err) {
         console.error("Unexpected error:", err);
-        setError("An unexpected error occurred.");
+        if (mounted.current) setError("An unexpected error occurred.");
       } finally {
-        setLoading(false);
+        if (mounted.current) setLoading(false);
       }
     };
 

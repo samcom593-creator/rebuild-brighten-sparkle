@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef, createContext, useContext, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
+import { useIdleSession } from "@/shared/auth/useIdleSession";
+import { SessionWarningDialog } from "@/shared/auth/SessionWarningDialog";
 
 interface Profile {
   id: string;
@@ -230,7 +232,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshProfile: () => user && fetchProfile(user.id),
   };
 
-  return React.createElement(AuthContext.Provider, { value }, children);
+  return React.createElement(
+    AuthContext.Provider,
+    { value },
+    React.createElement(IdleSessionGate, { enabled: !!user, onTimeout: signOut }),
+    children
+  );
+}
+
+function IdleSessionGate({ enabled, onTimeout }: { enabled: boolean; onTimeout: () => Promise<{ error: any }> }) {
+  const { showWarning, secondsRemaining, extendSession } = useIdleSession({
+    enabled,
+    onTimeout: async () => {
+      await onTimeout();
+    },
+  });
+
+  return React.createElement(SessionWarningDialog, {
+    open: showWarning,
+    secondsRemaining,
+    onStay: extendSession,
+    onSignOut: () => {
+      void onTimeout();
+    },
+  });
 }
 
 export function useAuth(): AuthContextValue {

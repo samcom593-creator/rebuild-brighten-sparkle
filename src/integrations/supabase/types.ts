@@ -675,6 +675,7 @@ export type Database = {
           potential_rating: number | null
           production_unlocked_at: string | null
           profile_id: string | null
+          ref_slug: string | null
           sort_order: number | null
           start_date: string | null
           status: Database["public"]["Enums"]["agent_status"]
@@ -728,6 +729,7 @@ export type Database = {
           potential_rating?: number | null
           production_unlocked_at?: string | null
           profile_id?: string | null
+          ref_slug?: string | null
           sort_order?: number | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["agent_status"]
@@ -781,6 +783,7 @@ export type Database = {
           potential_rating?: number | null
           production_unlocked_at?: string | null
           profile_id?: string | null
+          ref_slug?: string | null
           sort_order?: number | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["agent_status"]
@@ -974,6 +977,7 @@ export type Database = {
           previous_company: string | null
           previous_production: number | null
           qualified_at: string | null
+          recruiter_id: string | null
           referral_manager_id: string | null
           referral_source: string | null
           referral_source_detail: string | null
@@ -1052,6 +1056,7 @@ export type Database = {
           previous_company?: string | null
           previous_production?: number | null
           qualified_at?: string | null
+          recruiter_id?: string | null
           referral_manager_id?: string | null
           referral_source?: string | null
           referral_source_detail?: string | null
@@ -1130,6 +1135,7 @@ export type Database = {
           previous_company?: string | null
           previous_production?: number | null
           qualified_at?: string | null
+          recruiter_id?: string | null
           referral_manager_id?: string | null
           referral_source?: string | null
           referral_source_detail?: string | null
@@ -1153,6 +1159,13 @@ export type Database = {
           {
             foreignKeyName: "applications_assigned_agent_id_fkey"
             columns: ["assigned_agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "applications_recruiter_id_fkey"
+            columns: ["recruiter_id"]
             isOneToOne: false
             referencedRelation: "agents"
             referencedColumns: ["id"]
@@ -1664,6 +1677,42 @@ export type Database = {
           reason?: string | null
           source?: string
           state?: string | null
+        }
+        Relationships: []
+      }
+      duplicate_agent_flags: {
+        Row: {
+          agent_ids: string[]
+          email: string | null
+          flagged_at: string
+          id: string
+          phone: string | null
+          reason: string | null
+          resolved: boolean
+          resolved_at: string | null
+          resolved_by: string | null
+        }
+        Insert: {
+          agent_ids: string[]
+          email?: string | null
+          flagged_at?: string
+          id?: string
+          phone?: string | null
+          reason?: string | null
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+        }
+        Update: {
+          agent_ids?: string[]
+          email?: string | null
+          flagged_at?: string
+          id?: string
+          phone?: string | null
+          reason?: string | null
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
         }
         Relationships: []
       }

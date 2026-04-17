@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logFunctionError } from "../_shared/audit.ts";
 
 // 1x1 transparent GIF
 const TRACKING_PIXEL = new Uint8Array([

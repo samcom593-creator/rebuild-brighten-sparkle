@@ -1,6 +1,13 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { createHandler } from "../_shared/handler.ts";
 import { jsonResponse } from "../_shared/cors.ts";
+import { parseBody, v } from "../_shared/validate.ts";
+
+const BodySchema = v.object({
+  event_type: v.string({ min: 1, max: 64, required: true }),
+  agent_name: v.string({ min: 1, max: 200, required: true }),
+  details: v.any(),
+});
 
 Deno.serve(
   createHandler(
@@ -16,7 +23,7 @@ Deno.serve(
         { auth: { persistSession: false } }
       );
 
-      const { event_type, agent_name, details } = await req.json();
+      const { event_type, agent_name, details } = await parseBody(req, BodySchema);
 
       // Resolve webhook from profiles (first profile with one set wins)
       const { data: profiles } = await supabase

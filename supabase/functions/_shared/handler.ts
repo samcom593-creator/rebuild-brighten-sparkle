@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders, errorResponse, jsonResponse } from "./cors.ts";
 import { AuthContext, AuthError, requireAuth } from "./auth.ts";
 import { RateLimitError, checkRateLimit } from "./rateLimit.ts";
+import { ValidationError } from "./validate.ts";
 import { logFunctionError } from "./audit.ts";
 
 export interface HandlerOptions {
@@ -68,6 +69,9 @@ export function createHandler(opts: HandlerOptions, fn: HandlerFn): (req: Reques
       }
       if (err instanceof RateLimitError) {
         return errorResponse("Too many requests", 429, "RATE_LIMIT", { retryAfter: err.retryAfter });
+      }
+      if (err instanceof ValidationError) {
+        return errorResponse(err.message, 400, "VALIDATION_ERROR", { field: err.field });
       }
       await logFunctionError(serviceClient, opts.functionName, err, undefined, auth?.userId, requestId);
       const message = err instanceof Error ? err.message : "Internal server error";

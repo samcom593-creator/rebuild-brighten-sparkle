@@ -61,6 +61,17 @@ export const v = {
       return result;
     };
   },
+  enum<T extends string>(values: readonly T[]): Validator<T> {
+    return (val: unknown) => {
+      if (typeof val !== "string" || !values.includes(val as T)) {
+        throw new ValidationError("value", `must be one of: ${values.join(", ")}`);
+      }
+      return val as T;
+    };
+  },
+  any(): Validator<unknown> {
+    return (val: unknown) => val;
+  },
 };
 
 export async function parseBody<T>(req: Request, validator: Validator<T>): Promise<T> {

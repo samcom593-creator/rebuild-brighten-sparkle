@@ -102,11 +102,11 @@ export default function AgentManagement() {
         return { id: a.id, name, todayALP, weekALP, lastLogged, streak, status };
       });
 
-      setAgents(cards);
+      if (mounted.current) setAgents(cards);
     } catch (err) {
       console.error(err);
     } finally {
-      setLoading(false);
+      if (mounted.current) setLoading(false);
     }
   };
 
@@ -132,7 +132,7 @@ export default function AgentManagement() {
         });
       });
 
-      setAlerts(alertItems);
+      if (mounted.current) setAlerts(alertItems);
     } catch (err) {
       console.error(err);
     }

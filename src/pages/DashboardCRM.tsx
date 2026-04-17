@@ -36,6 +36,7 @@ import { AgentQuickEditDialog } from "@/components/dashboard/AgentQuickEditDialo
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { differenceInDays } from "date-fns";
 import { BulkComposeDrawer } from "@/components/dashboard/BulkComposeDrawer";
+import { useRealtimeTable } from "@/shared/realtime/useRealtimeTable";
 
 /** Feature flag: hide destructive bulk delete by default. Set VITE_ENABLE_CRM_BULK_DELETE=true to enable. */
 const ENABLE_BULK_DELETE = import.meta.env.VITE_ENABLE_CRM_BULK_DELETE === "true";
@@ -837,6 +838,14 @@ export default function DashboardCRM() {
 
   const loading = agentsLoading;
   const fetchAgents = useCallback(() => { queryClient.invalidateQueries({ queryKey: ["crm-agents"] }); }, [queryClient]);
+
+  // Phase 5: Live updates — invalidate when agents/applications change anywhere
+  useRealtimeTable({ table: "agents", channelSuffix: "crm" }, () => {
+    queryClient.invalidateQueries({ queryKey: ["crm-agents"] });
+  });
+  useRealtimeTable({ table: "applications", channelSuffix: "crm" }, () => {
+    queryClient.invalidateQueries({ queryKey: ["crm-agents"] });
+  });
 
   const handleOptimisticStageUpdate = async (agentId: string) => {
     try {

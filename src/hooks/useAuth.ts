@@ -230,7 +230,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshProfile: () => user && fetchProfile(user.id),
   };
 
-  return React.createElement(AuthContext.Provider, { value }, children);
+  return React.createElement(
+    AuthContext.Provider,
+    { value },
+    React.createElement(IdleSessionGate, { enabled: !!user, onTimeout: signOut }),
+    children
+  );
+}
+
+// Lazy import keeps useAuth.ts free of UI deps for tooling that imports the hook.
+function IdleSessionGate({ enabled, onTimeout }: { enabled: boolean; onTimeout: () => Promise<{ error: any }> }) {
+  const { useIdleSession } = require("@/shared/auth/useIdleSession") as typeof import("@/shared/auth/useIdleSession");
+  const { SessionWarningDialog } = require("@/shared/auth/SessionWarningDialog") as typeof import("@/shared/auth/SessionWarningDialog");
+
+  const { showWarning, secondsRemaining, extendSession } = useIdleSession({
+    enabled,
+    onTimeout: async () => {
+      await onTimeout();
+    },
+  });
+
+  return React.createElement(SessionWarningDialog, {
+    open: showWarning,
+    secondsRemaining,
+    onStay: extendSession,
+    onSignOut: () => {
+      void onTimeout();
+    },
+  });
 }
 
 export function useAuth(): AuthContextValue {

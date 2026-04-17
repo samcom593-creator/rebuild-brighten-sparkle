@@ -11,14 +11,13 @@ interface UseIdleSessionOptions {
   onTimeout: () => void | Promise<void>;
 }
 
-const ACTIVITY_EVENTS: (keyof WindowEventMap)[] = [
+const ACTIVITY_EVENTS = [
   "mousemove",
   "mousedown",
   "keydown",
   "touchstart",
   "scroll",
-  "visibilitychange",
-];
+] as const;
 
 /**
  * Tracks user activity and exposes a warning state before forced sign-out.

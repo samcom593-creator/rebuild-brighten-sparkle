@@ -3,9 +3,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { DollarSign, Users, TrendingUp, AlertTriangle } from "lucide-react";
+import { DollarSign, Users, TrendingUp, AlertTriangle, Target } from "lucide-react";
 
-export type StatType = "totalAlp" | "activeAgents" | "producers" | "needsAttention";
+export type StatType = "totalAlp" | "activeAgents" | "producers" | "needsAttention" | "totalDeals";
 
 interface AgentData {
   id: string;
@@ -29,6 +29,7 @@ const icons = {
   activeAgents: Users,
   producers: TrendingUp,
   needsAttention: AlertTriangle,
+  totalDeals: Target,
 };
 
 const titles = {
@@ -36,6 +37,7 @@ const titles = {
   activeAgents: "Active Agents",
   producers: "Producers This Period",
   needsAttention: "Needs Attention",
+  totalDeals: "Deals by Agent",
 };
 
 const descriptions = {
@@ -43,6 +45,7 @@ const descriptions = {
   activeAgents: "All agents marked as active in the system",
   producers: "Agents who sold at least one deal",
   needsAttention: "Agents under threshold with low production",
+  totalDeals: "Agents ranked by deals closed this period",
 };
 
 export function StatCardPopup({
@@ -66,6 +69,8 @@ export function StatCardPopup({
       case "needsAttention":
         const threshold = timePeriod === "month" ? 20000 : 5000;
         return !agent.isDeactivated && !agent.isInactive && agent.totalAlp < threshold;
+      case "totalDeals":
+        return agent.totalDeals > 0;
       default:
         return true;
     }
@@ -75,6 +80,9 @@ export function StatCardPopup({
   const sortedAgents = [...filteredAgents].sort((a, b) => {
     if (type === "needsAttention") {
       return a.totalAlp - b.totalAlp; // Lowest first
+    }
+    if (type === "totalDeals") {
+      return b.totalDeals - a.totalDeals; // Most deals first
     }
     return b.totalAlp - a.totalAlp; // Highest first
   });
@@ -125,6 +133,13 @@ export function StatCardPopup({
                   <div className="text-right">
                     {type === "activeAgents" ? (
                       <Badge variant="secondary" className="text-xs">Active</Badge>
+                    ) : type === "totalDeals" ? (
+                      <>
+                        <p className="font-bold">{agent.totalDeals} deals</p>
+                        <p className="text-xs text-muted-foreground">
+                          ${Math.round(agent.totalAlp).toLocaleString()}
+                        </p>
+                      </>
                     ) : (
                       <>
                         <p className={cn(

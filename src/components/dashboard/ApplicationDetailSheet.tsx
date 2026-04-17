@@ -21,6 +21,7 @@ import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { LicensingDelegateSection } from "./LicensingDelegateSection";
 import { CallTranscriptsSection } from "./CallTranscriptsSection";
+import { LeadInsightsPanel } from "@/components/crm/LeadInsightsPanel";
 
 interface ApplicationDetailSheetProps {
   open: boolean;

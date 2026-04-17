@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { useMountedRef } from "@/hooks/useMountedRef";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users,
@@ -55,6 +56,7 @@ export default function AgentPipeline() {
   const navigate = useNavigate();
   const { user, isAdmin, isManager } = useAuth();
   const { playSound } = useSoundEffects();
+  const mounted = useMountedRef();
   const [applications, setApplications] = useState<Application[]>([]);
   const [agentId, setAgentId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,8 +80,9 @@ export default function AgentPipeline() {
         .from("agents")
         .select("id")
         .eq("user_id", user.id)
-        .single();
+        .maybeSingle();
 
+      if (!mounted.current) return;
       if (!agentData) {
         setLoading(false);
         return;
@@ -103,6 +106,7 @@ export default function AgentPipeline() {
           .order("created_at", { ascending: false });
 
         if (error) throw error;
+        if (!mounted.current) return;
         setApplications((data || []) as Application[]);
       } else {
         // Fetch only my direct recruits
@@ -114,15 +118,16 @@ export default function AgentPipeline() {
           .order("created_at", { ascending: false });
 
         if (error) throw error;
+        if (!mounted.current) return;
         setApplications((data || []) as Application[]);
       }
     } catch (err) {
       console.error("Error fetching pipeline:", err);
-      toast.error("Failed to load pipeline");
+      if (mounted.current) toast.error("Failed to load pipeline");
     } finally {
-      setLoading(false);
+      if (mounted.current) setLoading(false);
     }
-  }, [user, teamMode, isManager, isAdmin]);
+  }, [user, teamMode, isManager, isAdmin, mounted]);
 
   useEffect(() => {
     fetchApplications();

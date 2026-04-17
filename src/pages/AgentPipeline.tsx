@@ -71,6 +71,9 @@ export default function AgentPipeline() {
   const [schedulerOpen, setSchedulerOpen] = useState(false);
   const [schedulerApp, setSchedulerApp] = useState<Application | null>(null);
 
+  // Application detail sheet
+  const [detailAppId, setDetailAppId] = useState<string | null>(null);
+
   const fetchApplications = useCallback(async () => {
     if (!user) return;
     setLoading(true);
@@ -511,7 +514,7 @@ export default function AgentPipeline() {
           <KanbanBoard
             applications={filteredApps}
             onStageChange={handleStageChange}
-            onCardClick={(app) => {/* TODO: open detail drawer */}}
+            onCardClick={(app) => setDetailAppId(app.id)}
             onScheduleInterview={(app) => openScheduler(app as Application)}
           />
         ) : (

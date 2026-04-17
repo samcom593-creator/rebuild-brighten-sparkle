@@ -45,7 +45,16 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = req.headers.get("x-request-id") ?? crypto.randomUUID();
+  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false },
+  });
+
   try {
+    // Rate limit: 60 req/min per IP (best effort, fails open)
+    const ip = req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for") ?? "unknown";
+    await checkRateLimit(supabase, { bucketKey: `send-notification:${ip}`, maxRequests: 60, windowSeconds: 60 });
+
     const { userId, title, message, url, email } = await req.json();
 
     if (!userId && !email) {
@@ -54,10 +63,6 @@ const handler = async (req: Request): Promise<Response> => {
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
-
-    const supabase = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false },
-    });
 
     const results = { push: false, sms: false, email: false };
 

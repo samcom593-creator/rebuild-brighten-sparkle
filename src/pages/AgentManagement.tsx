@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useMountedRef } from "@/hooks/useMountedRef";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +30,7 @@ interface AgentProdCard {
 
 export default function AgentManagement() {
   const { user } = useAuth();
+  const mounted = useMountedRef();
   const [agents, setAgents] = useState<AgentProdCard[]>([]);
   const [alerts, setAlerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,6 +49,8 @@ export default function AgentManagement() {
         .select("id, display_name, profiles(full_name)")
         .eq("is_deactivated", false)
         .eq("status", "active");
+
+      if (!mounted.current) return;
 
       if (!agentData) return;
 
@@ -98,11 +102,11 @@ export default function AgentManagement() {
         return { id: a.id, name, todayALP, weekALP, lastLogged, streak, status };
       });
 
-      setAgents(cards);
+      if (mounted.current) setAgents(cards);
     } catch (err) {
       console.error(err);
     } finally {
-      setLoading(false);
+      if (mounted.current) setLoading(false);
     }
   };
 
@@ -128,7 +132,7 @@ export default function AgentManagement() {
         });
       });
 
-      setAlerts(alertItems);
+      if (mounted.current) setAlerts(alertItems);
     } catch (err) {
       console.error(err);
     }

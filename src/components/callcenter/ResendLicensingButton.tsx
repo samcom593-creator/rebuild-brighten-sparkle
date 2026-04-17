@@ -8,7 +8,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/integrations/supabase/client";
+import { safeInvoke } from "@/shared/api/safeInvoke";
 import { toast } from "@/hooks/use-toast";
 
 interface ResendLicensingButtonProps {
@@ -35,41 +35,41 @@ export function ResendLicensingButton({
     e.stopPropagation();
     e.preventDefault();
     setIsSending(true);
-    try {
-      const { data, error } = await supabase.functions.invoke(
-        "send-licensing-instructions",
-        {
-          body: {
-            email: recipientEmail,
-            firstName: recipientName,
-            licenseStatus: licenseStatus,
-            managerEmail: managerEmail,
-            phone: recipientPhone,
-            agentId: agentId,
-          },
-        }
-      );
 
-      if (error) throw error;
+    // Idempotency key: dedupes accidental double-clicks within the same minute
+    const idempotencyKey = `licensing:${agentId ?? recipientEmail}:${Math.floor(Date.now() / 60_000)}`;
 
-      setJustSent(true);
-      toast({
-        title: "Email Sent!",
-        description: `Licensing instructions sent to ${recipientEmail}`,
-      });
+    const { error, requestId } = await safeInvoke(
+      "send-licensing-instructions",
+      {
+        email: recipientEmail,
+        firstName: recipientName,
+        licenseStatus,
+        managerEmail,
+        phone: recipientPhone,
+        agentId,
+      },
+      { idempotencyKey }
+    );
 
-      // Reset after 3 seconds
-      setTimeout(() => setJustSent(false), 3000);
-    } catch (error: any) {
-      console.error("Failed to send licensing email:", error);
+    setIsSending(false);
+
+    if (error) {
+      console.error(`[licensing-email] failed (req=${requestId}):`, error);
       toast({
         title: "Failed to Send",
         description: error.message || "Could not send licensing email",
         variant: "destructive",
       });
-    } finally {
-      setIsSending(false);
+      return;
     }
+
+    setJustSent(true);
+    toast({
+      title: "Email Sent!",
+      description: `Licensing instructions sent to ${recipientEmail}`,
+    });
+    setTimeout(() => setJustSent(false), 3000);
   };
 
   const tooltipText =

@@ -23,7 +23,7 @@ Deno.serve(
         { auth: { persistSession: false } }
       );
 
-      const { event_type, agent_name, details } = await req.json();
+      const { event_type, agent_name, details } = await parseBody(req, BodySchema);
 
       // Resolve webhook from profiles (first profile with one set wins)
       const { data: profiles } = await supabase

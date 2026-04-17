@@ -1295,6 +1295,20 @@ export default function DashboardCRM() {
           <Button variant={showInactive ? "secondary" : "outline"} size="sm" onClick={() => setShowInactive(!showInactive)} className="gap-1.5 h-8">
             <Eye className="h-3.5 w-3.5" /> {showInactive ? "Inactive ✓" : "Inactive"}
           </Button>
+          {activeFilterCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearAllFilters}
+              className="gap-1.5 h-8 text-muted-foreground hover:text-foreground ml-auto"
+            >
+              <X className="h-3.5 w-3.5" />
+              Clear filters
+              <Badge variant="secondary" className="ml-1 h-4 px-1.5 text-[10px] font-semibold">
+                {activeFilterCount}
+              </Badge>
+            </Button>
+          )}
         </div>
 
         {loading ? (

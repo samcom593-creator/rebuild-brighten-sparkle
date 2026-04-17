@@ -410,7 +410,10 @@ export default function Dashboard() {
             {isAdmin ? "Here's your agency overview" : isManager ? "Here's your team performance" : "Track your progress"}
           </p>
         </div>
-        {(isAdmin || isManager) && <AddAgentModal />}
+        <div className="flex items-center gap-2">
+          <HiddenCardsManager catalog={HIDEABLE_CARDS} />
+          {(isAdmin || isManager) && <AddAgentModal />}
+        </div>
       </div>
 
       {/* ====== TOP METRIC CARDS (Real Data) ====== */}

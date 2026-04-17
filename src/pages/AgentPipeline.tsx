@@ -599,6 +599,13 @@ export default function AgentPipeline() {
           onScheduled={fetchApplications}
         />
       )}
+
+      <ApplicationDetailSheet
+        open={!!detailAppId}
+        onOpenChange={(o) => !o && setDetailAppId(null)}
+        applicationId={detailAppId ?? undefined}
+        onRefresh={fetchApplications}
+      />
     </>
   );
 }

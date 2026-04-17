@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { useIdleSession } from "@/shared/auth/useIdleSession";
 import { SessionWarningDialog } from "@/shared/auth/SessionWarningDialog";
+import { setTelemetryUser, track } from "@/shared/telemetry/track";
 
 interface Profile {
   id: string;

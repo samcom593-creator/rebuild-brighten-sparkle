@@ -48,6 +48,7 @@ import { AgentProfileEditor } from "@/components/admin/AgentProfileEditor";
 import { QuickFilters } from "@/components/admin/QuickFilters";
 import { RecognitionQueue } from "@/components/admin/RecognitionQueue";
 import { DuplicateMergeTool } from "@/components/admin/DuplicateMergeTool";
+import { ActivityFeedWidget } from "@/components/dashboard/ActivityFeedWidget";
 import { CourseProgressPanel } from "@/components/admin/CourseProgressPanel";
 import { StatCardPopup, type StatType } from "@/components/dashboard/StatCardPopup";
 import { InviteTeamModal } from "@/components/dashboard/InviteTeamModal";
@@ -944,9 +945,10 @@ export default function DashboardCommandCenter() {
           {/* Recognition Queue & Course Progress - 30% on desktop */}
           <div className="w-full lg:w-[30%] space-y-6">
             <AISummaryReport />
-            
+
             <RecognitionQueue />
             <CourseProgressPanel />
+            <ActivityFeedWidget limit={12} />
           </div>
         </div>
 

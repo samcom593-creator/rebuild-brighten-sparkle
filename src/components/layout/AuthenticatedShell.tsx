@@ -5,6 +5,7 @@ import { PushNotificationPrompt } from "./PushNotificationPrompt";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ComponentErrorBoundary } from "@/components/ComponentErrorBoundary";
 import { Skeleton } from "@/components/ui/skeleton";
+import { CommandPalette } from "@/components/command/CommandPalette";
 
 function InnerPageLoader() {
   return (
@@ -30,7 +31,7 @@ export function AuthenticatedShell() {
   return (
     <ProtectedRoute>
       <SidebarLayout showPhoneBanner={true}>
-        
+        <CommandPalette />
         <PushNotificationPrompt />
         <ComponentErrorBoundary name="page-content">
           <Suspense fallback={<InnerPageLoader />}>

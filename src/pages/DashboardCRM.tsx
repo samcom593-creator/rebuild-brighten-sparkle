@@ -150,7 +150,7 @@ const SECTIONS = [
   { key: "pre_licensed", label: "Pre-Licensed", icon: GraduationCap, stages: ["pre_licensed", "onboarding", "training_online"] as OnboardingStage[], accent: "border-l-yellow-500", headerBg: "bg-yellow-500/5", iconColor: "text-yellow-500" },
   { key: "transfer", label: "Transfer", icon: Users, stages: ["transfer"] as OnboardingStage[], accent: "border-l-orange-500", headerBg: "bg-orange-500/5", iconColor: "text-orange-500" },
   { key: "in_training", label: "In-Field Training", icon: GraduationCap, stages: ["in_field_training"] as OnboardingStage[], accent: "border-l-teal-500", headerBg: "bg-teal-500/5", iconColor: "text-teal-500" },
-  { key: "below_10k", label: "Below $10K", icon: AlertTriangle, stages: ["below_10k"] as OnboardingStage[], accent: "border-l-red-500", headerBg: "bg-red-500/5", iconColor: "text-red-500" },
+  { key: "below_10k", label: "Below $40K/mo", icon: AlertTriangle, stages: ["below_10k"] as OnboardingStage[], accent: "border-l-red-500", headerBg: "bg-red-500/5", iconColor: "text-red-500" },
   { key: "live", label: "Live", icon: Briefcase, stages: ["live", "evaluated"] as OnboardingStage[], accent: "border-l-emerald-500", headerBg: "bg-emerald-500/5", iconColor: "text-emerald-500" },
   { key: "needs_followup", label: "Needs Follow-Up", icon: AlertTriangle, stages: ["need_followup"] as OnboardingStage[], accent: "border-l-amber-500", headerBg: "bg-amber-500/5", iconColor: "text-amber-500" },
   { key: "inactive", label: "Inactive", icon: UserX, stages: ["inactive"] as OnboardingStage[], accent: "border-l-gray-500", headerBg: "bg-gray-500/5", iconColor: "text-gray-500" },
@@ -934,21 +934,21 @@ export default function DashboardCRM() {
     if (section.key === "pre_licensed") {
       return filteredAgents.filter(a => a.agentLicenseStatus !== "licensed" && section.stages.includes(a.onboardingStage));
     }
-    // Live = actively selling + above $10K weekly ALP
+    // Live = actively selling + above $40K monthly ALP (≈ $10K/wk avg)
     if (section.key === "live") {
       return filteredAgents.filter(a => 
         (section.stages.includes(a.onboardingStage) || a.onboardingStage === "below_10k") && 
         a.agentLicenseStatus === "licensed" && 
-        a.weeklyALP >= 10000
-      ).sort((a, b) => b.weeklyALP - a.weeklyALP);
+        a.monthlyALP >= 40000
+      ).sort((a, b) => b.monthlyALP - a.monthlyALP);
     }
-    // Below 10K = licensed agents selling but under $10K ALP
+    // Below 10K = licensed agents selling but under $40K monthly ALP
     if (section.key === "below_10k") {
       return filteredAgents.filter(a => 
         (["evaluated", "live", "below_10k"].includes(a.onboardingStage)) && 
         a.agentLicenseStatus === "licensed" && 
-        a.weeklyALP < 10000
-      ).sort((a, b) => b.weeklyALP - a.weeklyALP);
+        a.monthlyALP < 40000
+      ).sort((a, b) => b.monthlyALP - a.monthlyALP);
     }
     // Transfer = course done, not yet in field training
     if (section.key === "transfer") {
@@ -1252,7 +1252,7 @@ export default function DashboardCRM() {
             { label: "Pre-Licensed", count: preLicensedCount, icon: GraduationCap, color: "text-violet-500", borderColor: "border-t-violet-500", bgGlow: "bg-violet-500/5" },
             { label: "Transfer", count: transferCount, icon: Users, color: "text-orange-500", borderColor: "border-t-orange-500", bgGlow: "bg-orange-500/5" },
             { label: "Training", count: trainingCount, icon: GraduationCap, color: "text-amber-500", borderColor: "border-t-amber-500", bgGlow: "bg-amber-500/5" },
-            { label: "Below $10K", count: below10kCount, icon: AlertTriangle, color: "text-red-500", borderColor: "border-t-red-500", bgGlow: "bg-red-500/5" },
+            { label: "Below $40K/mo", count: below10kCount, icon: AlertTriangle, color: "text-red-500", borderColor: "border-t-red-500", bgGlow: "bg-red-500/5" },
             { label: "Live", count: liveCount, icon: Briefcase, color: "text-emerald-500", borderColor: "border-t-emerald-500", bgGlow: "bg-emerald-500/5" },
             { label: "Needs F/U", count: needsFollowUpCount, icon: AlertTriangle, color: "text-red-500", borderColor: "border-t-red-500", bgGlow: "bg-red-500/5" },
           ].map(s => (

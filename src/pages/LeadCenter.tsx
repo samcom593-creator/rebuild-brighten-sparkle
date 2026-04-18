@@ -908,10 +908,17 @@ export default function LeadCenter() {
                             displayMode="icon"
                           />
                           <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                            <a href={`tel:${lead.phone}`}>
+                            <a href={`tel:${lead.phone}`} title="Call">
                               <Phone className="h-4 w-4" />
                             </a>
                           </Button>
+                          {lead.phone && (
+                            <Button variant="ghost" size="icon" className="h-8 w-8" asChild title="Text">
+                              <a href={`sms:${lead.phone}`}>
+                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                              </a>
+                            </Button>
+                          )}
                           <QuickEmailMenu
                             applicationId={lead.id}
                             agentId={null}

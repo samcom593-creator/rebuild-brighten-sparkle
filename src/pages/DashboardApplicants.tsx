@@ -720,6 +720,51 @@ export default function DashboardApplicants() {
                   <Instagram className="h-4 w-4" />
                 </Button>
               )}
+
+              {!isTerminated && app.phone && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                  title={`Call ${app.phone}`}
+                  aria-label="Call"
+                  asChild
+                >
+                  <a href={`tel:${app.phone}`}>
+                    <Phone className="h-4 w-4" />
+                  </a>
+                </Button>
+              )}
+
+              {!isTerminated && app.phone && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                  title={`Text ${app.phone}`}
+                  aria-label="Text"
+                  asChild
+                >
+                  <a href={`sms:${app.phone}`}>
+                    <MessageCircle className="h-4 w-4" />
+                  </a>
+                </Button>
+              )}
+
+              {!isTerminated && app.email && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                  title={`Email ${app.email}`}
+                  aria-label="Email"
+                  asChild
+                >
+                  <a href={`mailto:${app.email}`}>
+                    <Mail className="h-4 w-4" />
+                  </a>
+                </Button>
+              )}
               
               {!isTerminated && (
                 <>
@@ -1142,22 +1187,45 @@ export default function DashboardApplicants() {
                                       <Instagram className="h-3.5 w-3.5" />
                                     </Button>
                                   )}
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7"
-                                    title={app.phone ? `Copy ${app.phone}` : "No phone number"}
-                                    onClick={() => {
-                                      if (app.phone) {
-                                        navigator.clipboard.writeText(app.phone);
-                                        toast.success(`Copied ${app.phone}`);
-                                      } else {
-                                        toast.error("No phone number on file");
-                                      }
-                                    }}
-                                  >
-                                    <Phone className="h-3.5 w-3.5" />
-                                  </Button>
+                                  {app.phone && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7"
+                                      title={`Call ${app.phone}`}
+                                      asChild
+                                    >
+                                      <a href={`tel:${app.phone}`}>
+                                        <Phone className="h-3.5 w-3.5" />
+                                      </a>
+                                    </Button>
+                                  )}
+                                  {app.phone && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7"
+                                      title={`Text ${app.phone}`}
+                                      asChild
+                                    >
+                                      <a href={`sms:${app.phone}`}>
+                                        <MessageCircle className="h-3.5 w-3.5" />
+                                      </a>
+                                    </Button>
+                                  )}
+                                  {app.email && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7"
+                                      title={`Email ${app.email}`}
+                                      asChild
+                                    >
+                                      <a href={`mailto:${app.email}`}>
+                                        <Mail className="h-3.5 w-3.5" />
+                                      </a>
+                                    </Button>
+                                  )}
                                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setNotesApp(app)} title="Notes">
                                     <StickyNote className="h-3.5 w-3.5" />
                                   </Button>

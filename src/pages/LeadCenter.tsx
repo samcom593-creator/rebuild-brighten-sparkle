@@ -908,10 +908,17 @@ export default function LeadCenter() {
                             displayMode="icon"
                           />
                           <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                            <a href={`tel:${lead.phone}`}>
+                            <a href={`tel:${lead.phone}`} title="Call">
                               <Phone className="h-4 w-4" />
                             </a>
                           </Button>
+                          {lead.phone && (
+                            <Button variant="ghost" size="icon" className="h-8 w-8" asChild title="Text">
+                              <a href={`sms:${lead.phone}`}>
+                                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                              </a>
+                            </Button>
+                          )}
                           <QuickEmailMenu
                             applicationId={lead.id}
                             agentId={null}
@@ -1031,14 +1038,94 @@ export default function LeadCenter() {
             exit={{ opacity: 0, y: 20 }}
             className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50"
           >
-            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-card border shadow-lg">
+            <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-card border shadow-lg flex-wrap max-w-[95vw]">
               <span className="text-sm font-medium">
                 {selectedLeads.size} selected
               </span>
               <div className="h-4 w-px bg-border" />
+
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  const phones = filteredLeads
+                    .filter(l => selectedLeads.has(encodeLeadKey(l.source, l.id)) && l.phone)
+                    .map(l => l.phone);
+                  if (phones.length === 0) { toast.error("No phones in selection"); return; }
+                  window.location.href = `sms:${phones.join(",")}`;
+                  toast.success(`Opening SMS for ${phones.length}`);
+                }}
+              >
+                <Phone className="h-4 w-4 mr-1" /> Text
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  const emails = filteredLeads
+                    .filter(l => selectedLeads.has(encodeLeadKey(l.source, l.id)) && l.email)
+                    .map(l => l.email);
+                  if (emails.length === 0) { toast.error("No emails in selection"); return; }
+                  window.location.href = `mailto:${emails.join(",")}`;
+                  toast.success(`Opening email for ${emails.length}`);
+                }}
+              >
+                <Mail className="h-4 w-4 mr-1" /> Email
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={async () => {
+                  const appIds: string[] = [];
+                  selectedLeads.forEach(key => {
+                    const { source, id } = decodeLeadKey(key);
+                    if (source === "applications") appIds.push(id);
+                  });
+                  if (appIds.length === 0) { toast.error("Only applications can be marked contacted"); return; }
+                  const now = new Date().toISOString();
+                  const { error } = await supabase
+                    .from("applications")
+                    .update({ contacted_at: now, last_contacted_at: now, first_contact_attempt_at: now })
+                    .in("id", appIds);
+                  if (error) { toast.error(error.message); return; }
+                  toast.success(`${appIds.length} marked contacted`);
+                  playSound("success");
+                  clearSelection();
+                  fetchLeads();
+                }}
+              >
+                <CheckCircle className="h-4 w-4 mr-1" /> Mark Contacted
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  const picks = filteredLeads.filter(l => selectedLeads.has(encodeLeadKey(l.source, l.id)));
+                  if (picks.length === 0) { toast.error("Nothing to export"); return; }
+                  const headers = ["First Name", "Last Name", "Email", "Phone", "Status", "License", "Source", "Assigned To", "Created"];
+                  const rows = picks.map(l => [l.firstName, l.lastName, l.email, l.phone, l.status, l.licenseStatus, l.source, l.assignedAgentName || "", l.createdAt]);
+                  const csv = [headers.join(","), ...rows.map(r => r.map(v => `"${(v || "").replace(/"/g, '""')}"`).join(","))].join("\n");
+                  const blob = new Blob([csv], { type: "text/csv" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `selected-leads-${format(new Date(), "yyyy-MM-dd")}.csv`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                  toast.success(`Exported ${picks.length} leads`);
+                }}
+              >
+                <Download className="h-4 w-4 mr-1" /> Export
+              </Button>
+
+              <div className="h-4 w-px bg-border" />
+
               <Select value={bulkManagerId} onValueChange={setBulkManagerId}>
-                <SelectTrigger className="w-48 h-9">
-                  <SelectValue placeholder="Select manager..." />
+                <SelectTrigger className="w-44 h-9">
+                  <SelectValue placeholder="Assign to..." />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="unassigned">Unassigned</SelectItem>

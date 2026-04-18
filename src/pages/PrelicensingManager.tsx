@@ -143,26 +143,22 @@ export default function PrelicensingManager() {
     qc.invalidateQueries({ queryKey: ["prelicensing-apps"] });
   }
 
-  async function bulkSMS() {
+  function bulkSMS() {
     if (selected.size === 0) return;
-    const ids = Array.from(selected);
-    const { error } = await supabase.functions.invoke("send-bulk-unlicensed-outreach", {
-      body: { application_ids: ids, channel: "sms" },
-    });
-    if (error) { toast.error(error.message); return; }
-    toast.success(`SMS queued for ${ids.length}`);
-    setSelected(new Set());
+    const picks = apps.filter((a: any) => selected.has(a.id) && a.phone);
+    if (picks.length === 0) { toast.error("No phones in selection"); return; }
+    const phones = picks.map((a: any) => a.phone).join(",");
+    window.location.href = `sms:${phones}`;
+    toast.success(`Opening SMS for ${picks.length}`);
   }
 
-  async function bulkEmail() {
+  function bulkEmail() {
     if (selected.size === 0) return;
-    const ids = Array.from(selected);
-    const { error } = await supabase.functions.invoke("send-licensing-instructions", {
-      body: { application_ids: ids },
-    });
-    if (error) { toast.error(error.message); return; }
-    toast.success(`Licensing email sent to ${ids.length}`);
-    setSelected(new Set());
+    const picks = apps.filter((a: any) => selected.has(a.id) && a.email);
+    if (picks.length === 0) { toast.error("No emails in selection"); return; }
+    const emails = picks.map((a: any) => a.email).join(",");
+    window.location.href = `mailto:${emails}`;
+    toast.success(`Opening email for ${picks.length}`);
   }
 
   async function bulkSetStage(stage: StageKey) {

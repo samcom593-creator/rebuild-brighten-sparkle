@@ -1038,14 +1038,94 @@ export default function LeadCenter() {
             exit={{ opacity: 0, y: 20 }}
             className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50"
           >
-            <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-card border shadow-lg">
+            <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-card border shadow-lg flex-wrap max-w-[95vw]">
               <span className="text-sm font-medium">
                 {selectedLeads.size} selected
               </span>
               <div className="h-4 w-px bg-border" />
+
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  const phones = filteredLeads
+                    .filter(l => selectedLeads.has(encodeLeadKey(l.source, l.id)) && l.phone)
+                    .map(l => l.phone);
+                  if (phones.length === 0) { toast.error("No phones in selection"); return; }
+                  window.location.href = `sms:${phones.join(",")}`;
+                  toast.success(`Opening SMS for ${phones.length}`);
+                }}
+              >
+                <Phone className="h-4 w-4 mr-1" /> Text
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  const emails = filteredLeads
+                    .filter(l => selectedLeads.has(encodeLeadKey(l.source, l.id)) && l.email)
+                    .map(l => l.email);
+                  if (emails.length === 0) { toast.error("No emails in selection"); return; }
+                  window.location.href = `mailto:${emails.join(",")}`;
+                  toast.success(`Opening email for ${emails.length}`);
+                }}
+              >
+                <Mail className="h-4 w-4 mr-1" /> Email
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={async () => {
+                  const appIds: string[] = [];
+                  selectedLeads.forEach(key => {
+                    const { source, id } = decodeLeadKey(key);
+                    if (source === "applications") appIds.push(id);
+                  });
+                  if (appIds.length === 0) { toast.error("Only applications can be marked contacted"); return; }
+                  const now = new Date().toISOString();
+                  const { error } = await supabase
+                    .from("applications")
+                    .update({ contacted_at: now, last_contacted_at: now, first_contact_attempt_at: now })
+                    .in("id", appIds);
+                  if (error) { toast.error(error.message); return; }
+                  toast.success(`${appIds.length} marked contacted`);
+                  playSound("success");
+                  clearSelection();
+                  fetchLeads();
+                }}
+              >
+                <CheckCircle className="h-4 w-4 mr-1" /> Mark Contacted
+              </Button>
+
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  const picks = filteredLeads.filter(l => selectedLeads.has(encodeLeadKey(l.source, l.id)));
+                  if (picks.length === 0) { toast.error("Nothing to export"); return; }
+                  const headers = ["First Name", "Last Name", "Email", "Phone", "Status", "License", "Source", "Assigned To", "Created"];
+                  const rows = picks.map(l => [l.firstName, l.lastName, l.email, l.phone, l.status, l.licenseStatus, l.source, l.assignedAgentName || "", l.createdAt]);
+                  const csv = [headers.join(","), ...rows.map(r => r.map(v => `"${(v || "").replace(/"/g, '""')}"`).join(","))].join("\n");
+                  const blob = new Blob([csv], { type: "text/csv" });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url;
+                  a.download = `selected-leads-${format(new Date(), "yyyy-MM-dd")}.csv`;
+                  a.click();
+                  URL.revokeObjectURL(url);
+                  toast.success(`Exported ${picks.length} leads`);
+                }}
+              >
+                <Download className="h-4 w-4 mr-1" /> Export
+              </Button>
+
+              <div className="h-4 w-px bg-border" />
+
               <Select value={bulkManagerId} onValueChange={setBulkManagerId}>
-                <SelectTrigger className="w-48 h-9">
-                  <SelectValue placeholder="Select manager..." />
+                <SelectTrigger className="w-44 h-9">
+                  <SelectValue placeholder="Assign to..." />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="unassigned">Unassigned</SelectItem>

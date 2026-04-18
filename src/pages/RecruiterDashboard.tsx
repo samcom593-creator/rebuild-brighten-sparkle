@@ -1473,7 +1473,13 @@ function RecruiterDashboardInner() {
                         )}
                       </td>
                       <td className="px-3 py-2 hidden lg:table-cell">
-                        <span className="text-muted-foreground text-xs truncate block max-w-[200px]">{lead.email}</span>
+                        {lead.email ? (
+                          <a href={`mailto:${lead.email}`} className="text-muted-foreground hover:text-primary hover:underline text-xs truncate block max-w-[200px]" onClick={e => e.stopPropagation()}>
+                            {lead.email}
+                          </a>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
                       </td>
                       <td className="px-3 py-2 hidden md:table-cell">
                         <span className="text-muted-foreground text-xs">{location || "—"}</span>
@@ -1532,7 +1538,12 @@ function RecruiterDashboardInner() {
                           </Tooltip>
                           {lead.phone && (
                             <Button variant="ghost" size="icon" className="h-6 w-6" asChild>
-                              <a href={`tel:${lead.phone}`}><Phone className="h-3 w-3" /></a>
+                              <a href={`tel:${lead.phone}`} title="Call"><Phone className="h-3 w-3" /></a>
+                            </Button>
+                          )}
+                          {lead.phone && (
+                            <Button variant="ghost" size="icon" className="h-6 w-6" asChild>
+                              <a href={`sms:${lead.phone}`} title="Text"><MessageSquare className="h-3 w-3" /></a>
                             </Button>
                           )}
                           <QuickEmailMenu

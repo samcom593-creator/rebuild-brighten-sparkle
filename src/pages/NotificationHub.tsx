@@ -200,7 +200,7 @@ function NotificationLogTable({ logs, search, channelFilter, statusFilter, onRef
                 <Fragment key={log.id}>
                   <TableRow
                     className={cn(
-                      "border-l-[3px] cursor-pointer transition-colors hover:bg-muted/50",
+                      "border-l-[3px] cursor-pointer transition-colors hover:bg-muted/50 group",
                       channelBorderColor[log.channel] || "border-l-transparent"
                     )}
                     onClick={() => {
@@ -224,8 +224,54 @@ function NotificationLogTable({ logs, search, channelFilter, statusFilter, onRef
                         {log.status}
                       </Badge>
                     </TableCell>
-                    <TableCell>
-                      <CarrierIndicator log={log} />
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-0.5">
+                        {log.recipient_phone && (
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" asChild title="Call">
+                            <a href={`tel:${log.recipient_phone}`}><Phone className="h-3.5 w-3.5" /></a>
+                          </Button>
+                        )}
+                        {log.recipient_phone && (
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" asChild title="Text">
+                            <a href={`sms:${log.recipient_phone}`}><MessageSquare className="h-3.5 w-3.5" /></a>
+                          </Button>
+                        )}
+                        {log.recipient_email && (
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" asChild title="Email">
+                            <a href={`mailto:${log.recipient_email}?subject=Re: ${encodeURIComponent(log.title || "Notification")}`}><Mail className="h-3.5 w-3.5" /></a>
+                          </Button>
+                        )}
+                        {log.status === "failed" && (
+                          <Button
+                            size="sm" variant="ghost" className="h-7 w-7 p-0"
+                            title="Retry"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              try {
+                                if (log.channel === "push" && log.recipient_user_id) {
+                                  await supabase.functions.invoke("send-notification", {
+                                    body: { userId: log.recipient_user_id, title: log.title, message: log.message },
+                                  });
+                                } else if (log.channel?.startsWith("sms") && log.recipient_phone) {
+                                  await supabase.functions.invoke("send-sms-auto-detect", {
+                                    body: { to: log.recipient_phone, message: log.message },
+                                  });
+                                } else if (log.channel === "email" && log.recipient_email) {
+                                  await supabase.functions.invoke("send-outreach-email", {
+                                    body: { to: log.recipient_email, subject: log.title, body: log.message },
+                                  });
+                                } else {
+                                  toast.error("Can't retry: missing recipient"); return;
+                                }
+                                toast.success("Resent"); onRefresh();
+                              } catch (err: any) { toast.error(`Retry failed: ${err.message || "unknown"}`); }
+                            }}
+                          >
+                            <RotateCcw className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        <CarrierIndicator log={log} />
+                      </div>
                     </TableCell>
                   </TableRow>
                   {/* Expanded detail row */}
@@ -1550,7 +1596,17 @@ export default function NotificationHub() {
                   {blastHistory.length === 0 ? (
                     <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">No blast history yet</TableCell></TableRow>
                   ) : blastHistory.map(day => (
-                    <TableRow key={day.date}>
+                    <TableRow
+                      key={day.date}
+                      className="cursor-pointer hover:bg-muted/50 transition"
+                      onClick={() => {
+                        setActiveTab("logs");
+                        setSearch("");
+                        setChannelFilter("all");
+                        setStatusFilter("all");
+                        toast.info(`Switched to log view for recent activity`);
+                      }}
+                    >
                       <TableCell className="font-medium text-sm">{format(new Date(day.date + "T12:00:00"), "MMM d, yyyy")}</TableCell>
                       <TableCell className="text-right text-sm">{day.push || "—"}</TableCell>
                       <TableCell className="text-right text-sm">{day.sms || "—"}</TableCell>

@@ -1,10 +1,17 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, ChevronDown, ChevronUp, UserMinus, RotateCcw, Settings, EyeOff, Users, Loader2 } from "lucide-react";
+import {
+  AlertTriangle, ChevronDown, ChevronUp, UserMinus, RotateCcw, EyeOff,
+  Loader2, Phone, Mail, MessageSquare, ListTodo, MoreVertical,
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { subDays, format, differenceInDays } from "date-fns";
 import { toast } from "sonner";
@@ -14,6 +21,8 @@ import { useSoundEffects } from "@/hooks/useSoundEffects";
 interface AtRiskAgent {
   id: string;
   name: string;
+  email: string | null;
+  phone: string | null;
   lastProductionDate: string | null;
   daysInactive: number;
   managerId?: string;
@@ -26,8 +35,6 @@ export function ActivationRiskBanner() {
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [bulkLoading, setBulkLoading] = useState(false);
-
-  // Deactivate dialog state
   const [deactivateAgent, setDeactivateAgent] = useState<{ id: string; name: string; managerId?: string } | null>(null);
 
   const { data: atRiskAgents = [] } = useQuery({
@@ -45,7 +52,6 @@ export function ActivationRiskBanner() {
       const cutoff = format(subDays(new Date(), 14), "yyyy-MM-dd");
       const agentIds = agents.map((a) => a.id);
 
-      // Get recent production
       const { data: recentProd } = await supabase
         .from("daily_production")
         .select("agent_id, production_date")
@@ -57,7 +63,6 @@ export function ActivationRiskBanner() {
 
       if (atRiskAgentRecords.length === 0) return [];
 
-      // Get last production date for each at-risk agent
       const atRiskIds = atRiskAgentRecords.map((a) => a.id);
       const { data: lastProd } = await supabase
         .from("daily_production")
@@ -72,14 +77,13 @@ export function ActivationRiskBanner() {
         }
       });
 
-      // Get profile names
       const userIds = atRiskAgentRecords.map((a) => a.user_id).filter(Boolean) as string[];
       const { data: profiles } = userIds.length > 0
-        ? await supabase.from("profiles").select("user_id, full_name").in("user_id", userIds)
+        ? await supabase.from("profiles").select("user_id, full_name, email, phone").in("user_id", userIds)
         : { data: [] };
 
-      const nameMap = new Map<string, string>(
-        (profiles?.map((p) => [p.user_id, p.full_name] as [string, string]) || [])
+      const profileMap = new Map(
+        (profiles || []).map((p: any) => [p.user_id, p]),
       );
 
       const now = new Date();
@@ -88,9 +92,12 @@ export function ActivationRiskBanner() {
         const daysInactive = lastDate
           ? differenceInDays(now, new Date(lastDate))
           : differenceInDays(now, new Date());
+        const profile: any = agent.user_id ? profileMap.get(agent.user_id) : undefined;
         return {
           id: agent.id,
-          name: (agent.user_id ? nameMap.get(agent.user_id) : undefined) || "Unknown Agent",
+          name: profile?.full_name || "Unknown Agent",
+          email: profile?.email || null,
+          phone: profile?.phone || null,
           lastProductionDate: lastDate,
           daysInactive: lastDate ? daysInactive : -1,
           managerId: agent.invited_by_manager_id || undefined,
@@ -100,17 +107,17 @@ export function ActivationRiskBanner() {
     staleTime: 300_000,
   });
 
-  const visibleAgents = atRiskAgents.filter((a) => !dismissedIds.has(a.id));
+  const visibleAgents = useMemo(
+    () => atRiskAgents.filter((a) => !dismissedIds.has(a.id)),
+    [atRiskAgents, dismissedIds],
+  );
 
   if (visibleAgents.length === 0) return null;
 
   const handleMoveToInactive = async (agent: AtRiskAgent) => {
     setLoadingId(agent.id);
     try {
-      const { error } = await supabase
-        .from("agents")
-        .update({ is_inactive: true })
-        .eq("id", agent.id);
+      const { error } = await supabase.from("agents").update({ is_inactive: true }).eq("id", agent.id);
       if (error) throw error;
       toast.success(`${agent.name} moved to inactive`);
       playSound("success");
@@ -123,19 +130,89 @@ export function ActivationRiskBanner() {
     }
   };
 
+  const handleReactivate = async (agent: AtRiskAgent) => {
+    setLoadingId(agent.id);
+    try {
+      const { error } = await supabase
+        .from("agents")
+        .update({ status: "active" as any, is_deactivated: false, is_inactive: false, deactivation_reason: null })
+        .eq("id", agent.id);
+      if (error) throw error;
+      toast.success(`${agent.name} reactivated`);
+      playSound("success");
+      queryClient.invalidateQueries({ queryKey: ["activation-risk-agents"] });
+    } catch {
+      toast.error("Failed to reactivate");
+      playSound("error");
+    } finally {
+      setLoadingId(null);
+    }
+  };
+
+  const createFollowupTask = async (agent: AtRiskAgent) => {
+    const { error } = await supabase.from("agent_tasks").insert({
+      agent_id: agent.id,
+      title: `Revive ${agent.name} — ${agent.daysInactive === -1 ? "never produced" : `${agent.daysInactive}d inactive`}`,
+      description: "Agent flagged in Activation Risk banner. Reach out, diagnose what's blocking them, and get them back to production.",
+      due_date: new Date(Date.now() + 24 * 3600 * 1000).toISOString().split("T")[0],
+      priority: "high",
+      status: "pending",
+      task_type: "followup",
+      created_at: new Date().toISOString(),
+    });
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Task created for ${agent.name}`);
+  };
+
   const handleDismiss = (agentId: string) => {
     setDismissedIds((prev) => new Set([...prev, agentId]));
-    toast.info("Agent hidden from risk list for this session");
+    toast.info("Hidden for this session");
+  };
+
+  const bulkSMS = () => {
+    const picks = visibleAgents.filter((a) => a.phone);
+    if (picks.length === 0) { toast.error("No phones available"); return; }
+    window.location.href = `sms:${picks.map((a) => a.phone).join(",")}`;
+    toast.success(`Opening SMS for ${picks.length}`);
+  };
+
+  const bulkEmail = () => {
+    const picks = visibleAgents.filter((a) => a.email);
+    if (picks.length === 0) { toast.error("No emails available"); return; }
+    window.location.href = `mailto:${picks.map((a) => a.email).join(",")}`;
+    toast.success(`Opening email for ${picks.length}`);
+  };
+
+  const bulkTask = async () => {
+    setBulkLoading(true);
+    try {
+      const rows = visibleAgents.map((a) => ({
+        agent_id: a.id,
+        title: `Revive ${a.name} — ${a.daysInactive === -1 ? "never produced" : `${a.daysInactive}d inactive`}`,
+        description: "Bulk-assigned from Activation Risk banner. Reach out and diagnose what's blocking them.",
+        due_date: new Date(Date.now() + 24 * 3600 * 1000).toISOString().split("T")[0],
+        priority: "high",
+        status: "pending",
+        task_type: "followup",
+        created_at: new Date().toISOString(),
+      }));
+      const { error } = await supabase.from("agent_tasks").insert(rows);
+      if (error) throw error;
+      toast.success(`Tasks created for ${rows.length}`);
+      playSound("celebrate");
+    } catch (e: any) {
+      toast.error(e.message || "Failed to create tasks");
+      playSound("error");
+    } finally {
+      setBulkLoading(false);
+    }
   };
 
   const handleBulkInactive = async () => {
     setBulkLoading(true);
     try {
       const ids = visibleAgents.map((a) => a.id);
-      const { error } = await supabase
-        .from("agents")
-        .update({ is_inactive: true })
-        .in("id", ids);
+      const { error } = await supabase.from("agents").update({ is_inactive: true }).in("id", ids);
       if (error) throw error;
       toast.success(`${ids.length} agents moved to inactive`);
       playSound("celebrate");
@@ -160,15 +237,11 @@ export function ActivationRiskBanner() {
           <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-[10px] ml-auto mr-2">
             {visibleAgents.length} agent{visibleAgents.length > 1 ? "s" : ""}
           </Badge>
-          {expanded ? (
-            <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
-          ) : (
-            <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-          )}
+          {expanded ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
         </button>
 
         <p className="text-[11px] text-muted-foreground mt-1 pl-6">
-          {visibleAgents.length} agent{visibleAgents.length > 1 ? "s have" : " has"} no production in 14+ days — tap to manage
+          {visibleAgents.length} agent{visibleAgents.length > 1 ? "s have" : " has"} no production in 14+ days — tap to take action
         </p>
 
         <AnimatePresence>
@@ -180,7 +253,30 @@ export function ActivationRiskBanner() {
               transition={{ duration: 0.2 }}
               className="overflow-hidden"
             >
-              <div className="mt-3 space-y-2 max-h-64 overflow-y-auto">
+              {visibleAgents.length > 1 && (
+                <div className="flex flex-wrap items-center gap-2 mt-3 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                  <span className="text-[11px] text-amber-400 font-medium">
+                    Bulk actions for {visibleAgents.length}:
+                  </span>
+                  <Button size="sm" variant="outline" onClick={bulkSMS} className="h-7 text-[11px]">
+                    <MessageSquare className="h-3 w-3 mr-1" /> Text All
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={bulkEmail} className="h-7 text-[11px]">
+                    <Mail className="h-3 w-3 mr-1" /> Email All
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={bulkTask} disabled={bulkLoading} className="h-7 text-[11px]">
+                    {bulkLoading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <ListTodo className="h-3 w-3 mr-1" />}
+                    Create Tasks
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={handleBulkInactive} disabled={bulkLoading}
+                    className="h-7 text-[11px] border-amber-500/40 text-amber-400 hover:bg-amber-500/10 ml-auto"
+                  >
+                    <UserMinus className="h-3 w-3 mr-1" /> Move All to Inactive
+                  </Button>
+                </div>
+              )}
+
+              <div className="mt-3 space-y-2 max-h-80 overflow-y-auto">
                 {visibleAgents.map((agent) => (
                   <div
                     key={agent.id}
@@ -191,94 +287,70 @@ export function ActivationRiskBanner() {
                       <p className="text-[10px] text-muted-foreground">
                         {agent.daysInactive === -1
                           ? "Never logged production"
-                          : `${agent.daysInactive}d inactive — last: ${agent.lastProductionDate}`}
+                          : `${agent.daysInactive}d inactive · last: ${agent.lastProductionDate}`}
                       </p>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
+
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      {agent.phone && (
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" asChild title="Call">
+                          <a href={`tel:${agent.phone}`}><Phone className="h-3.5 w-3.5" /></a>
+                        </Button>
+                      )}
+                      {agent.phone && (
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" asChild title="Text">
+                          <a href={`sms:${agent.phone}`}><MessageSquare className="h-3.5 w-3.5" /></a>
+                        </Button>
+                      )}
+                      {agent.email && (
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" asChild title="Email">
+                          <a href={`mailto:${agent.email}`}><Mail className="h-3.5 w-3.5" /></a>
+                        </Button>
+                      )}
                       <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 px-2 text-[10px] border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
-                        onClick={() => handleMoveToInactive(agent)}
-                        disabled={loadingId === agent.id}
+                        size="sm" variant="ghost"
+                        className="h-7 w-7 p-0"
+                        title="Create follow-up task"
+                        onClick={() => createFollowupTask(agent)}
                       >
-                        {loadingId === agent.id ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <UserMinus className="h-3 w-3 mr-1" />
-                        )}
-                        Inactive
+                        <ListTodo className="h-3.5 w-3.5" />
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 px-2 text-[10px] border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
-                        onClick={async () => {
-                          setLoadingId(agent.id);
-                          try {
-                            const { error } = await supabase
-                              .from("agents")
-                              .update({ status: "active" as any, is_deactivated: false, is_inactive: false, deactivation_reason: null })
-                              .eq("id", agent.id);
-                            if (error) throw error;
-                            toast.success(`${agent.name} reactivated`);
-                            playSound("success");
-                            queryClient.invalidateQueries({ queryKey: ["activation-risk-agents"] });
-                          } catch {
-                            toast.error("Failed to reactivate");
-                            playSound("error");
-                          } finally {
-                            setLoadingId(null);
-                          }
-                        }}
-                        disabled={loadingId === agent.id}
-                      >
-                        <RotateCcw className="h-3 w-3 mr-1" />
-                        Reactivate
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 px-2 text-[10px]"
-                        onClick={() =>
-                          setDeactivateAgent({
-                            id: agent.id,
-                            name: agent.name,
-                            managerId: agent.managerId,
-                          })
-                        }
-                      >
-                        <Settings className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 px-2 text-[10px] text-muted-foreground"
-                        onClick={() => handleDismiss(agent.id)}
-                      >
-                        <EyeOff className="h-3 w-3" />
-                      </Button>
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0" disabled={loadingId === agent.id}>
+                            {loadingId === agent.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <MoreVertical className="h-3.5 w-3.5" />}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-52">
+                          <DropdownMenuItem onClick={() => handleReactivate(agent)}>
+                            <RotateCcw className="h-3.5 w-3.5 mr-2" /> Reactivate
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleMoveToInactive(agent)}>
+                            <UserMinus className="h-3.5 w-3.5 mr-2" /> Move to Inactive
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() =>
+                              setDeactivateAgent({
+                                id: agent.id,
+                                name: agent.name,
+                                managerId: agent.managerId,
+                              })
+                            }
+                          >
+                            <UserMinus className="h-3.5 w-3.5 mr-2" /> Deactivate (with reason)
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleDismiss(agent.id)}>
+                            <EyeOff className="h-3.5 w-3.5 mr-2" /> Hide for this session
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 ))}
               </div>
-
-              {visibleAgents.length > 1 && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="w-full mt-3 h-8 text-xs border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
-                  onClick={handleBulkInactive}
-                  disabled={bulkLoading}
-                >
-                  {bulkLoading ? (
-                    <Loader2 className="h-3 w-3 animate-spin mr-2" />
-                  ) : (
-                    <Users className="h-3 w-3 mr-2" />
-                  )}
-                  Move All {visibleAgents.length} to Inactive
-                </Button>
-              )}
             </motion.div>
           )}
         </AnimatePresence>

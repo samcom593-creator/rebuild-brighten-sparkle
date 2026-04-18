@@ -725,24 +725,32 @@ export default function Dashboard() {
               value={stats.totalLeads}
               icon={Users}
               variant="primary"
+              href="/dashboard/leads"
+              hint="View all"
             />
             <StatCard
               title="Contacted"
               value={stats.contacted}
               icon={Phone}
               variant="default"
+              href="/dashboard/leads?status=has_contacted"
+              hint="View contacted"
             />
             <StatCard
               title="Closed"
               value={stats.closed}
               icon={CheckCircle}
               variant="success"
+              href="/dashboard/leads?status=contracting_only"
+              hint="View closed"
             />
             <StatCard
               title="Close Rate"
               value={`${stats.closeRate.toFixed(1)}%`}
               icon={Percent}
               variant="success"
+              href="/dashboard/command"
+              hint="View producers"
             />
           </div>
 

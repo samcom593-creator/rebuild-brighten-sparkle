@@ -932,7 +932,12 @@ export default function DashboardCRM() {
       return filteredAgents.filter(a => a.onboardingStage === "inactive" || a.isInactive);
     }
     if (section.key === "pre_licensed") {
-      return filteredAgents.filter(a => a.agentLicenseStatus !== "licensed" && section.stages.includes(a.onboardingStage));
+      // Use license_progress (source of truth from applications table) — not onboardingStage which may be stale
+      return filteredAgents.filter(a => {
+        if (a.agentLicenseStatus === "licensed") return false;
+        const progress = (a as any).licenseProgress || "unlicensed";
+        return ["unlicensed", "course_purchased", "finished_course", "test_scheduled", "passed_test", "fingerprints_done", "waiting_fingerprints", "waiting_on_license"].includes(progress);
+      });
     }
     // Live = actively selling + above $40K monthly ALP (≈ $10K/wk avg)
     if (section.key === "live") {
@@ -981,7 +986,11 @@ export default function DashboardCRM() {
   const meetingPresentCount = Array.from(meetingAttendance.entries()).filter(([id, v]) => v === "present" && meetingAgents.some(a => a.id === id)).length;
   const appliedCount = filteredAgents.filter(a => a.onboardingStage === "applied").length;
   const onboardingCount = filteredAgents.filter(a => ["onboarding", "training_online"].includes(a.onboardingStage)).length;
-  const preLicensedCount = filteredAgents.filter(a => a.agentLicenseStatus !== "licensed" && ["pre_licensed", "onboarding", "training_online"].includes(a.onboardingStage)).length;
+  const preLicensedCount = filteredAgents.filter(a => {
+    if (a.agentLicenseStatus === "licensed") return false;
+    const p = (a as any).licenseProgress || "unlicensed";
+    return ["unlicensed", "course_purchased", "finished_course", "test_scheduled", "passed_test", "fingerprints_done", "waiting_fingerprints", "waiting_on_license"].includes(p);
+  }).length;
   const transferCount = filteredAgents.filter(a => a.onboardingStage === "transfer").length;
   const trainingCount = filteredAgents.filter(a => a.onboardingStage === "in_field_training").length;
   const below10kCount = getAgentsForSection(SECTIONS.find(s => s.key === "below_10k")!).length;

@@ -36,6 +36,7 @@ import {
   Rocket,
   UserX,
   Route,
+  Trophy,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -154,6 +155,7 @@ export function GlobalSidebar({
     }
     opsItems.push({ icon: Edit3, label: "Log Numbers", href: "/numbers", special: true });
     opsItems.push({ icon: Wallet, label: "My Commissions", href: "/dashboard/my-commissions" });
+    opsItems.push({ icon: Trophy, label: "My Plaques", href: "/dashboard/my-plaques" });
     opsItems.push({ icon: Rocket, label: "Getting Started", href: "/dashboard/getting-started" });
     sections.push({ label: "OPERATIONS", items: opsItems });
 
@@ -234,6 +236,7 @@ export function GlobalSidebar({
       adminItems.push({ icon: UserCog, label: "Accounts", href: "/dashboard/accounts" });
       adminItems.push({ icon: Shield, label: "System Health", href: "/dashboard/system-health" });
       adminItems.push({ icon: Route, label: "Hiring Routing", href: "/dashboard/hiring-routing" });
+      adminItems.push({ icon: Mail, label: "Email Log", href: "/dashboard/email-log" });
     }
     adminItems.push({ icon: Settings, label: "Settings", href: "/dashboard/settings" });
     sections.push({ label: "ADMIN", items: adminItems });

@@ -356,7 +356,6 @@ export default function DashboardApplicants() {
         if (addErr) {
           console.error("Failed to auto-create agent:", addErr);
         } else {
-          console.log("Agent auto-created and enrolled in course:", data);
           toast.success(`${app.first_name} added as agent & enrolled in course!`);
         }
       });
@@ -371,7 +370,6 @@ export default function DashboardApplicants() {
         }
       }).then(({ error: licenseErr }) => {
         if (licenseErr) console.error("Failed to send licensing instructions:", licenseErr);
-        else console.log("Licensing instructions sent to", app.email);
       });
     }
   };

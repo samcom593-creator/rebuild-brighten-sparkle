@@ -727,8 +727,8 @@ export default function DashboardCommandCenter() {
           {/* Leaderboard - Takes 70% on desktop */}
           <div className="w-full lg:w-[70%]">
             <Card className="flex flex-col h-full">
-              <CardHeader className="pb-3 shrink-0">
-                <Tabs defaultValue="live" className="w-full">
+              <Tabs defaultValue="live" className="w-full flex flex-col h-full">
+                <CardHeader className="pb-3 shrink-0">
                   <div className="flex items-center justify-between gap-3 flex-wrap">
                     <div className="flex items-center gap-3">
                       <CardTitle className="text-lg font-semibold">Leaderboard</CardTitle>
@@ -741,13 +741,12 @@ export default function DashboardCommandCenter() {
                       {filteredAgents.length} agents
                     </Badge>
                   </div>
-                  <TabsContent value="live" className="mt-4">
-                    <LiveCommissionsLeaderboard />
-                  </TabsContent>
-                  <TabsContent value="logged" className="mt-0" />
-                </Tabs>
-              </CardHeader>
-              <CardContent className="flex-1 min-h-0 p-0" data-leaderboard-logged>
+                </CardHeader>
+                <TabsContent value="live" className="flex-1 min-h-0 px-6 pb-6 mt-0">
+                  <LiveCommissionsLeaderboard />
+                </TabsContent>
+                <TabsContent value="logged" className="flex-1 min-h-0 mt-0">
+                  <CardContent className="flex-1 min-h-0 p-0">
                 {isLoading ? (
                   <div className="space-y-3 px-6 pb-6">
                     {[...Array(5)].map((_, i) => (

@@ -37,6 +37,7 @@ import {
   UserX,
   Route,
   Trophy,
+  Activity,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -225,6 +226,7 @@ export function GlobalSidebar({
         label: "AUTOMATION",
         items: [
           { icon: Zap, label: "Automation Hub", href: "/dashboard/automation" },
+          { icon: Activity, label: "Automation Health", href: "/dashboard/automation-health" },
         ],
       });
     }

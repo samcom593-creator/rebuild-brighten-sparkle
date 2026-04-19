@@ -542,6 +542,10 @@ export default function DashboardCommandCenter() {
     );
   }
 
+  if (isLoading && (!agentsData || agentsData.length === 0)) {
+    return <PageLoadingSkeleton variant="dashboard" />;
+  }
+
   return (
     <>
       <div className="space-y-6 page-enter">

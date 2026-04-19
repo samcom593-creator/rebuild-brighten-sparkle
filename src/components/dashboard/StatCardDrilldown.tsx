@@ -30,7 +30,7 @@ function initials(name: string) {
 }
 
 export function StatCardDrilldown({ activeModal, onClose }: StatCardDrilldownProps) {
-  const weekStart = format(startOfWeek(new Date()), "yyyy-MM-dd");
+  const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
 
   const { data: agents } = useQuery({
     queryKey: ["drilldown-agents"],

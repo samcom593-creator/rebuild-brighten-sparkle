@@ -242,8 +242,6 @@ export default function LogNumbers() {
         }
       });
 
-      console.log("Production response:", res);
-
       // Handle errors from the edge function
       if (res.error) {
         const msg = res.error?.message || "Failed to save numbers";

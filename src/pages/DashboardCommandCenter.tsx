@@ -27,7 +27,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -66,6 +66,8 @@ import { AbandonedLeadsPanel } from "@/components/dashboard/AbandonedLeadsPanel"
 import { AllLeadsPanel } from "@/components/dashboard/AllLeadsPanel";
 import { HideableCard } from "@/components/dashboard/HideableCard";
 import { HiddenCardsManager } from "@/components/dashboard/HiddenCardsManager";
+import { TeamCommissionsCard } from "@/components/finances/TeamCommissionsCard";
+import { LiveCommissionsLeaderboard } from "@/components/finances/LiveCommissionsLeaderboard";
 
 import { AISummaryReport } from "@/components/admin/AISummaryReport";
 import { DateRangePicker, type DateRange } from "@/components/ui/date-range-picker";
@@ -102,6 +104,7 @@ const HIDEABLE_CARDS: Record<string, string> = {
   "admin.team-hierarchy": "Team Hierarchy Manager",
   "admin.manager-invites": "Manager Invites",
   "admin.bulk-lead-assignment": "Bulk Lead Assignment",
+  "admin.team-commissions": "Team Commissions (InsuraCloud Live)",
 };
 
 interface AgentWithStats {
@@ -576,6 +579,11 @@ export default function DashboardCommandCenter() {
           </div>
         </div>
 
+        {/* Team Commissions (InsuraCloud Live) - sits ABOVE the stat grid */}
+        <HideableCard cardKey="admin.team-commissions" label="Team Commissions (Live)">
+          <TeamCommissionsCard />
+        </HideableCard>
+
         {/* Summary Stats - Clickable */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 card-hover-lift">
           <HideableCard cardKey="admin.stat.totalAlp" label="Total ALP">
@@ -719,15 +727,26 @@ export default function DashboardCommandCenter() {
           {/* Leaderboard - Takes 70% on desktop */}
           <div className="w-full lg:w-[70%]">
             <Card className="flex flex-col h-full">
-              <CardHeader className="pb-3 shrink-0">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg font-semibold">Production Leaderboard</CardTitle>
-                  <Badge variant="outline" className="text-xs">
-                    {filteredAgents.length} agents
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="flex-1 min-h-0 p-0">
+              <Tabs defaultValue="live" className="w-full flex flex-col h-full">
+                <CardHeader className="pb-3 shrink-0">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-3">
+                      <CardTitle className="text-lg font-semibold">Leaderboard</CardTitle>
+                      <TabsList>
+                        <TabsTrigger value="live" className="text-xs">Commissions (Live)</TabsTrigger>
+                        <TabsTrigger value="logged" className="text-xs">Logged ALP</TabsTrigger>
+                      </TabsList>
+                    </div>
+                    <Badge variant="outline" className="text-xs">
+                      {filteredAgents.length} agents
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <TabsContent value="live" className="flex-1 min-h-0 px-6 pb-6 mt-0">
+                  <LiveCommissionsLeaderboard />
+                </TabsContent>
+                <TabsContent value="logged" className="flex-1 min-h-0 mt-0">
+                  <CardContent className="flex-1 min-h-0 p-0">
                 {isLoading ? (
                   <div className="space-y-3 px-6 pb-6">
                     {[...Array(5)].map((_, i) => (
@@ -969,6 +988,8 @@ export default function DashboardCommandCenter() {
                   </div>
                 )}
               </CardContent>
+                </TabsContent>
+              </Tabs>
             </Card>
           </div>
 

@@ -664,10 +664,9 @@ export default function Dashboard() {
           {/* Onboarding Pipeline for Admin/Manager */}
           {(isManager || isAdmin) && <OnboardingPipelineCard />}
 
-          {/* Pipeline Velocity & Referral Tracking */}
+          {/* Referral Tracking */}
           {(isManager || isAdmin) && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <PipelineVelocityCard />
+            <div className="grid grid-cols-1 gap-4">
               <ReferralTrackingCard />
             </div>
           )}

@@ -27,7 +27,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -728,14 +728,26 @@ export default function DashboardCommandCenter() {
           <div className="w-full lg:w-[70%]">
             <Card className="flex flex-col h-full">
               <CardHeader className="pb-3 shrink-0">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg font-semibold">Production Leaderboard</CardTitle>
-                  <Badge variant="outline" className="text-xs">
-                    {filteredAgents.length} agents
-                  </Badge>
-                </div>
+                <Tabs defaultValue="live" className="w-full">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-3">
+                      <CardTitle className="text-lg font-semibold">Leaderboard</CardTitle>
+                      <TabsList>
+                        <TabsTrigger value="live" className="text-xs">Commissions (Live)</TabsTrigger>
+                        <TabsTrigger value="logged" className="text-xs">Logged ALP</TabsTrigger>
+                      </TabsList>
+                    </div>
+                    <Badge variant="outline" className="text-xs">
+                      {filteredAgents.length} agents
+                    </Badge>
+                  </div>
+                  <TabsContent value="live" className="mt-4">
+                    <LiveCommissionsLeaderboard />
+                  </TabsContent>
+                  <TabsContent value="logged" className="mt-0" />
+                </Tabs>
               </CardHeader>
-              <CardContent className="flex-1 min-h-0 p-0">
+              <CardContent className="flex-1 min-h-0 p-0" data-leaderboard-logged>
                 {isLoading ? (
                   <div className="space-y-3 px-6 pb-6">
                     {[...Array(5)].map((_, i) => (

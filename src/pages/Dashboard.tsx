@@ -52,7 +52,7 @@ import { TeamTasksWidget } from "@/components/dashboard/TeamTasksWidget";
 import { AwardFeedLive } from "@/components/dashboard/AwardFeedLive";
 import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
 import { DashboardInsightCards } from "@/components/dashboard/DashboardInsightCards";
-import { PipelineVelocityCard } from "@/components/dashboard/PipelineVelocityCard";
+
 import { StalledAgentsAlert } from "@/components/dashboard/StalledAgentsAlert";
 import { ReferralTrackingCard } from "@/components/dashboard/ReferralTrackingCard";
 import { StatCardDrilldown } from "@/components/dashboard/StatCardDrilldown";
@@ -250,7 +250,11 @@ async function fetchDashboardData(
   };
 }
 
-import { Shield, Settings, Send, KeyRound, ShoppingCart, Activity, AlertCircle, Flame } from "lucide-react";
+import { Shield, Settings, Send, KeyRound, ShoppingCart, Activity, AlertCircle, Flame, UserX, RefreshCw, Search } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 
 const quickActions = [
   { to: "/numbers", icon: Edit3, color: "primary", title: "Log Numbers", sub: "Enter today's stats" },
@@ -427,7 +431,7 @@ export default function Dashboard() {
             <StatCard title="Weekly ALP" value={`$${topMetrics.weeklyALP.toLocaleString()}`} icon={DollarSign} variant="success" />
           </div>
           <div onClick={() => setActiveDrilldown("apps")} className="cursor-pointer hover:ring-2 ring-primary/30 rounded-xl transition-all">
-            <StatCard title="Apps This Week" value={topMetrics.appsThisWeek} icon={UserPlus} variant="default" />
+            <StatCard title="Applications This Week" value={topMetrics.appsThisWeek} icon={UserPlus} variant="default" />
           </div>
           <div onClick={() => setActiveDrilldown("closerate")} className="cursor-pointer hover:ring-2 ring-primary/30 rounded-xl transition-all">
             <StatCard title="Close Rate" value={`${topMetrics.closeRate}%`} icon={Percent} variant="success" />
@@ -448,20 +452,45 @@ export default function Dashboard() {
       {/* ====== ALERT BANNERS (Admin) ====== */}
       {isAdmin && staleAgents && staleAgents.length > 0 && (
         <div className="mb-4 p-3 rounded-lg border border-destructive/30 bg-destructive/5">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
             <AlertCircle className="h-4 w-4 text-destructive" />
-            <span className="text-sm font-semibold text-destructive">{staleAgents.length} agents haven't logged production in 7+ days</span>
+            <span className="text-sm font-semibold text-destructive">
+              {staleAgents.length} agent{staleAgents.length === 1 ? "" : "s"} haven't logged production in 7+ days
+            </span>
+            <div className="ml-auto flex items-center gap-1">
+              <Link to="/dashboard/inactive-agents">
+                <Button size="sm" variant="outline" className="h-7 text-xs">
+                  <UserX className="h-3 w-3 mr-1" /> Review Queue
+                </Button>
+              </Link>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs"
+                onClick={async () => {
+                  toast.info("Running inactivity scan...");
+                  const { error } = await supabase.functions.invoke("detect-inactive-agents");
+                  if (error) { toast.error("Scan failed: " + error.message); return; }
+                  toast.success("Scan complete — check Inactive Agents queue");
+                }}
+              >
+                <RefreshCw className="h-3 w-3 mr-1" /> Run Scan
+              </Button>
+            </div>
           </div>
-          <p className="text-xs text-muted-foreground ml-6">{staleAgents.slice(0, 5).join(", ")}{staleAgents.length > 5 ? ` +${staleAgents.length - 5} more` : ""}</p>
+          <p className="text-xs text-muted-foreground ml-6">
+            {staleAgents.slice(0, 5).join(", ")}
+            {staleAgents.length > 5 ? ` +${staleAgents.length - 5} more` : ""}
+          </p>
         </div>
       )}
 
-      {isAdmin && pendingPurchases && pendingPurchases > 0 && (
+      {isAdmin && (pendingPurchases ?? 0) > 0 && (
         <Link to="/purchase-leads">
           <div className="mb-4 p-3 rounded-lg border border-amber-500/30 bg-amber-500/5 cursor-pointer hover:border-amber-500/50 transition-all">
             <div className="flex items-center gap-2">
               <ShoppingCart className="h-4 w-4 text-amber-500" />
-              <span className="text-sm font-semibold text-amber-400">{pendingPurchases} lead purchase request{pendingPurchases > 1 ? "s" : ""} pending your confirmation</span>
+              <span className="text-sm font-semibold text-amber-400">{pendingPurchases} lead purchase request{(pendingPurchases ?? 0) > 1 ? "s" : ""} pending your confirmation</span>
             </div>
           </div>
         </Link>
@@ -482,18 +511,7 @@ export default function Dashboard() {
             <Send className="h-4 w-4 text-primary" />
             <span className="text-xs">Send Licensing Blast</span>
           </Button>
-          <Button
-            variant="outline"
-            className="h-auto py-3 flex flex-col items-center gap-1 hover:border-primary/50"
-            onClick={async () => {
-              toast.info("Sending portal logins...");
-              await supabase.functions.invoke("send-bulk-portal-logins");
-              toast.success("Portal logins sent!");
-            }}
-          >
-            <KeyRound className="h-4 w-4 text-primary" />
-            <span className="text-xs">Send Portal Logins</span>
-          </Button>
+          <PortalLoginsDialog />
           <Link to="/purchase-leads">
             <Button variant="outline" className="w-full h-auto py-3 flex flex-col items-center gap-1 hover:border-primary/50">
               <ShoppingCart className="h-4 w-4 text-primary" />
@@ -646,10 +664,9 @@ export default function Dashboard() {
           {/* Onboarding Pipeline for Admin/Manager */}
           {(isManager || isAdmin) && <OnboardingPipelineCard />}
 
-          {/* Pipeline Velocity & Referral Tracking */}
+          {/* Referral Tracking */}
           {(isManager || isAdmin) && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <PipelineVelocityCard />
+            <div className="grid grid-cols-1 gap-4">
               <ReferralTrackingCard />
             </div>
           )}
@@ -783,3 +800,131 @@ export default function Dashboard() {
     </>
   );
 }
+
+function PortalLoginsDialog() {
+  const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<"all" | "search">("all");
+  const [search, setSearch] = useState("");
+  const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
+  const [sending, setSending] = useState(false);
+
+  const { data: agents = [] } = useQuery({
+    queryKey: ["agents-for-portal-login"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("agents")
+        .select("id, display_name, user_id, is_deactivated, profile:profiles!agents_profile_id_fkey(full_name, email)")
+        .eq("is_deactivated", false)
+        .limit(1000);
+      return ((data || []) as any[]).map(a => ({
+        id: a.id,
+        name: (a.profile as any)?.full_name || a.display_name || "Unknown",
+        email: (a.profile as any)?.email,
+      }));
+    },
+    enabled: open,
+  });
+
+  const filtered = search
+    ? agents.filter(a => a.name.toLowerCase().includes(search.toLowerCase()) || a.email?.toLowerCase().includes(search.toLowerCase()))
+    : agents;
+
+  const handleSend = async () => {
+    setSending(true);
+    try {
+      if (mode === "all") {
+        await supabase.functions.invoke("send-bulk-portal-logins");
+        toast.success(`Portal logins sent to all ${agents.length} agents`);
+      } else {
+        if (selectedAgents.length === 0) {
+          toast.error("Pick at least one agent");
+          setSending(false);
+          return;
+        }
+        await supabase.functions.invoke("send-bulk-portal-logins", {
+          body: { agent_ids: selectedAgents },
+        });
+        toast.success(`Portal logins sent to ${selectedAgents.length} agents`);
+      }
+      setOpen(false);
+      setSelectedAgents([]);
+      setSearch("");
+    } catch (e: any) {
+      toast.error("Failed: " + (e.message || "unknown"));
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button
+          variant="outline"
+          className="h-auto py-3 flex flex-col items-center gap-1 hover:border-primary/50 w-full"
+        >
+          <KeyRound className="h-4 w-4 text-primary" />
+          <span className="text-xs">Send Portal Logins</span>
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Send Portal Logins</DialogTitle>
+        </DialogHeader>
+        <Tabs value={mode} onValueChange={(v) => setMode(v as any)}>
+          <TabsList className="w-full">
+            <TabsTrigger value="all" className="flex-1">Send to All ({agents.length})</TabsTrigger>
+            <TabsTrigger value="search" className="flex-1">Search & Select</TabsTrigger>
+          </TabsList>
+          <TabsContent value="all" className="space-y-4 pt-4">
+            <p className="text-sm text-muted-foreground">
+              This will email portal login credentials to every active agent ({agents.length} total).
+            </p>
+            <Button onClick={handleSend} disabled={sending} className="w-full">
+              {sending ? "Sending..." : `Send to all ${agents.length} agents`}
+            </Button>
+          </TabsContent>
+          <TabsContent value="search" className="space-y-4 pt-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name or email..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <div className="flex-1 overflow-y-auto space-y-1 max-h-[300px]">
+              {filtered.map(a => (
+                <label
+                  key={a.id}
+                  className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/40 cursor-pointer"
+                >
+                  <Checkbox
+                    checked={selectedAgents.includes(a.id)}
+                    onCheckedChange={(checked) => {
+                      setSelectedAgents(prev => checked
+                        ? [...prev, a.id]
+                        : prev.filter(x => x !== a.id));
+                    }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{a.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{a.email}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+            <div className="flex items-center justify-between pt-2 border-t border-border">
+              <p className="text-sm text-muted-foreground">{selectedAgents.length} selected</p>
+              <Button onClick={handleSend} disabled={sending || selectedAgents.length === 0}>
+                {sending ? "Sending..." : `Send to ${selectedAgents.length} agent${selectedAgents.length === 1 ? "" : "s"}`}
+              </Button>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
+  );
+}
+

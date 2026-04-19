@@ -165,8 +165,8 @@ export default function AgentPortal() {
     switch (range) {
       case "week":
         return {
-          start: format(startOfWeek(now, { weekStartsOn: 0 }), "yyyy-MM-dd"),
-          end: format(endOfWeek(now, { weekStartsOn: 0 }), "yyyy-MM-dd"),
+          start: format(startOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd"),
+          end: format(endOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd"),
         };
       case "month":
         return {

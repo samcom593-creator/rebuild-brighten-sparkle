@@ -1,6 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, BarChart3, BookOpen, TrendingUp, TrendingDown, ArrowRight, DollarSign } from "lucide-react";
+import { CheckCircle2, BookOpen, TrendingUp, TrendingDown, ArrowRight, DollarSign } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Link } from "react-router-dom";
 import { startOfWeek, startOfMonth, subWeeks, format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export function DashboardInsightCards() {
   const mountedRef = useRef(true);
@@ -16,17 +17,25 @@ export function DashboardInsightCards() {
     return () => { mountedRef.current = false; };
   }, []);
 
+  const [hiresDialogOpen, setHiresDialogOpen] = useState(false);
+
   const now = new Date();
-  const weekStart = startOfWeek(now);
+  const weekStart = startOfWeek(now, { weekStartsOn: 1 });
   const lastWeekStart = subWeeks(weekStart, 1);
   const monthStart = startOfMonth(now);
+
+  // Matched-range: only pull last-week production through the same weekday as today
+  const daysIntoWeek = Math.max(1, Math.min(7, Math.floor((now.getTime() - weekStart.getTime()) / 86400000) + 1));
+  const lastWeekMatchedEnd = new Date(lastWeekStart);
+  lastWeekMatchedEnd.setDate(lastWeekMatchedEnd.getDate() + daysIntoWeek);
+
   const weekStartStr = format(weekStart, "yyyy-MM-dd");
   const lastWeekStartStr = format(lastWeekStart, "yyyy-MM-dd");
+  const lastWeekMatchedEndStr = format(lastWeekMatchedEnd, "yyyy-MM-dd");
   const monthStartStr = format(monthStart, "yyyy-MM-dd");
-  const sevenDaysAgoIso = new Date(Date.now() - 7 * 86400000).toISOString();
 
   const { data } = useQuery({
-    queryKey: ["dashboard-insight-cards-v2", weekStartStr, monthStartStr],
+    queryKey: ["dashboard-insight-cards-v3", weekStartStr, monthStartStr],
     queryFn: async () => {
       const [
         newContractsRes,
@@ -35,41 +44,66 @@ export function DashboardInsightCards() {
         thisWeekProdRes,
         lastWeekProdRes,
         monthProdRes,
+        insuracloudRes,
       ] = await Promise.all([
-        // New contracts this week (real)
+        // New hires this week (Monday-start)
         supabase.from("applications")
           .select("id, first_name, last_name, contracted_at", { count: "exact" })
           .not("contracted_at", "is", null)
-          .gte("contracted_at", sevenDaysAgoIso)
+          .gte("contracted_at", weekStart.toISOString())
           .order("contracted_at", { ascending: false })
-          .limit(10),
-        // Applications this week (active only)
+          .limit(500),
+        // Applications this week (Monday-start)
         supabase.from("applications")
           .select("id", { count: "exact", head: true })
-          .gte("created_at", sevenDaysAgoIso)
+          .gte("created_at", weekStart.toISOString())
           .is("terminated_at", null),
-        // License progress on contracted-but-unlicensed
+        // License progress across EVERY active applicant (not just contracted)
         supabase.from("applications")
-          .select("license_progress")
+          .select("license_progress, license_status")
           .is("terminated_at", null)
-          .not("contracted_at", "is", null)
           .neq("license_status", "licensed"),
         // This week ALP
         supabase.from("daily_production").select("aop").gte("production_date", weekStartStr),
-        // Last week ALP
+        // Last week ALP (matched range only)
         supabase.from("daily_production").select("aop")
-          .gte("production_date", lastWeekStartStr).lt("production_date", weekStartStr),
+          .gte("production_date", lastWeekStartStr).lt("production_date", lastWeekMatchedEndStr),
         // Month-to-date ALP
         supabase.from("daily_production").select("aop").gte("production_date", monthStartStr),
+        // Insuracloud snapshots (real commissions)
+        supabase.from("insuracloud_snapshots" as any)
+          .select("*")
+          .order("snapshot_date", { ascending: false })
+          .limit(200),
       ]);
 
       const stages = licenseStagesRes.data || [];
       const licenseBreakdown = {
-        preCourse: stages.filter((a: any) => !a.license_progress || a.license_progress === "unlicensed").length,
-        inCourse: stages.filter((a: any) => a.license_progress === "course_purchased" || a.license_progress === "in_course").length,
-        examScheduled: stages.filter((a: any) => a.license_progress === "test_scheduled" || a.license_progress === "exam_scheduled").length,
-        passed: stages.filter((a: any) => a.license_progress === "passed_test" || a.license_progress === "exam_passed").length,
-        pendingState: stages.filter((a: any) => a.license_progress === "fingerprints_done" || a.license_progress === "waiting_on_license").length,
+        preCourse: stages.filter((a: any) =>
+          !a.license_progress
+          || a.license_progress === "unlicensed"
+          || a.license_progress === "not_started"
+          || a.license_progress === "applied"
+        ).length,
+        inCourse: stages.filter((a: any) =>
+          a.license_progress === "course_purchased"
+          || a.license_progress === "in_course"
+          || a.license_progress === "studying"
+        ).length,
+        examScheduled: stages.filter((a: any) =>
+          a.license_progress === "test_scheduled"
+          || a.license_progress === "exam_scheduled"
+        ).length,
+        passed: stages.filter((a: any) =>
+          a.license_progress === "passed_test"
+          || a.license_progress === "exam_passed"
+          || a.license_progress === "test_passed"
+        ).length,
+        pendingState: stages.filter((a: any) =>
+          a.license_progress === "fingerprints_done"
+          || a.license_progress === "waiting_on_license"
+          || a.license_progress === "pending_state"
+        ).length,
         total: stages.length,
       };
 
@@ -79,8 +113,22 @@ export function DashboardInsightCards() {
         ? ((thisWeekAlp - lastWeekAlp) / lastWeekAlp) * 100
         : thisWeekAlp > 0 ? 100 : 0;
 
+      // Insuracloud-backed real commissions (latest per agent)
+      const icSnaps = (insuracloudRes.data || []) as any[];
+      const seenAgents = new Set<string>();
+      const latest: any[] = [];
+      for (const s of icSnaps) {
+        if (!s?.agent_id || seenAgents.has(s.agent_id)) continue;
+        seenAgents.add(s.agent_id);
+        latest.push(s);
+      }
+      const teamMtd = latest.reduce((sum, s) => sum + Number(s.mtd_earnings || 0), 0);
+      const teamDirect = latest.reduce((sum, s) => sum + Number(s.direct_commissions || 0), 0);
+      const teamOverride = latest.reduce((sum, s) => sum + Number(s.override_commissions || 0), 0);
+
       const monthlyAlp = (monthProdRes.data || []).reduce((s: number, r: any) => s + Number(r.aop || 0), 0);
-      const samEarnings = monthlyAlp * 0.03; // 3% override
+      // 9-month advance × 65% comp avg × 75% persistency ≈ 31.5%
+      const estimatedFromAlp = monthlyAlp * 0.315;
 
       return {
         newContractsCount: newContractsRes.count ?? newContractsRes.data?.length ?? 0,
@@ -88,13 +136,22 @@ export function DashboardInsightCards() {
           name: `${a.first_name} ${a.last_name}`,
           when: a.contracted_at ? formatRelative(a.contracted_at) : "",
         })),
+        newContractsAll: (newContractsRes.data || []).map((a: any) => ({
+          id: a.id,
+          name: `${a.first_name} ${a.last_name}`,
+          when: a.contracted_at ? formatRelative(a.contracted_at) : "",
+          contractedAt: a.contracted_at,
+        })),
         weeklyAppsCount: weeklyAppsRes.count || 0,
         licenseBreakdown,
         thisWeekAlp,
         lastWeekAlp,
         weekChange: Math.round(weekChange),
         monthlyAlp,
-        samEarnings,
+        teamMtd,
+        teamDirect,
+        teamOverride,
+        estimatedFromAlp,
       };
     },
     staleTime: 120000,
@@ -104,18 +161,21 @@ export function DashboardInsightCards() {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-      {/* New Contracts This Week */}
-      <GlassCard className="p-4">
+      {/* New Hires This Week — clickable */}
+      <GlassCard
+        className="p-4 cursor-pointer hover:ring-2 hover:ring-emerald-500/30 transition-all"
+        onClick={() => setHiresDialogOpen(true)}
+      >
         <div className="flex items-center gap-2 mb-2">
           <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-          <h4 className="font-semibold text-sm">New Contracts This Week</h4>
+          <h4 className="font-semibold text-sm">New Hires This Week</h4>
           <Badge variant="outline" className="ml-auto text-xs text-emerald-400 border-emerald-500/30">
             {data.newContractsCount}
           </Badge>
         </div>
         <div className="space-y-1 mb-2 min-h-[80px]">
           {data.newContractsTop5.length === 0 ? (
-            <p className="text-xs text-muted-foreground italic">No new contracts yet this week</p>
+            <p className="text-xs text-muted-foreground italic">No new hires yet this week</p>
           ) : (
             data.newContractsTop5.map((a, i) => (
               <div key={i} className="flex justify-between text-xs">
@@ -125,59 +185,108 @@ export function DashboardInsightCards() {
             ))
           )}
         </div>
-        <Link to="/dashboard/crm">
-          <Button variant="outline" size="sm" className="w-full text-xs">
-            View Contracts <ArrowRight className="h-3 w-3 ml-1" />
-          </Button>
-        </Link>
+        <Button variant="outline" size="sm" className="w-full text-xs pointer-events-none">
+          Tap to view all {data.newContractsCount} <ArrowRight className="h-3 w-3 ml-1" />
+        </Button>
       </GlassCard>
 
-      {/* Revenue This Month */}
+      <Dialog open={hiresDialogOpen} onOpenChange={setHiresDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>New Hires This Week ({data.newContractsCount})</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            {data.newContractsAll && data.newContractsAll.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-8">No hires this week yet.</p>
+            )}
+            {data.newContractsAll?.map((a: any) => (
+              <Link
+                key={a.id}
+                to={`/dashboard/applicants?id=${a.id}`}
+                className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition"
+              >
+                <div>
+                  <p className="font-medium text-sm">{a.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {a.contractedAt ? new Date(a.contractedAt).toLocaleDateString() : "—"}
+                  </p>
+                </div>
+                <Badge variant="outline" className="text-emerald-400 border-emerald-500/30">{a.when}</Badge>
+              </Link>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Revenue This Month — prefers real Insuracloud, falls back to estimate */}
       <GlassCard className="p-4">
         <div className="flex items-center gap-2 mb-3">
           <DollarSign className="h-4 w-4 text-emerald-400" />
           <h4 className="font-semibold text-sm">Revenue This Month</h4>
-          <Badge variant="outline" className="ml-auto text-xs text-muted-foreground">MTD</Badge>
+          <Badge variant="outline" className="ml-auto text-xs text-muted-foreground">
+            {data.teamMtd > 0 ? "InsuraCloud Live" : "Estimated"}
+          </Badge>
         </div>
-        <div className="space-y-2">
+        <div className="space-y-3">
           <div>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Team ALP</p>
-            <p className="text-2xl font-bold text-emerald-400">${data.monthlyAlp.toLocaleString()}</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Team MTD (Paid)</p>
+            <p className="text-2xl font-bold text-emerald-400">
+              ${Math.round(data.teamMtd > 0 ? data.teamMtd : data.estimatedFromAlp).toLocaleString()}
+            </p>
           </div>
-          <div>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Estimated Override (3%)</p>
-            <p className="text-base font-semibold">${Math.round(data.samEarnings).toLocaleString()}</p>
+          {data.teamMtd > 0 && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-[10px] text-muted-foreground uppercase">Direct</p>
+                <p className="text-sm font-semibold">${Math.round(data.teamDirect).toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-muted-foreground uppercase">Override</p>
+                <p className="text-sm font-semibold">${Math.round(data.teamOverride).toLocaleString()}</p>
+              </div>
+            </div>
+          )}
+          <div className="pt-2 border-t border-border/50">
+            <p className="text-[10px] text-muted-foreground">
+              Team ALP logged: ${data.monthlyAlp.toLocaleString()}
+              {data.teamMtd === 0 && " • Estimate uses 9-month advance × 75% persistency"}
+            </p>
           </div>
         </div>
       </GlassCard>
 
-      {/* License Progress */}
+      {/* License Progress — clickable stages */}
       <GlassCard className="p-4">
         <div className="flex items-center gap-2 mb-3">
           <BookOpen className="h-4 w-4 text-blue-400" />
           <h4 className="font-semibold text-sm">License Progress</h4>
-          <Badge variant="outline" className="ml-auto text-xs">{data.licenseBreakdown.total} contracted</Badge>
+          <Badge variant="outline" className="ml-auto text-xs">{data.licenseBreakdown.total} active</Badge>
         </div>
-        <div className="space-y-2">
+        <div className="space-y-1">
           {[
-            { label: "Pre-Course", count: data.licenseBreakdown.preCourse, color: "bg-slate-400" },
-            { label: "In Course", count: data.licenseBreakdown.inCourse, color: "bg-blue-400" },
-            { label: "Exam Scheduled", count: data.licenseBreakdown.examScheduled, color: "bg-amber-400" },
-            { label: "Passed", count: data.licenseBreakdown.passed, color: "bg-emerald-400" },
-            { label: "Pending State", count: data.licenseBreakdown.pendingState, color: "bg-violet-400" },
+            { label: "Pre-Course",     count: data.licenseBreakdown.preCourse,      filterKey: "pre_course",      color: "bg-slate-400" },
+            { label: "In Course",      count: data.licenseBreakdown.inCourse,       filterKey: "in_course",       color: "bg-blue-400" },
+            { label: "Exam Scheduled", count: data.licenseBreakdown.examScheduled,  filterKey: "exam_scheduled",  color: "bg-amber-400" },
+            { label: "Passed",         count: data.licenseBreakdown.passed,         filterKey: "passed",          color: "bg-emerald-400" },
+            { label: "Pending State",  count: data.licenseBreakdown.pendingState,   filterKey: "pending_state",   color: "bg-violet-400" },
           ].map(item => (
-            <div key={item.label} className="flex items-center gap-2 text-xs">
+            <Link
+              key={item.label}
+              to={`/dashboard/applicants?stage=${item.filterKey}`}
+              className="flex items-center gap-2 text-xs p-1.5 -mx-1.5 rounded hover:bg-muted/40 transition"
+            >
               <div className={cn("h-2 w-2 rounded-full", item.color)} />
               <span className="text-muted-foreground flex-1">{item.label}</span>
               <span className="font-bold">{item.count}</span>
-            </div>
+              <ArrowRight className="h-3 w-3 text-muted-foreground" />
+            </Link>
           ))}
         </div>
       </GlassCard>
 
-      {/* This Week vs Last Week */}
+      {/* This Week vs Last Week — matched range */}
       <GlassCard className="p-4">
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-1">
           {data.weekChange >= 0 ? (
             <TrendingUp className="h-4 w-4 text-emerald-400" />
           ) : (
@@ -185,9 +294,12 @@ export function DashboardInsightCards() {
           )}
           <h4 className="font-semibold text-sm">Week vs Week</h4>
           <Badge variant="outline" className="ml-auto text-xs text-muted-foreground">
-            {data.weeklyAppsCount} apps
+            {data.weeklyAppsCount} Applications
           </Badge>
         </div>
+        <p className="text-[10px] text-muted-foreground mb-3">
+          Matched range: Mon–{format(now, "EEE")} this week vs Mon–{format(now, "EEE")} last week
+        </p>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <p className="text-[10px] text-muted-foreground">This Week</p>

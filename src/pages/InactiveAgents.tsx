@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow, format } from "date-fns";
+import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 
 interface InactiveEntry {
   id: string;
@@ -230,6 +231,10 @@ export default function InactiveAgents() {
         <p className="text-muted-foreground">Manager or admin access required</p>
       </div>
     );
+  }
+
+  if (isLoading && entries.length === 0) {
+    return <PageLoadingSkeleton variant="list" />;
   }
 
   return (

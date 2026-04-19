@@ -1838,6 +1838,45 @@ export type Database = {
         }
         Relationships: []
       }
+      automation_run_log: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          duration_ms: number | null
+          error: string | null
+          http_status: number | null
+          id: string
+          job_name: string
+          response_body: Json | null
+          status: string
+          triggered_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          http_status?: number | null
+          id?: string
+          job_name: string
+          response_body?: Json | null
+          status?: string
+          triggered_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          http_status?: number | null
+          id?: string
+          job_name?: string
+          response_body?: Json | null
+          status?: string
+          triggered_at?: string
+        }
+        Relationships: []
+      }
       automation_runs: {
         Row: {
           agents_affected: number | null
@@ -5111,7 +5150,19 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      automation_health: {
+        Row: {
+          avg_duration_ms: number | null
+          error_count_24h: number | null
+          health_status: string | null
+          job_name: string | null
+          last_error: string | null
+          last_run: string | null
+          success_count_24h: number | null
+          total_24h: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       check_banned_prospect: {
@@ -5163,6 +5214,10 @@ export type Database = {
       }
       resolve_hiring_manager_for_scope: {
         Args: { p_scope: Database["public"]["Enums"]["hiring_scope"] }
+        Returns: string
+      }
+      run_automation_job: {
+        Args: { p_body?: Json; p_function_name: string; p_job_name: string }
         Returns: string
       }
     }

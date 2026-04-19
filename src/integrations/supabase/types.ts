@@ -655,6 +655,7 @@ export type Database = {
           has_production_access: boolean | null
           has_training_course: boolean | null
           id: string
+          insuracloud_api_token: string | null
           invited_by_manager_id: string | null
           is_deactivated: boolean | null
           is_inactive: boolean | null
@@ -709,6 +710,7 @@ export type Database = {
           has_production_access?: boolean | null
           has_training_course?: boolean | null
           id?: string
+          insuracloud_api_token?: string | null
           invited_by_manager_id?: string | null
           is_deactivated?: boolean | null
           is_inactive?: boolean | null
@@ -763,6 +765,7 @@ export type Database = {
           has_production_access?: boolean | null
           has_training_course?: boolean | null
           id?: string
+          insuracloud_api_token?: string | null
           invited_by_manager_id?: string | null
           is_deactivated?: boolean | null
           is_inactive?: boolean | null
@@ -2710,6 +2713,259 @@ export type Database = {
             foreignKeyName: "instagram_subscriptions_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: true
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      insuracloud_downline: {
+        Row: {
+          agent_id: string | null
+          downline_external_id: string | null
+          downline_name: string
+          id: string
+          period_end: string | null
+          period_start: string | null
+          policy_count: number | null
+          rank: number | null
+          raw_payload: Json | null
+          synced_at: string
+          total_commission: number | null
+        }
+        Insert: {
+          agent_id?: string | null
+          downline_external_id?: string | null
+          downline_name: string
+          id?: string
+          period_end?: string | null
+          period_start?: string | null
+          policy_count?: number | null
+          rank?: number | null
+          raw_payload?: Json | null
+          synced_at?: string
+          total_commission?: number | null
+        }
+        Update: {
+          agent_id?: string | null
+          downline_external_id?: string | null
+          downline_name?: string
+          id?: string
+          period_end?: string | null
+          period_start?: string | null
+          policy_count?: number | null
+          rank?: number | null
+          raw_payload?: Json | null
+          synced_at?: string
+          total_commission?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insuracloud_downline_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      insuracloud_payouts: {
+        Row: {
+          agent_id: string | null
+          amount: number
+          id: string
+          is_today: boolean | null
+          payout_date: string
+          policy_count: number | null
+          raw_payload: Json | null
+          synced_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          amount?: number
+          id?: string
+          is_today?: boolean | null
+          payout_date: string
+          policy_count?: number | null
+          raw_payload?: Json | null
+          synced_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          amount?: number
+          id?: string
+          is_today?: boolean | null
+          payout_date?: string
+          policy_count?: number | null
+          raw_payload?: Json | null
+          synced_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insuracloud_payouts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      insuracloud_policies: {
+        Row: {
+          agent_id: string | null
+          carrier: string | null
+          commission: number | null
+          commission_type: string | null
+          downline_agent_name: string | null
+          effective_date: string | null
+          id: string
+          issued_date: string | null
+          policy_number: string | null
+          policy_status: string | null
+          policy_type: string | null
+          premium: number | null
+          product: string | null
+          raw_payload: Json | null
+          synced_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          carrier?: string | null
+          commission?: number | null
+          commission_type?: string | null
+          downline_agent_name?: string | null
+          effective_date?: string | null
+          id?: string
+          issued_date?: string | null
+          policy_number?: string | null
+          policy_status?: string | null
+          policy_type?: string | null
+          premium?: number | null
+          product?: string | null
+          raw_payload?: Json | null
+          synced_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          carrier?: string | null
+          commission?: number | null
+          commission_type?: string | null
+          downline_agent_name?: string | null
+          effective_date?: string | null
+          id?: string
+          issued_date?: string | null
+          policy_number?: string | null
+          policy_status?: string | null
+          policy_type?: string | null
+          premium?: number | null
+          product?: string | null
+          raw_payload?: Json | null
+          synced_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insuracloud_policies_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      insuracloud_snapshots: {
+        Row: {
+          agent_id: string | null
+          created_at: string
+          direct_commissions: number | null
+          forecast_90_day: number | null
+          id: string
+          mtd_earnings: number | null
+          override_commissions: number | null
+          raw_payload: Json | null
+          snapshot_date: string
+          snapshot_time: string
+          source: string | null
+          today_earnings: number | null
+          ytd_earnings: number | null
+        }
+        Insert: {
+          agent_id?: string | null
+          created_at?: string
+          direct_commissions?: number | null
+          forecast_90_day?: number | null
+          id?: string
+          mtd_earnings?: number | null
+          override_commissions?: number | null
+          raw_payload?: Json | null
+          snapshot_date?: string
+          snapshot_time?: string
+          source?: string | null
+          today_earnings?: number | null
+          ytd_earnings?: number | null
+        }
+        Update: {
+          agent_id?: string | null
+          created_at?: string
+          direct_commissions?: number | null
+          forecast_90_day?: number | null
+          id?: string
+          mtd_earnings?: number | null
+          override_commissions?: number | null
+          raw_payload?: Json | null
+          snapshot_date?: string
+          snapshot_time?: string
+          source?: string | null
+          today_earnings?: number | null
+          ytd_earnings?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insuracloud_snapshots_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      insuracloud_sync_log: {
+        Row: {
+          agent_id: string | null
+          created_at: string
+          endpoints_hit: Json | null
+          error_message: string | null
+          id: string
+          records_synced: Json | null
+          status: string
+          sync_completed_at: string | null
+          sync_started_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          created_at?: string
+          endpoints_hit?: Json | null
+          error_message?: string | null
+          id?: string
+          records_synced?: Json | null
+          status?: string
+          sync_completed_at?: string | null
+          sync_started_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          created_at?: string
+          endpoints_hit?: Json | null
+          error_message?: string | null
+          id?: string
+          records_synced?: Json | null
+          status?: string
+          sync_completed_at?: string | null
+          sync_started_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insuracloud_sync_log_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "agents"
             referencedColumns: ["id"]
           },

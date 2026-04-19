@@ -321,3 +321,7 @@ verify_jwt = false
 
 [functions.generate-award-graphics]
 verify_jwt = false
+
+[functions.stripe-webhook-lead-purchase]
+verify_jwt = false
+

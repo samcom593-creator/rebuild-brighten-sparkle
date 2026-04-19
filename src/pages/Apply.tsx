@@ -252,8 +252,6 @@ export default function Apply() {
 
       if (error) {
         console.error("Error saving partial application:", error);
-      } else {
-        console.log(`Partial application saved at step ${stepCompleted}`);
       }
     } catch (err) {
       console.error("Error in savePartialApplication:", err);

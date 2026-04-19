@@ -1,6 +1,6 @@
 // InsuraCloud sync edge function
-// Fetches book-of-business, business-analytics, and team-analytics
-// Persists snapshots, policies, payouts, and downline data
+// Pulls /business-analytics, /book-of-business, /team-analytics
+// Persists snapshots, policies, payouts, downline, and sync log
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -12,16 +12,13 @@ const corsHeaders = {
 const INSURACLOUD_BASE = "https://agentlink.insuracloud.ai/api/v1";
 
 interface SyncRequest {
-  agent_id?: string; // when provided, sync only this agent (uses their token if set)
-  full?: boolean; // full refresh vs incremental
+  agent_id?: string;
+  full?: boolean;
 }
 
 async function fetchInsuraCloud(path: string, token: string) {
   const res = await fetch(`${INSURACLOUD_BASE}${path}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/json",
-    },
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
   });
   const text = await res.text();
   let data: any = null;
@@ -36,15 +33,12 @@ async function fetchInsuraCloud(path: string, token: string) {
   return data;
 }
 
-function num(v: any): number {
+const num = (v: any): number => {
   if (v === null || v === undefined || v === "") return 0;
   const n = typeof v === "number" ? v : parseFloat(String(v).replace(/[^0-9.\-]/g, ""));
   return Number.isFinite(n) ? n : 0;
-}
-
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
-}
+};
+const todayISO = () => new Date().toISOString().slice(0, 10);
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -55,7 +49,6 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     { auth: { persistSession: false } }
   );
-
   const defaultToken = Deno.env.get("INSURACLOUD_API_TOKEN");
 
   let body: SyncRequest = {};
@@ -63,8 +56,8 @@ Deno.serve(async (req) => {
     body = await req.json();
   } catch {}
 
-  // Determine which agents to sync
-  let agents: { id: string; insuracloud_api_token: string | null }[] = [];
+  // Pick agents to sync
+  let agents: { id: string | null; insuracloud_api_token: string | null }[] = [];
   if (body.agent_id) {
     const { data } = await supabase
       .from("agents")
@@ -73,7 +66,6 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (data) agents = [data];
   } else {
-    // Sync all agents that have a token, OR a single aggregate using the default token
     const { data } = await supabase
       .from("agents")
       .select("id, insuracloud_api_token")
@@ -81,17 +73,15 @@ Deno.serve(async (req) => {
     agents = data ?? [];
   }
 
-  // If no per-agent tokens, do an aggregate sync using the default token
+  // Fallback to a single agency-wide aggregate sync using the default token
   const useAggregate = agents.length === 0 && !!defaultToken;
-  if (useAggregate) {
-    agents = [{ id: "AGENCY_AGGREGATE", insuracloud_api_token: defaultToken! }];
-  }
+  if (useAggregate) agents = [{ id: null, insuracloud_api_token: defaultToken! }];
 
   if (agents.length === 0) {
     return new Response(
       JSON.stringify({
         ok: false,
-        error: "No InsuraCloud token configured (neither agent-level nor INSURACLOUD_API_TOKEN secret).",
+        error: "No InsuraCloud token configured (per-agent or INSURACLOUD_API_TOKEN secret).",
       }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
@@ -104,101 +94,104 @@ Deno.serve(async (req) => {
     const token = a.insuracloud_api_token || defaultToken;
     if (!token) continue;
 
-    const logRow = {
-      agent_id: a.id === "AGENCY_AGGREGATE" ? null : a.id,
-      sync_type: useAggregate ? "aggregate" : (body.full ? "full" : "incremental"),
-      status: "running" as string,
-      started_at: new Date().toISOString(),
-      finished_at: null as string | null,
-      error_message: null as string | null,
-      records_synced: 0,
-    };
     const { data: logIns } = await supabase
       .from("insuracloud_sync_log")
-      .insert(logRow)
+      .insert({
+        agent_id: a.id,
+        status: "running",
+        endpoints_hit: [],
+        records_synced: {},
+      })
       .select("id")
       .single();
     const logId = logIns?.id;
+    const endpointsHit: string[] = [];
+    const records: Record<string, number> = {};
 
-    let synced = 0;
     try {
-      // 1) Business analytics → snapshot
+      // 1) /business-analytics → snapshot
       const ba = await fetchInsuraCloud("/business-analytics", token);
+      endpointsHit.push("/business-analytics");
       const snap = {
-        agent_id: a.id === "AGENCY_AGGREGATE" ? null : a.id,
+        agent_id: a.id,
         snapshot_date: today,
+        today_earnings: num(ba?.today_earnings ?? ba?.today?.earnings),
+        forecast_90_day: num(ba?.forecast_90_day ?? ba?.forecast?.ninety_day),
         mtd_earnings: num(ba?.mtd_earnings ?? ba?.month_to_date?.earnings),
         ytd_earnings: num(ba?.ytd_earnings ?? ba?.year_to_date?.earnings),
-        mtd_premium: num(ba?.mtd_premium ?? ba?.month_to_date?.premium),
-        ytd_premium: num(ba?.ytd_premium ?? ba?.year_to_date?.premium),
         direct_commissions: num(ba?.direct_commissions),
         override_commissions: num(ba?.override_commissions),
-        pending_payouts: num(ba?.pending_payouts),
-        policies_active: Math.round(num(ba?.policies_active)),
-        policies_pending: Math.round(num(ba?.policies_pending)),
+        source: "insuracloud_api",
         raw_payload: ba ?? {},
       };
       await supabase
         .from("insuracloud_snapshots")
         .upsert(snap, { onConflict: "agent_id,snapshot_date" });
-      synced++;
+      records.snapshot = 1;
 
-      // 2) Book of business → policies
+      // 2) /book-of-business → policies
       const bob = await fetchInsuraCloud("/book-of-business", token);
+      endpointsHit.push("/book-of-business");
       const policies = Array.isArray(bob) ? bob : (bob?.policies ?? bob?.data ?? []);
-      if (Array.isArray(policies) && policies.length) {
+      if (Array.isArray(policies) && policies.length && a.id) {
         const rows = policies.slice(0, 1000).map((p: any) => ({
-          agent_id: a.id === "AGENCY_AGGREGATE" ? null : a.id,
+          agent_id: a.id,
           policy_number: String(p.policy_number ?? p.id ?? p.policyId ?? crypto.randomUUID()),
           carrier: p.carrier ?? p.carrier_name ?? null,
           product: p.product ?? p.product_name ?? null,
-          client_name: p.client_name ?? p.insured_name ?? null,
+          policy_type: p.policy_type ?? p.type ?? null,
           premium: num(p.premium ?? p.annual_premium),
           commission: num(p.commission),
-          status: p.status ?? null,
-          issued_date: p.issued_date ?? p.effective_date ?? null,
+          commission_type: p.commission_type ?? null,
+          policy_status: p.status ?? p.policy_status ?? null,
+          effective_date: p.effective_date ?? null,
+          issued_date: p.issued_date ?? null,
+          downline_agent_name: p.downline_agent_name ?? p.writing_agent ?? null,
           raw_payload: p,
         }));
         await supabase
           .from("insuracloud_policies")
-          .upsert(rows, { onConflict: "policy_number" });
-        synced += rows.length;
+          .upsert(rows, { onConflict: "agent_id,policy_number" });
+        records.policies = rows.length;
       }
 
-      // 3) Team analytics → downline + payouts
+      // 3) /team-analytics → downline + payouts
       const ta = await fetchInsuraCloud("/team-analytics", token);
+      endpointsHit.push("/team-analytics");
+
       const downline = ta?.downline ?? ta?.team ?? ta?.agents ?? [];
-      if (Array.isArray(downline) && downline.length) {
-        const rows = downline.slice(0, 100).map((d: any) => ({
-          parent_agent_id: a.id === "AGENCY_AGGREGATE" ? null : a.id,
+      if (Array.isArray(downline) && downline.length && a.id) {
+        const rows = downline.slice(0, 100).map((d: any, i: number) => ({
+          agent_id: a.id,
           downline_name: d.name ?? d.agent_name ?? "Unknown",
-          downline_email: d.email ?? null,
-          mtd_premium: num(d.mtd_premium),
-          mtd_earnings: num(d.mtd_earnings),
-          policies_count: Math.round(num(d.policies_count ?? d.policies)),
-          snapshot_date: today,
+          downline_external_id: d.id ? String(d.id) : null,
+          total_commission: num(d.total_commission ?? d.commission ?? d.mtd_earnings),
+          policy_count: Math.round(num(d.policy_count ?? d.policies_count ?? d.policies)),
+          rank: d.rank ?? i + 1,
+          period_start: d.period_start ?? today.slice(0, 8) + "01",
+          period_end: d.period_end ?? today,
           raw_payload: d,
         }));
         await supabase
           .from("insuracloud_downline")
-          .upsert(rows, { onConflict: "parent_agent_id,downline_name,snapshot_date" });
-        synced += rows.length;
+          .upsert(rows, { onConflict: "agent_id,downline_name,period_start" });
+        records.downline = rows.length;
       }
 
       const payouts = ta?.payouts ?? ba?.payouts ?? [];
-      if (Array.isArray(payouts) && payouts.length) {
+      if (Array.isArray(payouts) && payouts.length && a.id) {
         const rows = payouts.slice(0, 200).map((p: any) => ({
-          agent_id: a.id === "AGENCY_AGGREGATE" ? null : a.id,
-          expected_date: p.date ?? p.expected_date ?? today,
+          agent_id: a.id,
+          payout_date: p.date ?? p.payout_date ?? p.expected_date ?? today,
           amount: num(p.amount),
-          carrier: p.carrier ?? null,
-          status: p.status ?? "scheduled",
+          policy_count: Math.round(num(p.policy_count)),
+          is_today: (p.date ?? p.payout_date ?? "") === today,
           raw_payload: p,
         }));
         await supabase
           .from("insuracloud_payouts")
-          .upsert(rows, { onConflict: "agent_id,expected_date,carrier" });
-        synced += rows.length;
+          .upsert(rows, { onConflict: "agent_id,payout_date" });
+        records.payouts = rows.length;
       }
 
       if (logId) {
@@ -206,23 +199,25 @@ Deno.serve(async (req) => {
           .from("insuracloud_sync_log")
           .update({
             status: "success",
-            finished_at: new Date().toISOString(),
-            records_synced: synced,
+            sync_completed_at: new Date().toISOString(),
+            endpoints_hit: endpointsHit,
+            records_synced: records,
           })
           .eq("id", logId);
       }
-      results.push({ agent_id: a.id, ok: true, synced });
+      results.push({ agent_id: a.id, ok: true, records });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[insuracloud-sync] ${a.id} failed:`, msg);
+      console.error(`[insuracloud-sync] ${a.id ?? "AGGREGATE"} failed:`, msg);
       if (logId) {
         await supabase
           .from("insuracloud_sync_log")
           .update({
             status: "error",
-            finished_at: new Date().toISOString(),
+            sync_completed_at: new Date().toISOString(),
             error_message: msg,
-            records_synced: synced,
+            endpoints_hit: endpointsHit,
+            records_synced: records,
           })
           .eq("id", logId);
       }
@@ -231,11 +226,7 @@ Deno.serve(async (req) => {
   }
 
   return new Response(
-    JSON.stringify({
-      ok: true,
-      duration_ms: Date.now() - startedAt,
-      results,
-    }),
+    JSON.stringify({ ok: true, duration_ms: Date.now() - startedAt, results }),
     { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
 });

@@ -988,6 +988,8 @@ export default function DashboardCommandCenter() {
                   </div>
                 )}
               </CardContent>
+                </TabsContent>
+              </Tabs>
             </Card>
           </div>
 

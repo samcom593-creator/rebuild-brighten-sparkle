@@ -322,7 +322,6 @@ export default function ContentLibrary() {
         supabase.functions.invoke("detect-duplicates", {
           body: { contentItemId: inserted.id }
         }).then(() => {
-          console.log(`Duplicate check complete for ${file.name}`);
           fetchContent();
         }).catch(e => console.error("Duplicate check failed:", e));
       }

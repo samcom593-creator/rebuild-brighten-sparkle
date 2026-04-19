@@ -233,8 +233,6 @@ export default function LogNumbers() {
     try {
       const today = getTodayPST();
 
-      console.log("Submitting production:", { agentId: selectedAgent.id, date: today, productionData });
-
       const res = await supabase.functions.invoke("log-production", {
         body: {
           action: "submit",

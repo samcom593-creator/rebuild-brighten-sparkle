@@ -328,7 +328,6 @@ export default function DashboardApplicants() {
       }
     }).then(({ error: emailErr }) => {
       if (emailErr) console.error("Failed to send hire email:", emailErr);
-      else console.log("Hire email sent to", app.email);
     });
 
     // Broadcast hire announcement to all managers

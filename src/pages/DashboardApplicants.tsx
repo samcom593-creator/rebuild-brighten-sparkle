@@ -891,7 +891,7 @@ export default function DashboardApplicants() {
     );
   };
 
-  if (isLoading && (!queryData?.applications || queryData.applications.length === 0)) {
+  if (isLoading && applications.length === 0) {
     return <PageLoadingSkeleton variant="cards" />;
   }
 

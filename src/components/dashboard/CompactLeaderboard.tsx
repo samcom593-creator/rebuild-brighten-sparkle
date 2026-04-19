@@ -229,8 +229,8 @@ export function CompactLeaderboard({ currentAgentId, className, refreshKey }: Co
       
       switch (period) {
         case "week":
-          startDate = format(startOfWeek(today, { weekStartsOn: 0 }), "yyyy-MM-dd");
-          endDate = format(endOfWeek(today, { weekStartsOn: 0 }), "yyyy-MM-dd");
+          startDate = format(startOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd");
+          endDate = format(endOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd");
           break;
         case "month":
           startDate = format(startOfMonth(today), "yyyy-MM-dd");

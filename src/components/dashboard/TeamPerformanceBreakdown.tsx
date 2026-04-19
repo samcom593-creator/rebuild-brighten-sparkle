@@ -96,8 +96,8 @@ export function TeamPerformanceBreakdown() {
       const weeks: WeeklyStats[] = [];
 
       for (let i = 0; i < 4; i++) {
-        const weekEnd = endOfWeek(subWeeks(today, i), { weekStartsOn: 0 });
-        const weekStart = startOfWeek(subWeeks(today, i), { weekStartsOn: 0 });
+        const weekEnd = endOfWeek(subWeeks(today, i), { weekStartsOn: 1 });
+        const weekStart = startOfWeek(subWeeks(today, i), { weekStartsOn: 1 });
 
         const weekLabel = i === 0 
           ? "This Week" 

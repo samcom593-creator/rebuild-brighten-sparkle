@@ -31,7 +31,7 @@ export function getDateDaysAgoPST(daysAgo: number): string {
  */
 export function getWeekStartPST(): string {
   const pstNow = getNowPST();
-  return format(startOfWeek(pstNow, { weekStartsOn: 0 }), "yyyy-MM-dd");
+  return format(startOfWeek(pstNow, { weekStartsOn: 1 }), "yyyy-MM-dd");
 }
 
 /**
@@ -54,7 +54,7 @@ export function formatDateString(date: Date): string {
  */
 export function getWeekEndPST(): string {
   const pstNow = getNowPST();
-  return format(endOfWeek(pstNow, { weekStartsOn: 0 }), "yyyy-MM-dd");
+  return format(endOfWeek(pstNow, { weekStartsOn: 1 }), "yyyy-MM-dd");
 }
 
 /**

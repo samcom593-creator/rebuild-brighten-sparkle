@@ -72,6 +72,7 @@ import { InterviewScheduler } from "@/components/dashboard/InterviewScheduler";
 import { KanbanBoard, type KanbanStage } from "@/components/pipeline/KanbanBoard";
 import type { PipelineCardData } from "@/components/pipeline/PipelineCard";
 import { logLeadActivity } from "@/lib/logLeadActivity";
+import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 
 interface Application {
   id: string;

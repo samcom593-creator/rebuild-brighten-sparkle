@@ -123,8 +123,9 @@ export default function DashboardApplicants() {
   const { user, isAdmin, isManager } = useAuth();
   const { playSound } = useSoundEffects();
   const [searchParams, setSearchParams] = useSearchParams();
-  const highlightedLeadId = searchParams.get("lead");
+  const highlightedLeadId = searchParams.get("lead") || searchParams.get("id");
   const managerFilter = searchParams.get("manager");
+  const stageFilter = searchParams.get("stage");
   
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
@@ -524,8 +525,27 @@ export default function DashboardApplicants() {
       const matchesLicense = licenseFilter === "all" || app.license_status === licenseFilter;
       const matchesDirects = !myDirectsOnly || app.assigned_agent_id === agentId;
       const matchesHot = !hotLeadsOnly || (app as any).ai_score_tier === "hot" || (app as any).ai_score_tier === "warm";
-      
-      return matchesSearch && matchesStatus && matchesLicense && matchesDirects && matchesHot;
+
+      // Stage filter from query string (?stage=in_course etc.)
+      let matchesStage = true;
+      if (stageFilter) {
+        const lp = (app as any).license_progress;
+        const map: Record<string, string[]> = {
+          pre_course: ["unlicensed", "not_started", "applied"],
+          in_course: ["course_purchased", "in_course", "studying"],
+          exam_scheduled: ["test_scheduled", "exam_scheduled"],
+          passed: ["passed_test", "exam_passed", "test_passed"],
+          pending_state: ["fingerprints_done", "waiting_on_license", "pending_state"],
+        };
+        const allowed = map[stageFilter] || [];
+        if (stageFilter === "pre_course") {
+          matchesStage = !lp || allowed.includes(lp);
+        } else {
+          matchesStage = allowed.includes(lp);
+        }
+      }
+
+      return matchesSearch && matchesStatus && matchesLicense && matchesDirects && matchesHot && matchesStage;
     })
     .sort((a, b) => {
       const dateA = new Date(a.created_at).getTime();

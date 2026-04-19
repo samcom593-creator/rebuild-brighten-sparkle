@@ -800,3 +800,131 @@ export default function Dashboard() {
     </>
   );
 }
+
+function PortalLoginsDialog() {
+  const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<"all" | "search">("all");
+  const [search, setSearch] = useState("");
+  const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
+  const [sending, setSending] = useState(false);
+
+  const { data: agents = [] } = useQuery({
+    queryKey: ["agents-for-portal-login"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("agents")
+        .select("id, display_name, user_id, is_deactivated, profile:profiles!agents_profile_id_fkey(full_name, email)")
+        .eq("is_deactivated", false)
+        .limit(1000);
+      return ((data || []) as any[]).map(a => ({
+        id: a.id,
+        name: (a.profile as any)?.full_name || a.display_name || "Unknown",
+        email: (a.profile as any)?.email,
+      }));
+    },
+    enabled: open,
+  });
+
+  const filtered = search
+    ? agents.filter(a => a.name.toLowerCase().includes(search.toLowerCase()) || a.email?.toLowerCase().includes(search.toLowerCase()))
+    : agents;
+
+  const handleSend = async () => {
+    setSending(true);
+    try {
+      if (mode === "all") {
+        await supabase.functions.invoke("send-bulk-portal-logins");
+        toast.success(`Portal logins sent to all ${agents.length} agents`);
+      } else {
+        if (selectedAgents.length === 0) {
+          toast.error("Pick at least one agent");
+          setSending(false);
+          return;
+        }
+        await supabase.functions.invoke("send-bulk-portal-logins", {
+          body: { agent_ids: selectedAgents },
+        });
+        toast.success(`Portal logins sent to ${selectedAgents.length} agents`);
+      }
+      setOpen(false);
+      setSelectedAgents([]);
+      setSearch("");
+    } catch (e: any) {
+      toast.error("Failed: " + (e.message || "unknown"));
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button
+          variant="outline"
+          className="h-auto py-3 flex flex-col items-center gap-1 hover:border-primary/50 w-full"
+        >
+          <KeyRound className="h-4 w-4 text-primary" />
+          <span className="text-xs">Send Portal Logins</span>
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Send Portal Logins</DialogTitle>
+        </DialogHeader>
+        <Tabs value={mode} onValueChange={(v) => setMode(v as any)}>
+          <TabsList className="w-full">
+            <TabsTrigger value="all" className="flex-1">Send to All ({agents.length})</TabsTrigger>
+            <TabsTrigger value="search" className="flex-1">Search & Select</TabsTrigger>
+          </TabsList>
+          <TabsContent value="all" className="space-y-4 pt-4">
+            <p className="text-sm text-muted-foreground">
+              This will email portal login credentials to every active agent ({agents.length} total).
+            </p>
+            <Button onClick={handleSend} disabled={sending} className="w-full">
+              {sending ? "Sending..." : `Send to all ${agents.length} agents`}
+            </Button>
+          </TabsContent>
+          <TabsContent value="search" className="space-y-4 pt-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name or email..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <div className="flex-1 overflow-y-auto space-y-1 max-h-[300px]">
+              {filtered.map(a => (
+                <label
+                  key={a.id}
+                  className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/40 cursor-pointer"
+                >
+                  <Checkbox
+                    checked={selectedAgents.includes(a.id)}
+                    onCheckedChange={(checked) => {
+                      setSelectedAgents(prev => checked
+                        ? [...prev, a.id]
+                        : prev.filter(x => x !== a.id));
+                    }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{a.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{a.email}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+            <div className="flex items-center justify-between pt-2 border-t border-border">
+              <p className="text-sm text-muted-foreground">{selectedAgents.length} selected</p>
+              <Button onClick={handleSend} disabled={sending || selectedAgents.length === 0}>
+                {sending ? "Sending..." : `Send to ${selectedAgents.length} agent${selectedAgents.length === 1 ? "" : "s"}`}
+              </Button>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
+  );
+}
+

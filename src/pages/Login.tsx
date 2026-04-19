@@ -202,9 +202,12 @@ export default function Login() {
         className="w-full max-w-md relative z-10"
       >
         <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2 mb-6">
-            <Crown className="h-10 w-10 text-primary" />
-            <span className="text-2xl font-bold gradient-text">APEX Financial</span>
+          <Link to="/" className="inline-flex items-center gap-4 mb-6">
+            <Crown className="h-10 w-10 text-primary shrink-0" />
+            <div className="flex flex-col items-start leading-none">
+              <span className="text-2xl font-bold gradient-text tracking-wide">APEX</span>
+              <span className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mt-1">Financial</span>
+            </div>
           </Link>
           <h1 className="text-3xl font-bold mb-2">Welcome Back</h1>
           <p className="text-muted-foreground">Sign in to access your dashboard</p>

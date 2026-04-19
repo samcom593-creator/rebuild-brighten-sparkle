@@ -347,16 +347,16 @@ export function GlobalSidebar({
             isCollapsed ? "justify-center p-4" : "justify-between px-4 py-4"
           )}>
             {!isCollapsed && (
-              <Link to="/dashboard" className="flex items-center gap-2 group" style={{ overflow: 'visible', whiteSpace: 'nowrap', minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'visible', whiteSpace: 'nowrap' }}>
+              <Link to="/dashboard" className="flex items-center gap-3 group shrink-0" style={{ overflow: 'visible', whiteSpace: 'nowrap', minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'visible', whiteSpace: 'nowrap' }}>
                   <span
-                    style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: '16px', color: 'white', letterSpacing: '1px', flexShrink: 0 }}
+                    style={{ fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: '16px', color: 'white', letterSpacing: '2px', flexShrink: 0 }}
                   >
                     APEX
                   </span>
                   <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22d3a5', flexShrink: 0, animation: 'pulse 2s infinite' }} />
                   <span
-                    style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: '16px', color: '#22d3a5', flexShrink: 0 }}
+                    style={{ fontFamily: "'Syne', sans-serif", fontWeight: 600, fontSize: '13px', color: '#22d3a5', flexShrink: 0, letterSpacing: '0.5px' }}
                   >
                     Financial
                   </span>

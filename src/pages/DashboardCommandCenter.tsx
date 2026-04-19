@@ -66,6 +66,8 @@ import { AbandonedLeadsPanel } from "@/components/dashboard/AbandonedLeadsPanel"
 import { AllLeadsPanel } from "@/components/dashboard/AllLeadsPanel";
 import { HideableCard } from "@/components/dashboard/HideableCard";
 import { HiddenCardsManager } from "@/components/dashboard/HiddenCardsManager";
+import { TeamCommissionsCard } from "@/components/finances/TeamCommissionsCard";
+import { LiveCommissionsLeaderboard } from "@/components/finances/LiveCommissionsLeaderboard";
 
 import { AISummaryReport } from "@/components/admin/AISummaryReport";
 import { DateRangePicker, type DateRange } from "@/components/ui/date-range-picker";
@@ -102,6 +104,7 @@ const HIDEABLE_CARDS: Record<string, string> = {
   "admin.team-hierarchy": "Team Hierarchy Manager",
   "admin.manager-invites": "Manager Invites",
   "admin.bulk-lead-assignment": "Bulk Lead Assignment",
+  "admin.team-commissions": "Team Commissions (InsuraCloud Live)",
 };
 
 interface AgentWithStats {
@@ -575,6 +578,11 @@ export default function DashboardCommandCenter() {
             </Button>
           </div>
         </div>
+
+        {/* Team Commissions (InsuraCloud Live) - sits ABOVE the stat grid */}
+        <HideableCard cardKey="admin.team-commissions" label="Team Commissions (Live)">
+          <TeamCommissionsCard />
+        </HideableCard>
 
         {/* Summary Stats - Clickable */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 card-hover-lift">

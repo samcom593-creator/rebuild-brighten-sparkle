@@ -52,7 +52,7 @@ import { TeamTasksWidget } from "@/components/dashboard/TeamTasksWidget";
 import { AwardFeedLive } from "@/components/dashboard/AwardFeedLive";
 import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
 import { DashboardInsightCards } from "@/components/dashboard/DashboardInsightCards";
-import { PipelineVelocityCard } from "@/components/dashboard/PipelineVelocityCard";
+
 import { StalledAgentsAlert } from "@/components/dashboard/StalledAgentsAlert";
 import { ReferralTrackingCard } from "@/components/dashboard/ReferralTrackingCard";
 import { StatCardDrilldown } from "@/components/dashboard/StatCardDrilldown";
@@ -250,7 +250,11 @@ async function fetchDashboardData(
   };
 }
 
-import { Shield, Settings, Send, KeyRound, ShoppingCart, Activity, AlertCircle, Flame } from "lucide-react";
+import { Shield, Settings, Send, KeyRound, ShoppingCart, Activity, AlertCircle, Flame, UserX, RefreshCw, Search } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 
 const quickActions = [
   { to: "/numbers", icon: Edit3, color: "primary", title: "Log Numbers", sub: "Enter today's stats" },
@@ -427,7 +431,7 @@ export default function Dashboard() {
             <StatCard title="Weekly ALP" value={`$${topMetrics.weeklyALP.toLocaleString()}`} icon={DollarSign} variant="success" />
           </div>
           <div onClick={() => setActiveDrilldown("apps")} className="cursor-pointer hover:ring-2 ring-primary/30 rounded-xl transition-all">
-            <StatCard title="Apps This Week" value={topMetrics.appsThisWeek} icon={UserPlus} variant="default" />
+            <StatCard title="Applications This Week" value={topMetrics.appsThisWeek} icon={UserPlus} variant="default" />
           </div>
           <div onClick={() => setActiveDrilldown("closerate")} className="cursor-pointer hover:ring-2 ring-primary/30 rounded-xl transition-all">
             <StatCard title="Close Rate" value={`${topMetrics.closeRate}%`} icon={Percent} variant="success" />
@@ -448,20 +452,45 @@ export default function Dashboard() {
       {/* ====== ALERT BANNERS (Admin) ====== */}
       {isAdmin && staleAgents && staleAgents.length > 0 && (
         <div className="mb-4 p-3 rounded-lg border border-destructive/30 bg-destructive/5">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
             <AlertCircle className="h-4 w-4 text-destructive" />
-            <span className="text-sm font-semibold text-destructive">{staleAgents.length} agents haven't logged production in 7+ days</span>
+            <span className="text-sm font-semibold text-destructive">
+              {staleAgents.length} agent{staleAgents.length === 1 ? "" : "s"} haven't logged production in 7+ days
+            </span>
+            <div className="ml-auto flex items-center gap-1">
+              <Link to="/dashboard/inactive-agents">
+                <Button size="sm" variant="outline" className="h-7 text-xs">
+                  <UserX className="h-3 w-3 mr-1" /> Review Queue
+                </Button>
+              </Link>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs"
+                onClick={async () => {
+                  toast.info("Running inactivity scan...");
+                  const { error } = await supabase.functions.invoke("detect-inactive-agents");
+                  if (error) { toast.error("Scan failed: " + error.message); return; }
+                  toast.success("Scan complete — check Inactive Agents queue");
+                }}
+              >
+                <RefreshCw className="h-3 w-3 mr-1" /> Run Scan
+              </Button>
+            </div>
           </div>
-          <p className="text-xs text-muted-foreground ml-6">{staleAgents.slice(0, 5).join(", ")}{staleAgents.length > 5 ? ` +${staleAgents.length - 5} more` : ""}</p>
+          <p className="text-xs text-muted-foreground ml-6">
+            {staleAgents.slice(0, 5).join(", ")}
+            {staleAgents.length > 5 ? ` +${staleAgents.length - 5} more` : ""}
+          </p>
         </div>
       )}
 
-      {isAdmin && pendingPurchases && pendingPurchases > 0 && (
+      {isAdmin && (pendingPurchases ?? 0) > 0 && (
         <Link to="/purchase-leads">
           <div className="mb-4 p-3 rounded-lg border border-amber-500/30 bg-amber-500/5 cursor-pointer hover:border-amber-500/50 transition-all">
             <div className="flex items-center gap-2">
               <ShoppingCart className="h-4 w-4 text-amber-500" />
-              <span className="text-sm font-semibold text-amber-400">{pendingPurchases} lead purchase request{pendingPurchases > 1 ? "s" : ""} pending your confirmation</span>
+              <span className="text-sm font-semibold text-amber-400">{pendingPurchases} lead purchase request{(pendingPurchases ?? 0) > 1 ? "s" : ""} pending your confirmation</span>
             </div>
           </div>
         </Link>
@@ -482,18 +511,7 @@ export default function Dashboard() {
             <Send className="h-4 w-4 text-primary" />
             <span className="text-xs">Send Licensing Blast</span>
           </Button>
-          <Button
-            variant="outline"
-            className="h-auto py-3 flex flex-col items-center gap-1 hover:border-primary/50"
-            onClick={async () => {
-              toast.info("Sending portal logins...");
-              await supabase.functions.invoke("send-bulk-portal-logins");
-              toast.success("Portal logins sent!");
-            }}
-          >
-            <KeyRound className="h-4 w-4 text-primary" />
-            <span className="text-xs">Send Portal Logins</span>
-          </Button>
+          <PortalLoginsDialog />
           <Link to="/purchase-leads">
             <Button variant="outline" className="w-full h-auto py-3 flex flex-col items-center gap-1 hover:border-primary/50">
               <ShoppingCart className="h-4 w-4 text-primary" />

@@ -32,6 +32,7 @@ import {
   Library,
   TrendingUp,
   Shield,
+  Wallet,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -149,6 +150,7 @@ export function GlobalSidebar({
       opsItems.push({ icon: UserCog, label: "Agent Management", href: "/dashboard/agent-management" });
     }
     opsItems.push({ icon: Edit3, label: "Log Numbers", href: "/numbers", special: true });
+    opsItems.push({ icon: Wallet, label: "My Commissions", href: "/dashboard/my-commissions" });
     sections.push({ label: "OPERATIONS", items: opsItems });
 
     // TEAM

@@ -372,6 +372,26 @@ export function CallCenterLeadCard({
             </motion.button>
           )}
 
+          {/* SMS - secondary contact CTA */}
+          {lead.phone && (
+            <motion.a
+              href={`sms:${lead.phone}`}
+              whileHover={{ scale: 1.01, x: 2 }}
+              className="flex items-center gap-4 p-3 rounded-xl bg-blue-500/10 border border-blue-500/30 hover:bg-blue-500/20 transition-colors"
+            >
+              <div className="p-2.5 rounded-full bg-blue-500/20">
+                <Phone className="h-4 w-4 text-blue-400" />
+              </div>
+              <div className="flex-1">
+                <div className="text-sm font-semibold text-foreground">Send Text</div>
+                <div className="text-xs text-blue-400">Use after voicemail or for follow-up</div>
+              </div>
+              <div className="text-xs px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-400 font-medium">
+                TEXT
+              </div>
+            </motion.a>
+          )}
+
           {/* Email */}
           <motion.a
             href={`mailto:${lead.email}`}

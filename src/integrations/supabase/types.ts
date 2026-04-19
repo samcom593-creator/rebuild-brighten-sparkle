@@ -1243,10 +1243,15 @@ export type Database = {
           followup_sent_at: string | null
           followup_unlicensed_2_sent_at: string | null
           has_insurance_experience: boolean | null
+          hiring_manager_user_id: string | null
+          hiring_scope_at_intake:
+            | Database["public"]["Enums"]["hiring_scope"]
+            | null
           id: string
           instagram_handle: string | null
           is_duplicate: boolean | null
           is_ghosted: boolean | null
+          is_transfer: boolean | null
           last_contacted_at: string | null
           last_name: string
           last_response_at: string | null
@@ -1322,10 +1327,15 @@ export type Database = {
           followup_sent_at?: string | null
           followup_unlicensed_2_sent_at?: string | null
           has_insurance_experience?: boolean | null
+          hiring_manager_user_id?: string | null
+          hiring_scope_at_intake?:
+            | Database["public"]["Enums"]["hiring_scope"]
+            | null
           id?: string
           instagram_handle?: string | null
           is_duplicate?: boolean | null
           is_ghosted?: boolean | null
+          is_transfer?: boolean | null
           last_contacted_at?: string | null
           last_name: string
           last_response_at?: string | null
@@ -1401,10 +1411,15 @@ export type Database = {
           followup_sent_at?: string | null
           followup_unlicensed_2_sent_at?: string | null
           has_insurance_experience?: boolean | null
+          hiring_manager_user_id?: string | null
+          hiring_scope_at_intake?:
+            | Database["public"]["Enums"]["hiring_scope"]
+            | null
           id?: string
           instagram_handle?: string | null
           is_duplicate?: boolean | null
           is_ghosted?: boolean | null
+          is_transfer?: boolean | null
           last_contacted_at?: string | null
           last_name?: string
           last_response_at?: string | null
@@ -2623,6 +2638,98 @@ export type Database = {
         }
         Relationships: []
       }
+      getting_started_progress: {
+        Row: {
+          added_phone_number: string | null
+          agent_id: string
+          closed_first_deal: string | null
+          completed_first_training: string | null
+          completed_profile: string | null
+          contracted_with_carriers: string | null
+          created_at: string
+          current_stage: string
+          id: string
+          joined_discord: string | null
+          joined_whatsapp: string | null
+          last_activity_at: string
+          made_first_prospect_call: string | null
+          notes: string | null
+          passed_license_test: string | null
+          ran_first_appointment: string | null
+          received_license: string | null
+          scheduled_license_test: string | null
+          signed_ica: string | null
+          stage_entered_at: string
+          stalled_alert_sent_at: string | null
+          submitted_fingerprints: string | null
+          updated_at: string
+          uploaded_id: string | null
+          watched_welcome_video: string | null
+        }
+        Insert: {
+          added_phone_number?: string | null
+          agent_id: string
+          closed_first_deal?: string | null
+          completed_first_training?: string | null
+          completed_profile?: string | null
+          contracted_with_carriers?: string | null
+          created_at?: string
+          current_stage?: string
+          id?: string
+          joined_discord?: string | null
+          joined_whatsapp?: string | null
+          last_activity_at?: string
+          made_first_prospect_call?: string | null
+          notes?: string | null
+          passed_license_test?: string | null
+          ran_first_appointment?: string | null
+          received_license?: string | null
+          scheduled_license_test?: string | null
+          signed_ica?: string | null
+          stage_entered_at?: string
+          stalled_alert_sent_at?: string | null
+          submitted_fingerprints?: string | null
+          updated_at?: string
+          uploaded_id?: string | null
+          watched_welcome_video?: string | null
+        }
+        Update: {
+          added_phone_number?: string | null
+          agent_id?: string
+          closed_first_deal?: string | null
+          completed_first_training?: string | null
+          completed_profile?: string | null
+          contracted_with_carriers?: string | null
+          created_at?: string
+          current_stage?: string
+          id?: string
+          joined_discord?: string | null
+          joined_whatsapp?: string | null
+          last_activity_at?: string
+          made_first_prospect_call?: string | null
+          notes?: string | null
+          passed_license_test?: string | null
+          ran_first_appointment?: string | null
+          received_license?: string | null
+          scheduled_license_test?: string | null
+          signed_ica?: string | null
+          stage_entered_at?: string
+          stalled_alert_sent_at?: string | null
+          submitted_fingerprints?: string | null
+          updated_at?: string
+          uploaded_id?: string | null
+          watched_welcome_video?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "getting_started_progress_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       health_check_log: {
         Row: {
           check_name: string
@@ -2647,6 +2754,42 @@ export type Database = {
           id?: string
           response_time_ms?: number
           status?: string
+        }
+        Relationships: []
+      }
+      hiring_manager_assignments: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          manager_display_name: string
+          manager_user_id: string
+          notes: string | null
+          priority: number
+          scope: Database["public"]["Enums"]["hiring_scope"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          manager_display_name: string
+          manager_user_id: string
+          notes?: string | null
+          priority?: number
+          scope: Database["public"]["Enums"]["hiring_scope"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          manager_display_name?: string
+          manager_user_id?: string
+          notes?: string | null
+          priority?: number
+          scope?: Database["public"]["Enums"]["hiring_scope"]
+          updated_at?: string
         }
         Relationships: []
       }
@@ -2682,6 +2825,80 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      inactive_agent_queue: {
+        Row: {
+          agent_id: string
+          assigned_recovery_manager: string | null
+          created_at: string
+          days_inactive: number
+          detected_at: string
+          id: string
+          last_contact_attempt_at: string | null
+          last_login_at: string | null
+          last_production_date: string | null
+          last_recovery_attempt_at: string | null
+          reason: string
+          recovery_attempts: number | null
+          recovery_notes: string | null
+          resolution: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          assigned_recovery_manager?: string | null
+          created_at?: string
+          days_inactive?: number
+          detected_at?: string
+          id?: string
+          last_contact_attempt_at?: string | null
+          last_login_at?: string | null
+          last_production_date?: string | null
+          last_recovery_attempt_at?: string | null
+          reason: string
+          recovery_attempts?: number | null
+          recovery_notes?: string | null
+          resolution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          assigned_recovery_manager?: string | null
+          created_at?: string
+          days_inactive?: number
+          detected_at?: string
+          id?: string
+          last_contact_attempt_at?: string | null
+          last_login_at?: string | null
+          last_production_date?: string | null
+          last_recovery_attempt_at?: string | null
+          reason?: string
+          recovery_attempts?: number | null
+          recovery_notes?: string | null
+          resolution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inactive_agent_queue_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       instagram_subscriptions: {
         Row: {
@@ -4846,6 +5063,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      resolve_hiring_manager_for_scope: {
+        Args: { p_scope: Database["public"]["Enums"]["hiring_scope"] }
+        Returns: string
+      }
     }
     Enums: {
       agent_status: "active" | "inactive" | "pending" | "terminated"
@@ -4867,6 +5088,12 @@ export type Database = {
         | "daily_sale"
         | "agency_meeting"
       deactivation_reason: "bad_business" | "inactive" | "switched_teams"
+      hiring_scope:
+        | "unlicensed"
+        | "licensed"
+        | "transfer"
+        | "post_started"
+        | "all"
       license_progress:
         | "unlicensed"
         | "course_purchased"
@@ -5061,6 +5288,13 @@ export const Constants = {
         "agency_meeting",
       ],
       deactivation_reason: ["bad_business", "inactive", "switched_teams"],
+      hiring_scope: [
+        "unlicensed",
+        "licensed",
+        "transfer",
+        "post_started",
+        "all",
+      ],
       license_progress: [
         "unlicensed",
         "course_purchased",

@@ -48,6 +48,7 @@ import { AgentProfileEditor } from "@/components/admin/AgentProfileEditor";
 import { QuickFilters } from "@/components/admin/QuickFilters";
 import { RecognitionQueue } from "@/components/admin/RecognitionQueue";
 import { DuplicateMergeTool } from "@/components/admin/DuplicateMergeTool";
+import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 import { ActivityFeedWidget } from "@/components/dashboard/ActivityFeedWidget";
 import { CourseProgressPanel } from "@/components/admin/CourseProgressPanel";
 import { StatCardPopup, type StatType } from "@/components/dashboard/StatCardPopup";

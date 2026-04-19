@@ -20,7 +20,7 @@ function getRange(period: DatePeriod): { start: Date; end: Date } {
     case "today":
       return { start: startOfDay(now), end: endOfDay(now) };
     case "week":
-      return { start: startOfWeek(now, { weekStartsOn: 0 }), end: endOfDay(now) };
+      return { start: startOfWeek(now, { weekStartsOn: 1 }), end: endOfDay(now) };
     case "month":
       return { start: startOfMonth(now), end: endOfDay(now) };
     default:

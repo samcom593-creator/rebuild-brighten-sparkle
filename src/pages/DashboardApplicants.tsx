@@ -72,6 +72,7 @@ import { InterviewScheduler } from "@/components/dashboard/InterviewScheduler";
 import { KanbanBoard, type KanbanStage } from "@/components/pipeline/KanbanBoard";
 import type { PipelineCardData } from "@/components/pipeline/PipelineCard";
 import { logLeadActivity } from "@/lib/logLeadActivity";
+import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 
 interface Application {
   id: string;
@@ -327,7 +328,6 @@ export default function DashboardApplicants() {
       }
     }).then(({ error: emailErr }) => {
       if (emailErr) console.error("Failed to send hire email:", emailErr);
-      else console.log("Hire email sent to", app.email);
     });
 
     // Broadcast hire announcement to all managers
@@ -356,7 +356,6 @@ export default function DashboardApplicants() {
         if (addErr) {
           console.error("Failed to auto-create agent:", addErr);
         } else {
-          console.log("Agent auto-created and enrolled in course:", data);
           toast.success(`${app.first_name} added as agent & enrolled in course!`);
         }
       });
@@ -371,7 +370,6 @@ export default function DashboardApplicants() {
         }
       }).then(({ error: licenseErr }) => {
         if (licenseErr) console.error("Failed to send licensing instructions:", licenseErr);
-        else console.log("Licensing instructions sent to", app.email);
       });
     }
   };
@@ -890,6 +888,10 @@ export default function DashboardApplicants() {
       </div>
     );
   };
+
+  if (isLoading && applications.length === 0) {
+    return <PageLoadingSkeleton variant="cards" />;
+  }
 
   return (
     <>

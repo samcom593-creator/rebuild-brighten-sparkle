@@ -17,6 +17,7 @@ import {
   Phone, Mail, MessageSquare, MoreVertical, CheckCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 
 interface AgentProdCard {
   id: string;
@@ -251,6 +252,10 @@ export default function AgentManagement() {
   };
 
   const redCount = agents.filter(a => a.status === "red").length;
+
+  if (loading && agents.length === 0) {
+    return <PageLoadingSkeleton variant="dashboard" />;
+  }
 
   return (
     <div className="space-y-6 p-4 md:p-6">

@@ -272,8 +272,6 @@ export default function CallCenter() {
 
       if (error) {
         console.error("Failed to send follow-up email:", error);
-      } else {
-        console.log(`Follow-up email (${actionType}) sent to:`, lead.email);
       }
     } catch (err) {
       console.error("Error sending follow-up email:", err);

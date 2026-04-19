@@ -314,8 +314,6 @@ export default function ContentLibrary() {
           if (result && result.safe === false) {
             console.warn(`⚠️ ${file.name} flagged as sensitive: ${result.reason}`);
             toast.warning(`⚠️ "${file.name}" was flagged as sensitive and hidden`, { duration: 6000 });
-          } else {
-            console.log(`AI analysis complete for ${file.name}`);
           }
           fetchContent();
         }).catch(e => console.error("AI analysis failed:", e));
@@ -324,7 +322,6 @@ export default function ContentLibrary() {
         supabase.functions.invoke("detect-duplicates", {
           body: { contentItemId: inserted.id }
         }).then(() => {
-          console.log(`Duplicate check complete for ${file.name}`);
           fetchContent();
         }).catch(e => console.error("Duplicate check failed:", e));
       }

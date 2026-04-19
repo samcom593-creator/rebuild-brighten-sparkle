@@ -39,6 +39,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { SkeletonLoader } from "@/components/ui/skeleton-loader";
+import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 import { DatePeriodSelector, type DatePeriod } from "@/components/ui/date-period-selector";
 
 import { TotalApplicationsBanner } from "@/components/dashboard/TotalApplicationsBanner";
@@ -394,7 +395,7 @@ export default function Dashboard() {
 
   // Show skeleton while auth is loading
   if (authLoading) {
-    return <SkeletonLoader variant="page" />;
+    return <PageLoadingSkeleton variant="dashboard" />;
   }
 
   return (

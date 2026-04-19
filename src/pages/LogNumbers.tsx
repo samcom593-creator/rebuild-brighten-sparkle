@@ -233,8 +233,6 @@ export default function LogNumbers() {
     try {
       const today = getTodayPST();
 
-      console.log("Submitting production:", { agentId: selectedAgent.id, date: today, productionData });
-
       const res = await supabase.functions.invoke("log-production", {
         body: {
           action: "submit",
@@ -243,8 +241,6 @@ export default function LogNumbers() {
           productionData,
         }
       });
-
-      console.log("Production response:", res);
 
       // Handle errors from the edge function
       if (res.error) {

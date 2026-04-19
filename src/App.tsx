@@ -80,6 +80,9 @@ const AgentManagement = lazy(() => import("./pages/AgentManagement"));
 const SystemHealth = lazy(() => import("./pages/SystemHealth"));
 const PrelicensingManager = lazy(() => import("./pages/PrelicensingManager"));
 const MyCommissions = lazy(() => import("./pages/MyCommissions"));
+const HiringManagerAssignments = lazy(() => import("./pages/HiringManagerAssignments"));
+const GettingStarted = lazy(() => import("./pages/GettingStarted"));
+const InactiveAgents = lazy(() => import("./pages/InactiveAgents"));
 
 // queryClient now lives in src/shared/api/queryClient.ts (smart retry + global error logging)
 
@@ -172,6 +175,9 @@ const App = () => (
                            <Route path="/dashboard/agent-management" element={<ProtectedRoute requireAdmin><AgentManagement /></ProtectedRoute>} />
                            <Route path="/dashboard/system-health" element={<ProtectedRoute requireAdmin><SystemHealth /></ProtectedRoute>} />
                            <Route path="/dashboard/my-commissions" element={<ProtectedRoute><MyCommissions /></ProtectedRoute>} />
+                           <Route path="/dashboard/hiring-routing" element={<ProtectedRoute requireAdmin><HiringManagerAssignments /></ProtectedRoute>} />
+                           <Route path="/dashboard/getting-started" element={<ProtectedRoute><GettingStarted /></ProtectedRoute>} />
+                           <Route path="/dashboard/inactive-agents" element={<ProtectedRoute><InactiveAgents /></ProtectedRoute>} />
                   </Route>
 
                   {/* Legacy redirect */}

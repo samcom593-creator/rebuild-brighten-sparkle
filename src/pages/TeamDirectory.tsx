@@ -5,6 +5,7 @@ import { startOfWeek, endOfWeek } from "date-fns";
 import {
   Mail,
   Phone,
+  MessageSquare,
   Instagram,
   Users,
   Loader2,
@@ -548,6 +549,29 @@ export default function TeamDirectory() {
                     </div>
                     <Button variant="outline" size="sm" asChild>
                       <a href={`tel:${manager.phone}`}>
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    </Button>
+                  </div>
+                )}
+
+                {/* Text */}
+                {manager.phone && (
+                  <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+                    <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                      <MessageSquare className="h-6 w-6 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-muted-foreground">Text Message</p>
+                      <a
+                        href={`sms:${manager.phone}`}
+                        className="font-medium text-primary hover:underline"
+                      >
+                        {manager.phone}
+                      </a>
+                    </div>
+                    <Button variant="outline" size="sm" asChild>
+                      <a href={`sms:${manager.phone}`}>
                         <ExternalLink className="h-4 w-4" />
                       </a>
                     </Button>

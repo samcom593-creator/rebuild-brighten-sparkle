@@ -17,6 +17,7 @@ import {
   Instagram,
   ExternalLink,
   MoreHorizontal,
+  MessageSquare,
   Shield,
   Ban,
   AlertTriangle,
@@ -857,7 +858,57 @@ export default function DashboardAgedLeads() {
               )}
             </div>
 
-            <div className="flex items-center gap-2 ml-auto">
+            <div className="flex items-center gap-2 ml-auto flex-wrap">
+              {selectedIds.size > 0 && (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs"
+                    onClick={() => {
+                      const picks = filteredLeads.filter(l => selectedIds.has(l.id) && l.phone);
+                      if (picks.length === 0) { toast.error("No phones in selection"); return; }
+                      window.location.href = `sms:${picks.map(l => l.phone).join(",")}`;
+                    }}
+                  >
+                    <MessageSquare className="h-3.5 w-3.5 mr-1" /> Text ({selectedIds.size})
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs"
+                    onClick={() => {
+                      const picks = filteredLeads.filter(l => selectedIds.has(l.id) && l.email);
+                      if (picks.length === 0) { toast.error("No emails in selection"); return; }
+                      window.location.href = `mailto:${picks.map(l => l.email).join(",")}`;
+                    }}
+                  >
+                    <Mail className="h-3.5 w-3.5 mr-1" /> Email ({selectedIds.size})
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 text-xs"
+                    onClick={async () => {
+                      const ids = Array.from(selectedIds);
+                      const now = new Date().toISOString();
+                      const appLeads = filteredLeads.filter(l => selectedIds.has(l.id) && (l as any).source === "applications");
+                      const agedLeadsSel = filteredLeads.filter(l => selectedIds.has(l.id) && (l as any).source === "aged_leads");
+                      if (appLeads.length) {
+                        await supabase.from("applications").update({ last_contacted_at: now, contacted_at: now } as any).in("id", appLeads.map(l => l.id));
+                      }
+                      if (agedLeadsSel.length) {
+                        await supabase.from("aged_leads").update({ last_contacted_at: now, status: "contacted" } as any).in("id", agedLeadsSel.map(l => l.id));
+                      }
+                      toast.success(`${ids.length} marked contacted`);
+                      setSelectedIds(new Set());
+                      fetchLeads();
+                    }}
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Contacted ({selectedIds.size})
+                  </Button>
+                </>
+              )}
               <Select value={bulkAssignManagerId} onValueChange={setBulkAssignManagerId}>
                 <SelectTrigger className="w-[180px] h-8 text-xs">
                   <SelectValue placeholder="Select manager..." />
@@ -1006,8 +1057,18 @@ export default function DashboardAgedLeads() {
                       </div>
                       <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
                         {lead.phone && (
-                          <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" asChild title="Call">
                             <a href={`tel:${lead.phone}`}><PhoneCall className="h-3.5 w-3.5 text-emerald-400" /></a>
+                          </Button>
+                        )}
+                        {lead.phone && (
+                          <Button variant="ghost" size="icon" className="h-7 w-7" asChild title="Text">
+                            <a href={`sms:${lead.phone}`}><MessageSquare className="h-3.5 w-3.5 text-blue-400" /></a>
+                          </Button>
+                        )}
+                        {lead.email && (
+                          <Button variant="ghost" size="icon" className="h-7 w-7" asChild title="Email">
+                            <a href={`mailto:${lead.email}`}><Mail className="h-3.5 w-3.5 text-amber-400" /></a>
                           </Button>
                         )}
                         <DropdownMenu>

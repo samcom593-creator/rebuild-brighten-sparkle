@@ -68,6 +68,7 @@ import { QuickEmailMenu } from "@/components/dashboard/QuickEmailMenu";
 import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
 import { useAuth } from "@/hooks/useAuth";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 
 interface Lead {
   id: string;
@@ -599,6 +600,10 @@ export default function LeadCenter() {
 
   if (!isAdmin) {
     return <div className="flex items-center justify-center h-64"><p className="text-muted-foreground">Admin access required</p></div>;
+  }
+
+  if (loading && !initialLoaded) {
+    return <PageLoadingSkeleton variant="table" />;
   }
 
   return (

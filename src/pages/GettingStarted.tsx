@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 
 type Stage =
   | "signed_up"
@@ -204,7 +205,7 @@ export default function GettingStarted() {
     queryClient.invalidateQueries({ queryKey: ["getting-started-progress"] });
   };
 
-  if (isLoading) return <div className="p-6 text-sm text-muted-foreground">Loading...</div>;
+  if (isLoading) return <PageLoadingSkeleton variant="list" />;
 
   // Agent self-view
   if (!canViewAll && progressRows.length === 1) {

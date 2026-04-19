@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { FinancesGrid } from "@/components/finances/FinancesGrid";
 import { Wallet } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 
 export default function MyCommissions() {
   const { user } = useAuth();
@@ -45,11 +46,7 @@ export default function MyCommissions() {
       </div>
 
       {agentId === undefined ? (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {[...Array(4)].map((_, i) => (
-            <Skeleton key={i} className="h-56 rounded-xl" />
-          ))}
-        </div>
+        <PageLoadingSkeleton variant="dashboard" />
       ) : (
         <FinancesGrid agentId={agentId} />
       )}

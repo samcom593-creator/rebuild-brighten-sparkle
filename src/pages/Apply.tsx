@@ -284,8 +284,6 @@ export default function Apply() {
   useEffect(() => {
     const fetchActiveManagers = async () => {
       try {
-        console.log("Fetching managers via edge function...");
-        
         const { data, error } = await supabase.functions.invoke("get-active-managers");
 
         if (error) {
@@ -294,10 +292,7 @@ export default function Apply() {
         }
 
         if (data?.managers && Array.isArray(data.managers)) {
-          console.log("Managers loaded:", data.managers);
           setActiveAgents(data.managers);
-        } else {
-          console.log("No managers returned from edge function");
         }
       } catch (error) {
         console.error("Error fetching managers:", error);
@@ -310,7 +305,6 @@ export default function Apply() {
   // Capture ?ref= referral slug from URL — look up referring agent and pre-fill
   useEffect(() => {
     if (!refSlug) return;
-    console.log("[Apply] Detected ?ref= slug:", refSlug);
     (async () => {
       try {
         const { data, error } = await supabase
@@ -324,7 +318,6 @@ export default function Apply() {
         }
         if (data) {
           const name = (data as any)?.profiles?.full_name || "";
-          console.log("[Apply] Referred by", data.id, name);
           setReferrerId(data.id);
           setReferrerName(name);
           setSelectedReferrer(data.id);

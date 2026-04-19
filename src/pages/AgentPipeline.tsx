@@ -181,7 +181,6 @@ export default function AgentPipeline() {
               console.error("Error creating agent record:", addError);
             } else if (addResult?.error) {
               // 409 = already exists, which is fine
-              console.log("Add-agent result:", addResult);
             } else {
               toast.success(`${app.first_name} ${app.last_name} added to Dashboard & enrolled in course`);
             }

@@ -542,7 +542,7 @@ export default function DashboardCommandCenter() {
     );
   }
 
-  if (isLoading && (!agentsData || agentsData.length === 0)) {
+  if (isLoading && !agentsData) {
     return <PageLoadingSkeleton variant="dashboard" />;
   }
 

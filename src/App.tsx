@@ -83,6 +83,9 @@ const MyCommissions = lazy(() => import("./pages/MyCommissions"));
 const HiringManagerAssignments = lazy(() => import("./pages/HiringManagerAssignments"));
 const GettingStarted = lazy(() => import("./pages/GettingStarted"));
 const InactiveAgents = lazy(() => import("./pages/InactiveAgents"));
+const PlaqueShare = lazy(() => import("./pages/PlaqueShare"));
+const MyPlaques = lazy(() => import("./pages/MyPlaques"));
+const EmailDeliveryLog = lazy(() => import("./pages/EmailDeliveryLog"));
 
 // queryClient now lives in src/shared/api/queryClient.ts (smart retry + global error logging)
 
@@ -137,6 +140,8 @@ const App = () => (
                   {/* field-checkin route removed */}
                   <Route path="/agent-flow" element={<AgentFlow />} />
                   <Route path="/awards" element={<AwardGraphics />} />
+                  {/* Public plaque share — no auth required */}
+                  <Route path="/plaque/:slug" element={<PlaqueShare />} />
                   {/* Authenticated shell - sidebar mounted once */}
                   <Route element={<AuthenticatedShell />}>
                     <Route path="/dashboard" element={<Dashboard />} />
@@ -178,6 +183,8 @@ const App = () => (
                            <Route path="/dashboard/hiring-routing" element={<ProtectedRoute requireAdmin><HiringManagerAssignments /></ProtectedRoute>} />
                            <Route path="/dashboard/getting-started" element={<ProtectedRoute><GettingStarted /></ProtectedRoute>} />
                            <Route path="/dashboard/inactive-agents" element={<ProtectedRoute><InactiveAgents /></ProtectedRoute>} />
+                           <Route path="/dashboard/my-plaques" element={<ProtectedRoute><MyPlaques /></ProtectedRoute>} />
+                           <Route path="/dashboard/email-log" element={<ProtectedRoute requireAdmin><EmailDeliveryLog /></ProtectedRoute>} />
                   </Route>
 
                   {/* Legacy redirect */}

@@ -2481,6 +2481,74 @@ export type Database = {
         }
         Relationships: []
       }
+      email_delivery_log: {
+        Row: {
+          agent_id: string | null
+          bounced_at: string | null
+          created_at: string
+          delivered_at: string | null
+          error: string | null
+          id: string
+          provider: string | null
+          provider_message_id: string | null
+          recipient_email: string
+          related_record_id: string | null
+          related_record_type: string | null
+          retries: number | null
+          sent_at: string | null
+          status: string
+          subject: string | null
+          template: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          bounced_at?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          error?: string | null
+          id?: string
+          provider?: string | null
+          provider_message_id?: string | null
+          recipient_email: string
+          related_record_id?: string | null
+          related_record_type?: string | null
+          retries?: number | null
+          sent_at?: string | null
+          status?: string
+          subject?: string | null
+          template: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          bounced_at?: string | null
+          created_at?: string
+          delivered_at?: string | null
+          error?: string | null
+          id?: string
+          provider?: string | null
+          provider_message_id?: string | null
+          recipient_email?: string
+          related_record_id?: string | null
+          related_record_type?: string | null
+          retries?: number | null
+          sent_at?: string | null
+          status?: string
+          subject?: string | null
+          template?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_delivery_log_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_tracking: {
         Row: {
           agent_id: string | null
@@ -3913,26 +3981,56 @@ export type Database = {
         Row: {
           agent_id: string
           amount: number | null
+          amount_at_time: number | null
           awarded_at: string | null
+          badge_label: string | null
+          color_hex: string | null
+          email_delivery_status: string | null
+          email_error: string | null
+          email_sent_at: string | null
+          generated_at: string | null
           id: string
+          image_png_url: string | null
+          image_svg_url: string | null
           milestone_date: string
           milestone_type: string
+          share_slug: string | null
         }
         Insert: {
           agent_id: string
           amount?: number | null
+          amount_at_time?: number | null
           awarded_at?: string | null
+          badge_label?: string | null
+          color_hex?: string | null
+          email_delivery_status?: string | null
+          email_error?: string | null
+          email_sent_at?: string | null
+          generated_at?: string | null
           id?: string
+          image_png_url?: string | null
+          image_svg_url?: string | null
           milestone_date: string
           milestone_type: string
+          share_slug?: string | null
         }
         Update: {
           agent_id?: string
           amount?: number | null
+          amount_at_time?: number | null
           awarded_at?: string | null
+          badge_label?: string | null
+          color_hex?: string | null
+          email_delivery_status?: string | null
+          email_error?: string | null
+          email_sent_at?: string | null
+          generated_at?: string | null
           id?: string
+          image_png_url?: string | null
+          image_svg_url?: string | null
           milestone_date?: string
           milestone_type?: string
+          share_slug?: string | null
         }
         Relationships: [
           {

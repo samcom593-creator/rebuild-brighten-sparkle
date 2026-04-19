@@ -1,468 +1,425 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { Resvg, initWasm } from "https://esm.sh/@resvg/resvg-wasm@2.6.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface PlaqueRequest {
-  agentId: string;
-  milestoneType: 
-    | "single_day_bronze" 
-    | "single_day" 
-    | "single_day_platinum"
-    | "weekly" 
-    | "monthly"
-    | "recruiter_rising"
-    | "hiring_champion"
-    | "team_builder"
-    | "hot_streak"
-    | "on_fire"
-    | "unstoppable"
-    | "comeback_champion";
-  amount: number;
-  date: string;
+let wasmReady = false;
+async function ensureWasm() {
+  if (wasmReady) return;
+  const wasmBuffer = await fetch(
+    "https://unpkg.com/@resvg/[email protected]/index_bg.wasm",
+  ).then((r) => r.arrayBuffer());
+  await initWasm(wasmBuffer);
+  wasmReady = true;
 }
 
-const getMilestoneDetails = (type: string, amount: number) => {
-  // CRITICAL: Round to whole dollars - NO CENTS
-  const roundedAmount = Math.round(amount);
-  
-  switch (type) {
-    case "single_day_bronze":
-      return {
-        title: "Bronze Achievement",
-        description: `Outstanding single-day production of $${roundedAmount.toLocaleString()}`,
-        color: "#CD7F32",
-        threshold: "$1,000+",
-        badge: "BRONZE ACHIEVEMENT",
-        amount: roundedAmount,
-      };
-    case "single_day":
-      return {
-        title: "Gold Achievement", 
-        description: `Exceptional single-day production of $${roundedAmount.toLocaleString()}`,
-        color: "#C9A962",
-        threshold: "$3,000+",
-        badge: "GOLD ACHIEVEMENT",
-        amount: roundedAmount,
-      };
-    case "single_day_platinum":
-      return {
-        title: "Platinum Achievement",
-        description: `Elite single-day production of $${roundedAmount.toLocaleString()}`,
-        color: "#E5E4E2",
-        threshold: "$5,000+",
-        badge: "PLATINUM ACHIEVEMENT",
-        amount: roundedAmount,
-      };
-    case "weekly":
-      return {
-        title: "Weekly Diamond",
-        description: `Exceptional weekly production of $${roundedAmount.toLocaleString()}`,
-        color: "#7DD3FC",
-        threshold: "$10,000+",
-        badge: "WEEKLY DIAMOND",
-        amount: roundedAmount,
-      };
-    case "monthly":
-      return {
-        title: "Elite Producer",
-        description: `Outstanding monthly production of $${roundedAmount.toLocaleString()}`,
-        color: "#A78BFA",
-        threshold: "$25,000+",
-        badge: "ELITE PRODUCER",
-        amount: roundedAmount,
-      };
-    case "recruiter_rising":
-      return {
-        title: "Recruiter Rising",
-        description: `Contracted ${roundedAmount} agents in a single day`,
-        color: "#22C55E",
-        threshold: "3+ Hired",
-        badge: "RECRUITER RISING",
-        amount: roundedAmount,
-      };
-    case "hiring_champion":
-      return {
-        title: "Hiring Champion",
-        description: `Exceptional recruiting: ${roundedAmount} agents contracted in one day`,
-        color: "#FBBF24",
-        threshold: "5+ Hired",
-        badge: "HIRING CHAMPION",
-        amount: roundedAmount,
-      };
-    case "team_builder":
-      return {
-        title: "Team Builder",
-        description: `Built a powerhouse: ${roundedAmount} agents contracted this week`,
-        color: "#F97316",
-        threshold: "10+ Weekly",
-        badge: "TEAM BUILDER",
-        amount: roundedAmount,
-      };
-    case "hot_streak":
-      return {
-        title: "Hot Streak",
-        description: `${roundedAmount} consecutive days closing deals`,
-        color: "#EF4444",
-        threshold: "5+ Days",
-        badge: "HOT STREAK",
-        amount: roundedAmount,
-      };
-    case "on_fire":
-      return {
-        title: "On Fire",
-        description: `${roundedAmount} consecutive days dominating the leaderboard`,
-        color: "#F97316",
-        threshold: "10+ Days",
-        badge: "ON FIRE",
-        amount: roundedAmount,
-      };
-    case "unstoppable":
-      return {
-        title: "Unstoppable",
-        description: `Legendary ${roundedAmount}-day deal streak`,
-        color: "#DC2626",
-        threshold: "20+ Days",
-        badge: "UNSTOPPABLE",
-        amount: roundedAmount,
-      };
-    case "comeback_champion":
-      return {
-        title: "Comeback Champion",
-        description: `Massive week-over-week improvement: +$${roundedAmount.toLocaleString()}`,
-        color: "#8B5CF6",
-        threshold: "$3,000+ Improvement",
-        badge: "COMEBACK CHAMPION",
-        amount: roundedAmount,
-      };
-    default:
-      return {
-        title: "Achievement",
-        description: `Production milestone of $${roundedAmount.toLocaleString()}`,
-        color: "#14b8a6",
-        threshold: "Milestone",
-        badge: "ACHIEVEMENT",
-        amount: roundedAmount,
-      };
-  }
+interface PlaqueRequest {
+  agentId: string;
+  milestoneType: string;
+  amount: number;
+  date: string;
+  skipEmail?: boolean;
+}
+
+const MILESTONES: Record<
+  string,
+  { title: string; description: string; color: string; badge: string; threshold: string }
+> = {
+  single_day_bronze:    { title: "Bronze Achievement",     description: "Outstanding single-day production",  color: "#CD7F32", badge: "BRONZE ACHIEVEMENT",   threshold: "$1,000+" },
+  single_day:           { title: "Gold Achievement",       description: "Exceptional single-day production",  color: "#C9A962", badge: "GOLD ACHIEVEMENT",     threshold: "$3,000+" },
+  single_day_platinum:  { title: "Platinum Achievement",   description: "Elite single-day production",        color: "#E5E4E2", badge: "PLATINUM ACHIEVEMENT", threshold: "$5,000+" },
+  weekly:               { title: "Weekly Diamond",         description: "Exceptional weekly production",      color: "#7DD3FC", badge: "WEEKLY DIAMOND",       threshold: "$10,000+" },
+  monthly:              { title: "Elite Producer",         description: "Outstanding monthly production",     color: "#A78BFA", badge: "ELITE PRODUCER",       threshold: "$25,000+" },
+  recruiter_rising:     { title: "Rising Recruiter",       description: "New talent pipeline momentum",       color: "#34D399", badge: "RISING RECRUITER",     threshold: "5+ recruits" },
+  hiring_champion:      { title: "Hiring Champion",        description: "Consistent recruiting excellence",   color: "#60A5FA", badge: "HIRING CHAMPION",      threshold: "10+ recruits" },
+  team_builder:         { title: "Team Builder",           description: "Building a legacy of leaders",       color: "#F472B6", badge: "TEAM BUILDER",         threshold: "20+ recruits" },
+  hot_streak:           { title: "Hot Streak",             description: "Consecutive days of excellence",     color: "#FB923C", badge: "HOT STREAK",           threshold: "5+ days" },
+  on_fire:              { title: "On Fire",                description: "Unstoppable production momentum",    color: "#EF4444", badge: "ON FIRE",              threshold: "10+ days" },
+  unstoppable:          { title: "Unstoppable",            description: "Legendary consistency",              color: "#DC2626", badge: "UNSTOPPABLE",          threshold: "30+ days" },
+  comeback_champion:    { title: "Comeback Champion",      description: "Returned to form with conviction",   color: "#F59E0B", badge: "COMEBACK CHAMPION",    threshold: "Return to top" },
 };
 
-const generatePlaqueHTML = (
+function generatePlaqueSVG(
   agentName: string,
-  milestone: ReturnType<typeof getMilestoneDetails>,
+  milestoneKey: string,
+  amount: number,
   date: string,
-  instagram?: string | null
-) => {
+  instagram?: string | null,
+): string {
+  const m = MILESTONES[milestoneKey] || MILESTONES.single_day;
   const formattedDate = new Date(date).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
   });
+  const formattedAmount = "$" + Math.round(amount).toLocaleString("en-US");
 
-  const instagramSection = instagram ? `
-    <p style="font-family:'Inter',sans-serif;font-size:11px;font-weight:400;color:#666;margin:16px 0 0;letter-spacing:0.5px;">
-      @${instagram}
-    </p>
-  ` : '';
+  const esc = (s: string) =>
+    s
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
 
-  // PREMIUM MINIMALIST DESIGN - Clean, screenshot-worthy, professional
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <style>
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=Inter:wght@300;400;500&display=swap');
-      </style>
-    </head>
-    <body style="margin:0;padding:40px;background:#0a0a0a;font-family:'Inter',sans-serif;">
-      <div style="max-width:540px;margin:0 auto;">
-        <!-- Plaque Container - Clean Border -->
-        <div style="background:#0f0f0f;border:1px solid ${milestone.color}40;border-radius:2px;padding:56px 48px;text-align:center;">
-          
-          <!-- Top Accent Line -->
-          <div style="width:48px;height:2px;background:${milestone.color};margin:0 auto 36px;opacity:0.8;"></div>
-          
-          <!-- Badge Label -->
-          <p style="font-family:'Inter',sans-serif;font-size:10px;font-weight:500;letter-spacing:4px;color:${milestone.color};margin:0 0 28px;text-transform:uppercase;">
-            ${milestone.badge}
-          </p>
-          
-          <!-- Recipient Name -->
-          <h1 style="font-family:'Playfair Display',Georgia,serif;font-size:28px;font-weight:500;color:#ffffff;margin:0 0 6px;letter-spacing:0.5px;">
-            ${agentName}
-          </h1>
-          
-          <!-- Instagram Handle -->
-          ${instagramSection}
-          
-          <!-- Company -->
-          <p style="font-family:'Inter',sans-serif;font-size:10px;font-weight:400;color:#555;margin:20px 0 44px;letter-spacing:2px;text-transform:uppercase;">
-            Apex Financial Group
-          </p>
-          
-          <!-- Amount - Clean & Bold -->
-          <div style="margin:0 0 44px;">
-            <p style="font-family:'Playfair Display',Georgia,serif;font-size:48px;font-weight:600;color:${milestone.color};margin:0;letter-spacing:-1px;">
-              $${milestone.amount.toLocaleString()}
-            </p>
-          </div>
-          
-          <!-- Achievement Description -->
-          <p style="font-family:'Inter',sans-serif;font-size:12px;font-weight:400;color:#777;margin:0 0 8px;line-height:1.5;">
-            ${milestone.description}
-          </p>
-          
-          <p style="font-family:'Inter',sans-serif;font-size:10px;font-weight:400;color:#444;margin:0;">
-            ${formattedDate}
-          </p>
-          
-          <!-- Bottom Accent Line -->
-          <div style="width:48px;height:2px;background:#222;margin:36px auto 0;"></div>
-          
-        </div>
-        
-        <!-- Powered By Footer -->
-        <div style="text-align:center;margin-top:20px;">
-          <p style="font-family:'Inter',sans-serif;font-size:9px;font-weight:400;color:#333;margin:0;letter-spacing:1px;text-transform:uppercase;">
-            Powered by Apex Financial
-          </p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-};
+  const W = 1080;
+  const H = 1350;
 
-const generateEmailHTML = (
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0a0a0a"/>
+      <stop offset="100%" stop-color="#050505"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="${W}" height="${H}" fill="url(#bgGrad)"/>
+  <rect x="80" y="100" width="${W - 160}" height="${H - 200}" fill="#0f0f0f" stroke="${m.color}" stroke-opacity="0.3" stroke-width="2" rx="4"/>
+  <rect x="${W / 2 - 40}" y="200" width="80" height="3" fill="${m.color}" opacity="0.9"/>
+
+  <text x="${W / 2}" y="280" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="22" font-weight="600" fill="${m.color}" letter-spacing="8">${esc(m.badge)}</text>
+
+  <text x="${W / 2}" y="420" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="72" font-weight="500" fill="#ffffff">${esc(agentName)}</text>
+
+  ${
+    instagram
+      ? `<text x="${W / 2}" y="470" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="24" fill="#888">@${esc(instagram)}</text>`
+      : ""
+  }
+
+  <text x="${W / 2}" y="${instagram ? 540 : 510}" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="20" fill="#555" letter-spacing="6">APEX FINANCIAL GROUP</text>
+
+  <text x="${W / 2}" y="780" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="140" font-weight="600" fill="${m.color}" filter="url(#glow)">${esc(formattedAmount)}</text>
+
+  <text x="${W / 2}" y="900" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="28" fill="#888">${esc(m.description)}</text>
+
+  <text x="${W / 2}" y="970" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="22" fill="#555">${esc(formattedDate)}</text>
+
+  <rect x="${W / 2 - 40}" y="1100" width="80" height="3" fill="#333"/>
+
+  <text x="${W / 2}" y="1200" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#333" letter-spacing="4">POWERED BY APEX FINANCIAL</text>
+</svg>`;
+}
+
+function generateEmailHTML(
   agentName: string,
-  milestone: ReturnType<typeof getMilestoneDetails>,
-  date: string,
-  isManager: boolean = false,
-  instagram?: string | null
-) => {
-  const formattedDate = new Date(date).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long", 
-    day: "numeric",
-  });
+  milestoneKey: string,
+  amount: number,
+  imageUrl: string,
+  shareUrl: string,
+  isManager: boolean,
+): string {
+  const m = MILESTONES[milestoneKey] || MILESTONES.single_day;
+  const esc = (s: string) => s.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const greeting = isManager
+    ? `Your team member ${esc(agentName)} just earned a plaque`
+    : `Congratulations ${esc(agentName)}`;
+  const roundedAmount = "$" + Math.round(amount).toLocaleString("en-US");
 
-  const recipientIntro = isManager 
-    ? `Your team member <strong>${agentName}</strong> has achieved an exceptional milestone.`
-    : `You have achieved an exceptional milestone.`;
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(m.badge)}</title></head>
+<body style="margin:0;padding:0;background:#0a0a0a;font-family:Helvetica,Arial,sans-serif;color:#fff;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#0a0a0a;padding:40px 20px;">
+  <tr><td align="center">
+    <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;">
+      <tr><td align="center" style="padding:20px 0 40px;">
+        <p style="margin:0;font-size:12px;letter-spacing:4px;color:${m.color};text-transform:uppercase;font-weight:600;">${esc(m.badge)}</p>
+      </td></tr>
+      <tr><td align="center">
+        <h1 style="margin:0 0 20px;font-size:32px;font-weight:500;color:#fff;font-family:Georgia,serif;">${greeting}</h1>
+        <p style="margin:0 0 40px;font-size:16px;color:#888;line-height:1.6;">
+          ${
+            isManager
+              ? `They hit <strong style="color:${m.color}">${roundedAmount}</strong>. This achievement reflects their dedication and skill.`
+              : `You hit <strong style="color:${m.color}">${roundedAmount}</strong>. Keep the momentum going.`
+          }
+        </p>
+      </td></tr>
+      <tr><td align="center" style="padding:0 0 40px;">
+        <img src="${imageUrl}" alt="${esc(m.badge)} Plaque" width="540" style="max-width:100%;height:auto;border:0;display:block;border-radius:8px;" />
+      </td></tr>
+      <tr><td align="center" style="padding:0 0 30px;">
+        <a href="${shareUrl}" style="display:inline-block;background:${m.color};color:#000;font-weight:700;padding:16px 36px;border-radius:4px;text-decoration:none;font-size:14px;letter-spacing:1px;text-transform:uppercase;">View &amp; Share Plaque</a>
+      </td></tr>
+      <tr><td align="center" style="padding:20px 0;border-top:1px solid #222;">
+        <p style="margin:0;font-size:10px;color:#555;letter-spacing:1px;">APEX FINANCIAL GROUP</p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>`;
+}
 
-  // INSTITUTIONAL EMAIL DESIGN - Clean, professional, no emojis in body
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
-      </style>
-    </head>
-    <body style="margin:0;padding:0;background:#0a0a0a;font-family:'Inter',Arial,sans-serif;">
-      <div style="max-width:560px;margin:0 auto;padding:48px 24px;">
-        
-        <!-- Header -->
-        <div style="text-align:center;margin-bottom:40px;">
-          <p style="font-size:11px;font-weight:500;letter-spacing:3px;color:#666;margin:0 0 8px;text-transform:uppercase;">
-            ${milestone.badge}
-          </p>
-          <p style="font-size:12px;color:#888;margin:0;">
-            ${formattedDate}
-          </p>
-        </div>
-        
-        <!-- Main Content -->
-        <div style="background:#141414;border:1px solid #222;border-radius:4px;padding:40px;margin-bottom:32px;">
-          <p style="color:#ccc;font-size:15px;line-height:1.7;margin:0 0 32px;">
-            ${recipientIntro}
-          </p>
-          
-          <!-- Amount Card -->
-          <div style="background:#0a0a0a;border:1px solid #2a2a2a;border-radius:2px;padding:32px;text-align:center;margin-bottom:32px;">
-            <p style="font-size:11px;font-weight:500;letter-spacing:2px;color:#666;margin:0 0 12px;text-transform:uppercase;">
-              ${isManager ? agentName + "'s " : "Your "}Production
-            </p>
-            <p style="font-size:40px;font-weight:600;color:${milestone.color};margin:0;">
-              $${milestone.amount.toLocaleString()}
-            </p>
-            <p style="font-size:12px;color:#888;margin:12px 0 0;">
-              ${milestone.threshold} ${milestone.title}
-            </p>
-          </div>
-          
-          <p style="color:#888;font-size:14px;line-height:1.7;margin:0;">
-            ${isManager 
-              ? "This achievement reflects their dedication and skill. Ensure they receive appropriate recognition."
-              : "This achievement reflects your dedication and skill. Continue building on this momentum."
-            }
-          </p>
-        </div>
-        
-        <!-- Plaque Preview -->
-        <div style="margin-bottom:32px;">
-          ${generatePlaqueHTML(agentName, milestone, date)}
-        </div>
-        
-        <!-- CTA Button -->
-        <div style="text-align:center;margin-bottom:40px;">
-          <a href="https://rebuild-brighten-sparkle.lovable.app/agent-portal" 
-             style="display:inline-block;background:${milestone.color};color:#000;font-weight:600;padding:14px 32px;border-radius:2px;text-decoration:none;font-size:13px;letter-spacing:0.5px;">
-            View Portal
-          </a>
-        </div>
-        
-        <!-- Footer -->
-        <div style="text-align:center;border-top:1px solid #222;padding-top:24px;">
-          <p style="font-size:11px;color:#555;margin:0;letter-spacing:1px;">
-            APEX FINANCIAL GROUP
-          </p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-};
+// Convert Uint8Array to base64 (Resend expects base64 for binary attachments)
+function uint8ToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
+
+  let logRowId: string | null = null;
+
   try {
-    const { agentId, milestoneType, amount, date }: PlaqueRequest = await req.json();
-    
-    console.log(`🏆 Processing plaque recognition for agent ${agentId}:`, { milestoneType, amount, date });
+    const { agentId, milestoneType, amount, date, skipEmail }: PlaqueRequest = await req.json();
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Fetch agent details - use maybeSingle to handle arrays properly
-    const { data: agentData, error: agentError } = await supabase
+    const { data: agentData } = await supabase
       .from("agents")
-      .select(`
-        id,
-        invited_by_manager_id,
-        profile_id
-      `)
+      .select("id, invited_by_manager_id, profile_id")
       .eq("id", agentId)
       .single();
 
-    if (agentError || !agentData) {
-      console.error("Agent not found:", agentError);
+    if (!agentData) {
       return new Response(JSON.stringify({ error: "Agent not found" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Fetch profile separately
     let agentName = "Team Member";
     let agentEmail: string | null = null;
-    
+    let instagram: string | null = null;
+
     if (agentData.profile_id) {
-      const { data: profileData } = await supabase
+      const { data: p } = await supabase
         .from("profiles")
-        .select("full_name, email")
+        .select("full_name, email, instagram_handle")
         .eq("id", agentData.profile_id)
         .single();
-      
-      if (profileData) {
-        agentName = profileData.full_name || "Team Member";
-        agentEmail = profileData.email;
+      if (p) {
+        agentName = p.full_name || "Team Member";
+        agentEmail = p.email;
+        instagram = (p as any).instagram_handle ?? null;
       }
     }
 
-    // Fetch instagram handle
-    let instagramHandle: string | null = null;
-    const { data: fullProfile } = await supabase
-      .from("profiles")
-      .select("instagram_handle")
-      .eq("id", agentData.profile_id)
+    // Generate SVG → PNG
+    await ensureWasm();
+    const svg = generatePlaqueSVG(agentName, milestoneType, amount, date, instagram);
+    const resvg = new Resvg(svg, { fitTo: { mode: "width", value: 1080 } });
+    const pngData = resvg.render().asPng();
+
+    // Upload both
+    const timestamp = Date.now();
+    const slug = crypto.randomUUID().slice(0, 10);
+    const safeName = agentName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    const pngPath = `plaques/${safeName}-${milestoneType}-${timestamp}.png`;
+    const svgPath = `plaques/${safeName}-${milestoneType}-${timestamp}.svg`;
+
+    await supabase.storage.from("plaque-images").upload(pngPath, pngData, {
+      contentType: "image/png",
+      upsert: true,
+    });
+    await supabase.storage
+      .from("plaque-images")
+      .upload(svgPath, new TextEncoder().encode(svg), {
+        contentType: "image/svg+xml",
+        upsert: true,
+      });
+
+    const pngUrl = supabase.storage.from("plaque-images").getPublicUrl(pngPath).data.publicUrl;
+    const svgUrl = supabase.storage.from("plaque-images").getPublicUrl(svgPath).data.publicUrl;
+
+    const milestone = MILESTONES[milestoneType] || MILESTONES.single_day;
+    const { data: awardRow } = await supabase
+      .from("plaque_awards")
+      .insert({
+        agent_id: agentId,
+        milestone_type: milestoneType,
+        milestone_date: date,
+        amount: Math.round(amount),
+        amount_at_time: Math.round(amount),
+        image_png_url: pngUrl,
+        image_svg_url: svgUrl,
+        share_slug: slug,
+        color_hex: milestone.color,
+        badge_label: milestone.badge,
+        generated_at: new Date().toISOString(),
+      })
+      .select()
       .single();
-    instagramHandle = fullProfile?.instagram_handle || null;
 
-    const milestone = getMilestoneDetails(milestoneType, amount);
+    const shareUrl = `https://apex-financial.org/plaque/${slug}`;
+    const pngBase64 = uint8ToBase64(pngData);
 
-    console.log(`📧 Sending plaque email to ${agentName} (${agentEmail})`);
-
-    // Send email to agent
-    if (resendApiKey && agentEmail) {
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    if (!skipEmail && resendApiKey && agentEmail) {
       const resend = new Resend(resendApiKey);
-      
+
+      const { data: emailLog } = await supabase
+        .from("email_delivery_log")
+        .insert({
+          template: "plaque",
+          recipient_email: agentEmail,
+          agent_id: agentId,
+          subject: `${milestone.badge} – Congratulations ${agentName}`,
+          related_record_id: awardRow?.id,
+          related_record_type: "plaque_award",
+          status: "queued",
+        })
+        .select("id")
+        .single();
+      logRowId = emailLog?.id ?? null;
+
       try {
-        await resend.emails.send({
-           from: "APEX Financial <notifications@apex-financial.org>",
+        const emailResponse = await resend.emails.send({
+          from: "APEX Financial <notifications@apex-financial.org>",
           to: [agentEmail],
-          subject: `${milestone.badge} - Congratulations ${agentName}`,
-          html: generateEmailHTML(agentName, milestone, date, false),
+          subject: `${milestone.badge} – Congratulations ${agentName}`,
+          html: generateEmailHTML(agentName, milestoneType, amount, pngUrl, shareUrl, false),
+          attachments: [
+            {
+              filename: `apex-${milestoneType}-plaque.png`,
+              content: pngBase64,
+            },
+          ],
         });
-        console.log(`✅ Plaque email sent to agent: ${agentEmail}`);
-      } catch (emailError) {
-        console.error("Failed to send agent email:", emailError);
+
+        if (logRowId) {
+          await supabase
+            .from("email_delivery_log")
+            .update({
+              status: "sent",
+              sent_at: new Date().toISOString(),
+              provider_message_id: (emailResponse as any)?.data?.id ?? null,
+            })
+            .eq("id", logRowId);
+        }
+
+        await supabase
+          .from("plaque_awards")
+          .update({
+            email_sent_at: new Date().toISOString(),
+            email_delivery_status: "sent",
+          })
+          .eq("id", awardRow!.id);
+      } catch (emailError: any) {
+        console.error("Plaque email failed:", emailError);
+        if (logRowId) {
+          await supabase
+            .from("email_delivery_log")
+            .update({
+              status: "failed",
+              error: emailError.message || String(emailError),
+            })
+            .eq("id", logRowId);
+        }
+        await supabase
+          .from("plaque_awards")
+          .update({
+            email_delivery_status: "failed",
+            email_error: emailError.message || String(emailError),
+          })
+          .eq("id", awardRow!.id);
       }
 
-      // Send email to manager if exists
+      // Notify manager
       if (agentData.invited_by_manager_id) {
-        const { data: managerData } = await supabase
+        const { data: mgr } = await supabase
           .from("agents")
           .select("profile_id")
           .eq("id", agentData.invited_by_manager_id)
           .single();
-
-        if (managerData?.profile_id) {
-          const { data: managerProfile } = await supabase
+        if (mgr?.profile_id) {
+          const { data: mgrProf } = await supabase
             .from("profiles")
             .select("email")
-            .eq("id", managerData.profile_id)
+            .eq("id", mgr.profile_id)
             .single();
-
-          if (managerProfile?.email) {
+          if (mgrProf?.email) {
+            const { data: mgrLog } = await supabase
+              .from("email_delivery_log")
+              .insert({
+                template: "plaque_manager_notify",
+                recipient_email: mgrProf.email,
+                agent_id: agentId,
+                subject: `Team Achievement: ${agentName} – ${milestone.badge}`,
+                related_record_id: awardRow?.id,
+                related_record_type: "plaque_award",
+                status: "queued",
+              })
+              .select("id")
+              .single();
             try {
-              await resend.emails.send({
+              const mgrResp = await resend.emails.send({
                 from: "APEX Financial <notifications@apex-financial.org>",
-                to: [managerProfile.email],
-                subject: `Team Achievement: ${agentName} - ${milestone.badge}`,
-                html: generateEmailHTML(agentName, milestone, date, true),
+                to: [mgrProf.email],
+                subject: `Team Achievement: ${agentName} – ${milestone.badge}`,
+                html: generateEmailHTML(agentName, milestoneType, amount, pngUrl, shareUrl, true),
+                attachments: [
+                  {
+                    filename: `apex-${agentName}-${milestoneType}.png`,
+                    content: pngBase64,
+                  },
+                ],
               });
-              console.log(`✅ Manager notification sent to: ${managerProfile.email}`);
-            } catch (emailError) {
-              console.error("Failed to send manager email:", emailError);
+              if (mgrLog?.id) {
+                await supabase
+                  .from("email_delivery_log")
+                  .update({
+                    status: "sent",
+                    sent_at: new Date().toISOString(),
+                    provider_message_id: (mgrResp as any)?.data?.id ?? null,
+                  })
+                  .eq("id", mgrLog.id);
+              }
+            } catch (e: any) {
+              console.error("Manager notify failed:", e);
+              if (mgrLog?.id) {
+                await supabase
+                  .from("email_delivery_log")
+                  .update({
+                    status: "failed",
+                    error: e.message || String(e),
+                  })
+                  .eq("id", mgrLog.id);
+              }
             }
           }
         }
       }
-    } else {
-      console.warn("⚠️ Resend API key not configured or agent has no email");
     }
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: `Plaque recognition sent for ${agentName}`,
-        milestone: milestone.badge,
+      JSON.stringify({
+        success: true,
+        plaque: {
+          id: awardRow?.id,
+          png_url: pngUrl,
+          svg_url: svgUrl,
+          share_slug: slug,
+          share_url: shareUrl,
+          milestone: milestone.badge,
+        },
       }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
-  } catch (error: unknown) {
-    console.error("Error in send-plaque-recognition:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    return new Response(
-      JSON.stringify({ error: errorMessage }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
+  } catch (error: any) {
+    console.error("send-plaque-recognition error:", error);
+    return new Response(JSON.stringify({ error: error.message || String(error) }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });

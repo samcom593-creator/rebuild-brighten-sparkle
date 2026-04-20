@@ -5,6 +5,7 @@ import { useInsuraCloud } from "@/hooks/useInsuraCloud";
 import { DollarSign, RefreshCw, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { formatDistanceToNow } from "date-fns";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n || 0);

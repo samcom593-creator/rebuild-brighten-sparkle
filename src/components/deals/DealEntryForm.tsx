@@ -79,8 +79,8 @@ export function DealEntryForm({ onSaved }: { onSaved?: () => void }) {
         supabase.from("agents").select("id, insuracloud_api_token" as any).eq("user_id", user.id).maybeSingle(),
         supabase.from("profiles" as any).select("full_name, instagram_handle").eq("user_id", user.id).maybeSingle(),
       ]);
-      const agentRow = agentRes.data as { id: string; insuracloud_api_token: string | null } | null;
-      const profile = profileRes.data as { full_name: string | null; instagram_handle: string | null } | null;
+      const agentRow = agentRes.data as unknown as { id: string; insuracloud_api_token: string | null } | null;
+      const profile = profileRes.data as unknown as { full_name: string | null; instagram_handle: string | null } | null;
       if (!agentRow?.id) throw new Error("No agent record found for your account");
 
       const { data: deal, error } = await supabase.from("deals" as any).insert({

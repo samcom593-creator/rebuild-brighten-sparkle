@@ -76,7 +76,7 @@ export function DealEntryForm({ onSaved }: { onSaved?: () => void }) {
     setSaving(true);
     try {
       const [{ data: agentRow }, { data: profile }] = await Promise.all([
-        supabase.from("agents").select("id").eq("user_id", user.id).maybeSingle(),
+        supabase.from("agents").select("id, insuracloud_api_token" as any).eq("user_id", user.id).maybeSingle(),
         supabase.from("profiles" as any).select("full_name, instagram_handle").eq("user_id", user.id).maybeSingle(),
       ]);
       if (!agentRow?.id) throw new Error("No agent record found for your account");
@@ -115,46 +115,81 @@ export function DealEntryForm({ onSaved }: { onSaved?: () => void }) {
       if (status !== "draft" && dealId) {
         const agentName  = (profile as any)?.full_name        || "An agent";
         const instagram  = (profile as any)?.instagram_handle || null;
-        // Fire discord-webhook-notify (proper embed + Instagram tag + milestone auto-check)
-        supabase.functions.invoke("discord-webhook-notify", {
-          body: {
-            event_type: "deal_closed",
-            details: {
-              agent_name:   agentName,
-              agent_id:     agentRow?.id,
-              aop:          annualPremium,
-              product_type: form.product_sold || "",
-              instagram,
-            },
-          },
-        }).catch(() => {});
-        // InsuraCloud: call agentlink directly (CORS allowed from apex-financial.org)
-        fetch("https://agentlink.replit.app/api/samuel-james/book", {
+
+        // Discord webhook URL (loaded from automation_settings, falls back to hardcoded channel)
+        const { data: hookRow } = await supabase
+          .from("automation_settings" as any)
+          .select("description")
+          .eq("name", "Discord Webhook")
+          .maybeSingle();
+        const webhookUrl =
+          (hookRow as any)?.description ||
+          "https://discord.com/api/webhooks/1425987081418571779/3JrtT5W00gDos8XY2iYc5_nb5sxr9S9ztagW1bBigI-8daIrb170vTyxIqXV2E8x2S0T";
+
+        const fmt$ = (n: number) => {
+          const v = n || 0;
+          if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(2)}M`;
+          if (v >= 1_000)     return `$${(v / 1_000).toFixed(1)}k`;
+          return `$${v.toFixed(0)}`;
+        };
+        const aop     = annualPremium;
+        const monthly = aop / 12;
+        const igLine  = instagram
+          ? `\n📸 [@${String(instagram).replace(/^@/, "")}](https://instagram.com/${String(instagram).replace(/^@/, "")})`
+          : "";
+
+        const embed = {
+          title: "🔥  DEAL CLOSED!",
+          description: `**${agentName}** just slammed a deal shut! The money is IN! 💥${igLine}`,
+          color: 0x10b981,
+          fields: [
+            { name: "💰 ALP",      value: fmt$(aop),              inline: true },
+            { name: "📅 Monthly",  value: fmt$(monthly),          inline: true },
+            { name: "📦 Product",  value: form.product_sold || "—", inline: true },
+          ],
+          footer: { text: "Apex Financial • Deal Alert" },
+          timestamp: new Date().toISOString(),
+        };
+
+        // Direct Discord webhook (CORS-allowed)
+        fetch(webhookUrl, {
           method: "POST",
-          headers: {
-            Authorization:  "Bearer kytd75dtufjhgtydirykt",
-            "x-api-key":    "kytd75dtufjhgtydirykt",
-            "Content-Type": "application/json",
-            Accept:         "application/json",
-          },
-          body: JSON.stringify({
-            deals: [{
-              externalId:        dealId,
-              clientFirstName:   form.client_first_name,
-              clientLastName:    form.client_last_name,
-              clientPhoneNumber: form.client_phone,
-              clientDateOfBirth: form.client_dob,
-              productSold:       form.product_sold,
-              policyNumber:      form.policy_number,
-              monthlyPremium:    Number(form.monthly_premium || 0).toFixed(2),
-              annualPremium:     annualPremium.toFixed(2),
-              faceAmount:        Number(form.face_amount || 0).toFixed(2),
-              effectiveDate:     form.effective_date,
-              ...(form.notes     && { notes:    form.notes }),
-              ...(form.carrier_id && { carrierId: form.carrier_id }),
-            }],
-          }),
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ embeds: [embed] }),
         }).catch(() => {});
+
+        // InsuraCloud: use the agent's own bearer token if present
+        const icToken = (agentRow as any)?.insuracloud_api_token;
+        if (icToken) {
+          fetch("https://agentlink.replit.app/api/samuel-james/book", {
+            method: "POST",
+            headers: {
+              Authorization:  `Bearer ${icToken}`,
+              "x-api-key":    icToken,
+              "Content-Type": "application/json",
+              Accept:         "application/json",
+            },
+            body: JSON.stringify({
+              deals: [{
+                externalId:        dealId,
+                clientFirstName:   form.client_first_name,
+                clientLastName:    form.client_last_name,
+                clientPhoneNumber: form.client_phone,
+                clientDateOfBirth: form.client_dob,
+                productSold:       form.product_sold,
+                policyNumber:      form.policy_number,
+                monthlyPremium:    Number(form.monthly_premium || 0).toFixed(2),
+                annualPremium:     annualPremium.toFixed(2),
+                faceAmount:        Number(form.face_amount || 0).toFixed(2),
+                effectiveDate:     form.effective_date,
+                ...(form.notes     && { notes:    form.notes }),
+                ...(form.carrier_id && { carrierId: form.carrier_id }),
+              }],
+            }),
+          }).catch(() => {});
+        } else {
+          toast.message("Add your InsuraCloud token in Settings to auto-sync deals");
+        }
       }
     } catch (e: any) {
       toast.error(e.message || "Failed to save deal");

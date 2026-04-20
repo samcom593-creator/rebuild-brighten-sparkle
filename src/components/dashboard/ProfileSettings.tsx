@@ -177,6 +177,80 @@ function WhatsAppGroupSection() {
   );
 }
 
+function InsuraCloudTokenSection() {
+  const { user } = useAuth();
+  const [token, setToken] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const load = async () => {
+      const { data } = await supabase
+        .from("agents")
+        .select("insuracloud_api_token" as any)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (data) setToken((data as any).insuracloud_api_token || "");
+      setLoaded(true);
+    };
+    load();
+  }, [user?.id]);
+
+  const handleSave = async () => {
+    if (!user?.id) return;
+    setSaving(true);
+    try {
+      const { error } = await (supabase.from("agents") as any)
+        .update({ insuracloud_api_token: token || null })
+        .eq("user_id", user.id);
+      if (error) throw error;
+      toast({ title: "InsuraCloud token saved" });
+    } catch (e: any) {
+      toast({ title: "Failed to save", description: e?.message, variant: "destructive" });
+    }
+    setSaving(false);
+  };
+
+  if (!loaded) return null;
+
+  return (
+    <GlassCard className="p-6">
+      <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
+        <KeyRound className="h-5 w-5 text-amber-400" />
+        InsuraCloud Sync Token
+      </h3>
+      <p className="text-sm text-muted-foreground mb-4">
+        Paste your InsuraCloud (agentlink) Bearer token so your submitted deals sync automatically.
+        Open <a href="https://agentlink.replit.app" target="_blank" rel="noreferrer" className="underline">agentlink</a>, sign in, open DevTools → Application → Local Storage and copy the <code>access_token</code> value. This token expires every ~15 minutes.
+      </p>
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Input
+            type={show ? "text" : "password"}
+            placeholder="eyJ0eXAiOiJKV1Qi..."
+            value={token}
+            onChange={(e) => setToken(e.target.value)}
+          />
+          <button
+            type="button"
+            onClick={() => setShow((s) => !s)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+            aria-label={show ? "Hide token" : "Show token"}
+          >
+            {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        </div>
+        <Button onClick={handleSave} disabled={saving} size="sm">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
+          Save
+        </Button>
+      </div>
+    </GlassCard>
+  );
+}
+
 export function ProfileSettings() {
   const { user, profile, refreshProfile, isAdmin } = useAuth();
   const navigate = useNavigate();
@@ -892,6 +966,9 @@ export function ProfileSettings() {
           </div>
         </GlassCard>
       )}
+
+      {/* Per-agent InsuraCloud sync token */}
+      <InsuraCloudTokenSection />
 
       {/* Admin Only: WhatsApp Group Link */}
       {isAdmin && (

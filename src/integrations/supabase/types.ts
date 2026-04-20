@@ -3350,6 +3350,74 @@ export type Database = {
           },
         ]
       }
+      inbox_messages: {
+        Row: {
+          application_id: string | null
+          assigned_to: string | null
+          auto_replied: boolean | null
+          body: string
+          created_at: string
+          direction: string
+          external_id: string | null
+          id: string
+          intent: string | null
+          lead_score: number | null
+          raw_payload: Json | null
+          received_at: string
+          replied_at: string | null
+          sender_avatar: string | null
+          sender_handle: string | null
+          sender_name: string | null
+          source: string
+        }
+        Insert: {
+          application_id?: string | null
+          assigned_to?: string | null
+          auto_replied?: boolean | null
+          body: string
+          created_at?: string
+          direction?: string
+          external_id?: string | null
+          id?: string
+          intent?: string | null
+          lead_score?: number | null
+          raw_payload?: Json | null
+          received_at?: string
+          replied_at?: string | null
+          sender_avatar?: string | null
+          sender_handle?: string | null
+          sender_name?: string | null
+          source: string
+        }
+        Update: {
+          application_id?: string | null
+          assigned_to?: string | null
+          auto_replied?: boolean | null
+          body?: string
+          created_at?: string
+          direction?: string
+          external_id?: string | null
+          id?: string
+          intent?: string | null
+          lead_score?: number | null
+          raw_payload?: Json | null
+          received_at?: string
+          replied_at?: string | null
+          sender_avatar?: string | null
+          sender_handle?: string | null
+          sender_name?: string | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbox_messages_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       instagram_subscriptions: {
         Row: {
           agent_id: string

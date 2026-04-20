@@ -88,6 +88,7 @@ const PlaqueShare = lazy(() => import("./pages/PlaqueShare"));
 const MyPlaques = lazy(() => import("./pages/MyPlaques"));
 const EmailDeliveryLog = lazy(() => import("./pages/EmailDeliveryLog"));
 const CompTiersSettings = lazy(() => import("./pages/admin/CompTiersSettings"));
+const IntegrationsSettings = lazy(() => import("./pages/admin/IntegrationsSettings"));
 const MyTeam = lazy(() => import("./pages/MyTeam"));
 const MyDeals = lazy(() => import("./pages/MyDeals"));
 
@@ -191,6 +192,7 @@ const App = () => (
                            <Route path="/dashboard/my-plaques" element={<ProtectedRoute><MyPlaques /></ProtectedRoute>} />
                            <Route path="/dashboard/email-log" element={<ProtectedRoute requireAdmin><EmailDeliveryLog /></ProtectedRoute>} />
                            <Route path="/dashboard/comp-tiers" element={<ProtectedRoute requireAdmin><CompTiersSettings /></ProtectedRoute>} />
+                           <Route path="/dashboard/integrations" element={<ProtectedRoute requireAdmin><IntegrationsSettings /></ProtectedRoute>} />
                            <Route path="/dashboard/my-team" element={<ProtectedRoute><MyTeam /></ProtectedRoute>} />
                            <Route path="/dashboard/my-deals" element={<ProtectedRoute><MyDeals /></ProtectedRoute>} />
                   </Route>

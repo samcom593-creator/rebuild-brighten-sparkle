@@ -15,7 +15,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-request-id, idempotency-key",
 };
 
-const INSURACLOUD_BASE = "https://agentlink.insuracloud.ai/api/v1";
+const INSURACLOUD_BASE = Deno.env.get("INSURACLOUD_BASE_URL") || "https://agentlink.replit.app";
 const SWEEP_BATCH_SIZE = 25;
 
 interface OutboxRequest {
@@ -65,7 +65,6 @@ async function pushOne(deal: DealRow): Promise<{ ok: boolean; error?: string; in
 
   // Resolve carrier
   let insuracloudCarrierId: number | null = null;
-  let carrierName = "";
   if (deal.carrier_id) {
     const { data: carrier } = await supabase
       .from("carriers")
@@ -73,7 +72,6 @@ async function pushOne(deal: DealRow): Promise<{ ok: boolean; error?: string; in
       .eq("id", deal.carrier_id)
       .maybeSingle();
     if (!carrier) return { ok: false, error: "Carrier record not found" };
-    carrierName = carrier.name;
     insuracloudCarrierId = carrier.insuracloud_carrier_id;
     if (insuracloudCarrierId === null) {
       return { ok: false, error: `Carrier "${carrier.name}" has no insuracloud_carrier_id mapping` };
@@ -82,40 +80,34 @@ async function pushOne(deal: DealRow): Promise<{ ok: boolean; error?: string; in
     return { ok: false, error: "Deal has no carrier" };
   }
 
-  // Build payload — adjust fields to match InsuraCloud's policy intake schema
-  const payload = {
-    agent_user_id: agent.insuracloud_user_id ?? undefined,
-    agent_email: (agent.profiles as any)?.email ?? undefined,
-    carrier_id: insuracloudCarrierId,
-    carrier_name: carrierName,
-    policy_number: deal.policy_number,
-    product: deal.product_sold,
-    client: {
-      first_name: deal.client_first_name,
-      last_name: deal.client_last_name,
-      phone: deal.client_phone,
-      dob: deal.client_dob,
-    },
-    monthly_premium: Number(deal.monthly_premium),
-    annual_premium: Number(deal.annual_premium),
-    face_amount: Number(deal.face_amount),
-    effective_date: deal.effective_date,
-    expiration_date: deal.policy_expiration_date ?? undefined,
-    status: deal.status,
-    source: "apex-financial-platform",
-    external_ref: deal.id,
+  // Build payload matching InsuraCloud's /api/samuel-james/book POST format
+  const dealPayload = {
+    externalId: deal.id,
+    userId: agent.insuracloud_user_id ?? undefined,
+    carrierId: insuracloudCarrierId,
+    clientFirstName: deal.client_first_name,
+    clientLastName: deal.client_last_name,
+    clientPhoneNumber: deal.client_phone,
+    clientDateOfBirth: deal.client_dob,
+    productSold: deal.product_sold,
+    policyNumber: deal.policy_number,
+    monthlyPremium: Number(deal.monthly_premium).toFixed(2),
+    annualPremium: Number(deal.annual_premium).toFixed(2),
+    faceAmount: Number(deal.face_amount).toFixed(2),
+    effectiveDate: deal.effective_date,
     notes: deal.notes ?? undefined,
   };
 
   try {
-    const res = await fetch(`${INSURACLOUD_BASE}/policies`, {
+    const res = await fetch(`${INSURACLOUD_BASE}/api/samuel-james/book`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
+        "x-api-key": token,
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ deals: [dealPayload] }),
     });
 
     const text = await res.text();

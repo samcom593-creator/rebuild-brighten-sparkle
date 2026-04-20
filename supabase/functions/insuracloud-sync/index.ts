@@ -9,7 +9,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-request-id, idempotency-key",
 };
 
-const INSURACLOUD_BASE = "https://agentlink.insuracloud.ai/api/v1";
+const INSURACLOUD_BASE = Deno.env.get("INSURACLOUD_BASE_URL") || "https://agentlink.replit.app";
 
 interface SyncRequest {
   agent_id?: string;
@@ -18,7 +18,7 @@ interface SyncRequest {
 
 async function fetchInsuraCloud(path: string, token: string) {
   const res = await fetch(`${INSURACLOUD_BASE}${path}`, {
-    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    headers: { Authorization: `Bearer ${token}`, "x-api-key": token, Accept: "application/json" },
   });
   const text = await res.text();
   let data: any = null;

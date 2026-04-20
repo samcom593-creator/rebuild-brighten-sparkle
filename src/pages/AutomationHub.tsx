@@ -1,10 +1,13 @@
 import { useState, useEffect } from "react";
-import { Zap, Play, RefreshCw, Clock, CheckCircle2, XCircle, ToggleLeft, ToggleRight } from "lucide-react";
+import { Zap, Play, RefreshCw, Clock, CheckCircle2, XCircle, ToggleLeft, ToggleRight, Cloud, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { useAuth } from "@/hooks/useAuth";
+import { InsuraCloudOutbox } from "@/components/admin/InsuraCloudOutbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface AutomationSetting {
   id: string;
@@ -33,9 +36,11 @@ const FUNCTION_MAP: Record<string, string> = {
 };
 
 export default function AutomationHub() {
+  const { isAdmin } = useAuth();
   const [automations, setAutomations] = useState<AutomationSetting[]>([]);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState<string | null>(null);
+  const [outboxOpen, setOutboxOpen] = useState(true);
 
   const fetchAutomations = async () => {
     setLoading(true);

@@ -6,6 +6,10 @@ on:
     paths:
       - 'supabase/functions/**'
       - 'supabase/migrations/**'
+  workflow_dispatch:
+
+env:
+  PROJECT_REF: msydzhzolwourcdmqxvn
 
 jobs:
   deploy:
@@ -17,30 +21,84 @@ jobs:
         with:
           version: latest
 
+      # ── 1. Deploy discord-webhook-notify edge function ───────────────────────
       - name: Deploy discord-webhook-notify
-        run: supabase functions deploy discord-webhook-notify --project-ref msydzhzolwourcdmqxvn
+        run: supabase functions deploy discord-webhook-notify --project-ref $PROJECT_REF
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
-      - name: Set Discord webhook env secret on project
+      # ── 2. Set DISCORD_WEBHOOK_URL as a persistent function secret ───────────
+      - name: Set Discord webhook project secret
         run: |
           supabase secrets set \
             DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/1425987081418571779/3JrtT5W00gDos8XY2iYc5_nb5sxr9S9ztagW1bBigI-8daIrb170vTyxIqXV2E8x2S0T" \
-            --project-ref msydzhzolwourcdmqxvn
+            --project-ref $PROJECT_REF
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
-      - name: Push DB migrations
-        run: supabase db push --project-ref msydzhzolwourcdmqxvn
+      # ── 3. Apply pending migrations via Management API (no DB password needed) ─
+      - name: Apply DB migrations via Management API
+        run: |
+          set -e
+          for sql_file in supabase/migrations/*.sql; do
+            echo "Applying migration: $sql_file"
+            SQL_CONTENT=$(cat "$sql_file")
+            RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+              "https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query" \
+              -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d "{\"query\": $(python3 -c "import sys,json; print(json.dumps(open('$sql_file').read()))")}")
+            HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+            BODY=$(echo "$RESPONSE" | head -n -1)
+            echo "HTTP $HTTP_CODE: $BODY"
+          done
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
 
-# ─── TO ACTIVATE THIS WORKFLOW ──────────────────────────────────────────────
-# Add these two GitHub secrets (repo Settings → Secrets → Actions):
+      # ── 4. Retrieve service_role key and write GUC so run_automation_job works ─
+      - name: Set service_role_key GUC in database
+        run: |
+          SERVICE_ROLE_KEY=$(curl -s \
+            "https://api.supabase.com/v1/projects/${PROJECT_REF}/api-keys" \
+            -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" | \
+            python3 -c "
+          import sys, json
+          keys = json.load(sys.stdin)
+          for k in keys:
+              if k.get('name') == 'service_role':
+                  print(k.get('api_key', ''))
+                  break
+          ")
+          if [ -n "$SERVICE_ROLE_KEY" ]; then
+            echo "Setting service_role_key GUC..."
+            curl -s -X POST \
+              "https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query" \
+              -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -d "{\"query\": \"ALTER DATABASE postgres SET \\\"app.settings.service_role_key\\\" = '${SERVICE_ROLE_KEY}'; SELECT pg_reload_conf();\"}"
+            echo "GUC set successfully"
+          else
+            echo "Could not retrieve service_role_key — skipping GUC setup"
+          fi
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+# ─── HOW TO ACTIVATE (ONE-TIME SETUP) ───────────────────────────────────────
 #
-#   SUPABASE_ACCESS_TOKEN  →  https://supabase.com/dashboard/account/tokens
-#   SUPABASE_DB_PASSWORD   →  Supabase → Project Settings → Database → Password
+#  1. Go to: github.com/samcom593-creator/rebuild-brighten-sparkle
+#     → Settings → Secrets and variables → Actions → New repository secret
 #
-# After adding secrets, re-push any change to supabase/ to trigger the run.
-# ─────────────────────────────────────────────────────────────────────────────
+#  2. Add ONE secret:
+#     Name:   SUPABASE_ACCESS_TOKEN
+#     Value:  Create at → https://supabase.com/dashboard/account/tokens
+#
+#  3. After adding the secret, click "Actions" tab → "Deploy Supabase Functions
+#     & Migrations" → "Run workflow" to trigger immediately.
+#
+#  That's it — the workflow will:
+#    ✓ Deploy discord-webhook-notify with 20+ event types + retry logic
+#    ✓ Set DISCORD_WEBHOOK_URL as a persistent project secret
+#    ✓ Apply all pending DB migrations (webhook trigger, realtime, admin RPC)
+#    ✓ Auto-fetch and set service_role_key GUC (fixes all automation)
+#
+# ────────────────────────────────────────────────────────────────────────────

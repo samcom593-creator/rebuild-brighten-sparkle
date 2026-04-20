@@ -8,7 +8,7 @@ import {
 } from "@dnd-kit/core";
 import {
   ChevronLeft, ChevronRight, Plus, Check, Trash2, Clock, Download,
-  Camera, Pencil, GripVertical, Loader2, Repeat, RefreshCw,
+  Camera, Pencil, GripVertical, Loader2, Repeat, RefreshCw, Calendar,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -95,10 +95,27 @@ function generateICS(blocks: CalendarBlock[], dateStr: string) {
   return lines.join("\r\n");
 }
 
+// Google Calendar deep link for a single block on a given date
+function googleCalendarUrl(block: CalendarBlock, dateStr: string): string {
+  const d = dateStr.replace(/-/g, "");
+  const sh = String(block.start_hour).padStart(2, "0");
+  const eh = String(block.end_hour).padStart(2, "0");
+  const dates = `${d}T${sh}0000/${d}T${eh}0000`;
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: block.title,
+    dates,
+    details: block.notes ?? "",
+    ctz: "America/New_York",
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
 // Draggable block component
-function DraggableBlock({ block, isMobile, onToggle, onDelete, onEdit, isRecurringOrigin }: {
+function DraggableBlock({ block, isMobile, onToggle, onDelete, onEdit, onGoogle, onIcs, isRecurringOrigin }: {
   block: CalendarBlock; isMobile: boolean; isRecurringOrigin?: boolean;
   onToggle: () => void; onDelete: () => void; onEdit: () => void;
+  onGoogle: () => void; onIcs: () => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: block.id, data: { block } });
   const cat = getCategoryStyle(block.category);
@@ -131,13 +148,19 @@ function DraggableBlock({ block, isMobile, onToggle, onDelete, onEdit, isRecurri
           )}
         </div>
         <div className={cn("flex items-center gap-0.5", isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100 transition-opacity")}>
-          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={onEdit}>
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={onEdit} title="Edit">
             <Pencil className="h-3 w-3 text-muted-foreground" />
           </Button>
-          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={onToggle}>
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={onGoogle} title="Add to Google Calendar">
+            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+          </Button>
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={onIcs} title="Export .ics">
+            <Download className="h-3.5 w-3.5 text-muted-foreground" />
+          </Button>
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={onToggle} title="Toggle complete">
             <Check className={cn("h-3.5 w-3.5", block.completed ? "text-emerald-400" : "text-muted-foreground")} />
           </Button>
-          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-400" onClick={onDelete}>
+          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-400" onClick={onDelete} title="Delete">
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -564,6 +587,16 @@ export default function AdminCalendar() {
                           onToggle={() => toggleComplete(block)}
                           onDelete={() => deleteBlock(block.id)}
                           onEdit={() => openEditDialog(block)}
+                          onGoogle={() => window.open(googleCalendarUrl(block, format(selectedDate, "yyyy-MM-dd")), "_blank", "noopener")}
+                          onIcs={() => {
+                            const ics = generateICS([block], format(selectedDate, "yyyy-MM-dd"));
+                            const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar" }));
+                            const a = document.createElement("a");
+                            a.href = url;
+                            a.download = `${block.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.ics`;
+                            a.click();
+                            URL.revokeObjectURL(url);
+                          }}
                         />
                       ))}
                     </AnimatePresence>

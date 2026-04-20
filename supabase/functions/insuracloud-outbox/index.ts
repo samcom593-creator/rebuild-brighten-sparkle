@@ -51,6 +51,7 @@ const supabase = createClient(
 const defaultToken = Deno.env.get("INSURACLOUD_API_TOKEN");
 
 async function pushOne(deal: DealRow): Promise<{ ok: boolean; error?: string; insuracloud_id?: number | string }> {
+  // redeploy: trigger refresh for cd05deb session-cookie support
   // Resolve agent → InsuraCloud user id + token
   const { data: agent } = await supabase
     .from("agents")

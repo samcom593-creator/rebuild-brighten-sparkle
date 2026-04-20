@@ -4569,6 +4569,7 @@ export type Database = {
           carrier: string | null
           city: string | null
           created_at: string
+          discord_webhook_url: string | null
           email: string
           full_name: string | null
           id: string
@@ -4584,6 +4585,7 @@ export type Database = {
           carrier?: string | null
           city?: string | null
           created_at?: string
+          discord_webhook_url?: string | null
           email: string
           full_name?: string | null
           id?: string
@@ -4599,6 +4601,7 @@ export type Database = {
           carrier?: string | null
           city?: string | null
           created_at?: string
+          discord_webhook_url?: string | null
           email?: string
           full_name?: string | null
           id?: string

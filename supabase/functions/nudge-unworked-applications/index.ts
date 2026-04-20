@@ -135,7 +135,17 @@ async function sweep(dryRun: boolean, limit: number): Promise<{ processed: numbe
     .limit(limit);
 
   if (error) throw error;
-  const targets = (apps ?? []) as App[];
+
+  // Dedupe by email (some applicants submitted 2-5 times). Keep the
+  // newest row per email — that's the one most likely to still be active.
+  const byEmail = new Map<string, App>();
+  const orphans: App[] = [];
+  for (const a of (apps ?? []) as App[]) {
+    const key = (a.email ?? "").trim().toLowerCase();
+    if (!key) { orphans.push(a); continue; }
+    if (!byEmail.has(key)) byEmail.set(key, a);
+  }
+  const targets: App[] = [...byEmail.values(), ...orphans];
 
   const buckets: Record<string, number> = { sms: 0, email: 0, no_pickup: 0, reject: 0 };
   const results: Result[] = [];

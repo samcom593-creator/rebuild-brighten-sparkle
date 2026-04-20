@@ -15,7 +15,24 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
-import { corsHeaders, jsonResponse, errorResponse } from "../_shared/cors.ts";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-request-id, idempotency-key",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+};
+
+function jsonResponse(body: unknown, status = 200, extraHeaders: Record<string, string> = {}) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json", ...extraHeaders },
+  });
+}
+
+function errorResponse(message: string, status = 500, code?: string) {
+  return jsonResponse({ error: { message, code } }, status);
+}
 
 const MILESTONE_META: Record<number, { emoji: string; label: string; color: string; headline: string; message: string }> = {
   25000: {

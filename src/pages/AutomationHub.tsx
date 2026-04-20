@@ -101,6 +101,24 @@ export default function AutomationHub() {
         </Button>
       </div>
 
+      {isAdmin && (
+        <Collapsible open={outboxOpen} onOpenChange={setOutboxOpen}>
+          <div className="bg-card border border-border rounded-xl">
+            <CollapsibleTrigger className="w-full flex items-center justify-between p-4 hover:bg-muted/30 rounded-xl transition-colors">
+              <div className="flex items-center gap-2">
+                <Cloud className="h-4 w-4 text-primary" />
+                <span className="font-semibold text-sm" style={{ fontFamily: "Syne" }}>InsuraCloud Outbox</span>
+                <span className="text-xs text-muted-foreground">— deal sync, mapping, retries</span>
+              </div>
+              <ChevronDown className={cn("h-4 w-4 transition-transform", outboxOpen && "rotate-180")} />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="p-4 pt-0">
+              <InsuraCloudOutbox />
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
+      )}
+
       {/* Summary */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <div className="bg-card border border-border rounded-xl p-3">

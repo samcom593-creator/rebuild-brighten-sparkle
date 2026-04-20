@@ -89,6 +89,7 @@ const MyPlaques = lazy(() => import("./pages/MyPlaques"));
 const EmailDeliveryLog = lazy(() => import("./pages/EmailDeliveryLog"));
 const CompTiersSettings = lazy(() => import("./pages/admin/CompTiersSettings"));
 const MyTeam = lazy(() => import("./pages/MyTeam"));
+const MyDeals = lazy(() => import("./pages/MyDeals"));
 
 // queryClient now lives in src/shared/api/queryClient.ts (smart retry + global error logging)
 
@@ -191,6 +192,7 @@ const App = () => (
                            <Route path="/dashboard/email-log" element={<ProtectedRoute requireAdmin><EmailDeliveryLog /></ProtectedRoute>} />
                            <Route path="/dashboard/comp-tiers" element={<ProtectedRoute requireAdmin><CompTiersSettings /></ProtectedRoute>} />
                            <Route path="/dashboard/my-team" element={<ProtectedRoute><MyTeam /></ProtectedRoute>} />
+                           <Route path="/dashboard/my-deals" element={<ProtectedRoute><MyDeals /></ProtectedRoute>} />
                   </Route>
 
                   {/* Legacy redirect */}

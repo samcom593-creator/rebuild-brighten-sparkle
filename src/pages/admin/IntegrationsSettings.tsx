@@ -46,7 +46,7 @@ export default function IntegrationsSettings() {
   const [testStatus, setTestStatus] = useState<"idle" | "loading" | "ok" | "error">("idle");
   const [testMsg, setTestMsg] = useState("");
 
-  const { data: currentWebhook, isLoading } = useQuery({
+  const { data: currentWebhook = "", isLoading } = useQuery<string>({
     queryKey: ["system_settings", DISCORD_KEY],
     enabled: !!isAdmin,
     queryFn: async () => {
@@ -55,10 +55,9 @@ export default function IntegrationsSettings() {
         .select("value")
         .eq("key", DISCORD_KEY)
         .maybeSingle();
-      return (data as any)?.value ?? "";
-    },
-    onSuccess: (val: string) => {
+      const val = (data as any)?.value ?? "";
       if (val && !webhookDraft) setWebhookDraft(val);
+      return val;
     },
   });
 

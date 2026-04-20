@@ -146,11 +146,12 @@ export function TeamHierarchyManager() {
       const userIds = agentsData.map(a => a.user_id).filter(Boolean);
       const agentIds = agentsData.map(a => a.id);
       
-      // Get week start (Sunday) in PST
+      // Get week start (Monday) in PST
       const now = new Date();
       const dayOfWeek = now.getDay();
+      const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
       const weekStart = new Date(now);
-      weekStart.setDate(now.getDate() - dayOfWeek);
+      weekStart.setDate(now.getDate() + diffToMonday);
       weekStart.setHours(0, 0, 0, 0);
       const weekStartStr = weekStart.toISOString().split('T')[0];
       

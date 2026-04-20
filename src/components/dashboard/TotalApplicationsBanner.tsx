@@ -12,8 +12,9 @@ async function fetchApplicationCounts() {
   const now = new Date();
   const todayISO = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
   const dayOfWeek = now.getDay();
+  const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
   const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+  weekStart.setDate(now.getDate() + diffToMonday);
   weekStart.setHours(0, 0, 0, 0);
   const weekStartISO = weekStart.toISOString();
 

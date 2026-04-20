@@ -182,7 +182,7 @@ export function InviteTeamModal({ open, onClose }: InviteTeamModalProps) {
 
       const newUserId = accountData.userId;
       const newProfileId = accountData.profileId;
-      console.log(`Created auth account: ${newUserId}, profile: ${newProfileId}`);
+      // console.log(`Created auth account: ${newUserId}, profile: ${newProfileId}`);
 
       // Create agent record - set stage based on license status
       const onboardingStage = licenseStatus === "licensed" && !sendCourse 

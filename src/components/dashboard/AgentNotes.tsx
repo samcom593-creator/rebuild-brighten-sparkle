@@ -103,7 +103,7 @@ export function AgentNotes({ agentId, onNoteAdded, readOnly = false }: AgentNote
           body: { agentId, note: newNote.trim() },
         });
       } catch (notifyError) {
-        console.log("Note notification skipped:", notifyError);
+        // console.log("Note notification skipped:", notifyError);
       }
     } catch (error) {
       console.error("Error adding note:", error);

@@ -135,9 +135,28 @@ type Plan = {
 async function sweep(dryRun: boolean, limit: number) {
   // Candidates: is_inactive=true, status=active. We exclude agents who have
   // closed any deals (those are a different problem — actual churned producers).
+  // We ALSO exclude admins and anyone currently managing a team — their agent
+  // row exists for DB integrity, not because they're really stuck in onboarding.
+  const { data: adminRoles } = await supabase
+    .from("user_roles")
+    .select("user_id")
+    .eq("role", "admin");
+  const adminUserIds = new Set((adminRoles ?? []).map((r: any) => r.user_id));
+
+  const { data: managingAgents } = await supabase
+    .from("agents")
+    .select("invited_by_manager_id, manager_id, switched_to_manager_id");
+  const managerAgentIds = new Set<string>();
+  for (const row of managingAgents ?? []) {
+    for (const k of ["invited_by_manager_id", "manager_id", "switched_to_manager_id"]) {
+      const v = (row as any)[k];
+      if (v) managerAgentIds.add(v);
+    }
+  }
+
   const { data: agents, error } = await supabase
     .from("agents")
-    .select("id, created_at, onboarding_stage, invited_by_manager_id, manager_id, profile_id, total_policies")
+    .select("id, user_id, created_at, onboarding_stage, invited_by_manager_id, manager_id, profile_id, total_policies")
     .eq("is_inactive", true)
     .eq("status", "active")
     .eq("total_policies", 0)
@@ -146,7 +165,9 @@ async function sweep(dryRun: boolean, limit: number) {
   if (error) throw error;
 
   const plans: Plan[] = [];
-  for (const a of (agents ?? []) as AgentRow[]) {
+  for (const a of (agents ?? []) as (AgentRow & { user_id: string | null })[]) {
+    if (a.user_id && adminUserIds.has(a.user_id)) continue; // protect admins
+    if (managerAgentIds.has(a.id)) continue;                 // protect managers
     const age = ageDays(a.created_at);
     const action = planFor(age);
     if (!action) continue;

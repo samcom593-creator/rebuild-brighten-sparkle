@@ -10,6 +10,7 @@ const corsHeaders = {
 };
 
 // deploy trigger: b985c2e
+// way-less-noise: 2f2377a
 
 const SAM_EMAIL = "info@kingofsales.net";
 const SAM_PHONE = "4697676068";

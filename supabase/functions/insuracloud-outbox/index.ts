@@ -15,7 +15,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-request-id, idempotency-key",
 };
 
-const INSURACLOUD_BASE = Deno.env.get("INSURACLOUD_BASE_URL") || "https://agentlink.replit.app";
+const INSURACLOUD_BASE = Deno.env.get("INSURACLOUD_BASE_URL") || "https://agentlink.insuracloud.ai";
 const SWEEP_BATCH_SIZE = 25;
 
 interface OutboxRequest {
@@ -80,10 +80,9 @@ async function pushOne(deal: DealRow): Promise<{ ok: boolean; error?: string; in
     return { ok: false, error: "Deal has no carrier" };
   }
 
-  // Build payload matching InsuraCloud's /api/samuel-james/book POST format
+  // Build payload for InsuraCloud's POST /api/deals endpoint. Numbers must
+  // be actual numbers (the schema rejects stringified decimals).
   const dealPayload = {
-    externalId: deal.id,
-    userId: agent.insuracloud_user_id ?? undefined,
     carrierId: insuracloudCarrierId,
     clientFirstName: deal.client_first_name,
     clientLastName: deal.client_last_name,
@@ -91,15 +90,17 @@ async function pushOne(deal: DealRow): Promise<{ ok: boolean; error?: string; in
     clientDateOfBirth: deal.client_dob,
     productSold: deal.product_sold,
     policyNumber: deal.policy_number,
-    monthlyPremium: Number(deal.monthly_premium).toFixed(2),
-    annualPremium: Number(deal.annual_premium).toFixed(2),
-    faceAmount: Number(deal.face_amount).toFixed(2),
+    monthlyPremium: Number(deal.monthly_premium),
+    annualPremium: Number(deal.annual_premium),
+    faceAmount: Number(deal.face_amount),
     effectiveDate: deal.effective_date,
+    externalId: deal.id,
+    externalSource: "apex-financial",
     notes: deal.notes ?? undefined,
   };
 
   try {
-    const res = await fetch(`${INSURACLOUD_BASE}/api/samuel-james/book`, {
+    const res = await fetch(`${INSURACLOUD_BASE}/api/deals`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -107,7 +108,7 @@ async function pushOne(deal: DealRow): Promise<{ ok: boolean; error?: string; in
         "Content-Type": "application/json",
         Accept: "application/json",
       },
-      body: JSON.stringify({ deals: [dealPayload] }),
+      body: JSON.stringify(dealPayload),
     });
 
     const text = await res.text();

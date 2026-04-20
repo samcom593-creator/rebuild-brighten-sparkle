@@ -184,38 +184,13 @@ export function DealEntryForm({ onSaved }: { onSaved?: () => void }) {
           } catch { /* non-blocking */ }
         })();
 
-        // InsuraCloud: use the agent's own bearer token if present
-        const icToken = (agentRow as any)?.insuracloud_api_token;
-        if (icToken) {
-          fetch("https://agentlink.replit.app/api/samuel-james/book", {
-            method: "POST",
-            headers: {
-              Authorization:  `Bearer ${icToken}`,
-              "x-api-key":    icToken,
-              "Content-Type": "application/json",
-              Accept:         "application/json",
-            },
-            body: JSON.stringify({
-              deals: [{
-                externalId:        dealId,
-                clientFirstName:   form.client_first_name,
-                clientLastName:    form.client_last_name,
-                clientPhoneNumber: form.client_phone,
-                clientDateOfBirth: form.client_dob,
-                productSold:       form.product_sold,
-                policyNumber:      form.policy_number,
-                monthlyPremium:    Number(form.monthly_premium || 0).toFixed(2),
-                annualPremium:     annualPremium.toFixed(2),
-                faceAmount:        Number(form.face_amount || 0).toFixed(2),
-                effectiveDate:     form.effective_date,
-                ...(form.notes     && { notes:    form.notes }),
-                ...(form.carrier_id && { carrierId: form.carrier_id }),
-              }],
-            }),
-          }).catch(() => {});
-        } else {
-          toast.message("Add your InsuraCloud token in Settings to auto-sync deals");
-        }
+        // InsuraCloud: hand off to the outbox edge function (it reads the
+        // agent's insuracloud_api_token from the DB and handles retries).
+        // Cross-origin CORS blocks a direct browser→agentlink POST, so we
+        // must go through Supabase.
+        supabase.functions.invoke("insuracloud-outbox", {
+          body: { deal_id: dealId },
+        }).catch(() => {});
       }
     } catch (e: any) {
       toast.error(e.message || "Failed to save deal");

@@ -138,6 +138,7 @@ async function sweep(dryRun: boolean, limit: number): Promise<{ processed: numbe
 
   // Dedupe by email (some applicants submitted 2-5 times). Keep the
   // newest row per email — that's the one most likely to still be active.
+  // Refresh: commit ab299ce dedup logic
   const byEmail = new Map<string, App>();
   const orphans: App[] = [];
   for (const a of (apps ?? []) as App[]) {

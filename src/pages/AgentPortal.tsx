@@ -35,6 +35,7 @@ import { WeeklyBadgesCard } from "@/components/dashboard/WeeklyBadges";
 import { YearPerformanceCard } from "@/components/dashboard/YearPerformanceCard";
 import { AccountLinkForm } from "@/components/dashboard/AccountLinkForm";
 import { AgentRankBadge } from "@/components/dashboard/AgentRankBadge";
+import { AgentCompetitiveDashboard } from "@/components/dashboard/AgentCompetitiveDashboard";
 import { AgentTaskManager } from "@/components/dashboard/AgentTaskManager";
 import { AgentReferralLinkCard } from "@/components/agent/AgentReferralLinkCard";
 import { HideableCard } from "@/components/dashboard/HideableCard";
@@ -43,6 +44,7 @@ import { HiddenCardsManager } from "@/components/dashboard/HiddenCardsManager";
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
 
 const HIDEABLE_CARDS: Record<string, string> = {
+  "agent.competitive-dashboard": "Weekly Competition Dashboard",
   "agent.performance-section": "Performance Dashboard Section",
   "agent.personal-stats": "Personal Stats",
   "agent.year-performance": "Year Performance",
@@ -548,6 +550,15 @@ export default function AgentPortal() {
             </Button>
           ))}
         </div>
+
+        {/* Weekly Competition Dashboard — rank, target, top 10 with highlight */}
+        {agentId && (
+          <HideableCard cardKey="agent.competitive-dashboard" label={HIDEABLE_CARDS["agent.competitive-dashboard"]}>
+            <section>
+              <AgentCompetitiveDashboard key={`compete-${refreshKey}`} agentId={agentId} />
+            </section>
+          </HideableCard>
+        )}
 
         {/* ── Production Forecast (Admin Only) ── */}
         {agentId && isAdmin && (

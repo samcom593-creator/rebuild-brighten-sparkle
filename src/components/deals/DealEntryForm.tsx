@@ -158,6 +158,32 @@ export function DealEntryForm({ onSaved }: { onSaved?: () => void }) {
           body: JSON.stringify({ embeds: [embed] }),
         }).catch(() => {});
 
+        // Milestone reward email: detect 25K / 40K / 75K / 100K monthly ALP crossings
+        (async () => {
+          try {
+            const monthStart = new Date();
+            monthStart.setDate(1);
+            const monthStartISO = monthStart.toISOString().split("T")[0];
+            const { data: mtdRows } = await supabase
+              .from("daily_production")
+              .select("aop")
+              .eq("agent_id", agentRow.id)
+              .gte("production_date", monthStartISO);
+            const mtdBefore = (mtdRows ?? []).reduce(
+              (s: number, r: { aop: number | null }) => s + Number(r.aop ?? 0),
+              0,
+            );
+            const mtdAfter  = mtdBefore + annualPremium;
+            const TIERS     = [100000, 75000, 40000, 25000];
+            const crossed   = TIERS.find(t => mtdBefore < t && mtdAfter >= t);
+            if (crossed) {
+              supabase.functions.invoke("send-milestone-reward", {
+                body: { agent_id: agentRow.id, milestone: crossed, mtd_production: mtdAfter },
+              }).catch(() => {});
+            }
+          } catch { /* non-blocking */ }
+        })();
+
         // InsuraCloud: use the agent's own bearer token if present
         const icToken = (agentRow as any)?.insuracloud_api_token;
         if (icToken) {

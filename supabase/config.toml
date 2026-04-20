@@ -1,5 +1,11 @@
 project_id = "msydzhzolwourcdmqxvn"
 
+[functions.discord-webhook-notify]
+verify_jwt = false
+
+[functions.discord-leaderboards]
+verify_jwt = false
+
 [functions.ics-feed]
 verify_jwt = false
 

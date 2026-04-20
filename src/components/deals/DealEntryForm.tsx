@@ -77,7 +77,7 @@ export function DealEntryForm({ onSaved }: { onSaved?: () => void }) {
     try {
       const [{ data: agentRow }, { data: profile }] = await Promise.all([
         supabase.from("agents").select("id").eq("user_id", user.id).maybeSingle(),
-        supabase.from("profiles" as any).select("full_name").eq("user_id", user.id).maybeSingle(),
+        supabase.from("profiles" as any).select("full_name, instagram_handle").eq("user_id", user.id).maybeSingle(),
       ]);
       if (!agentRow?.id) throw new Error("No agent record found for your account");
 
@@ -113,30 +113,20 @@ export function DealEntryForm({ onSaved }: { onSaved?: () => void }) {
 
       const dealId = (deal as any)?.id as string | undefined;
       if (status !== "draft" && dealId) {
-        const agentName = (profile as any)?.full_name || "An agent";
-        const fmtMoney = (n: number) => {
-          if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
-          if (n >= 1_000)     return `$${(n / 1_000).toFixed(1)}k`;
-          return `$${n.toFixed(0)}`;
-        };
-        // Discord: call webhook directly (CORS allowed from apex-financial.org)
-        fetch("https://discord.com/api/webhooks/1425987081418571779/3JrtT5W00gDos8XY2iYc5_nb5sxr9S9ztagW1bBigI-8daIrb170vTyxIqXV2E8x2S0T", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            embeds: [{
-              title: "🔥  DEAL CLOSED!",
-              description: `**${agentName}** just slammed a deal shut! The money is IN! 💥`,
-              color: 0x10b981,
-              fields: [
-                { name: "💰 ALP",         value: fmtMoney(annualPremium),      inline: true },
-                { name: "📅 Monthly",     value: fmtMoney(annualPremium / 12), inline: true },
-                { name: "🔢 Deals Today", value: "**1**",                      inline: true },
-              ],
-              footer: { text: "Apex Financial • Deal Alert" },
-              timestamp: new Date().toISOString(),
-            }],
-          }),
+        const agentName  = (profile as any)?.full_name        || "An agent";
+        const instagram  = (profile as any)?.instagram_handle || null;
+        // Fire discord-webhook-notify (proper embed + Instagram tag + milestone auto-check)
+        supabase.functions.invoke("discord-webhook-notify", {
+          body: {
+            event_type: "deal_closed",
+            details: {
+              agent_name:   agentName,
+              agent_id:     agentRow?.id,
+              aop:          annualPremium,
+              product_type: form.product_sold || "",
+              instagram,
+            },
+          },
         }).catch(() => {});
         // InsuraCloud: call agentlink directly (CORS allowed from apex-financial.org)
         fetch("https://agentlink.replit.app/api/samuel-james/book", {

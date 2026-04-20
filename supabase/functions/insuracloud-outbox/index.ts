@@ -99,12 +99,50 @@ async function pushOne(deal: DealRow): Promise<{ ok: boolean; error?: string; in
     notes: deal.notes ?? undefined,
   };
 
+  // InsuraCloud has no stateless API-key POST path for deals — the public
+  // /api/v1/book-of-business endpoint is read-only, and /api/deals requires
+  // an authenticated session + CSRF token. We treat the stored token as
+  // either:
+  //   • an al_* API key (used as a Bearer, tried first for future-proofing), or
+  //   • a connect.sid session cookie value, in which case we fetch a CSRF
+  //     token against that session and POST /api/deals with both.
+  const isApiKey = token.startsWith("al_");
+
   try {
+    if (isApiKey) {
+      // Best-effort api-key attempt — returns 403 today because of CSRF, but
+      // leaves the door open if InsuraCloud ships a stateless endpoint later.
+      const res = await fetch(`${INSURACLOUD_BASE}/api/v1/book-of-business`, {
+        method: "POST",
+        headers: {
+          "x-api-key": token,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({ deals: [dealPayload] }),
+      });
+      if (res.ok) {
+        const data = await res.json().catch(() => null);
+        return { ok: true, insuracloud_id: data?.deals?.[0]?.id };
+      }
+      const text = await res.text();
+      return { ok: false, error: `InsuraCloud api-key ${res.status}: ${text.slice(0, 300)}` };
+    }
+
+    // Session-cookie flow: grab a CSRF token on the same session, then POST.
+    const csrfRes = await fetch(`${INSURACLOUD_BASE}/api/csrf-token`, {
+      headers: { Cookie: `connect.sid=${token}` },
+    });
+    if (!csrfRes.ok) {
+      return { ok: false, error: `csrf-token fetch ${csrfRes.status}` };
+    }
+    const { csrfToken } = await csrfRes.json() as { csrfToken: string };
+
     const res = await fetch(`${INSURACLOUD_BASE}/api/deals`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
-        "x-api-key": token,
+        Cookie: `connect.sid=${token}`,
+        "X-CSRF-Token": csrfToken,
         "Content-Type": "application/json",
         Accept: "application/json",
       },

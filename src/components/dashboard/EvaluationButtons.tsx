@@ -66,7 +66,7 @@ export function EvaluationButtons({
           body: { agentId, result: confirming },
         });
       } catch (notifyError) {
-        console.log("Evaluation notification skipped:", notifyError);
+        // console.log("Evaluation notification skipped:", notifyError);
       }
 
       setConfirming(null);

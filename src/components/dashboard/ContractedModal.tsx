@@ -249,7 +249,6 @@ export function ContractedModal({
           body: { agentId: newAgentId },
         });
         if (enrollErr) console.error("Failed to send course enrollment email:", enrollErr);
-        else console.log("Course enrollment email sent for agent", newAgentId);
       }
 
       // Invalidate dashboard queries so new agent appears immediately

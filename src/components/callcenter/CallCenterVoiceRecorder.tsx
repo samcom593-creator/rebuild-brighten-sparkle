@@ -95,7 +95,7 @@ export function CallCenterVoiceRecorder({
         try {
           recognition.start();
         } catch (e) {
-          console.log("Recognition restart failed");
+          // console.log("Recognition restart failed");
         }
       }
     };

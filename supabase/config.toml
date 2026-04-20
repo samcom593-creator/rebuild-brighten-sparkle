@@ -343,3 +343,12 @@ verify_jwt = false
 [functions.send-milestone-reward]
 verify_jwt = false
 
+[functions.send-numbers-reminder]
+verify_jwt = false
+
+[functions.send-daily-producer-spotlight]
+verify_jwt = false
+
+[functions.trigger-new-hire-flow]
+verify_jwt = false
+

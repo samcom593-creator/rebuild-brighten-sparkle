@@ -168,7 +168,7 @@ export function LeadReassignment() {
         }
       }).then(({ error: notifyError }) => {
         if (notifyError) console.error("Failed to send assignment notification:", notifyError);
-        else console.log("Lead assignment notification sent");
+        else // console.log("Lead assignment notification sent");
       });
       
       setSelectedApp(null);

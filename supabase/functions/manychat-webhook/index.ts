@@ -27,6 +27,8 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
+// Deploy trigger: commit 3b07e4c — register manychat-webhook
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":

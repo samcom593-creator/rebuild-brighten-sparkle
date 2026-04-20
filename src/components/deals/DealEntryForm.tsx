@@ -114,11 +114,35 @@ export function DealEntryForm({ onSaved }: { onSaved?: () => void }) {
       const dealId = (deal as any)?.id as string | undefined;
       if (status !== "draft" && dealId) {
         const agentName = (profile as any)?.full_name || "An agent";
-        supabase.functions.invoke("discord-webhook-notify", {
-          body: { event_type: "deal_closed", agent_name: agentName, details: { aop: annualPremium, deals: 1 } },
+        // Discord notification via Vercel API route (works without Supabase function deployment)
+        fetch("/api/notify-discord", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            event_type: "deal_closed",
+            agent_name: agentName,
+            details: { aop: annualPremium, deals: 1 },
+          }),
         }).catch(() => {});
-        supabase.functions.invoke("insuracloud-outbox", {
-          body: { deal_id: dealId },
+        // InsuraCloud sync via Vercel API route — passes deal data directly
+        fetch("/api/sync-insuracloud", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            deal_id:            dealId,
+            client_first_name:  form.client_first_name,
+            client_last_name:   form.client_last_name,
+            client_phone:       form.client_phone,
+            client_dob:         form.client_dob,
+            product_sold:       form.product_sold,
+            policy_number:      form.policy_number,
+            monthly_premium:    parseFloat(form.monthly_premium),
+            annual_premium:     annualPremium,
+            face_amount:        parseFloat(form.face_amount),
+            effective_date:     form.effective_date,
+            notes:              form.notes || null,
+            carrier_id:         form.carrier_id || null,
+          }),
         }).catch(() => {});
       }
     } catch (e: any) {

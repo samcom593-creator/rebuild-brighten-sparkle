@@ -163,11 +163,9 @@ export function GlobalSidebar({
     sections.push({ label: "OPERATIONS", items: opsItems });
 
     // TEAM
-    const teamItems: NavItem[] = [
-      { icon: Users, label: "Team Directory", href: "/dashboard/team" },
-    ];
-    if (isAdmin) {
-      teamItems.push({ icon: Network, label: "Hierarchy", href: "/dashboard/hierarchy" });
+    const teamItems: NavItem[] = [];
+    if (isAdmin || isManager) {
+      teamItems.push({ icon: Network, label: "Team Hierarchy", href: "/dashboard/hierarchy" });
     }
     if (isAdmin || isManager) {
       teamItems.push({ icon: UserX, label: "Inactive Agents", href: "/dashboard/inactive-agents" });

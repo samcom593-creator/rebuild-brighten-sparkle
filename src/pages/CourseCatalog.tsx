@@ -19,15 +19,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-// Call library mock data - replace with DB queries when call_library table exists
-const CALL_LIBRARY = [
-  { id: "1", title: "Closing a $15K Life Policy", speaker: "Sam Torres", duration: "12:34", date: "2026-03-15", category: "Sales Calls", description: "Live recording of a successful close with objection handling." },
-  { id: "2", title: "Recruiting Call - Licensed Agent", speaker: "Marcus Johnson", duration: "18:22", date: "2026-03-10", category: "Recruiting", description: "How to pitch APEX to experienced agents from other agencies." },
-  { id: "3", title: "Weekly Training: Referral Machine", speaker: "Sam Torres", duration: "45:00", date: "2026-03-08", category: "Training", description: "Building a referral pipeline that generates 5+ warm leads per week." },
-  { id: "4", title: "Live Field Day Replay", speaker: "Team APEX", duration: "1:23:00", date: "2026-03-01", category: "Live Replays", description: "Full recording of a team field day with 8 presentations." },
-  { id: "5", title: "Overcoming Price Objections", speaker: "Sam Torres", duration: "22:15", date: "2026-02-28", category: "Sales Calls", description: "Three different approaches to the 'too expensive' objection." },
-  { id: "6", title: "New Agent First Week Script", speaker: "Sam Torres", duration: "15:00", date: "2026-02-20", category: "Training", description: "Exactly what to say in your first week of calls." },
-];
+// Real calls will live in call_library table. Empty array = empty state.
+const CALL_LIBRARY: {
+  id: string;
+  title: string;
+  speaker: string;
+  duration: string;
+  date: string;
+  category: string;
+  description: string;
+}[] = [];
 
 const CALL_CATEGORIES = ["All", "Sales Calls", "Recruiting", "Training", "Live Replays"];
 
@@ -392,28 +393,38 @@ export default function CourseCatalog() {
             </Select>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredCalls.map(call => (
-              <motion.div key={call.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card rounded-xl p-4 space-y-3 hover:border-primary/30 transition-all cursor-pointer group">
-                <div className="flex items-start justify-between">
-                  <Badge variant="outline" className="text-xs">{call.category}</Badge>
-                  <span className="text-xs text-muted-foreground">{call.duration}</span>
+          {CALL_LIBRARY.length === 0 ? (
+            <div className="p-12 text-center space-y-3 border border-dashed border-border rounded-xl">
+              <Headphones className="h-10 w-10 text-muted-foreground mx-auto opacity-50" />
+              <h3 className="text-lg font-semibold" style={{ fontFamily: "Syne" }}>No recorded calls yet</h3>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                Training calls and sales replays will show up here once uploaded. Check with your manager to get access.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredCalls.map(call => (
+                <motion.div key={call.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card rounded-xl p-4 space-y-3 hover:border-primary/30 transition-all cursor-pointer group">
+                  <div className="flex items-start justify-between">
+                    <Badge variant="outline" className="text-xs">{call.category}</Badge>
+                    <span className="text-xs text-muted-foreground">{call.duration}</span>
+                  </div>
+                  <h3 className="font-bold text-sm text-foreground group-hover:text-primary transition-colors" style={{ fontFamily: "Syne" }}>{call.title}</h3>
+                  <p className="text-xs text-muted-foreground line-clamp-2">{call.description}</p>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>{call.speaker}</span>
+                    <span>{new Date(call.date).toLocaleDateString()}</span>
+                  </div>
+                </motion.div>
+              ))}
+              {filteredCalls.length === 0 && (
+                <div className="col-span-full text-center py-12 text-muted-foreground">
+                  <Headphones className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p>No calls found matching your search.</p>
                 </div>
-                <h3 className="font-bold text-sm text-foreground group-hover:text-primary transition-colors" style={{ fontFamily: "Syne" }}>{call.title}</h3>
-                <p className="text-xs text-muted-foreground line-clamp-2">{call.description}</p>
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{call.speaker}</span>
-                  <span>{new Date(call.date).toLocaleDateString()}</span>
-                </div>
-              </motion.div>
-            ))}
-            {filteredCalls.length === 0 && (
-              <div className="col-span-full text-center py-12 text-muted-foreground">
-                <Headphones className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p>No calls found matching your search.</p>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>

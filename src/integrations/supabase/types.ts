@@ -5571,16 +5571,19 @@ export type Database = {
       }
       system_settings: {
         Row: {
+          created_at: string
           key: string
           updated_at: string
           value: string
         }
         Insert: {
+          created_at?: string
           key: string
           updated_at?: string
           value: string
         }
         Update: {
+          created_at?: string
           key?: string
           updated_at?: string
           value?: string

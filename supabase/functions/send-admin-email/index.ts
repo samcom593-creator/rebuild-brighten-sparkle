@@ -1,6 +1,7 @@
 // Generic admin email sender — accepts { to, subject, html } and sends
 // via Resend. Restricted to the admin principal (anyone with admin role)
 // so it can't be abused as a spam relay.
+// Deploy trigger: commit ab299ce
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";

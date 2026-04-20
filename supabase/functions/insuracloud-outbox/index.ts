@@ -220,6 +220,23 @@ async function sweepUnsynced(): Promise<{ processed: number; succeeded: number; 
     if (r.ok) succeeded++; else failed++;
   }
 
+  // Session keepalive: InsuraCloud's connect.sid rolls on every request.
+  // If no deals synced this tick, ping csrf-token for each stored cookie so
+  // the session doesn't quietly expire after 7 days of no-new-deals.
+  if (ids.length === 0) {
+    const { data: agents } = await supabase
+      .from("agents")
+      .select("insuracloud_api_token")
+      .not("insuracloud_api_token", "is", null);
+    for (const a of agents ?? []) {
+      const tok = (a as any).insuracloud_api_token as string;
+      if (!tok || tok.startsWith("al_")) continue;
+      fetch(`${INSURACLOUD_BASE}/api/csrf-token`, {
+        headers: { Cookie: `connect.sid=${tok}` },
+      }).catch(() => {});
+    }
+  }
+
   return { processed: ids.length, succeeded, failed };
 }
 

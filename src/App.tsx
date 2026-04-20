@@ -43,7 +43,7 @@ const DashboardCommandCenter = lazy(() => import("./pages/DashboardCommandCenter
 const ScheduleCall = lazy(() => import("./pages/ScheduleCall"));
 const Settings = lazy(() => import("./pages/Settings"));
 const DeletedLeadsVault = lazy(() => import("./pages/DeletedLeadsVault"));
-const TeamDirectory = lazy(() => import("./pages/TeamDirectory"));
+
 const PendingApproval = lazy(() => import("./pages/PendingApproval"));
 const AgentPortal = lazy(() => import("./pages/AgentPortal"));
 const OnboardingCourse = lazy(() => import("./pages/OnboardingCourse"));
@@ -154,7 +154,7 @@ const App = () => (
                     <Route path="/dashboard/accounts" element={<ProtectedRoute requireAdmin><DashboardAccounts /></ProtectedRoute>} />
                     <Route path="/dashboard/settings" element={<Settings />} />
                     <Route path="/dashboard/settings/deleted-leads" element={<ProtectedRoute requireAdmin><DeletedLeadsVault /></ProtectedRoute>} />
-                    <Route path="/dashboard/team" element={<TeamDirectory />} />
+                    <Route path="/dashboard/team" element={<Navigate to="/dashboard/hierarchy" replace />} />
                     <Route path="/dashboard/crm" element={<DashboardCRM />} />
                     <Route path="/dashboard/aged-leads" element={<DashboardAgedLeads />} />
                     <Route path="/dashboard/command" element={<ProtectedRoute requireAdmin><DashboardCommandCenter /></ProtectedRoute>} />
@@ -176,7 +176,7 @@ const App = () => (
                        <Route path="/dashboard/inbox" element={<ProtectedRoute requireAdmin><InboxPage /></ProtectedRoute>} />
                        <Route path="/dashboard/automation" element={<ProtectedRoute requireAdmin><AutomationHub /></ProtectedRoute>} />
                        <Route path="/dashboard/automation-health" element={<ProtectedRoute requireAdmin><AutomationHealth /></ProtectedRoute>} />
-                        <Route path="/dashboard/hierarchy" element={<ProtectedRoute requireAdmin><TeamHierarchy /></ProtectedRoute>} />
+                        <Route path="/dashboard/hierarchy" element={<ProtectedRoute><TeamHierarchy /></ProtectedRoute>} />
                         <Route path="/dashboard/pipeline-simple" element={<AgentPipelineSimple />} />
                          <Route path="/dashboard/instagram-automation" element={<ProtectedRoute requireAdmin><InstagramAutomation /></ProtectedRoute>} />
                           <Route path="/dashboard/content" element={<ContentLibrary />} />

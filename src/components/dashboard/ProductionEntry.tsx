@@ -299,7 +299,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
       if (formData.deals_closed > 0) {
         setTimeout(async () => {
           try {
-            console.log("🔔 Triggering batched notifications for", selectedAgentName);
+            // console.log("🔔 Triggering batched notifications for", selectedAgentName);
             
             // Batch notifications (deal alert removed - now sent as daily leaderboard at 9 PM)
             await Promise.allSettled([
@@ -325,7 +325,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
               }),
             ]);
             
-            console.log("✅ All notifications sent");
+            // console.log("✅ All notifications sent");
           } catch (notifyError) {
             console.error("Failed to send notifications:", notifyError);
           }
@@ -338,7 +338,7 @@ export function ProductionEntry({ agentId, existingData, onSaved }: ProductionEn
         setTimeout(async () => {
           try {
             const milestoneType = alpAmount >= 5000 ? "single_day" : "single_day_bronze";
-            console.log(`🏆 Triggering ${milestoneType} plaque for ${selectedAgentName}: $${alpAmount.toLocaleString()}`);
+            // console.log(`🏆 Triggering ${milestoneType} plaque for ${selectedAgentName}: $${alpAmount.toLocaleString()}`);
             
             await supabase.functions.invoke("send-plaque-recognition", {
               body: {

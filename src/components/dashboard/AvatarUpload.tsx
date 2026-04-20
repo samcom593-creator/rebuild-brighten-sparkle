@@ -70,7 +70,7 @@ export function AvatarUpload({ userId, currentAvatarUrl, fullName, onAvatarChang
         try {
           const oldPath = currentAvatarUrl.split("/avatars/")[1];
           if (oldPath) await supabase.storage.from("avatars").remove([oldPath]);
-        } catch (err) { console.log("Could not delete old avatar:", err); }
+        } catch (err) { // console.log("Could not delete old avatar:", err); }
       }
 
       const { error: uploadError } = await supabase.storage

@@ -154,7 +154,7 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
           });
           if (fallbackRes.error) throw fallbackRes.error;
           if (fallbackRes.data?.error) throw new Error(fallbackRes.data.error);
-          console.log("✅ Saved via edge function fallback");
+          // console.log("✅ Saved via edge function fallback");
         } catch (fallbackErr: any) {
           console.error("Edge function fallback also failed:", fallbackErr);
           toast.error("Failed to save numbers. Please try again or contact your manager.");
@@ -209,7 +209,7 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
       if (formData.deals_closed > 0) {
         setTimeout(async () => {
           try {
-            console.log("🔔 Triggering batched notifications for", agentName);
+            // console.log("🔔 Triggering batched notifications for", agentName);
             
             // Batch notifications (deal alert removed - now sent as daily leaderboard at 9 PM)
             await Promise.allSettled([
@@ -250,7 +250,7 @@ export function CompactProductionEntry({ agentId, agentName, onSaved }: CompactP
               }),
             ]);
             
-            console.log("✅ All notifications sent");
+            // console.log("✅ All notifications sent");
           } catch (notifyError) {
             console.error("Failed to send notifications:", notifyError);
           }

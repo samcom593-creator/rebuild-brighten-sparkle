@@ -107,7 +107,7 @@ export function IncomeGoalTracker({ agentId }: IncomeGoalTrackerProps) {
 
     setSaving(true);
     try {
-      console.log("[IncomeGoalTracker] Saving goal:", { agentId, month: currentMonth, income, comp });
+      // console.log("[IncomeGoalTracker] Saving goal:", { agentId, month: currentMonth, income, comp });
       
       const { error } = await supabase
         .from("agent_goals")

@@ -1,5 +1,8 @@
 project_id = "msydzhzolwourcdmqxvn"
 
+[functions.ics-feed]
+verify_jwt = false
+
 [functions.add-agent]
 verify_jwt = false
 

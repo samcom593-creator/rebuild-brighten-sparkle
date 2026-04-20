@@ -29,6 +29,8 @@ const supabase = createClient(
   { auth: { persistSession: false } },
 );
 
+// admin-protection: d8f4af0 — redeploy trigger
+
 type AgentRow = {
   id: string;
   created_at: string;

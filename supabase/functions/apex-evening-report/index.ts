@@ -1,7 +1,7 @@
-// 9pm CST end-of-day performance report.
+// 9pm CST evening report (v2 — five lines, no tables).
 //
-// Pulls today's production, recruiting, content, automation-health metrics
-// and emails a snapshot. SMS gets a one-line headline.
+// Pulls today's core metrics + vs yesterday, emits one tight summary.
+// Snapshots the headline numbers for week-over-week.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
@@ -10,8 +10,6 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
-// deploy trigger: b985c2e
 
 const SAM_EMAIL = "info@kingofsales.net";
 const SAM_PHONE = "4697676068";
@@ -27,7 +25,7 @@ function ymd(d = new Date()) { return d.toISOString().slice(0, 10); }
 function fmt$(n: number): string {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
   if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}k`;
-  return `$${n.toFixed(0)}`;
+  return `$${Math.round(n)}`;
 }
 
 Deno.serve(async (req) => {
@@ -35,144 +33,79 @@ Deno.serve(async (req) => {
 
   const today = ymd();
   const yesterday = ymd(new Date(Date.now() - 86_400_000));
-  const todayStartISO = today + "T00:00:00Z";
+  const todayStart = today + "T00:00:00Z";
 
-  // Production today (daily_production)
-  const { data: prodRows } = await supabase
-    .from("daily_production")
-    .select("aop, deals_closed, presentations, hours_called")
-    .eq("production_date", today);
-  const todayAOP = (prodRows ?? []).reduce((s: number, r: any) => s + Number(r.aop ?? 0), 0);
-  const todayDeals = (prodRows ?? []).reduce((s: number, r: any) => s + Number(r.deals_closed ?? 0), 0);
-  const todayPres = (prodRows ?? []).reduce((s: number, r: any) => s + Number(r.presentations ?? 0), 0);
+  // Today's numbers
+  const [prodT, prodY, appsT, contactedT, termsT, dmInT, failT] = await Promise.all([
+    supabase.from("daily_production").select("aop, deals_closed").eq("production_date", today),
+    supabase.from("daily_production").select("aop").eq("production_date", yesterday),
+    supabase.from("applications").select("id", { count: "exact", head: true }).gte("created_at", todayStart),
+    supabase.from("applications").select("id", { count: "exact", head: true }).gte("last_contacted_at", todayStart),
+    supabase.from("agents").select("id", { count: "exact", head: true }).eq("status", "terminated").gte("updated_at", todayStart),
+    supabase.from("inbox_messages").select("id", { count: "exact", head: true }).eq("direction", "inbound").gte("received_at", todayStart),
+    supabase.from("automation_run_log").select("id", { count: "exact", head: true }).eq("status", "failed").gte("triggered_at", todayStart),
+  ]);
 
-  // Applications today
-  const { count: appsToday } = await supabase
-    .from("applications")
-    .select("id", { count: "exact", head: true })
-    .gte("created_at", todayStartISO);
+  const aopToday = (prodT.data ?? []).reduce((s: number, r: any) => s + Number(r.aop ?? 0), 0);
+  const aopYest  = (prodY.data ?? []).reduce((s: number, r: any) => s + Number(r.aop ?? 0), 0);
+  const dealsToday = (prodT.data ?? []).reduce((s: number, r: any) => s + Number(r.deals_closed ?? 0), 0);
+  const delta = aopYest > 0 ? ((aopToday - aopYest) / aopYest) * 100 : (aopToday > 0 ? 100 : 0);
+  const arrow = aopToday > aopYest ? "▲" : aopToday < aopYest ? "▼" : "=";
 
-  // Contacted today
-  const { count: contactedToday } = await supabase
-    .from("applications")
-    .select("id", { count: "exact", head: true })
-    .gte("last_contacted_at", todayStartISO);
+  // Build 5-line summary
+  const lines: Array<{ icon: string; text: string }> = [];
+  lines.push({
+    icon: aopToday >= aopYest ? "✅" : "❌",
+    text: `${fmt$(aopToday)} team ALP · ${dealsToday} deals · ${arrow}${Math.abs(delta).toFixed(0)}% vs yesterday`,
+  });
+  lines.push({
+    icon: (appsT.count ?? 0) > 0 ? "✅" : "⚠️",
+    text: `${appsT.count ?? 0} new applications · ${contactedT.count ?? 0} contacted today`,
+  });
+  if ((termsT.count ?? 0) > 0) lines.push({ icon: "🧹", text: `${termsT.count} agent${termsT.count === 1 ? "" : "s"} terminated (auto-cleanup)` });
+  if ((dmInT.count ?? 0) > 0) lines.push({ icon: "📥", text: `${dmInT.count} DM${dmInT.count === 1 ? "" : "s"} received` });
+  if ((failT.count ?? 0) > 0) lines.push({ icon: "🔴", text: `${failT.count} automation failure${failT.count === 1 ? "" : "s"} — check automation-health` });
 
-  // Closed apps today
-  const { count: noPickupToday } = await supabase
-    .from("applications")
-    .select("id", { count: "exact", head: true })
-    .eq("status", "no_pickup")
-    .gte("updated_at", todayStartISO);
-  const { count: rejectedToday } = await supabase
-    .from("applications")
-    .select("id", { count: "exact", head: true })
-    .eq("status", "rejected")
-    .gte("updated_at", todayStartISO);
+  // Tomorrow prep — 1-2 prescriptive items
+  const prep: string[] = [];
+  if ((appsT.count ?? 0) === 0) prep.push("Post content tomorrow morning — top of funnel was empty.");
+  if (aopToday < 10_000) prep.push("Schedule 3-5 recruiting calls by 10am.");
+  if ((failT.count ?? 0) > 0) prep.push("Skim automation_run_log for root cause.");
 
-  // Terminations today
-  const { count: termsToday } = await supabase
-    .from("agents")
-    .select("id", { count: "exact", head: true })
-    .eq("status", "terminated")
-    .gte("updated_at", todayStartISO);
-
-  // Inbox activity
-  const { count: dmInbound } = await supabase
-    .from("inbox_messages")
-    .select("id", { count: "exact", head: true })
-    .eq("direction", "inbound")
-    .gte("received_at", todayStartISO);
-  const { count: dmAutoReplied } = await supabase
-    .from("inbox_messages")
-    .select("id", { count: "exact", head: true })
-    .eq("direction", "outbound")
-    .eq("auto_replied", true)
-    .gte("received_at", todayStartISO);
-
-  // Automation failures
-  const { count: autoFailures } = await supabase
-    .from("automation_run_log")
-    .select("id", { count: "exact", head: true })
-    .eq("status", "failed")
-    .gte("triggered_at", todayStartISO);
-
-  // Yesterday AOP for delta
-  const { data: yProd } = await supabase
-    .from("daily_production")
-    .select("aop")
-    .eq("production_date", yesterday);
-  const yAOP = (yProd ?? []).reduce((s: number, r: any) => s + Number(r.aop ?? 0), 0);
-  const delta = yAOP > 0 ? ((todayAOP - yAOP) / yAOP) * 100 : 0;
-  const arrow = todayAOP > yAOP ? "▲" : todayAOP < yAOP ? "▼" : "=";
-
-  const wins: string[] = [];
-  const losses: string[] = [];
-  if (todayAOP >= yAOP) wins.push(`Production ${fmt$(todayAOP)} ${arrow} vs yesterday ${fmt$(yAOP)} (${delta.toFixed(1)}%)`);
-  else losses.push(`Production ${fmt$(todayAOP)} ${arrow} vs yesterday ${fmt$(yAOP)} (${delta.toFixed(1)}%)`);
-  if ((appsToday ?? 0) > 0) wins.push(`${appsToday} new applications`);
-  else losses.push(`0 new applications — top of funnel quiet`);
-  if ((contactedToday ?? 0) > 0) wins.push(`${contactedToday} applicants contacted`);
-  if ((termsToday ?? 0) > 0) wins.push(`${termsToday} zombie agents cleaned`);
-  if ((autoFailures ?? 0) > 0) losses.push(`${autoFailures} automation failures today`);
-
-  const tomorrowPrep = [
-    (appsToday ?? 0) === 0 ? "Post content — 0 apps today means empty top-of-funnel." : null,
-    (todayAOP < 10000) ? "Schedule 3-5 recruiting calls by 10am." : null,
-    (autoFailures ?? 0) > 0 ? "Check automation-health for failure modes." : null,
-  ].filter(Boolean) as string[];
-
-  const html = `
-<div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:640px;margin:0 auto;padding:24px;color:#0f172a">
-  <h1 style="margin:0 0 8px">🌙 End-of-day report — ${today}</h1>
-  <p style="color:#64748b;margin:0 0 20px">${fmt$(todayAOP)} team ALP · ${todayDeals} deals · ${todayPres} presentations</p>
-
-  <h2 style="color:#16a34a;font-size:16px">Wins</h2>
-  <ul>${wins.map(w => `<li>${w}</li>`).join("") || "<li style='color:#64748b'>Quiet day.</li>"}</ul>
-
-  <h2 style="color:#dc2626;font-size:16px">Losses</h2>
-  <ul>${losses.map(l => `<li>${l}</li>`).join("") || "<li style='color:#64748b'>None.</li>"}</ul>
-
-  <h2 style="color:#0284c7;font-size:16px">Tomorrow prep</h2>
-  <ul>${tomorrowPrep.map(t => `<li>${t}</li>`).join("") || "<li style='color:#64748b'>Standard cadence.</li>"}</ul>
-
-  <h2 style="font-size:14px;color:#334155;margin-top:24px">By-numbers</h2>
-  <table style="width:100%;border-collapse:collapse;font-size:13px">
-    <tr><td style="border-bottom:1px solid #e5e7eb;padding:4px">Applications new today</td><td style="text-align:right;border-bottom:1px solid #e5e7eb">${appsToday ?? 0}</td></tr>
-    <tr><td style="border-bottom:1px solid #e5e7eb;padding:4px">Applications contacted today</td><td style="text-align:right;border-bottom:1px solid #e5e7eb">${contactedToday ?? 0}</td></tr>
-    <tr><td style="border-bottom:1px solid #e5e7eb;padding:4px">Applications auto-closed today</td><td style="text-align:right;border-bottom:1px solid #e5e7eb">${(noPickupToday ?? 0) + (rejectedToday ?? 0)}</td></tr>
-    <tr><td style="border-bottom:1px solid #e5e7eb;padding:4px">Agents terminated today</td><td style="text-align:right;border-bottom:1px solid #e5e7eb">${termsToday ?? 0}</td></tr>
-    <tr><td style="border-bottom:1px solid #e5e7eb;padding:4px">DMs received</td><td style="text-align:right;border-bottom:1px solid #e5e7eb">${dmInbound ?? 0}</td></tr>
-    <tr><td style="border-bottom:1px solid #e5e7eb;padding:4px">Auto-replies sent</td><td style="text-align:right;border-bottom:1px solid #e5e7eb">${dmAutoReplied ?? 0}</td></tr>
-  </table>
+  const html = `<div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#0f172a;line-height:1.5">
+<h2 style="margin:0 0 4px">🌙 ${today} · ${fmt$(aopToday)} ALP</h2>
+<p style="color:#64748b;margin:0 0 16px;font-size:14px">End of day.</p>
+${lines.map(l => `<div style="margin:8px 0"><span style="margin-right:8px">${l.icon}</span>${l.text}</div>`).join("")}
+${prep.length ? `<div style="margin-top:20px;padding:12px;background:#f9fafb;border-radius:4px"><div style="font-size:12px;color:#64748b;margin-bottom:4px">TOMORROW</div>${prep.map(p => `<div style="margin:4px 0">• ${p}</div>`).join("")}</div>` : ""}
 </div>`;
 
-  const sms = `APEX 9pm: ${fmt$(todayAOP)} ALP · ${todayDeals} deals · ${appsToday ?? 0} apps · ${contactedToday ?? 0} contacted · ${autoFailures ?? 0} fails`.slice(0, 160);
+  const sms = `APEX 9pm: ${fmt$(aopToday)}·${dealsToday}d·${appsT.count ?? 0}apps·${contactedT.count ?? 0}ctc${(failT.count ?? 0) > 0 ? `·${failT.count}fails` : ""}`.slice(0, 90);
 
   try {
     await resend.emails.send({
-      from: "APEX Engine <sam@apex-financial.org>",
+      from: "APEX <sam@apex-financial.org>",
       to: SAM_EMAIL,
-      subject: `APEX EOD · ${fmt$(todayAOP)} · ${todayDeals} deals · ${appsToday ?? 0} apps`,
+      subject: `🌙 ${today} · ${fmt$(aopToday)} · ${dealsToday} deals`,
       html,
     });
-  } catch (e: any) { console.error("[evening-report] email", e); }
+  } catch (e) { console.error("[evening] email", e); }
   try {
     await supabase.functions.invoke("send-sms-auto-detect", { body: { phone: SAM_PHONE, message: sms } });
-  } catch (e: any) { console.error("[evening-report] sms", e); }
+  } catch (e) { console.error("[evening] sms", e); }
 
-  // Snapshot today's top metrics for week-over-week
-  const snap = async (k: string, v: number) => supabase.from("bot_metrics_snapshots").upsert({
+  // Snapshot for weekly
+  const snap = (k: string, v: number) => supabase.from("bot_metrics_snapshots").upsert({
     snapshot_date: today, metric_key: k, metric_value: v,
   }, { onConflict: "snapshot_date,metric_key" });
-  await snap("daily.aop", todayAOP);
-  await snap("daily.deals", todayDeals);
-  await snap("daily.apps", appsToday ?? 0);
-  await snap("daily.contacted", contactedToday ?? 0);
-  await snap("daily.dm_inbound", dmInbound ?? 0);
+  await snap("daily.aop", aopToday);
+  await snap("daily.deals", dealsToday);
+  await snap("daily.apps", appsT.count ?? 0);
+  await snap("daily.contacted", contactedT.count ?? 0);
+  await snap("daily.dm_inbound", dmInT.count ?? 0);
 
   return new Response(JSON.stringify({
-    ok: true, today_aop: todayAOP, today_deals: todayDeals, apps_today: appsToday ?? 0,
-    contacted_today: contactedToday ?? 0, automation_failures: autoFailures ?? 0,
+    ok: true, aop: aopToday, deals: dealsToday,
+    apps: appsT.count ?? 0, contacted: contactedT.count ?? 0,
+    failures: failT.count ?? 0,
   }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 });

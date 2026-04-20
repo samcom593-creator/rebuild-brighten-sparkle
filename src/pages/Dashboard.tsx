@@ -52,6 +52,8 @@ import { TeamTasksWidget } from "@/components/dashboard/TeamTasksWidget";
 import { AwardFeedLive } from "@/components/dashboard/AwardFeedLive";
 import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
 import { DashboardInsightCards } from "@/components/dashboard/DashboardInsightCards";
+import { AgentPersonalDashboard } from "@/components/dashboard/AgentPersonalDashboard";
+import { useMyDownline } from "@/hooks/useMyDownline";
 
 import { StalledAgentsAlert } from "@/components/dashboard/StalledAgentsAlert";
 import { ReferralTrackingCard } from "@/components/dashboard/ReferralTrackingCard";
@@ -287,29 +289,41 @@ export default function Dashboard() {
 
   const [myDirectsOnly, setMyDirectsOnly] = useState(false);
 
-  // Fetch top-row real metrics
+  // Hierarchy scope: managers see only their downline
+  const { data: myDownlineIds = [] } = useMyDownline();
+
+  // Fetch top-row real metrics, scoped by viewer
   const { data: topMetrics } = useQuery({
-    queryKey: ["dashboard-top-metrics"],
+    queryKey: ["dashboard-top-metrics", isAdmin ? "agency" : "downline", myDownlineIds.join(",")],
     queryFn: async () => {
       const now = new Date();
+      // Monday-start week
       const weekStart = new Date(now);
-      weekStart.setDate(now.getDate() - now.getDay());
+      const day = now.getDay();
+      const diffToMonday = day === 0 ? -6 : 1 - day;
+      weekStart.setDate(now.getDate() + diffToMonday);
+      weekStart.setHours(0, 0, 0, 0);
       const weekStartStr = weekStart.toISOString().split("T")[0];
 
-      // Active = at least 1 deal in last 30 days
       const thirtyDaysAgo = new Date(now);
       thirtyDaysAgo.setDate(now.getDate() - 30);
       const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split("T")[0];
 
-      const [activeProducersRes, prodRes, appsRes] = await Promise.all([
-        supabase.from("daily_production").select("agent_id").gte("production_date", thirtyDaysAgoStr).gt("deals_closed", 0),
-        supabase.from("daily_production").select("aop, deals_closed, presentations").gte("production_date", weekStartStr),
-        supabase.from("applications").select("id", { count: "exact", head: true }).gte("created_at", weekStart.toISOString()),
-      ]);
+      const shouldScope = !isAdmin && myDownlineIds.length > 0;
 
-      // Count distinct agents with deals in last 30 days
+      let activeQ = supabase.from("daily_production").select("agent_id").gte("production_date", thirtyDaysAgoStr).gt("deals_closed", 0);
+      let prodQ = supabase.from("daily_production").select("aop, deals_closed, presentations").gte("production_date", weekStartStr);
+      let appsQ = supabase.from("applications").select("id", { count: "exact", head: true }).gte("created_at", weekStart.toISOString());
+
+      if (shouldScope) {
+        activeQ = activeQ.in("agent_id", myDownlineIds);
+        prodQ = prodQ.in("agent_id", myDownlineIds);
+        appsQ = appsQ.or(`assigned_agent_id.in.(${myDownlineIds.join(",")}),hiring_manager_user_id.eq.${user?.id}`);
+      }
+
+      const [activeProducersRes, prodRes, appsRes] = await Promise.all([activeQ, prodQ, appsQ]);
+
       const activeAgentIds = new Set((activeProducersRes.data || []).map((r: any) => r.agent_id));
-
       const weeklyALP = (prodRes.data || []).reduce((s: number, r: any) => s + (Number(r.aop) || 0), 0);
       const totalDeals = (prodRes.data || []).reduce((s: number, r: any) => s + (Number(r.deals_closed) || 0), 0);
       const totalPres = (prodRes.data || []).reduce((s: number, r: any) => s + (Number(r.presentations) || 0), 0);
@@ -320,9 +334,10 @@ export default function Dashboard() {
         weeklyALP,
         appsThisWeek: appsRes.count || 0,
         closeRate: Math.round(closeRate * 10) / 10,
+        scope: shouldScope ? "team" : "agency",
       };
     },
-    enabled: !!user && !authLoading,
+    enabled: !!user && !authLoading && (isAdmin || myDownlineIds.length > 0),
     staleTime: 60000,
   });
 
@@ -421,22 +436,42 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ====== TOP METRIC CARDS (Real Data) ====== */}
+      {/* ====== AGENT-ONLY VIEW ====== */}
+      {showPersonalOnly && (
+        <AgentPersonalDashboard agentId={currentAgentId} />
+      )}
+
+      {/* ====== TOP METRIC CARDS (Admin / Manager) ====== */}
       {(isAdmin || isManager) && topMetrics && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <div onClick={() => setActiveDrilldown("agents")} className="cursor-pointer hover:ring-2 ring-primary/30 rounded-xl transition-all">
-            <StatCard title="Active Agents" value={topMetrics.activeAgents} icon={Users} variant="primary" />
+        <>
+          <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wide">
+            {topMetrics.scope === "team" ? "Your team" : "Full agency"}
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            <div onClick={() => setActiveDrilldown("agents")} className="cursor-pointer hover:ring-2 ring-primary/30 rounded-xl transition-all">
+              <StatCard
+                title={topMetrics.scope === "team" ? "My Team Agents" : "Active Agents"}
+                value={topMetrics.activeAgents}
+                icon={Users}
+                variant="primary"
+              />
+            </div>
+            <div onClick={() => setActiveDrilldown("alp")} className="cursor-pointer hover:ring-2 ring-primary/30 rounded-xl transition-all">
+              <StatCard
+                title={topMetrics.scope === "team" ? "Team Weekly ALP" : "Weekly ALP"}
+                value={`$${topMetrics.weeklyALP.toLocaleString()}`}
+                icon={DollarSign}
+                variant="success"
+              />
+            </div>
+            <div onClick={() => setActiveDrilldown("apps")} className="cursor-pointer hover:ring-2 ring-primary/30 rounded-xl transition-all">
+              <StatCard title="Applications This Week" value={topMetrics.appsThisWeek} icon={UserPlus} variant="default" />
+            </div>
+            <div onClick={() => setActiveDrilldown("closerate")} className="cursor-pointer hover:ring-2 ring-primary/30 rounded-xl transition-all">
+              <StatCard title="Close Rate" value={`${topMetrics.closeRate}%`} icon={Percent} variant="success" />
+            </div>
           </div>
-          <div onClick={() => setActiveDrilldown("alp")} className="cursor-pointer hover:ring-2 ring-primary/30 rounded-xl transition-all">
-            <StatCard title="Weekly ALP" value={`$${topMetrics.weeklyALP.toLocaleString()}`} icon={DollarSign} variant="success" />
-          </div>
-          <div onClick={() => setActiveDrilldown("apps")} className="cursor-pointer hover:ring-2 ring-primary/30 rounded-xl transition-all">
-            <StatCard title="Applications This Week" value={topMetrics.appsThisWeek} icon={UserPlus} variant="default" />
-          </div>
-          <div onClick={() => setActiveDrilldown("closerate")} className="cursor-pointer hover:ring-2 ring-primary/30 rounded-xl transition-all">
-            <StatCard title="Close Rate" value={`${topMetrics.closeRate}%`} icon={Percent} variant="success" />
-          </div>
-        </div>
+        </>
       )}
 
       {/* Stat Card Drilldown */}

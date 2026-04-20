@@ -2178,6 +2178,168 @@ export type Database = {
         }
         Relationships: []
       }
+      bot_alerts: {
+        Row: {
+          action_link: string | null
+          body: string
+          channels: string[]
+          created_at: string
+          event_type: string
+          id: string
+          sent_at: string | null
+          sent_email_id: string | null
+          sent_sms_id: string | null
+          severity: string
+          sms_body: string | null
+          source: string
+          subject: string
+        }
+        Insert: {
+          action_link?: string | null
+          body: string
+          channels?: string[]
+          created_at?: string
+          event_type: string
+          id?: string
+          sent_at?: string | null
+          sent_email_id?: string | null
+          sent_sms_id?: string | null
+          severity?: string
+          sms_body?: string | null
+          source: string
+          subject: string
+        }
+        Update: {
+          action_link?: string | null
+          body?: string
+          channels?: string[]
+          created_at?: string
+          event_type?: string
+          id?: string
+          sent_at?: string | null
+          sent_email_id?: string | null
+          sent_sms_id?: string | null
+          severity?: string
+          sms_body?: string | null
+          source?: string
+          subject?: string
+        }
+        Relationships: []
+      }
+      bot_audits: {
+        Row: {
+          action: string | null
+          action_link: string | null
+          audit_name: string
+          created_at: string
+          detail: Json | null
+          dispatched_at: string | null
+          finding_count: number
+          id: string
+          resolved_at: string | null
+          severity: string
+          sub_bot: string
+          summary: string
+        }
+        Insert: {
+          action?: string | null
+          action_link?: string | null
+          audit_name: string
+          created_at?: string
+          detail?: Json | null
+          dispatched_at?: string | null
+          finding_count?: number
+          id?: string
+          resolved_at?: string | null
+          severity?: string
+          sub_bot: string
+          summary: string
+        }
+        Update: {
+          action?: string | null
+          action_link?: string | null
+          audit_name?: string
+          created_at?: string
+          detail?: Json | null
+          dispatched_at?: string | null
+          finding_count?: number
+          id?: string
+          resolved_at?: string | null
+          severity?: string
+          sub_bot?: string
+          summary?: string
+        }
+        Relationships: []
+      }
+      bot_metrics_snapshots: {
+        Row: {
+          created_at: string
+          details: Json | null
+          id: string
+          metric_key: string
+          metric_value: number
+          snapshot_date: string
+          sub_bot: string | null
+        }
+        Insert: {
+          created_at?: string
+          details?: Json | null
+          id?: string
+          metric_key: string
+          metric_value: number
+          snapshot_date: string
+          sub_bot?: string | null
+        }
+        Update: {
+          created_at?: string
+          details?: Json | null
+          id?: string
+          metric_key?: string
+          metric_value?: number
+          snapshot_date?: string
+          sub_bot?: string | null
+        }
+        Relationships: []
+      }
+      bot_priorities: {
+        Row: {
+          action_link: string | null
+          body: string
+          created_at: string
+          for_date: string
+          id: string
+          metric_key: string | null
+          metric_value: number | null
+          rank: number
+          sub_bot: string | null
+          title: string
+        }
+        Insert: {
+          action_link?: string | null
+          body: string
+          created_at?: string
+          for_date: string
+          id?: string
+          metric_key?: string | null
+          metric_value?: number | null
+          rank: number
+          sub_bot?: string | null
+          title: string
+        }
+        Update: {
+          action_link?: string | null
+          body?: string
+          created_at?: string
+          for_date?: string
+          id?: string
+          metric_key?: string | null
+          metric_value?: number | null
+          rank?: number
+          sub_bot?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
       call_transcripts: {
         Row: {
           agent_id: string | null

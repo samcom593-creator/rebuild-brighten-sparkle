@@ -13,6 +13,7 @@
 //   { dry_run: true }           → returns planned actions, sends nothing
 //   { dry_run: false, limit: N} → run live, up to N agents
 //   no body                      → live full sweep (cron)
+// Deploy trigger: commit 00d3138
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 

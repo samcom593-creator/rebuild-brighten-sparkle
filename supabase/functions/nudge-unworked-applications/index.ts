@@ -14,6 +14,7 @@
 //   4-14 days: applicant email follow-up
 //   15-30 days: flip status='no_pickup' (automation-assigned, manual reviewable)
 //   31+  days: flip status='rejected' with notes='auto-timed-out'
+// Deploy trigger: commit 00d3138
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";

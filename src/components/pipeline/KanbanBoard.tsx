@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   DndContext,
   DragEndEvent,
@@ -16,6 +16,8 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { FOLLOWUP_TIMING } from "@/lib/apexConfig";
 import { PipelineCard, type PipelineCardData } from "./PipelineCard";
+import { Flame, TrendingUp } from "lucide-react";
+import { differenceInHours } from "date-fns";
 
 export type KanbanStage =
   | "new_applicant"
@@ -91,14 +93,11 @@ export const KANBAN_COLUMNS: KanbanColumn[] = [
   },
 ];
 
-/** Determine if a lead is dormant based on last contact */
 function isDormant(app: PipelineCardData): boolean {
   const last = app.last_contacted_at || app.contacted_at || app.created_at;
-  const daysSince = (Date.now() - new Date(last).getTime()) / (1000 * 60 * 60 * 24);
-  return daysSince >= FOLLOWUP_TIMING.dormantDays;
+  return differenceInHours(new Date(), new Date(last)) >= FOLLOWUP_TIMING.dormantDays * 24;
 }
 
-/** Backward-compat: map a stage string to column id */
 export function getColumnForStage(stage: string | null | undefined): string {
   if (!stage) return "applicants";
   if (stage === "licensed") return "licensed";
@@ -108,37 +107,31 @@ export function getColumnForStage(stage: string | null | undefined): string {
   return "needs_outreach";
 }
 
-/** Map any application to its column id (uses dormant detection) */
 export function getColumnForApp(app: PipelineCardData): string {
-  // Dormant check first (except licensed)
   if (app.license_progress === "licensed") return "licensed";
   if (isDormant(app)) return "dormant";
-  
   const stage = app.license_progress;
   if (!stage || stage === "unlicensed") {
-    // New applicant: never contacted + no license progress
     if (!app.contacted_at && !app.last_contacted_at) return "applicants";
     return "needs_outreach";
   }
-  
   for (const col of KANBAN_COLUMNS) {
     if (col.stages.includes(stage)) return col.id;
   }
   return "needs_outreach";
 }
 
-// Map column drop to a canonical target stage
 const COLUMN_TARGET_STAGE: Record<string, KanbanStage> = {
-  applicants: "new_applicant",
+  applicants:    "new_applicant",
   needs_outreach: "unlicensed",
-  course: "course_purchased",
-  test_phase: "test_scheduled",
-  final_steps: "fingerprints_done",
-  licensed: "licensed",
-  dormant: "dormant",
+  course:        "course_purchased",
+  test_phase:    "test_scheduled",
+  final_steps:   "fingerprints_done",
+  licensed:      "licensed",
+  dormant:       "dormant",
 };
 
-// ── Draggable Card Wrapper ──────────────────────────────────────────────────
+// ─── Draggable card wrapper ───────────────────────────────────────────────────
 function DraggableCard({
   app,
   onClick,
@@ -149,20 +142,59 @@ function DraggableCard({
   onSchedule?: (app: PipelineCardData) => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: app.id });
-
   return (
-    <div
-      ref={setNodeRef}
-      {...attributes}
-      {...listeners}
-      className={cn("cursor-grab active:cursor-grabbing")}
-    >
+    <div ref={setNodeRef} {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
       <PipelineCard app={app} onClick={onClick} onSchedule={onSchedule} isDragging={isDragging} />
     </div>
   );
 }
 
-// ── Droppable Column ────────────────────────────────────────────────────────
+// ─── Column header with at-risk count + velocity ─────────────────────────────
+function ColumnHeader({
+  column,
+  apps,
+  isOver,
+}: {
+  column: KanbanColumn;
+  apps: PipelineCardData[];
+  isOver: boolean;
+}) {
+  const atRisk = apps.filter((a) => {
+    const last = a.last_contacted_at || a.contacted_at;
+    return !last || differenceInHours(new Date(), new Date(last)) >= 48;
+  }).length;
+
+  const isLicensedCol = column.id === "licensed";
+  const isDormantCol  = column.id === "dormant";
+
+  return (
+    <div className="flex items-center justify-between px-3 pt-3 pb-2">
+      <div className="flex items-center gap-1.5 min-w-0">
+        <span className="text-sm">{column.emoji}</span>
+        <span className="font-semibold text-xs text-foreground truncate">{column.label}</span>
+      </div>
+      <div className="flex items-center gap-1 shrink-0">
+        {atRisk > 0 && !isLicensedCol && !isDormantCol && (
+          <Badge className="text-[9px] px-1 py-0 h-4 bg-red-500/15 text-red-400 border-red-500/20">
+            <Flame className="h-2.5 w-2.5 mr-0.5" />
+            {atRisk}
+          </Badge>
+        )}
+        <Badge
+          variant="outline"
+          className={cn(
+            "text-[10px] bg-muted border-border text-muted-foreground",
+            isOver && "border-primary/60 text-primary"
+          )}
+        >
+          {apps.length}
+        </Badge>
+      </div>
+    </div>
+  );
+}
+
+// ─── Droppable column ─────────────────────────────────────────────────────────
 function DroppableColumn({
   column,
   apps,
@@ -182,44 +214,43 @@ function DroppableColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex flex-col rounded-xl border-2 transition-colors min-h-[300px]",
+        "flex flex-col rounded-xl border-2 transition-all duration-150 min-h-[300px]",
         column.color,
-        isOver && "border-primary/60 bg-primary/5"
+        isOver && "border-primary/60 bg-primary/5 scale-[1.01]"
       )}
     >
-      <div className="flex items-center justify-between px-3 pt-3 pb-2">
-        <div className="flex items-center gap-2">
-          <span className="text-base">{column.emoji}</span>
-          <span className="font-semibold text-sm text-foreground">{column.label}</span>
-        </div>
-        <Badge variant="outline" className="text-xs bg-muted border-border text-muted-foreground">
-          {apps.length}
-        </Badge>
-      </div>
+      <ColumnHeader column={column} apps={apps} isOver={isOver} />
 
       <div className="flex-1 px-2 pb-3 space-y-2 overflow-y-auto max-h-[75vh]">
-        <AnimatePresence>
-          {apps.length === 0 ? (
-            <div className="flex items-center justify-center h-20 text-xs text-muted-foreground/50 italic">
-              Drop leads here
-            </div>
-          ) : (
-            apps.map((app) => (
-              <DraggableCard
+        {apps.length === 0 ? (
+          <div className={cn(
+            "flex items-center justify-center h-20 text-xs italic transition-colors",
+            isOver ? "text-primary/50" : "text-muted-foreground/40"
+          )}>
+            {isOver ? "Drop here" : "Empty"}
+          </div>
+        ) : (
+          <AnimatePresence initial={false}>
+            {apps.map((app) => (
+              <motion.div
                 key={app.id}
-                app={app}
-                onClick={onCardClick}
-                onSchedule={onSchedule}
-              />
-            ))
-          )}
-        </AnimatePresence>
+                layout
+                initial={{ opacity: 0, y: -8, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+              >
+                <DraggableCard app={app} onClick={onCardClick} onSchedule={onSchedule} />
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        )}
       </div>
     </div>
   );
 }
 
-// ── Main KanbanBoard Component ──────────────────────────────────────────────
+// ─── Main KanbanBoard ─────────────────────────────────────────────────────────
 interface KanbanBoardProps {
   applications: PipelineCardData[];
   onStageChange: (applicationId: string, newStage: KanbanStage) => Promise<void>;
@@ -235,7 +266,7 @@ export function KanbanBoard({
   onScheduleInterview,
   readOnly = false,
 }: KanbanBoardProps) {
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeId, setActiveId]         = useState<string | null>(null);
   const [overColumnId, setOverColumnId] = useState<string | null>(null);
 
   const sensors = useSensors(
@@ -244,73 +275,84 @@ export function KanbanBoard({
 
   const activeApp = activeId ? applications.find((a) => a.id === activeId) : null;
 
-  // Group applications by column
   const columnApps = KANBAN_COLUMNS.reduce<Record<string, PipelineCardData[]>>(
     (acc, col) => {
-      acc[col.id] = applications.filter(
-        (app) => getColumnForApp(app) === col.id
-      );
+      acc[col.id] = applications.filter((app) => getColumnForApp(app) === col.id);
       return acc;
     },
     {}
   );
 
-  const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
-  };
+  // ── Total active (non-dormant, non-licensed) for conversion indicator ───
+  const totalActive  = applications.filter((a) => a.license_status !== "licensed").length;
+  const totalLicensed = applications.filter((a) => a.license_status === "licensed").length;
+  const convRate = totalActive + totalLicensed > 0
+    ? Math.round((totalLicensed / (totalActive + totalLicensed)) * 100)
+    : 0;
 
-  const handleDragOver = (event: DragOverEvent) => {
-    setOverColumnId((event.over?.id as string) || null);
-  };
-
-  const handleDragEnd = async (event: DragEndEvent) => {
+  const handleDragStart = (event: DragStartEvent) => setActiveId(event.active.id as string);
+  const handleDragOver  = (event: DragOverEvent)  => setOverColumnId((event.over?.id as string) || null);
+  const handleDragEnd   = async (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
     setOverColumnId(null);
-
     if (!over || readOnly) return;
-
-    const columnId = over.id as string;
-    const targetStage = COLUMN_TARGET_STAGE[columnId];
+    const targetStage = COLUMN_TARGET_STAGE[over.id as string];
     if (!targetStage) return;
-
     const app = applications.find((a) => a.id === active.id);
     if (!app) return;
-
-    const currentColumnId = getColumnForApp(app);
-    if (currentColumnId === columnId) return;
-
+    if (getColumnForApp(app) === over.id) return;
     await onStageChange(app.id, targetStage);
   };
 
   return (
-    <DndContext
-      sensors={sensors}
-      onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 min-h-[400px]">
-        {KANBAN_COLUMNS.map((col) => (
-          <DroppableColumn
-            key={col.id}
-            column={col}
-            apps={columnApps[col.id] || []}
-            onCardClick={onCardClick}
-            onSchedule={!readOnly ? onScheduleInterview : undefined}
-            isOver={overColumnId === col.id}
-          />
-        ))}
-      </div>
-
-      <DragOverlay>
-        {activeApp && (
-          <div className="bg-card border border-primary/40 rounded-xl p-3 shadow-xl opacity-95 w-52 rotate-1">
-            <p className="font-semibold text-sm">{activeApp.first_name} {activeApp.last_name}</p>
-            <p className="text-xs text-muted-foreground truncate">{activeApp.email}</p>
+    <div>
+      {/* ── Conversion rate bar ─────────────────────────────────────────── */}
+      {applications.length > 0 && (
+        <div className="flex items-center gap-3 mb-4 px-1">
+          <TrendingUp className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <div className="flex-1 h-1.5 bg-muted/40 rounded-full overflow-hidden">
+            <motion.div
+              className="h-full bg-emerald-500 rounded-full"
+              initial={{ width: 0 }}
+              animate={{ width: `${convRate}%` }}
+              transition={{ duration: 0.7, ease: "easeOut" }}
+            />
           </div>
-        )}
-      </DragOverlay>
-    </DndContext>
+          <span className="text-xs text-muted-foreground shrink-0">
+            {convRate}% licensed ({totalLicensed}/{totalActive + totalLicensed})
+          </span>
+        </div>
+      )}
+
+      <DndContext
+        sensors={sensors}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 min-h-[400px]">
+          {KANBAN_COLUMNS.map((col) => (
+            <DroppableColumn
+              key={col.id}
+              column={col}
+              apps={columnApps[col.id] || []}
+              onCardClick={onCardClick}
+              onSchedule={!readOnly ? onScheduleInterview : undefined}
+              isOver={overColumnId === col.id}
+            />
+          ))}
+        </div>
+
+        <DragOverlay>
+          {activeApp && (
+            <div className="bg-card border border-primary/40 rounded-xl p-3 shadow-2xl opacity-95 w-52 rotate-2">
+              <p className="font-semibold text-sm">{activeApp.first_name} {activeApp.last_name}</p>
+              <p className="text-xs text-muted-foreground truncate">{activeApp.email}</p>
+            </div>
+          )}
+        </DragOverlay>
+      </DndContext>
+    </div>
   );
 }

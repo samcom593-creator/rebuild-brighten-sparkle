@@ -1,14 +1,12 @@
-import { useState } from "react";
-import { Phone, Mail, Clock, Eye, Calendar, AlertCircle, CheckCircle, Loader2, GraduationCap, Target, Zap } from "lucide-react";
+import { Phone, Mail, Clock, Eye, Calendar, Target, Zap, Flame, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, differenceInDays, differenceInHours } from "date-fns";
 import { SCORE_THRESHOLDS } from "@/lib/apexConfig";
 import { ApplicationDetailSheet } from "@/components/dashboard/ApplicationDetailSheet";
 import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingButton";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { useState } from "react";
 
 export interface PipelineCardData {
   id: string;
@@ -28,14 +26,53 @@ export interface PipelineCardData {
   last_activity_title?: string | null;
 }
 
+// ─── Stage progression order (0 = start, 8 = done) ───────────────────────────
+const STAGE_ORDER: Record<string, number> = {
+  new_applicant:       0,
+  unlicensed:          1,
+  course_purchased:    2,
+  finished_course:     3,
+  test_scheduled:      4,
+  passed_test:         5,
+  fingerprints_done:   6,
+  waiting_on_license:  7,
+  licensed:            8,
+};
+
+const STAGE_LABELS: Record<string, string> = {
+  unlicensed:          "Unlicensed",
+  course_purchased:    "Course Purchased",
+  finished_course:     "Finished Course",
+  test_scheduled:      "Test Scheduled",
+  passed_test:         "Passed Test",
+  fingerprints_done:   "Fingerprints Done",
+  waiting_on_license:  "Waiting on License",
+  licensed:            "Licensed",
+};
+
+// ─── Next recommended action per stage ───────────────────────────────────────
+const NEXT_ACTION: Record<string, string> = {
+  unlicensed:         "📞 Call & invite to course",
+  course_purchased:   "✅ Check course progress",
+  finished_course:    "📅 Schedule state exam",
+  test_scheduled:     "🎯 Send exam prep tips",
+  passed_test:        "🖐 Submit fingerprints",
+  fingerprints_done:  "📄 Verify license app",
+  waiting_on_license: "⏳ Follow up with state",
+  licensed:           "🚀 Onboard & write first deal",
+};
+
 function getContactBadge(app: PipelineCardData) {
   const last = app.last_contacted_at || app.contacted_at;
   if (!last) {
     return { label: "Never contacted", color: "bg-red-500/20 text-red-400 border-red-500/30 animate-pulse" };
   }
-  const hoursAgo = (Date.now() - new Date(last).getTime()) / (1000 * 60 * 60);
-  if (hoursAgo > 48) {
-    return { label: `${Math.floor(hoursAgo / 24)}d ago`, color: "bg-amber-500/20 text-amber-400 border-amber-500/30" };
+  const hours = differenceInHours(new Date(), new Date(last));
+  if (hours > 48) {
+    return {
+      label: `${Math.floor(hours / 24)}d ago`,
+      color: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+    };
   }
   return {
     label: formatDistanceToNow(new Date(last), { addSuffix: true }),
@@ -46,20 +83,35 @@ function getContactBadge(app: PipelineCardData) {
 function getScoreColor(score: number | null | undefined) {
   if (!score) return "bg-muted text-muted-foreground border-border";
   if (score >= SCORE_THRESHOLDS.medium) return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
-  if (score >= SCORE_THRESHOLDS.low) return "bg-amber-500/20 text-amber-400 border-amber-500/30";
+  if (score >= SCORE_THRESHOLDS.low)    return "bg-amber-500/20 text-amber-400 border-amber-500/30";
   return "bg-red-500/20 text-red-400 border-red-500/30";
 }
 
-const STAGE_LABELS: Record<string, string> = {
-  unlicensed: "Unlicensed",
-  course_purchased: "Course Purchased",
-  finished_course: "Finished Course",
-  test_scheduled: "Test Scheduled",
-  passed_test: "Passed Test",
-  fingerprints_done: "Fingerprints Done",
-  waiting_on_license: "Waiting on License",
-  licensed: "Licensed",
-};
+// ─── Mini stage progress bar (0–8 steps) ─────────────────────────────────────
+function StageProgressBar({ stage }: { stage: string | null | undefined }) {
+  const step  = STAGE_ORDER[stage ?? ""] ?? 0;
+  const total = 8;
+  const pct   = Math.round((step / total) * 100);
+  const isLicensed = stage === "licensed";
+
+  return (
+    <div className="mt-1.5 mb-2">
+      <div className="flex items-center justify-between mb-0.5">
+        <span className="text-[9px] text-muted-foreground/60">Progress</span>
+        <span className="text-[9px] text-muted-foreground/60">{pct}%</span>
+      </div>
+      <div className="h-1 bg-muted/40 rounded-full overflow-hidden">
+        <div
+          className={cn(
+            "h-full rounded-full transition-all duration-500",
+            isLicensed ? "bg-emerald-500" : step >= 5 ? "bg-violet-500" : step >= 3 ? "bg-amber-500" : "bg-primary"
+          )}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
 
 interface PipelineCardProps {
   app: PipelineCardData;
@@ -69,45 +121,72 @@ interface PipelineCardProps {
 }
 
 export function PipelineCard({ app, onClick, onSchedule, isDragging }: PipelineCardProps) {
-  const contactBadge = getContactBadge(app);
-  const [showAppSheet, setShowAppSheet] = useState(false);
+  const contactBadge   = getContactBadge(app);
+  const [sheet, setSheet] = useState(false);
+
+  const last         = app.last_contacted_at || app.contacted_at;
+  const hoursStale   = last ? differenceInHours(new Date(), new Date(last)) : 9999;
+  const daysInStage  = differenceInDays(new Date(), new Date(app.created_at));
+  const isAtRisk     = hoursStale >= 48 && app.license_status !== "licensed";
+  const isHot        = (app.lead_score ?? 0) >= SCORE_THRESHOLDS.medium;
+  const nextAction   = NEXT_ACTION[app.license_progress ?? ""] ?? null;
+  const isLicensed   = app.license_status === "licensed";
 
   return (
     <>
       <div
         className={cn(
-          "bg-card border border-border rounded-xl p-3 shadow-sm hover:shadow-md hover:border-primary/30 transition-all",
-          isDragging && "opacity-40"
+          "bg-card border rounded-xl p-3 shadow-sm transition-all duration-150 group",
+          "hover:shadow-md hover:border-primary/30 hover:-translate-y-0.5",
+          isDragging && "opacity-40 rotate-1",
+          isAtRisk && !isLicensed && "border-red-500/30",
+          isLicensed && "border-emerald-500/30"
         )}
       >
-        {/* Header: name + score */}
-        <div className="flex items-start justify-between gap-2 mb-1.5">
+        {/* ── Header: name + score ──────────────────────────────────────── */}
+        <div className="flex items-start justify-between gap-2 mb-1">
           <p className="font-semibold text-sm text-foreground leading-tight truncate">
             {app.first_name} {app.last_name}
           </p>
-          {app.lead_score != null && (
-            <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0 shrink-0", getScoreColor(app.lead_score))}>
-              <Target className="h-2.5 w-2.5 mr-0.5" />
-              {app.lead_score}
-            </Badge>
-          )}
+          <div className="flex items-center gap-1 shrink-0">
+            {isAtRisk && !isLicensed && (
+              <Flame className="h-3 w-3 text-red-400 animate-pulse" title="At risk — no contact 48h+" />
+            )}
+            {isHot && !isAtRisk && (
+              <Zap className="h-3 w-3 text-amber-400" title="Hot lead" />
+            )}
+            {app.lead_score != null && (
+              <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0", getScoreColor(app.lead_score))}>
+                <Target className="h-2.5 w-2.5 mr-0.5" />
+                {app.lead_score}
+              </Badge>
+            )}
+          </div>
         </div>
 
-        {/* Contact freshness + stage badge */}
-        <div className="flex items-center gap-1.5 flex-wrap mb-2">
+        {/* ── Contact freshness + stage badge ───────────────────────────── */}
+        <div className="flex items-center gap-1.5 flex-wrap mb-1">
           <Badge variant="outline" className={cn("text-[10px]", contactBadge.color)}>
             <Clock className="h-2.5 w-2.5 mr-1" />
             {contactBadge.label}
           </Badge>
-          {app.license_progress && (
+          {app.license_progress && !isLicensed && (
             <Badge variant="outline" className="text-[10px] bg-muted/50 text-muted-foreground border-border">
               {STAGE_LABELS[app.license_progress] || app.license_progress}
             </Badge>
           )}
+          {isLicensed && (
+            <Badge className="text-[10px] bg-emerald-500/20 text-emerald-400 border-emerald-500/30">
+              🏆 Licensed
+            </Badge>
+          )}
         </div>
 
-        {/* Contact info */}
-        <div className="space-y-0.5 text-xs text-muted-foreground mb-2">
+        {/* ── Stage progress bar ────────────────────────────────────────── */}
+        <StageProgressBar stage={app.license_progress} />
+
+        {/* ── Contact info ──────────────────────────────────────────────── */}
+        <div className="space-y-0.5 text-xs text-muted-foreground mb-1.5">
           <div className="flex items-center gap-1.5 truncate">
             <Mail className="h-3 w-3 flex-shrink-0" />
             <span className="truncate">{app.email}</span>
@@ -120,85 +199,72 @@ export function PipelineCard({ app, onClick, onSchedule, isDragging }: PipelineC
           )}
         </div>
 
-        {/* Manager name */}
-        {app.assigned_manager_name && (
-          <div className="text-[10px] text-muted-foreground mb-1.5 truncate">
-            👤 {app.assigned_manager_name}
+        {/* ── Days in pipeline + manager ────────────────────────────────── */}
+        <div className="flex items-center gap-2 mb-1.5">
+          <span className="text-[9px] text-muted-foreground/50 flex items-center gap-0.5">
+            <TrendingUp className="h-2.5 w-2.5" />
+            {daysInStage}d in pipeline
+          </span>
+          {app.assigned_manager_name && (
+            <span className="text-[9px] text-muted-foreground/50 truncate">
+              👤 {app.assigned_manager_name}
+            </span>
+          )}
+        </div>
+
+        {/* ── Next recommended action ───────────────────────────────────── */}
+        {nextAction && !isLicensed && (
+          <div className="flex items-center gap-1 text-[10px] text-blue-400 mb-2 truncate">
+            <span>{nextAction}</span>
           </div>
         )}
 
-        {/* Next action */}
-        {app.next_action_type && (
-          <div className="flex items-center gap-1 text-[10px] text-blue-400 mb-1.5">
-            <Zap className="h-2.5 w-2.5" />
-            <span className="truncate">{app.next_action_type}</span>
-          </div>
-        )}
-
-        {/* Last activity */}
+        {/* ── Last activity ─────────────────────────────────────────────── */}
         {app.last_activity_title && (
-          <div className="text-[10px] text-muted-foreground/70 truncate mb-2 italic">
+          <div className="text-[9px] text-muted-foreground/50 truncate mb-2 italic">
             {app.last_activity_title}
           </div>
         )}
 
-        {/* Actions — standardised h-8 w-8 touch targets */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 text-xs flex-1 min-w-[48px] text-muted-foreground hover:text-foreground"
+        {/* ── Actions ───────────────────────────────────────────────────── */}
+        <div className="flex items-center gap-1 flex-wrap">
+          <Button variant="ghost" size="sm"
+            className="h-7 text-[11px] flex-1 min-w-[40px] text-muted-foreground hover:text-foreground"
             onClick={(e) => { e.stopPropagation(); onClick(app); }}
           >
             View
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-primary hover:text-primary/80 hover:bg-primary/10"
-            onClick={(e) => { e.stopPropagation(); setShowAppSheet(true); }}
-            title="View Application"
+          <Button variant="ghost" size="icon"
+            className="h-7 w-7 text-primary hover:text-primary/80 hover:bg-primary/10"
+            onClick={(e) => { e.stopPropagation(); setSheet(true); }}
+            title="Application Detail"
           >
-            <Eye className="h-4 w-4" />
+            <Eye className="h-3.5 w-3.5" />
           </Button>
           {onSchedule && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+            <Button variant="ghost" size="icon"
+              className="h-7 w-7 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
               onClick={(e) => { e.stopPropagation(); onSchedule(app); }}
               title="Schedule Interview"
             >
-              <Calendar className="h-4 w-4" />
+              <Calendar className="h-3.5 w-3.5" />
             </Button>
           )}
           {app.phone && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
-              asChild
-              onClick={(e) => e.stopPropagation()}
+            <Button variant="ghost" size="icon"
+              className="h-7 w-7 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+              asChild onClick={(e) => e.stopPropagation()}
             >
-              <a href={`tel:${app.phone}`}>
-                <Phone className="h-4 w-4" />
-              </a>
+              <a href={`tel:${app.phone}`}><Phone className="h-3.5 w-3.5" /></a>
             </Button>
           )}
-          {/* Email button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-sky-400 hover:text-sky-300 hover:bg-sky-500/10"
-            asChild
-            onClick={(e) => e.stopPropagation()}
+          <Button variant="ghost" size="icon"
+            className="h-7 w-7 text-sky-400 hover:text-sky-300 hover:bg-sky-500/10"
+            asChild onClick={(e) => e.stopPropagation()}
           >
-            <a href={`mailto:${app.email}`}>
-              <Mail className="h-4 w-4" />
-            </a>
+            <a href={`mailto:${app.email}`}><Mail className="h-3.5 w-3.5" /></a>
           </Button>
-          {/* Send coursework / licensing button */}
-          {app.license_status !== "licensed" && (
+          {!isLicensed && (
             <div onClick={(e) => e.stopPropagation()}>
               <ResendLicensingButton
                 recipientEmail={app.email}
@@ -210,11 +276,7 @@ export function PipelineCard({ app, onClick, onSchedule, isDragging }: PipelineC
         </div>
       </div>
 
-      <ApplicationDetailSheet
-        open={showAppSheet}
-        onOpenChange={setShowAppSheet}
-        applicationId={app.id}
-      />
+      <ApplicationDetailSheet open={sheet} onOpenChange={setSheet} applicationId={app.id} />
     </>
   );
 }

@@ -241,10 +241,11 @@ async function auditContent(): Promise<AuditFinding[]> {
 async function auditSeminar(): Promise<AuditFinding[]> {
   const findings: AuditFinding[] = [];
 
+  // seminar_registrations columns: attended (bool), seminar_date, registered_at, license_status
   const { data: regs, count: regCount } = await supabase
     .from("seminar_registrations")
-    .select("id, status, created_at", { count: "exact" })
-    .gte("created_at", daysAgoISO(14));
+    .select("id, attended, seminar_date, registered_at, license_status", { count: "exact" })
+    .gte("registered_at", daysAgoISO(14));
 
   const total = regCount ?? 0;
   if (total === 0) {
@@ -258,14 +259,26 @@ async function auditSeminar(): Promise<AuditFinding[]> {
     return findings;
   }
 
-  const attended = (regs ?? []).filter((r: any) => r.status === "attended").length;
-  const noshow = (regs ?? []).filter((r: any) => r.status === "no_show").length;
-  const attendRate = total > 0 ? attended / total : 0;
+  // Only count seminars that have already happened
+  const now = Date.now();
+  const past = (regs ?? []).filter((r: any) => r.seminar_date && new Date(r.seminar_date).getTime() < now);
+  const attended = past.filter((r: any) => r.attended === true).length;
+  const pastTotal = past.length;
+  if (pastTotal === 0) {
+    findings.push({
+      audit_name: "seminar_attendance_14d",
+      severity: "info",
+      finding_count: total,
+      summary: `${total} seminar registration${total === 1 ? "" : "s"} in last 14d (none past yet).`,
+    });
+    return findings;
+  }
+  const attendRate = attended / pastTotal;
   findings.push({
     audit_name: "seminar_attendance_14d",
     severity: attendRate < 0.4 ? "warn" : "info",
     finding_count: Math.round(attendRate * 100),
-    summary: `${attended}/${total} seminar registrants attended last 14d (${Math.round(attendRate * 100)}% attendance). No-shows: ${noshow}.`,
+    summary: `${attended}/${pastTotal} past-seminar registrants showed up (${Math.round(attendRate * 100)}% attendance). ${total - pastTotal} upcoming.`,
     action: attendRate < 0.4 ? "Tighten reminder sequence (day-of SMS, 1h before)." : undefined,
   });
 
@@ -278,23 +291,42 @@ async function auditSeminar(): Promise<AuditFinding[]> {
 async function auditOnboarding(): Promise<AuditFinding[]> {
   const findings: AuditFinding[] = [];
 
+  // getting_started_progress uses per-milestone boolean columns + current_stage.
+  // Measure completion of the last step: closed_first_deal.
   const { data: progress, count } = await supabase
     .from("getting_started_progress")
-    .select("user_id, step_completed, all_steps_completed_at", { count: "exact" })
+    .select("agent_id, watched_welcome_video, signed_ica, received_license, closed_first_deal, current_stage, last_activity_at", { count: "exact" })
     .limit(500);
 
   const total = count ?? 0;
-  const fullyDone = (progress ?? []).filter((p: any) => p.all_steps_completed_at).length;
+  const firstDealDone = (progress ?? []).filter((p: any) => p.closed_first_deal).length;
   if (total > 0) {
-    const pct = Math.round((fullyDone / total) * 100);
+    const pct = Math.round((firstDealDone / total) * 100);
     findings.push({
-      audit_name: "getting_started_completion",
+      audit_name: "first_deal_completion",
       severity: pct < 30 ? "warn" : "info",
       finding_count: pct,
-      summary: `${fullyDone}/${total} agents completed all Getting Started steps (${pct}%).`,
-      action: pct < 30 ? "Check which step has highest drop-off; consider shortening or removing it." : undefined,
+      summary: `${firstDealDone}/${total} agents have closed their first deal (${pct}%).`,
+      action: pct < 30 ? "Heavy drop-off before first deal — check training + first-call support." : undefined,
       action_link: `${APP_BASE}/dashboard-admin?tab=getting-started`,
     });
+
+    // Largest stage bucket (where people stall)
+    const stageCounts: Record<string, number> = {};
+    for (const p of progress ?? []) {
+      const s = (p as any).current_stage || "unknown";
+      stageCounts[s] = (stageCounts[s] ?? 0) + 1;
+    }
+    const top = Object.entries(stageCounts).sort((a, b) => b[1] - a[1])[0];
+    if (top) {
+      findings.push({
+        audit_name: "onboarding_stage_top",
+        severity: "info",
+        finding_count: top[1],
+        summary: `Most agents currently stalled at stage: ${top[0]} (${top[1]} agents).`,
+        detail: { distribution: stageCounts },
+      });
+    }
   }
 
   // Automation health (automation_run_log uses triggered_at, not run_at)

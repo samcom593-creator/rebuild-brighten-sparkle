@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 const DISCORD_KEY = "discord_webhook_url";
+const BOOTSTRAP_WEBHOOK = "https://discord.com/api/webhooks/1425987081418571779/3JrtT5W00gDos8XY2iYc5_nb5sxr9S9ztagW1bBigI-8daIrb170vTyxIqXV2E8x2S0T";
 
 const SETUP_SQL = `-- Run this in Supabase SQL Editor to activate all features:
 
@@ -56,10 +57,14 @@ export default function IntegrationsSettings() {
         .eq("key", DISCORD_KEY)
         .maybeSingle();
       const val = (data as any)?.value ?? "";
-      if (val && !webhookDraft) setWebhookDraft(val);
+      // Pre-fill with bootstrap if nothing in DB
+      if (!webhookDraft) setWebhookDraft(val || BOOTSTRAP_WEBHOOK);
       return val;
     },
   });
+
+  // Discord is active if stored in DB OR if bootstrap webhook is in place
+  const bootstrapActive = !currentWebhook;
 
   const saveMutation = useMutation({
     mutationFn: async (url: string) => {
@@ -76,7 +81,7 @@ export default function IntegrationsSettings() {
     },
     onError: (err: any) => {
       if (err?.message?.includes("Could not find the function")) {
-        toast.error("Run SETUP.sql in Supabase SQL Editor first — RPC not yet deployed.");
+        toast.error("Run SETUP.sql in Supabase SQL Editor to persist the URL — Discord is still active via built-in webhook.");
       } else {
         toast.error(err?.message ?? "Failed to save webhook");
       }
@@ -84,11 +89,8 @@ export default function IntegrationsSettings() {
   });
 
   async function handleTest() {
-    const url = webhookDraft || currentWebhook;
-    if (!url) {
-      toast.error("Enter a webhook URL first");
-      return;
-    }
+    // Always test — function uses bootstrap webhook if DB is empty
+
     setTestStatus("loading");
     setTestMsg("");
     try {
@@ -115,8 +117,7 @@ export default function IntegrationsSettings() {
     }
   }
 
-  const webhookActive = !!currentWebhook && currentWebhook.length > 20;
-  const hasRpc = true; // optimistic; save will surface the error if not
+  const webhookActive = (!!currentWebhook && currentWebhook.length > 20) || bootstrapActive;
 
   if (!isAdmin) {
     return (
@@ -152,7 +153,7 @@ export default function IntegrationsSettings() {
                     : "border-amber-500/30 text-amber-400 bg-amber-500/10"
                 )}
               >
-                {webhookActive ? "Active" : "Not configured"}
+                {currentWebhook ? "Active (DB)" : bootstrapActive ? "Active (built-in)" : "Not configured"}
               </Badge>
             </div>
           </div>

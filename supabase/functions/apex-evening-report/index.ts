@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
     .from("automation_run_log")
     .select("id", { count: "exact", head: true })
     .eq("status", "failed")
-    .gte("run_at", todayStartISO);
+    .gte("triggered_at", todayStartISO);
 
   // Yesterday AOP for delta
   const { data: yProd } = await supabase

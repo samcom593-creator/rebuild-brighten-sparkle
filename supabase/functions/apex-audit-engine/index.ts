@@ -297,12 +297,12 @@ async function auditOnboarding(): Promise<AuditFinding[]> {
     });
   }
 
-  // Automation health
+  // Automation health (automation_run_log uses triggered_at, not run_at)
   const { count: failures } = await supabase
     .from("automation_run_log")
     .select("id", { count: "exact", head: true })
     .eq("status", "failed")
-    .gte("run_at", daysAgoISO(1));
+    .gte("triggered_at", daysAgoISO(1));
   if ((failures ?? 0) > 0) {
     findings.push({
       audit_name: "automation_failures_24h",

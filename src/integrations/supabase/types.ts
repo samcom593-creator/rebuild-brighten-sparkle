@@ -738,6 +738,7 @@ export type Database = {
           invited_by_manager_id: string | null
           is_deactivated: boolean | null
           is_inactive: boolean | null
+          is_presenting: boolean
           license_states: string[] | null
           license_status: Database["public"]["Enums"]["license_status"]
           manager_id: string | null
@@ -758,6 +759,7 @@ export type Database = {
           profile_id: string | null
           ref_slug: string | null
           sort_order: number | null
+          stage_changed_at: string | null
           start_date: string | null
           status: Database["public"]["Enums"]["agent_status"]
           switched_to_manager_id: string | null
@@ -796,6 +798,7 @@ export type Database = {
           invited_by_manager_id?: string | null
           is_deactivated?: boolean | null
           is_inactive?: boolean | null
+          is_presenting?: boolean
           license_states?: string[] | null
           license_status?: Database["public"]["Enums"]["license_status"]
           manager_id?: string | null
@@ -816,6 +819,7 @@ export type Database = {
           profile_id?: string | null
           ref_slug?: string | null
           sort_order?: number | null
+          stage_changed_at?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["agent_status"]
           switched_to_manager_id?: string | null
@@ -854,6 +858,7 @@ export type Database = {
           invited_by_manager_id?: string | null
           is_deactivated?: boolean | null
           is_inactive?: boolean | null
+          is_presenting?: boolean
           license_states?: string[] | null
           license_status?: Database["public"]["Enums"]["license_status"]
           manager_id?: string | null
@@ -874,6 +879,7 @@ export type Database = {
           profile_id?: string | null
           ref_slug?: string | null
           sort_order?: number | null
+          stage_changed_at?: string | null
           start_date?: string | null
           status?: Database["public"]["Enums"]["agent_status"]
           switched_to_manager_id?: string | null
@@ -5625,6 +5631,30 @@ export type Database = {
       }
     }
     Views: {
+      agent_lifetime_production: {
+        Row: {
+          agent_id: string | null
+          last_production_date: string | null
+          lifetime_alp: number | null
+          lifetime_deals: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_production_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "daily_production_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_revenue_estimate: {
         Row: {
           agent_id: string | null

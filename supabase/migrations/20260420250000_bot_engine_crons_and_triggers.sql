@@ -96,7 +96,7 @@ BEGIN
       'automation_failed',
       'warn',
       format('Automation failed: %s', NEW.job_name),
-      format('<p>%s failed at %s.</p><pre>%s</pre>', NEW.job_name, NEW.run_at, COALESCE(NEW.error_message, '(no message)')),
+      format('<p>%s failed at %s.</p><pre>%s</pre>', NEW.job_name, NEW.triggered_at, COALESCE(NEW.error, '(no message)')),
       format('APEX FAIL: %s', NEW.job_name),
       ARRAY['email']::text[]
     );

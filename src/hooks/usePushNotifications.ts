@@ -54,7 +54,7 @@ export function usePushNotifications() {
 
       // No local subscription but permission is granted — auto-resubscribe
       if (Notification.permission === "granted") {
-        console.log("[Push] Permission granted but no subscription — auto-resubscribing");
+        if (import.meta.env.DEV) console.log("[Push] Permission granted but no subscription — auto-resubscribing");
         await autoResubscribe();
       } else {
         setIsSubscribed(false);
@@ -93,7 +93,7 @@ export function usePushNotifications() {
       );
 
       setIsSubscribed(true);
-      console.log("[Push] Auto-resubscribed successfully");
+      if (import.meta.env.DEV) console.log("[Push] Auto-resubscribed successfully");
     } catch (err) {
       console.error("[Push] Auto-resubscribe failed:", err);
     }

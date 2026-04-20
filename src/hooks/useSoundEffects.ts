@@ -31,7 +31,7 @@ export const useSoundEffects = () => {
       oscillator.start(ctx.currentTime);
       oscillator.stop(ctx.currentTime + duration);
     } catch (e) {
-      console.log("Audio playback failed:", e);
+      if (import.meta.env.DEV) console.warn("Audio playback failed:", e);
     }
   }, [getAudioContext]);
 
@@ -91,7 +91,7 @@ export const useSoundEffects = () => {
           break;
       }
     } catch (e) {
-      console.log("Sound effect failed:", e);
+      if (import.meta.env.DEV) console.warn("Sound effect failed:", e);
     }
   }, [getAudioContext, playTone]);
 

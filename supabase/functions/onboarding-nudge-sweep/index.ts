@@ -1,0 +1,218 @@
+// Onboarding nudge sweep — shakes the stuck-in-onboarding pile.
+//
+// Target population: agents with is_inactive=true, status=active, zero deals ever.
+// These aren't churned producers — they never started.
+//
+// Cadence (age = now - agents.created_at):
+//   3-6 days:   SMS to agent: "what's blocking? reply PRODUCING/STUCK/OUT"
+//   7-13 days:  SMS to agent + create agent_task for the assigned manager
+//   14-29 days: SMS to manager only: "call {name} today — no production in 14d"
+//   30+ days:   flip status='terminated', deactivation_reason='no_initial_production_30d'
+//
+// Modes:
+//   { dry_run: true }           → returns planned actions, sends nothing
+//   { dry_run: false, limit: N} → run live, up to N agents
+//   no body                      → live full sweep (cron)
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-request-id, idempotency-key",
+};
+
+const supabase = createClient(
+  Deno.env.get("SUPABASE_URL")!,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  { auth: { persistSession: false } },
+);
+
+type AgentRow = {
+  id: string;
+  created_at: string;
+  onboarding_stage: string | null;
+  invited_by_manager_id: string | null;
+  manager_id: string | null;
+  profile_id: string | null;
+};
+
+function ageDays(created_at: string): number {
+  const iso = created_at.replace(/(\.\d{6})\d+/, "$1");
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+}
+
+type Action = "agent_sms" | "agent_and_manager" | "manager_only" | "terminate";
+
+function planFor(age: number): Action | null {
+  if (age >= 3 && age <= 6) return "agent_sms";
+  if (age >= 7 && age <= 13) return "agent_and_manager";
+  if (age >= 14 && age <= 29) return "manager_only";
+  if (age >= 30) return "terminate";
+  return null; // <3 days, too early
+}
+
+async function getPhoneFor(agent: AgentRow): Promise<{ phone: string | null; name: string; email: string | null }> {
+  if (!agent.profile_id) return { phone: null, name: "there", email: null };
+  const { data } = await supabase
+    .from("profiles")
+    .select("full_name, phone, email")
+    .eq("id", agent.profile_id)
+    .maybeSingle();
+  return {
+    phone: (data as any)?.phone ?? null,
+    name: ((data as any)?.full_name ?? "there").split(" ")[0] || "there",
+    email: (data as any)?.email ?? null,
+  };
+}
+
+async function getManagerContact(managerAgentId: string): Promise<{ phone: string | null; email: string | null; name: string }> {
+  const { data: mgrAgent } = await supabase
+    .from("agents")
+    .select("profile:profiles!agents_profile_id_fkey(full_name, phone, email)")
+    .eq("id", managerAgentId)
+    .maybeSingle();
+  const p = (mgrAgent as any)?.profile;
+  return {
+    phone: p?.phone ?? null,
+    email: p?.email ?? null,
+    name: p?.full_name ?? "Manager",
+  };
+}
+
+async function sendAgentSMS(phone: string, firstName: string, age: number, agentId: string) {
+  const body = age <= 6
+    ? `Hey ${firstName}, Sam at APEX. You signed ${age}d ago and haven't booked your first call. Reply PRODUCING / STUCK / OUT and I'll route accordingly.`
+    : `${firstName}, it's been ${age} days. Your manager is about to call you. If you want to stay, reply STAY. If you're done, reply OUT.`;
+  await supabase.functions.invoke("send-sms-auto-detect", {
+    body: { phone, message: body, agent_id: agentId },
+  });
+}
+
+async function sendManagerSMS(phone: string, mgrName: string, agentName: string, age: number) {
+  const firstMgr = (mgrName || "").split(" ")[0] || "Manager";
+  const body = `${firstMgr}: ${agentName} is ${age}d in with 0 deals. CALL THEM TODAY or we auto-terminate at day 30.`;
+  await supabase.functions.invoke("send-sms-auto-detect", {
+    body: { phone, message: body },
+  });
+}
+
+async function createManagerTask(managerAgentId: string, agentId: string, agentName: string, age: number) {
+  // agent_tasks table exists; schema: assigned_to_user_id, task, due_at, source
+  const { data: mgr } = await supabase
+    .from("agents")
+    .select("user_id")
+    .eq("id", managerAgentId)
+    .maybeSingle();
+  if (!(mgr as any)?.user_id) return;
+  await supabase.from("agent_tasks").insert({
+    assigned_to_user_id: (mgr as any).user_id,
+    agent_id: agentId,
+    task: `Call ${agentName} — stuck in onboarding ${age} days, zero deals`,
+    source: "onboarding-nudge-sweep",
+    due_at: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
+    priority: age >= 14 ? "high" : "normal",
+  } as any);
+}
+
+async function terminateAgent(agentId: string) {
+  await supabase.from("agents").update({
+    status: "terminated",
+    is_deactivated: true,
+    deactivation_reason: "no_initial_production_30d",
+  }).eq("id", agentId);
+}
+
+type Plan = {
+  agent_id: string;
+  age_days: number;
+  action: Action;
+  manager_agent_id: string | null;
+};
+
+async function sweep(dryRun: boolean, limit: number) {
+  // Candidates: is_inactive=true, status=active. We exclude agents who have
+  // closed any deals (those are a different problem — actual churned producers).
+  const { data: agents, error } = await supabase
+    .from("agents")
+    .select("id, created_at, onboarding_stage, invited_by_manager_id, manager_id, profile_id, total_policies")
+    .eq("is_inactive", true)
+    .eq("status", "active")
+    .eq("total_policies", 0)
+    .order("created_at", { ascending: true })
+    .limit(limit);
+  if (error) throw error;
+
+  const plans: Plan[] = [];
+  for (const a of (agents ?? []) as AgentRow[]) {
+    const age = ageDays(a.created_at);
+    const action = planFor(age);
+    if (!action) continue;
+    plans.push({
+      agent_id: a.id,
+      age_days: age,
+      action,
+      manager_agent_id: a.invited_by_manager_id || a.manager_id,
+    });
+  }
+
+  const summary: Record<string, number> = { agent_sms: 0, agent_and_manager: 0, manager_only: 0, terminate: 0 };
+  const results: any[] = [];
+
+  for (const p of plans) {
+    summary[p.action]++;
+    if (dryRun) { results.push(p); continue; }
+
+    // Refetch contact info (plans only carry ids)
+    const { data: agentRow } = await supabase
+      .from("agents")
+      .select("id, profile_id, invited_by_manager_id, manager_id, created_at")
+      .eq("id", p.agent_id)
+      .maybeSingle();
+    if (!agentRow) { results.push({ ...p, ok: false, error: "agent row vanished" }); continue; }
+    const a = agentRow as AgentRow;
+    const agentContact = await getPhoneFor(a);
+    const age = ageDays(a.created_at);
+
+    try {
+      if (p.action === "agent_sms" || p.action === "agent_and_manager") {
+        if (agentContact.phone) await sendAgentSMS(agentContact.phone, agentContact.name, age, a.id);
+      }
+      if (p.action === "agent_and_manager" || p.action === "manager_only") {
+        if (p.manager_agent_id) {
+          const mgr = await getManagerContact(p.manager_agent_id);
+          if (mgr.phone) await sendManagerSMS(mgr.phone, mgr.name, agentContact.name, age);
+          await createManagerTask(p.manager_agent_id, a.id, agentContact.name, age);
+        }
+      }
+      if (p.action === "terminate") {
+        await terminateAgent(a.id);
+      }
+      results.push({ ...p, ok: true });
+    } catch (e: any) {
+      results.push({ ...p, ok: false, error: e?.message ?? String(e) });
+    }
+  }
+
+  return { processed: plans.length, summary, results };
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  let body: { dry_run?: boolean; limit?: number } = {};
+  try { body = await req.json(); } catch { /* allow empty */ }
+
+  try {
+    const result = await sweep(body.dry_run ?? false, body.limit ?? 500);
+    return new Response(JSON.stringify({ mode: body.dry_run ? "dry_run" : "live", ...result }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (e: any) {
+    console.error("[onboarding-nudge-sweep] fatal", e);
+    return new Response(JSON.stringify({ error: e?.message ?? "Internal error" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});

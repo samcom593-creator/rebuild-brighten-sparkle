@@ -150,10 +150,14 @@ export function PipelineCard({ app, onClick, onSchedule, isDragging }: PipelineC
           </p>
           <div className="flex items-center gap-1 shrink-0">
             {isAtRisk && !isLicensed && (
-              <Flame className="h-3 w-3 text-red-400 animate-pulse" title="At risk — no contact 48h+" />
+              <span title="At risk — no contact 48h+" className="inline-flex">
+                <Flame className="h-3 w-3 text-red-400 animate-pulse" />
+              </span>
             )}
             {isHot && !isAtRisk && (
-              <Zap className="h-3 w-3 text-amber-400" title="Hot lead" />
+              <span title="Hot lead" className="inline-flex">
+                <Zap className="h-3 w-3 text-amber-400" />
+              </span>
             )}
             {app.lead_score != null && (
               <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0", getScoreColor(app.lead_score))}>

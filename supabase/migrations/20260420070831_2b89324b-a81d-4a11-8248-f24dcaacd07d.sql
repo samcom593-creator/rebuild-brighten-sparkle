@@ -1,0 +1,1 @@
+ALTER TABLE public.system_settings ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now();

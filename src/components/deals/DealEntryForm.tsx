@@ -98,7 +98,11 @@ export function DealEntryForm({ onSaved }: { onSaved?: () => void }) {
       });
       if (error) throw error;
 
-      toast.success(status === "draft" ? "Saved as draft" : "Deal submitted — rolling into your production");
+      toast.success(
+        status === "draft"
+          ? "Saved as draft"
+          : "Deal submitted — rolling into production & pushing to InsuraCloud",
+      );
       setForm(blank);
       queryClient.invalidateQueries({ queryKey: ["deals"] });
       queryClient.invalidateQueries({ queryKey: ["agent-personal-stats"] });

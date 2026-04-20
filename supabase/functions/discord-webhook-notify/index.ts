@@ -26,13 +26,16 @@ Deno.serve(
       const { event_type, agent_name, details } = await parseBody(req, BodySchema);
 
       // Resolve webhook from profiles (first profile with one set wins)
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("discord_webhook_url")
-        .not("discord_webhook_url", "is", null)
-        .limit(1);
-
-      const webhookUrl = (profiles as any)?.[0]?.discord_webhook_url || null;
+      // Primary: Supabase secret; fallback: profile column
+      let webhookUrl = Deno.env.get("DISCORD_WEBHOOK_URL") || null;
+      if (!webhookUrl) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("discord_webhook_url")
+          .not("discord_webhook_url", "is", null)
+          .limit(1);
+        webhookUrl = (profiles as any)?.[0]?.discord_webhook_url || null;
+      }
       if (!webhookUrl) {
         return jsonResponse({ message: "No Discord webhook configured" });
       }

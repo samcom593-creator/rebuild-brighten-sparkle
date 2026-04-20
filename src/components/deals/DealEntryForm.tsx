@@ -75,10 +75,13 @@ export function DealEntryForm({ onSaved }: { onSaved?: () => void }) {
     }
     setSaving(true);
     try {
-      const { data: agentRow } = await supabase.from("agents").select("id").eq("user_id", user.id).maybeSingle();
+      const [{ data: agentRow }, { data: profile }] = await Promise.all([
+        supabase.from("agents").select("id").eq("user_id", user.id).maybeSingle(),
+        supabase.from("profiles" as any).select("full_name").eq("user_id", user.id).maybeSingle(),
+      ]);
       if (!agentRow?.id) throw new Error("No agent record found for your account");
 
-      const { error } = await supabase.from("deals" as any).insert({
+      const { data: deal, error } = await supabase.from("deals" as any).insert({
         agent_id: agentRow.id,
         carrier_id: form.carrier_id || null,
         client_first_name: form.client_first_name,
@@ -95,7 +98,7 @@ export function DealEntryForm({ onSaved }: { onSaved?: () => void }) {
         policy_term_months: form.policy_term_months ? parseInt(form.policy_term_months) : null,
         notes: form.notes || null,
         status,
-      });
+      }).select("id").single();
       if (error) throw error;
 
       toast.success(
@@ -107,6 +110,16 @@ export function DealEntryForm({ onSaved }: { onSaved?: () => void }) {
       queryClient.invalidateQueries({ queryKey: ["deals"] });
       queryClient.invalidateQueries({ queryKey: ["agent-personal-stats"] });
       onSaved?.();
+
+      if (status !== "draft" && deal?.id) {
+        const agentName = (profile as any)?.full_name || "An agent";
+        supabase.functions.invoke("discord-webhook-notify", {
+          body: { event_type: "deal_closed", agent_name: agentName, details: { aop: annualPremium, deals: 1 } },
+        }).catch(() => {});
+        supabase.functions.invoke("insuracloud-outbox", {
+          body: { deal_id: deal.id },
+        }).catch(() => {});
+      }
     } catch (e: any) {
       toast.error(e.message || "Failed to save deal");
     } finally {

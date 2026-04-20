@@ -751,10 +751,10 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
       to: [data.email],
       cc: ccList,
       subject: sanitized.licenseStatus === 'licensed'
-        ? `Welcome to APEX, ${sanitized.firstName} — Your Licensed Agent Journey Starts Now 🔑`
+        ? `Welcome to APEX Financial, ${sanitized.firstName} — Licensed Agent Fast Track`
         : sanitized.licenseStatus === 'pending'
-        ? `Welcome to APEX, ${sanitized.firstName} — You're Almost Ready to Earn 📋`
-        : `Welcome to APEX, ${sanitized.firstName} — Let's Get You Licensed and Earning 🎯`,
+        ? `Welcome to APEX, ${sanitized.firstName} — You're Almost Ready to Earn`
+        : `Welcome to APEX, ${sanitized.firstName} — Let's Get You Licensed`,
       html: emailHtml,
     });
     console.log("Applicant confirmation sent:", applicantEmailResponse);

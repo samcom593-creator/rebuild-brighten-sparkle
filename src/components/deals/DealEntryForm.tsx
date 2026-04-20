@@ -111,13 +111,14 @@ export function DealEntryForm({ onSaved }: { onSaved?: () => void }) {
       queryClient.invalidateQueries({ queryKey: ["agent-personal-stats"] });
       onSaved?.();
 
-      if (status !== "draft" && deal?.id) {
+      const dealId = (deal as any)?.id as string | undefined;
+      if (status !== "draft" && dealId) {
         const agentName = (profile as any)?.full_name || "An agent";
         supabase.functions.invoke("discord-webhook-notify", {
           body: { event_type: "deal_closed", agent_name: agentName, details: { aop: annualPremium, deals: 1 } },
         }).catch(() => {});
         supabase.functions.invoke("insuracloud-outbox", {
-          body: { deal_id: deal.id },
+          body: { deal_id: dealId },
         }).catch(() => {});
       }
     } catch (e: any) {

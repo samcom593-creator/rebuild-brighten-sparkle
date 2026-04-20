@@ -5,6 +5,7 @@ import { useInsuraCloud } from "@/hooks/useInsuraCloud";
 import { DollarSign, RefreshCw, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { formatDistanceToNow } from "date-fns";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n || 0);
@@ -16,14 +17,23 @@ export function RealFinancesCard({ agentId }: { agentId?: string | null }) {
 
   const onSync = async () => {
     setSyncing(true);
-    const res = await sync({ agentId: agentId ?? undefined });
-    setSyncing(false);
-    if (res.error) toast.error(`Sync failed: ${res.error.message}`);
-    else {
-      toast.success("InsuraCloud synced");
+    try {
+      const res = await sync({ agentId: agentId ?? undefined });
+      if ((res as any)?.error) throw new Error((res as any).error.message || "Sync failed");
+      toast.success("Finances refreshed from InsuraCloud");
       snapshot.refetch();
+    } catch (e: any) {
+      toast.error(`Sync failed: ${e.message || "unknown"}`);
+    } finally {
+      setSyncing(false);
     }
   };
+
+  const lastSyncedLabel = (data as any)?.snapshot_time
+    ? `Last synced ${formatDistanceToNow(new Date((data as any).snapshot_time), { addSuffix: true })}`
+    : (data as any)?.snapshot_date
+    ? `Last synced ${formatDistanceToNow(new Date((data as any).snapshot_date), { addSuffix: true })}`
+    : "Never synced";
 
   return (
     <Card className="border-border/60">
@@ -50,11 +60,9 @@ export function RealFinancesCard({ agentId }: { agentId?: string | null }) {
             <Stat label="Override" value={fmt(Number(data.override_commissions))} />
           </div>
         )}
-        {data?.snapshot_date && (
-          <div className="mt-3 text-[10px] text-muted-foreground">
-            Snapshot: {new Date(data.snapshot_date).toLocaleDateString()}
-          </div>
-        )}
+        <div className="mt-3 text-[10px] text-muted-foreground">
+          {lastSyncedLabel}
+        </div>
       </CardContent>
     </Card>
   );

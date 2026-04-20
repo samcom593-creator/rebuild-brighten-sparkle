@@ -8,7 +8,6 @@ import { WHATSAPP_GROUP_URL } from "@/lib/constants";
 
 export default function ApplySuccessLicensed() {
   const calendlyUrl = "https://calendly.com/sam-com593/1on1-call-clone";
-  const videoUrl = "https://www.youtube.com/embed/Sz0keedLD9Q";
 
   return (
     <div className="min-h-screen bg-background py-8 px-4">
@@ -42,14 +41,14 @@ export default function ApplySuccessLicensed() {
               Welcome, <span className="gradient-text">Licensed Agent!</span>
             </h1>
             <p className="text-muted-foreground max-w-lg mx-auto">
-              Your application has been received. Watch this important video to learn about your next steps with APEX.
+              Your application has been received. Schedule your onboarding call below to get started with APEX.
             </p>
 
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="flex items-start gap-3 p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 text-left max-w-lg mx-auto"
+              className="flex items-start gap-3 p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 text-left max-w-lg mx-auto mt-4"
             >
               <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
               <div>
@@ -60,22 +59,6 @@ export default function ApplySuccessLicensed() {
               </div>
             </motion.div>
           </div>
-
-          {/* Video Player */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="relative aspect-video rounded-xl overflow-hidden mb-8"
-          >
-            <iframe
-              src={videoUrl}
-              title="Licensed Agent Onboarding Video"
-              className="w-full h-full"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
-          </motion.div>
 
           {/* Key Points */}
           <motion.div

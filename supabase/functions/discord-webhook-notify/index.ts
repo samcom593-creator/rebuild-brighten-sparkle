@@ -419,7 +419,13 @@ Deno.serve(
 
       const { event_type, agent_name, details, channel } = await parseBody(req, BodySchema);
 
-      // ── Resolve webhook URL (priority: secret → system_settings channel → system_settings default) ──
+      // ── Resolve webhook URL ────────────────────────────────────────────────
+      // Priority: (1) DISCORD_WEBHOOK_URL env secret
+      //           (2) system_settings channel-specific key
+      //           (3) system_settings default key
+      //           (4) hardcoded bootstrap URL (self-heals until migration runs)
+      const BOOTSTRAP_WEBHOOK = "https://discord.com/api/webhooks/1425987081418571779/3JrtT5W00gDos8XY2iYc5_nb5sxr9S9ztagW1bBigI-8daIrb170vTyxIqXV2E8x2S0T";
+
       let webhookUrl: string | null = Deno.env.get("DISCORD_WEBHOOK_URL") || null;
 
       if (!webhookUrl && channel) {
@@ -440,9 +446,8 @@ Deno.serve(
         webhookUrl = (data as any)?.value || null;
       }
 
-      if (!webhookUrl) {
-        return jsonResponse({ ok: false, message: "No Discord webhook configured" });
-      }
+      // Bootstrap fallback — active until migration stores the URL in system_settings
+      if (!webhookUrl) webhookUrl = BOOTSTRAP_WEBHOOK;
 
       const embed = buildEmbed(event_type, agent_name, details ?? {});
       await sendToDiscord(webhookUrl, embed);

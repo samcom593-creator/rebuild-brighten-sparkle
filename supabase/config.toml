@@ -340,3 +340,6 @@ verify_jwt = false
 [functions.bulk-agent-message]
 verify_jwt = false
 
+[functions.send-milestone-reward]
+verify_jwt = false
+

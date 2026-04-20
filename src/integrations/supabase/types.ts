@@ -182,6 +182,13 @@ export type Database = {
             foreignKeyName: "aged_leads_assigned_manager_id_fkey"
             columns: ["assigned_manager_id"]
             isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "aged_leads_assigned_manager_id_fkey"
+            columns: ["assigned_manager_id"]
+            isOneToOne: false
             referencedRelation: "agents"
             referencedColumns: ["id"]
           },
@@ -213,6 +220,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "achievements"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_achievements_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
           },
           {
             foreignKeyName: "agent_achievements_agent_id_fkey"
@@ -259,6 +273,13 @@ export type Database = {
             foreignKeyName: "agent_attendance_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_attendance_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "agents"
             referencedColumns: ["id"]
           },
@@ -297,6 +318,13 @@ export type Database = {
             foreignKeyName: "agent_award_profiles_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: true
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_award_profiles_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
             referencedRelation: "agents"
             referencedColumns: ["id"]
           },
@@ -331,6 +359,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "agent_goals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
           {
             foreignKeyName: "agent_goals_agent_id_fkey"
             columns: ["agent_id"]
@@ -385,6 +420,13 @@ export type Database = {
             foreignKeyName: "agent_lead_stats_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_lead_stats_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "agents"
             referencedColumns: ["id"]
           },
@@ -435,6 +477,13 @@ export type Database = {
             foreignKeyName: "agent_metrics_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_metrics_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "agents"
             referencedColumns: ["id"]
           },
@@ -463,6 +512,13 @@ export type Database = {
           note?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "agent_notes_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
           {
             foreignKeyName: "agent_notes_agent_id_fkey"
             columns: ["agent_id"]
@@ -508,6 +564,13 @@ export type Database = {
             foreignKeyName: "agent_onboarding_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_onboarding_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "agents"
             referencedColumns: ["id"]
           },
@@ -539,6 +602,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "agent_ratings_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
           {
             foreignKeyName: "agent_ratings_agent_id_fkey"
             columns: ["agent_id"]
@@ -580,6 +650,13 @@ export type Database = {
           status?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "agent_removal_requests_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
           {
             foreignKeyName: "agent_removal_requests_agent_id_fkey"
             columns: ["agent_id"]
@@ -640,6 +717,7 @@ export type Database = {
           attendance_status:
             | Database["public"]["Enums"]["attendance_status"]
             | null
+          contract_percentage: number | null
           created_at: string
           crm_setup_link: string | null
           deactivation_reason:
@@ -656,6 +734,7 @@ export type Database = {
           has_training_course: boolean | null
           id: string
           insuracloud_api_token: string | null
+          insuracloud_user_id: number | null
           invited_by_manager_id: string | null
           is_deactivated: boolean | null
           is_inactive: boolean | null
@@ -668,6 +747,7 @@ export type Database = {
           onboarding_stage:
             | Database["public"]["Enums"]["onboarding_stage"]
             | null
+          override_rate: number | null
           password_required: boolean | null
           performance_tier:
             | Database["public"]["Enums"]["performance_tier"]
@@ -695,6 +775,7 @@ export type Database = {
           attendance_status?:
             | Database["public"]["Enums"]["attendance_status"]
             | null
+          contract_percentage?: number | null
           created_at?: string
           crm_setup_link?: string | null
           deactivation_reason?:
@@ -711,6 +792,7 @@ export type Database = {
           has_training_course?: boolean | null
           id?: string
           insuracloud_api_token?: string | null
+          insuracloud_user_id?: number | null
           invited_by_manager_id?: string | null
           is_deactivated?: boolean | null
           is_inactive?: boolean | null
@@ -723,6 +805,7 @@ export type Database = {
           onboarding_stage?:
             | Database["public"]["Enums"]["onboarding_stage"]
             | null
+          override_rate?: number | null
           password_required?: boolean | null
           performance_tier?:
             | Database["public"]["Enums"]["performance_tier"]
@@ -750,6 +833,7 @@ export type Database = {
           attendance_status?:
             | Database["public"]["Enums"]["attendance_status"]
             | null
+          contract_percentage?: number | null
           created_at?: string
           crm_setup_link?: string | null
           deactivation_reason?:
@@ -766,6 +850,7 @@ export type Database = {
           has_training_course?: boolean | null
           id?: string
           insuracloud_api_token?: string | null
+          insuracloud_user_id?: number | null
           invited_by_manager_id?: string | null
           is_deactivated?: boolean | null
           is_inactive?: boolean | null
@@ -778,6 +863,7 @@ export type Database = {
           onboarding_stage?:
             | Database["public"]["Enums"]["onboarding_stage"]
             | null
+          override_rate?: number | null
           password_required?: boolean | null
           performance_tier?:
             | Database["public"]["Enums"]["performance_tier"]
@@ -805,8 +891,22 @@ export type Database = {
             foreignKeyName: "agents_invited_by_manager_id_fkey"
             columns: ["invited_by_manager_id"]
             isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agents_invited_by_manager_id_fkey"
+            columns: ["invited_by_manager_id"]
+            isOneToOne: false
             referencedRelation: "agents"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agents_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
           },
           {
             foreignKeyName: "agents_manager_id_fkey"
@@ -821,6 +921,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agents_switched_to_manager_id_fkey"
+            columns: ["switched_to_manager_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
           },
           {
             foreignKeyName: "agents_switched_to_manager_id_fkey"
@@ -1466,8 +1573,22 @@ export type Database = {
             foreignKeyName: "applications_assigned_agent_id_fkey"
             columns: ["assigned_agent_id"]
             isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "applications_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
             referencedRelation: "agents"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "applications_recruiter_id_fkey"
+            columns: ["recruiter_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
           },
           {
             foreignKeyName: "applications_recruiter_id_fkey"
@@ -2006,6 +2127,13 @@ export type Database = {
             foreignKeyName: "award_batches_winner_agent_id_fkey"
             columns: ["winner_agent_id"]
             isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "award_batches_winner_agent_id_fkey"
+            columns: ["winner_agent_id"]
+            isOneToOne: false
             referencedRelation: "agents"
             referencedColumns: ["id"]
           },
@@ -2101,6 +2229,13 @@ export type Database = {
             foreignKeyName: "call_transcripts_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "call_transcripts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "agents"
             referencedColumns: ["id"]
           },
@@ -2112,6 +2247,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      carriers: {
+        Row: {
+          created_at: string
+          id: string
+          insuracloud_carrier_id: number | null
+          is_active: boolean | null
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          insuracloud_carrier_id?: number | null
+          is_active?: boolean | null
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          insuracloud_carrier_id?: number | null
+          is_active?: boolean | null
+          name?: string
+        }
+        Relationships: []
       }
       churn_risk_alerts: {
         Row: {
@@ -2155,6 +2314,13 @@ export type Database = {
             foreignKeyName: "churn_risk_alerts_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "churn_risk_alerts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "agents"
             referencedColumns: ["id"]
           },
@@ -2192,6 +2358,13 @@ export type Database = {
           subject?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "contact_history_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
           {
             foreignKeyName: "contact_history_agent_id_fkey"
             columns: ["agent_id"]
@@ -2336,6 +2509,13 @@ export type Database = {
             foreignKeyName: "contracting_links_manager_id_fkey"
             columns: ["manager_id"]
             isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "contracting_links_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
             referencedRelation: "agents"
             referencedColumns: ["id"]
           },
@@ -2395,7 +2575,108 @@ export type Database = {
             foreignKeyName: "daily_production_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "daily_production_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deals: {
+        Row: {
+          agent_id: string
+          annual_premium: number
+          carrier_id: string | null
+          client_dob: string
+          client_first_name: string
+          client_last_name: string
+          client_phone: string
+          created_at: string
+          effective_date: string
+          face_amount: number
+          id: string
+          insuracloud_sync_error: string | null
+          monthly_premium: number
+          notes: string | null
+          policy_expiration_date: string | null
+          policy_number: string
+          policy_term_months: number | null
+          product_sold: string
+          status: string | null
+          synced_to_insuracloud_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          annual_premium: number
+          carrier_id?: string | null
+          client_dob: string
+          client_first_name: string
+          client_last_name: string
+          client_phone: string
+          created_at?: string
+          effective_date: string
+          face_amount: number
+          id?: string
+          insuracloud_sync_error?: string | null
+          monthly_premium: number
+          notes?: string | null
+          policy_expiration_date?: string | null
+          policy_number: string
+          policy_term_months?: number | null
+          product_sold: string
+          status?: string | null
+          synced_to_insuracloud_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          annual_premium?: number
+          carrier_id?: string | null
+          client_dob?: string
+          client_first_name?: string
+          client_last_name?: string
+          client_phone?: string
+          created_at?: string
+          effective_date?: string
+          face_amount?: number
+          id?: string
+          insuracloud_sync_error?: string | null
+          monthly_premium?: number
+          notes?: string | null
+          policy_expiration_date?: string | null
+          policy_number?: string
+          policy_term_months?: number | null
+          product_sold?: string
+          status?: string | null
+          synced_to_insuracloud_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "deals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_carrier_id_fkey"
+            columns: ["carrier_id"]
+            isOneToOne: false
+            referencedRelation: "carriers"
             referencedColumns: ["id"]
           },
         ]
@@ -2583,6 +2864,13 @@ export type Database = {
             foreignKeyName: "email_delivery_log_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "email_delivery_log_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "agents"
             referencedColumns: ["id"]
           },
@@ -2623,6 +2911,13 @@ export type Database = {
           sent_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "email_tracking_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
           {
             foreignKeyName: "email_tracking_agent_id_fkey"
             columns: ["agent_id"]
@@ -2703,6 +2998,13 @@ export type Database = {
           voice_note_url?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "field_checkins_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
           {
             foreignKeyName: "field_checkins_agent_id_fkey"
             columns: ["agent_id"]
@@ -2828,6 +3130,13 @@ export type Database = {
           watched_welcome_video?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "getting_started_progress_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
           {
             foreignKeyName: "getting_started_progress_agent_id_fkey"
             columns: ["agent_id"]
@@ -3023,6 +3332,13 @@ export type Database = {
             foreignKeyName: "inactive_agent_queue_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "inactive_agent_queue_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "agents"
             referencedColumns: ["id"]
           },
@@ -3054,6 +3370,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "instagram_subscriptions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: true
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
           {
             foreignKeyName: "instagram_subscriptions_agent_id_fkey"
             columns: ["agent_id"]
@@ -3108,6 +3431,13 @@ export type Database = {
             foreignKeyName: "insuracloud_downline_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "insuracloud_downline_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "agents"
             referencedColumns: ["id"]
           },
@@ -3145,6 +3475,13 @@ export type Database = {
           synced_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "insuracloud_payouts_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
           {
             foreignKeyName: "insuracloud_payouts_agent_id_fkey"
             columns: ["agent_id"]
@@ -3211,6 +3548,13 @@ export type Database = {
             foreignKeyName: "insuracloud_policies_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "insuracloud_policies_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "agents"
             referencedColumns: ["id"]
           },
@@ -3267,6 +3611,13 @@ export type Database = {
             foreignKeyName: "insuracloud_snapshots_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "insuracloud_snapshots_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "agents"
             referencedColumns: ["id"]
           },
@@ -3311,6 +3662,13 @@ export type Database = {
             foreignKeyName: "insuracloud_sync_log_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "insuracloud_sync_log_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "agents"
             referencedColumns: ["id"]
           },
@@ -3349,6 +3707,13 @@ export type Database = {
             foreignKeyName: "interview_recordings_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "interview_recordings_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "agents"
             referencedColumns: ["id"]
           },
@@ -3381,6 +3746,13 @@ export type Database = {
           viewer_user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "invitation_seen_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
           {
             foreignKeyName: "invitation_seen_agent_id_fkey"
             columns: ["agent_id"]
@@ -3485,6 +3857,13 @@ export type Database = {
             foreignKeyName: "lead_payment_tracking_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "lead_payment_tracking_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "agents"
             referencedColumns: ["id"]
           },
@@ -3531,6 +3910,13 @@ export type Database = {
           transaction_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "lead_purchase_requests_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
           {
             foreignKeyName: "lead_purchase_requests_agent_id_fkey"
             columns: ["agent_id"]
@@ -3650,6 +4036,13 @@ export type Database = {
             foreignKeyName: "magic_login_tokens_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "magic_login_tokens_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "agents"
             referencedColumns: ["id"]
           },
@@ -3691,6 +4084,13 @@ export type Database = {
             foreignKeyName: "manager_growth_stats_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "manager_growth_stats_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
             referencedRelation: "agents"
             referencedColumns: ["id"]
           },
@@ -3719,6 +4119,13 @@ export type Database = {
           manager_agent_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "manager_invite_links_manager_agent_id_fkey"
+            columns: ["manager_agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
           {
             foreignKeyName: "manager_invite_links_manager_agent_id_fkey"
             columns: ["manager_agent_id"]
@@ -3823,6 +4230,13 @@ export type Database = {
           title?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "notification_log_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
           {
             foreignKeyName: "notification_log_agent_id_fkey"
             columns: ["agent_id"]
@@ -4093,6 +4507,13 @@ export type Database = {
           share_slug?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "plaque_awards_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
           {
             foreignKeyName: "plaque_awards_agent_id_fkey"
             columns: ["agent_id"]
@@ -5171,6 +5592,22 @@ export type Database = {
       }
     }
     Views: {
+      agent_revenue_estimate: {
+        Row: {
+          agent_id: string | null
+          contract_pct: number | null
+          downline_monthly_alp: number | null
+          insuracloud_direct: number | null
+          insuracloud_last_sync: string | null
+          insuracloud_mtd: number | null
+          insuracloud_override: number | null
+          override_monthly_estimate: number | null
+          override_rate: number | null
+          personal_monthly_alp: number | null
+          personal_monthly_estimate: number | null
+        }
+        Relationships: []
+      }
       automation_health: {
         Row: {
           avg_duration_ms: number | null
@@ -5218,6 +5655,12 @@ export type Database = {
           total_presentations: number
         }[]
       }
+      get_downline_agent_ids: {
+        Args: { p_root_agent_id: string }
+        Returns: {
+          agent_id: string
+        }[]
+      }
       get_leaderboard_profiles: {
         Args: never
         Returns: {
@@ -5233,6 +5676,12 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      my_downline_agent_ids: {
+        Args: never
+        Returns: {
+          agent_id: string
+        }[]
       }
       resolve_hiring_manager_for_scope: {
         Args: { p_scope: Database["public"]["Enums"]["hiring_scope"] }

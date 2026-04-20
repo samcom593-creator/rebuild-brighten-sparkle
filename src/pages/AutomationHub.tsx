@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { useAuth } from "@/hooks/useAuth";
 import { InsuraCloudOutbox } from "@/components/admin/InsuraCloudOutbox";
+import { CronJobsPanel } from "@/components/admin/CronJobsPanel";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface AutomationSetting {
@@ -41,6 +42,7 @@ export default function AutomationHub() {
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState<string | null>(null);
   const [outboxOpen, setOutboxOpen] = useState(true);
+  const [cronOpen, setCronOpen] = useState(false);
 
   const fetchAutomations = async () => {
     setLoading(true);
@@ -114,6 +116,24 @@ export default function AutomationHub() {
             </CollapsibleTrigger>
             <CollapsibleContent className="p-4 pt-0">
               <InsuraCloudOutbox />
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
+      )}
+
+      {isAdmin && (
+        <Collapsible open={cronOpen} onOpenChange={setCronOpen}>
+          <div className="bg-card border border-border rounded-xl">
+            <CollapsibleTrigger className="w-full flex items-center justify-between p-4 hover:bg-muted/30 rounded-xl transition-colors">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-primary" />
+                <span className="font-semibold text-sm" style={{ fontFamily: "Syne" }}>Cron Jobs</span>
+                <span className="text-xs text-muted-foreground">— scheduled tasks running on the database</span>
+              </div>
+              <ChevronDown className={cn("h-4 w-4 transition-transform", cronOpen && "rotate-180")} />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="p-4 pt-0">
+              <CronJobsPanel />
             </CollapsibleContent>
           </div>
         </Collapsible>

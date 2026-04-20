@@ -2900,6 +2900,27 @@ export type Database = {
         }
         Relationships: []
       }
+      ics_feed_tokens: {
+        Row: {
+          created_at: string
+          last_accessed_at: string | null
+          token: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          last_accessed_at?: string | null
+          token?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          last_accessed_at?: string | null
+          token?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       idempotency_keys: {
         Row: {
           created_at: string
@@ -5205,6 +5226,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_or_create_ics_token: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

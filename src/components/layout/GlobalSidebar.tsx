@@ -54,6 +54,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useIsTouchDevice } from "@/hooks/useIsTouchDevice";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { NotificationBell } from "@/components/layout/NotificationBell";
 
 interface GlobalSidebarProps {
   isOpen: boolean;
@@ -378,6 +379,11 @@ export function GlobalSidebar({
               </Link>
             )}
             <div className="flex items-center gap-1">
+              {!isCollapsed && (
+                <ConditionalTooltip label="Inbox">
+                  <NotificationBell className="h-7 w-7 text-[#64748b] hover:text-[#22d3a5]" />
+                </ConditionalTooltip>
+              )}
               {!isCollapsed && (isAdmin || isManager) && (
                 <AddAgentModal
                   trigger={

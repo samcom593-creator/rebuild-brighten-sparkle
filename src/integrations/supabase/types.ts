@@ -5718,6 +5718,20 @@ export type Database = {
           total_presentations: number
         }[]
       }
+      get_cron_jobs_with_status: {
+        Args: never
+        Returns: {
+          active: boolean
+          command: string
+          errors_24h: number
+          jobname: string
+          last_error: string
+          last_run: string
+          last_status: string
+          runs_24h: number
+          schedule: string
+        }[]
+      }
       get_downline_agent_ids: {
         Args: { p_root_agent_id: string }
         Returns: {

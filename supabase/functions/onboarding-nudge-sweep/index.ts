@@ -120,10 +120,13 @@ async function createManagerTask(managerAgentId: string, agentId: string, agentN
 }
 
 async function terminateAgent(agentId: string) {
+  // deactivation_reason is a postgres ENUM with fixed values:
+  // 'bad_business' | 'inactive' | 'switched_teams'. Use 'inactive' for
+  // 30-day-no-production auto-terminations.
   await supabase.from("agents").update({
     status: "terminated",
     is_deactivated: true,
-    deactivation_reason: "no_initial_production_30d",
+    deactivation_reason: "inactive",
   }).eq("id", agentId);
 }
 

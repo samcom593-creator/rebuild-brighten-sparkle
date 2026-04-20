@@ -81,12 +81,12 @@ async function getManagerContact(managerAgentId: string): Promise<{ phone: strin
   };
 }
 
-async function sendAgentSMS(phone: string, firstName: string, age: number, agentId: string) {
+async function sendAgentSMS(phone: string, firstName: string, age: number, _agentId: string) {
   const body = age <= 6
     ? `Hey ${firstName}, Sam at APEX. You signed ${age}d ago and haven't booked your first call. Reply PRODUCING / STUCK / OUT and I'll route accordingly.`
     : `${firstName}, it's been ${age} days. Your manager is about to call you. If you want to stay, reply STAY. If you're done, reply OUT.`;
   await supabase.functions.invoke("send-sms-auto-detect", {
-    body: { phone, message: body, agent_id: agentId },
+    body: { phone, message: body },
   });
 }
 
@@ -99,20 +99,21 @@ async function sendManagerSMS(phone: string, mgrName: string, agentName: string,
 }
 
 async function createManagerTask(managerAgentId: string, agentId: string, agentName: string, age: number) {
-  // agent_tasks table exists; schema: assigned_to_user_id, task, due_at, source
-  const { data: mgr } = await supabase
+  // agent_tasks schema: agent_id (task-owner), assigned_by, title, description, due_date, priority, task_type
+  const { data: mgrAgent } = await supabase
     .from("agents")
     .select("user_id")
     .eq("id", managerAgentId)
     .maybeSingle();
-  if (!(mgr as any)?.user_id) return;
+  const assignedBy = (mgrAgent as any)?.user_id ?? null;
   await supabase.from("agent_tasks").insert({
-    assigned_to_user_id: (mgr as any).user_id,
     agent_id: agentId,
-    task: `Call ${agentName} — stuck in onboarding ${age} days, zero deals`,
-    source: "onboarding-nudge-sweep",
-    due_at: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
+    assigned_by: assignedBy,
+    title: `Call ${agentName} — stuck in onboarding ${age}d, zero deals`,
+    description: `Auto-created by onboarding-nudge-sweep. If not reactivated by day 30 (currently ${age}d in), agent auto-terminates.`,
+    task_type: "onboarding_followup",
     priority: age >= 14 ? "high" : "normal",
+    due_date: new Date(Date.now() + 24 * 3600 * 1000).toISOString().slice(0, 10),
   } as any);
 }
 

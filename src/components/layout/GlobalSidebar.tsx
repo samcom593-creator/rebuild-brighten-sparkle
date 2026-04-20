@@ -156,6 +156,7 @@ export function GlobalSidebar({
       opsItems.push({ icon: UserCog, label: "Agent Management", href: "/dashboard/agent-management" });
     }
     opsItems.push({ icon: Edit3, label: "Log Numbers", href: "/numbers", special: true });
+    opsItems.push({ icon: DollarSign, label: "My Deals", href: "/dashboard/my-deals" });
     opsItems.push({ icon: Wallet, label: "My Commissions", href: "/dashboard/my-commissions" });
     opsItems.push({ icon: Trophy, label: "My Plaques", href: "/dashboard/my-plaques" });
     opsItems.push({ icon: Rocket, label: "Getting Started", href: "/dashboard/getting-started" });

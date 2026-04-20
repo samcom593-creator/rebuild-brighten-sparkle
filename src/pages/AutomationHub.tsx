@@ -1,10 +1,13 @@
 import { useState, useEffect } from "react";
-import { Zap, Play, RefreshCw, Clock, CheckCircle2, XCircle, ToggleLeft, ToggleRight } from "lucide-react";
+import { Zap, Play, RefreshCw, Clock, CheckCircle2, XCircle, ToggleLeft, ToggleRight, Cloud, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { useAuth } from "@/hooks/useAuth";
+import { InsuraCloudOutbox } from "@/components/admin/InsuraCloudOutbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface AutomationSetting {
   id: string;
@@ -33,9 +36,11 @@ const FUNCTION_MAP: Record<string, string> = {
 };
 
 export default function AutomationHub() {
+  const { isAdmin } = useAuth();
   const [automations, setAutomations] = useState<AutomationSetting[]>([]);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState<string | null>(null);
+  const [outboxOpen, setOutboxOpen] = useState(true);
 
   const fetchAutomations = async () => {
     setLoading(true);
@@ -95,6 +100,24 @@ export default function AutomationHub() {
           <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} /> Refresh
         </Button>
       </div>
+
+      {isAdmin && (
+        <Collapsible open={outboxOpen} onOpenChange={setOutboxOpen}>
+          <div className="bg-card border border-border rounded-xl">
+            <CollapsibleTrigger className="w-full flex items-center justify-between p-4 hover:bg-muted/30 rounded-xl transition-colors">
+              <div className="flex items-center gap-2">
+                <Cloud className="h-4 w-4 text-primary" />
+                <span className="font-semibold text-sm" style={{ fontFamily: "Syne" }}>InsuraCloud Outbox</span>
+                <span className="text-xs text-muted-foreground">— deal sync, mapping, retries</span>
+              </div>
+              <ChevronDown className={cn("h-4 w-4 transition-transform", outboxOpen && "rotate-180")} />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="p-4 pt-0">
+              <InsuraCloudOutbox />
+            </CollapsibleContent>
+          </div>
+        </Collapsible>
+      )}
 
       {/* Summary */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">

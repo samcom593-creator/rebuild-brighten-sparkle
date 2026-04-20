@@ -1,0 +1,227 @@
+// InsuraCloud outbox processor
+// Pushes deals to InsuraCloud /policies endpoint and marks them as synced.
+// Modes:
+//   - { deal_id: "..." }  → process one deal (called from trigger)
+//   - { sweep: true }      → process all unsynced deals (called from cron)
+//
+// Failure modes are saved to deals.insuracloud_sync_error so admins can
+// fix the underlying mapping and the cron sweeper will retry automatically.
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-request-id, idempotency-key",
+};
+
+const INSURACLOUD_BASE = "https://agentlink.insuracloud.ai/api/v1";
+const SWEEP_BATCH_SIZE = 25;
+
+interface OutboxRequest {
+  deal_id?: string;
+  sweep?: boolean;
+}
+
+type DealRow = {
+  id: string;
+  agent_id: string;
+  carrier_id: string | null;
+  client_first_name: string;
+  client_last_name: string;
+  client_phone: string;
+  client_dob: string;
+  product_sold: string;
+  policy_number: string;
+  monthly_premium: number;
+  annual_premium: number;
+  face_amount: number;
+  effective_date: string;
+  policy_expiration_date: string | null;
+  status: string;
+  notes: string | null;
+};
+
+const supabase = createClient(
+  Deno.env.get("SUPABASE_URL")!,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  { auth: { persistSession: false } },
+);
+
+const defaultToken = Deno.env.get("INSURACLOUD_API_TOKEN");
+
+async function pushOne(deal: DealRow): Promise<{ ok: boolean; error?: string; insuracloud_id?: number | string }> {
+  // Resolve agent → InsuraCloud user id + token
+  const { data: agent } = await supabase
+    .from("agents")
+    .select("insuracloud_api_token, insuracloud_user_id, profile_id, profiles:profile_id(email, full_name)")
+    .eq("id", deal.agent_id)
+    .maybeSingle();
+
+  if (!agent) return { ok: false, error: "Agent record not found" };
+
+  const token = agent.insuracloud_api_token || defaultToken;
+  if (!token) return { ok: false, error: "No InsuraCloud API token configured (agent or default)" };
+
+  // Resolve carrier
+  let insuracloudCarrierId: number | null = null;
+  let carrierName = "";
+  if (deal.carrier_id) {
+    const { data: carrier } = await supabase
+      .from("carriers")
+      .select("name, insuracloud_carrier_id")
+      .eq("id", deal.carrier_id)
+      .maybeSingle();
+    if (!carrier) return { ok: false, error: "Carrier record not found" };
+    carrierName = carrier.name;
+    insuracloudCarrierId = carrier.insuracloud_carrier_id;
+    if (insuracloudCarrierId === null) {
+      return { ok: false, error: `Carrier "${carrier.name}" has no insuracloud_carrier_id mapping` };
+    }
+  } else {
+    return { ok: false, error: "Deal has no carrier" };
+  }
+
+  // Build payload — adjust fields to match InsuraCloud's policy intake schema
+  const payload = {
+    agent_user_id: agent.insuracloud_user_id ?? undefined,
+    agent_email: (agent.profiles as any)?.email ?? undefined,
+    carrier_id: insuracloudCarrierId,
+    carrier_name: carrierName,
+    policy_number: deal.policy_number,
+    product: deal.product_sold,
+    client: {
+      first_name: deal.client_first_name,
+      last_name: deal.client_last_name,
+      phone: deal.client_phone,
+      dob: deal.client_dob,
+    },
+    monthly_premium: Number(deal.monthly_premium),
+    annual_premium: Number(deal.annual_premium),
+    face_amount: Number(deal.face_amount),
+    effective_date: deal.effective_date,
+    expiration_date: deal.policy_expiration_date ?? undefined,
+    status: deal.status,
+    source: "apex-financial-platform",
+    external_ref: deal.id,
+    notes: deal.notes ?? undefined,
+  };
+
+  try {
+    const res = await fetch(`${INSURACLOUD_BASE}/policies`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const text = await res.text();
+    let data: any = null;
+    try { data = text ? JSON.parse(text) : null; } catch { data = { raw: text }; }
+
+    if (!res.ok) {
+      return { ok: false, error: `InsuraCloud ${res.status}: ${text.slice(0, 400)}` };
+    }
+
+    return { ok: true, insuracloud_id: data?.id ?? data?.policy_id };
+  } catch (e: any) {
+    return { ok: false, error: `Network error: ${e?.message ?? String(e)}` };
+  }
+}
+
+async function processDeal(dealId: string): Promise<{ deal_id: string; ok: boolean; error?: string }> {
+  const { data: deal, error } = await supabase
+    .from("deals")
+    .select(
+      "id, agent_id, carrier_id, client_first_name, client_last_name, client_phone, client_dob, product_sold, policy_number, monthly_premium, annual_premium, face_amount, effective_date, policy_expiration_date, status, notes, synced_to_insuracloud_at",
+    )
+    .eq("id", dealId)
+    .maybeSingle();
+
+  if (error || !deal) {
+    return { deal_id: dealId, ok: false, error: error?.message ?? "Deal not found" };
+  }
+  if (deal.synced_to_insuracloud_at) {
+    return { deal_id: dealId, ok: true };
+  }
+  if (deal.status === "draft") {
+    return { deal_id: dealId, ok: true };
+  }
+
+  const result = await pushOne(deal as DealRow);
+
+  if (result.ok) {
+    await supabase
+      .from("deals")
+      .update({
+        synced_to_insuracloud_at: new Date().toISOString(),
+        insuracloud_sync_error: null,
+      })
+      .eq("id", deal.id);
+  } else {
+    await supabase
+      .from("deals")
+      .update({ insuracloud_sync_error: result.error?.slice(0, 500) ?? "Unknown error" })
+      .eq("id", deal.id);
+  }
+
+  return { deal_id: deal.id, ok: result.ok, error: result.error };
+}
+
+async function sweepUnsynced(): Promise<{ processed: number; succeeded: number; failed: number }> {
+  const { data: deals } = await supabase
+    .from("deals")
+    .select("id")
+    .is("synced_to_insuracloud_at", null)
+    .neq("status", "draft")
+    .order("created_at", { ascending: true })
+    .limit(SWEEP_BATCH_SIZE);
+
+  const ids = (deals ?? []).map((d) => d.id);
+  let succeeded = 0, failed = 0;
+
+  for (const id of ids) {
+    const r = await processDeal(id);
+    if (r.ok) succeeded++; else failed++;
+  }
+
+  return { processed: ids.length, succeeded, failed };
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  let body: OutboxRequest = {};
+  try { body = await req.json(); } catch { /* empty body OK */ }
+
+  try {
+    if (body.sweep) {
+      const result = await sweepUnsynced();
+      return new Response(JSON.stringify({ mode: "sweep", ...result }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!body.deal_id) {
+      return new Response(JSON.stringify({ error: "deal_id or sweep:true is required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const result = await processDeal(body.deal_id);
+    return new Response(JSON.stringify(result), {
+      status: result.ok ? 200 : 422,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (e: any) {
+    console.error("[insuracloud-outbox] fatal", e);
+    return new Response(JSON.stringify({ error: e?.message ?? "Internal error" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});

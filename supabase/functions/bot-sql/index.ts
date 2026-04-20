@@ -80,15 +80,54 @@ Deno.serve(async (req) => {
     { auth: { persistSession: false } },
   );
 
+  // ─── Parse body first (we may need it for bootstrap) ──
+  let body: { query?: string; action?: string; token?: string };
+  try {
+    body = await req.json();
+  } catch {
+    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   // ─── Auth ──
   const authHeader = req.headers.get("Authorization") ?? req.headers.get("authorization") ?? "";
   const presented  = authHeader.replace(/^Bearer\s+/i, "").trim();
   const expected   = await resolveBotToken(sb);
 
+  // ─── First-run bootstrap: anyone may claim the install IF no token is set ──
+  // After the first successful bootstrap the path is locked out forever.
+  if (body.action === "bootstrap") {
+    if (expected) {
+      return new Response(JSON.stringify({ error: "Already configured — use rotate with current token" }), {
+        status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const newToken = typeof body.token === "string" && body.token.length >= 32
+      ? body.token
+      : Array.from(crypto.getRandomValues(new Uint8Array(32)))
+          .map(b => b.toString(16).padStart(2, "0")).join("");
+    const { error: upsertErr } = await sb.from("system_settings").upsert(
+      { key: "apex_bot_token", value: newToken },
+      { onConflict: "key" },
+    );
+    if (upsertErr) {
+      return new Response(JSON.stringify({ error: `Bootstrap failed: ${upsertErr.message}` }), {
+        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({
+      ok: true,
+      bootstrapped: true,
+      token: newToken,
+      message: "Bot token configured. Store this value securely — it will not be shown again.",
+    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+
   if (!expected) {
     return new Response(JSON.stringify({
       error: "Bot token not configured",
-      hint:  "Set APEX_BOT_TOKEN secret in Supabase, or INSERT into system_settings (key='apex_bot_token')",
+      hint:  "POST {\"action\":\"bootstrap\"} to set one (one-time; any caller may claim)",
     }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
   if (!presented || presented !== expected) {
@@ -104,16 +143,8 @@ Deno.serve(async (req) => {
     });
   }
 
-  // ─── Payload ──
-  let query: string | undefined;
-  try {
-    const body = await req.json();
-    query = typeof body?.query === "string" ? body.query.trim() : undefined;
-  } catch {
-    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
-      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  // ─── Payload (already parsed above) ──
+  const query = typeof body.query === "string" ? body.query.trim() : undefined;
   if (!query) {
     return new Response(JSON.stringify({ error: "Missing 'query' string in body" }), {
       status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },

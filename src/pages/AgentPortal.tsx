@@ -727,27 +727,7 @@ export default function AgentPortal() {
           </section>
         </HideableCard>
 
-        {/* My Tasks */}
-        {agentId && (
-          <HideableCard cardKey="agent.my-tasks" label={HIDEABLE_CARDS["agent.my-tasks"]}>
-            <section>
-              <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
-                <Target className="h-5 w-5 text-primary" />
-                My Tasks
-              </h2>
-              <AgentTaskManager viewMode="list" agentFilter={agentId} showAssignButton={false} />
-            </section>
-          </HideableCard>
-        )}
-
-        {/* Weekly Badges Card - MOVED TO BOTTOM */}
-        {agentId && (
-          <HideableCard cardKey="agent.weekly-badges" label={HIDEABLE_CARDS["agent.weekly-badges"]} className="hidden sm:block">
-            <section id="weekly-badges">
-              <WeeklyBadgesCard key={`badges-${refreshKey}`} agentId={agentId} />
-            </section>
-          </HideableCard>
-        )}
+        {/* My Tasks + Weekly Badges removed per Step 20 walkthrough */}
 
         {/* Motivational Footer */}
         <HideableCard cardKey="agent.motivational-footer" label={HIDEABLE_CARDS["agent.motivational-footer"]}>

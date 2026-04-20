@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import {
   MessageSquare, CheckCircle, XCircle, Loader2, Save, Zap,
-  Terminal, Copy, ExternalLink, RefreshCw
+  Terminal, Copy, ExternalLink, RefreshCw, Bot, KeyRound
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -32,6 +32,140 @@ DO $$ BEGIN
   BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.applications;
   EXCEPTION WHEN duplicate_object THEN NULL; END;
 END $$;`;
+
+function BotSqlSection() {
+  const qc = useQueryClient();
+  const [visible, setVisible] = useState(false);
+
+  const { data: currentToken = "", isLoading } = useQuery<string>({
+    queryKey: ["system_settings", "apex_bot_token"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("system_settings" as any)
+        .select("value")
+        .eq("key", "apex_bot_token")
+        .maybeSingle();
+      return (data as any)?.value ?? "";
+    },
+  });
+
+  const activate = useMutation({
+    mutationFn: async () => {
+      const bytes = crypto.getRandomValues(new Uint8Array(32));
+      const token = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
+      const { error } = await supabase.rpc("admin_configure_integration" as any, {
+        p_key: "apex_bot_token",
+        p_value: token,
+      });
+      if (error) throw error;
+      return token;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["system_settings", "apex_bot_token"] });
+      toast.success("Bot access activated");
+    },
+    onError: (err: any) => toast.error(err?.message ?? "Failed to activate"),
+  });
+
+  const testActive = async () => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL ?? "https://msydzhzolwourcdmqxvn.supabase.co"}/functions/v1/bot-sql`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${currentToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ query: "SELECT 1 as ok" }),
+      });
+      const body = await res.json();
+      if (body?.ok && body?.rows?.[0]?.ok === 1) {
+        toast.success("Bot endpoint responded OK");
+      } else {
+        toast.error(`Bot returned: ${body?.error ?? res.statusText}`);
+      }
+    } catch (e: any) {
+      toast.error(`Test failed: ${e?.message ?? e}`);
+    }
+  };
+
+  const endpoint = "https://msydzhzolwourcdmqxvn.supabase.co/functions/v1/bot-sql";
+  const masked = currentToken ? `${currentToken.slice(0, 8)}…${currentToken.slice(-4)}` : "";
+
+  return (
+    <Card className="border-border">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Bot className="h-5 w-5 text-cyan-400" />
+            <CardTitle className="text-base">Bot SQL Access</CardTitle>
+          </div>
+          <Badge variant="outline" className={cn(
+            "text-xs",
+            currentToken
+              ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
+              : "border-muted text-muted-foreground",
+          )}>
+            {isLoading ? "…" : currentToken ? "Active" : "Not configured"}
+          </Badge>
+        </div>
+        <CardDescription className="text-xs mt-1">
+          External Claude bot endpoint for running SQL against the APEX database via bearer-token auth.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Endpoint</Label>
+          <div className="flex gap-2">
+            <code className="flex-1 font-mono text-xs bg-muted/40 rounded px-3 py-2 overflow-x-auto">{endpoint}</code>
+            <Button size="sm" variant="outline" className="h-9"
+              onClick={() => { navigator.clipboard.writeText(endpoint); toast.success("Endpoint copied"); }}>
+              <Copy className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+
+        {currentToken && (
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground flex items-center gap-1">
+              <KeyRound className="h-3 w-3" /> Bearer token
+            </Label>
+            <div className="flex gap-2">
+              <code className="flex-1 font-mono text-xs bg-muted/40 rounded px-3 py-2 overflow-x-auto">
+                {visible ? currentToken : masked}
+              </code>
+              <Button size="sm" variant="outline" className="h-9" onClick={() => setVisible(v => !v)}>
+                {visible ? "Hide" : "Reveal"}
+              </Button>
+              <Button size="sm" variant="outline" className="h-9"
+                onClick={() => { navigator.clipboard.writeText(currentToken); toast.success("Token copied"); }}>
+                <Copy className="h-3 w-3" />
+              </Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground/70">
+              Anyone with this token can run arbitrary SQL. Rotate if leaked.
+            </p>
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-2 pt-1">
+          <Button size="sm" className="h-8 text-xs gap-1.5"
+            disabled={activate.isPending}
+            onClick={() => activate.mutate()}>
+            {activate.isPending
+              ? <Loader2 className="h-3 w-3 animate-spin" />
+              : <Zap className="h-3 w-3" />}
+            {currentToken ? "Rotate Token" : "Activate Bot Access"}
+          </Button>
+          {currentToken && (
+            <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={testActive}>
+              <CheckCircle className="h-3 w-3" /> Test Endpoint
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 function StatusDot({ ok }: { ok: boolean | null }) {
   if (ok === null) return <div className="h-2 w-2 rounded-full bg-muted animate-pulse" />;
@@ -223,6 +357,9 @@ export default function IntegrationsSettings() {
           )}
         </CardContent>
       </Card>
+
+      {/* ── Bot SQL Access ──────────────────────────────────────────────────── */}
+      <BotSqlSection />
 
       {/* ── SQL Setup Helper ─────────────────────────────────────────────────── */}
       <Card className="border-border">

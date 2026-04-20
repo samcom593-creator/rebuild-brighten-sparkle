@@ -7,7 +7,6 @@ import { WHATSAPP_GROUP_URL } from "@/lib/constants";
 
 export default function ApplySuccessUnlicensed() {
   const calendlyUrl = "https://calendly.com/sam-com593/licensed-prospect-call-clone";
-  const videoUrl = "https://www.youtube.com/embed/WpZge-Ghyww";
 
   return (
     <div className="min-h-screen bg-background py-8 px-4">
@@ -60,21 +59,8 @@ export default function ApplySuccessUnlicensed() {
             </motion.div>
           </div>
 
-          {/* Video Player */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="relative aspect-video rounded-xl overflow-hidden mb-8"
-          >
-            <iframe
-              src={videoUrl}
-              title="Getting Started with APEX"
-              className="w-full h-full"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-            />
-          </motion.div>
+          {/* Spacer */}
+          <div className="mb-2" />
 
           {/* Key Points */}
           <motion.div

@@ -3386,6 +3386,39 @@ export type Database = {
           },
         ]
       }
+      insuracloud_backfill_log: {
+        Row: {
+          agents_matched: number
+          agents_unmatched: number
+          carriers_matched: number
+          carriers_unmatched: number
+          details: Json | null
+          id: string
+          ran_at: string
+          ran_by: string | null
+        }
+        Insert: {
+          agents_matched?: number
+          agents_unmatched?: number
+          carriers_matched?: number
+          carriers_unmatched?: number
+          details?: Json | null
+          id?: string
+          ran_at?: string
+          ran_by?: string | null
+        }
+        Update: {
+          agents_matched?: number
+          agents_unmatched?: number
+          carriers_matched?: number
+          carriers_unmatched?: number
+          details?: Json | null
+          id?: string
+          ran_at?: string
+          ran_by?: string | null
+        }
+        Relationships: []
+      }
       insuracloud_downline: {
         Row: {
           agent_id: string | null

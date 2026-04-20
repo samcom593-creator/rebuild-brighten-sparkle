@@ -151,7 +151,7 @@ export function useOnboardingCourse(agentId: string | null) {
             await supabase.functions.invoke("notify-course-started", {
               body: { agentId }
             });
-            console.log("Course started notification sent for agent:", agentId);
+            if (import.meta.env.DEV) console.log("Course started notification sent for agent:", agentId);
           } catch (notifyError) {
             console.error("Failed to send course started notification:", notifyError);
           }

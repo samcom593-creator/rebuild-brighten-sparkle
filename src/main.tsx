@@ -12,7 +12,7 @@ if ('serviceWorker' in navigator) {
       const newWorker = registration.installing;
       newWorker?.addEventListener('statechange', () => {
         if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
-          console.log('[PWA] Update available — will apply on next full page load.');
+          if (import.meta.env.DEV) console.log('[PWA] Update available — will apply on next full page load.');
         }
       });
     });

@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .maybeSingle();
     
     if (data && authEmail && data.email !== authEmail) {
-      console.log("Syncing profile email with auth email:", authEmail);
+      if (import.meta.env.DEV) console.log("Syncing profile email with auth email:", authEmail);
       await supabase
         .from("profiles")
         .update({ email: authEmail })
@@ -147,7 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Handle password recovery event - redirect to settings
         if (event === "PASSWORD_RECOVERY") {
-          console.log("PASSWORD_RECOVERY event detected, redirecting to settings");
+          if (import.meta.env.DEV) console.log("PASSWORD_RECOVERY event detected, redirecting to settings");
           window.location.href = "/dashboard/settings?recovery=true";
           return;
         }

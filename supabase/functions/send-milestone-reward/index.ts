@@ -154,12 +154,14 @@ Deno.serve(async (req: Request) => {
 
     const { data: profile } = await sb
       .from("profiles")
-      .select("full_name, email")
+      .select("full_name, email, phone, carrier")
       .eq("user_id", (agent as { user_id: string }).user_id)
       .maybeSingle();
 
     const fullName = (profile as { full_name?: string })?.full_name ?? "Agent";
     const email    = (profile as { email?: string })?.email ?? "";
+    const phone    = (profile as { phone?: string })?.phone ?? "";
+    const carrier  = (profile as { carrier?: string })?.carrier ?? "";
 
     if (!email) {
       await sb.from("notification_log").insert({
@@ -200,7 +202,53 @@ Deno.serve(async (req: Request) => {
         },
       });
 
-      return jsonResponse({ ok: true, milestone, mtd_production, email });
+      // ── SMS via Google-style carrier email gateway ──
+      const smsText = `${meta.emoji} ${meta.label}! You just crossed ${fmt$(mtd_production)} MTD. Legendary. — APEX`;
+      let smsResult: { ok: boolean; detail: string } = { ok: false, detail: "no phone on profile" };
+
+      if (phone) {
+        try {
+          const smsFn = carrier ? "send-sms-via-email" : "send-sms-auto-detect";
+          const smsBody = carrier
+            ? { phone, carrier, message: smsText, agentId: agent_id }
+            : { phone, message: smsText };
+
+          const { data: smsData, error: smsErr } = await sb.functions.invoke(smsFn, { body: smsBody });
+
+          if (smsErr) {
+            smsResult = { ok: false, detail: smsErr.message || String(smsErr) };
+          } else {
+            smsResult = { ok: true, detail: carrier ? `sent via ${carrier}` : `auto-detect: ${(smsData as { carrierSelected?: string })?.carrierSelected ?? "tried all gateways"}` };
+          }
+        } catch (smsErr) {
+          smsResult = { ok: false, detail: String(smsErr) };
+        }
+      }
+
+      // Log the milestone SMS attempt (on top of any internal logging done by the sms function)
+      await sb.from("notification_log").insert({
+        recipient_user_id: (agent as { user_id: string }).user_id,
+        recipient_phone:   phone || null,
+        channel:  "sms",
+        title:    `${meta.label} Milestone`,
+        message:  smsText,
+        status:   smsResult.ok ? "sent" : "failed",
+        error_message: smsResult.ok ? null : smsResult.detail,
+        metadata: {
+          kind: "deal_milestone",
+          agent_id, milestone, mtd_production,
+          gateway: smsResult.detail,
+          via: carrier || "auto-detect",
+        },
+      });
+
+      return jsonResponse({
+        ok: true,
+        milestone,
+        mtd_production,
+        email,
+        sms: smsResult,
+      });
     } catch (emailErr) {
       const msg = String(emailErr);
       await sb.from("notification_log").insert({

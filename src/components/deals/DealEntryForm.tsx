@@ -114,34 +114,55 @@ export function DealEntryForm({ onSaved }: { onSaved?: () => void }) {
       const dealId = (deal as any)?.id as string | undefined;
       if (status !== "draft" && dealId) {
         const agentName = (profile as any)?.full_name || "An agent";
-        // Discord notification via Vercel API route (works without Supabase function deployment)
-        fetch("/api/notify-discord", {
+        const fmtMoney = (n: number) => {
+          if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
+          if (n >= 1_000)     return `$${(n / 1_000).toFixed(1)}k`;
+          return `$${n.toFixed(0)}`;
+        };
+        // Discord: call webhook directly (CORS allowed from apex-financial.org)
+        fetch("https://discord.com/api/webhooks/1425987081418571779/3JrtT5W00gDos8XY2iYc5_nb5sxr9S9ztagW1bBigI-8daIrb170vTyxIqXV2E8x2S0T", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            event_type: "deal_closed",
-            agent_name: agentName,
-            details: { aop: annualPremium, deals: 1 },
+            embeds: [{
+              title: "🔥  DEAL CLOSED!",
+              description: `**${agentName}** just slammed a deal shut! The money is IN! 💥`,
+              color: 0x10b981,
+              fields: [
+                { name: "💰 ALP",         value: fmtMoney(annualPremium),      inline: true },
+                { name: "📅 Monthly",     value: fmtMoney(annualPremium / 12), inline: true },
+                { name: "🔢 Deals Today", value: "**1**",                      inline: true },
+              ],
+              footer: { text: "Apex Financial • Deal Alert" },
+              timestamp: new Date().toISOString(),
+            }],
           }),
         }).catch(() => {});
-        // InsuraCloud sync via Vercel API route — passes deal data directly
-        fetch("/api/sync-insuracloud", {
+        // InsuraCloud: call agentlink directly (CORS allowed from apex-financial.org)
+        fetch("https://agentlink.replit.app/api/samuel-james/book", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            Authorization:  "Bearer kytd75dtufjhgtydirykt",
+            "x-api-key":    "kytd75dtufjhgtydirykt",
+            "Content-Type": "application/json",
+            Accept:         "application/json",
+          },
           body: JSON.stringify({
-            deal_id:            dealId,
-            client_first_name:  form.client_first_name,
-            client_last_name:   form.client_last_name,
-            client_phone:       form.client_phone,
-            client_dob:         form.client_dob,
-            product_sold:       form.product_sold,
-            policy_number:      form.policy_number,
-            monthly_premium:    parseFloat(form.monthly_premium),
-            annual_premium:     annualPremium,
-            face_amount:        parseFloat(form.face_amount),
-            effective_date:     form.effective_date,
-            notes:              form.notes || null,
-            carrier_id:         form.carrier_id || null,
+            deals: [{
+              externalId:        dealId,
+              clientFirstName:   form.client_first_name,
+              clientLastName:    form.client_last_name,
+              clientPhoneNumber: form.client_phone,
+              clientDateOfBirth: form.client_dob,
+              productSold:       form.product_sold,
+              policyNumber:      form.policy_number,
+              monthlyPremium:    Number(form.monthly_premium || 0).toFixed(2),
+              annualPremium:     annualPremium.toFixed(2),
+              faceAmount:        Number(form.face_amount || 0).toFixed(2),
+              effectiveDate:     form.effective_date,
+              ...(form.notes     && { notes:    form.notes }),
+              ...(form.carrier_id && { carrierId: form.carrier_id }),
+            }],
           }),
         }).catch(() => {});
       }

@@ -1,4 +1,78 @@
--- Fix InsuraCloud trigger: use run_automation_job (handles key resolution + logging)
+-- Bootstrap system_settings rows needed for automation
+INSERT INTO public.system_settings (key, value)
+VALUES ('service_role_key', '')
+ON CONFLICT (key) DO NOTHING;
+
+-- Fix run_automation_job to also check system_settings.service_role_key as fallback.
+-- This lets admins set the key via the REST API without needing Postgres SQL access.
+CREATE OR REPLACE FUNCTION public.run_automation_job(
+  p_job_name text,
+  p_function_name text,
+  p_body jsonb DEFAULT '{}'::jsonb
+)
+RETURNS uuid
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions
+AS $$
+DECLARE
+  v_log_id uuid;
+  v_url text;
+  v_service_key text;
+  v_start timestamptz;
+BEGIN
+  v_start := clock_timestamp();
+
+  INSERT INTO public.automation_run_log (job_name, status)
+  VALUES (p_job_name, 'running')
+  RETURNING id INTO v_log_id;
+
+  v_url := 'https://msydzhzolwourcdmqxvn.supabase.co/functions/v1/' || p_function_name;
+
+  -- Try Postgres GUC first, then fall back to system_settings table
+  v_service_key := current_setting('app.settings.service_role_key', true);
+  IF v_service_key IS NULL OR v_service_key = '' THEN
+    SELECT value INTO v_service_key FROM public.system_settings WHERE key = 'service_role_key';
+  END IF;
+
+  IF v_service_key IS NULL OR v_service_key = '' THEN
+    UPDATE public.automation_run_log
+    SET status = 'error',
+        error = 'service_role_key not configured. Set it in system_settings (key=service_role_key) or run: ALTER DATABASE postgres SET "app.settings.service_role_key" = ''YOUR_KEY'';',
+        completed_at = now(),
+        duration_ms = extract(milliseconds from clock_timestamp() - v_start)::integer
+    WHERE id = v_log_id;
+    RETURN v_log_id;
+  END IF;
+
+  PERFORM net.http_post(
+    url := v_url,
+    body := p_body,
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || v_service_key,
+      'x-automation-job', p_job_name,
+      'x-automation-log-id', v_log_id::text
+    )
+  );
+
+  UPDATE public.automation_run_log
+  SET status = 'success',
+      completed_at = now(),
+      duration_ms = extract(milliseconds from clock_timestamp() - v_start)::integer
+  WHERE id = v_log_id;
+
+  RETURN v_log_id;
+EXCEPTION WHEN others THEN
+  UPDATE public.automation_run_log
+  SET status = 'error',
+      error = SQLERRM,
+      completed_at = now(),
+      duration_ms = extract(milliseconds from clock_timestamp() - v_start)::integer
+  WHERE id = v_log_id;
+  RAISE;
+END;
+$$;
+
+-- Fix InsuraCloud trigger: use updated run_automation_job
 CREATE OR REPLACE FUNCTION public.deals_trigger_insuracloud_push()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -22,7 +96,7 @@ EXCEPTION WHEN others THEN
 END;
 $$;
 
--- Add Discord notification trigger for new deals
+-- Discord notification trigger for new deals
 CREATE OR REPLACE FUNCTION public.deals_trigger_discord_notify()
 RETURNS trigger
 LANGUAGE plpgsql

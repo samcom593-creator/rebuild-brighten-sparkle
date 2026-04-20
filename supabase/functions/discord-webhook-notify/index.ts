@@ -25,9 +25,16 @@ Deno.serve(
 
       const { event_type, agent_name, details } = await parseBody(req, BodySchema);
 
-      // Resolve webhook from profiles (first profile with one set wins)
-      // Primary: Supabase secret; fallback: profile column
+      // Priority: (1) DISCORD_WEBHOOK_URL secret, (2) system_settings table, (3) profiles column
       let webhookUrl = Deno.env.get("DISCORD_WEBHOOK_URL") || null;
+      if (!webhookUrl) {
+        const { data: setting } = await supabase
+          .from("system_settings")
+          .select("value")
+          .eq("key", "discord_webhook_url")
+          .maybeSingle();
+        webhookUrl = setting?.value || null;
+      }
       if (!webhookUrl) {
         const { data: profiles } = await supabase
           .from("profiles")

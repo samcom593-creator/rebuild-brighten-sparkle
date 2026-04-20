@@ -266,6 +266,8 @@ export default function AgentPipeline() {
 
   // ─── Stage change ──────────────────────────────────────────────────────────
   const handleStageChange = useCallback(async (applicationId: string, newStage: KanbanStage) => {
+    const app = applications.find((a) => a.id === applicationId);
+    const prevStage = app?.license_progress ?? "new_applicant";
     try {
       const updateData: Record<string, unknown> = { license_progress: newStage };
       if (newStage === "licensed") updateData.license_status = "licensed";
@@ -281,10 +283,28 @@ export default function AgentPipeline() {
         )
       );
 
+      // Fire Discord notification (fire-and-forget, never blocks UI)
+      if (app) {
+        const eventType = newStage === "licensed" ? "milestone" : "stage_change";
+        supabase.functions.invoke("discord-webhook-notify", {
+          body: {
+            event_type: eventType,
+            agent_name: `${app.first_name} ${app.last_name}`,
+            details: eventType === "milestone"
+              ? { milestone_type: "licensed", value: "1" }
+              : {
+                  from_stage: prevStage,
+                  to_stage:   newStage,
+                  email:      app.email,
+                  recruiter:  app.assigned_manager_name ?? "",
+                },
+          },
+        }).catch(() => {});
+      }
+
       if (newStage === "licensed") {
         playSound("celebrate");
         toast.success("🎉 Agent is now licensed!");
-        const app = applications.find((a) => a.id === applicationId);
         if (app && agentId) {
           supabase.functions.invoke("add-agent", {
             body: {

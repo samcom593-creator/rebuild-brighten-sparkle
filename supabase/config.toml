@@ -352,3 +352,6 @@ verify_jwt = false
 [functions.trigger-new-hire-flow]
 verify_jwt = false
 
+[functions.notify-deal-submitted]
+verify_jwt = false
+

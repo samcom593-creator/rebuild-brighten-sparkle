@@ -5,12 +5,14 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
 import { startOfWeek, startOfMonth, subWeeks, format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export function DashboardInsightCards() {
+  const { user } = useAuth();
   const mountedRef = useRef(true);
   useEffect(() => {
     mountedRef.current = true;
@@ -35,8 +37,18 @@ export function DashboardInsightCards() {
   const monthStartStr = format(monthStart, "yyyy-MM-dd");
 
   const { data } = useQuery({
-    queryKey: ["dashboard-insight-cards-v3", weekStartStr, monthStartStr],
+    queryKey: ["dashboard-insight-cards-v4", weekStartStr, monthStartStr, user?.id],
     queryFn: async () => {
+      // Per-agent revenue estimate (uses contract % + override rate from view)
+      let estimate: any = null;
+      if (user?.id) {
+        const { data: agentRow } = await supabase.from("agents").select("id").eq("user_id", user.id).maybeSingle();
+        const myAgentId = agentRow?.id;
+        if (myAgentId) {
+          const r = await supabase.from("agent_revenue_estimate" as any).select("*").eq("agent_id", myAgentId).maybeSingle();
+          estimate = r.data;
+        }
+      }
       const [
         newContractsRes,
         weeklyAppsRes,
@@ -152,6 +164,7 @@ export function DashboardInsightCards() {
         teamDirect,
         teamOverride,
         estimatedFromAlp,
+        estimate,
       };
     },
     staleTime: 120000,
@@ -218,41 +231,66 @@ export function DashboardInsightCards() {
         </DialogContent>
       </Dialog>
 
-      {/* Revenue This Month — prefers real Insuracloud, falls back to estimate */}
+      {/* Revenue This Month — real Insuracloud or proper tiered estimate */}
       <GlassCard className="p-4">
         <div className="flex items-center gap-2 mb-3">
           <DollarSign className="h-4 w-4 text-emerald-400" />
           <h4 className="font-semibold text-sm">Revenue This Month</h4>
           <Badge variant="outline" className="ml-auto text-xs text-muted-foreground">
-            {data.teamMtd > 0 ? "InsuraCloud Live" : "Estimated"}
+            {data.estimate?.insuracloud_mtd ? "InsuraCloud Live" : "Estimate"}
           </Badge>
         </div>
-        <div className="space-y-3">
-          <div>
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Team MTD (Paid)</p>
-            <p className="text-2xl font-bold text-emerald-400">
-              ${Math.round(data.teamMtd > 0 ? data.teamMtd : data.estimatedFromAlp).toLocaleString()}
-            </p>
-          </div>
-          {data.teamMtd > 0 && (
-            <div className="grid grid-cols-2 gap-3">
+
+        {data.estimate?.insuracloud_mtd ? (
+          <div className="space-y-2">
+            <div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">My MTD Commissions</p>
+              <p className="text-2xl font-bold text-emerald-400">
+                ${Math.round(Number(data.estimate.insuracloud_mtd)).toLocaleString()}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-border/50">
               <div>
-                <p className="text-[10px] text-muted-foreground uppercase">Direct</p>
-                <p className="text-sm font-semibold">${Math.round(data.teamDirect).toLocaleString()}</p>
+                <p className="text-muted-foreground">Direct</p>
+                <p className="font-semibold">${Math.round(Number(data.estimate.insuracloud_direct || 0)).toLocaleString()}</p>
               </div>
               <div>
-                <p className="text-[10px] text-muted-foreground uppercase">Override</p>
-                <p className="text-sm font-semibold">${Math.round(data.teamOverride).toLocaleString()}</p>
+                <p className="text-muted-foreground">Override</p>
+                <p className="font-semibold">${Math.round(Number(data.estimate.insuracloud_override || 0)).toLocaleString()}</p>
               </div>
             </div>
-          )}
-          <div className="pt-2 border-t border-border/50">
-            <p className="text-[10px] text-muted-foreground">
-              Team ALP logged: ${data.monthlyAlp.toLocaleString()}
-              {data.teamMtd === 0 && " • Estimate uses 9-month advance × 75% persistency"}
+          </div>
+        ) : data.estimate ? (
+          <div className="space-y-2">
+            <div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Estimated MTD</p>
+              <p className="text-2xl font-bold text-emerald-400">
+                ${Math.round(Number(data.estimate.personal_monthly_estimate) + Number(data.estimate.override_monthly_estimate)).toLocaleString()}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-border/50">
+              <div>
+                <p className="text-muted-foreground">Personal (est.)</p>
+                <p className="font-semibold">${Math.round(Number(data.estimate.personal_monthly_estimate)).toLocaleString()}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  ALP ${Number(data.estimate.personal_monthly_alp || 0).toLocaleString()} × {data.estimate.contract_pct}% × 9mo × 75%
+                </p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Override (est.)</p>
+                <p className="font-semibold">${Math.round(Number(data.estimate.override_monthly_estimate)).toLocaleString()}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  Team ALP ${Number(data.estimate.downline_monthly_alp || 0).toLocaleString()} × {Math.round(Number(data.estimate.override_rate || 0) * 100)}%
+                </p>
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground pt-1">
+              Estimate — will show live InsuraCloud data once sync completes
             </p>
           </div>
-        </div>
+        ) : (
+          <p className="text-xs text-muted-foreground italic py-2">No data yet</p>
+        )}
       </GlassCard>
 
       {/* License Progress — clickable stages */}

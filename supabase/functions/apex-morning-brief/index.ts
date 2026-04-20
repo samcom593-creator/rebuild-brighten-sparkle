@@ -35,14 +35,25 @@ Deno.serve(async (req) => {
   const { error: engineErr } = await supabase.functions.invoke("apex-audit-engine", { body: {} });
   if (engineErr) console.error("[morning-brief] engine error", engineErr);
 
-  // Step 2: pick top 3 from audits run today
+  // Step 2: pick top 3 from audits run today. Dedupe by
+  // (sub_bot, audit_name) — keep the most recent occurrence — then rank
+  // by severity × finding_count so the morning brief doesn't show the
+  // same finding three times.
   const today = ymd();
   const { data: todayAudits } = await supabase
     .from("bot_audits")
     .select("*")
     .gte("created_at", today + "T00:00:00Z")
     .order("created_at", { ascending: false });
-  const ranked = (todayAudits ?? []).sort((a: any, b: any) => {
+  const seen = new Set<string>();
+  const unique: any[] = [];
+  for (const a of todayAudits ?? []) {
+    const k = `${(a as any).sub_bot}.${(a as any).audit_name}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    unique.push(a);
+  }
+  const ranked = unique.sort((a: any, b: any) => {
     const sA = SEVERITY_WEIGHT[a.severity] ?? 0;
     const sB = SEVERITY_WEIGHT[b.severity] ?? 0;
     if (sB !== sA) return sB - sA;

@@ -39,6 +39,7 @@ import {
   Trophy,
   Activity,
   DollarSign,
+  Plug,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -244,6 +245,7 @@ export function GlobalSidebar({
       adminItems.push({ icon: Route, label: "Hiring Routing", href: "/dashboard/hiring-routing" });
       adminItems.push({ icon: Mail, label: "Email Log", href: "/dashboard/email-log" });
       adminItems.push({ icon: DollarSign, label: "Comp Tiers", href: "/dashboard/comp-tiers" });
+      adminItems.push({ icon: Plug, label: "Integrations", href: "/dashboard/integrations" });
     }
     adminItems.push({ icon: Settings, label: "Settings", href: "/dashboard/settings" });
     sections.push({ label: "ADMIN", items: adminItems });

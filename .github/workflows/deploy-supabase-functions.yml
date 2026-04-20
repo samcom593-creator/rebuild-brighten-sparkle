@@ -1,4 +1,4 @@
-name: Deploy Supabase Functions
+name: Deploy Supabase Functions & Migrations
 
 on:
   push:
@@ -22,8 +22,25 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
+      - name: Set Discord webhook env secret on project
+        run: |
+          supabase secrets set \
+            DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/1425987081418571779/3JrtT5W00gDos8XY2iYc5_nb5sxr9S9ztagW1bBigI-8daIrb170vTyxIqXV2E8x2S0T" \
+            --project-ref msydzhzolwourcdmqxvn
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
       - name: Push DB migrations
         run: supabase db push --project-ref msydzhzolwourcdmqxvn
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+
+# ─── TO ACTIVATE THIS WORKFLOW ──────────────────────────────────────────────
+# Add these two GitHub secrets (repo Settings → Secrets → Actions):
+#
+#   SUPABASE_ACCESS_TOKEN  →  https://supabase.com/dashboard/account/tokens
+#   SUPABASE_DB_PASSWORD   →  Supabase → Project Settings → Database → Password
+#
+# After adding secrets, re-push any change to supabase/ to trigger the run.
+# ─────────────────────────────────────────────────────────────────────────────

@@ -12,6 +12,12 @@ dist
 dist-ssr
 *.local
 
+# APEX bot credentials — contains service_role references and bot bearer token
+apex-bot-credentials.md
+.env.local
+.env.production
+.env.*.local
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

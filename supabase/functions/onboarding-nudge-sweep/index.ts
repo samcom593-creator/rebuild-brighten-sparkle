@@ -120,15 +120,29 @@ async function createManagerTask(managerAgentId: string, agentId: string, agentN
   } as any);
 }
 
-async function terminateAgent(agentId: string) {
+async function terminateAgent(agentId: string): Promise<{ ok: boolean; error?: string }> {
   // deactivation_reason is a postgres ENUM with fixed values:
   // 'bad_business' | 'inactive' | 'switched_teams'. Use 'inactive' for
   // 30-day-no-production auto-terminations.
-  await supabase.from("agents").update({
+  const { error } = await supabase.from("agents").update({
     status: "terminated",
     is_deactivated: true,
     deactivation_reason: "inactive",
   }).eq("id", agentId);
+  if (error) return { ok: false, error: error.message };
+  return { ok: true };
+}
+
+async function recentlyNudged(agentIds: string[]): Promise<Set<string>> {
+  if (agentIds.length === 0) return new Set();
+  const since = new Date(Date.now() - 22 * 3600 * 1000).toISOString();
+  const { data } = await supabase
+    .from("agent_tasks")
+    .select("agent_id")
+    .in("agent_id", agentIds)
+    .eq("task_type", "onboarding_followup")
+    .gte("created_at", since);
+  return new Set((data ?? []).map((r: any) => r.agent_id as string));
 }
 
 type Plan = {
@@ -170,6 +184,12 @@ async function sweep(dryRun: boolean, limit: number) {
     .limit(limit);
   if (error) throw error;
 
+  // Idempotency: skip anyone we've already nudged in the last 22h.
+  // terminate is exempt (it's terminal and removes the row from the
+  // candidate pool anyway on next sweep).
+  const allIds = (agents ?? []).map((a: any) => a.id);
+  const alreadyNudged = await recentlyNudged(allIds);
+
   const plans: Plan[] = [];
   for (const a of (agents ?? []) as (AgentRow & { user_id: string | null })[]) {
     if (a.user_id && adminUserIds.has(a.user_id)) continue; // protect admins
@@ -177,6 +197,7 @@ async function sweep(dryRun: boolean, limit: number) {
     const age = ageDays(a.created_at);
     const action = planFor(age);
     if (!action) continue;
+    if (action !== "terminate" && alreadyNudged.has(a.id)) continue;
     plans.push({
       agent_id: a.id,
       age_days: age,
@@ -215,7 +236,8 @@ async function sweep(dryRun: boolean, limit: number) {
         }
       }
       if (p.action === "terminate") {
-        await terminateAgent(a.id);
+        const r = await terminateAgent(a.id);
+        if (!r.ok) { results.push({ ...p, ok: false, error: r.error }); continue; }
       }
       results.push({ ...p, ok: true });
     } catch (e: any) {

@@ -71,7 +71,7 @@ async function sendSMS(app: App): Promise<{ ok: boolean; error?: string }> {
     ? `Hey ${app.first_name}, Sam at APEX. Saw your app — you're licensed, let's fast-track you. Book a 15-min call: ${firstPath}`
     : `Hey ${app.first_name}, Sam at APEX. We saw your app. We cover licensing costs and get you producing in ~2 weeks. Next step: ${firstPath}`;
   const res = await supabase.functions.invoke("send-sms-auto-detect", {
-    body: { phone: app.phone, message: body, application_id: app.id },
+    body: { phone: app.phone, message: body, applicationId: app.id },
   });
   if ((res as any).error) return { ok: false, error: String((res as any).error) };
   return { ok: true };

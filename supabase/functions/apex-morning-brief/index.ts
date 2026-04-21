@@ -56,6 +56,27 @@ function shell(opts: { subject: string; heroTag: string; heroTitle: string; hero
 </div></body></html>`;
 }
 
+function fmt$(n: number): string {
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}k`;
+  return `$${Math.round(n)}`;
+}
+
+async function monthForecast(): Promise<{ mtd: number; projection: number; daysIn: number; daysOfMonth: number } | null> {
+  const now = new Date();
+  const daysIn = now.getDate();
+  const daysOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+  const { data } = await supabase
+    .from("daily_production")
+    .select("aop")
+    .gte("production_date", monthStart);
+  if (!data) return null;
+  const mtd = data.reduce((s: number, r: any) => s + Number(r.aop ?? 0), 0);
+  const projection = daysIn > 0 ? (mtd / daysIn) * daysOfMonth : 0;
+  return { mtd, projection, daysIn, daysOfMonth };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -63,6 +84,7 @@ Deno.serve(async (req) => {
 
   const today = ymd();
   const todayISO = today + "T00:00:00Z";
+  const forecast = await monthForecast();
 
   const { data: todayAudits } = await supabase
     .from("bot_audits")
@@ -112,11 +134,14 @@ Deno.serve(async (req) => {
   const heroTitle = clean
     ? "All clear."
     : `${totalActions} action${totalActions === 1 ? "" : "s"} today`;
+  const forecastLine = forecast
+    ? `${fmt$(forecast.mtd)} MTD · projecting ${fmt$(forecast.projection)} by month-end (day ${forecast.daysIn}/${forecast.daysOfMonth})`
+    : "";
   const heroSub = clean
-    ? "Focus: recruiting calls + 4 content pieces."
+    ? forecastLine || "Focus: recruiting calls + 4 content pieces."
     : criticalCount > 0
-      ? `${criticalCount} critical · ${totalActions - criticalCount} warn${rest.length ? ` · +${rest.length} queued` : ""}`
-      : `${totalActions} warn · work top-down`;
+      ? `${criticalCount} critical · ${totalActions - criticalCount} warn${rest.length ? ` · +${rest.length} queued` : ""}${forecastLine ? ` · ${forecastLine}` : ""}`
+      : `${totalActions} warn · work top-down${forecastLine ? ` · ${forecastLine}` : ""}`;
 
   const bodyHtml = clean
     ? `<p style="margin:0;color:#334155;font-size:15px">No warnings overnight. Your two tasks today:</p>

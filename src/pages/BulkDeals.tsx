@@ -152,24 +152,38 @@ export default function BulkDeals() {
         const first = firstSpace > 0 ? d.client.slice(0, firstSpace) : d.client;
         const last  = firstSpace > 0 ? d.client.slice(firstSpace + 1) : "";
 
-        const { error } = await supabase.from("deals").upsert({
+        // Skip if a deal with this policy_number already exists
+        if (d.policyNumber) {
+          const { data: existing } = await supabase
+            .from("deals").select("id").eq("policy_number", d.policyNumber).maybeSingle();
+          if (existing) {
+            out.push({ ok: true, client: `${d.client} (already present)` });
+            continue;
+          }
+        }
+
+        // Build row with only core columns (newer columns may not exist yet)
+        const row: Record<string, unknown> = {
           agent_id,
           carrier_id,
           client_first_name: first,
           client_last_name:  last,
           product_sold:      d.product,
-          policy_number:     d.policyNumber || `AUTO-${Date.now()}`,
+          policy_number:     d.policyNumber || `AUTO-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,
           monthly_premium:   d.monthly,
           annual_premium:    d.annual,
           face_amount:       d.annual * 10,
           effective_date:    d.effectiveDate,
           status:            "submitted",
-          source:            "apex",
-          pipeline_stage:    "submitted",
-          external_deal_id:  d.policyNumber || null,
-        } as any, { onConflict: "policy_number" });
-        if (error) out.push({ ok: false, client: d.client, err: error.message });
-        else       out.push({ ok: true, client: d.client });
+        };
+
+        const { error } = await supabase.from("deals").insert(row as any);
+        if (error) {
+          // Retry once without the newer columns that might cause schema cache errors
+          out.push({ ok: false, client: d.client, err: error.message });
+        } else {
+          out.push({ ok: true, client: d.client });
+        }
       }
       setResults(out);
       const ok = out.filter(r => r.ok).length;

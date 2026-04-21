@@ -34,6 +34,7 @@ import { TeamPerformanceBreakdown } from "@/components/dashboard/TeamPerformance
 import { OnboardingPipelineCard } from "@/components/dashboard/OnboardingPipelineCard";
 import { RecruitingQuickView } from "@/components/dashboard/RecruitingQuickView";
 import { StreakBanner } from "@/components/celebrations/StreakBanner";
+import { LivePulse } from "@/components/dashboard/LivePulse";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -442,6 +443,9 @@ export default function Dashboard() {
           {(isAdmin || isManager) && <AddAgentModal />}
         </div>
       </div>
+
+      {/* Live pulse — realtime counters */}
+      <LivePulse />
 
       {/* ====== AGENT-ONLY VIEW ====== */}
       {showPersonalOnly && (

@@ -2755,6 +2755,75 @@ export type Database = {
           },
         ]
       }
+      deal_sync_log: {
+        Row: {
+          created_at: string | null
+          deal_id: string | null
+          direction: string | null
+          error: string | null
+          event_type: string | null
+          id: string
+          payload: Json | null
+          response: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          deal_id?: string | null
+          direction?: string | null
+          error?: string | null
+          event_type?: string | null
+          id?: string
+          payload?: Json | null
+          response?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          deal_id?: string | null
+          direction?: string | null
+          error?: string | null
+          event_type?: string | null
+          id?: string
+          payload?: Json | null
+          response?: Json | null
+        }
+        Relationships: []
+      }
+      deal_sync_queue: {
+        Row: {
+          attempts: number | null
+          created_at: string | null
+          deal_id: string
+          direction: string | null
+          id: string
+          last_error: string | null
+          status: string | null
+          synced_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          attempts?: number | null
+          created_at?: string | null
+          deal_id: string
+          direction?: string | null
+          id?: string
+          last_error?: string | null
+          status?: string | null
+          synced_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          attempts?: number | null
+          created_at?: string | null
+          deal_id?: string
+          direction?: string | null
+          id?: string
+          last_error?: string | null
+          status?: string | null
+          synced_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       deals: {
         Row: {
           agent_id: string
@@ -2766,15 +2835,18 @@ export type Database = {
           client_phone: string
           created_at: string
           effective_date: string
+          external_deal_id: string | null
           face_amount: number
           id: string
           insuracloud_sync_error: string | null
           monthly_premium: number
           notes: string | null
+          pipeline_stage: string | null
           policy_expiration_date: string | null
           policy_number: string
           policy_term_months: number | null
           product_sold: string
+          source: string | null
           status: string | null
           synced_to_insuracloud_at: string | null
           updated_at: string
@@ -2789,15 +2861,18 @@ export type Database = {
           client_phone: string
           created_at?: string
           effective_date: string
+          external_deal_id?: string | null
           face_amount: number
           id?: string
           insuracloud_sync_error?: string | null
           monthly_premium: number
           notes?: string | null
+          pipeline_stage?: string | null
           policy_expiration_date?: string | null
           policy_number: string
           policy_term_months?: number | null
           product_sold: string
+          source?: string | null
           status?: string | null
           synced_to_insuracloud_at?: string | null
           updated_at?: string
@@ -2812,15 +2887,18 @@ export type Database = {
           client_phone?: string
           created_at?: string
           effective_date?: string
+          external_deal_id?: string | null
           face_amount?: number
           id?: string
           insuracloud_sync_error?: string | null
           monthly_premium?: number
           notes?: string | null
+          pipeline_stage?: string | null
           policy_expiration_date?: string | null
           policy_number?: string
           policy_term_months?: number | null
           product_sold?: string
+          source?: string | null
           status?: string | null
           synced_to_insuracloud_at?: string | null
           updated_at?: string
@@ -4728,6 +4806,7 @@ export type Database = {
           awarded_at: string | null
           badge_label: string | null
           color_hex: string | null
+          created_at: string | null
           email_delivery_status: string | null
           email_error: string | null
           email_sent_at: string | null
@@ -4746,6 +4825,7 @@ export type Database = {
           awarded_at?: string | null
           badge_label?: string | null
           color_hex?: string | null
+          created_at?: string | null
           email_delivery_status?: string | null
           email_error?: string | null
           email_sent_at?: string | null
@@ -4764,6 +4844,7 @@ export type Database = {
           awarded_at?: string | null
           badge_label?: string | null
           color_hex?: string | null
+          created_at?: string | null
           email_delivery_status?: string | null
           email_error?: string | null
           email_sent_at?: string | null

@@ -1,4 +1,5 @@
 // Sunday 6pm CST weekly report (v3 — branded strategy email).
+// email redesign: 9a3134b
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";

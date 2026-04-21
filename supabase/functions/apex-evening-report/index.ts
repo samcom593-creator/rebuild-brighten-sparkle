@@ -1,4 +1,5 @@
 // 9pm CST evening report (v3 — branded, one hero stat, 5-line body).
+// email redesign: 9a3134b
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";

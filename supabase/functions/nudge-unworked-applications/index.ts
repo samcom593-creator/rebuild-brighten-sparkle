@@ -66,10 +66,10 @@ function bucket(app: App): "sms" | "email" | "no_pickup" | "reject" {
 
 async function sendSMS(app: App): Promise<{ ok: boolean; error?: string }> {
   if (!app.phone) return { ok: false, error: "no phone" };
-  const firstPath = (app.license_status === "licensed" ? CALENDLY_LICENSED : GET_LICENSED_URL);
+  const first = app.first_name || "there";
   const body = app.license_status === "licensed"
-    ? `Hey ${app.first_name}, Sam at APEX. Saw your app — you're licensed, let's fast-track you. Book a 15-min call: ${firstPath}`
-    : `Hey ${app.first_name}, Sam at APEX. We saw your app. We cover licensing costs and get you producing in ~2 weeks. Next step: ${firstPath}`;
+    ? `${first} — Sam here. You're licensed, so you skip the course and go straight to contracting. Book 15 min: ${CALENDLY_LICENSED}`
+    : `${first} — Sam at APEX. We pay for your licensing course and you're producing in ~2 weeks. Next step: ${GET_LICENSED_URL}`;
   const res = await supabase.functions.invoke("send-sms-auto-detect", {
     body: { phone: app.phone, message: body, applicationId: app.id },
   });
@@ -82,26 +82,26 @@ async function sendEmail(app: App): Promise<{ ok: boolean; error?: string }> {
   const resendKey = Deno.env.get("RESEND_API_KEY");
   if (!resendKey) return { ok: false, error: "RESEND_API_KEY missing" };
   const resend = new Resend(resendKey);
-  const cta = app.license_status === "licensed"
-    ? `<a href="${CALENDLY_LICENSED}" style="display:inline-block;background:#10b981;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold">Book my 15-min fast-track call</a>`
-    : `<a href="${GET_LICENSED_URL}" style="display:inline-block;background:#10b981;color:#fff;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold">Start the licensing path</a>`;
+  const first = app.first_name || "there";
   const age = ageDays(app.created_at);
-  const html = `
-    <div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;color:#0f172a;">
-      <h2 style="margin:0 0 12px">Still interested in APEX, ${app.first_name}?</h2>
-      <p>Your application is ${age} days old and I haven't heard back. Two questions:</p>
-      <ol>
-        <li>Still want in?</li>
-        <li>If yes, pick up the next step below. If no, reply STOP and I'll close the file.</li>
-      </ol>
-      <p style="text-align:center;margin:32px 0">${cta}</p>
-      <p style="color:#64748b;font-size:14px">— Sam James, Managing Partner, APEX Financial</p>
-    </div>`;
+  const licensed = app.license_status === "licensed";
+  const cta = licensed
+    ? `<a href="${CALENDLY_LICENSED}" style="display:inline-block;background:#0f172a;color:#fff;padding:12px 22px;border-radius:6px;text-decoration:none;font-weight:600">Book the 15-min call</a>`
+    : `<a href="${GET_LICENSED_URL}" style="display:inline-block;background:#0f172a;color:#fff;padding:12px 22px;border-radius:6px;text-decoration:none;font-weight:600">Start the licensing path</a>`;
+  const html = `<!doctype html><html><body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,Segoe UI,Arial,sans-serif;color:#0f172a;line-height:1.5">
+<div style="max-width:520px;margin:0 auto;padding:28px 22px">
+<div style="font-weight:700;letter-spacing:0.5px;font-size:13px;margin-bottom:8px">APEX</div>
+<p style="margin:0 0 14px">${first},</p>
+<p style="margin:0 0 14px">You applied ${age} days ago and I haven't heard back. Two questions:</p>
+<ol style="padding-left:18px;margin:0 0 18px"><li>Still want in?</li><li>If yes, hit the button. If no, reply STOP and I'll close your file.</li></ol>
+<div style="margin:22px 0">${cta}</div>
+<p style="color:#475569;font-size:13px;margin:24px 0 0">— Sam James · Managing Partner, APEX Financial</p>
+</div></body></html>`;
   try {
     await resend.emails.send({
-      from: "Sam at APEX <sam@apex-financial.org>",
+      from: "Sam James <sam@apex-financial.org>",
       to: app.email,
-      subject: app.license_status === "licensed" ? "Fast-track call — still interested?" : "Still want to get licensed with APEX?",
+      subject: licensed ? `${first}, fast-track call?` : `${first}, still interested in getting licensed?`,
       html,
     });
     return { ok: true };

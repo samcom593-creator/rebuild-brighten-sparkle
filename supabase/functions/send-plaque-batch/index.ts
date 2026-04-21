@@ -5,10 +5,12 @@
  * only, so the Resvg crash in send-plaque-recognition doesn't affect
  * this path) and emails them to each agent via Resend.
  *
- * Body: { limit?: number, dry_run?: boolean, force_resend?: boolean }
+ * Body: { limit?: number, dry_run?: boolean, force_resend?: boolean, target_admin_email?: boolean }
  *   - limit: how many plaques to process in one invocation (default 25)
  *   - dry_run: true → log what would be sent, don't actually email
  *   - force_resend: true → include plaques that already have email_sent_at
+ *   - target_admin_email: true → email all rendered plaques to sam@apex-financial.org
+ *     (a single digest email with every plaque), instead of per-agent
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -123,6 +125,7 @@ Deno.serve(async (req) => {
     const limit = Math.min(Number(body.limit ?? 25), 100);
     const dryRun = !!body.dry_run;
     const forceResend = !!body.force_resend;
+    const targetAdmin = !!body.target_admin_email;
 
     let q = sb.from("plaque_awards")
       .select(`
@@ -143,6 +146,59 @@ Deno.serve(async (req) => {
     }
 
     const summary = { processed: 0, sent: 0, failed: 0, skipped: 0, errors: [] as string[], dry_run: dryRun };
+
+    // Admin-digest mode: build one combined email with all plaques and send to Sam
+    if (targetAdmin) {
+      const adminEmail = Deno.env.get("ADMIN_EMAIL") ?? "sam@apex-financial.org";
+      const cards = (plaques as any[]).map(p => {
+        const name = p.agent?.profile?.full_name ?? "Agent";
+        const tier = p.milestone_type as string;
+        const amount = Number(p.amount) || 0;
+        const date = p.milestone_date as string;
+        const cfg = TIER_CONFIG[tier] ?? TIER_CONFIG.single_day_bronze;
+        const svg = renderPlaqueSVG(name, tier, amount, date);
+        const uri = svgToDataUri(svg);
+        return `<div style="margin:18px 0;border:1px solid ${cfg.accent}40;border-radius:12px;overflow:hidden;background:#0d1526;">
+          <div style="padding:14px 18px;background:${cfg.accent}15;display:flex;justify-content:space-between;align-items:center;">
+            <div><span style="font-size:18px;">${cfg.emoji}</span> <strong style="color:${cfg.accent};letter-spacing:2px;font-size:11px;">${esc(cfg.badge)}</strong></div>
+            <div style="color:#fff;font-size:14px;font-weight:600;">${esc(name)} · ${esc(prettyDate(date))}</div>
+          </div>
+          <div style="padding:16px;text-align:center;">
+            <img src="${uri}" alt="" width="100%" style="max-width:360px;border-radius:8px;"/>
+            <div style="color:${cfg.accent};font-size:22px;font-weight:800;margin-top:8px;">${esc(fmt$(amount))}</div>
+          </div>
+        </div>`;
+      }).join("");
+
+      const digestHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+<body style="font-family:'DM Sans',Arial,sans-serif;background:#030712;color:#e2e8f0;padding:32px 16px;">
+  <div style="max-width:620px;margin:0 auto;background:#0a0f1a;border-radius:16px;padding:32px;">
+    <h1 style="color:#22d3a5;text-align:center;font-size:28px;margin:0 0 6px 0;">APEX Plaque Digest</h1>
+    <p style="color:#94a3b8;text-align:center;font-size:13px;margin:0 0 24px 0;">${plaques!.length} plaques · ${esc(new Date().toLocaleDateString("en-US", {dateStyle:"long"}))}</p>
+    ${cards}
+    <p style="color:#475569;font-size:11px;text-align:center;margin-top:28px;letter-spacing:2px;">APEX FINANCIAL · BUILDING EMPIRES</p>
+  </div>
+</body></html>`;
+
+      if (dryRun) {
+        return new Response(JSON.stringify({ ok: true, mode: "admin_digest_dry_run", to: adminEmail, plaques: plaques!.length }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      try {
+        await resend.emails.send({
+          from: "APEX Financial <notifications@apex-financial.org>",
+          to: [adminEmail],
+          subject: `🏆 APEX Plaque Digest — ${plaques!.length} awards`,
+          html: digestHtml,
+        });
+        return new Response(JSON.stringify({ ok: true, mode: "admin_digest", to: adminEmail, sent: plaques!.length }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      } catch (e) {
+        return new Response(JSON.stringify({ ok: false, error: String(e) }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
 
     for (const p of plaques as any[]) {
       summary.processed++;

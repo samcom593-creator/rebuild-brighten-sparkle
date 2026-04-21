@@ -78,6 +78,7 @@ const InstagramAutomation = lazy(() => import("./pages/InstagramAutomation"));
 const ContentLibrary = lazy(() => import("./pages/ContentLibrary"));
 const HiringPipeline = lazy(() => import("./pages/HiringPipeline"));
 const BookOfBusiness = lazy(() => import("./pages/BookOfBusiness"));
+const AwardsGallery = lazy(() => import("./pages/AwardsGallery"));
 const AgentManagement = lazy(() => import("./pages/AgentManagement"));
 const SystemHealth = lazy(() => import("./pages/SystemHealth"));
 const PrelicensingManager = lazy(() => import("./pages/PrelicensingManager"));
@@ -178,6 +179,7 @@ const App = () => (
                        <Route path="/dashboard/inbox" element={<ProtectedRoute requireAdmin><InboxPage /></ProtectedRoute>} />
                        <Route path="/dashboard/automation" element={<ProtectedRoute requireAdmin><AutomationHub /></ProtectedRoute>} />
                        <Route path="/dashboard/book-of-business" element={<ProtectedRoute><BookOfBusiness /></ProtectedRoute>} />
+                       <Route path="/dashboard/awards" element={<ProtectedRoute><AwardsGallery /></ProtectedRoute>} />
                        <Route path="/dashboard/automation-health" element={<ProtectedRoute requireAdmin><AutomationHealth /></ProtectedRoute>} />
                         <Route path="/dashboard/hierarchy" element={<ProtectedRoute><TeamHierarchy /></ProtectedRoute>} />
                         <Route path="/dashboard/pipeline-simple" element={<AgentPipelineSimple />} />

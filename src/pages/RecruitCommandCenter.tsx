@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { coinRain, screenFlash, levelUpBanner } from "@/lib/gameFx";
 
 interface Applicant {
   id: string;
@@ -100,11 +101,17 @@ export default function RecruitCommandCenter() {
   const markContacted = async (a: Applicant) => {
     setMarking(a.id);
     try {
+      const isFirstContact = !a.contacted_at;
       const { error } = await supabase.from("applications")
         .update({ last_contacted_at: new Date().toISOString(), contacted_at: a.contacted_at ?? new Date().toISOString() })
         .eq("id", a.id);
       if (error) throw error;
       toast.success(`${a.first_name} marked contacted`);
+      if (isFirstContact) {
+        screenFlash("emerald", 400);
+        coinRain(12, 2000);
+        levelUpBanner(`FIRST TOUCH · ${a.first_name.toUpperCase()}`, 2600);
+      }
       await load();
     } catch (e: any) {
       toast.error(e?.message ?? "Failed");

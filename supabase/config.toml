@@ -379,3 +379,6 @@ verify_jwt = false
 [functions.overseer-bot]
 verify_jwt = false
 
+[functions.morning-brief]
+verify_jwt = false
+

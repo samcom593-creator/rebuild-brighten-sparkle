@@ -53,7 +53,7 @@ export function ScheduleBar() {
     },
     enabled: !!user && enabled,
     staleTime: 120_000,
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
   });
 
   const { data: overdueLeads } = useQuery({
@@ -71,7 +71,7 @@ export function ScheduleBar() {
     },
     enabled: !!user && enabled,
     staleTime: 120_000,
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
   });
 
   const handleDismiss = async (item: ScheduleItem, e: React.MouseEvent) => {

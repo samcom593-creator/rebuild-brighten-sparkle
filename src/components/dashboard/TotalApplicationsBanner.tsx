@@ -40,7 +40,7 @@ export function TotalApplicationsBanner() {
   const { data } = useQuery({
     queryKey: ["total-applications-fomo"],
     queryFn: fetchApplicationCounts,
-    refetchInterval: 60_000,
+    refetchInterval: 300_000,
   });
 
   const newApps = data?.newApps ?? 0;

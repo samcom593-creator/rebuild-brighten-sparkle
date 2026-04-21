@@ -77,7 +77,7 @@ interface InboxMessage {
   deliveryEligible: boolean;
 }
 
-const MAX_ROWS_PER_SOURCE = 1000;
+const MAX_ROWS_PER_SOURCE = 250;
 const SUCCESS_STATUSES = new Set(["sent", "delivered", "opened"]);
 const FAILURE_STATUSES = new Set(["failed", "error", "bounced", "complained", "undelivered"]);
 

@@ -389,6 +389,9 @@ export default function Dashboard() {
     queryKey: ["dashboard-stats", user?.id, profile?.full_name, user?.email, dateRange.start.toISOString(), dateRange.end.toISOString(), myDirectsOnly],
     queryFn: () => fetchDashboardData(user!.id, profile?.full_name, user!.email, dateRange, myDirectsOnly),
     enabled: !!user && !authLoading,
+    staleTime: 300_000,
+    gcTime: 600_000,
+    refetchOnWindowFocus: false,
   });
 
   const stats = data?.stats ?? defaultStats;

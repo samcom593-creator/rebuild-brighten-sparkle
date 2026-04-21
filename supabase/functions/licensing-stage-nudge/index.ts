@@ -201,3 +201,4 @@ Deno.serve(async (req) => {
     results: body.dry_run ? results : undefined,
   }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
 });
+// deploy trigger: 4538a9b

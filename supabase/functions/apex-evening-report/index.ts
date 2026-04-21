@@ -102,7 +102,7 @@ ${prep.length ? `<div style="margin-top:18px;padding:14px 16px;background:#f0f9f
     body: bodyHtml,
   });
 
-  const sms = `APEX 9pm: ${fmt$(aopToday)} · ${dealsToday}d · ${appsT.count ?? 0}apps · ${contactedT.count ?? 0}ctc${(failT.count ?? 0) > 0 ? ` · ${failT.count}fails` : ""}`.slice(0, 90);
+  const sms = `APEX 🌙 ${fmt$(aopToday)}${aopToday >= aopYest ? " ▲" : " ▼"} · ${dealsToday} deals · ${appsT.count ?? 0} apps · ${contactedT.count ?? 0} touched${(failT.count ?? 0) > 0 ? ` · ${failT.count} fail` : ""}`.slice(0, 120);
 
   try {
     await resend.emails.send({

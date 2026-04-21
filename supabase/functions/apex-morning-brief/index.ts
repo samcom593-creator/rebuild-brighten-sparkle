@@ -119,22 +119,22 @@ Deno.serve(async (req) => {
       : `${totalActions} warn · work top-down`;
 
   const bodyHtml = clean
-    ? `<p style="margin:0;color:#334155;font-size:15px;line-height:1.6">No warnings overnight. Your two tasks today:</p>
-<ol style="color:#334155;font-size:15px;line-height:1.7;padding-left:18px"><li>30-50 recruiting calls</li><li>4 content pieces</li></ol>
-<p style="color:#64748b;font-size:13px;margin-top:16px">Engine is running every 30 min and will page you if anything flips critical.</p>`
-    : `<p style="margin:0 0 6px;color:#334155;font-size:14px">Overnight audit. Work these in order:</p>
+    ? `<p style="margin:0;color:#334155;font-size:15px">No warnings overnight. Your two tasks today:</p>
+<ol style="color:#334155;font-size:15px;line-height:1.7;padding-left:18px;margin:10px 0 0"><li>30–50 recruiting calls</li><li>4 content pieces</li></ol>
+<p style="color:#64748b;font-size:13px;margin-top:16px">Engine audits every 30 min and will page you if anything flips critical.</p>`
+    : `<p style="margin:0 0 6px;color:#334155;font-size:14px">Work these in order — each has the one fix baked in.</p>
 ${top3.map((a, i) => actionCard(i + 1, a)).join("")}
-${rest.length ? `<p style="color:#64748b;font-size:12px;margin-top:14px">+ ${rest.length} other warning${rest.length === 1 ? "" : "s"} queued (${rest.slice(0, 4).map((r) => r.audit_name).join(", ")}${rest.length > 4 ? "…" : ""})</p>` : ""}`;
+${rest.length ? `<p style="color:#64748b;font-size:12px;margin-top:14px">+${rest.length} lower-priority warning${rest.length === 1 ? "" : "s"} (${rest.slice(0, 4).map((r) => r.audit_name.replace(/_/g, " ")).join(", ")}${rest.length > 4 ? "…" : ""}) — won't page you, just logged.</p>` : ""}`;
 
   const html = shell({
     subject: `APEX morning · ${today}`,
     heroTag, heroTitle, heroSub, body: bodyHtml,
   });
 
-  const smsTop = top3[0]?.summary ?? "All clear.";
+  const smsTop = top3[0]?.summary ?? "";
   const sms = clean
-    ? `APEX 7am: all clear. Focus: calls + content.`
-    : `APEX 7am: #1 ${smsTop}`.slice(0, 90);
+    ? `APEX ☀️ all clear. Today: 30+ calls, 4 videos.`
+    : `APEX ☀️ ${totalActions} action${totalActions === 1 ? "" : "s"} · ${smsTop.slice(0, 72)}`.slice(0, 120);
 
   let email_id: string | null = null;
   try {

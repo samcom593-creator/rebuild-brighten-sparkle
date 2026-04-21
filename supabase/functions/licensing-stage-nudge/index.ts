@@ -84,31 +84,31 @@ function planFor(app: App): Plan | null {
   const p = app.license_progress ?? "unlicensed";
 
   if (p === "unlicensed" && applyAge === 3) {
-    return { app, action: "sms", body: `Hey ${first}, Sam at APEX. Day 3 check-in — ready to pick your licensing course? We cover the cost. Start here: ${GET_LICENSED_URL}` };
+    return { app, action: "sms", body: `${first} — Sam at APEX. You applied 3 days ago. Ready to start your licensing course? We cover the cost. Link: ${GET_LICENSED_URL}` };
   }
   if (p === "unlicensed" && applyAge === 10) {
-    return { app, action: "sms", body: `${first}, still interested in getting licensed? We pay for the course, take ~2 weeks. Reply YES or visit ${GET_LICENSED_URL}` };
+    return { app, action: "sms", body: `${first} — still want in? We pay for your course and you're producing in ~2 weeks. Reply YES or tap ${GET_LICENSED_URL}` };
   }
   if (p === "course_purchased" && stageAge === 7) {
-    return { app, action: "email", subject: "How's the course going?", html: `<p>Hey ${first},</p><p>You bought your course a week ago. How's it going? Most people finish in 2-3 weeks if they put in an hour a day.</p><p>If you're stuck on a section, reply and tell me which one.</p><p>Ready for the exam? <a href="${APPLY_URL}">Update your status</a>.</p><p>— Sam</p>` };
+    return { app, action: "email", subject: `${first}, one-week check-in`, html: `<!doctype html><html><body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,Segoe UI,Arial,sans-serif;color:#0f172a;line-height:1.5"><div style="max-width:520px;margin:0 auto;padding:28px 22px"><div style="font-weight:700;letter-spacing:0.5px;font-size:13px;margin-bottom:8px">APEX</div><p style="margin:0 0 14px">${first},</p><p style="margin:0 0 14px">One week into the course. Most people finish in 2–3 weeks at an hour a day.</p><p style="margin:0 0 14px">Reply with one word so I know where you stand:</p><ul style="margin:0 0 14px;padding-left:18px;color:#334155"><li><strong>ON TRACK</strong> — you're cruising</li><li><strong>STUCK</strong> — one section is killing you</li><li><strong>PAUSE</strong> — life got in the way, need a plan</li></ul><p style="color:#475569;font-size:13px;margin:22px 0 0">— Sam James · Managing Partner, APEX Financial</p></div></body></html>` };
   }
   if (p === "course_purchased" && stageAge === 14) {
-    return { app, action: "sms", body: `${first}, day 14 in the course — let's schedule your exam this week. Even if you're 80% ready, book the date and use it as a forcing function. Reply DATE.` };
+    return { app, action: "sms", body: `${first} — two weeks in. Book your exam date this week even if you're not 100% ready. The date is the forcing function. Reply with a target date.` };
   }
   if (p === "course_purchased" && stageAge === 30) {
-    return { app, action: "manager_task", body: `${first} ${app.last_name} has been in course_purchased for 30 days. Call them — either finish the course or move them out of the pipeline.` };
+    return { app, action: "manager_task", body: `${first} ${app.last_name} has been in course_purchased for 30 days. Call today — finish the course or move out of the pipeline.` };
   }
   if (p === "finished_course" && stageAge === 3) {
-    return { app, action: "sms", body: `${first}, you finished the course. Book the exam now — dates fill fast. Reply and I'll help you schedule.` };
+    return { app, action: "sms", body: `${first} — you finished the course. Book the exam now, dates fill up fast. Reply and I'll walk you through scheduling.` };
   }
   if (p === "test_scheduled" && stageAge === 1) {
-    return { app, action: "sms", body: `${first}, how'd the exam go? Reply PASSED or FAILED and I'll send next steps.` };
+    return { app, action: "sms", body: `${first} — how'd the exam go? Reply PASSED or FAILED and I'll send you the next step.` };
   }
   if (p === "passed_test" && stageAge === 5 && !app.fingerprints_submitted_at) {
-    return { app, action: "sms", body: `${first}, passed the exam — next: get fingerprints done. Most states do Fieldprint or IdentoGO. Takes 15 min. Need the link?` };
+    return { app, action: "sms", body: `${first} — you passed. Next: fingerprints (Fieldprint or IdentoGO, 15 min). Need the link for your state?` };
   }
   if (p === "waiting_on_license" && stageAge === 14) {
-    return { app, action: "sms", body: `${first}, it's been 2 weeks waiting on the state license. They usually take 2-4 weeks — hang tight, I'll nudge the state if we hit 30.` };
+    return { app, action: "sms", body: `${first} — two weeks on the state license, normal is 2–4 weeks. If we hit 30, I'll escalate. Sit tight.` };
   }
   return null;
 }

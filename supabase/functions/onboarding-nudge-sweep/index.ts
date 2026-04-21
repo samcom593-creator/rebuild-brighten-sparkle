@@ -86,8 +86,8 @@ async function getManagerContact(managerAgentId: string): Promise<{ phone: strin
 
 async function sendAgentSMS(phone: string, firstName: string, age: number, _agentId: string) {
   const body = age <= 6
-    ? `Hey ${firstName}, Sam at APEX. You signed ${age}d ago and haven't booked your first call. Reply PRODUCING / STUCK / OUT and I'll route accordingly.`
-    : `${firstName}, it's been ${age} days. Your manager is about to call you. If you want to stay, reply STAY. If you're done, reply OUT.`;
+    ? `${firstName} — Sam at APEX. You signed ${age} days ago, no first call yet. Reply PRODUCING, STUCK, or OUT and I'll route you.`
+    : `${firstName} — ${age} days in and we haven't seen activity. Your manager is calling you next. Reply STAY to stay in, OUT to step back.`;
   await supabase.functions.invoke("send-sms-auto-detect", {
     body: { phone, message: body },
   });
@@ -95,7 +95,7 @@ async function sendAgentSMS(phone: string, firstName: string, age: number, _agen
 
 async function sendManagerSMS(phone: string, mgrName: string, agentName: string, age: number) {
   const firstMgr = (mgrName || "").split(" ")[0] || "Manager";
-  const body = `${firstMgr}: ${agentName} is ${age}d in with 0 deals. CALL THEM TODAY or we auto-terminate at day 30.`;
+  const body = `${firstMgr} — ${agentName} is ${age} days in, zero deals. Call today or we auto-terminate at day 30.`;
   await supabase.functions.invoke("send-sms-auto-detect", {
     body: { phone, message: body },
   });

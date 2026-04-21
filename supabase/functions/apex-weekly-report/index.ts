@@ -146,7 +146,7 @@ ${criticalsBlock}
     body: bodyHtml,
   });
 
-  const sms = `APEX week: ${fmt$(aopT)} ALP · ${wow >= 0 ? "+" : ""}${wow.toFixed(0)}% WoW · focus: ${subbotRanked[0]?.[0]?.replace(/_/g, " ") ?? "clean"}`.slice(0, 90);
+  const sms = `APEX 📊 week ${fmt$(aopT)} · ${wow >= 0 ? "+" : ""}${wow.toFixed(0)}% WoW${subbotRanked[0] ? ` · focus: ${subbotRanked[0][0].replace(/_/g, " ")}` : " · clean"}`.slice(0, 120);
 
   try {
     await resend.emails.send({

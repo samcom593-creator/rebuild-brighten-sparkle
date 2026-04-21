@@ -121,6 +121,10 @@ Deno.serve(async (req) => {
 
     let emailsSent = 0, smsSent = 0, failed = 0;
 
+    // Resend free plan = 10 req/s. Sleep 150ms between sends (≈6.6 req/s)
+    // to stay well under the limit when fanning out to 60+ agents.
+    const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
     for (const a of (audience ?? []) as Array<{ id: string; user_id: string; profile: { full_name?: string; email?: string; phone?: string; carrier?: string } | null }>) {
       if (a.id === deal.agent_id) continue; // skip the closer
       const theirFirst = a.profile?.full_name?.split(" ")[0] ?? "Agent";
@@ -164,6 +168,9 @@ Deno.serve(async (req) => {
           console.error("email failed:", e);
         }
       }
+
+      // Pace between emails to keep Resend from rate-limiting the fan-out
+      await sleep(150);
 
       if (resend && phone && carrier && CARRIER_GATEWAYS[carrier]) {
         try {

@@ -2,8 +2,11 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import { initWebVitals } from "./shared/lib/webVitals";
+import { installRippleOrigin, installRevealObserver } from "./lib/gameFx";
 
 initWebVitals();
+installRippleOrigin();
+installRevealObserver();
 
 // ── PWA: autoUpdate + clientsClaim means new SW takes over IMMEDIATELY
 // on deploy. We still hard-reload ONCE when the controller changes so

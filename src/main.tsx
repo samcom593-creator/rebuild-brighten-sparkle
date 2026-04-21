@@ -5,17 +5,23 @@ import { initWebVitals } from "./shared/lib/webVitals";
 
 initWebVitals();
 
-// PWA update: flag availability but NEVER reload mid-session
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.ready.then(registration => {
-    registration.addEventListener('updatefound', () => {
-      const newWorker = registration.installing;
-      newWorker?.addEventListener('statechange', () => {
-        if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
-          if (import.meta.env.DEV) console.log('[PWA] Update available — will apply on next full page load.');
-        }
-      });
+// ── PWA: autoUpdate + clientsClaim means new SW takes over IMMEDIATELY
+// on deploy. We still hard-reload ONCE when the controller changes so
+// the user sees the newest bundle without a stale paint.
+if ("serviceWorker" in navigator) {
+  let reloading = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (reloading) return;
+    reloading = true;
+    window.location.reload();
+  });
+
+  // Poll for updates when the tab regains focus — covers long-open PWAs.
+  navigator.serviceWorker.ready.then(reg => {
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") reg.update().catch(() => {});
     });
+    setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000);
   });
 }
 

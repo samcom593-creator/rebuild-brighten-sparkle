@@ -1,7 +1,8 @@
 # APEX Overnight Sprint — Morning Handover
 
 **Session summary:** autonomous build, 2026-04-21 overnight.
-**Commits this sprint:** `907a586` → `a1952ba` → `f572e79` → `3026300` → `1e7cae8` → `021f203`
+**Commits this sprint:**
+`907a586` · `a1952ba` · `f572e79` · `3026300` · `1e7cae8` · `021f203` · `f8fba5c` · `a3738db` · `322c8af` · `04e6eb8` · `3cf2fed`
 **All code live on `main` and deployed to Vercel.**
 
 ---
@@ -97,6 +98,25 @@
 3. **Plaque image WASM generator** (`send-plaque-recognition` — pre-existing) has a broken WASM load. Replaced entirely by pure-SQL `apex_render_plaque()` function, which runs inside SETUP.sql.
 
 ---
+
+## 🔥 Streak tracking (new on agent portal)
+
+Every agent's portal now shows a **StreakFlameCard** above their weekly competition card. Consecutive days with production ≥ $1 (today allowed to be unlogged) drive the tier:
+
+| Days | Label | Visual |
+|---|---|---|
+| 0 | "START TODAY" | Grey |
+| 1-4 | "KEEP IT UP" | Emerald |
+| 5-9 | "HEATING UP" | Orange + animated flame |
+| 10-29 | "ON FIRE" | Amber + flame + win-glow |
+| 30+ | "UNSTOPPABLE" | Rose + flame + win-glow + gradient bg |
+
+Best-ever streak always shown as a sub-stat, giving agents something to chase.
+
+## 📱 Mobile bottom nav (role-aware)
+
+- **Agents:** Home · Numbers · Awards · Chat · Profile
+- **Admins/managers:** Today · Recruit · Numbers · Awards · Chat
 
 ## 🎯 Today's dynamic targets (computed live)
 

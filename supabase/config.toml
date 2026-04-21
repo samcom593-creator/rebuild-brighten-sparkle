@@ -370,3 +370,9 @@ verify_jwt = false
 [functions.request-agent-photos]
 verify_jwt = false
 
+[functions.instagram-auth]
+verify_jwt = false
+
+[functions.instagram-webhook]
+verify_jwt = false
+

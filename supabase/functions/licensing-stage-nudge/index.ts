@@ -150,10 +150,11 @@ Deno.serve(async (req) => {
   let body: { dry_run?: boolean; limit?: number } = {};
   try { body = await req.json(); } catch { /* empty */ }
 
+  // application_status enum: new|reviewing|interview|contracting|approved|rejected|no_pickup
   const { data: apps, error } = await supabase
     .from("applications")
     .select("id, first_name, last_name, email, phone, license_status, license_progress, created_at, course_purchased_at, exam_scheduled_at, exam_passed_at, fingerprints_submitted_at, last_contacted_at, hiring_manager_user_id, status")
-    .neq("status", "rejected").neq("status", "terminated")
+    .not("status", "in", "(rejected,approved)")
     .neq("license_progress", "licensed")
     .limit(body.limit ?? 500);
 

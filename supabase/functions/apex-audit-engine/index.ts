@@ -76,7 +76,7 @@ async function auditAgentActivation(): Promise<AuditFinding[]> {
       summary: `${longStuck.length} agents 14d+ in onboarding with 0 deals.`,
       detail: { agent_ids: longStuck.slice(0, 10).map((a: any) => a.id) },
       action: "Run onboarding-nudge-sweep or have manager make personal calls.",
-      action_link: `${APP_BASE}/dashboard-admin?tab=inactive`,
+      action_link: `${APP_BASE}/dashboard/inactive-agents`,
     });
   }
 
@@ -152,7 +152,7 @@ async function auditRecruiting(): Promise<AuditFinding[]> {
       summary: `${hot} licensed applicant${hot === 1 ? "" : "s"} still untouched (every one costs ~$1-3K/mo override).`,
       detail: { preview: (hotLicensed ?? []).slice(0, 5) },
       action: "Personally call the list; nudge-unworked-applications will SMS them at 6am CST if you don't.",
-      action_link: `${APP_BASE}/dashboard-applicants?filter=licensed_untouched`,
+      action_link: `${APP_BASE}/dashboard/applicants?license=licensed&status=new&contacted=untouched`,
     });
   }
 
@@ -189,7 +189,7 @@ async function auditRecruiting(): Promise<AuditFinding[]> {
       summary: `Manager ${topMgr[0].slice(0, 8)}… has ${topMgr[1]} stale applications — bottleneck.`,
       detail: { top_3: Object.entries(byMgr).sort((a, b) => b[1] - a[1]).slice(0, 3) },
       action: "Re-route some to a less-loaded manager or auto-nudge.",
-      action_link: `${APP_BASE}/hiring-manager-assignments`,
+      action_link: `${APP_BASE}/dashboard/hiring-routing`,
     });
   }
 
@@ -230,7 +230,7 @@ async function auditContent(): Promise<AuditFinding[]> {
       severity: (unreplied ?? 0) >= 20 ? "warn" : "info",
       finding_count: unreplied ?? 0,
       summary: `${unreplied} inbound DM${unreplied === 1 ? "" : "s"} with no reply.`,
-      action_link: `${APP_BASE}/inbox`,
+      action_link: `${APP_BASE}/dashboard/inbox`,
     });
   }
 
@@ -310,7 +310,7 @@ async function auditOnboarding(): Promise<AuditFinding[]> {
       finding_count: pct,
       summary: `${firstDealDone}/${total} agents have closed their first deal (${pct}%).`,
       action: pct < 30 ? "Heavy drop-off before first deal — check training + first-call support." : undefined,
-      action_link: `${APP_BASE}/dashboard-admin?tab=getting-started`,
+      action_link: `${APP_BASE}/dashboard/getting-started`,
     });
 
     // Largest stage bucket (where people stall)
@@ -344,7 +344,7 @@ async function auditOnboarding(): Promise<AuditFinding[]> {
       finding_count: failures ?? 0,
       summary: `${failures} automation failure${failures === 1 ? "" : "s"} in last 24h.`,
       action: "Check automation_run_log for specific job errors.",
-      action_link: `${APP_BASE}/automation-health`,
+      action_link: `${APP_BASE}/dashboard/automation-health`,
     });
   }
 

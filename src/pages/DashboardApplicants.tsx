@@ -126,11 +126,15 @@ export default function DashboardApplicants() {
   const highlightedLeadId = searchParams.get("lead") || searchParams.get("id");
   const managerFilter = searchParams.get("manager");
   const stageFilter = searchParams.get("stage");
-  
+  // Deep-link filters from engine emails: ?license=licensed&status=new&contacted=untouched
+  const licenseParam = searchParams.get("license");
+  const statusParam = searchParams.get("status");
+  const contactedParam = searchParams.get("contacted"); // 'untouched' | 'recent'
+
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [licenseFilter, setLicenseFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>(statusParam || "all");
+  const [licenseFilter, setLicenseFilter] = useState<string>(licenseParam || "all");
   const [sortOrder, setSortOrder] = useState<string>("newest");
   const [myDirectsOnly, setMyDirectsOnly] = useState(false);
   const [hotLeadsOnly, setHotLeadsOnly] = useState(false);
@@ -526,6 +530,15 @@ export default function DashboardApplicants() {
       const matchesDirects = !myDirectsOnly || app.assigned_agent_id === agentId;
       const matchesHot = !hotLeadsOnly || (app as any).ai_score_tier === "hot" || (app as any).ai_score_tier === "warm";
 
+      // ?contacted=untouched → only rows where contacted_at AND last_contacted_at are null
+      // ?contacted=recent → rows touched in last 24h
+      const matchesContacted =
+        contactedParam === "untouched"
+          ? !app.contacted_at && !(app as any).last_contacted_at
+          : contactedParam === "recent"
+          ? (app as any).last_contacted_at && new Date((app as any).last_contacted_at).getTime() > Date.now() - 86_400_000
+          : true;
+
       // Stage filter from query string (?stage=in_course etc.)
       let matchesStage = true;
       if (stageFilter) {
@@ -545,7 +558,7 @@ export default function DashboardApplicants() {
         }
       }
 
-      return matchesSearch && matchesStatus && matchesLicense && matchesDirects && matchesHot && matchesStage;
+      return matchesSearch && matchesStatus && matchesLicense && matchesDirects && matchesHot && matchesStage && matchesContacted;
     })
     .sort((a, b) => {
       const dateA = new Date(a.created_at).getTime();

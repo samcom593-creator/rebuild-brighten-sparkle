@@ -43,6 +43,7 @@ import {
   Book,
   MessageSquare,
   Sunrise,
+  Target,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -161,6 +162,7 @@ export function GlobalSidebar({
     opsItems.push({ icon: MessageSquare, label: "IG Inbox", href: "/dashboard/inbox/instagram" });
     if (isAdmin || isManager) {
       opsItems.unshift({ icon: Sunrise, label: "Today", href: "/dashboard/today", special: true });
+      opsItems.unshift({ icon: Target, label: "Recruit", href: "/dashboard/recruit", special: true });
     }
     if (isAdmin || isManager) {
       opsItems.push({ icon: TrendingUp, label: "Hiring Pipeline", href: "/dashboard/hiring-pipeline" });

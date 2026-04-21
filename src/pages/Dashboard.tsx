@@ -467,7 +467,7 @@ export default function Dashboard() {
             {topMetrics.scope === "team" ? "Your team" : "Full agency"}
           </p>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-            <div onClick={() => setActiveDrilldown("agents")} className="cursor-pointer hover:ring-2 ring-primary/30 rounded-xl transition-all">
+            <div onClick={() => setActiveDrilldown("agents")} className="cursor-pointer rounded-xl transition-all card-tilt reveal hover:ring-2 ring-primary/30">
               <StatCard
                 title={topMetrics.scope === "team" ? "My Team Agents" : "Active Agents"}
                 value={topMetrics.activeAgents}
@@ -475,7 +475,7 @@ export default function Dashboard() {
                 variant="primary"
               />
             </div>
-            <div onClick={() => setActiveDrilldown("alp")} className="cursor-pointer hover:ring-2 ring-primary/30 rounded-xl transition-all">
+            <div onClick={() => setActiveDrilldown("alp")} className="cursor-pointer rounded-xl transition-all card-tilt reveal hover:ring-2 ring-primary/30">
               <StatCard
                 title={topMetrics.scope === "team" ? "Team Weekly ALP" : "Weekly ALP"}
                 value={`$${topMetrics.weeklyALP.toLocaleString()}`}
@@ -483,10 +483,10 @@ export default function Dashboard() {
                 variant="success"
               />
             </div>
-            <div onClick={() => setActiveDrilldown("apps")} className="cursor-pointer hover:ring-2 ring-primary/30 rounded-xl transition-all">
+            <div onClick={() => setActiveDrilldown("apps")} className="cursor-pointer rounded-xl transition-all card-tilt reveal hover:ring-2 ring-primary/30">
               <StatCard title="Applications This Week" value={topMetrics.appsThisWeek} icon={UserPlus} variant="default" />
             </div>
-            <div onClick={() => setActiveDrilldown("closerate")} className="cursor-pointer hover:ring-2 ring-primary/30 rounded-xl transition-all">
+            <div onClick={() => setActiveDrilldown("closerate")} className="cursor-pointer rounded-xl transition-all card-tilt reveal hover:ring-2 ring-primary/30">
               <StatCard title="Close Rate" value={`${topMetrics.closeRate}%`} icon={Percent} variant="success" />
             </div>
           </div>

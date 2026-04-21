@@ -19,57 +19,51 @@ type Priority = {
 };
 
 const TODAY_ISO = () => new Date().toISOString().slice(0, 10);
-const DISMISS_KEY = () => `apex-focus-dismissed-${TODAY_ISO()}`;
+// Per-rank dismissal so marking #1 done auto-promotes to #2, then #3.
+const DISMISS_KEY = (rank: number) => `apex-focus-done-${TODAY_ISO()}-r${rank}`;
+
+async function fetchNextPriority(): Promise<Priority | null> {
+  const { data } = await supabase
+    .from("bot_priorities")
+    .select("id, for_date, rank, title, body, action_link, sub_bot")
+    .eq("for_date", TODAY_ISO())
+    .order("rank", { ascending: true });
+  for (const p of (data ?? []) as Priority[]) {
+    if (localStorage.getItem(DISMISS_KEY(p.rank)) !== "1") return p;
+  }
+  return null;
+}
 
 export function FocusNow() {
   const [priority, setPriority] = useState<Priority | null>(null);
-  const [dismissed, setDismissed] = useState(false);
 
-  useEffect(() => {
-    setDismissed(localStorage.getItem(DISMISS_KEY()) === "1");
-  }, []);
-
-  // Fetch current top priority
   useEffect(() => {
     let cancel = false;
     (async () => {
-      const { data } = await supabase
-        .from("bot_priorities")
-        .select("id, for_date, rank, title, body, action_link, sub_bot")
-        .eq("for_date", TODAY_ISO())
-        .eq("rank", 1)
-        .maybeSingle();
-      if (!cancel) setPriority((data as any) ?? null);
+      const p = await fetchNextPriority();
+      if (!cancel) setPriority(p);
     })();
     return () => { cancel = true; };
   }, []);
 
-  // Realtime: refresh if priorities change today
+  // Realtime: any bot_priorities change today → re-resolve the next visible item
   useEffect(() => {
     const ch = supabase
       .channel("apex-focus-now")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "bot_priorities", filter: `for_date=eq.${TODAY_ISO()}` },
-        async () => {
-          const { data } = await supabase
-            .from("bot_priorities")
-            .select("id, for_date, rank, title, body, action_link, sub_bot")
-            .eq("for_date", TODAY_ISO())
-            .eq("rank", 1)
-            .maybeSingle();
-          setPriority((data as any) ?? null);
-        },
+        async () => setPriority(await fetchNextPriority()),
       )
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, []);
 
-  if (!priority || dismissed) return null;
+  if (!priority) return null;
 
-  const markDone = () => {
-    localStorage.setItem(DISMISS_KEY(), "1");
-    setDismissed(true);
+  const markDone = async () => {
+    localStorage.setItem(DISMISS_KEY(priority.rank), "1");
+    setPriority(await fetchNextPriority());
   };
 
   return (
@@ -102,7 +96,7 @@ export function FocusNow() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-[10px] font-bold tracking-[0.2em] uppercase text-primary">
-                FOCUS NOW
+                FOCUS {priority.rank > 1 ? `#${priority.rank}` : "NOW"}
               </span>
               {priority.sub_bot && (
                 <span className="text-[10px] text-muted-foreground uppercase tracking-wider">

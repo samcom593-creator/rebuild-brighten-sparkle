@@ -92,24 +92,29 @@ function BotSqlSection() {
   const masked = currentToken ? `${currentToken.slice(0, 8)}…${currentToken.slice(-4)}` : "";
 
   return (
-    <Card className="border-border">
+    <Card className="border-2 border-primary/50 bg-gradient-to-br from-primary/10 via-violet-500/5 to-amber-500/10 shadow-xl shadow-primary/20 win-glow">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
-            <Bot className="h-5 w-5 text-cyan-400" />
-            <CardTitle className="text-base">Bot SQL Access</CardTitle>
+            <div className="h-10 w-10 rounded-xl bg-primary/20 flex items-center justify-center">
+              <Bot className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="text-xl">🤖 Bot SQL Access</CardTitle>
+              <p className="text-[11px] text-muted-foreground mt-0.5">For Claude assistants — run SQL remotely</p>
+            </div>
           </div>
           <Badge variant="outline" className={cn(
             "text-xs",
             currentToken
-              ? "border-emerald-500/30 text-emerald-400 bg-emerald-500/10"
-              : "border-muted text-muted-foreground",
+              ? "border-emerald-500/50 text-emerald-300 bg-emerald-500/20 shadow-lg shadow-emerald-500/20"
+              : "border-amber-500/50 text-amber-300 bg-amber-500/20",
           )}>
-            {isLoading ? "…" : currentToken ? "Active" : "Not configured"}
+            {isLoading ? "…" : currentToken ? "● ACTIVE" : "⚠ NOT CONFIGURED"}
           </Badge>
         </div>
-        <CardDescription className="text-xs mt-1">
-          External Claude bot endpoint for running SQL against the APEX database via bearer-token auth.
+        <CardDescription className="text-sm mt-3 leading-relaxed">
+          Click <strong className="text-primary">{currentToken ? "Reveal" : "Activate Bot Access"}</strong> below, then the <strong className="text-primary">copy</strong> icon to grab your bearer token.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -268,6 +273,12 @@ export default function IntegrationsSettings() {
         </p>
       </div>
 
+      {/* ══════════════════════════════════════════════════════ */}
+      {/*  BOT SQL ACCESS — loud, unmissable, at the very top   */}
+      {/* ══════════════════════════════════════════════════════ */}
+      <BotSqlSection />
+
+
       {/* ── Discord Webhook ──────────────────────────────────────────────────── */}
       <Card className="border-border">
         <CardHeader className="pb-3">
@@ -357,9 +368,6 @@ export default function IntegrationsSettings() {
           )}
         </CardContent>
       </Card>
-
-      {/* ── Bot SQL Access ──────────────────────────────────────────────────── */}
-      <BotSqlSection />
 
       {/* ── SQL Setup Helper ─────────────────────────────────────────────────── */}
       <Card className="border-border">

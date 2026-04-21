@@ -17,21 +17,177 @@ import { cn } from "@/lib/utils";
 const DISCORD_KEY = "discord_webhook_url";
 const BOOTSTRAP_WEBHOOK = "https://discord.com/api/webhooks/1425987081418571779/3JrtT5W00gDos8XY2iYc5_nb5sxr9S9ztagW1bBigI-8daIrb170vTyxIqXV2E8x2S0T";
 
-const SETUP_SQL = `-- Run this in Supabase SQL Editor to activate all features:
+const SETUP_SQL = `-- ══════════════════════════════════════════════════════════════════════
+-- APEX MASTER ACTIVATION — paste once, run once. Safe to re-run.
+-- Applies every stuck migration: deal sync, plaque photos, avatars,
+-- comp grid, Instagram inbox, team chat, overseer + morning-brief
+-- crons, email-spam kill-list.
+-- ══════════════════════════════════════════════════════════════════════
 
--- 1. Set Discord webhook
-UPDATE public.system_settings
-SET value = 'YOUR_WEBHOOK_URL'
-WHERE key = 'discord_webhook_url';
+-- 1. Discord webhook
+INSERT INTO public.system_settings (key, value)
+VALUES ('discord_webhook_url',
+  'https://discord.com/api/webhooks/1425987081418571779/3JrtT5W00gDos8XY2iYc5_nb5sxr9S9ztagW1bBigI-8daIrb170vTyxIqXV2E8x2S0T')
+ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
 
--- 2. Set service role key (Project Settings → API → service_role)
-ALTER DATABASE postgres SET "app.settings.service_role_key" = 'YOUR_SERVICE_ROLE_KEY';
+-- 2. Service role key — replace with yours from Project Settings → API
+-- ALTER DATABASE postgres SET "app.settings.service_role_key" = 'YOUR_SERVICE_ROLE_KEY';
 
--- 3. Enable Realtime on applications table
+-- 3. Realtime
 DO $$ BEGIN
-  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.applications;
-  EXCEPTION WHEN duplicate_object THEN NULL; END;
-END $$;`;
+  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.applications;      EXCEPTION WHEN duplicate_object THEN NULL; END;
+  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.deals;             EXCEPTION WHEN duplicate_object THEN NULL; END;
+  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.plaque_awards;     EXCEPTION WHEN duplicate_object THEN NULL; END;
+  BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.daily_production; EXCEPTION WHEN duplicate_object THEN NULL; END;
+END $$;
+
+-- 4. Deal-sync schema
+ALTER TABLE public.deals ADD COLUMN IF NOT EXISTS source text DEFAULT 'apex';
+ALTER TABLE public.deals ADD COLUMN IF NOT EXISTS pipeline_stage text DEFAULT 'submitted';
+ALTER TABLE public.deals ADD COLUMN IF NOT EXISTS external_deal_id text;
+CREATE TABLE IF NOT EXISTS public.deal_sync_queue (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  deal_id uuid NOT NULL, direction text DEFAULT 'outbound',
+  status text DEFAULT 'pending', attempts int DEFAULT 0, last_error text,
+  created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now(), synced_at timestamptz
+);
+CREATE TABLE IF NOT EXISTS public.deal_sync_log (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  deal_id uuid, event_type text, direction text,
+  payload jsonb, response jsonb, error text, created_at timestamptz DEFAULT now()
+);
+ALTER TABLE public.deal_sync_queue ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.deal_sync_log   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.agents   ADD COLUMN IF NOT EXISTS insuracloud_user_id    int;
+ALTER TABLE public.carriers ADD COLUMN IF NOT EXISTS insuracloud_carrier_id int;
+
+-- 5. Plaque + storage bucket
+ALTER TABLE public.plaque_awards ADD COLUMN IF NOT EXISTS custom_photo_url text;
+ALTER TABLE public.plaque_awards ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+UPDATE public.plaque_awards SET created_at = COALESCE(awarded_at, generated_at, now()) WHERE created_at IS NULL;
+INSERT INTO storage.buckets (id, name, public) VALUES ('public', 'public', true)
+  ON CONFLICT (id) DO UPDATE SET public = true;
+DROP POLICY IF EXISTS "authenticated_upload_plaque_photos" ON storage.objects;
+CREATE POLICY "authenticated_upload_plaque_photos" ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (bucket_id = 'public' AND (storage.foldername(name))[1] = 'plaque-photos');
+DROP POLICY IF EXISTS "public_read_plaque_photos" ON storage.objects;
+CREATE POLICY "public_read_plaque_photos" ON storage.objects FOR SELECT TO public USING (bucket_id = 'public');
+
+-- 6. Auto-avatars for every profile missing one
+UPDATE public.profiles p
+SET avatar_url = 'https://ui-avatars.com/api/?name=' || REPLACE(COALESCE(p.full_name, 'Agent'), ' ', '+') ||
+  '&background=' || CASE (ABS(HASHTEXT(p.id::text)) % 5) WHEN 0 THEN '0a0f1a' WHEN 1 THEN '0d1526' WHEN 2 THEN '1a1035' WHEN 3 THEN '0d2925' ELSE '1a1a2e' END ||
+  '&color=' || CASE (ABS(HASHTEXT(p.id::text)) % 4) WHEN 0 THEN '22d3a5' WHEN 1 THEN 'f59e0b' WHEN 2 THEN '8b5cf6' ELSE '06b6d4' END ||
+  '&size=512&bold=true&font-size=0.42&length=2&rounded=true'
+WHERE (p.avatar_url IS NULL OR p.avatar_url = '') AND p.full_name IS NOT NULL AND LENGTH(p.full_name) > 0;
+
+-- 7. Comp grid
+CREATE TABLE IF NOT EXISTS public.agent_carrier_comp (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  agent_id uuid NOT NULL REFERENCES public.agents(id) ON DELETE CASCADE,
+  carrier_id uuid REFERENCES public.carriers(id) ON DELETE CASCADE,
+  carrier_name text NOT NULL, contract_code text,
+  contract_pct numeric(5,2), effective_pct numeric(5,2), override_pct numeric(5,2) DEFAULT 0,
+  notes text, updated_at timestamptz DEFAULT now(),
+  UNIQUE(agent_id, carrier_name)
+);
+ALTER TABLE public.agent_carrier_comp ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS admins_manage_acc ON public.agent_carrier_comp;
+CREATE POLICY admins_manage_acc ON public.agent_carrier_comp FOR ALL TO authenticated
+  USING (public.has_role(auth.uid(), 'admin'::public.app_role));
+
+INSERT INTO public.carriers (name, is_active)
+SELECT v.name, true FROM (VALUES
+  ('American Amicable'),('American Home Life'),('Baltimore Life'),('Foresters'),
+  ('Guarantee Trust Life'),('Mutual of Omaha'),('Newbridge'),('Prudential'),
+  ('Royal Neighbors'),('SBLI'),('Transamerica')
+) AS v(name)
+WHERE NOT EXISTS (SELECT 1 FROM public.carriers c WHERE LOWER(c.name) = LOWER(v.name));
+
+INSERT INTO public.agent_carrier_comp (agent_id, carrier_id, carrier_name, contract_pct, effective_pct, override_pct)
+SELECT a.id, c.id, c.name,
+  COALESCE(a.contract_percentage, 50)::numeric(5,2),
+  COALESCE(a.contract_percentage, 50)::numeric(5,2),
+  COALESCE(a.override_rate, 0)::numeric(5,2)
+FROM public.agents a CROSS JOIN public.carriers c
+WHERE a.is_deactivated = false AND a.is_inactive = false AND c.is_active = true
+ON CONFLICT (agent_id, carrier_name) DO NOTHING;
+
+-- 8. Meta + IG tables
+CREATE TABLE IF NOT EXISTS public.data_deletion_requests (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  email text NOT NULL, reason text, status text DEFAULT 'pending',
+  requested_at timestamptz DEFAULT now(), completed_at timestamptz,
+  handled_by uuid, notes text
+);
+ALTER TABLE public.data_deletion_requests ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS public_insert_deletion_requests ON public.data_deletion_requests;
+CREATE POLICY public_insert_deletion_requests ON public.data_deletion_requests
+  FOR INSERT TO anon, authenticated WITH CHECK (true);
+
+CREATE TABLE IF NOT EXISTS public.instagram_connections (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid NOT NULL, instagram_user_id text NOT NULL,
+  instagram_username text, access_token text NOT NULL,
+  token_expires_at timestamptz, scopes text[] DEFAULT '{}',
+  connected_at timestamptz DEFAULT now(), last_used_at timestamptz,
+  UNIQUE(user_id, instagram_user_id)
+);
+ALTER TABLE public.instagram_connections ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS user_own_instagram ON public.instagram_connections;
+CREATE POLICY user_own_instagram ON public.instagram_connections FOR ALL TO authenticated
+  USING (user_id = auth.uid());
+
+CREATE TABLE IF NOT EXISTS public.instagram_dm_threads (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid NOT NULL, ig_user_id text NOT NULL,
+  conversation_id text, username text, last_msg_at timestamptz,
+  last_sender text, last_msg_preview text, bucket text DEFAULT 'stale',
+  outreach_status text DEFAULT 'pending', last_sent_at timestamptz,
+  updated_at timestamptz DEFAULT now(),
+  UNIQUE(user_id, ig_user_id)
+);
+ALTER TABLE public.instagram_dm_threads ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS own_ig_threads ON public.instagram_dm_threads;
+CREATE POLICY own_ig_threads ON public.instagram_dm_threads FOR ALL TO authenticated
+  USING (user_id = auth.uid());
+
+-- 9. Team chat
+CREATE TABLE IF NOT EXISTS public.team_chat_messages (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid NOT NULL, author_name text NOT NULL, author_avatar text,
+  body text NOT NULL, created_at timestamptz DEFAULT now()
+);
+ALTER TABLE public.team_chat_messages ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS auth_read_team_chat   ON public.team_chat_messages;
+DROP POLICY IF EXISTS auth_insert_team_chat ON public.team_chat_messages;
+CREATE POLICY auth_read_team_chat   ON public.team_chat_messages FOR SELECT TO authenticated USING (true);
+CREATE POLICY auth_insert_team_chat ON public.team_chat_messages FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+DO $$ BEGIN BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.team_chat_messages;
+  EXCEPTION WHEN duplicate_object THEN NULL; END; END $$;
+
+-- 10. Kill spam crons + schedule overseer + morning-brief
+DO $$ DECLARE jn text; BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN RETURN; END IF;
+  FOR jn IN SELECT jobname FROM cron.job WHERE jobname IN (
+    'apex-abandoned-applications','apex-ghosted-applicants','apex-dropped-leads',
+    'onboarding-nudge-sweep','send-aged-lead-email-cron',
+    'send-followup-emails-cron','send-course-hurry-emails-cron'
+  ) LOOP PERFORM cron.unschedule(jn); END LOOP;
+  PERFORM cron.unschedule('overseer-bot') WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'overseer-bot');
+  PERFORM cron.schedule('overseer-bot', '0 * * * *',
+    $c$SELECT public.run_automation_job('overseer-bot','overseer-bot','{}'::jsonb)$c$);
+  PERFORM cron.unschedule('morning-brief') WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'morning-brief');
+  PERFORM cron.schedule('morning-brief', '0 11 * * *',
+    $c$SELECT public.run_automation_job('morning-brief','morning-brief','{}'::jsonb)$c$);
+END $$;
+
+-- 11. Done — confirmation row
+SELECT 'APEX ACTIVATED ✅' AS status,
+  (SELECT count(*)::int FROM public.plaque_awards)                AS plaques,
+  (SELECT count(*)::int FROM public.profiles WHERE avatar_url IS NOT NULL) AS profiles_with_avatar,
+  (SELECT count(*)::int FROM public.agent_carrier_comp)           AS comp_grid_rows,
+  (SELECT count(*)::int FROM public.carriers WHERE is_active)     AS active_carriers;`;
 
 function BotSqlSection() {
   const qc = useQueryClient();

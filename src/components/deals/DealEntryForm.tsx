@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DollarSign, Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { celebrateDeal } from "@/lib/gameFx";
 
 interface Carrier { id: string; name: string }
 
@@ -108,6 +109,12 @@ export function DealEntryForm({ onSaved }: { onSaved?: () => void }) {
           ? "Saved as draft"
           : "Deal submitted — rolling into production & pushing to InsuraCloud",
       );
+
+      // Celebrate closed deals: coin rain + gold flash + level-up banner
+      if (status !== "draft") {
+        celebrateDeal(parseFloat(form.monthly_premium) || 0);
+      }
+
       setForm(blank);
       queryClient.invalidateQueries({ queryKey: ["deals"] });
       queryClient.invalidateQueries({ queryKey: ["agent-personal-stats"] });

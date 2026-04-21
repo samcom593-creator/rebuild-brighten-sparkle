@@ -977,6 +977,204 @@ input:focus, textarea:focus, select:focus {
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════════ */
+/* ═══  APEX GAME-FEEL LAYER — special effects + interactive juice  ═══ */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Win glow — pulsing emerald halo on "achievement" cards ──────────── */
+@keyframes apex-win-glow {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0); }
+  50%      { box-shadow: 0 0 48px 8px hsl(var(--primary) / 0.35); }
+}
+.win-glow { animation: apex-win-glow 2.4s ease-in-out infinite; }
+
+@keyframes apex-gold-glow {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(42 95% 55% / 0); }
+  50%      { box-shadow: 0 0 48px 8px hsl(42 95% 55% / 0.4); }
+}
+.gold-glow { animation: apex-gold-glow 2.4s ease-in-out infinite; }
+
+/* ── Card tilt — subtle 3D perspective on hover (rewards hovering) ───── */
+.card-tilt {
+  transform-style: preserve-3d;
+  transition: transform 300ms var(--ease-standard),
+              box-shadow 300ms var(--ease-standard);
+  will-change: transform;
+}
+.card-tilt:hover {
+  transform: perspective(900px) rotateX(2deg) rotateY(-3deg) translateY(-4px);
+  box-shadow: -10px 20px 40px hsl(var(--primary) / 0.1),
+              0 0 0 1px hsl(var(--primary) / 0.25);
+}
+
+/* ── Ripple — emerald circle expands from click point ────────────────── */
+.btn-ripple { position: relative; overflow: hidden; }
+.btn-ripple::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at var(--ripple-x, 50%) var(--ripple-y, 50%),
+                              hsl(var(--primary) / 0.5) 0%,
+                              transparent 45%);
+  opacity: 0;
+  transition: opacity 400ms var(--ease-standard);
+  pointer-events: none;
+}
+.btn-ripple:active::after { opacity: 1; transition: opacity 0ms; }
+
+/* ── Bounce-in — badges, achievements, new items ─────────────────────── */
+@keyframes apex-bounce-in {
+  0%   { transform: scale(0.3); opacity: 0; }
+  60%  { transform: scale(1.08); opacity: 1; }
+  80%  { transform: scale(0.96); }
+  100% { transform: scale(1); }
+}
+.bounce-in { animation: apex-bounce-in 520ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+/* ── Float — gentle levitation on top-producer / leader cards ────────── */
+@keyframes apex-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+.float-gentle { animation: apex-float 4s ease-in-out infinite; }
+
+/* ── Shimmer sweep — apply to any progress bar for XP-style fill ──── */
+@keyframes apex-xp-sheen {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.xp-sheen {
+  background: linear-gradient(90deg,
+    hsl(var(--primary) / 0.35) 0%,
+    hsl(var(--primary) / 0.9) 45%,
+    hsl(168 90% 68% / 1) 50%,
+    hsl(var(--primary) / 0.9) 55%,
+    hsl(var(--primary) / 0.35) 100%);
+  background-size: 200% 100%;
+  animation: apex-xp-sheen 2.4s linear infinite;
+}
+
+/* ── Number count-up (pairs with React state change — pure CSS cue) ─── */
+@keyframes apex-count-pop {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.12); color: hsl(var(--primary)); }
+  100% { transform: scale(1); }
+}
+.count-pop { animation: apex-count-pop 480ms var(--ease-emphasized); }
+
+/* ── Coin rain — $ tokens dropping (for deal-closed celebration) ───── */
+@keyframes apex-coin-drop {
+  0%   { transform: translateY(-20vh) rotate(0deg);   opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+.coin-rain {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  overflow: hidden;
+}
+.coin-rain span {
+  position: absolute;
+  top: 0;
+  font-size: 2rem;
+  color: hsl(42 95% 55%);
+  text-shadow: 0 2px 8px hsl(42 95% 55% / 0.5);
+  animation: apex-coin-drop 2.4s ease-in forwards;
+}
+
+/* ── Streak flame — pulsing orange glow for hot-streak indicators ───── */
+@keyframes apex-flame-pulse {
+  0%, 100% { filter: drop-shadow(0 0 4px hsl(20 95% 55%)) drop-shadow(0 0 8px hsl(42 95% 55%)); transform: scale(1); }
+  50%      { filter: drop-shadow(0 0 8px hsl(20 95% 55%)) drop-shadow(0 0 16px hsl(42 95% 55%)); transform: scale(1.08); }
+}
+.streak-flame { animation: apex-flame-pulse 1.4s ease-in-out infinite; display: inline-block; }
+
+/* ── Level-up banner — slides in top, gold shimmer, drops out ───────── */
+@keyframes apex-level-up {
+  0%   { transform: translateY(-120%); opacity: 0; }
+  10%  { transform: translateY(0);     opacity: 1; }
+  90%  { transform: translateY(0);     opacity: 1; }
+  100% { transform: translateY(-120%); opacity: 0; }
+}
+.level-up-banner {
+  position: fixed;
+  top: 24px; left: 50%;
+  transform: translateX(-50%);
+  z-index: 10000;
+  padding: 16px 32px;
+  background: linear-gradient(135deg, hsl(42 95% 55%), hsl(35 95% 50%));
+  color: #0a0f1a;
+  font-family: 'Syne', system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: 4px;
+  border-radius: 999px;
+  box-shadow: 0 16px 48px hsl(42 95% 55% / 0.4), 0 0 0 2px hsl(42 95% 55% / 0.3);
+  animation: apex-level-up 4s ease-in-out forwards;
+}
+
+/* ── Sparkle — randomized twinkle dots inside milestone cards ───────── */
+@keyframes apex-sparkle {
+  0%, 100% { opacity: 0; transform: scale(0); }
+  40%, 60% { opacity: 1; transform: scale(1); }
+}
+.sparkles { position: relative; }
+.sparkles::before,
+.sparkles::after {
+  content: "✦";
+  position: absolute;
+  color: hsl(var(--primary));
+  font-size: 14px;
+  opacity: 0;
+  pointer-events: none;
+}
+.sparkles::before { top: 8px;  right: 12px; animation: apex-sparkle 2.2s ease-in-out infinite; }
+.sparkles::after  { bottom: 10px; left: 14px; animation: apex-sparkle 2.2s ease-in-out 0.9s infinite; }
+
+/* ── Numbers in "stat tiles" get default count-pop on change ────────── */
+.tabular-nums { transition: color 200ms var(--ease-standard); }
+
+/* ── Scroll-reveal via IntersectionObserver + .reveal class ────────── */
+.reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 560ms var(--ease-emphasized),
+              transform 560ms var(--ease-emphasized);
+}
+.reveal.in-view { opacity: 1; transform: translateY(0); }
+
+/* ── Top-rank #1 card — gold crown aura ─────────────────────────────── */
+.rank-1 { animation: apex-gold-glow 3s ease-in-out infinite; }
+
+/* ── Leaderboard row hover — slide right, highlight bar ─────────────── */
+.leaderboard-row {
+  transition: transform 180ms var(--ease-standard),
+              background-color 180ms var(--ease-standard);
+}
+.leaderboard-row:hover {
+  transform: translateX(4px);
+  background-color: hsl(var(--primary) / 0.06);
+}
+.leaderboard-row::before {
+  content: "";
+  position: absolute; left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: hsl(var(--primary));
+  transform: scaleY(0);
+  transform-origin: center;
+  transition: transform 220ms var(--ease-emphasized);
+}
+.leaderboard-row:hover::before { transform: scaleY(1); }
+
+/* ── "Live" badges — slow radar-pulse ring ──────────────────────────── */
+@keyframes apex-radar {
+  0%   { box-shadow: 0 0 0 0 hsl(var(--primary) / 0.6); }
+  100% { box-shadow: 0 0 0 16px hsl(var(--primary) / 0); }
+}
+.radar-pulse { animation: apex-radar 1.8s ease-out infinite; }
+
 /* Reduced-motion users get all animations stripped */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

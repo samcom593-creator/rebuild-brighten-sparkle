@@ -47,11 +47,24 @@ export default function BotToken() {
     try {
       const bytes = crypto.getRandomValues(new Uint8Array(32));
       const fresh = Array.from(bytes).map(b => b.toString(16).padStart(2, "0")).join("");
-      const { error } = await supabase.rpc("admin_configure_integration" as any, {
+
+      // Try RPC first (preferred — defined as SECURITY DEFINER in some envs)
+      const { error: rpcErr } = await supabase.rpc("admin_configure_integration" as any, {
         p_key: "apex_bot_token",
         p_value: fresh,
       });
-      if (error) throw error;
+
+      // RPC not available → fall back to direct table upsert. Admin RLS
+      // on system_settings lets authenticated admins write.
+      if (rpcErr && /Could not find the function|schema cache/i.test(rpcErr.message || "")) {
+        const { error: upErr } = await supabase
+          .from("system_settings" as any)
+          .upsert({ key: "apex_bot_token", value: fresh }, { onConflict: "key" });
+        if (upErr) throw upErr;
+      } else if (rpcErr) {
+        throw rpcErr;
+      }
+
       setToken(fresh);
       toast.success("New token generated");
     } catch (e: any) {

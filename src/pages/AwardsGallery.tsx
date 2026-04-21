@@ -283,7 +283,12 @@ export default function AwardsGallery() {
           {filtered.map(p => {
             const meta = TIER_META[p.milestone_type] ?? { label: p.milestone_type, accent: "border-border bg-muted/30 text-foreground", emoji: "🏅" };
             return (
-              <GlassCard key={p.id} className={cn("p-4 transition-transform hover:scale-[1.02] relative group", meta.accent.split(" ")[0])}>
+              <GlassCard key={p.id} className={cn(
+                "p-4 relative group card-tilt reveal",
+                meta.accent.split(" ")[0],
+                p.milestone_type === "single_day_platinum" && "win-glow",
+                p.milestone_type === "single_day" && "gold-glow",
+              )}>
                 {isAdmin && (
                   <button
                     onClick={() => setEditing(p)}

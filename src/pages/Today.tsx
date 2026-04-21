@@ -132,6 +132,35 @@ export default function Today() {
     toast.success("Copied — paste into WhatsApp / Discord");
   };
 
+  const postToTeamChat = async () => {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) { toast.error("Sign in required"); return; }
+      const { data: prof } = await supabase.from("profiles").select("full_name, avatar_url")
+        .eq("user_id", userData.user.id).maybeSingle();
+      const { error } = await supabase.from("team_chat_messages" as any).insert({
+        user_id: userData.user.id,
+        author_name: (prof as any)?.full_name ?? "Sam",
+        author_avatar: (prof as any)?.avatar_url ?? null,
+        body: huddleMsg,
+      });
+      if (error) throw error;
+      toast.success("Posted to Team Chat — everyone sees it live");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Post failed");
+    }
+  };
+
+  const triggerMorningBrief = async () => {
+    try {
+      const { error } = await supabase.functions.invoke("morning-brief", { body: {} });
+      if (error) throw error;
+      toast.success("Discord + email sent");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Morning brief not deployed yet");
+    }
+  };
+
   const waHref = `https://wa.me/?text=${encodeURIComponent(huddleMsg)}`;
   const calendlyHref = "https://calendly.com/sam-com593/1on1-call-clone";
 
@@ -157,12 +186,12 @@ export default function Today() {
 
       {/* Headline targets */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <GlassCard className="p-4 bg-gradient-to-br from-emerald-500/15 to-transparent border-emerald-500/30 win-glow">
+        <GlassCard className="p-4 bg-gradient-to-br from-emerald-500/15 to-transparent border-emerald-500/30 win-glow card-tilt">
           <div className="flex items-center gap-2 mb-1"><Target className="h-4 w-4 text-emerald-400" /><span className="text-[10px] uppercase tracking-wider text-emerald-300">Recruit Target</span></div>
           <div className="text-3xl font-bold tabular-nums text-emerald-300">{recruitTargetToday}</div>
           <div className="text-[11px] text-muted-foreground mt-0.5">close today</div>
         </GlassCard>
-        <GlassCard className="p-4 bg-gradient-to-br from-amber-500/15 to-transparent border-amber-500/30">
+        <GlassCard className="p-4 bg-gradient-to-br from-amber-500/15 to-transparent border-amber-500/30 gold-glow card-tilt">
           <div className="flex items-center gap-2 mb-1"><DollarSign className="h-4 w-4 text-amber-400" /><span className="text-[10px] uppercase tracking-wider text-amber-300">ALP Target</span></div>
           <div className="text-3xl font-bold tabular-nums text-amber-300">{fmt$(prodTargetToday)}</div>
           <div className="text-[11px] text-muted-foreground mt-0.5">team today</div>
@@ -223,13 +252,18 @@ export default function Today() {
         </div>
         <pre className="whitespace-pre-wrap bg-background/50 border border-border/40 rounded-lg p-3 text-xs md:text-sm font-sans leading-relaxed mb-3">{huddleMsg}</pre>
         <div className="flex flex-wrap gap-2">
-          <Button onClick={copyHuddle} size="sm" className="gap-1.5"><Copy className="h-3.5 w-3.5" /> Copy</Button>
-          <Button asChild size="sm" variant="outline" className="gap-1.5">
+          <Button onClick={copyHuddle} size="sm" className="gap-1.5 btn-ripple"><Copy className="h-3.5 w-3.5" /> Copy</Button>
+          <Button asChild size="sm" variant="outline" className="gap-1.5 btn-ripple">
             <a href={waHref} target="_blank" rel="noopener"><FileText className="h-3.5 w-3.5" /> WhatsApp share</a>
           </Button>
-          <Button asChild size="sm" variant="outline" className="gap-1.5">
-            <a href="/dashboard/inbox" target="_blank" rel="noopener"><FileText className="h-3.5 w-3.5" /> Post to Inbox</a>
+          <Button onClick={postToTeamChat} size="sm" variant="outline" className="gap-1.5 btn-ripple">
+            <FileText className="h-3.5 w-3.5" /> Post to Team Chat
           </Button>
+          {isAdmin && (
+            <Button onClick={triggerMorningBrief} size="sm" variant="outline" className="gap-1.5 btn-ripple">
+              <FileText className="h-3.5 w-3.5" /> Fire Discord + Email
+            </Button>
+          )}
         </div>
       </GlassCard>
 

@@ -150,7 +150,7 @@ Deno.serve(async (req) => {
     // Admin-digest mode: build one combined email with all plaques and send to Sam
     if (targetAdmin) {
       const adminEmail = Deno.env.get("ADMIN_EMAIL") ?? "sam@apex-financial.org";
-      const cards = (plaques as any[]).map(p => {
+      const cards = await Promise.all((plaques as any[]).map(async p => {
         const name = p.agent?.profile?.full_name ?? "Agent";
         const tier = p.milestone_type as string;
         const amount = Number(p.amount) || 0;
@@ -158,6 +158,8 @@ Deno.serve(async (req) => {
         const cfg = TIER_CONFIG[tier] ?? TIER_CONFIG.single_day_bronze;
         const svg = renderPlaqueSVG(name, tier, amount, date);
         const uri = svgToDataUri(svg);
+        // Persist the rendered SVG so the Awards Gallery renders properly
+        await sb.from("plaque_awards").update({ image_svg_url: uri }).eq("id", p.id);
         return `<div style="margin:18px 0;border:1px solid ${cfg.accent}40;border-radius:12px;overflow:hidden;background:#0d1526;">
           <div style="padding:14px 18px;background:${cfg.accent}15;display:flex;justify-content:space-between;align-items:center;">
             <div><span style="font-size:18px;">${cfg.emoji}</span> <strong style="color:${cfg.accent};letter-spacing:2px;font-size:11px;">${esc(cfg.badge)}</strong></div>
@@ -168,14 +170,15 @@ Deno.serve(async (req) => {
             <div style="color:${cfg.accent};font-size:22px;font-weight:800;margin-top:8px;">${esc(fmt$(amount))}</div>
           </div>
         </div>`;
-      }).join("");
+      }));
+      const cardsHtml = cards.join("");
 
       const digestHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
 <body style="font-family:'DM Sans',Arial,sans-serif;background:#030712;color:#e2e8f0;padding:32px 16px;">
   <div style="max-width:620px;margin:0 auto;background:#0a0f1a;border-radius:16px;padding:32px;">
     <h1 style="color:#22d3a5;text-align:center;font-size:28px;margin:0 0 6px 0;">APEX Plaque Digest</h1>
     <p style="color:#94a3b8;text-align:center;font-size:13px;margin:0 0 24px 0;">${plaques!.length} plaques · ${esc(new Date().toLocaleDateString("en-US", {dateStyle:"long"}))}</p>
-    ${cards}
+    ${cardsHtml}
     <p style="color:#475569;font-size:11px;text-align:center;margin-top:28px;letter-spacing:2px;">APEX FINANCIAL · BUILDING EMPIRES</p>
   </div>
 </body></html>`;

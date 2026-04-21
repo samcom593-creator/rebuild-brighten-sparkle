@@ -86,6 +86,7 @@ const BotToken = lazy(() => import("./pages/BotToken"));
 const InstagramInbox = lazy(() => import("./pages/InstagramInbox"));
 const Today = lazy(() => import("./pages/Today"));
 const RecruitCommandCenter = lazy(() => import("./pages/RecruitCommandCenter"));
+const TeamChat = lazy(() => import("./pages/TeamChat"));
 const AgentManagement = lazy(() => import("./pages/AgentManagement"));
 const SystemHealth = lazy(() => import("./pages/SystemHealth"));
 const PrelicensingManager = lazy(() => import("./pages/PrelicensingManager"));
@@ -201,6 +202,8 @@ const App = () => (
                        <Route path="/today" element={<ProtectedRoute><Today /></ProtectedRoute>} />
                        <Route path="/dashboard/recruit" element={<ProtectedRoute><RecruitCommandCenter /></ProtectedRoute>} />
                        <Route path="/recruit" element={<ProtectedRoute><RecruitCommandCenter /></ProtectedRoute>} />
+                       <Route path="/dashboard/team-chat" element={<ProtectedRoute><TeamChat /></ProtectedRoute>} />
+                       <Route path="/team-chat" element={<ProtectedRoute><TeamChat /></ProtectedRoute>} />
                        <Route path="/dashboard/automation-health" element={<ProtectedRoute requireAdmin><AutomationHealth /></ProtectedRoute>} />
                         <Route path="/dashboard/hierarchy" element={<ProtectedRoute><TeamHierarchy /></ProtectedRoute>} />
                         <Route path="/dashboard/pipeline-simple" element={<AgentPipelineSimple />} />

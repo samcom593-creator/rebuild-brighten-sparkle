@@ -402,7 +402,7 @@ async function auditLicensing(): Promise<AuditFinding[]> {
   const { data: rows } = await supabase
     .from("applications")
     .select("id, license_status, license_progress, created_at, course_purchased_at, exam_scheduled_at, exam_passed_at")
-    .neq("status", "rejected").neq("status", "terminated");
+    .not("status", "in", "(rejected,approved)");
 
   const stageCounts: Record<string, number> = {};
   for (const r of rows ?? []) {

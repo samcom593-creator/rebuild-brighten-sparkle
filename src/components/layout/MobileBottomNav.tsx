@@ -1,20 +1,32 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { BarChart3, Trophy, Calculator, User, Home } from "lucide-react";
+import { BarChart3, Trophy, Sunrise, Target, User, Home, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAuth } from "@/hooks/useAuth";
 
-const navItems = [
-  { path: "/agent-dashboard", icon: Home, label: "Home" },
-  { path: "/numbers", icon: BarChart3, label: "Numbers" },
-  { path: "/agent-dashboard", icon: Trophy, label: "Board", hash: "#leaderboard" },
-  { path: "/awards", icon: Calculator, label: "Awards" },
-  { path: "/dashboard/settings", icon: User, label: "Profile" },
+const agentNavItems = [
+  { path: "/agent-portal",        icon: Home,          label: "Home" },
+  { path: "/numbers",             icon: BarChart3,     label: "Numbers" },
+  { path: "/dashboard/awards",    icon: Trophy,        label: "Awards" },
+  { path: "/dashboard/team-chat", icon: MessageSquare, label: "Chat" },
+  { path: "/dashboard/settings",  icon: User,          label: "Profile" },
+];
+
+const adminNavItems = [
+  { path: "/dashboard/today",     icon: Sunrise,       label: "Today" },
+  { path: "/dashboard/recruit",   icon: Target,        label: "Recruit" },
+  { path: "/numbers",             icon: BarChart3,     label: "Numbers" },
+  { path: "/dashboard/awards",    icon: Trophy,        label: "Awards" },
+  { path: "/dashboard/team-chat", icon: MessageSquare, label: "Chat" },
 ];
 
 export function MobileBottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const { isAdmin, isManager } = useAuth();
+
+  const navItems = isAdmin || isManager ? adminNavItems : agentNavItems;
 
   if (!isMobile) return null;
 

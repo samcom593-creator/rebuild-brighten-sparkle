@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => ({
     react(),
     mode === "development" && componentTagger(),
     VitePWA({
-      registerType: "prompt",
+      registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "apple-touch-icon.png", "masked-icon.svg"],
       manifest: {
         name: "APEX Financial - Daily Numbers",
@@ -50,17 +50,39 @@ export default defineConfig(({ mode }) => ({
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         importScripts: ["/sw-push.js"],
+        // Take over every tab on the new SW install, wipe stale caches.
+        // Fixes: "page loads with an old bundle after deploy" + broken first load.
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         runtimeCaching: [
+          // Supabase REST: never cache mutations; cache SELECTs for 30s only.
+          // 1-hour cache was showing stale numbers at startup.
           {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
+            urlPattern: ({ request, url }) => {
+              if (!url.href.includes("supabase.co")) return false;
+              return request.method === "GET";
+            },
             handler: "NetworkFirst",
             options: {
-              cacheName: "supabase-api-cache",
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60, // 1 hour
-              },
+              cacheName: "supabase-rest",
+              networkTimeoutSeconds: 3,
+              expiration: { maxEntries: 80, maxAgeSeconds: 30 },
             },
+          },
+          {
+            urlPattern: ({ request, url }) =>
+              url.href.includes("supabase.co") && request.method !== "GET",
+            handler: "NetworkOnly",
+          },
+          // Static assets from our own origin — stale-while-revalidate so
+          // the page paints fast but every response triggers a background
+          // refresh on next navigation.
+          {
+            urlPattern: ({ sameOrigin, request }) =>
+              sameOrigin && (request.destination === "script" || request.destination === "style"),
+            handler: "StaleWhileRevalidate",
+            options: { cacheName: "apex-assets" },
           },
         ],
       },

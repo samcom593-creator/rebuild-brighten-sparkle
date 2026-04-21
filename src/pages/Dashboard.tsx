@@ -33,6 +33,7 @@ import { TeamSnapshotCard } from "@/components/dashboard/TeamSnapshotCard";
 import { TeamPerformanceBreakdown } from "@/components/dashboard/TeamPerformanceBreakdown";
 import { OnboardingPipelineCard } from "@/components/dashboard/OnboardingPipelineCard";
 import { RecruitingQuickView } from "@/components/dashboard/RecruitingQuickView";
+import { StreakBanner } from "@/components/celebrations/StreakBanner";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -429,9 +430,12 @@ export default function Dashboard() {
             Welcome back, <span className="text-primary">{userName}</span>! 👋
           </h2>
           <div className="h-0.5 w-24 mt-1 bg-gradient-to-r from-primary to-emerald-400 rounded-full" />
-          <p className="text-sm text-muted-foreground mt-2">
-            {isAdmin ? "Here's your agency overview" : isManager ? "Here's your team performance" : "Track your progress"}
-          </p>
+          <div className="flex items-center gap-3 mt-2">
+            <p className="text-sm text-muted-foreground">
+              {isAdmin ? "Here's your agency overview" : isManager ? "Here's your team performance" : "Track your progress"}
+            </p>
+            <StreakBanner />
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <HiddenCardsManager catalog={HIDEABLE_CARDS} />

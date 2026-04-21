@@ -6,6 +6,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ComponentErrorBoundary } from "@/components/ComponentErrorBoundary";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CommandPalette } from "@/components/command/CommandPalette";
+import { CelebrationProvider } from "@/components/celebrations/CelebrationProvider";
 
 function InnerPageLoader() {
   return (
@@ -31,6 +32,7 @@ export function AuthenticatedShell() {
   return (
     <ProtectedRoute>
       <SidebarLayout showPhoneBanner={true}>
+        <CelebrationProvider />
         <CommandPalette />
         <PushNotificationPrompt />
         <ComponentErrorBoundary name="page-content">

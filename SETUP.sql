@@ -173,7 +173,7 @@ FROM public.agents a CROSS JOIN public.carriers c
 WHERE a.is_deactivated = false AND a.is_inactive = false AND c.is_active = true
 ON CONFLICT (agent_id, carrier_name) DO NOTHING;
 
--- 11. Kill email-spam crons + schedule overseer bot
+-- 11. Kill email-spam crons + schedule overseer + morning brief
 DO $$ DECLARE jn text; BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN RETURN; END IF;
   FOR jn IN SELECT jobname FROM cron.job WHERE jobname IN (
@@ -184,7 +184,25 @@ DO $$ DECLARE jn text; BEGIN
   PERFORM cron.unschedule('overseer-bot') WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'overseer-bot');
   PERFORM cron.schedule('overseer-bot', '0 * * * *',
     $c$SELECT public.run_automation_job('overseer-bot','overseer-bot','{}'::jsonb)$c$);
+  PERFORM cron.unschedule('morning-brief') WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'morning-brief');
+  PERFORM cron.schedule('morning-brief', '0 11 * * *',
+    $c$SELECT public.run_automation_job('morning-brief','morning-brief','{}'::jsonb)$c$);
 END $$;
+
+-- 11b. Team chat
+CREATE TABLE IF NOT EXISTS public.team_chat_messages (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid NOT NULL, author_name text NOT NULL,
+  author_avatar text, body text NOT NULL,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE public.team_chat_messages ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS auth_read_team_chat   ON public.team_chat_messages;
+DROP POLICY IF EXISTS auth_insert_team_chat ON public.team_chat_messages;
+CREATE POLICY auth_read_team_chat   ON public.team_chat_messages FOR SELECT TO authenticated USING (true);
+CREATE POLICY auth_insert_team_chat ON public.team_chat_messages FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
+DO $$ BEGIN BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE public.team_chat_messages;
+  EXCEPTION WHEN duplicate_object THEN NULL; END; END $$;
 
 -- 12. Done
 SELECT

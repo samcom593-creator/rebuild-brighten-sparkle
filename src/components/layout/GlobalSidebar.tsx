@@ -160,6 +160,7 @@ export function GlobalSidebar({
     opsItems.push({ icon: Book, label: "Book of Business", href: "/dashboard/book-of-business" });
     opsItems.push({ icon: Trophy, label: "Awards", href: "/dashboard/awards" });
     opsItems.push({ icon: MessageSquare, label: "IG Inbox", href: "/dashboard/inbox/instagram" });
+    opsItems.push({ icon: Users, label: "Team Chat", href: "/dashboard/team-chat", special: true });
     if (isAdmin || isManager) {
       opsItems.unshift({ icon: Sunrise, label: "Today", href: "/dashboard/today", special: true });
       opsItems.unshift({ icon: Target, label: "Recruit", href: "/dashboard/recruit", special: true });

@@ -100,8 +100,9 @@ export default function Apply() {
   const [referrerName, setReferrerName] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [vslWatchPercent, setVslWatchPercent] = useState(0);
-  const [vslUnlocked, setVslUnlocked] = useState(false);
+  // VSL gate removed 2026-04-21 per founder — straight-to-form.
+  const [vslWatchPercent] = useState(0);
+  const [vslUnlocked] = useState(true);
   const vslRef = useRef<HTMLVideoElement>(null);
   const [selectedStates, setSelectedStates] = useState<string[]>([]);
   const [applicationId, setApplicationId] = useState<string | null>(null);
@@ -550,46 +551,7 @@ export default function Apply() {
 
       <main className="container mx-auto px-4 py-12">
         <div className="max-w-3xl mx-auto">
-          {/* VSL Gate — 70% watch required */}
-          {!vslUnlocked && (
-            <div className="mb-12 space-y-6">
-              <div className="text-center space-y-3">
-                <h2 className="text-3xl font-bold font-display gradient-text">Watch Before You Apply</h2>
-                <p className="text-muted-foreground">Watch at least 70% of the video to unlock the application form.</p>
-              </div>
-              <div className="relative rounded-2xl overflow-hidden border border-border bg-black aspect-video">
-                <video
-                  ref={vslRef}
-                  className="w-full h-full"
-                  controls
-                  playsInline
-                  onTimeUpdate={(e) => {
-                    const v = e.currentTarget;
-                    if (v.duration > 0) {
-                      const pct = Math.round((v.currentTime / v.duration) * 100);
-                      setVslWatchPercent(pct);
-                      if (pct >= 70 && !vslUnlocked) setVslUnlocked(true);
-                    }
-                  }}
-                  poster="/placeholder.svg"
-                >
-                  <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4" />
-                </video>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>{vslWatchPercent}% watched</span>
-                  <span>70% required</span>
-                </div>
-                <div className="h-2 rounded-full bg-muted overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-primary transition-all duration-300"
-                    style={{ width: `${Math.min(vslWatchPercent, 100)}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
+          {/* VSL gate removed — straight-to-form */}
 
           {/* Progress Steps */}
           {vslUnlocked && <>

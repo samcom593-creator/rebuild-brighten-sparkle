@@ -80,6 +80,8 @@ const HiringPipeline = lazy(() => import("./pages/HiringPipeline"));
 const BookOfBusiness = lazy(() => import("./pages/BookOfBusiness"));
 const AwardsGallery = lazy(() => import("./pages/AwardsGallery"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const TermsOfService = lazy(() => import("./pages/TermsOfService"));
+const DataDeletion = lazy(() => import("./pages/DataDeletion"));
 const BotToken = lazy(() => import("./pages/BotToken"));
 const AgentManagement = lazy(() => import("./pages/AgentManagement"));
 const SystemHealth = lazy(() => import("./pages/SystemHealth"));
@@ -184,6 +186,10 @@ const App = () => (
                        <Route path="/dashboard/awards" element={<ProtectedRoute><AwardsGallery /></ProtectedRoute>} />
                        <Route path="/privacy" element={<PrivacyPolicy />} />
                        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                       <Route path="/terms" element={<TermsOfService />} />
+                       <Route path="/terms-of-service" element={<TermsOfService />} />
+                       <Route path="/data-deletion" element={<DataDeletion />} />
+                       <Route path="/delete-my-data" element={<DataDeletion />} />
                        <Route path="/bot-token" element={<ProtectedRoute requireAdmin><BotToken /></ProtectedRoute>} />
                        <Route path="/dashboard/bot-token" element={<ProtectedRoute requireAdmin><BotToken /></ProtectedRoute>} />
                        <Route path="/dashboard/automation-health" element={<ProtectedRoute requireAdmin><AutomationHealth /></ProtectedRoute>} />

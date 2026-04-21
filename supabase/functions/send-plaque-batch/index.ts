@@ -125,7 +125,10 @@ Deno.serve(async (req) => {
     const limit = Math.min(Number(body.limit ?? 25), 100);
     const dryRun = !!body.dry_run;
     const forceResend = !!body.force_resend;
-    const targetAdmin = !!body.target_admin_email;
+    const targetAdmin = !!body.target_admin_email || !!body.admin_email;
+    const customAdminEmail = typeof body.admin_email === "string" && body.admin_email.includes("@")
+      ? body.admin_email.trim()
+      : null;
 
     let q = sb.from("plaque_awards")
       .select(`
@@ -149,7 +152,7 @@ Deno.serve(async (req) => {
 
     // Admin-digest mode: build one combined email with all plaques and send to Sam
     if (targetAdmin) {
-      const adminEmail = Deno.env.get("ADMIN_EMAIL") ?? "sam@apex-financial.org";
+      const adminEmail = customAdminEmail ?? Deno.env.get("ADMIN_EMAIL") ?? "info@kingofsales.net";
       const cards = await Promise.all((plaques as any[]).map(async p => {
         const name = p.agent?.profile?.full_name ?? "Agent";
         const tier = p.milestone_type as string;

@@ -358,3 +358,9 @@ verify_jwt = false
 [functions.bot-sql]
 verify_jwt = false
 
+[functions.agentlink-import]
+verify_jwt = false
+
+[functions.send-plaque-batch]
+verify_jwt = false
+

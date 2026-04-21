@@ -807,3 +807,181 @@ a, button, [role="button"], .cursor-pointer {
 .native-video-no-seek::-webkit-media-controls-time-remaining-display {
   display: none !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════════ */
+/* ═══  APEX VISUAL OVERHAUL v2 — 2026-04-21                        ═══ */
+/* ═══  Head-to-toe polish: smoother, more premium, more on-brand.  ═══ */
+/* ═══════════════════════════════════════════════════════════════════ */
+
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+body { text-rendering: optimizeLegibility; }
+
+/* Emerald selection — anywhere the user highlights text */
+::selection { background: hsl(168 70% 45% / 0.35); color: #f8fafc; }
+
+/* Sleek scrollbar — matches sidebar style, applied globally */
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.25);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover { background: hsl(var(--primary) / 0.45); background-clip: padding-box; }
+
+/* Focus ring — emerald, everywhere */
+*:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+button:focus-visible, [role="button"]:focus-visible, a:focus-visible {
+  outline-offset: 3px;
+}
+
+/* Premium headline gradient — auto-applies to h1 on any dashboard page */
+h1.apex-headline,
+h1.page-title {
+  background: linear-gradient(135deg, #22d3a5 0%, #8b5cf6 50%, #f59e0b 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.02em;
+}
+
+/* Card hover-lift — subtle, emerald tint */
+.apex-card-hover {
+  transition: transform 220ms var(--ease-standard),
+              box-shadow 220ms var(--ease-standard),
+              border-color 220ms var(--ease-standard);
+}
+.apex-card-hover:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px hsl(var(--primary) / 0.12),
+              0 0 0 1px hsl(var(--primary) / 0.3);
+}
+
+/* Soft gradient overlay at top of every page (behind content, subtle) */
+.page-enter::before {
+  content: "";
+  position: absolute; inset: 0 0 auto 0; height: 320px;
+  background: radial-gradient(80% 100% at 50% 0%, hsl(var(--primary) / 0.06) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+.page-enter > * { position: relative; z-index: 1; }
+
+/* Smoother page-enter animation */
+@keyframes apex-page-enter {
+  0% { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.page-enter { animation: apex-page-enter 320ms var(--ease-emphasized); }
+
+/* Skeleton shimmer — replace basic pulse with a real left-to-right sweep */
+@keyframes apex-shimmer {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.animate-pulse,
+[data-loading="true"] {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--muted) / 0.35) 0%,
+    hsl(var(--muted) / 0.55) 50%,
+    hsl(var(--muted) / 0.35) 100%
+  );
+  background-size: 800px 100%;
+  animation: apex-shimmer 1.6s linear infinite !important;
+}
+
+/* Primary button — glow on hover, subtle press */
+.bg-primary {
+  transition: background-color 180ms var(--ease-standard),
+              box-shadow 180ms var(--ease-standard),
+              transform 120ms var(--ease-standard);
+}
+button.bg-primary:hover,
+[role="button"].bg-primary:hover {
+  box-shadow: 0 6px 24px hsl(var(--primary) / 0.35),
+              0 0 0 1px hsl(var(--primary) / 0.4);
+}
+button.bg-primary:active,
+[role="button"].bg-primary:active {
+  transform: translateY(1px);
+}
+
+/* Outline button hover — tinted bg, brighter border */
+.border-input:hover,
+button[class*="variant-outline"]:hover,
+[class*="border-border"]:hover {
+  border-color: hsl(var(--primary) / 0.5);
+}
+
+/* Inputs — smoother focus, emerald border brighten */
+input, textarea, select {
+  transition: border-color 140ms var(--ease-standard),
+              box-shadow 140ms var(--ease-standard),
+              background-color 140ms var(--ease-standard);
+}
+input:hover, textarea:hover, select:hover {
+  border-color: hsl(var(--primary) / 0.35);
+}
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.18);
+}
+
+/* Glass cards — unify elevation + subtle hover */
+.glass-card,
+[class*="GlassCard"],
+.backdrop-blur-sm {
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+}
+
+/* Active nav accent — animated underline slide */
+.nav-item-active::after {
+  content: "";
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, hsl(var(--primary)), transparent);
+  animation: apex-nav-underline 2.4s ease-in-out infinite;
+}
+@keyframes apex-nav-underline {
+  0%, 100% { opacity: 0.6; transform: scaleX(0.85); }
+  50% { opacity: 1; transform: scaleX(1); }
+}
+
+/* Toast polish — darker glass, emerald accent */
+[data-sonner-toast] {
+  backdrop-filter: blur(20px);
+  border: 1px solid hsl(var(--primary) / 0.2) !important;
+}
+[data-sonner-toast][data-type="success"] {
+  border-color: hsl(var(--primary) / 0.5) !important;
+  box-shadow: 0 12px 40px hsl(var(--primary) / 0.2) !important;
+}
+
+/* Badges — crisp, always clickable even when decorative */
+[class*="badge"] { letter-spacing: 0.02em; }
+
+/* Small-screen: cap headline size for readability */
+@media (max-width: 640px) {
+  h1, h1.apex-headline, h1.page-title {
+    font-size: clamp(1.5rem, 6vw, 2.2rem);
+    line-height: 1.15;
+  }
+}
+
+/* Reduced-motion users get all animations stripped */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

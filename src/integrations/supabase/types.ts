@@ -330,6 +330,67 @@ export type Database = {
           },
         ]
       }
+      agent_carrier_comp: {
+        Row: {
+          agent_id: string
+          carrier_id: string | null
+          carrier_name: string
+          contract_code: string | null
+          contract_pct: number | null
+          effective_pct: number | null
+          id: string
+          notes: string | null
+          override_pct: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          agent_id: string
+          carrier_id?: string | null
+          carrier_name: string
+          contract_code?: string | null
+          contract_pct?: number | null
+          effective_pct?: number | null
+          id?: string
+          notes?: string | null
+          override_pct?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          agent_id?: string
+          carrier_id?: string | null
+          carrier_name?: string
+          contract_code?: string | null
+          contract_pct?: number | null
+          effective_pct?: number | null
+          id?: string
+          notes?: string | null
+          override_pct?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_carrier_comp_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "agent_carrier_comp_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_carrier_comp_carrier_id_fkey"
+            columns: ["carrier_id"]
+            isOneToOne: false
+            referencedRelation: "carriers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_goals: {
         Row: {
           agent_id: string

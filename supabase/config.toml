@@ -367,3 +367,6 @@ verify_jwt = false
 [functions.render-all-plaques]
 verify_jwt = false
 
+[functions.request-agent-photos]
+verify_jwt = false
+

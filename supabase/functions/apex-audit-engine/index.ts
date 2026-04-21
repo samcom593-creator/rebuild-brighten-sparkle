@@ -43,7 +43,7 @@ interface AuditFinding {
   action_link?: string;
 }
 
-type Subbot = "agent_activation" | "recruiting" | "content" | "seminar" | "onboarding";
+type Subbot = "agent_activation" | "recruiting" | "content" | "seminar" | "onboarding" | "licensing";
 
 function daysAgoISO(days: number): string {
   return new Date(Date.now() - days * 86_400_000).toISOString();
@@ -393,12 +393,92 @@ async function snapshot(metric_key: string, metric_value: number, sub_bot?: Subb
 // ───────────────────────────────────────────────────────────────────────
 // Dispatch
 // ───────────────────────────────────────────────────────────────────────
+// ───────────────────────────────────────────────────────────────────────
+// Sub-bot: licensing
+// ───────────────────────────────────────────────────────────────────────
+async function auditLicensing(): Promise<AuditFinding[]> {
+  const findings: AuditFinding[] = [];
+
+  const { data: rows } = await supabase
+    .from("applications")
+    .select("id, license_status, license_progress, created_at, course_purchased_at, exam_scheduled_at, exam_passed_at")
+    .neq("status", "rejected").neq("status", "terminated");
+
+  const stageCounts: Record<string, number> = {};
+  for (const r of rows ?? []) {
+    const p = (r as any).license_progress ?? "unlicensed";
+    stageCounts[p] = (stageCounts[p] ?? 0) + 1;
+  }
+
+  // Stuck-in-course over 30 days: they need a call or should exit
+  const now = Date.now();
+  const stuckCourse = (rows ?? []).filter((r: any) =>
+    r.license_progress === "course_purchased" &&
+    r.course_purchased_at &&
+    now - new Date(r.course_purchased_at).getTime() > 30 * 86_400_000
+  );
+  if (stuckCourse.length > 0) {
+    findings.push({
+      audit_name: "stuck_in_course_30d",
+      severity: stuckCourse.length >= 10 ? "critical" : "warn",
+      finding_count: stuckCourse.length,
+      summary: `${stuckCourse.length} applicant${stuckCourse.length === 1 ? "" : "s"} stuck in course_purchased 30d+.`,
+      detail: { app_ids: stuckCourse.slice(0, 10).map((a: any) => a.id) },
+      action: "licensing-stage-nudge creates manager tasks automatically; manager needs to call.",
+      action_link: `${APP_BASE}/dashboard/prelicensing`,
+    });
+  }
+
+  // Finished course but no exam booked (lose momentum fast here)
+  const doneNoExam = (rows ?? []).filter((r: any) =>
+    r.license_progress === "finished_course" && !r.exam_scheduled_at
+  );
+  if (doneNoExam.length >= 3) {
+    findings.push({
+      audit_name: "finished_course_no_exam",
+      severity: "warn",
+      finding_count: doneNoExam.length,
+      summary: `${doneNoExam.length} finished the course but haven't scheduled the exam.`,
+      action: "Forcing function: book a date + remove blockers (test cost, location).",
+      action_link: `${APP_BASE}/dashboard/prelicensing`,
+    });
+  }
+
+  // Data-quality: license_status='licensed' but license_progress='unlicensed'
+  const mismatch = (rows ?? []).filter((r: any) =>
+    r.license_status === "licensed" && r.license_progress === "unlicensed"
+  );
+  if (mismatch.length > 0) {
+    findings.push({
+      audit_name: "license_status_mismatch",
+      severity: mismatch.length >= 10 ? "warn" : "info",
+      finding_count: mismatch.length,
+      summary: `${mismatch.length} rows claim licensed but progress says unlicensed — bad data.`,
+      detail: { app_ids: mismatch.slice(0, 10).map((a: any) => a.id) },
+      action: "Run NIPR verify on each; backfill license_progress='licensed' if NIPR confirms.",
+      action_link: `${APP_BASE}/dashboard/applicants?license=licensed`,
+    });
+  }
+
+  // Funnel conversion snapshot (just info)
+  findings.push({
+    audit_name: "licensing_funnel",
+    severity: "info",
+    finding_count: stageCounts["licensed"] ?? 0,
+    summary: `Funnel: ${stageCounts["unlicensed"] ?? 0} unlicensed · ${stageCounts["course_purchased"] ?? 0} in course · ${stageCounts["finished_course"] ?? 0} done · ${stageCounts["test_scheduled"] ?? 0} exam · ${stageCounts["passed_test"] ?? 0} passed · ${stageCounts["waiting_on_license"] ?? 0} pending · ${stageCounts["licensed"] ?? 0} licensed.`,
+    detail: { stages: stageCounts },
+  });
+
+  return findings;
+}
+
 const DISPATCH: Record<Subbot, () => Promise<AuditFinding[]>> = {
   agent_activation: auditAgentActivation,
   recruiting: auditRecruiting,
   content: auditContent,
   seminar: auditSeminar,
   onboarding: auditOnboarding,
+  licensing: auditLicensing,
 };
 
 Deno.serve(async (req) => {

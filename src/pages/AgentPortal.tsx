@@ -40,6 +40,7 @@ import { AgentTaskManager } from "@/components/dashboard/AgentTaskManager";
 import { AgentReferralLinkCard } from "@/components/agent/AgentReferralLinkCard";
 import { EliteReferralUnlock } from "@/components/agent/EliteReferralUnlock";
 import { AddPhotoPrompt } from "@/components/agent/AddPhotoPrompt";
+import { StreakFlameCard } from "@/components/agent/StreakFlameCard";
 import { HideableCard } from "@/components/dashboard/HideableCard";
 import { HiddenCardsManager } from "@/components/dashboard/HiddenCardsManager";
 
@@ -555,6 +556,9 @@ export default function AgentPortal() {
             </Button>
           ))}
         </div>
+
+        {/* Streak flame — gamified consecutive-production tracker */}
+        {agentId && <StreakFlameCard agentId={agentId} />}
 
         {/* Weekly Competition Dashboard — rank, target, top 10 with highlight */}
         {agentId && (

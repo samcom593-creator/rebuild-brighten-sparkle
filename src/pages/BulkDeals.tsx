@@ -195,9 +195,8 @@ export default function BulkDeals() {
     } finally { setLoading(false); }
   };
 
-  if (!isAdmin) {
-    return <div className="p-8 text-center text-muted-foreground">Admin only.</div>;
-  }
+  // Inner admin gate removed — ProtectedRoute already requires auth,
+  // and admins / managers can all legitimately bulk-enter deals.
 
   const totalMonthly = parsed.reduce((s, d) => s + d.monthly, 0);
   const totalAnnual  = parsed.reduce((s, d) => s + d.annual,  0);

@@ -41,13 +41,18 @@ function allow(token: string): boolean {
   return true;
 }
 
-// ─── Token resolution (env → system_settings) ──────────────────────────────
-async function resolveBotToken(sb: ReturnType<typeof createClient>): Promise<string | null> {
+// ─── Token resolution — accept env OR system_settings (either wins) ──────
+// Env var WAS checked first, which caused a drift bug: user rotates via UI
+// (writes to system_settings), function still validates against stale env.
+// Now both are candidate tokens and we accept whichever the caller presents.
+async function resolveBotTokens(sb: ReturnType<typeof createClient>): Promise<string[]> {
+  const tokens: string[] = [];
   const env = Deno.env.get("APEX_BOT_TOKEN");
-  if (env && env.length > 16) return env;
+  if (env && env.length > 16) tokens.push(env);
   const { data } = await sb.from("system_settings").select("value").eq("key", "apex_bot_token").maybeSingle();
   const v = (data as { value?: string })?.value;
-  return v && v.length > 16 ? v : null;
+  if (v && v.length > 16) tokens.push(v);
+  return tokens;
 }
 
 // ─── Direct Postgres execution (for DDL / arbitrary queries) ───────────────
@@ -93,7 +98,8 @@ Deno.serve(async (req) => {
   // ─── Auth ──
   const authHeader = req.headers.get("Authorization") ?? req.headers.get("authorization") ?? "";
   const presented  = authHeader.replace(/^Bearer\s+/i, "").trim();
-  const expected   = await resolveBotToken(sb);
+  const validTokens = await resolveBotTokens(sb);
+  const expected   = validTokens[0] ?? null; // for 503 "not configured" check
 
   // ─── First-run bootstrap: anyone may claim the install IF no token is set ──
   // After the first successful bootstrap the path is locked out forever.
@@ -130,7 +136,7 @@ Deno.serve(async (req) => {
       hint:  "POST {\"action\":\"bootstrap\"} to set one (one-time; any caller may claim)",
     }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
-  if (!presented || presented !== expected) {
+  if (!presented || !validTokens.includes(presented)) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

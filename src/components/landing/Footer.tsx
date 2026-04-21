@@ -45,6 +45,7 @@ export const Footer = forwardRef<HTMLElement>((_, ref) => {
             <ul className="space-y-2 text-sm text-[#94a3b8]">
               <li><Link to="/privacy" className="hover:text-[#22d3a5] transition-colors">Privacy Policy</Link></li>
               <li><Link to="/terms" className="hover:text-[#22d3a5] transition-colors">Terms of Service</Link></li>
+              <li><Link to="/data-deletion" className="hover:text-[#22d3a5] transition-colors">Delete My Data</Link></li>
               <li><Link to="/disclosures" className="hover:text-[#22d3a5] transition-colors">Disclosures</Link></li>
             </ul>
           </div>

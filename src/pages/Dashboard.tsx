@@ -35,6 +35,8 @@ import { OnboardingPipelineCard } from "@/components/dashboard/OnboardingPipelin
 import { RecruitingQuickView } from "@/components/dashboard/RecruitingQuickView";
 import { StreakBanner } from "@/components/celebrations/StreakBanner";
 import { LivePulse } from "@/components/dashboard/LivePulse";
+import { FocusNow } from "@/components/dashboard/FocusNow";
+import { ForecastCard } from "@/components/dashboard/ForecastCard";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -443,6 +445,12 @@ export default function Dashboard() {
           {(isAdmin || isManager) && <AddAgentModal />}
         </div>
       </div>
+
+      {/* Focus Now — top priority card from bot_priorities */}
+      <FocusNow />
+
+      {/* Month-end forecast */}
+      <ForecastCard />
 
       {/* Live pulse — realtime counters */}
       <LivePulse />

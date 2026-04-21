@@ -1,4 +1,5 @@
 // Licensing stage-aware nudge sweep.
+// Deploy: 401ea8e
 //
 // Runs daily. For each applicant in the licensing funnel, pick the right
 // nudge based on (license_progress, time_in_stage). Idempotent via

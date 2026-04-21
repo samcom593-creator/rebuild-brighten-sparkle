@@ -25,7 +25,7 @@ const corsHeaders = {
 
 const APP_BASE = "https://apex-financial.org";
 
-// deploy trigger: b985c2e
+// deploy trigger: 401ea8e
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,

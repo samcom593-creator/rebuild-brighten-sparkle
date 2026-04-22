@@ -50,13 +50,17 @@ DROP POLICY IF EXISTS own_ig_templates ON public.instagram_dm_templates;
 CREATE POLICY own_ig_templates ON public.instagram_dm_templates FOR ALL TO authenticated
   USING (user_id = auth.uid());
 
--- ── Seed default templates ──
-INSERT INTO public.instagram_dm_templates (user_id, name, body, category)
-SELECT auth.uid(), 'Qualifier',
-  'Hey! Still interested in building a financial career with APEX? Takes 2 mins to see if you qualify: https://apex-financial.org/apply',
-  'qualifier'
-WHERE NOT EXISTS (SELECT 1 FROM public.instagram_dm_templates WHERE user_id = auth.uid() AND name = 'Qualifier')
-ON CONFLICT DO NOTHING;
+-- ── Seed default templates — only when run under an authenticated session ──
+-- (Skipped when migration runs via service_role because auth.uid() is NULL.)
+DO $seed$ BEGIN
+  IF auth.uid() IS NOT NULL THEN
+    INSERT INTO public.instagram_dm_templates (user_id, name, body, category)
+    SELECT auth.uid(), 'Qualifier',
+      'Hey! Still interested in building a financial career with APEX? Takes 2 mins to see if you qualify: https://apex-financial.org/apply',
+      'qualifier'
+    WHERE NOT EXISTS (SELECT 1 FROM public.instagram_dm_templates WHERE user_id = auth.uid() AND name = 'Qualifier');
+  END IF;
+END $seed$;
 
 -- Helper to bucket a thread by its last-message age
 CREATE OR REPLACE FUNCTION public.ig_bucket(last_msg_at timestamptz, last_sender text)

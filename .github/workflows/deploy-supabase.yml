@@ -44,6 +44,30 @@ jobs:
       PROJECT_REF: msydzhzolwourcdmqxvn
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync config.toml with functions/ directory
+        id: sync
+        run: |
+          bash scripts/sync-functions-config.sh
+          if ! git diff --quiet supabase/config.toml; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::config.toml updated with missing function stanzas"
+          fi
+
+      - name: Commit config.toml sync back to main
+        if: steps.sync.outputs.changed == 'true' && github.event_name == 'push'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add supabase/config.toml
+          git commit -m "chore(ci): auto-register new functions in config.toml
+
+Added by scripts/sync-functions-config.sh so Lovable's deploy pipeline
+won't skip newly created functions."
+          git push
 
       - uses: supabase/setup-cli@v1
         with:

@@ -88,7 +88,9 @@ async function buildDaily(sb: ReturnType<typeof createClient>): Promise<Record<s
       color:       CLR.blue,
       footer:      { text: "Top 10 producers by commission · Posted 9pm EST" },
       timestamp:   new Date().toISOString(),
+      url:         "https://apex-financial.org/dashboard/leaderboard",
     }],
+    content: "[📊 View full leaderboard →](https://apex-financial.org/dashboard/leaderboard)",
   };
 }
 
@@ -126,7 +128,9 @@ async function buildWeekly(sb: ReturnType<typeof createClient>): Promise<Record<
       color:       CLR.purple,
       footer:      { text: "Top 10 weekly producers (Mon–Sun) · Posted Sundays 9pm EST" },
       timestamp:   new Date().toISOString(),
+      url:         "https://apex-financial.org/dashboard/leaderboard?period=weekly",
     }],
+    content: "[🏆 Open weekly leaderboard →](https://apex-financial.org/dashboard/leaderboard?period=weekly)",
   };
 }
 

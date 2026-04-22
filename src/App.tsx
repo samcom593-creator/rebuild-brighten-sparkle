@@ -90,6 +90,8 @@ const TeamChat = lazy(() => import("./pages/TeamChat"));
 const BulkDeals = lazy(() => import("./pages/BulkDeals"));
 const VoiceNote = lazy(() => import("./pages/VoiceNote"));
 const AgentLinkSync = lazy(() => import("./pages/AgentLinkSync"));
+const Leaderboard = lazy(() => import("./pages/Leaderboard"));
+const Rewards = lazy(() => import("./pages/Rewards"));
 const AgentManagement = lazy(() => import("./pages/AgentManagement"));
 const SystemHealth = lazy(() => import("./pages/SystemHealth"));
 const PrelicensingManager = lazy(() => import("./pages/PrelicensingManager"));
@@ -191,9 +193,8 @@ const App = () => (
                        <Route path="/dashboard/automation" element={<ProtectedRoute requireAdmin><AutomationHub /></ProtectedRoute>} />
                        <Route path="/dashboard/book-of-business" element={<ProtectedRoute><BookOfBusiness /></ProtectedRoute>} />
                        <Route path="/dashboard/awards" element={<ProtectedRoute><AwardsGallery /></ProtectedRoute>} />
-                       <Route path="/privacy" element={<PrivacyPolicy />} />
+                       {/* /privacy and /terms are public routes above — don't duplicate here */}
                        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-                       <Route path="/terms" element={<TermsOfService />} />
                        <Route path="/terms-of-service" element={<TermsOfService />} />
                        <Route path="/data-deletion" element={<DataDeletion />} />
                        <Route path="/delete-my-data" element={<DataDeletion />} />
@@ -213,6 +214,10 @@ const App = () => (
                        <Route path="/voice" element={<ProtectedRoute><VoiceNote /></ProtectedRoute>} />
                        <Route path="/dashboard/agentlink-sync" element={<ProtectedRoute><AgentLinkSync /></ProtectedRoute>} />
                        <Route path="/agentlink-sync" element={<ProtectedRoute><AgentLinkSync /></ProtectedRoute>} />
+                       <Route path="/dashboard/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
+                       <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
+                       <Route path="/dashboard/rewards" element={<ProtectedRoute><Rewards /></ProtectedRoute>} />
+                       <Route path="/rewards" element={<ProtectedRoute><Rewards /></ProtectedRoute>} />
                        <Route path="/dashboard/automation-health" element={<ProtectedRoute requireAdmin><AutomationHealth /></ProtectedRoute>} />
                         <Route path="/dashboard/hierarchy" element={<ProtectedRoute><TeamHierarchy /></ProtectedRoute>} />
                         <Route path="/dashboard/pipeline-simple" element={<AgentPipelineSimple />} />

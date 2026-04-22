@@ -84,6 +84,18 @@ export function CommandPalette() {
     return () => document.removeEventListener("keydown", handler);
   }, [open, setOpen]);
 
+  // Voice-to-chat: listen for apex:voice-prompt events and prefill the palette
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ transcript: string }>).detail;
+      if (!detail?.transcript) return;
+      setQuery(detail.transcript);
+      setOpen(true);
+    };
+    window.addEventListener("apex:voice-prompt", handler as EventListener);
+    return () => window.removeEventListener("apex:voice-prompt", handler as EventListener);
+  }, [setOpen]);
+
   // Debounced entity search
   useEffect(() => {
     if (!open || query.length < 2) {

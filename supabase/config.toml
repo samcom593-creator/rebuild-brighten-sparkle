@@ -388,3 +388,171 @@ verify_jwt = false
 [functions.apex-exec]
 verify_jwt = false
 
+
+[functions.agentlink-cookie-sync]
+verify_jwt = false
+
+[functions.ai-lead-insights]
+verify_jwt = false
+
+[functions.analyze-content-item]
+verify_jwt = false
+
+[functions.apex-alert-dispatch]
+verify_jwt = false
+
+[functions.apex-audit-engine]
+verify_jwt = false
+
+[functions.apex-evening-report]
+verify_jwt = false
+
+[functions.apex-morning-brief]
+verify_jwt = false
+
+[functions.apex-weekly-report]
+verify_jwt = false
+
+[functions.backfill-plaque-images]
+verify_jwt = false
+
+[functions.bulk-resend-course-emails]
+verify_jwt = false
+
+[functions.bulk-send-licensing]
+verify_jwt = false
+
+[functions.check-churn-risk]
+verify_jwt = false
+
+[functions.check-daily-awards]
+verify_jwt = false
+
+[functions.check-early-performance]
+verify_jwt = false
+
+[functions.check-overdue-tasks]
+verify_jwt = false
+
+[functions.create-lead-checkout]
+verify_jwt = false
+
+[functions.detect-dropped-leads]
+verify_jwt = false
+
+[functions.detect-duplicates]
+verify_jwt = false
+
+[functions.detect-ghosted-applicants]
+verify_jwt = false
+
+[functions.detect-inactive-agents]
+verify_jwt = false
+
+[functions.detect-production-gaps]
+verify_jwt = false
+
+[functions.insuracloud-outbox]
+verify_jwt = false
+
+[functions.insuracloud-sync]
+verify_jwt = false
+
+[functions.licensing-stage-nudge]
+verify_jwt = false
+
+[functions.manychat-webhook]
+verify_jwt = false
+
+[functions.mirror-agents-backfill]
+verify_jwt = false
+
+[functions.notify-admin-earnings]
+verify_jwt = false
+
+[functions.notify-attendance-reminder]
+verify_jwt = false
+
+[functions.notify-course-started]
+verify_jwt = false
+
+[functions.notify-lead-purchase]
+verify_jwt = false
+
+[functions.nudge-unworked-applications]
+verify_jwt = false
+
+[functions.onboarding-nudge-sweep]
+verify_jwt = false
+
+[functions.parse-schedule-image]
+verify_jwt = false
+
+[functions.process-scheduled-tasks]
+verify_jwt = false
+
+[functions.reset-agent-password]
+verify_jwt = false
+
+[functions.run-licensing-checkups]
+verify_jwt = false
+
+[functions.run-licensing-fasttrack]
+verify_jwt = false
+
+[functions.score-applicant]
+verify_jwt = false
+
+[functions.self-enroll-course]
+verify_jwt = false
+
+[functions.send-admin-email]
+verify_jwt = false
+
+[functions.send-bulk-notification-blast]
+verify_jwt = false
+
+[functions.send-bulk-unlicensed-outreach]
+verify_jwt = false
+
+[functions.send-course-enrollment-email]
+verify_jwt = false
+
+[functions.send-daily-checkin-prompt]
+verify_jwt = false
+
+[functions.send-licensing-sequence]
+verify_jwt = false
+
+[functions.send-proactive-coaching]
+verify_jwt = false
+
+[functions.send-push-optin-email]
+verify_jwt = false
+
+[functions.send-sam-morning-report]
+verify_jwt = false
+
+[functions.send-seminar-invite-blast]
+verify_jwt = false
+
+[functions.send-top5-four-week-email]
+verify_jwt = false
+
+[functions.send-unlicensed-process-update]
+verify_jwt = false
+
+[functions.send-whatsapp-onboarding-blast]
+verify_jwt = false
+
+[functions.send-whatsapp]
+verify_jwt = false
+
+[functions.send-winback-campaign]
+verify_jwt = false
+
+[functions.transcribe-call]
+verify_jwt = false
+
+[functions.verify-nipr]
+verify_jwt = false

@@ -1,0 +1,53 @@
+name: Auto-register Supabase functions
+
+# Runs on every push that touches supabase/functions/. Ensures every
+# function folder has a [functions.<name>] stanza in config.toml so
+# Lovable's deploy pipeline picks it up. Commits the fix-up back to
+# main. Independent of the full deploy workflow — needs NO secrets,
+# so this runs even when SUPABASE_ACCESS_TOKEN is unavailable.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/**"
+      - "supabase/config.toml"
+      - "scripts/sync-functions-config.sh"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: auto-register-functions
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sync
+        id: sync
+        run: |
+          bash scripts/sync-functions-config.sh
+          if git diff --quiet supabase/config.toml; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit + push
+        if: steps.sync.outputs.changed == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add supabase/config.toml
+          git commit -m "chore(ci): auto-register new Supabase functions
+
+Keeps config.toml in lockstep with supabase/functions/ so Lovable's
+deploy pipeline never silently skips a newly created function."
+          git push

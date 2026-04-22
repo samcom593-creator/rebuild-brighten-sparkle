@@ -7,6 +7,7 @@ import { ComponentErrorBoundary } from "@/components/ComponentErrorBoundary";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CommandPalette } from "@/components/command/CommandPalette";
 import { CelebrationProvider } from "@/components/celebrations/CelebrationProvider";
+import { VoiceToChat } from "@/components/voice/VoiceToChat";
 
 function InnerPageLoader() {
   return (
@@ -33,6 +34,7 @@ export function AuthenticatedShell() {
     <ProtectedRoute>
       <SidebarLayout showPhoneBanner={true}>
         <CelebrationProvider />
+        <VoiceToChat />
         <CommandPalette />
         <PushNotificationPrompt />
         <ComponentErrorBoundary name="page-content">

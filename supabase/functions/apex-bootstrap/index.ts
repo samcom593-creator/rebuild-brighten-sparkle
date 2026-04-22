@@ -1,3 +1,4 @@
+// Deploy trigger: fd413d9
 // One-shot bootstrap: writes app.settings.service_role_key and
 // app.settings.supabase_url GUCs from this function's own environment
 // so plpgsql triggers (auto_nipr_verify, licensing_stage_nudge_sweep,

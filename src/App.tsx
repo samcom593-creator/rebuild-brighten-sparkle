@@ -89,6 +89,7 @@ const RecruitCommandCenter = lazy(() => import("./pages/RecruitCommandCenter"));
 const TeamChat = lazy(() => import("./pages/TeamChat"));
 const BulkDeals = lazy(() => import("./pages/BulkDeals"));
 const VoiceNote = lazy(() => import("./pages/VoiceNote"));
+const AgentLinkSync = lazy(() => import("./pages/AgentLinkSync"));
 const AgentManagement = lazy(() => import("./pages/AgentManagement"));
 const SystemHealth = lazy(() => import("./pages/SystemHealth"));
 const PrelicensingManager = lazy(() => import("./pages/PrelicensingManager"));
@@ -210,6 +211,8 @@ const App = () => (
                        <Route path="/bulk-deals" element={<ProtectedRoute><BulkDeals /></ProtectedRoute>} />
                        <Route path="/dashboard/voice" element={<ProtectedRoute><VoiceNote /></ProtectedRoute>} />
                        <Route path="/voice" element={<ProtectedRoute><VoiceNote /></ProtectedRoute>} />
+                       <Route path="/dashboard/agentlink-sync" element={<ProtectedRoute><AgentLinkSync /></ProtectedRoute>} />
+                       <Route path="/agentlink-sync" element={<ProtectedRoute><AgentLinkSync /></ProtectedRoute>} />
                        <Route path="/dashboard/automation-health" element={<ProtectedRoute requireAdmin><AutomationHealth /></ProtectedRoute>} />
                         <Route path="/dashboard/hierarchy" element={<ProtectedRoute><TeamHierarchy /></ProtectedRoute>} />
                         <Route path="/dashboard/pipeline-simple" element={<AgentPipelineSimple />} />

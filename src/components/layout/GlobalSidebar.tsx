@@ -158,6 +158,8 @@ export function GlobalSidebar({
     opsItems.push({ icon: Users, label: "Pipeline", href: isAgent && !isAdmin && !isManager ? "/agent-pipeline" : "/dashboard/applicants" });
     opsItems.push({ icon: Book, label: "Book of Business", href: "/dashboard/book-of-business" });
     opsItems.push({ icon: Trophy, label: "Awards", href: "/dashboard/awards" });
+    opsItems.push({ icon: Trophy, label: "Leaderboard", href: "/dashboard/leaderboard", special: true });
+    opsItems.push({ icon: Sparkles, label: "Rewards", href: "/dashboard/rewards" });
     opsItems.push({ icon: MessageSquare, label: "IG Inbox", href: "/dashboard/inbox/instagram" });
     opsItems.push({ icon: Users, label: "Team Chat", href: "/dashboard/team-chat", special: true });
     if (isAdmin || isManager) {
@@ -257,6 +259,7 @@ export function GlobalSidebar({
       adminItems.push({ icon: Mail, label: "Email Log", href: "/dashboard/email-log" });
       adminItems.push({ icon: DollarSign, label: "Comp Tiers", href: "/dashboard/comp-tiers" });
       adminItems.push({ icon: Plug, label: "Integrations", href: "/dashboard/integrations" });
+      adminItems.push({ icon: Zap, label: "Agent Link Sync", href: "/dashboard/agentlink-sync", special: true });
     }
     adminItems.push({ icon: Settings, label: "Settings", href: "/dashboard/settings" });
     sections.push({ label: "ADMIN", items: adminItems });

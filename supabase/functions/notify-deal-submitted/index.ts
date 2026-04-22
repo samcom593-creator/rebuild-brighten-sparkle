@@ -133,11 +133,13 @@ Deno.serve(async (req) => {
       const phone      = a.profile?.phone ?? "";
       const carrier    = a.profile?.carrier ?? "";
 
-      if (resend && email) {
-        try {
-          await resend.emails.send({
-            from: "APEX Financial <notifications@apex-financial.org>",
-            to: [email],
+      if (email) {
+        if (await isUnsubscribed(sb, email)) {
+          // quietly skip — they opted out
+        } else {
+          const result = await sendEmail({
+            to:      email,
+            from:    "APEX Financial <notifications@apex-financial.org>",
             subject: `🎯 ${agentName} just closed a deal!`,
             html: `<div style="font-family:'DM Sans',Arial,sans-serif;background:#030712;color:#e2e8f0;padding:32px 16px;">
               <div style="max-width:520px;margin:0 auto;background:#0d1526;border:1px solid #22d3a540;border-radius:16px;padding:36px;">
@@ -155,18 +157,21 @@ Deno.serve(async (req) => {
                 <p style="text-align:center;color:#64748b;font-size:11px;margin:24px 0 0 0;">APEX Financial · Building Empires</p>
               </div>
             </div>`,
+            tagName: "deal-broadcast",
           });
-          emailsSent++;
-          await sb.from("notification_log").insert({
-            recipient_user_id: a.user_id, recipient_email: email,
-            channel: "email", title: "Deal broadcast",
-            message: `${agentName} closed ${fmt$(monthly)}/mo`,
-            status: "sent",
-            metadata: { kind: "deal_broadcast", deal_id, closer_agent_id: deal.agent_id },
-          });
-        } catch (e) {
-          failed++;
-          console.error("email failed:", e);
+          if (result.ok) {
+            emailsSent++;
+            await sb.from("notification_log").insert({
+              recipient_user_id: a.user_id, recipient_email: email,
+              channel: "email", title: "Deal broadcast",
+              message: `${agentName} closed ${fmt$(monthly)}/mo`,
+              status: "sent",
+              metadata: { kind: "deal_broadcast", deal_id, closer_agent_id: deal.agent_id },
+            });
+          } else {
+            failed++;
+            console.error("email failed:", result.error);
+          }
         }
       }
 

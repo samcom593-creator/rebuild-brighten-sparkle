@@ -261,7 +261,7 @@ export default function BulkDeals() {
                     <td className="px-3 py-1.5 text-xs text-muted-foreground">{p.effectiveDate}</td>
                     <td className="px-3 py-1.5 text-center">
                       {r?.ok       && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 inline" />}
-                      {r && !r.ok  && <AlertCircle className={cn("h-3.5 w-3.5 text-rose-400 inline")} title={r.err} aria-label={r.err} />}
+                      {r && !r.ok  && <span title={r.err} aria-label={r.err}><AlertCircle className={cn("h-3.5 w-3.5 text-rose-400 inline")} /></span>}
                     </td>
                   </tr>
                 );

@@ -481,8 +481,29 @@ const DISPATCH: Record<Subbot, () => Promise<AuditFinding[]>> = {
   licensing: auditLicensing,
 };
 
+// One-shot: mirror SERVICE_ROLE_KEY + SUPABASE_URL into system_settings so
+// plpgsql run_automation_job (and the licensing/NIPR trigger paths once
+// patched) can auth their pg_net callbacks without waiting for apex-bootstrap
+// to deploy. Runs on every cold start; upsert = idempotent.
+async function bootstrapSystemSettings() {
+  try {
+    const url = Deno.env.get("SUPABASE_URL") ?? "";
+    const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+    if (!url || !key) return;
+    await supabase.from("system_settings").upsert(
+      [
+        { key: "service_role_key", value: key },
+        { key: "supabase_url", value: url },
+      ],
+      { onConflict: "key" },
+    );
+  } catch { /* best-effort, never block the audit run */ }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  await bootstrapSystemSettings();
 
   let body: { sub_bots?: Subbot[]; dry_run?: boolean } = {};
   try { body = await req.json(); } catch { /* empty */ }

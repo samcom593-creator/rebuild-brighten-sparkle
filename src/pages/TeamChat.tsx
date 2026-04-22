@@ -16,7 +16,7 @@ interface Message {
   author_name: string;
   author_avatar: string | null;
   body: string;
-  created_at: string;
+  created_at: string | null;
 }
 
 export default function TeamChat() {
@@ -28,8 +28,9 @@ export default function TeamChat() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const load = async () => {
-    const { data } = await supabase.from("team_chat_messages" as any)
-      .select("*").order("created_at", { ascending: true }).limit(200);
+    const { data } = await supabase.from("team_chat_messages")
+      .select("id, user_id, author_name, author_avatar, body, created_at")
+      .order("created_at", { ascending: true }).limit(200);
     setMessages((data ?? []) as Message[]);
     setLoading(false);
     setTimeout(() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" }), 50);
@@ -54,7 +55,7 @@ export default function TeamChat() {
     if (!input.trim() || !user?.id) return;
     setSending(true);
     try {
-      const { error } = await supabase.from("team_chat_messages" as any).insert({
+      const { error } = await supabase.from("team_chat_messages").insert({
         user_id: user.id,
         author_name: profile?.full_name ?? "Agent",
         author_avatar: (profile as any)?.avatar_url ?? null,

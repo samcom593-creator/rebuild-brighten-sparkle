@@ -5,7 +5,6 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 interface VideoModalProps {
   isOpen: boolean;
@@ -28,9 +27,7 @@ export function VideoModal({ isOpen, onClose, testimonial }: VideoModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl p-0 overflow-hidden bg-background border-border">
-        <VisuallyHidden>
-          <DialogTitle>Video Testimonial from {testimonial.name}</DialogTitle>
-        </VisuallyHidden>
+        <DialogTitle className="sr-only">Video Testimonial from {testimonial.name}</DialogTitle>
         
         {/* Video Player Area */}
         <div className={`relative aspect-video ${!testimonial.videoUrl ? `bg-gradient-to-br ${testimonial.gradientClass}` : ''}`}>

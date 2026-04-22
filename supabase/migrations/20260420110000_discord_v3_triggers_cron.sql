@@ -261,13 +261,14 @@ CREATE TRIGGER trg_streak_7day_discord
 -- ─── 6. pg_cron Jobs — 9pm EST = 02:00 UTC ──────────────────────────────────
 -- Requires pg_cron extension (pre-installed on Supabase Pro)
 
-DO $$
+DO $outer$
 BEGIN
   -- Daily leaderboard — every night 9pm EST
+  -- Outer uses $outer$ to avoid $$ nesting conflict with cron.schedule bodies.
   IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
-    PERFORM cron.unschedule('discord-daily-leaderboard')  WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'discord-daily-leaderboard');
-    PERFORM cron.unschedule('discord-weekly-leaderboard') WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'discord-weekly-leaderboard');
-    PERFORM cron.unschedule('discord-pipeline-leaderboard') WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'discord-pipeline-leaderboard');
+    IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'discord-daily-leaderboard') THEN PERFORM cron.unschedule('discord-daily-leaderboard'); END IF;
+    IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'discord-weekly-leaderboard') THEN PERFORM cron.unschedule('discord-weekly-leaderboard'); END IF;
+    IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'discord-pipeline-leaderboard') THEN PERFORM cron.unschedule('discord-pipeline-leaderboard'); END IF;
 
     PERFORM cron.schedule(
       'discord-daily-leaderboard',
@@ -290,7 +291,7 @@ BEGIN
     );
   END IF;
 END;
-$$;
+$outer$;
 
 -- ─── 7. Remove old over-broad triggers from previous migrations ───────────────
 DROP TRIGGER IF EXISTS trg_applications_new_applicant_discord  ON public.applications;

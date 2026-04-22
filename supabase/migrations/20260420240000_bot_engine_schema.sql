@@ -72,11 +72,12 @@ ALTER TABLE public.bot_alerts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bot_priorities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bot_metrics_snapshots ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "Admins see audits" ON public.bot_audits FOR ALL TO public
-  USING (has_role(auth.uid(), 'admin'::app_role));
-CREATE POLICY IF NOT EXISTS "Admins see alerts" ON public.bot_alerts FOR ALL TO public
-  USING (has_role(auth.uid(), 'admin'::app_role));
-CREATE POLICY IF NOT EXISTS "Admins see priorities" ON public.bot_priorities FOR ALL TO public
-  USING (has_role(auth.uid(), 'admin'::app_role));
-CREATE POLICY IF NOT EXISTS "Admins see snapshots" ON public.bot_metrics_snapshots FOR ALL TO public
-  USING (has_role(auth.uid(), 'admin'::app_role));
+-- Postgres does not support CREATE POLICY IF NOT EXISTS; use DROP + CREATE.
+DROP POLICY IF EXISTS "Admins see audits"     ON public.bot_audits;
+CREATE POLICY "Admins see audits"     ON public.bot_audits     FOR ALL TO public USING (has_role(auth.uid(), 'admin'::app_role));
+DROP POLICY IF EXISTS "Admins see alerts"     ON public.bot_alerts;
+CREATE POLICY "Admins see alerts"     ON public.bot_alerts     FOR ALL TO public USING (has_role(auth.uid(), 'admin'::app_role));
+DROP POLICY IF EXISTS "Admins see priorities" ON public.bot_priorities;
+CREATE POLICY "Admins see priorities" ON public.bot_priorities FOR ALL TO public USING (has_role(auth.uid(), 'admin'::app_role));
+DROP POLICY IF EXISTS "Admins see snapshots" ON public.bot_metrics_snapshots;
+CREATE POLICY "Admins see snapshots"  ON public.bot_metrics_snapshots FOR ALL TO public USING (has_role(auth.uid(), 'admin'::app_role));

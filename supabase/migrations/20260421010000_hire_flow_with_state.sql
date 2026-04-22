@@ -3,6 +3,10 @@
 -- Discord embed now shows name + state + manager + referred-by
 -- ============================================================
 
+-- Prerequisite: agents.contracted_at must exist (used by the trigger as the
+-- activation pivot). Add it if older environments don't have it yet.
+ALTER TABLE public.agents ADD COLUMN IF NOT EXISTS contracted_at timestamptz;
+
 CREATE OR REPLACE FUNCTION public.trg_fn_agent_activated_discord()
 RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, extensions

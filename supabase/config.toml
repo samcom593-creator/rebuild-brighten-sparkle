@@ -382,3 +382,9 @@ verify_jwt = false
 [functions.morning-brief]
 verify_jwt = false
 
+[functions.apex-bootstrap]
+verify_jwt = false
+
+[functions.apex-exec]
+verify_jwt = false
+

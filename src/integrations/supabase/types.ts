@@ -772,6 +772,45 @@ export type Database = {
         }
         Relationships: []
       }
+      agentlink_sync_log: {
+        Row: {
+          deals_inserted: number | null
+          deals_updated: number | null
+          error_message: string | null
+          finished_at: string | null
+          http_request_id: number | null
+          id: string
+          policies_seen: number | null
+          started_at: string
+          status: string
+          upstream_status: number | null
+        }
+        Insert: {
+          deals_inserted?: number | null
+          deals_updated?: number | null
+          error_message?: string | null
+          finished_at?: string | null
+          http_request_id?: number | null
+          id?: string
+          policies_seen?: number | null
+          started_at?: string
+          status?: string
+          upstream_status?: number | null
+        }
+        Update: {
+          deals_inserted?: number | null
+          deals_updated?: number | null
+          error_message?: string | null
+          finished_at?: string | null
+          http_request_id?: number | null
+          id?: string
+          policies_seen?: number | null
+          started_at?: string
+          status?: string
+          upstream_status?: number | null
+        }
+        Relationships: []
+      }
       agents: {
         Row: {
           agent_code: string | null
@@ -779,6 +818,7 @@ export type Database = {
             | Database["public"]["Enums"]["attendance_status"]
             | null
           contract_percentage: number | null
+          contracted_at: string | null
           created_at: string
           crm_setup_link: string | null
           deactivation_reason:
@@ -839,6 +879,7 @@ export type Database = {
             | Database["public"]["Enums"]["attendance_status"]
             | null
           contract_percentage?: number | null
+          contracted_at?: string | null
           created_at?: string
           crm_setup_link?: string | null
           deactivation_reason?:
@@ -899,6 +940,7 @@ export type Database = {
             | Database["public"]["Enums"]["attendance_status"]
             | null
           contract_percentage?: number | null
+          contracted_at?: string | null
           created_at?: string
           crm_setup_link?: string | null
           deactivation_reason?:
@@ -1426,6 +1468,7 @@ export type Database = {
           is_duplicate: boolean | null
           is_ghosted: boolean | null
           is_transfer: boolean | null
+          last_automated_email_at: string | null
           last_contacted_at: string | null
           last_name: string
           last_response_at: string | null
@@ -1510,6 +1553,7 @@ export type Database = {
           is_duplicate?: boolean | null
           is_ghosted?: boolean | null
           is_transfer?: boolean | null
+          last_automated_email_at?: string | null
           last_contacted_at?: string | null
           last_name: string
           last_response_at?: string | null
@@ -1594,6 +1638,7 @@ export type Database = {
           is_duplicate?: boolean | null
           is_ghosted?: boolean | null
           is_transfer?: boolean | null
+          last_automated_email_at?: string | null
           last_contacted_at?: string | null
           last_name?: string
           last_response_at?: string | null
@@ -2816,6 +2861,39 @@ export type Database = {
           },
         ]
       }
+      data_deletion_requests: {
+        Row: {
+          completed_at: string | null
+          email: string
+          handled_by: string | null
+          id: string
+          notes: string | null
+          reason: string | null
+          requested_at: string | null
+          status: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          email: string
+          handled_by?: string | null
+          id?: string
+          notes?: string | null
+          reason?: string | null
+          requested_at?: string | null
+          status?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          email?: string
+          handled_by?: string | null
+          id?: string
+          notes?: string | null
+          reason?: string | null
+          requested_at?: string | null
+          status?: string | null
+        }
+        Relationships: []
+      }
       deal_sync_log: {
         Row: {
           created_at: string | null
@@ -3718,6 +3796,162 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      instagram_connections: {
+        Row: {
+          access_token: string
+          connected_at: string | null
+          id: string
+          instagram_user_id: string
+          instagram_username: string | null
+          last_used_at: string | null
+          scopes: string[] | null
+          token_expires_at: string | null
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          connected_at?: string | null
+          id?: string
+          instagram_user_id: string
+          instagram_username?: string | null
+          last_used_at?: string | null
+          scopes?: string[] | null
+          token_expires_at?: string | null
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          connected_at?: string | null
+          id?: string
+          instagram_user_id?: string
+          instagram_username?: string | null
+          last_used_at?: string | null
+          scopes?: string[] | null
+          token_expires_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      instagram_dm_templates: {
+        Row: {
+          body: string
+          category: string | null
+          created_at: string | null
+          id: string
+          name: string
+          updated_at: string | null
+          use_count: number | null
+          user_id: string
+        }
+        Insert: {
+          body: string
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+          use_count?: number | null
+          user_id: string
+        }
+        Update: {
+          body?: string
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+          use_count?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      instagram_dm_threads: {
+        Row: {
+          bucket: string | null
+          conversation_id: string | null
+          display_name: string | null
+          id: string
+          ig_user_id: string
+          last_msg_at: string | null
+          last_msg_preview: string | null
+          last_sender: string | null
+          last_sent_at: string | null
+          messages_count: number | null
+          notes: string | null
+          outreach_status: string | null
+          profile_pic_url: string | null
+          stage: string | null
+          updated_at: string | null
+          user_id: string
+          username: string | null
+        }
+        Insert: {
+          bucket?: string | null
+          conversation_id?: string | null
+          display_name?: string | null
+          id?: string
+          ig_user_id: string
+          last_msg_at?: string | null
+          last_msg_preview?: string | null
+          last_sender?: string | null
+          last_sent_at?: string | null
+          messages_count?: number | null
+          notes?: string | null
+          outreach_status?: string | null
+          profile_pic_url?: string | null
+          stage?: string | null
+          updated_at?: string | null
+          user_id: string
+          username?: string | null
+        }
+        Update: {
+          bucket?: string | null
+          conversation_id?: string | null
+          display_name?: string | null
+          id?: string
+          ig_user_id?: string
+          last_msg_at?: string | null
+          last_msg_preview?: string | null
+          last_sender?: string | null
+          last_sent_at?: string | null
+          messages_count?: number | null
+          notes?: string | null
+          outreach_status?: string | null
+          profile_pic_url?: string | null
+          stage?: string | null
+          updated_at?: string | null
+          user_id?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
+      instagram_events: {
+        Row: {
+          created_at: string | null
+          event_type: string | null
+          external_id: string | null
+          id: string
+          payload: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_type?: string | null
+          external_id?: string | null
+          id?: string
+          payload?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event_type?: string | null
+          external_id?: string | null
+          id?: string
+          payload?: Json | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       instagram_subscriptions: {
         Row: {
@@ -4654,6 +4888,45 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          body: string | null
+          created_at: string | null
+          id: string
+          link: string | null
+          metadata: Json | null
+          priority: string | null
+          read_at: string | null
+          title: string
+          type: string | null
+          user_id: string | null
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string | null
+          id?: string
+          link?: string | null
+          metadata?: Json | null
+          priority?: string | null
+          read_at?: string | null
+          title: string
+          type?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          body?: string | null
+          created_at?: string | null
+          id?: string
+          link?: string | null
+          metadata?: Json | null
+          priority?: string | null
+          read_at?: string | null
+          title?: string
+          type?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       onboarding_modules: {
         Row: {
           created_at: string | null
@@ -4868,6 +5141,7 @@ export type Database = {
           badge_label: string | null
           color_hex: string | null
           created_at: string | null
+          custom_photo_url: string | null
           email_delivery_status: string | null
           email_error: string | null
           email_sent_at: string | null
@@ -4887,6 +5161,7 @@ export type Database = {
           badge_label?: string | null
           color_hex?: string | null
           created_at?: string | null
+          custom_photo_url?: string | null
           email_delivery_status?: string | null
           email_error?: string | null
           email_sent_at?: string | null
@@ -4906,6 +5181,7 @@ export type Database = {
           badge_label?: string | null
           color_hex?: string | null
           created_at?: string | null
+          custom_photo_url?: string | null
           email_delivery_status?: string | null
           email_error?: string | null
           email_sent_at?: string | null
@@ -5911,6 +6187,21 @@ export type Database = {
         }
         Relationships: []
       }
+      sms_send_guard: {
+        Row: {
+          last_sent_at: string | null
+          phone_e164: string
+        }
+        Insert: {
+          last_sent_at?: string | null
+          phone_e164: string
+        }
+        Update: {
+          last_sent_at?: string | null
+          phone_e164?: string
+        }
+        Relationships: []
+      }
       system_health_logs: {
         Row: {
           auto_fixed: string[] | null
@@ -5962,6 +6253,33 @@ export type Database = {
           key?: string
           updated_at?: string
           value?: string
+        }
+        Relationships: []
+      }
+      team_chat_messages: {
+        Row: {
+          author_avatar: string | null
+          author_name: string
+          body: string
+          created_at: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          author_avatar?: string | null
+          author_name: string
+          body: string
+          created_at?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          author_avatar?: string | null
+          author_name?: string
+          body?: string
+          created_at?: string | null
+          id?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -6064,6 +6382,49 @@ export type Database = {
       }
     }
     Functions: {
+      admin_configure_integration: {
+        Args: { p_key: string; p_value: string }
+        Returns: Json
+      }
+      agentlink_live_pull: {
+        Args: never
+        Returns: {
+          deals_inserted: number | null
+          deals_updated: number | null
+          error_message: string | null
+          finished_at: string | null
+          http_request_id: number | null
+          id: string
+          policies_seen: number | null
+          started_at: string
+          status: string
+          upstream_status: number | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "agentlink_sync_log"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      apex_render_plaque: {
+        Args: {
+          p_amount: number
+          p_date: string
+          p_name: string
+          p_photo_url?: string
+          p_tier: string
+        }
+        Returns: string
+      }
+      apex_self_heal: { Args: never; Returns: Json }
+      applicant_contacted_recently: {
+        Args: { p_app_id: string; p_hours?: number }
+        Returns: boolean
+      }
+      bot_audit_hot_conversations: { Args: never; Returns: number }
+      bot_audit_licensing: { Args: never; Returns: Json }
+      bot_discover_awards: { Args: never; Returns: Json }
       check_banned_prospect: {
         Args: {
           p_email?: string
@@ -6110,6 +6471,14 @@ export type Database = {
           schedule: string
         }[]
       }
+      get_daily_leaderboard: {
+        Args: { p_date: string }
+        Returns: {
+          aop: number
+          full_name: string
+          instagram_handle: string
+        }[]
+      }
       get_downline_agent_ids: {
         Args: { p_root_agent_id: string }
         Returns: {
@@ -6125,6 +6494,14 @@ export type Database = {
         }[]
       }
       get_or_create_ics_token: { Args: never; Returns: string }
+      get_weekly_leaderboard: {
+        Args: { p_end: string; p_start: string }
+        Returns: {
+          full_name: string
+          instagram_handle: string
+          weekly_aop: number
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -6132,6 +6509,12 @@ export type Database = {
         }
         Returns: boolean
       }
+      ig_bucket: {
+        Args: { last_msg_at: string; last_sender: string }
+        Returns: string
+      }
+      is_first_monday_of_month: { Args: never; Returns: boolean }
+      licensing_stage_nudge_sweep: { Args: never; Returns: Json }
       my_downline_agent_ids: {
         Args: never
         Returns: {
@@ -6145,6 +6528,10 @@ export type Database = {
       run_automation_job: {
         Args: { p_body?: Json; p_function_name: string; p_job_name: string }
         Returns: string
+      }
+      sms_allowed: {
+        Args: { p_phone: string; p_window_minutes?: number }
+        Returns: boolean
       }
     }
     Enums: {

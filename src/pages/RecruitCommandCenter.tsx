@@ -22,7 +22,7 @@ interface Applicant {
   phone: string | null;
   state: string | null;
   city: string | null;
-  ai_score: number | null;
+  lead_score: number | null;
   license_status: string | null;
   license_progress: string | null;
   contacted_at: string | null;
@@ -34,7 +34,7 @@ interface Applicant {
 type Bucket = "hot" | "warm" | "cold" | "ghosted";
 
 function bucketOf(a: Applicant): Bucket {
-  const score = a.ai_score ?? 0;
+  const score = a.lead_score ?? 0;
   const hoursContacted = a.last_contacted_at
     ? (Date.now() - new Date(a.last_contacted_at).getTime()) / 3600000
     : 9999;
@@ -68,7 +68,7 @@ export default function RecruitCommandCenter() {
       const sinceWeek = new Date(Date.now() - 7 * 86400000).toISOString();
       const [{ data: list }, { count: ctw }] = await Promise.all([
         supabase.from("applications")
-          .select("id, first_name, last_name, email, phone, state, city, ai_score, license_status, license_progress, contacted_at, last_contacted_at, created_at, status")
+          .select("id, first_name, last_name, email, phone, state, city, lead_score, license_status, license_progress, contacted_at, last_contacted_at, created_at, status")
           .is("terminated_at", null).is("contracted_at", null)
           .order("created_at", { ascending: false }).limit(400),
         supabase.from("applications").select("id", { count: "exact", head: true })

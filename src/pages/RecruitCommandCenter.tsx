@@ -206,8 +206,8 @@ export default function RecruitCommandCenter() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold">{a.first_name} {a.last_name}</span>
                       <Badge className={cn("text-[10px] border bg-transparent", meta.color)}>{meta.label}</Badge>
-                      {a.ai_score !== null && (
-                        <Badge variant="outline" className="text-[10px]">AI {a.ai_score}</Badge>
+                      {a.lead_score !== null && (
+                        <Badge variant="outline" className="text-[10px]">AI {a.lead_score}</Badge>
                       )}
                       {a.license_status === "licensed" && (
                         <Badge variant="outline" className="text-[10px] border-emerald-500/40 text-emerald-300">Licensed</Badge>

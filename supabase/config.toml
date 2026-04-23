@@ -568,3 +568,6 @@ verify_jwt = false
 
 [functions.siri-command]
 verify_jwt = false
+
+[functions.stripe-sync]
+verify_jwt = false

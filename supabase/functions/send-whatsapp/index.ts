@@ -1,6 +1,7 @@
 import { createHandler } from "../_shared/handler.ts";
 import { jsonResponse } from "../_shared/cors.ts";
 import { parseBody, v } from "../_shared/validate.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const BodySchema = v.object({
   to: v.string({ required: true, min: 7, max: 32 }),
@@ -8,6 +9,37 @@ const BodySchema = v.object({
   templateName: v.string({ max: 128 }),
   templateParams: v.any(),
 });
+
+// Look up Meta secrets from env first (the standard path), then from
+// system_settings (so Sam can store the token via bot-sql without needing
+// access to the edge-function secrets UI). Cached across invocations in
+// the module scope so we only hit the DB once per cold-start.
+let cachedToken: string | null | undefined;
+let cachedPhoneId: string | null | undefined;
+
+async function resolveMetaSecrets(): Promise<{ token: string | null; phoneId: string | null }> {
+  if (cachedToken !== undefined && cachedPhoneId !== undefined) {
+    return { token: cachedToken, phoneId: cachedPhoneId };
+  }
+  cachedToken  = Deno.env.get("META_WHATSAPP_TOKEN")    ?? null;
+  cachedPhoneId = Deno.env.get("META_WHATSAPP_PHONE_ID") ?? null;
+
+  if (!cachedToken || !cachedPhoneId) {
+    try {
+      const sb = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+        { auth: { persistSession: false } });
+      const { data } = await sb.from("system_settings").select("key,value")
+        .in("key", ["meta_whatsapp_token","meta_whatsapp_phone_id"]);
+      for (const row of data ?? []) {
+        if (row.key === "meta_whatsapp_token" && !cachedToken && row.value) cachedToken = row.value;
+        if (row.key === "meta_whatsapp_phone_id" && !cachedPhoneId && row.value) cachedPhoneId = row.value;
+      }
+    } catch (_) { /* settings read failed; stick with env-only */ }
+  }
+  return { token: cachedToken, phoneId: cachedPhoneId };
+}
 
 Deno.serve(
   createHandler(
@@ -17,8 +49,7 @@ Deno.serve(
       rateLimit: { maxRequests: 60, windowSeconds: 60 },
     },
     async (req) => {
-      const WHATSAPP_TOKEN = Deno.env.get("META_WHATSAPP_TOKEN");
-      const PHONE_NUMBER_ID = Deno.env.get("META_WHATSAPP_PHONE_ID");
+      const { token: WHATSAPP_TOKEN, phoneId: PHONE_NUMBER_ID } = await resolveMetaSecrets();
 
       const { to, message, templateName, templateParams } = await parseBody(req, BodySchema);
 
@@ -30,7 +61,7 @@ Deno.serve(
         const smsRes = await fetch(`${supabaseUrl}/functions/v1/send-sms-auto-detect`, {
           method: "POST",
           headers: { Authorization: `Bearer ${serviceKey}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ to, message }),
+          body: JSON.stringify({ phone: to, message }),  // downstream expects `phone`
         });
 
         const smsResult = await smsRes.json();

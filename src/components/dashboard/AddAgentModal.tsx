@@ -49,6 +49,7 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
   const [phone, setPhone] = useState("");
   const [managerId, setManagerId] = useState("");
   const [instagramHandle, setInstagramHandle] = useState("");
+  const [licenseStatus, setLicenseStatus] = useState<"licensed" | "unlicensed">("unlicensed");
 
   useEffect(() => {
     if (open) {
@@ -133,7 +134,7 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
           email,
           phone,
           managerId,
-          licenseStatus: "unlicensed", // Default to unlicensed
+          licenseStatus,
           instagramHandle: instagramHandle.trim() || undefined,
         },
       });
@@ -177,6 +178,7 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
     setPhone("");
     setManagerId("");
     setInstagramHandle("");
+    setLicenseStatus("unlicensed");
   };
 
   return (
@@ -267,6 +269,20 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
                     </SelectItem>
                   ))
                 )}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* License status */}
+          <div className="space-y-1.5">
+            <Label htmlFor="licenseStatus">License status *</Label>
+            <Select value={licenseStatus} onValueChange={(v: "licensed" | "unlicensed") => setLicenseStatus(v)}>
+              <SelectTrigger id="licenseStatus">
+                <SelectValue placeholder="Pick one" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="licensed">✅ Licensed (ready to contract)</SelectItem>
+                <SelectItem value="unlicensed">📚 Unlicensed (sends XCEL course link)</SelectItem>
               </SelectContent>
             </Select>
           </div>

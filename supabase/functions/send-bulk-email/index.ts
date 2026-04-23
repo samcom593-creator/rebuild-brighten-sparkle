@@ -1,5 +1,6 @@
 // Bulk email sender. Used by the BulkComposeDrawer in the admin UI.
 // Input: { recipients: [{email, name}], subject, html, text }
+// Deploy touch: 2026-04-23
 //
 // Uses the shared deliverability helper — every send gets List-Unsubscribe,
 // plain-text alt, unsubscribe footer, and honors the email_unsubscribes

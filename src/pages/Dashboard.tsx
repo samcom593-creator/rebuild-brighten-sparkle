@@ -319,9 +319,14 @@ export default function Dashboard() {
 
       const shouldScope = !isAdmin && myDownlineIds.length > 0;
 
-      // Deals-based queries (Agent Link truth)
+      // Deals-based queries (Agent Link truth).
+      // "Weekly ALP" = deals POSTED this week (what Agent Link calls submission date),
+      // NOT deals whose effective_date falls in this week. A policy written today
+      // with effective_date 5/15 counts as *this week's* production — that's how
+      // every agency measures it. Column: public.deals.posted_at (populated from
+      // Agent Link's createdAt field by agentlink_live_pull).
       let activeQ  = supabase.from("deals").select("agent_id").gte("effective_date", thirtyDaysAgoStr);
-      let weekDealsQ = supabase.from("deals").select("annual_premium, agent_id").gte("effective_date", weekStartStr);
+      let weekDealsQ = supabase.from("deals").select("annual_premium, agent_id").gte("posted_at", weekStart.toISOString());
       let presQ    = supabase.from("daily_production").select("presentations, agent_id").gte("production_date", weekStartStr);
       let appsQ    = supabase.from("applications").select("id", { count: "exact", head: true }).gte("created_at", weekStart.toISOString());
 

@@ -30,52 +30,57 @@ export function EstimatedEarningsCard({ currentAgentId }: Props) {
   const pstEndDate = endDate || getTodayPST();
 
   const { data } = useQuery({
-    queryKey: ["estimated-earnings", currentAgentId, pstStartDate, pstEndDate],
+    queryKey: ["estimated-earnings-v2", currentAgentId, pstStartDate, pstEndDate],
     queryFn: async () => {
-      const { data: agents } = await supabase
-        .from("agents")
-        .select("id");
+      // Pulls real commission amounts from public.commission_ledger (which
+      // itself uses fn_commission_rate — agent override → carrier contract).
+      // Prior version multiplied daily_production.aop by a guessed 120%
+      // and a 75% persistency factor, which produced inflated totals.
+      const [personalRes, teamRes, hoursRes] = await Promise.all([
+        supabase.from("commission_ledger" as any)
+          .select("amount, status")
+          .eq("agent_id", currentAgentId)
+          .gte("created_at", pstStartDate + "T00:00:00Z")
+          .lte("created_at", pstEndDate + "T23:59:59Z"),
+        supabase.from("commission_ledger" as any)
+          .select("amount")
+          .neq("agent_id", currentAgentId)
+          .gte("created_at", pstStartDate + "T00:00:00Z")
+          .lte("created_at", pstEndDate + "T23:59:59Z"),
+        supabase.from("daily_production")
+          .select("hours_called, production_date, aop")
+          .eq("agent_id", currentAgentId)
+          .gte("production_date", pstStartDate)
+          .lte("production_date", pstEndDate),
+      ]);
 
-      if (!agents?.length) return null;
+      const personalEarnings = ((personalRes.data as any[]) ?? [])
+        .reduce((s, r: any) => s + Number(r.amount || 0), 0);
+      const paidEarnings = ((personalRes.data as any[]) ?? [])
+        .filter((r: any) => r.status === "paid")
+        .reduce((s, r: any) => s + Number(r.amount || 0), 0);
+      const teamCommission = ((teamRes.data as any[]) ?? [])
+        .reduce((s, r: any) => s + Number(r.amount || 0), 0);
+      const overrideEarnings = teamCommission * OVERRIDE_COMP_RATE;
+      const total = personalEarnings + overrideEarnings;
 
-      const agentIds = agents.map(a => a.id);
-
-      const { data: prod } = await supabase
-        .from("daily_production")
-        .select("agent_id, aop, hours_called, production_date")
-        .in("agent_id", agentIds)
-        .gte("production_date", pstStartDate)
-        .lte("production_date", pstEndDate);
-
-      if (!prod?.length) return null;
-
-      let personalALP = 0;
-      let teamALP = 0;
       let personalHours = 0;
-      let activeDays = new Set<string>();
-
-      for (const p of prod) {
-        const alp = Number(p.aop) || 0;
-        if (p.agent_id === currentAgentId) {
-          personalALP += alp;
-          personalHours += Number(p.hours_called) || 0;
-          if (alp > 0 || (Number(p.hours_called) || 0) > 0) {
-            activeDays.add(p.production_date);
-          }
-        } else {
-          teamALP += alp;
+      const activeDays = new Set<string>();
+      for (const p of ((hoursRes.data as any[]) ?? [])) {
+        personalHours += Number(p.hours_called) || 0;
+        if ((Number(p.aop) || 0) > 0 || (Number(p.hours_called) || 0) > 0) {
+          activeDays.add(p.production_date);
         }
       }
 
-      const personalEarnings = personalALP * ANNUITY_FACTOR * PERSONAL_COMP_RATE;
-      const overrideEarnings = teamALP * ANNUITY_FACTOR * OVERRIDE_COMP_RATE;
-      const total = personalEarnings + overrideEarnings;
+      if (total === 0) return null;
 
       return {
-        personalALP,
-        teamALP,
+        personalALP: 0,
+        teamALP: teamCommission,
         overrideEarnings,
         personalEarnings,
+        paidEarnings,
         total,
         personalHours,
         activeDays: activeDays.size,

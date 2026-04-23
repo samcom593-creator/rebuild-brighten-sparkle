@@ -361,6 +361,9 @@ verify_jwt = false
 [functions.send-reapply-blast]
 verify_jwt = false
 
+[functions.applicant-magic-link]
+verify_jwt = false
+
 [functions.agentlink-import]
 verify_jwt = false
 

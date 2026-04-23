@@ -931,10 +931,16 @@ export default function DashboardCRM() {
       return [...filteredAgents].filter(a => a.agentLicenseStatus === "licensed").sort((a, b) => a.name.localeCompare(b.name));
     }
     if (section.key === "needs_followup") {
+      // Inclusive: anyone 6+ days uncontacted shows up here, regardless of
+      // whether they're also in "live" or "in_field_training" or elsewhere.
+      // Sam's spec: "just because they're in one column doesn't mean they
+      // can't be another column — a live agent still needs follow-up."
       return filteredAgents.filter(a => {
-        const isNotLive = !["evaluated", "live", "below_10k"].includes(a.onboardingStage);
-        const daysSinceContact = a.lastContactedAt ? (Date.now() - new Date(a.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24) : 999;
-        return isNotLive && daysSinceContact >= 6;
+        if (a.isDeactivated || a.onboardingStage === "inactive") return false;
+        const daysSinceContact = a.lastContactedAt
+          ? (Date.now() - new Date(a.lastContactedAt).getTime()) / (1000 * 60 * 60 * 24)
+          : 999;
+        return daysSinceContact >= 6;
       }).sort((a, b) => {
         if (!a.lastContactedAt && !b.lastContactedAt) return a.sortOrder - b.sortOrder;
         if (!a.lastContactedAt) return -1;

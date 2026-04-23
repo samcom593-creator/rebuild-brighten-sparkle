@@ -87,17 +87,20 @@ export default function PlaqueShare() {
   };
 
   const downloadPng = async () => {
-    if (!plaque?.image_png_url) {
-      toast.error("PNG not ready yet");
+    const src = plaque?.image_png_url || plaque?.image_svg_url;
+    if (!src) {
+      toast.error("Image not ready yet");
       return;
     }
     try {
-      const res = await fetch(plaque.image_png_url);
+      const res = await fetch(src);
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `apex-${plaque.milestone_type || "plaque"}-${plaque.agent_name?.toLowerCase().replace(/\s+/g, "-")}.png`;
+      // data URIs preserve their mime; use the right extension so downloads open cleanly
+      const ext = blob.type.includes("svg") ? "svg" : "png";
+      a.download = `apex-${plaque.milestone_type || "plaque"}-${plaque.agent_name?.toLowerCase().replace(/\s+/g, "-")}.${ext}`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success("Downloaded");
@@ -107,12 +110,14 @@ export default function PlaqueShare() {
   };
 
   const shareNative = async () => {
-    if (!plaque?.image_png_url) return;
+    const src = plaque?.image_png_url || plaque?.image_svg_url;
+    if (!src) return;
     try {
       if (navigator.share && (navigator as any).canShare) {
-        const res = await fetch(plaque.image_png_url);
+        const res = await fetch(src);
         const blob = await res.blob();
-        const file = new File([blob], "plaque.png", { type: "image/png" });
+        const ext = blob.type.includes("svg") ? "svg" : "png";
+        const file = new File([blob], `plaque.${ext}`, { type: blob.type || "image/png" });
         if ((navigator as any).canShare({ files: [file] })) {
           await navigator.share({
             files: [file],
@@ -190,9 +195,9 @@ export default function PlaqueShare() {
         </div>
 
         <div className="rounded-2xl overflow-hidden border border-white/10 bg-[#111]">
-          {plaque.image_png_url ? (
+          {(plaque.image_png_url || plaque.image_svg_url) ? (
             <img
-              src={plaque.image_png_url}
+              src={plaque.image_png_url || plaque.image_svg_url!}
               alt={`${plaque.badge_label} plaque for ${plaque.agent_name}`}
               className="w-full h-auto block"
             />

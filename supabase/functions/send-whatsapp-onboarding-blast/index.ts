@@ -139,8 +139,42 @@ serve(async (req: Request) => {
       });
     }
 
-    const results = { email: 0, sms: 0, push: 0, total: applicants.length };
+    const results = { email: 0, sms: 0, push: 0, whatsapp: 0, channel: 0, total: applicants.length };
     const BATCH_SIZE = 5;
+
+    // One-shot broadcast to the WhatsApp Business Channel (if configured).
+    // Channel ID lives in META_WHATSAPP_CHANNEL_ID. Agents who joined the
+    // channel see the post instantly — this is the single-write multi-read
+    // pattern Sam asked for instead of looping 1:1 over every applicant.
+    const whatsappToken   = Deno.env.get("META_WHATSAPP_TOKEN");
+    const channelId       = Deno.env.get("META_WHATSAPP_CHANNEL_ID");
+    if (whatsappToken && channelId) {
+      try {
+        const channelMessage = whatsappLink
+          ? `🚀 APEX onboarding update:\n\nNew licensing sequence is live. If you're still getting licensed, check your email right now — we just sent the next step. Post your progress here so the group can push you.\n\nGroup: ${whatsappLink}`
+          : `🚀 APEX onboarding update: check your email for the next licensing step. Post your progress here.`;
+        const chRes = await fetch(`https://graph.facebook.com/v20.0/${channelId}/messages`, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${whatsappToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            messaging_product: "whatsapp",
+            to: channelId,
+            type: "text",
+            text: { body: channelMessage, preview_url: true },
+          }),
+        });
+        if (chRes.ok) { results.channel = 1; }
+        else {
+          const err = await chRes.text();
+          console.warn("[wa-channel] post failed:", chRes.status, err.slice(0, 200));
+        }
+      } catch (e: any) {
+        console.warn("[wa-channel] exception:", e?.message ?? e);
+      }
+    }
 
     for (let i = 0; i < applicants.length; i += BATCH_SIZE) {
       const batch = applicants.slice(i, i + BATCH_SIZE);
@@ -272,6 +306,31 @@ serve(async (req: Request) => {
           }
         }
 
+        // 2b. DIRECT WHATSAPP (via Meta Cloud API) — one-to-one so even
+        // applicants who haven't joined the group/channel still get the
+        // onboarding push. Skipped silently if META_WHATSAPP_TOKEN unset.
+        if (app.phone && whatsappToken && Deno.env.get("META_WHATSAPP_PHONE_ID")) {
+          try {
+            const waRes = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${serviceRoleKey}`,
+              },
+              body: JSON.stringify({
+                phone: app.phone,
+                message: `Hey ${app.first_name}! Quick licensing check-in from APEX — drop your latest progress here or in the group. ${whatsappLink || ""}`.trim(),
+              }),
+            });
+            if (waRes.ok) {
+              const j = await waRes.json().catch(() => ({}));
+              if (j?.ok !== false) results.whatsapp++;
+            }
+          } catch (err: any) {
+            console.error(`WhatsApp direct failed for ${app.first_name}:`, err.message);
+          }
+        }
+
         // 3. PUSH (lookup profile by email)
         if (app.email) {
           try {
@@ -309,7 +368,7 @@ serve(async (req: Request) => {
       }
     }
 
-    console.log(`WhatsApp Onboarding Blast: ${results.email} emails, ${results.sms} SMS, ${results.push} push to ${results.total} applicants`);
+    console.log(`WhatsApp Onboarding Blast: ${results.email} emails, ${results.sms} SMS, ${results.whatsapp} WhatsApp DMs, ${results.push} push, ${results.channel ? "1" : "0"} channel post to ${results.total} applicants`);
 
     return new Response(JSON.stringify({ success: true, ...results }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

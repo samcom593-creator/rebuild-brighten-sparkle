@@ -3,6 +3,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { humanize } from "../_shared/humanize.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -152,8 +153,8 @@ ${criticalsBlock}
     await resend.emails.send({
       from: "APEX Engine <sam@apex-financial.org>",
       to: SAM_EMAIL,
-      subject: `📊 Week · ${fmt$(aopT)} · ${wow >= 0 ? "+" : ""}${wow.toFixed(0)}% WoW`,
-      html,
+      subject: humanize(`📊 Week · ${fmt$(aopT)} · ${wow >= 0 ? "+" : ""}${wow.toFixed(0)}% WoW`),
+      html: humanize(html),
     });
   } catch (e) { console.error("[weekly] email", e); }
   try {

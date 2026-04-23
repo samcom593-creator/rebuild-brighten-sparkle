@@ -1,4 +1,4 @@
-// Thin HTTP wrapper around _shared/email.ts#sendEmail. All deliverability
+// Thin HTTP wrapper around _shared/email.ts#sendEmail. All deliverability (deploy: 1776956070)
 // defaults (List-Unsubscribe headers, plain-text alternative, unsubscribe
 // footer) live in the shared helper so every other sender gets them free.
 

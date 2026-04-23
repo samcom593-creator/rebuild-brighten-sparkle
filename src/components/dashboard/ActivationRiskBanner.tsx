@@ -52,29 +52,56 @@ export function ActivationRiskBanner() {
       const cutoff = format(subDays(new Date(), 14), "yyyy-MM-dd");
       const agentIds = agents.map((a) => a.id);
 
-      const { data: recentProd } = await supabase
-        .from("daily_production")
-        .select("agent_id, production_date")
-        .in("agent_id", agentIds)
-        .gte("production_date", cutoff);
+      // An agent is at-risk only if they've done NEITHER of:
+      //   - Logged numbers in daily_production in the last 14 days
+      //   - Closed a deal (Agent Link truth) in the last 14 days
+      // Previously we only looked at daily_production, so agents who actually
+      // produce but forget to log activity were falsely flagged.
+      const [recentProdRes, recentDealsRes] = await Promise.all([
+        supabase
+          .from("daily_production")
+          .select("agent_id, production_date")
+          .in("agent_id", agentIds)
+          .gte("production_date", cutoff),
+        supabase
+          .from("deals")
+          .select("agent_id, effective_date")
+          .in("agent_id", agentIds)
+          .gte("effective_date", cutoff),
+      ]);
 
-      const activeAgentIds = new Set(recentProd?.map((p) => p.agent_id) || []);
+      const activeAgentIds = new Set<string>();
+      (recentProdRes.data || []).forEach((p) => p.agent_id && activeAgentIds.add(p.agent_id));
+      (recentDealsRes.data || []).forEach((d: any) => d.agent_id && activeAgentIds.add(d.agent_id));
+
       const atRiskAgentRecords = agents.filter((a) => !activeAgentIds.has(a.id));
 
       if (atRiskAgentRecords.length === 0) return [];
 
       const atRiskIds = atRiskAgentRecords.map((a) => a.id);
-      const { data: lastProd } = await supabase
-        .from("daily_production")
-        .select("agent_id, production_date")
-        .in("agent_id", atRiskIds)
-        .order("production_date", { ascending: false });
+
+      // "Last activity" = max(last production_date, last deal.effective_date)
+      const [lastProdRes, lastDealRes] = await Promise.all([
+        supabase
+          .from("daily_production")
+          .select("agent_id, production_date")
+          .in("agent_id", atRiskIds)
+          .order("production_date", { ascending: false }),
+        supabase
+          .from("deals")
+          .select("agent_id, effective_date")
+          .in("agent_id", atRiskIds)
+          .order("effective_date", { ascending: false }),
+      ]);
 
       const lastProdMap = new Map<string, string>();
-      lastProd?.forEach((p) => {
-        if (!lastProdMap.has(p.agent_id)) {
-          lastProdMap.set(p.agent_id, p.production_date);
-        }
+      (lastProdRes.data || []).forEach((p) => {
+        if (!lastProdMap.has(p.agent_id)) lastProdMap.set(p.agent_id, p.production_date);
+      });
+      (lastDealRes.data || []).forEach((d: any) => {
+        if (!d.agent_id || !d.effective_date) return;
+        const prior = lastProdMap.get(d.agent_id);
+        if (!prior || d.effective_date > prior) lastProdMap.set(d.agent_id, d.effective_date);
       });
 
       const userIds = atRiskAgentRecords.map((a) => a.user_id).filter(Boolean) as string[];

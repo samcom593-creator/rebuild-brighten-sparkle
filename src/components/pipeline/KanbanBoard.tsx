@@ -331,7 +331,11 @@ export function KanbanBoard({
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 min-h-[400px]">
+        {/* Horizontally scrollable on every breakpoint — all 7 columns are
+            always reachable. Fixed min-width per column so they stay readable
+            even when the container shrinks. */}
+        <div className="overflow-x-auto pb-2 -mx-2 px-2">
+          <div className="grid grid-flow-col auto-cols-[minmax(260px,1fr)] gap-3 min-h-[400px]">
           {KANBAN_COLUMNS.map((col) => (
             <DroppableColumn
               key={col.id}
@@ -342,6 +346,7 @@ export function KanbanBoard({
               isOver={overColumnId === col.id}
             />
           ))}
+          </div>
         </div>
 
         <DragOverlay>

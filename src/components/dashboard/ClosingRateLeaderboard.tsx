@@ -61,10 +61,22 @@ export function ClosingRateLeaderboard({ currentAgentId, period = "week" }: Clos
           startDate = getWeekStartPST();
       }
 
-      const { data: production } = await supabase
-        .from("daily_production")
-        .select("agent_id, presentations, deals_closed, closing_rate")
-        .gte("production_date", startDate);
+      // Presentations come from daily_production (manual log — there's no other source).
+      // Deals come from the `deals` table (Agent Link truth) so closing rate matches
+      // what agents see in Agent Link instead of diverging when they forget to log.
+      const [productionRes, dealsRes] = await Promise.all([
+        supabase
+          .from("daily_production")
+          .select("agent_id, presentations")
+          .gte("production_date", startDate),
+        supabase
+          .from("deals")
+          .select("agent_id")
+          .gte("effective_date", startDate),
+      ]);
+
+      const production = productionRes.data;
+      const deals      = dealsRes.data;
 
       if (!production) {
         setEntries([]);
@@ -72,7 +84,7 @@ export function ClosingRateLeaderboard({ currentAgentId, period = "week" }: Clos
         return;
       }
 
-      // Aggregate by agent
+      // Aggregate by agent: presentations from daily_production, deal count from deals
       const agentTotals: Record<string, { presentations: number; deals: number }> = {};
 
       production.forEach((p) => {
@@ -80,7 +92,14 @@ export function ClosingRateLeaderboard({ currentAgentId, period = "week" }: Clos
           agentTotals[p.agent_id] = { presentations: 0, deals: 0 };
         }
         agentTotals[p.agent_id].presentations += Number(p.presentations || 0);
-        agentTotals[p.agent_id].deals += Number(p.deals_closed || 0);
+      });
+
+      (deals || []).forEach((d: any) => {
+        if (!d.agent_id) return;
+        if (!agentTotals[d.agent_id]) {
+          agentTotals[d.agent_id] = { presentations: 0, deals: 0 };
+        }
+        agentTotals[d.agent_id].deals += 1;
       });
 
       // Filter agents with minimum 3 presentations

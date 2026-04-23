@@ -37,7 +37,7 @@ export function DashboardInsightCards() {
   const monthStartStr = format(monthStart, "yyyy-MM-dd");
 
   const { data } = useQuery({
-    queryKey: ["dashboard-insight-cards-v4", weekStartStr, monthStartStr, user?.id],
+    queryKey: ["dashboard-insight-cards-v5-deals", weekStartStr, monthStartStr, user?.id],
     queryFn: async () => {
       // Per-agent revenue estimate (uses contract % + override rate from view)
       let estimate: any = null;
@@ -75,13 +75,13 @@ export function DashboardInsightCards() {
           .select("license_progress, license_status")
           .is("terminated_at", null)
           .neq("license_status", "licensed"),
-        // This week ALP
-        supabase.from("daily_production").select("aop").gte("production_date", weekStartStr),
-        // Last week ALP (matched range only)
-        supabase.from("daily_production").select("aop")
-          .gte("production_date", lastWeekStartStr).lt("production_date", lastWeekMatchedEndStr),
+        // This week ALP — Agent Link truth source (deals.annual_premium by effective_date)
+        supabase.from("deals").select("annual_premium").gte("effective_date", weekStartStr),
+        // Last week ALP — same day-of-week range as this week so Wed-to-Wed compares cleanly
+        supabase.from("deals").select("annual_premium")
+          .gte("effective_date", lastWeekStartStr).lt("effective_date", lastWeekMatchedEndStr),
         // Month-to-date ALP
-        supabase.from("daily_production").select("aop").gte("production_date", monthStartStr),
+        supabase.from("deals").select("annual_premium").gte("effective_date", monthStartStr),
         // Insuracloud snapshots (real commissions)
         supabase.from("insuracloud_snapshots" as any)
           .select("*")
@@ -119,8 +119,8 @@ export function DashboardInsightCards() {
         total: stages.length,
       };
 
-      const thisWeekAlp = (thisWeekProdRes.data || []).reduce((s: number, r: any) => s + Number(r.aop || 0), 0);
-      const lastWeekAlp = (lastWeekProdRes.data || []).reduce((s: number, r: any) => s + Number(r.aop || 0), 0);
+      const thisWeekAlp = (thisWeekProdRes.data || []).reduce((s: number, r: any) => s + Number(r.annual_premium || 0), 0);
+      const lastWeekAlp = (lastWeekProdRes.data || []).reduce((s: number, r: any) => s + Number(r.annual_premium || 0), 0);
       const weekChange = lastWeekAlp > 0
         ? ((thisWeekAlp - lastWeekAlp) / lastWeekAlp) * 100
         : thisWeekAlp > 0 ? 100 : 0;
@@ -138,7 +138,7 @@ export function DashboardInsightCards() {
       const teamDirect = latest.reduce((sum, s) => sum + Number(s.direct_commissions || 0), 0);
       const teamOverride = latest.reduce((sum, s) => sum + Number(s.override_commissions || 0), 0);
 
-      const monthlyAlp = (monthProdRes.data || []).reduce((s: number, r: any) => s + Number(r.aop || 0), 0);
+      const monthlyAlp = (monthProdRes.data || []).reduce((s: number, r: any) => s + Number(r.annual_premium || 0), 0);
       // 9-month advance × 65% comp avg × 75% persistency ≈ 31.5%
       const estimatedFromAlp = monthlyAlp * 0.315;
 

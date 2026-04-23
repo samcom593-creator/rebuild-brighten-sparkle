@@ -741,10 +741,23 @@ export default function DashboardCRM() {
         };
       });
 
+      // Applications visible in CRM: every application the viewer can see.
+      // - Admin: all
+      // - Manager (not admin): team (assigned to them) + their own
+      // - Everyone else: their own application (plus team if they were ever
+      //   made a hiring manager for someone else)
+      // Widened status filter so "new" and "reviewing" apps also show up —
+      // agents were complaining their own application wasn't visible at all.
       let appQuery = supabase.from("applications")
-        .select("id, first_name, last_name, email, phone, license_status, license_progress, test_scheduled_date, status, instagram_handle, started_training, ai_score_tier")
-        .is("terminated_at", null).neq("license_status", "licensed").in("status", ["approved", "contracting"]);
-      if (isManager && !isAdmin && currentAgent) appQuery = appQuery.eq("assigned_agent_id", currentAgent.id);
+        .select("id, first_name, last_name, email, phone, license_status, license_progress, test_scheduled_date, status, instagram_handle, started_training, ai_score_tier, user_id, assigned_agent_id")
+        .is("terminated_at", null).neq("license_status", "licensed");
+      if (!isAdmin) {
+        // OR: mine (user_id = me) OR assigned to my agent record
+        const clauses: string[] = [];
+        if (user?.id) clauses.push(`user_id.eq.${user.id}`);
+        if (currentAgent?.id) clauses.push(`assigned_agent_id.eq.${currentAgent.id}`);
+        if (clauses.length > 0) appQuery = appQuery.or(clauses.join(","));
+      }
 
       const { data: unlicensedApplicants } = await appQuery;
       const existingEmails = new Set(crmAgents.map(a => a.email?.toLowerCase()).filter(Boolean));

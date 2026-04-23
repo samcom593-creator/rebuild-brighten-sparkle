@@ -145,16 +145,20 @@ const getContactInfo = (agent: AgentCRM) => {
   return { label: getTimeAgo(agent.lastContactedAt), color: "text-red-500 dark:text-red-400" };
 };
 
+// Each section carries a bucket: 'unlicensed' (in process of getting licensed)
+// or 'licensed' (already licensed + operating). The top-level CRM toggle folds
+// the tab list to show only one bucket at a time.
+type PipelineBucket = "unlicensed" | "licensed";
 const SECTIONS = [
-  { key: "applied", label: "Applied", icon: Users, stages: ["applied"] as OnboardingStage[], accent: "border-l-blue-500", headerBg: "bg-blue-500/5", iconColor: "text-blue-500" },
-  { key: "meeting_attendance", label: "Meeting Attendance", icon: ClipboardCheck, stages: ["meeting_attendance"] as OnboardingStage[], accent: "border-l-purple-500", headerBg: "bg-purple-500/5", iconColor: "text-purple-500" },
-  { key: "pre_licensed", label: "Pre-Licensed", icon: GraduationCap, stages: ["pre_licensed", "onboarding", "training_online"] as OnboardingStage[], accent: "border-l-yellow-500", headerBg: "bg-yellow-500/5", iconColor: "text-yellow-500" },
-  { key: "transfer", label: "Transfer", icon: Users, stages: ["transfer"] as OnboardingStage[], accent: "border-l-orange-500", headerBg: "bg-orange-500/5", iconColor: "text-orange-500" },
-  { key: "in_training", label: "In-Field Training", icon: GraduationCap, stages: ["in_field_training"] as OnboardingStage[], accent: "border-l-teal-500", headerBg: "bg-teal-500/5", iconColor: "text-teal-500" },
-  { key: "below_10k", label: "Below $20K (last 30d)", icon: AlertTriangle, stages: ["below_10k"] as OnboardingStage[], accent: "border-l-red-500", headerBg: "bg-red-500/5", iconColor: "text-red-500" },
-  { key: "live", label: "Live", icon: Briefcase, stages: ["live", "evaluated"] as OnboardingStage[], accent: "border-l-emerald-500", headerBg: "bg-emerald-500/5", iconColor: "text-emerald-500" },
-  { key: "needs_followup", label: "Needs Follow-Up", icon: AlertTriangle, stages: ["need_followup"] as OnboardingStage[], accent: "border-l-amber-500", headerBg: "bg-amber-500/5", iconColor: "text-amber-500" },
-  { key: "inactive", label: "Inactive", icon: UserX, stages: ["inactive"] as OnboardingStage[], accent: "border-l-gray-500", headerBg: "bg-gray-500/5", iconColor: "text-gray-500" },
+  { key: "applied", bucket: "unlicensed" as PipelineBucket, label: "Applied", icon: Users, stages: ["applied"] as OnboardingStage[], accent: "border-l-blue-500", headerBg: "bg-blue-500/5", iconColor: "text-blue-500" },
+  { key: "meeting_attendance", bucket: "unlicensed" as PipelineBucket, label: "Meeting Attendance", icon: ClipboardCheck, stages: ["meeting_attendance"] as OnboardingStage[], accent: "border-l-purple-500", headerBg: "bg-purple-500/5", iconColor: "text-purple-500" },
+  { key: "pre_licensed", bucket: "unlicensed" as PipelineBucket, label: "Pre-Licensed", icon: GraduationCap, stages: ["pre_licensed", "onboarding", "training_online"] as OnboardingStage[], accent: "border-l-yellow-500", headerBg: "bg-yellow-500/5", iconColor: "text-yellow-500" },
+  { key: "transfer", bucket: "licensed" as PipelineBucket, label: "Transfer", icon: Users, stages: ["transfer"] as OnboardingStage[], accent: "border-l-orange-500", headerBg: "bg-orange-500/5", iconColor: "text-orange-500" },
+  { key: "in_training", bucket: "licensed" as PipelineBucket, label: "In-Field Training", icon: GraduationCap, stages: ["in_field_training"] as OnboardingStage[], accent: "border-l-teal-500", headerBg: "bg-teal-500/5", iconColor: "text-teal-500" },
+  { key: "below_10k", bucket: "licensed" as PipelineBucket, label: "Below $20K (last 30d)", icon: AlertTriangle, stages: ["below_10k"] as OnboardingStage[], accent: "border-l-red-500", headerBg: "bg-red-500/5", iconColor: "text-red-500" },
+  { key: "live", bucket: "licensed" as PipelineBucket, label: "Live", icon: Briefcase, stages: ["live", "evaluated"] as OnboardingStage[], accent: "border-l-emerald-500", headerBg: "bg-emerald-500/5", iconColor: "text-emerald-500" },
+  { key: "needs_followup", bucket: "licensed" as PipelineBucket, label: "Needs Follow-Up", icon: AlertTriangle, stages: ["need_followup"] as OnboardingStage[], accent: "border-l-amber-500", headerBg: "bg-amber-500/5", iconColor: "text-amber-500" },
+  { key: "inactive", bucket: "licensed" as PipelineBucket, label: "Inactive", icon: UserX, stages: ["inactive"] as OnboardingStage[], accent: "border-l-gray-500", headerBg: "bg-gray-500/5", iconColor: "text-gray-500" },
 ];
 
 const UNLICENSED_COLUMNS = [
@@ -520,6 +524,7 @@ export default function DashboardCRM() {
   const [expandedAgentId, setExpandedAgentId] = useState<string | null>(null);
   const [editLoginAgent, setEditLoginAgent] = useState<AgentCRM | null>(null);
   const [activeStageTab, setActiveStageTab] = useState<string>("meeting_attendance");
+  const [activeBucket, setActiveBucket] = useState<"all" | "unlicensed" | "licensed">("all");
   const [currentAgentId, setCurrentAgentId] = useState<string | null>(null);
   const [meetingAttendance, setMeetingAttendance] = useState<Map<string, "present" | "absent" | "unmarked">>(new Map());
   const [searchParams] = useSearchParams();
@@ -1357,9 +1362,26 @@ export default function DashboardCRM() {
           <div className="flex items-center justify-center h-64"><RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" /></div>
         ) : (
           <>
+          {/* Bucket toggle — fold pipeline into Licensed vs Unlicensed groups */}
+          <div className="flex items-center gap-1 bg-muted/40 rounded-lg p-1 w-fit mb-3">
+            {(["all","unlicensed","licensed"] as const).map(b => {
+              const count = b === "all"
+                ? SECTIONS.reduce((s, sec) => s + getAgentsForSection(sec).length, 0)
+                : SECTIONS.filter(sec => sec.bucket === b).reduce((s, sec) => s + getAgentsForSection(sec).length, 0);
+              const active = activeBucket === b;
+              return (
+                <button key={b} onClick={() => setActiveBucket(b)}
+                  className={cn("px-3 py-1.5 rounded-md text-xs font-semibold transition-all",
+                    active ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
+                  {b === "all" ? "All" : b === "unlicensed" ? "📚 Getting Licensed" : "✅ Licensed & Selling"}
+                  <Badge variant="outline" className="ml-2 text-[10px] h-4 px-1 font-bold">{count}</Badge>
+                </button>
+              );
+            })}
+          </div>
           <Tabs value={activeStageTab} onValueChange={(v) => { setActiveStageTab(v); playSound("click"); }} className="space-y-3">
             <TabsList className="w-full justify-start flex-wrap h-auto gap-1.5 p-1.5 bg-muted/60">
-              {SECTIONS.map(section => {
+              {SECTIONS.filter(s => activeBucket === "all" || s.bucket === activeBucket).map(section => {
                 const count = getAgentsForSection(section).length;
                 const Icon = section.icon;
                 return (
@@ -1372,7 +1394,7 @@ export default function DashboardCRM() {
               })}
             </TabsList>
 
-            {SECTIONS.map(section => {
+            {SECTIONS.filter(s => activeBucket === "all" || s.bucket === activeBucket).map(section => {
               const sectionAgents = getAgentsForSection(section);
 
               // Pre-Licensed tab renders as 5-column pipeline

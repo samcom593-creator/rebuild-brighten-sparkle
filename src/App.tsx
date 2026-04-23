@@ -91,6 +91,7 @@ const BulkDeals = lazy(() => import("./pages/BulkDeals"));
 const VoiceNote = lazy(() => import("./pages/VoiceNote"));
 const AgentLinkSync = lazy(() => import("./pages/AgentLinkSync"));
 const Setup = lazy(() => import("./pages/admin/Setup"));
+const AgentDetail = lazy(() => import("./pages/AgentDetail"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
 const Rewards = lazy(() => import("./pages/Rewards"));
 const AgentManagement = lazy(() => import("./pages/AgentManagement"));
@@ -217,6 +218,8 @@ const App = () => (
                        <Route path="/agentlink-sync" element={<ProtectedRoute><AgentLinkSync /></ProtectedRoute>} />
                        <Route path="/setup" element={<ProtectedRoute requireAdmin><Setup /></ProtectedRoute>} />
                        <Route path="/dashboard/setup" element={<ProtectedRoute requireAdmin><Setup /></ProtectedRoute>} />
+                       <Route path="/agent/:id" element={<ProtectedRoute><AgentDetail /></ProtectedRoute>} />
+                       <Route path="/dashboard/agent/:id" element={<ProtectedRoute><AgentDetail /></ProtectedRoute>} />
                        <Route path="/dashboard/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
                        <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
                        <Route path="/dashboard/rewards" element={<ProtectedRoute><Rewards /></ProtectedRoute>} />

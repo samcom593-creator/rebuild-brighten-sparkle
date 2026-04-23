@@ -151,7 +151,7 @@ const SECTIONS = [
   { key: "pre_licensed", label: "Pre-Licensed", icon: GraduationCap, stages: ["pre_licensed", "onboarding", "training_online"] as OnboardingStage[], accent: "border-l-yellow-500", headerBg: "bg-yellow-500/5", iconColor: "text-yellow-500" },
   { key: "transfer", label: "Transfer", icon: Users, stages: ["transfer"] as OnboardingStage[], accent: "border-l-orange-500", headerBg: "bg-orange-500/5", iconColor: "text-orange-500" },
   { key: "in_training", label: "In-Field Training", icon: GraduationCap, stages: ["in_field_training"] as OnboardingStage[], accent: "border-l-teal-500", headerBg: "bg-teal-500/5", iconColor: "text-teal-500" },
-  { key: "below_10k", label: "Below $40K/mo", icon: AlertTriangle, stages: ["below_10k"] as OnboardingStage[], accent: "border-l-red-500", headerBg: "bg-red-500/5", iconColor: "text-red-500" },
+  { key: "below_10k", label: "Below $20K (last 30d)", icon: AlertTriangle, stages: ["below_10k"] as OnboardingStage[], accent: "border-l-red-500", headerBg: "bg-red-500/5", iconColor: "text-red-500" },
   { key: "live", label: "Live", icon: Briefcase, stages: ["live", "evaluated"] as OnboardingStage[], accent: "border-l-emerald-500", headerBg: "bg-emerald-500/5", iconColor: "text-emerald-500" },
   { key: "needs_followup", label: "Needs Follow-Up", icon: AlertTriangle, stages: ["need_followup"] as OnboardingStage[], accent: "border-l-amber-500", headerBg: "bg-amber-500/5", iconColor: "text-amber-500" },
   { key: "inactive", label: "Inactive", icon: UserX, stages: ["inactive"] as OnboardingStage[], accent: "border-l-gray-500", headerBg: "bg-gray-500/5", iconColor: "text-gray-500" },
@@ -609,7 +609,11 @@ export default function DashboardCRM() {
       const weekStart = new Date(today);
       weekStart.setDate(today.getDate() - dayOfWeek);
       const weekStartStr = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
-      const monthStartStr = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split("T")[0];
+      // monthlyALP is the rolling-30-day window (not MTD). Matches the CRM's
+      // "Live / Below $20K" buckets which compare against the last 30 days.
+      const thirtyDaysAgo = new Date(today);
+      thirtyDaysAgo.setDate(today.getDate() - 30);
+      const monthStartStr = thirtyDaysAgo.toISOString().split("T")[0];
 
       // Previous week range
       const prevWeekEnd = new Date(weekStart);
@@ -959,20 +963,20 @@ export default function DashboardCRM() {
         return ["unlicensed", "course_purchased", "finished_course", "test_scheduled", "passed_test", "fingerprints_done", "waiting_fingerprints", "waiting_on_license"].includes(progress);
       });
     }
-    // Live = actively selling + above $40K monthly ALP (≈ $10K/wk avg)
+    // Live = actively selling + above $20K monthly ALP (≈ $5K/wk avg) in last 30 days
     if (section.key === "live") {
-      return filteredAgents.filter(a => 
-        (section.stages.includes(a.onboardingStage) || a.onboardingStage === "below_10k") && 
-        a.agentLicenseStatus === "licensed" && 
-        a.monthlyALP >= 40000
+      return filteredAgents.filter(a =>
+        (section.stages.includes(a.onboardingStage) || a.onboardingStage === "below_10k") &&
+        a.agentLicenseStatus === "licensed" &&
+        a.monthlyALP >= 20000
       ).sort((a, b) => b.monthlyALP - a.monthlyALP);
     }
-    // Below 10K = licensed agents selling but under $40K monthly ALP
+    // Below 10K = licensed agents selling but under $20K monthly ALP (last 30 days)
     if (section.key === "below_10k") {
-      return filteredAgents.filter(a => 
-        (["evaluated", "live", "below_10k"].includes(a.onboardingStage)) && 
-        a.agentLicenseStatus === "licensed" && 
-        a.monthlyALP < 40000
+      return filteredAgents.filter(a =>
+        (["evaluated", "live", "below_10k"].includes(a.onboardingStage)) &&
+        a.agentLicenseStatus === "licensed" &&
+        a.monthlyALP < 20000
       ).sort((a, b) => b.monthlyALP - a.monthlyALP);
     }
     // Transfer = course done, not yet in field training

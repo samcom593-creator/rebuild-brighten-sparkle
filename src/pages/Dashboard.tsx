@@ -50,6 +50,7 @@ import { DatePeriodSelector, type DatePeriod } from "@/components/ui/date-period
 import { TotalApplicationsBanner } from "@/components/dashboard/TotalApplicationsBanner";
 import { EstimatedEarningsCard } from "@/components/dashboard/EstimatedEarningsCard";
 import { PortalLinkSender } from "@/components/admin/PortalLinkSender";
+import { StripeRevenueCard } from "@/components/admin/StripeRevenueCard";
 import { TeamOverviewDashboard } from "@/components/dashboard/TeamOverviewDashboard";
 
 import { ChurnRiskBanner } from "@/components/dashboard/ChurnRiskBanner";
@@ -792,6 +793,9 @@ export default function Dashboard() {
 
           {/* Admin-only: agent-selectable portal link blaster */}
           {isAdmin && <PortalLinkSender />}
+
+          {/* Admin-only: Stripe lead-revenue snapshot */}
+          {isAdmin && <StripeRevenueCard />}
 
         </div>
 

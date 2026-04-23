@@ -571,3 +571,6 @@ verify_jwt = false
 
 [functions.stripe-sync]
 verify_jwt = false
+
+[functions.gmail-webhook]
+verify_jwt = false

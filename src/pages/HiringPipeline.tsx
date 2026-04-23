@@ -67,7 +67,9 @@ export default function HiringPipeline() {
     staleTime: 30_000,
   });
 
-  // Group by stage + apply search
+  // Group by stage + apply search. Within each column, sort so the most
+  // urgent cards float to the top: stalled first (desc by days stalled),
+  // then by AI tier if present, then by most recent update.
   const grouped = useMemo(() => {
     const q = search.trim().toLowerCase();
     const out: Record<StageKey, any[]> = {
@@ -81,6 +83,19 @@ export default function HiringPipeline() {
       }
       const key = classifyStage(a);
       out[key].push(a);
+    });
+
+    const priority = (a: any) => {
+      const last = a.last_response_at || a.updated_at || a.created_at;
+      const stalledDays = Math.max(0, differenceInDays(new Date(), new Date(last)));
+      const tier = a.ai_score_tier
+        ? { A: 4, B: 3, C: 2, D: 1 }[String(a.ai_score_tier).toUpperCase()] ?? 0
+        : 0;
+      // Tall score pushes the applicant higher. Stalled agents are most urgent.
+      return stalledDays * 100 + tier * 10;
+    };
+    (Object.keys(out) as StageKey[]).forEach(k => {
+      out[k].sort((a, b) => priority(b) - priority(a));
     });
     return out;
   }, [apps, search]);
@@ -247,8 +262,9 @@ export default function HiringPipeline() {
         />
       </div>
 
-      {/* Kanban */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-3">
+      {/* Kanban — horizontally scrollable so every stage is always reachable */}
+      <div className="overflow-x-auto pb-2 -mx-4 md:mx-0 px-4 md:px-0">
+        <div className="grid grid-flow-col auto-cols-[280px] md:auto-cols-[300px] gap-3">
         {STAGES.map(stage => {
           const items = grouped[stage.key];
           const isDragTarget = dragOver === stage.key;
@@ -299,6 +315,7 @@ export default function HiringPipeline() {
             </div>
           );
         })}
+        </div>
       </div>
     </div>
   );
@@ -331,6 +348,13 @@ function MetricTile({
   );
 }
 
+function formatPhone(raw: string | null | undefined): string {
+  if (!raw) return "";
+  const d = String(raw).replace(/\D/g, "").replace(/^1/, "").slice(0, 10);
+  if (d.length !== 10) return raw;
+  return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
+}
+
 function ApplicantCard({
   app, dragging, onDragStart, onDragEnd, onMoveToStage, onMarkContacted, onReject,
 }: {
@@ -342,11 +366,16 @@ function ApplicantCard({
   onMarkContacted: () => void;
   onReject: (reason: string) => void;
 }) {
-  const days = differenceInDays(
-    new Date(),
-    new Date(app.last_response_at || app.updated_at || app.created_at),
-  );
+  const lastActivity = app.last_response_at || app.updated_at || app.created_at;
+  const days = differenceInDays(new Date(), new Date(lastActivity));
   const stalled = days >= 7;
+  const veryStalled = days >= 14;
+
+  const tierColor =
+    app.ai_score_tier === "A" ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" :
+    app.ai_score_tier === "B" ? "bg-sky-500/15 text-sky-400 border-sky-500/30" :
+    app.ai_score_tier === "C" ? "bg-amber-500/15 text-amber-400 border-amber-500/30" :
+    app.ai_score_tier === "D" ? "bg-slate-500/15 text-slate-400 border-slate-500/30" : "";
 
   return (
     <div
@@ -354,53 +383,93 @@ function ApplicantCard({
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       className={cn(
-        "group rounded-md bg-card border border-border/40 p-2.5 cursor-grab active:cursor-grabbing transition",
-        "hover:border-primary/40 hover:shadow-md",
+        "group rounded-lg bg-card border p-3 cursor-grab active:cursor-grabbing transition",
+        "hover:border-primary/50 hover:shadow-lg",
+        "border-border/50",
         dragging && "opacity-40",
-        stalled && "ring-1 ring-destructive/30",
+        veryStalled && "ring-2 ring-destructive/50 border-destructive/30",
+        stalled && !veryStalled && "ring-1 ring-amber-500/40 border-amber-500/30",
       )}
     >
-      <div className="flex items-start gap-2">
-        <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40 mt-0.5 flex-shrink-0" />
+      {/* Name + tier (always visible, bigger) */}
+      <div className="flex items-start justify-between gap-2 mb-1">
         <div className="flex-1 min-w-0">
-          <div className="font-medium text-sm text-foreground truncate">
+          <div className="font-semibold text-sm text-foreground truncate leading-tight">
             {app.first_name} {app.last_name}
           </div>
-          <div className="text-[10px] text-muted-foreground truncate">
-            {app.state || "—"} · Applied {format(new Date(app.created_at), "MMM d")}
+          <div className="text-[11px] text-muted-foreground mt-0.5 flex items-center gap-1.5">
+            <span>{app.state || "??"}</span>
+            <span>·</span>
+            <span>applied {format(new Date(app.created_at), "MMM d")}</span>
           </div>
-          {stalled && (
-            <Badge variant="destructive" className="text-[10px] mt-1 h-4 px-1">
-              Stalled {days}d
-            </Badge>
-          )}
-          {app.ai_score_tier && (
-            <Badge variant="outline" className="text-[10px] mt-1 h-4 px-1 ml-1">
-              Tier {app.ai_score_tier}
-            </Badge>
-          )}
         </div>
+        {app.ai_score_tier && (
+          <span className={cn("shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded border", tierColor)}>
+            {app.ai_score_tier}
+          </span>
+        )}
       </div>
 
-      {/* Action row */}
-      <div className="flex items-center gap-0.5 mt-2 opacity-0 group-hover:opacity-100 transition">
-        {app.phone && (
-          <Button size="sm" variant="ghost" className="h-6 w-6 p-0" asChild title="Call">
-            <a href={`tel:${app.phone}`}><Phone className="h-3 w-3" /></a>
-          </Button>
-        )}
-        {app.phone && (
-          <Button size="sm" variant="ghost" className="h-6 w-6 p-0" asChild title="Text">
-            <a href={`sms:${app.phone}`}><MessageSquare className="h-3 w-3" /></a>
-          </Button>
-        )}
-        <Button size="sm" variant="ghost" className="h-6 w-6 p-0" asChild title="Email">
-          <a href={`mailto:${app.email}`}><Mail className="h-3 w-3" /></a>
-        </Button>
+      {/* Stalled badge - always visible when >= 7 days */}
+      {stalled && (
+        <div className={cn(
+          "text-[10px] font-medium px-1.5 py-0.5 rounded mb-2 inline-block",
+          veryStalled ? "bg-destructive/20 text-destructive" : "bg-amber-500/20 text-amber-500"
+        )}>
+          {veryStalled ? "🔴" : "⚠️"} Stalled {days}d
+        </div>
+      )}
 
+      {/* Phone (prominent, click-to-call) — always visible */}
+      {app.phone && (
+        <a
+          href={`tel:${app.phone}`}
+          onClick={(e) => e.stopPropagation()}
+          className="block bg-primary/10 hover:bg-primary/20 text-primary rounded-md px-2 py-1.5 mb-1.5 text-sm font-mono font-semibold tracking-tight transition"
+        >
+          📞 {formatPhone(app.phone)}
+        </a>
+      )}
+
+      {/* Email (smaller, click-to-mail) — always visible */}
+      {app.email && (
+        <a
+          href={`mailto:${app.email}`}
+          onClick={(e) => e.stopPropagation()}
+          className="block text-[11px] text-muted-foreground hover:text-primary truncate mb-2"
+          title={app.email}
+        >
+          ✉ {app.email}
+        </a>
+      )}
+
+      {/* Always-visible action row */}
+      <div className="flex items-center gap-1 pt-2 border-t border-border/30">
+        {app.phone && (
+          <Button
+            size="sm" variant="outline"
+            className="flex-1 h-7 text-[11px]"
+            asChild
+            onClick={(e) => e.stopPropagation()}
+          >
+            <a href={`sms:${app.phone}`}><MessageSquare className="h-3 w-3 mr-1" /> Text</a>
+          </Button>
+        )}
+        <Button
+          size="sm" variant="outline"
+          className="h-7 px-2 text-[11px]"
+          onClick={(e) => { e.stopPropagation(); onMarkContacted(); }}
+          title="Mark contacted"
+        >
+          <CheckCircle2 className="h-3 w-3" />
+        </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="ghost" className="h-6 w-6 p-0 ml-auto">
+            <Button
+              size="sm" variant="outline"
+              className="h-7 px-2"
+              onClick={(e) => e.stopPropagation()}
+            >
               <MoreVertical className="h-3 w-3" />
             </Button>
           </DropdownMenuTrigger>

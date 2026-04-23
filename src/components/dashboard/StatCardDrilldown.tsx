@@ -40,10 +40,13 @@ export function StatCardDrilldown({ activeModal, onClose }: StatCardDrilldownPro
         .select("id, display_name, user_id, profile_id, status, onboarding_stage, is_deactivated")
         .eq("is_deactivated", false);
 
-      const { data: prodData } = await supabase
-        .from("daily_production")
-        .select("agent_id, aop, deals_closed, presentations, production_date")
-        .gte("production_date", weekStart);
+      // Aggregate weekly production directly from the clean deals table — not
+      // daily_production (which drifted during the Agent Link backfill and had
+      // stale test-deal rows). Weekly = deals posted Monday-present.
+      const { data: dealsWeek } = await supabase
+        .from("deals")
+        .select("agent_id, annual_premium, posted_at, created_at")
+        .gte("posted_at", new Date(weekStart).toISOString());
 
       const { data: profiles } = await supabase
         .from("profiles")
@@ -52,12 +55,14 @@ export function StatCardDrilldown({ activeModal, onClose }: StatCardDrilldownPro
       const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
       const prodMap = new Map<string, { aop: number; deals: number; pres: number; lastDate: string }>();
 
-      (prodData || []).forEach((r: any) => {
+      (dealsWeek || []).forEach((r: any) => {
+        if (!r.agent_id) return;
         const existing = prodMap.get(r.agent_id) || { aop: 0, deals: 0, pres: 0, lastDate: "" };
-        existing.aop += Number(r.aop || 0);
-        existing.deals += r.deals_closed || 0;
-        existing.pres += r.presentations || 0;
-        if (r.production_date > existing.lastDate) existing.lastDate = r.production_date;
+        existing.aop += Number(r.annual_premium || 0);
+        existing.deals += 1;
+        existing.pres += 1;
+        const postedDate = (r.posted_at || r.created_at || "").slice(0, 10);
+        if (postedDate > existing.lastDate) existing.lastDate = postedDate;
         prodMap.set(r.agent_id, existing);
       });
 

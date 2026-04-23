@@ -174,7 +174,7 @@ export function GlobalSidebar({
     opsItems.push({ icon: DollarSign, label: "My Deals", href: "/dashboard/my-deals" });
     opsItems.push({ icon: Wallet, label: "My Commissions", href: "/dashboard/my-commissions" });
     opsItems.push({ icon: Trophy, label: "My Plaques", href: "/dashboard/my-plaques" });
-    opsItems.push({ icon: Rocket, label: "Getting Started", href: "/dashboard/getting-started" });
+    // "Getting Started" removed from sidebar — agents navigate to onboarding via /dashboard/today
     sections.push({ label: "OPERATIONS", items: opsItems });
 
     // TEAM

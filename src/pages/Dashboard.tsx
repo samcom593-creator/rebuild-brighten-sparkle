@@ -364,7 +364,10 @@ export default function Dashboard() {
       };
     },
     enabled: !!user && !authLoading && (isAdmin || myDownlineIds.length > 0),
-    staleTime: 60000,
+    // Auto-refresh every 15 min so Weekly ALP + dials stay live without page reloads.
+    staleTime: 900_000,           // 15 min — cached within window
+    refetchInterval: 900_000,     // 15 min polling tick
+    refetchOnWindowFocus: true,   // refetch when tab regains focus
   });
 
   // Agents flagged only when they've done NEITHER in the last 7 days:

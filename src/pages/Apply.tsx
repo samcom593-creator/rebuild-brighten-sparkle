@@ -100,10 +100,7 @@ export default function Apply() {
   const [referrerName, setReferrerName] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // VSL gate removed 2026-04-21 per founder — straight-to-form.
-  const [vslWatchPercent] = useState(0);
-  const [vslUnlocked] = useState(true);
-  const vslRef = useRef<HTMLVideoElement>(null);
+  // VSL gate fully removed — no video, no gate, no placeholder state.
   const [selectedStates, setSelectedStates] = useState<string[]>([]);
   const [applicationId, setApplicationId] = useState<string | null>(null);
   const [activeAgents, setActiveAgents] = useState<ActiveAgent[]>([]);
@@ -551,10 +548,8 @@ export default function Apply() {
 
       <main className="container mx-auto px-4 py-12">
         <div className="max-w-3xl mx-auto">
-          {/* VSL gate removed — straight-to-form */}
-
           {/* Progress Steps */}
-          {vslUnlocked && <>
+          <>
           <div className="mb-12">
             <div className="flex items-center justify-between relative">
               <div className="absolute top-5 left-0 right-0 h-0.5 bg-border" />
@@ -1175,7 +1170,7 @@ export default function Apply() {
               </motion.div>
             </AnimatePresence>
           </form>
-          </>}
+          </>
         </div>
       </main>
     </div>

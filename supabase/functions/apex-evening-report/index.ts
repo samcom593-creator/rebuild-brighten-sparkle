@@ -3,6 +3,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { humanize } from "../_shared/humanize.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -108,8 +109,8 @@ ${prep.length ? `<div style="margin-top:18px;padding:14px 16px;background:#f0f9f
     await resend.emails.send({
       from: "APEX Engine <sam@apex-financial.org>",
       to: SAM_EMAIL,
-      subject: `🌙 ${today} · ${fmt$(aopToday)} · ${dealsToday} deals`,
-      html,
+      subject: humanize(`🌙 ${today} · ${fmt$(aopToday)} · ${dealsToday} deals`),
+      html: humanize(html),
     });
   } catch (e) { console.error("[evening] email", e); }
   try {

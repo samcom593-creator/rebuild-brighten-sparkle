@@ -7,6 +7,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { humanize } from "../_shared/humanize.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -166,8 +167,8 @@ ${rest.length ? `<p style="color:#64748b;font-size:12px;margin-top:14px">+${rest
     const r = await resend.emails.send({
       from: "APEX Engine <sam@apex-financial.org>",
       to: SAM_EMAIL,
-      subject: clean ? `☀️ ${today} · all clear` : `☀️ ${today} · ${totalActions} action${totalActions === 1 ? "" : "s"}${criticalCount ? ` · ${criticalCount} critical` : ""}`,
-      html,
+      subject: humanize(clean ? `☀️ ${today} · all clear` : `☀️ ${today} · ${totalActions} action${totalActions === 1 ? "" : "s"}${criticalCount ? ` · ${criticalCount} critical` : ""}`),
+      html: humanize(html),
     });
     email_id = (r as any)?.data?.id ?? null;
   } catch (e: any) { console.error("[morning-brief] email", e); }

@@ -91,6 +91,7 @@ const BulkDeals = lazy(() => import("./pages/BulkDeals"));
 const VoiceNote = lazy(() => import("./pages/VoiceNote"));
 const AgentLinkSync = lazy(() => import("./pages/AgentLinkSync"));
 const Setup = lazy(() => import("./pages/admin/Setup"));
+const Join = lazy(() => import("./pages/Join"));
 const AgentDetail = lazy(() => import("./pages/AgentDetail"));
 const Leaderboard = lazy(() => import("./pages/Leaderboard"));
 const Rewards = lazy(() => import("./pages/Rewards"));
@@ -146,6 +147,7 @@ const App = () => (
                   <Route path="/get-licensed" element={<GetLicensed />} />
                   <Route path="/login" element={<Login />} />
                   <Route path="/signup" element={<Signup />} />
+                  <Route path="/join" element={<Join />} />
                   <Route path="/join" element={<AgentSignup />} />
                   <Route path="/agent-login" element={<AgentNumbersLogin />} />
                   <Route path="/magic-login" element={<MagicLogin />} />

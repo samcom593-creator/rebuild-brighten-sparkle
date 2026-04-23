@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CommandPalette } from "@/components/command/CommandPalette";
 import { CelebrationProvider } from "@/components/celebrations/CelebrationProvider";
 import { VoiceToChat } from "@/components/voice/VoiceToChat";
+import { RequireProfilePicture } from "@/components/profile/RequireProfilePicture";
 
 function InnerPageLoader() {
   return (
@@ -37,6 +38,7 @@ export function AuthenticatedShell() {
         <VoiceToChat />
         <CommandPalette />
         <PushNotificationPrompt />
+        <RequireProfilePicture />
         <ComponentErrorBoundary name="page-content">
           <Suspense fallback={<InnerPageLoader />}>
             <Outlet />

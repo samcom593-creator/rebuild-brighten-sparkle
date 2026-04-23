@@ -1,14 +1,19 @@
 // APEX voice-to-chat.
-// Floating mic button (bottom-right). Tap once → start browser-native
-// speech recognition with live transcript modal. Tap stop or 2s silence
-// → emits `apex:voice-prompt` CustomEvent on window with { transcript }.
-// CommandPalette listens and opens with the transcript pre-filled so
-// Sam can edit + submit, or jump directly to whatever route matches.
+// Floating mic button (bottom-right). Tap → live transcript modal with
+// browser-native SpeechRecognition. When the user hits Send (or 2s of
+// silence auto-stops), the transcript becomes a chat turn sent to the
+// `ai-assistant` edge function; the reply streams back into the same panel.
+//
+// Two exit paths from the modal:
+//   1. Send → appends to chat, calls ai-assistant (primary)
+//   2. "Jump" button → dispatches `apex:voice-prompt` so CommandPalette
+//      can pre-fill and navigate (fallback for quick nav)
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, X, Send, Copy } from "lucide-react";
+import { Mic, MicOff, X, Send, Copy, Sparkles, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 type SR = {
   start: () => void;
@@ -21,6 +26,11 @@ type SR = {
   interimResults: boolean;
   lang: string;
 };
+
+interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
 
 function getSR(): SR | null {
   if (typeof window === "undefined") return null;
@@ -37,12 +47,22 @@ export function VoiceToChat() {
   const [transcript, setTranscript] = useState("");
   const [interim, setInterim] = useState("");
   const [supported, setSupported] = useState(true);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [thinking, setThinking] = useState(false);
   const srRef = useRef<SR | null>(null);
   const silenceTimer = useRef<number | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setSupported(!!getSR());
   }, []);
+
+  // Auto-scroll chat to newest message
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, thinking]);
 
   const stop = useCallback(() => {
     if (silenceTimer.current) {
@@ -79,7 +99,6 @@ export function VoiceToChat() {
       } else {
         setInterim(interimText);
       }
-      // Reset silence timer — 2s of no sound auto-stops.
       if (silenceTimer.current) window.clearTimeout(silenceTimer.current);
       silenceTimer.current = window.setTimeout(() => stop(), 2000);
     };
@@ -103,25 +122,62 @@ export function VoiceToChat() {
     sr.start();
   }, [stop]);
 
-  const send = useCallback(() => {
+  const send = useCallback(async () => {
+    const text = transcript.trim();
+    if (!text || thinking) return;
+
+    // Append user turn + clear input immediately
+    const userTurn: ChatMessage = { role: "user", content: text };
+    const next = [...messages, userTurn];
+    setMessages(next);
+    setTranscript("");
+    setInterim("");
+    stop();
+    setThinking(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("ai-assistant", {
+        body: { type: "chat", messages: next },
+      });
+      if (error) throw error;
+      const reply: string = data?.content ?? data?.message ?? "(no response)";
+      setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
+    } catch (e: any) {
+      console.error("[voice] ai-assistant error:", e);
+      toast.error("AI didn't answer — try again or use the Jump button.");
+      setMessages((prev) => [...prev, { role: "assistant", content: "Sorry — I couldn't reach the AI. Try again?" }]);
+    } finally {
+      setThinking(false);
+    }
+  }, [transcript, messages, thinking, stop]);
+
+  const jump = useCallback(() => {
     const text = transcript.trim();
     if (!text) return;
     window.dispatchEvent(new CustomEvent("apex:voice-prompt", { detail: { transcript: text } }));
     setOpen(false);
     setTranscript("");
     setInterim("");
-    toast.success("Sent to command palette");
-  }, [transcript]);
+    stop();
+    toast.success("Opened in command palette");
+  }, [transcript, stop]);
 
   const copy = useCallback(async () => {
     if (!transcript) return;
     try {
       await navigator.clipboard.writeText(transcript);
-      toast.success("Copied — paste anywhere");
+      toast.success("Copied");
     } catch {
       toast.error("Copy failed");
     }
   }, [transcript]);
+
+  const resetChat = useCallback(() => {
+    setMessages([]);
+    setTranscript("");
+    setInterim("");
+    stop();
+  }, [stop]);
 
   useEffect(() => {
     return () => { srRef.current?.abort(); };
@@ -165,13 +221,15 @@ export function VoiceToChat() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 40, opacity: 0 }}
               transition={{ type: "spring", stiffness: 220, damping: 22 }}
-              className="w-full max-w-md bg-background rounded-2xl shadow-2xl border border-border overflow-hidden"
+              className="w-full max-w-lg bg-background rounded-2xl shadow-2xl border border-border overflow-hidden flex flex-col"
+              style={{ maxHeight: "min(80vh, 640px)" }}
               onClick={(e) => e.stopPropagation()}
             >
+              {/* Header */}
               <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-border">
                 <div className="flex items-center gap-2">
                   <div className="relative w-8 h-8 rounded-full bg-primary/15 text-primary flex items-center justify-center">
-                    {listening ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
+                    {listening ? <Mic className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
                     {listening && (
                       <motion.span
                         className="absolute inset-0 rounded-full border-2 border-primary"
@@ -181,37 +239,80 @@ export function VoiceToChat() {
                     )}
                   </div>
                   <div>
-                    <div className="text-sm font-semibold">
-                      {listening ? "Listening…" : transcript ? "Got it" : "Tap the mic"}
-                    </div>
+                    <div className="text-sm font-semibold">APEX Voice Chat</div>
                     <div className="text-xs text-muted-foreground">
-                      {supported ? "2s of silence stops automatically" : "Speech API unsupported in this browser"}
+                      {listening ? "Listening…" : thinking ? "Thinking…" : supported ? "Talk. I'll answer." : "Speech API unsupported"}
                     </div>
                   </div>
                 </div>
-                <button
-                  onClick={() => { stop(); setOpen(false); }}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                  aria-label="Close"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-1">
+                  {messages.length > 0 && (
+                    <button
+                      onClick={resetChat}
+                      className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-accent transition-colors"
+                      title="Start a new conversation"
+                    >
+                      Clear
+                    </button>
+                  )}
+                  <button
+                    onClick={() => { stop(); setOpen(false); }}
+                    className="text-muted-foreground hover:text-foreground transition-colors ml-1"
+                    aria-label="Close"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
 
-              <div className="px-5 py-4 min-h-[80px] text-[15px] leading-relaxed">
-                {full ? (
-                  <span>
-                    <span className="text-foreground">{transcript}</span>
-                    <span className="text-muted-foreground italic"> {interim}</span>
-                  </span>
-                ) : (
-                  <span className="text-muted-foreground text-sm">
-                    Say something like <em>"find John Smith"</em>, <em>"show me licensed applicants"</em>, or dictate a note.
-                  </span>
+              {/* Chat history */}
+              <div
+                ref={scrollRef}
+                className="flex-1 overflow-y-auto px-5 py-3 space-y-3 min-h-[120px]"
+              >
+                {messages.length === 0 && !full && (
+                  <div className="text-sm text-muted-foreground py-4">
+                    Tap the mic and ask anything — "who's stuck in onboarding this week?",
+                    "summarize today's production", "draft a follow-up for John Smith"…
+                  </div>
+                )}
+                {messages.map((m, i) => (
+                  <div
+                    key={i}
+                    className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+                  >
+                    <div
+                      className={`max-w-[85%] rounded-xl px-3 py-2 text-[14px] leading-relaxed whitespace-pre-wrap ${
+                        m.role === "user"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-foreground"
+                      }`}
+                    >
+                      {m.content}
+                    </div>
+                  </div>
+                ))}
+                {thinking && (
+                  <div className="flex justify-start">
+                    <div className="bg-muted text-muted-foreground rounded-xl px-3 py-2 text-[13px] italic">
+                      …
+                    </div>
+                  </div>
                 )}
               </div>
 
-              <div className="flex items-center gap-2 px-5 pb-4">
+              {/* Live transcript preview */}
+              {full && (
+                <div className="px-5 py-2 border-t border-border bg-muted/40">
+                  <div className="text-[13px] leading-relaxed">
+                    <span className="text-foreground">{transcript}</span>
+                    <span className="text-muted-foreground italic"> {interim}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Footer controls */}
+              <div className="flex items-center gap-2 px-5 py-3 border-t border-border bg-background">
                 {listening ? (
                   <button
                     onClick={stop}
@@ -222,12 +323,21 @@ export function VoiceToChat() {
                 ) : (
                   <button
                     onClick={start}
-                    disabled={!supported}
+                    disabled={!supported || thinking}
                     className="flex-1 inline-flex items-center justify-center gap-1.5 bg-foreground text-background rounded-lg py-2 text-sm font-semibold hover:opacity-90 transition disabled:opacity-40"
                   >
                     <Mic className="w-4 h-4" /> {transcript ? "Continue" : "Record"}
                   </button>
                 )}
+                <button
+                  onClick={jump}
+                  disabled={!transcript || thinking}
+                  className="inline-flex items-center justify-center gap-1.5 border border-border rounded-lg py-2 px-3 text-sm font-medium hover:bg-accent transition disabled:opacity-40"
+                  aria-label="Open in command palette"
+                  title="Open in command palette"
+                >
+                  <ArrowRight className="w-4 h-4" />
+                </button>
                 <button
                   onClick={copy}
                   disabled={!transcript}
@@ -238,9 +348,9 @@ export function VoiceToChat() {
                 </button>
                 <button
                   onClick={send}
-                  disabled={!transcript}
+                  disabled={!transcript || thinking}
                   className="inline-flex items-center justify-center gap-1.5 bg-primary text-primary-foreground rounded-lg py-2 px-3 text-sm font-semibold hover:opacity-90 transition disabled:opacity-40"
-                  aria-label="Send to command palette"
+                  aria-label="Send to AI chat"
                 >
                   <Send className="w-4 h-4" /> Send
                 </button>

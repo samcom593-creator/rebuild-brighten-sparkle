@@ -338,13 +338,23 @@ export default function Dashboard() {
       const weeklyALP      = (weekDealsRes.data || []).reduce((s: number, r: any) => s + (Number(r.annual_premium) || 0), 0);
       const totalDeals     = (weekDealsRes.data || []).length;
       const totalPres      = (presRes.data || []).reduce((s: number, r: any) => s + (Number(r.presentations) || 0), 0);
-      const closeRate      = totalPres > 0 ? (totalDeals / totalPres) * 100 : 0;
+      const rawCloseRate   = totalPres > 0 ? (totalDeals / totalPres) * 100 : 0;
+      // Cap the DISPLAYED rate at 100 — a 120%+ number means agents are
+      // writing deals without logging presentations, not that they're
+      // closing harder than physics allows. Keep the raw value around so
+      // the UI can warn.
+      const cappedCloseRate    = Math.min(rawCloseRate, 100);
+      const presentationsUnderLogged = totalDeals > 0 && totalDeals > totalPres;
 
       return {
         activeAgents: activeAgentIds.size,
         weeklyALP,
         appsThisWeek: appsRes.count || 0,
-        closeRate: Math.round(closeRate * 10) / 10,
+        closeRate: Math.round(cappedCloseRate * 10) / 10,
+        rawCloseRate: Math.round(rawCloseRate * 10) / 10,
+        presentationsUnderLogged,
+        totalDeals,
+        totalPres,
         scope: shouldScope ? "team" : "agency",
       };
     },
@@ -504,8 +514,21 @@ export default function Dashboard() {
             <div onClick={() => setActiveDrilldown("apps")} className="cursor-pointer rounded-xl transition-all card-tilt reveal hover:ring-2 ring-primary/30">
               <StatCard title="Applications This Week" value={topMetrics.appsThisWeek} icon={UserPlus} variant="default" />
             </div>
-            <div onClick={() => setActiveDrilldown("closerate")} className="cursor-pointer rounded-xl transition-all card-tilt reveal hover:ring-2 ring-primary/30">
+            <div
+              onClick={() => setActiveDrilldown("closerate")}
+              className="cursor-pointer rounded-xl transition-all card-tilt reveal hover:ring-2 ring-primary/30 relative"
+              title={
+                topMetrics.presentationsUnderLogged
+                  ? `${topMetrics.totalDeals} deals written but only ${topMetrics.totalPres} presentations logged. Real rate: ${topMetrics.rawCloseRate}%. Ask agents to log every presentation.`
+                  : undefined
+              }
+            >
               <StatCard title="Close Rate" value={`${topMetrics.closeRate}%`} icon={Percent} variant="success" />
+              {topMetrics.presentationsUnderLogged && (
+                <span className="absolute top-2 right-2 inline-flex items-center rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-medium px-2 py-0.5 border border-amber-500/40">
+                  Presentations under-logged
+                </span>
+              )}
             </div>
           </div>
         </>

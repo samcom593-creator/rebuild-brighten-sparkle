@@ -51,8 +51,12 @@ export default function MyPlaques() {
 
         const rewardsQ = supabase.from("agentlink_rewards" as any)
           .select("id, agent_id, period, period_key, rank, title, description, alp, awarded_at");
-        const plaquesQ = supabase.from("plaques" as any)
-          .select("id, agent_id, milestone_type, milestone_date, amount, image_png_url, share_slug, badge_label, created_at")
+        // Table is `plaque_awards` (not `plaques`). This was silently
+        // returning 0 rows before — every agent saw an empty screen.
+        // Also pulling image_svg_url as fallback since most rows have
+        // only SVG populated.
+        const plaquesQ = supabase.from("plaque_awards" as any)
+          .select("id, agent_id, milestone_type, milestone_date, amount, image_png_url, image_svg_url, share_slug, badge_label, created_at")
           .order("created_at", { ascending: false }).limit(100);
 
         const [rewardsRes, plaquesRes] = await Promise.all([
@@ -91,7 +95,7 @@ export default function MyPlaques() {
           date: p.milestone_date ? new Date(p.milestone_date).toLocaleDateString()
                                  : new Date(p.created_at).toLocaleDateString(),
           dateIso: p.milestone_date || p.created_at,
-          imageUrl: p.image_png_url,
+          imageUrl: p.image_png_url || p.image_svg_url,  // SVG data-URI fallback
           shareSlug: p.share_slug,
         }));
 

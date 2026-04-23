@@ -296,12 +296,16 @@ export default function Dashboard() {
   // Hierarchy scope: managers see only their downline
   const { data: myDownlineIds = [] } = useMyDownline();
 
-  // Fetch top-row real metrics, scoped by viewer
+  // Fetch top-row real metrics, scoped by viewer.
+  // SOURCES (Agent Link truth, not manual logs):
+  //   - Active Agents: count of distinct agent_id with a deal in last 30d (deals table)
+  //   - Weekly ALP: SUM(deals.annual_premium) this week by effective_date
+  //   - Close Rate: deals count / daily_production.presentations
+  //       (presentations has no other source; deals have to be Agent Link truth)
   const { data: topMetrics } = useQuery({
-    queryKey: ["dashboard-top-metrics", isAdmin ? "agency" : "downline", myDownlineIds.join(",")],
+    queryKey: ["dashboard-top-metrics-v2-deals", isAdmin ? "agency" : "downline", myDownlineIds.join(",")],
     queryFn: async () => {
       const now = new Date();
-      // Monday-start week
       const weekStart = new Date(now);
       const day = now.getDay();
       const diffToMonday = day === 0 ? -6 : 1 - day;
@@ -315,23 +319,26 @@ export default function Dashboard() {
 
       const shouldScope = !isAdmin && myDownlineIds.length > 0;
 
-      let activeQ = supabase.from("daily_production").select("agent_id").gte("production_date", thirtyDaysAgoStr).gt("deals_closed", 0);
-      let prodQ = supabase.from("daily_production").select("aop, deals_closed, presentations").gte("production_date", weekStartStr);
-      let appsQ = supabase.from("applications").select("id", { count: "exact", head: true }).gte("created_at", weekStart.toISOString());
+      // Deals-based queries (Agent Link truth)
+      let activeQ  = supabase.from("deals").select("agent_id").gte("effective_date", thirtyDaysAgoStr);
+      let weekDealsQ = supabase.from("deals").select("annual_premium, agent_id").gte("effective_date", weekStartStr);
+      let presQ    = supabase.from("daily_production").select("presentations, agent_id").gte("production_date", weekStartStr);
+      let appsQ    = supabase.from("applications").select("id", { count: "exact", head: true }).gte("created_at", weekStart.toISOString());
 
       if (shouldScope) {
-        activeQ = activeQ.in("agent_id", myDownlineIds);
-        prodQ = prodQ.in("agent_id", myDownlineIds);
-        appsQ = appsQ.or(`assigned_agent_id.in.(${myDownlineIds.join(",")}),hiring_manager_user_id.eq.${user?.id}`);
+        activeQ     = activeQ.in("agent_id", myDownlineIds);
+        weekDealsQ  = weekDealsQ.in("agent_id", myDownlineIds);
+        presQ       = presQ.in("agent_id", myDownlineIds);
+        appsQ       = appsQ.or(`assigned_agent_id.in.(${myDownlineIds.join(",")}),hiring_manager_user_id.eq.${user?.id}`);
       }
 
-      const [activeProducersRes, prodRes, appsRes] = await Promise.all([activeQ, prodQ, appsQ]);
+      const [activeRes, weekDealsRes, presRes, appsRes] = await Promise.all([activeQ, weekDealsQ, presQ, appsQ]);
 
-      const activeAgentIds = new Set((activeProducersRes.data || []).map((r: any) => r.agent_id));
-      const weeklyALP = (prodRes.data || []).reduce((s: number, r: any) => s + (Number(r.aop) || 0), 0);
-      const totalDeals = (prodRes.data || []).reduce((s: number, r: any) => s + (Number(r.deals_closed) || 0), 0);
-      const totalPres = (prodRes.data || []).reduce((s: number, r: any) => s + (Number(r.presentations) || 0), 0);
-      const closeRate = totalPres > 0 ? (totalDeals / totalPres) * 100 : 0;
+      const activeAgentIds = new Set((activeRes.data || []).map((r: any) => r.agent_id).filter(Boolean));
+      const weeklyALP      = (weekDealsRes.data || []).reduce((s: number, r: any) => s + (Number(r.annual_premium) || 0), 0);
+      const totalDeals     = (weekDealsRes.data || []).length;
+      const totalPres      = (presRes.data || []).reduce((s: number, r: any) => s + (Number(r.presentations) || 0), 0);
+      const closeRate      = totalPres > 0 ? (totalDeals / totalPres) * 100 : 0;
 
       return {
         activeAgents: activeAgentIds.size,
@@ -345,27 +352,38 @@ export default function Dashboard() {
     staleTime: 60000,
   });
 
-  // Fetch agents who haven't logged production in 7+ days
+  // Agents flagged only when they've done NEITHER in the last 7 days:
+  //   - Logged numbers in daily_production
+  //   - Closed a deal (deals table, Agent Link truth)
+  // Previously this was daily_production-only, so producers who just
+  // don't self-report activity were getting wrongly flagged even when
+  // Agent Link showed them with fresh deals.
   const { data: staleAgents } = useQuery({
-    queryKey: ["dashboard-stale-agents"],
+    queryKey: ["dashboard-stale-agents-v2"],
     queryFn: async () => {
       if (!isAdmin) return [];
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const cutoff = sevenDaysAgo.toISOString().split("T")[0];
 
       const { data: agents } = await supabase
         .from("agents")
         .select("id, display_name, profiles:profile_id(full_name)")
-        .eq("is_deactivated", false);
+        .eq("is_deactivated", false)
+        .eq("is_inactive", false)
+        .eq("status", "active");
 
       if (!agents || agents.length === 0) return [];
 
-      const { data: recentProd } = await supabase
-        .from("daily_production")
-        .select("agent_id")
-        .gte("production_date", sevenDaysAgo.toISOString().split("T")[0]);
+      const [prodRes, dealsRes] = await Promise.all([
+        supabase.from("daily_production").select("agent_id").gte("production_date", cutoff),
+        supabase.from("deals").select("agent_id").gte("effective_date", cutoff),
+      ]);
 
-      const activeIds = new Set((recentProd || []).map((p: any) => p.agent_id));
+      const activeIds = new Set<string>();
+      (prodRes.data  || []).forEach((p: any) => p.agent_id && activeIds.add(p.agent_id));
+      (dealsRes.data || []).forEach((d: any) => d.agent_id && activeIds.add(d.agent_id));
+
       return agents
         .filter((a: any) => !activeIds.has(a.id))
         .map((a: any) => a.display_name || a.profiles?.full_name || "Agent")

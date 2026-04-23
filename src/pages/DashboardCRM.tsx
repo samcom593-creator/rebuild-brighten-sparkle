@@ -94,6 +94,19 @@ interface AgentCRM {
   lastContactedAt: string | null; standardPaid: boolean; premiumPaid: boolean;
   licenseProgress: string | null; testScheduledDate: string | null; agentLicenseStatus: string;
   aiScoreTier?: string | null;
+  // Recruit detail surface — populated for Pre-Licensed cards via applications + xcel_events joins
+  recruit?: {
+    appliedAt?: string | null;
+    state?: string | null;
+    licenseStates?: string[] | null;
+    yearsExperience?: number | null;
+    previousCompany?: string | null;
+    desiredIncome?: number | null;
+    availability?: string | null;
+    referralSource?: string | null;
+    xcelEnrollments?: { state_line: string; event_at: string }[];
+    xcelCompletion?: { state_line: string; event_at: string } | null;
+  };
 }
 
 const attendanceColors: Record<AttendanceStatus, string> = {
@@ -758,7 +771,7 @@ export default function DashboardCRM() {
       // Widened status filter so "new" and "reviewing" apps also show up —
       // agents were complaining their own application wasn't visible at all.
       let appQuery = supabase.from("applications")
-        .select("id, first_name, last_name, email, phone, license_status, license_progress, test_scheduled_date, status, instagram_handle, started_training, ai_score_tier, user_id, assigned_agent_id")
+        .select("id, first_name, last_name, email, phone, state, license_status, license_progress, licensed_states, test_scheduled_date, status, instagram_handle, started_training, ai_score_tier, user_id, assigned_agent_id, years_experience, previous_company, desired_income, availability, referral_source, created_at")
         .is("terminated_at", null).neq("license_status", "licensed");
       if (!isAdmin) {
         // OR: mine (user_id = me) OR assigned to my agent record
@@ -769,10 +782,28 @@ export default function DashboardCRM() {
       }
 
       const { data: unlicensedApplicants } = await appQuery;
+
+      // Pull xcel_events for every applicant so pre-licensed cards can show real progress
+      const applicantEmails = (unlicensedApplicants || []).map((a: any) => (a.email ?? "").toLowerCase()).filter(Boolean);
+      const { data: xcelRows } = applicantEmails.length
+        ? await supabase.from("xcel_events" as any).select("kind, student_email, state_line, event_at").in("student_email", applicantEmails)
+        : { data: [] };
+      const xcelByEmail = new Map<string, { enrollments: any[]; completion: any | null }>();
+      for (const row of (xcelRows as any[] ?? [])) {
+        const key = (row.student_email ?? "").toLowerCase();
+        const cur = xcelByEmail.get(key) || { enrollments: [], completion: null };
+        if (row.kind === "completion") {
+          if (!cur.completion || new Date(row.event_at) > new Date(cur.completion.event_at)) cur.completion = row;
+        } else {
+          cur.enrollments.push(row);
+        }
+        xcelByEmail.set(key, cur);
+      }
+
       const existingEmails = new Set(crmAgents.map(a => a.email?.toLowerCase()).filter(Boolean));
       const newApplicants: AgentCRM[] = (unlicensedApplicants || [])
-        .filter(app => !existingEmails.has(app.email?.toLowerCase()))
-        .map((app, index) => ({
+        .filter((app: any) => !existingEmails.has(app.email?.toLowerCase()))
+        .map((app: any, index: number) => ({
           id: app.id, userId: "", name: `${app.first_name} ${app.last_name}`.trim(), applicationId: app.id, email: app.email || "",
           phone: app.phone || undefined, avatarUrl: undefined, instagramHandle: app.instagram_handle || undefined,
           onboardingStage: "onboarding" as OnboardingStage, attendanceStatus: "good" as AttendanceStatus,
@@ -786,6 +817,18 @@ export default function DashboardCRM() {
           licenseProgress: app.license_progress || null, testScheduledDate: app.test_scheduled_date || null,
           agentLicenseStatus: app.license_status || "unlicensed",
           aiScoreTier: app.ai_score_tier || null,
+          recruit: {
+            appliedAt:       app.created_at || null,
+            state:           app.state || null,
+            licenseStates:   app.licensed_states || null,
+            yearsExperience: app.years_experience ?? null,
+            previousCompany: app.previous_company || null,
+            desiredIncome:   app.desired_income ?? null,
+            availability:    app.availability || null,
+            referralSource:  app.referral_source || null,
+            xcelEnrollments: xcelByEmail.get((app.email ?? "").toLowerCase())?.enrollments ?? [],
+            xcelCompletion:  xcelByEmail.get((app.email ?? "").toLowerCase())?.completion ?? null,
+          },
         }));
 
       return [...crmAgents, ...newApplicants];
@@ -1473,6 +1516,69 @@ export default function DashboardCRM() {
                                     {/* Phone number visible */}
                                     {agent.phone && (
                                       <p className="text-[10px] text-muted-foreground px-2.5 pb-1 select-all cursor-text font-mono">{agent.phone}</p>
+                                    )}
+
+                                    {/* ── Recruit detail strip (applied date · state · income · referral · XCEL) ── */}
+                                    {agent.recruit && (
+                                      <div className="mx-2.5 mb-2 p-2 rounded-md bg-muted/40 border border-border/30 space-y-1">
+                                        <div className="flex flex-wrap gap-1.5 text-[10px]">
+                                          {agent.recruit.appliedAt && (
+                                            <Badge variant="outline" className="text-[9px] h-4 px-1.5">
+                                              Applied {getTimeAgo(agent.recruit.appliedAt)}
+                                            </Badge>
+                                          )}
+                                          {agent.recruit.state && (
+                                            <Badge variant="outline" className="text-[9px] h-4 px-1.5">
+                                              📍 {agent.recruit.state}
+                                            </Badge>
+                                          )}
+                                          {agent.recruit.desiredIncome != null && agent.recruit.desiredIncome > 0 && (
+                                            <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
+                                              💰 ${Number(agent.recruit.desiredIncome).toLocaleString()} goal
+                                            </Badge>
+                                          )}
+                                          {agent.recruit.yearsExperience != null && agent.recruit.yearsExperience > 0 && (
+                                            <Badge variant="outline" className="text-[9px] h-4 px-1.5">
+                                              🧑‍💼 {agent.recruit.yearsExperience}y exp
+                                            </Badge>
+                                          )}
+                                          {agent.recruit.previousCompany && (
+                                            <Badge variant="outline" className="text-[9px] h-4 px-1.5" title="Previous company">
+                                              🏢 {agent.recruit.previousCompany.slice(0, 18)}{agent.recruit.previousCompany.length > 18 ? "…" : ""}
+                                            </Badge>
+                                          )}
+                                          {agent.recruit.availability && (
+                                            <Badge variant="outline" className="text-[9px] h-4 px-1.5" title="Availability">
+                                              ⏰ {agent.recruit.availability.slice(0, 14)}
+                                            </Badge>
+                                          )}
+                                          {agent.recruit.referralSource && (
+                                            <Badge variant="outline" className="text-[9px] h-4 px-1.5 bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20" title="Referral source">
+                                              📣 {agent.recruit.referralSource.slice(0, 16)}
+                                            </Badge>
+                                          )}
+                                        </div>
+
+                                        {/* XCEL progress — the real licensing signal */}
+                                        {agent.recruit.xcelCompletion ? (
+                                          <div className="flex items-center gap-1 text-[10px] text-emerald-500 font-semibold pt-0.5 border-t border-border/20 mt-1">
+                                            <CheckCircle2 className="h-3 w-3" />
+                                            <span>Course done — {agent.recruit.xcelCompletion.state_line}</span>
+                                            <span className="text-muted-foreground ml-auto">{getTimeAgo(agent.recruit.xcelCompletion.event_at)}</span>
+                                          </div>
+                                        ) : agent.recruit.xcelEnrollments && agent.recruit.xcelEnrollments.length > 0 ? (
+                                          <div className="flex items-center gap-1 text-[10px] text-amber-500 pt-0.5 border-t border-border/20 mt-1">
+                                            <GraduationCap className="h-3 w-3" />
+                                            <span>Enrolled — {agent.recruit.xcelEnrollments[0].state_line}</span>
+                                            <span className="text-muted-foreground ml-auto">{getTimeAgo(agent.recruit.xcelEnrollments[0].event_at)}</span>
+                                          </div>
+                                        ) : (
+                                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground/70 pt-0.5 border-t border-border/20 mt-1">
+                                            <AlertTriangle className="h-3 w-3" />
+                                            <span>No XCEL enrollment yet</span>
+                                          </div>
+                                        )}
+                                      </div>
                                     )}
                                     {/* License Progress Selector */}
                                     <div className="px-2.5 pb-2" onClick={e => e.stopPropagation()}>

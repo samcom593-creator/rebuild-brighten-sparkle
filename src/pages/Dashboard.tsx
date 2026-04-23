@@ -32,6 +32,7 @@ import { ReferralLeaderboard } from "@/components/dashboard/ReferralLeaderboard"
 import { TeamSnapshotCard } from "@/components/dashboard/TeamSnapshotCard";
 import { TeamPerformanceBreakdown } from "@/components/dashboard/TeamPerformanceBreakdown";
 import { OnboardingPipelineCard } from "@/components/dashboard/OnboardingPipelineCard";
+import { TopProducersTodayCard } from "@/components/dashboard/TopProducersTodayCard";
 import { RecruitingQuickView } from "@/components/dashboard/RecruitingQuickView";
 import { StreakBanner } from "@/components/celebrations/StreakBanner";
 import { LivePulse } from "@/components/dashboard/LivePulse";
@@ -799,8 +800,9 @@ export default function Dashboard() {
             </h3>
           </div>
 
-          {/* Onboarding Pipeline for Admin/Manager */}
-          {(isManager || isAdmin) && <OnboardingPipelineCard />}
+          {/* Top Producers Today — replaces the generic OnboardingPipelineCard.
+              OnboardingPipelineCard data is still available on /dashboard/crm. */}
+          {(isManager || isAdmin) && <TopProducersTodayCard />}
 
           {/* Referral Tracking */}
           {(isManager || isAdmin) && (

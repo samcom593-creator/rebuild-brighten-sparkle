@@ -327,6 +327,20 @@ export default function Dashboard() {
       // Agent Link's createdAt field by agentlink_live_pull).
       let activeQ  = supabase.from("deals").select("agent_id").gte("effective_date", thirtyDaysAgoStr);
       let weekDealsQ = supabase.from("deals").select("annual_premium, agent_id").gte("posted_at", weekStart.toISOString());
+
+      // Comparison windows — same day last week + same week last week (prior Mon–today)
+      const yesterdayStart = new Date(now); yesterdayStart.setDate(now.getDate() - 1); yesterdayStart.setHours(0,0,0,0);
+      const todayStart     = new Date(now); todayStart.setHours(0,0,0,0);
+      const prevWeekStart  = new Date(weekStart); prevWeekStart.setDate(weekStart.getDate() - 7);
+      const prevWeekEnd    = new Date(weekStart); prevWeekEnd.setDate(weekStart.getDate() - 1); prevWeekEnd.setHours(23,59,59,999);
+      let todayDealsQ   = supabase.from("deals").select("annual_premium").gte("posted_at", todayStart.toISOString());
+      let yesterdayQ    = supabase.from("deals").select("annual_premium").gte("posted_at", yesterdayStart.toISOString()).lt("posted_at", todayStart.toISOString());
+      let prevWeekQ     = supabase.from("deals").select("annual_premium").gte("posted_at", prevWeekStart.toISOString()).lte("posted_at", prevWeekEnd.toISOString());
+      if (shouldScope) {
+        todayDealsQ = todayDealsQ.in("agent_id", myDownlineIds);
+        yesterdayQ  = yesterdayQ.in("agent_id", myDownlineIds);
+        prevWeekQ   = prevWeekQ.in("agent_id", myDownlineIds);
+      }
       let presQ    = supabase.from("daily_production").select("presentations, agent_id").gte("production_date", weekStartStr);
       let appsQ    = supabase.from("applications").select("id", { count: "exact", head: true }).gte("created_at", weekStart.toISOString());
 
@@ -337,10 +351,16 @@ export default function Dashboard() {
         appsQ       = appsQ.or(`assigned_agent_id.in.(${myDownlineIds.join(",")}),hiring_manager_user_id.eq.${user?.id}`);
       }
 
-      const [activeRes, weekDealsRes, presRes, appsRes] = await Promise.all([activeQ, weekDealsQ, presQ, appsQ]);
+      const [activeRes, weekDealsRes, presRes, appsRes, todayRes, yesterdayRes, prevWeekRes] =
+        await Promise.all([activeQ, weekDealsQ, presQ, appsQ, todayDealsQ, yesterdayQ, prevWeekQ]);
 
       const activeAgentIds = new Set((activeRes.data || []).map((r: any) => r.agent_id).filter(Boolean));
       const weeklyALP      = (weekDealsRes.data || []).reduce((s: number, r: any) => s + (Number(r.annual_premium) || 0), 0);
+      const todayALP       = (todayRes.data     || []).reduce((s: number, r: any) => s + (Number(r.annual_premium) || 0), 0);
+      const yesterdayALP   = (yesterdayRes.data || []).reduce((s: number, r: any) => s + (Number(r.annual_premium) || 0), 0);
+      const prevWeekALP    = (prevWeekRes.data  || []).reduce((s: number, r: any) => s + (Number(r.annual_premium) || 0), 0);
+      const dayOverDayPct  = yesterdayALP > 0 ? Math.round(((todayALP - yesterdayALP) / yesterdayALP) * 100) : null;
+      const weekOverWeekPct = prevWeekALP > 0 ? Math.round(((weeklyALP - prevWeekALP) / prevWeekALP) * 100) : null;
       const totalDeals     = (weekDealsRes.data || []).length;
       const totalPres      = (presRes.data || []).reduce((s: number, r: any) => s + (Number(r.presentations) || 0), 0);
       const rawCloseRate   = totalPres > 0 ? (totalDeals / totalPres) * 100 : 0;
@@ -354,6 +374,11 @@ export default function Dashboard() {
       return {
         activeAgents: activeAgentIds.size,
         weeklyALP,
+        todayALP,
+        yesterdayALP,
+        prevWeekALP,
+        dayOverDayPct,
+        weekOverWeekPct,
         appsThisWeek: appsRes.count || 0,
         closeRate: Math.round(cappedCloseRate * 10) / 10,
         rawCloseRate: Math.round(rawCloseRate * 10) / 10,
@@ -517,6 +542,16 @@ export default function Dashboard() {
                 value={`$${topMetrics.weeklyALP.toLocaleString()}`}
                 icon={DollarSign}
                 variant="success"
+                hint={(() => {
+                  const today = `Today $${Math.round(topMetrics.todayALP).toLocaleString()}`;
+                  const dod = topMetrics.dayOverDayPct !== null
+                    ? ` (${topMetrics.dayOverDayPct >= 0 ? "▲" : "▼"}${Math.abs(topMetrics.dayOverDayPct)}% vs yesterday)`
+                    : "";
+                  const wow = topMetrics.weekOverWeekPct !== null
+                    ? ` · ${topMetrics.weekOverWeekPct >= 0 ? "▲" : "▼"}${Math.abs(topMetrics.weekOverWeekPct)}% vs last week`
+                    : ` · last week $${Math.round(topMetrics.prevWeekALP).toLocaleString()}`;
+                  return today + dod + wow;
+                })()}
               />
             </div>
             <div onClick={() => setActiveDrilldown("apps")} className="cursor-pointer rounded-xl transition-all card-tilt reveal hover:ring-2 ring-primary/30">

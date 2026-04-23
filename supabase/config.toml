@@ -565,3 +565,6 @@ verify_jwt = false
 
 [functions.unsubscribe]
 verify_jwt = false
+
+[functions.siri-command]
+verify_jwt = false

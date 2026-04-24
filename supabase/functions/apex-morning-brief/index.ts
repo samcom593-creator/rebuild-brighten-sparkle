@@ -1,5 +1,6 @@
 // 7am CST morning brief (v3 — post-worthy, branded, real links).
 // email redesign: 9a3134b
+// redeploy marker: v2 email rewrite live refresh
 //
 // One email. One SMS. Top 3 as branded action cards with working "Open in APEX"
 // buttons. Clean-day path collapses to a single positive line. Warns get rolled

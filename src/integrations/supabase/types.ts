@@ -1246,6 +1246,7 @@ export type Database = {
           license_status: Database["public"]["Enums"]["license_status"]
           manager_id: string | null
           max_recruits: number | null
+          metadata: Json | null
           nipr_number: string | null
           onboarding_completed_at: string | null
           onboarding_stage:
@@ -1307,6 +1308,7 @@ export type Database = {
           license_status?: Database["public"]["Enums"]["license_status"]
           manager_id?: string | null
           max_recruits?: number | null
+          metadata?: Json | null
           nipr_number?: string | null
           onboarding_completed_at?: string | null
           onboarding_stage?:
@@ -1368,6 +1370,7 @@ export type Database = {
           license_status?: Database["public"]["Enums"]["license_status"]
           manager_id?: string | null
           max_recruits?: number | null
+          metadata?: Json | null
           nipr_number?: string | null
           onboarding_completed_at?: string | null
           onboarding_stage?:
@@ -1819,6 +1822,56 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "applicant_checkins_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      applicant_login_queue: {
+        Row: {
+          action_link: string | null
+          application_id: string
+          create_user_req: number | null
+          created_at: string | null
+          email: string
+          error_msg: string | null
+          first_name: string | null
+          id: string
+          magic_link_req: number | null
+          processed_at: string | null
+          status: string
+        }
+        Insert: {
+          action_link?: string | null
+          application_id: string
+          create_user_req?: number | null
+          created_at?: string | null
+          email: string
+          error_msg?: string | null
+          first_name?: string | null
+          id?: string
+          magic_link_req?: number | null
+          processed_at?: string | null
+          status?: string
+        }
+        Update: {
+          action_link?: string | null
+          application_id?: string
+          create_user_req?: number | null
+          created_at?: string | null
+          email?: string
+          error_msg?: string | null
+          first_name?: string | null
+          id?: string
+          magic_link_req?: number | null
+          processed_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "applicant_login_queue_application_id_fkey"
             columns: ["application_id"]
             isOneToOne: false
             referencedRelation: "applications"
@@ -2848,6 +2901,51 @@ export type Database = {
         }
         Relationships: []
       }
+      calendar_events: {
+        Row: {
+          created_at: string | null
+          ends_at: string
+          external_id: string | null
+          id: string
+          metadata: Json | null
+          raw_command: string | null
+          source: string
+          starts_at: string
+          status: string
+          title: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          ends_at: string
+          external_id?: string | null
+          id?: string
+          metadata?: Json | null
+          raw_command?: string | null
+          source?: string
+          starts_at: string
+          status?: string
+          title: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          ends_at?: string
+          external_id?: string | null
+          id?: string
+          metadata?: Json | null
+          raw_command?: string | null
+          source?: string
+          starts_at?: string
+          status?: string
+          title?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       call_transcripts: {
         Row: {
           agent_id: string | null
@@ -2998,6 +3096,148 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commission_audit_log: {
+        Row: {
+          agent_id: string | null
+          carrier_id: string | null
+          created_at: string | null
+          deal_id: string | null
+          id: string
+          note: string | null
+          rate_pct: number | null
+          rate_source: string | null
+        }
+        Insert: {
+          agent_id?: string | null
+          carrier_id?: string | null
+          created_at?: string | null
+          deal_id?: string | null
+          id?: string
+          note?: string | null
+          rate_pct?: number | null
+          rate_source?: string | null
+        }
+        Update: {
+          agent_id?: string | null
+          carrier_id?: string | null
+          created_at?: string | null
+          deal_id?: string | null
+          id?: string
+          note?: string | null
+          rate_pct?: number | null
+          rate_source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_audit_log_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "commission_audit_log_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commission_audit_log_carrier_id_fkey"
+            columns: ["carrier_id"]
+            isOneToOne: false
+            referencedRelation: "carriers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commission_audit_log_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commission_ledger: {
+        Row: {
+          actual_paid_date: string | null
+          agent_id: string
+          amount: number
+          annual_premium: number
+          as_earned_pct: number | null
+          carrier_id: string | null
+          created_at: string | null
+          deal_id: string
+          expected_paid_date: string | null
+          id: string
+          rate_pct: number
+          rate_source: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          actual_paid_date?: string | null
+          agent_id: string
+          amount: number
+          annual_premium: number
+          as_earned_pct?: number | null
+          carrier_id?: string | null
+          created_at?: string | null
+          deal_id: string
+          expected_paid_date?: string | null
+          id?: string
+          rate_pct: number
+          rate_source: string
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          actual_paid_date?: string | null
+          agent_id?: string
+          amount?: number
+          annual_premium?: number
+          as_earned_pct?: number | null
+          carrier_id?: string | null
+          created_at?: string | null
+          deal_id?: string
+          expected_paid_date?: string | null
+          id?: string
+          rate_pct?: number
+          rate_source?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_ledger_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "commission_ledger_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commission_ledger_carrier_id_fkey"
+            columns: ["carrier_id"]
+            isOneToOne: false
+            referencedRelation: "carriers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commission_ledger_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "deals"
             referencedColumns: ["id"]
           },
         ]
@@ -3385,10 +3625,13 @@ export type Database = {
           pipeline_stage: string | null
           policy_expiration_date: string | null
           policy_number: string
+          policy_status_standard: string | null
           policy_term_months: number | null
+          posted_at: string | null
           product_sold: string
           source: string | null
           status: string | null
+          status_updated_at: string | null
           synced_to_insuracloud_at: string | null
           updated_at: string
         }
@@ -3411,10 +3654,13 @@ export type Database = {
           pipeline_stage?: string | null
           policy_expiration_date?: string | null
           policy_number: string
+          policy_status_standard?: string | null
           policy_term_months?: number | null
+          posted_at?: string | null
           product_sold: string
           source?: string | null
           status?: string | null
+          status_updated_at?: string | null
           synced_to_insuracloud_at?: string | null
           updated_at?: string
         }
@@ -3437,10 +3683,13 @@ export type Database = {
           pipeline_stage?: string | null
           policy_expiration_date?: string | null
           policy_number?: string
+          policy_status_standard?: string | null
           policy_term_months?: number | null
+          posted_at?: string | null
           product_sold?: string
           source?: string | null
           status?: string | null
+          status_updated_at?: string | null
           synced_to_insuracloud_at?: string | null
           updated_at?: string
         }
@@ -3519,6 +3768,72 @@ export type Database = {
           reason?: string | null
           source?: string
           state?: string | null
+        }
+        Relationships: []
+      }
+      discord_event_log: {
+        Row: {
+          channel: string
+          entity_id: string | null
+          event_type: string
+          http_status: number | null
+          id: string
+          payload: Json | null
+          posted_at: string
+        }
+        Insert: {
+          channel: string
+          entity_id?: string | null
+          event_type: string
+          http_status?: number | null
+          id?: string
+          payload?: Json | null
+          posted_at?: string
+        }
+        Update: {
+          channel?: string
+          entity_id?: string | null
+          event_type?: string
+          http_status?: number | null
+          id?: string
+          payload?: Json | null
+          posted_at?: string
+        }
+        Relationships: []
+      }
+      discord_post_audits: {
+        Row: {
+          claimed_value: number
+          diverged: boolean
+          divergence_pct: number | null
+          id: string
+          metric: string
+          posted: boolean
+          posted_at: string
+          source: string
+          truth_value: number
+        }
+        Insert: {
+          claimed_value: number
+          diverged?: boolean
+          divergence_pct?: number | null
+          id?: string
+          metric: string
+          posted?: boolean
+          posted_at?: string
+          source: string
+          truth_value: number
+        }
+        Update: {
+          claimed_value?: number
+          diverged?: boolean
+          divergence_pct?: number | null
+          id?: string
+          metric?: string
+          posted?: boolean
+          posted_at?: string
+          source?: string
+          truth_value?: number
         }
         Relationships: []
       }
@@ -4833,6 +5148,39 @@ export type Database = {
           },
         ]
       }
+      job_runs: {
+        Row: {
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          job_name: string
+          metadata: Json | null
+          rows_affected: number | null
+          started_at: string
+          status: string
+        }
+        Insert: {
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          job_name: string
+          metadata?: Json | null
+          rows_affected?: number | null
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          job_name?: string
+          metadata?: Json | null
+          rows_affected?: number | null
+          started_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
       lead_activity: {
         Row: {
           activity_type: string
@@ -4990,6 +5338,72 @@ export type Database = {
           },
           {
             foreignKeyName: "lead_purchase_requests_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_purchases: {
+        Row: {
+          agent_id: string | null
+          agent_id_ref: string | null
+          amount_cents: number
+          charged_at: string
+          created_at: string | null
+          currency: string
+          customer_email: string | null
+          customer_id: string | null
+          customer_name: string | null
+          description: string | null
+          id: string
+          metadata: Json | null
+          stripe_charge_id: string
+          synced_at: string | null
+        }
+        Insert: {
+          agent_id?: string | null
+          agent_id_ref?: string | null
+          amount_cents: number
+          charged_at: string
+          created_at?: string | null
+          currency?: string
+          customer_email?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          stripe_charge_id: string
+          synced_at?: string | null
+        }
+        Update: {
+          agent_id?: string | null
+          agent_id_ref?: string | null
+          amount_cents?: number
+          charged_at?: string
+          created_at?: string | null
+          currency?: string
+          customer_email?: string | null
+          customer_id?: string | null
+          customer_name?: string | null
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          stripe_charge_id?: string
+          synced_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_purchases_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "lead_purchases_agent_id_fkey"
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "agents"
@@ -6745,6 +7159,33 @@ export type Database = {
         }
         Relationships: []
       }
+      stripe_sync_cursor: {
+        Row: {
+          id: number
+          last_drained_at: string | null
+          last_error: string | null
+          last_fired_at: string | null
+          last_synced: number | null
+          pending_req_id: number | null
+        }
+        Insert: {
+          id?: number
+          last_drained_at?: string | null
+          last_error?: string | null
+          last_fired_at?: string | null
+          last_synced?: number | null
+          pending_req_id?: number | null
+        }
+        Update: {
+          id?: number
+          last_drained_at?: string | null
+          last_error?: string | null
+          last_fired_at?: string | null
+          last_synced?: number | null
+          pending_req_id?: number | null
+        }
+        Relationships: []
+      }
       system_health_logs: {
         Row: {
           auto_fixed: string[] | null
@@ -6867,6 +7308,98 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      xcel_events: {
+        Row: {
+          applied_to_crm: boolean | null
+          created_at: string | null
+          event_at: string
+          gmail_thread_id: string
+          id: string
+          kind: string
+          notified: boolean | null
+          state_line: string | null
+          student_email: string | null
+          student_name: string | null
+        }
+        Insert: {
+          applied_to_crm?: boolean | null
+          created_at?: string | null
+          event_at: string
+          gmail_thread_id: string
+          id?: string
+          kind: string
+          notified?: boolean | null
+          state_line?: string | null
+          student_email?: string | null
+          student_name?: string | null
+        }
+        Update: {
+          applied_to_crm?: boolean | null
+          created_at?: string | null
+          event_at?: string
+          gmail_thread_id?: string
+          id?: string
+          kind?: string
+          notified?: boolean | null
+          state_line?: string | null
+          student_email?: string | null
+          student_name?: string | null
+        }
+        Relationships: []
+      }
+      xcel_progress: {
+        Row: {
+          applicant_id: string | null
+          completed: number
+          due_soon: number
+          id: string
+          in_progress: number
+          last_login: string | null
+          not_started: number
+          past_due: number
+          student_email: string
+          student_name: string | null
+          synced_at: string
+          total_courses: number
+        }
+        Insert: {
+          applicant_id?: string | null
+          completed?: number
+          due_soon?: number
+          id?: string
+          in_progress?: number
+          last_login?: string | null
+          not_started?: number
+          past_due?: number
+          student_email: string
+          student_name?: string | null
+          synced_at?: string
+          total_courses?: number
+        }
+        Update: {
+          applicant_id?: string | null
+          completed?: number
+          due_soon?: number
+          id?: string
+          in_progress?: number
+          last_login?: string | null
+          not_started?: number
+          past_due?: number
+          student_email?: string
+          student_name?: string | null
+          synced_at?: string
+          total_courses?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "xcel_progress_applicant_id_fkey"
+            columns: ["applicant_id"]
+            isOneToOne: false
+            referencedRelation: "applications"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
@@ -7076,6 +7609,7 @@ export type Database = {
           status: string
         }[]
       }
+      alert_stuck_xcel_students: { Args: never; Returns: Json }
       apex_alert_drain_parallel: { Args: never; Returns: Json }
       apex_provision_licensed_applicant: {
         Args: { p_application_id: string }
@@ -7097,6 +7631,10 @@ export type Database = {
         Args: { p_app_id: string; p_hours?: number }
         Returns: boolean
       }
+      applicant_login_drain: { Args: never; Returns: Json }
+      applicant_login_fire: { Args: { p_limit?: number }; Returns: Json }
+      applicant_login_send: { Args: { p_limit?: number }; Returns: Json }
+      applicant_login_tick: { Args: never; Returns: Json }
       auto_advance_stale_applications: {
         Args: never
         Returns: {
@@ -7104,6 +7642,12 @@ export type Database = {
           count: number
         }[]
       }
+      auto_assign_hiring_manager: { Args: never; Returns: Json }
+      backfill_monthly_awards: {
+        Args: { p_months_back?: number; p_threshold?: number }
+        Returns: Json
+      }
+      backfill_plaque_images: { Args: never; Returns: Json }
       bot_alert_insuracloud_err_throttled: {
         Args: { p_action_link?: string; p_body: string; p_subject: string }
         Returns: undefined
@@ -7114,6 +7658,17 @@ export type Database = {
       broadcast_to_all_channels: {
         Args: { p_body: string; p_priority?: string; p_title: string }
         Returns: Json
+      }
+      build_plaque_svg: {
+        Args: {
+          p_agent_name: string
+          p_amount: number
+          p_avatar_url: string
+          p_color: string
+          p_milestone_type: string
+          p_sub_label?: string
+        }
+        Returns: string
       }
       check_banned_prospect: {
         Args: {
@@ -7133,12 +7688,44 @@ export type Database = {
         Returns: boolean
       }
       check_speed_to_lead: { Args: never; Returns: Json }
+      churn_calc: { Args: never; Returns: Json }
       cleanup_expired_idempotency_keys: { Args: never; Returns: undefined }
       client_birthday_wisher: { Args: never; Returns: Json }
+      commission_ledger_reconcile: { Args: never; Returns: Json }
       current_agent_id: { Args: never; Returns: string }
       current_manager_agent_id: { Args: never; Returns: string }
+      data_quality_audit: { Args: never; Returns: Json }
+      deal_sync_queue_promote_dead: { Args: never; Returns: number }
+      dedupe_applications_by_email: { Args: never; Returns: Json }
+      detect_milestone_verge: { Args: never; Returns: Json }
+      detect_slumping_agents: { Args: never; Returns: Json }
+      discord_audit_ok: {
+        Args: {
+          p_claimed_value: number
+          p_metric: string
+          p_source: string
+          p_tolerance_pct?: number
+        }
+        Returns: boolean
+      }
+      discord_route: {
+        Args: {
+          p_body: Json
+          p_channel: string
+          p_entity_id: string
+          p_event_type: string
+        }
+        Returns: Json
+      }
       drain_sms_fallback_queue: { Args: never; Returns: Json }
       ensure_next_month_partitions: { Args: never; Returns: undefined }
+      fn_commission_rate: {
+        Args: { p_agent_id: string; p_carrier_id: string }
+        Returns: {
+          rate_pct: number
+          rate_source: string
+        }[]
+      }
       get_agent_id: { Args: { _user_id: string }; Returns: string }
       get_agent_production_stats: {
         Args: { end_date: string; start_date: string }
@@ -7206,16 +7793,46 @@ export type Database = {
         Args: { last_msg_at: string; last_sender: string }
         Returns: string
       }
+      in_course_peer_pressure: { Args: never; Returns: Json }
       is_first_monday_of_month: { Args: never; Returns: boolean }
+      job_run_finish: {
+        Args: {
+          p_error?: string
+          p_id: string
+          p_metadata?: Json
+          p_rows?: number
+          p_status: string
+        }
+        Returns: undefined
+      }
+      job_run_start: { Args: { p_job_name: string }; Returns: string }
       licensing_stage_nudge_sweep: { Args: never; Returns: Json }
+      manager_daily_accountability: { Args: never; Returns: Json }
+      map_al_status: { Args: { p_al_status: string }; Returns: string }
       my_downline_agent_ids: {
         Args: never
         Returns: {
           agent_id: string
         }[]
       }
+      nudge_day2_not_enrolled: { Args: never; Returns: Json }
+      nudge_day4_not_enrolled: { Args: never; Returns: Json }
+      nudge_unlicensed_applicants: { Args: never; Returns: Json }
+      nudge_xcel_completions_to_contract: { Args: never; Returns: Json }
+      onboarding_drip: { Args: never; Returns: Json }
+      orphan_deal_audit: { Args: never; Returns: Json }
+      plaque_color: {
+        Args: { p_color: string; p_type: string }
+        Returns: string
+      }
+      plaque_label: {
+        Args: { p_badge: string; p_type: string }
+        Returns: string
+      }
+      post_daily_top_producer: { Args: never; Returns: Json }
       post_evening_recap: { Args: never; Returns: Json }
       post_hiring_bottleneck_alert: { Args: never; Returns: Json }
+      post_midday_snapshot: { Args: never; Returns: Json }
       post_morning_huddle: { Args: never; Returns: Json }
       post_weekly_recap: { Args: never; Returns: Json }
       queue_sms: {
@@ -7224,6 +7841,7 @@ export type Database = {
       }
       reactivate_nopickup_day3: { Args: never; Returns: Json }
       reactivate_nopickup_day7: { Args: never; Returns: Json }
+      rescue_stale_applications: { Args: never; Returns: Json }
       resolve_hiring_manager_for_scope: {
         Args: { p_scope: Database["public"]["Enums"]["hiring_scope"] }
         Returns: string
@@ -7233,10 +7851,27 @@ export type Database = {
         Args: { p_body?: Json; p_function_name: string; p_job_name: string }
         Returns: string
       }
+      send_completion_contracting_handoff: { Args: never; Returns: Json }
+      send_reapply_blast: {
+        Args: { p_dry_run?: boolean; p_limit?: number }
+        Returns: Json
+      }
+      send_reapply_email_blast: { Args: { p_dry?: boolean }; Returns: Json }
+      send_reapply_sms_blast: { Args: { p_dry?: boolean }; Returns: Json }
       sms_allowed: {
         Args: { p_phone: string; p_window_minutes?: number }
         Returns: boolean
       }
+      stale_submitted_alert: { Args: never; Returns: Json }
+      stripe_sync_db: { Args: never; Returns: Json }
+      stripe_sync_drain: { Args: never; Returns: Json }
+      stripe_sync_fire: { Args: never; Returns: Json }
+      stuck_applicants_daily_digest: { Args: never; Returns: Json }
+      svg_url_encode: { Args: { p_svg: string }; Returns: string }
+      sync_automation_status: { Args: never; Returns: Json }
+      trigger_stripe_sync: { Args: never; Returns: Json }
+      webhook_health_check: { Args: never; Returns: Json }
+      weekly_xcel_progress_emails: { Args: never; Returns: Json }
     }
     Enums: {
       agent_status: "active" | "inactive" | "pending" | "terminated"

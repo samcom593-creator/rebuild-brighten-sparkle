@@ -577,3 +577,6 @@ verify_jwt = false
 
 [functions.stripe-sync]
 verify_jwt = false
+
+[functions.xcel-import]
+verify_jwt = false

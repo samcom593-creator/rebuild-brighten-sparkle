@@ -126,7 +126,24 @@ Deno.serve(async (req) => {
     ? `<ol style="padding-left:18px;margin:0">${(criticals ?? []).map((c: any) => `<li style="margin:10px 0;color:#0f172a"><strong>${c.summary}</strong>${c.action ? `<br><span style="color:#334155;font-size:14px">&rarr; ${c.action}</span>` : ""}${c.action_link ? `<br><a href="${c.action_link}" style="color:#0ea5e9;font-size:13px;text-decoration:none">Open in APEX &rarr;</a>` : ""}</li>`).join("")}</ol>`
     : `<div style="color:#64748b;font-size:14px">No criticals this week. Good signal.</div>`;
 
+  // Narrative lead — pick the week's story in one sentence instead of
+  // dumping numbers cold. Weekly newsletters read better when they lead
+  // with a voice, not a table.
+  const topPressure = subbotRanked[0]?.[0]?.replace(/_/g, " ");
+  const critCount = (criticals ?? []).length;
+  const lead = (() => {
+    if (wow >= 20 && critCount === 0)
+      return `Biggest week in recent memory — <strong>${fmt$(aopT)}</strong> on the board, <strong>+${wow.toFixed(0)}% WoW</strong>, and nothing on fire. This is the blueprint.`;
+    if (wow >= 20 && critCount > 0)
+      return `The numbers are there — <strong>${fmt$(aopT)}</strong>, <strong>+${wow.toFixed(0)}% WoW</strong> — but ${critCount} thing${critCount > 1 ? "s" : ""} will cap next week if we don't move on ${topPressure ?? "them"} fast.`;
+    if (wow >= 0)
+      return `Held the line at <strong>${fmt$(aopT)}</strong> (${wow >= 0 ? "+" : ""}${wow.toFixed(0)}% WoW). ${topPressure ? `The pressure is in <strong>${topPressure}</strong> — handle it before it turns into a dip.` : "Clean week."}`;
+    return `Down week. <strong>${fmt$(aopT)}</strong>, <strong>${wow.toFixed(0)}% WoW</strong>. ${topPressure ? `Root cause is <strong>${topPressure}</strong> — see the focus list below.` : "Time to recalibrate."}`;
+  })();
+
   const bodyHtml = `
+<div style="font-size:15px;line-height:1.55;color:#0f172a;margin-bottom:22px;padding-bottom:18px;border-bottom:1px solid #e2e8f0">${lead}</div>
+
 <div style="margin-bottom:22px">${metricsBlock}</div>
 
 <div style="margin-bottom:22px">
@@ -137,6 +154,13 @@ ${pressureBlock}
 <div>
 <div style="font-size:12px;font-weight:700;letter-spacing:1px;color:#64748b;text-transform:uppercase;margin-bottom:8px">Top-5 critical recommendations</div>
 ${criticalsBlock}
+</div>
+
+<div style="margin-top:24px;padding-top:18px;border-top:1px solid #e2e8f0;font-size:13px;color:#475569">
+<strong style="color:#0f172a">Next 7 days</strong> — ${topPressure ? `Lead with ${topPressure}. ` : ""}Open the pipeline early Monday, prioritize the stalled list, and keep the first-dial time under 90 minutes.
+<div style="margin-top:10px">
+<a href="${BRAND_URL}/dashboard/hiring-pipeline" style="color:#0ea5e9;text-decoration:none;font-weight:600">Open pipeline →</a>
+</div>
 </div>`;
 
   const html = shell({

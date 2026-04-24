@@ -1,4 +1,5 @@
 // APEX alert dispatcher (v2 — minimal-noise).
+// redeploy marker: v2 email rewrite live refresh
 //
 // Noise-control rules:
 //   critical → send email + SMS immediately on every flush

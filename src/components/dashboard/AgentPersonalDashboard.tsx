@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { DollarSign, TrendingUp, Target, Award } from "lucide-react";
 import { RealFinancesCard } from "@/components/finances/RealFinancesCard";
+import { ExtendedStatsStrip } from "@/components/dashboard/ExtendedStatsStrip";
 
 interface Props {
   agentId?: string;
@@ -71,6 +72,9 @@ export function AgentPersonalDashboard({ agentId }: Props) {
         <StatCard title="My Monthly ALP" value={`$${(me?.monthALP || 0).toLocaleString()}`} icon={Target} variant="success" />
         <StatCard title="My Close Rate" value={`${me?.closeRate || 0}%`} icon={Award} variant="default" />
       </div>
+
+      {/* Personal extra numbers — today, pace, avg/deal, biggest, deltas */}
+      <ExtendedStatsStrip agentId={agentId} title="My extra numbers" />
 
       {/* Real commissions (Insuracloud) */}
       <RealFinancesCard agentId={agentId} />

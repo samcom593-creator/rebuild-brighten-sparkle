@@ -51,6 +51,7 @@ import { TotalApplicationsBanner } from "@/components/dashboard/TotalApplication
 import { EstimatedEarningsCard } from "@/components/dashboard/EstimatedEarningsCard";
 import { PortalLinkSender } from "@/components/admin/PortalLinkSender";
 import { TeamOverviewDashboard } from "@/components/dashboard/TeamOverviewDashboard";
+import { ExtendedStatsStrip } from "@/components/dashboard/ExtendedStatsStrip";
 
 import { ChurnRiskBanner } from "@/components/dashboard/ChurnRiskBanner";
 import { AchievementFeed } from "@/components/dashboard/AchievementFeed";
@@ -581,6 +582,9 @@ export default function Dashboard() {
 
       {/* Stat Card Drilldown */}
       <StatCardDrilldown activeModal={activeDrilldown} onClose={() => setActiveDrilldown(null)} />
+
+      {/* Extra numbers strip — today, pace, deal quality, deltas, team & recruiting */}
+      {(isAdmin || isManager) && <ExtendedStatsStrip title="More numbers" />}
 
       {/* Insight Data Cards */}
       {(isAdmin || isManager) && (

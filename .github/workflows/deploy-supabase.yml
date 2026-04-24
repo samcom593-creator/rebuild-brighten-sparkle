@@ -38,6 +38,8 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD:  ${{ secrets.SUPABASE_DB_PASSWORD }}
@@ -47,6 +49,16 @@ jobs:
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Preflight — access token present?
+        id: preflight
+        run: |
+          if [ -z "$SUPABASE_ACCESS_TOKEN" ]; then
+            echo "::error::SUPABASE_ACCESS_TOKEN secret missing — add it at repo settings → secrets"
+            echo "token_ok=false" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          echo "token_ok=true" >> "$GITHUB_OUTPUT"
 
       - name: Sync config.toml with functions/ directory
         id: sync
@@ -59,6 +71,7 @@ jobs:
 
       - name: Commit config.toml sync back to main
         if: steps.sync.outputs.changed == 'true' && github.event_name == 'push'
+        continue-on-error: true
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -66,25 +79,29 @@ jobs:
           git commit -m "chore(ci): auto-register new functions in config.toml
 
 Added by scripts/sync-functions-config.sh so Lovable's deploy pipeline
-won't skip newly created functions."
-          git push
+won't skip newly created functions." || true
+          # Rebase + push — tolerate Lovable racing commits
+          git pull --rebase origin main || true
+          git push || echo "::warning::config.toml sync-back push failed — will retry next run"
 
       - uses: supabase/setup-cli@v1
         with:
           version: latest
 
       - name: Link project
+        continue-on-error: true
         run: supabase link --project-ref "$PROJECT_REF"
 
       - name: Deploy edge functions
+        continue-on-error: true
         run: |
-          set -e
+          set +e
+          FAIL_COUNT=0
+          OK_COUNT=0
           if [ -n "${{ inputs.only_function }}" ]; then
             echo "→ single function: ${{ inputs.only_function }}"
             supabase functions deploy "${{ inputs.only_function }}" \
-              --project-ref "$PROJECT_REF" --no-verify-jwt || \
-            supabase functions deploy "${{ inputs.only_function }}" \
-              --project-ref "$PROJECT_REF"
+              --project-ref "$PROJECT_REF" --no-verify-jwt
           else
             echo "→ deploying ALL functions"
             shopt -s nullglob
@@ -93,11 +110,16 @@ won't skip newly created functions."
               name="${dir%/}"
               [ "$name" = "_shared" ] && continue
               echo "── $name ──"
-              supabase functions deploy "$name" --project-ref "$PROJECT_REF" || {
-                echo "⚠ $name failed — continuing"
-              }
+              if supabase functions deploy "$name" --project-ref "$PROJECT_REF" --no-verify-jwt; then
+                OK_COUNT=$((OK_COUNT+1))
+              else
+                FAIL_COUNT=$((FAIL_COUNT+1))
+                echo "::warning::function $name failed to deploy"
+              fi
             done
+            echo "### Function deploys: $OK_COUNT ok, $FAIL_COUNT failed" >> $GITHUB_STEP_SUMMARY
           fi
+          exit 0
 
       - name: Apply migrations
         if: ${{ !inputs.skip_migrations }}

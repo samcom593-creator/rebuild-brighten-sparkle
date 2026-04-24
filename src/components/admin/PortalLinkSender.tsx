@@ -156,7 +156,11 @@ export function PortalLinkSender() {
               </div>
               {a.stage && <Badge variant="outline" className="text-[9px]">{a.stage.replace(/_/g, " ")}</Badge>}
               {result?.ok && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />}
-              {result && !result.ok && <XCircle className="h-3.5 w-3.5 text-rose-400" titleAccess={result.error} />}
+              {result && !result.ok && (
+                <span title={result.error} className="inline-flex">
+                  <XCircle className="h-3.5 w-3.5 text-rose-400" />
+                </span>
+              )}
             </label>
           );
         })}

@@ -93,6 +93,8 @@ export default function HiringPipeline() {
   const [stateFilter, setStateFilter] = useState<string>("");
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<StageKey | null>(null);
+  // Mobile stage picker — one column visible at a time under md breakpoint
+  const [mobileStage, setMobileStage] = useState<StageKey>("new");
 
   // Live updates: when ANY applications row changes, invalidate the query.
   // Means the board refreshes in real-time as agents mark progress,
@@ -415,18 +417,46 @@ export default function HiringPipeline() {
         )}
       </div>
 
-      {/* Kanban — horizontally scrollable so every stage is always reachable */}
-      <div className="overflow-x-auto pb-2 -mx-4 md:mx-0 px-4 md:px-0">
-        <div className="grid grid-flow-col auto-cols-[280px] md:auto-cols-[300px] gap-3">
+      {/* Mobile stage picker — pill row, tap to switch the visible column. */}
+      <div className="md:hidden overflow-x-auto -mx-4 px-4 pb-1">
+        <div className="flex gap-1.5 min-w-max">
+          {STAGES.map(stage => (
+            <button
+              key={stage.key}
+              onClick={() => setMobileStage(stage.key)}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium whitespace-nowrap transition",
+                mobileStage === stage.key
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "border-border/50 text-muted-foreground bg-card hover:text-foreground",
+              )}
+            >
+              <span>{stage.label}</span>
+              <span className={cn(
+                "text-[10px] font-bold px-1.5 py-0.5 rounded-full",
+                mobileStage === stage.key ? "bg-primary-foreground/20" : "bg-muted",
+              )}>
+                {grouped[stage.key].length}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Kanban — horizontal scroll on md+, mobile shows one column full width */}
+      <div className="md:overflow-x-auto pb-2 md:-mx-4 md:px-4 md:mx-0">
+        <div className="flex flex-col md:grid md:grid-flow-col md:auto-cols-[300px] gap-3">
         {STAGES.map(stage => {
           const items = grouped[stage.key];
           const isDragTarget = dragOver === stage.key;
+          const hiddenOnMobile = mobileStage !== stage.key;
           return (
             <div
               key={stage.key}
               id={`col-${stage.key}`}
               className={cn(
                 "rounded-lg border-t-4 flex flex-col min-h-[400px]",
+                hiddenOnMobile && "hidden md:flex",
                 stage.color,
                 isDragTarget ? "bg-primary/10 ring-2 ring-primary" : stage.bg,
               )}

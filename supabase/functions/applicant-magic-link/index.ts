@@ -56,7 +56,10 @@ Deno.serve(async (req) => {
   });
   if (createErr) {
     const msg = (createErr as any)?.message ?? "";
-    if (!/already registered|already exists/i.test(msg)) {
+    const status = (createErr as any)?.status ?? 0;
+    // Idempotent on any "user exists" signal from Supabase Auth
+    const isDuplicate = status === 422 || /already/i.test(msg);
+    if (!isDuplicate) {
       return new Response(JSON.stringify({ error: "create_user_failed", detail: msg }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

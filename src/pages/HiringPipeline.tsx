@@ -1,8 +1,9 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Phone, Mail, MessageSquare, MoreVertical, RefreshCw, AlertTriangle,
   Download, Search, XCircle, CheckCircle2, GripVertical,
+  Star, PhoneOff, Voicemail, PhoneCall, Flame, Target, Zap,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -45,12 +46,66 @@ function classifyStage(a: any): StageKey {
   return "new";
 }
 
+// One-line CTA for every card, based on their stage + stage-age. Tells
+// the caller exactly what to say without having to open notes or guess.
+function nextAction(a: any): { text: string; urgency: "cold" | "warm" | "hot" } {
+  const stageDate = a.course_purchased_at || a.contracted_at || a.contacted_at || a.created_at;
+  const days = differenceInDays(new Date(), new Date(stageDate));
+  const prog = a.license_progress;
+
+  if (a.license_status === "licensed" || prog === "licensed")
+    return { text: "Provision first lead + portal login", urgency: "hot" };
+  if (prog === "fingerprints_done" || prog === "waiting_on_license")
+    return { text: "State processing — stay warm, plan first deal", urgency: "cold" };
+  if (prog === "passed_test")
+    return { text: "Push fingerprints — send NIPR link today", urgency: "hot" };
+  if (prog === "test_scheduled") {
+    const testDate = a.test_scheduled_date ? new Date(a.test_scheduled_date) : null;
+    const untilExam = testDate ? differenceInDays(testDate, new Date()) : null;
+    if (untilExam !== null && untilExam <= 2) return { text: `Exam in ${untilExam}d — confidence + sleep`, urgency: "hot" };
+    return { text: "Study tips · build confidence", urgency: "warm" };
+  }
+  if (prog === "finished_course") {
+    if (days >= 7) return { text: `${days}d since finish — SCHEDULE exam now`, urgency: "hot" };
+    return { text: "Book exam date this week", urgency: "warm" };
+  }
+  if (prog === "course_purchased") {
+    if (days >= 14) return { text: `${days}d in course — losing steam, call today`, urgency: "hot" };
+    if (days >= 7) return { text: "Check progress · push for exam date", urgency: "warm" };
+    return { text: "Check-in: how's the studying going?", urgency: "cold" };
+  }
+  if (a.contracted_at) return { text: "Push into licensing course — offer to pay", urgency: "warm" };
+  if (a.contacted_at || a.first_contact_attempt_at) {
+    if (days >= 3) return { text: `${days}d since contact — close or release`, urgency: "hot" };
+    return { text: "Confirm decision · get onto contract", urgency: "warm" };
+  }
+  if (days >= 2) return { text: `Applied ${days}d ago — CALL NOW`, urgency: "hot" };
+  return { text: "First contact · qualify fast", urgency: "warm" };
+}
+
+type Filter = "stalled" | "has_phone" | "top_tier" | "in_licensing" | "no_contact_7d";
+
 export default function HiringPipeline() {
   const { user, isAdmin } = useAuth();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
+  const [activeFilters, setActiveFilters] = useState<Set<Filter>>(new Set());
+  const [stateFilter, setStateFilter] = useState<string>("");
   const [dragId, setDragId] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<StageKey | null>(null);
+
+  // Live updates: when ANY applications row changes, invalidate the query.
+  // Means the board refreshes in real-time as agents mark progress,
+  // dealers move stages, etc. No F5 required.
+  useEffect(() => {
+    const channel = supabase
+      .channel("hiring-pipeline-live")
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "applications" },
+        () => qc.invalidateQueries({ queryKey: ["hiring-pipeline-v2"] }))
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [qc]);
 
   const { data: apps = [], isLoading, refetch } = useQuery({
     queryKey: ["hiring-pipeline-v2"],
@@ -67,20 +122,34 @@ export default function HiringPipeline() {
     staleTime: 30_000,
   });
 
-  // Group by stage + apply search. Within each column, sort so the most
-  // urgent cards float to the top: stalled first (desc by days stalled),
-  // then by AI tier if present, then by most recent update.
+  // Group by stage, apply search + filter pills. Within each column,
+  // sort so most urgent cards float to the top.
   const grouped = useMemo(() => {
     const q = search.trim().toLowerCase();
+    const st = stateFilter.trim().toUpperCase();
     const out: Record<StageKey, any[]> = {
       new: [], contacted: [], contracted: [], course_purchased: [],
       finished_course: [], passed_test: [], licensed: [],
+    };
+    const passesFilters = (a: any): boolean => {
+      if (activeFilters.has("has_phone") && !a.phone) return false;
+      if (activeFilters.has("top_tier") && !["A", "B"].includes(String(a.ai_score_tier || "").toUpperCase())) return false;
+      if (activeFilters.has("in_licensing") &&
+          !["course_purchased", "finished_course", "test_scheduled", "passed_test"].includes(a.license_progress || ""))
+        return false;
+      const last = a.last_response_at || a.updated_at || a.created_at;
+      const stalledDays = differenceInDays(new Date(), new Date(last));
+      if (activeFilters.has("stalled") && stalledDays < 7) return false;
+      if (activeFilters.has("no_contact_7d") && (a.last_contacted_at && differenceInDays(new Date(), new Date(a.last_contacted_at)) < 7)) return false;
+      if (st && !String(a.state || "").toUpperCase().startsWith(st)) return false;
+      return true;
     };
     apps.forEach((a: any) => {
       if (q) {
         const hay = `${a.first_name} ${a.last_name} ${a.email} ${a.phone || ""} ${a.state || ""}`.toLowerCase();
         if (!hay.includes(q)) return;
       }
+      if (!passesFilters(a)) return;
       const key = classifyStage(a);
       out[key].push(a);
     });
@@ -98,7 +167,7 @@ export default function HiringPipeline() {
       out[k].sort((a, b) => priority(b) - priority(a));
     });
     return out;
-  }, [apps, search]);
+  }, [apps, search, activeFilters, stateFilter]);
 
   // Top metrics — click to scroll/filter
   const totalApps = apps.length;
@@ -179,6 +248,37 @@ export default function HiringPipeline() {
     qc.invalidateQueries({ queryKey: ["hiring-pipeline-v2"] });
   }
 
+  type CallOutcome = "connected" | "voicemail" | "no_answer" | "not_interested";
+
+  async function logCallOutcome(id: string, outcome: CallOutcome) {
+    const now = new Date().toISOString();
+    const patch: any = {
+      first_contact_attempt_at: now,
+      updated_at: now,
+    };
+    if (outcome === "connected") {
+      patch.contacted_at = now;
+      patch.last_contacted_at = now;
+      patch.last_response_at = now;
+    } else if (outcome === "voicemail") {
+      patch.last_contacted_at = now;
+    } else if (outcome === "not_interested") {
+      patch.terminated_at = now;
+      patch.termination_reason = "not_interested";
+    }
+    // "no_answer" just bumps the attempt timestamp so stalled-ring recomputes
+    const { error } = await supabase.from("applications").update(patch).eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    const label: Record<CallOutcome, string> = {
+      connected: "Got through — marked contacted",
+      voicemail: "Voicemail logged",
+      no_answer: "No answer logged",
+      not_interested: "Released (not interested)",
+    };
+    toast.success(label[outcome]);
+    qc.invalidateQueries({ queryKey: ["hiring-pipeline-v2"] });
+  }
+
   function exportCSV() {
     const rows = apps.map((a: any) => ({
       name: `${a.first_name} ${a.last_name}`,
@@ -251,15 +351,68 @@ export default function HiringPipeline() {
         />
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search name, email, phone, state…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="pl-9"
+      {/* Search + filter pills */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[240px] max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search name, email, phone, state…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+
+        <FilterPill
+          active={activeFilters.has("stalled")}
+          onToggle={() => setActiveFilters(prev => {
+            const n = new Set(prev); n.has("stalled") ? n.delete("stalled") : n.add("stalled"); return n;
+          })}
+          icon={<AlertTriangle className="h-3 w-3" />} label="Stalled 7d+" danger
         />
+        <FilterPill
+          active={activeFilters.has("has_phone")}
+          onToggle={() => setActiveFilters(prev => {
+            const n = new Set(prev); n.has("has_phone") ? n.delete("has_phone") : n.add("has_phone"); return n;
+          })}
+          icon={<Phone className="h-3 w-3" />} label="Has phone"
+        />
+        <FilterPill
+          active={activeFilters.has("top_tier")}
+          onToggle={() => setActiveFilters(prev => {
+            const n = new Set(prev); n.has("top_tier") ? n.delete("top_tier") : n.add("top_tier"); return n;
+          })}
+          icon={<Star className="h-3 w-3" />} label="Tier A+B"
+        />
+        <FilterPill
+          active={activeFilters.has("in_licensing")}
+          onToggle={() => setActiveFilters(prev => {
+            const n = new Set(prev); n.has("in_licensing") ? n.delete("in_licensing") : n.add("in_licensing"); return n;
+          })}
+          icon={<Target className="h-3 w-3" />} label="In licensing"
+        />
+        <FilterPill
+          active={activeFilters.has("no_contact_7d")}
+          onToggle={() => setActiveFilters(prev => {
+            const n = new Set(prev); n.has("no_contact_7d") ? n.delete("no_contact_7d") : n.add("no_contact_7d"); return n;
+          })}
+          icon={<PhoneOff className="h-3 w-3" />} label="No contact 7d+" danger
+        />
+        <Input
+          placeholder="State (e.g. TX)"
+          value={stateFilter}
+          onChange={e => setStateFilter(e.target.value)}
+          className="w-28 h-8 text-xs uppercase"
+          maxLength={2}
+        />
+        {(activeFilters.size > 0 || stateFilter) && (
+          <button
+            onClick={() => { setActiveFilters(new Set()); setStateFilter(""); }}
+            className="text-xs text-muted-foreground hover:text-foreground underline"
+          >
+            Clear all
+          </button>
+        )}
       </div>
 
       {/* Kanban — horizontally scrollable so every stage is always reachable */}
@@ -308,6 +461,7 @@ export default function HiringPipeline() {
                       onMoveToStage={(s) => moveToStage(a.id, s)}
                       onMarkContacted={() => markContacted(a.id)}
                       onReject={(reason) => rejectApplicant(a.id, reason)}
+                      onLogCall={(outcome) => logCallOutcome(a.id, outcome)}
                     />
                   ))
                 )}
@@ -322,6 +476,27 @@ export default function HiringPipeline() {
 }
 
 /* ---------- Small components ---------- */
+
+function FilterPill({
+  active, onToggle, icon, label, danger,
+}: { active: boolean; onToggle: () => void; icon: React.ReactNode; label: string; danger?: boolean }) {
+  return (
+    <button
+      onClick={onToggle}
+      className={cn(
+        "inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[11px] font-medium transition",
+        active
+          ? (danger
+              ? "bg-destructive/15 border-destructive/40 text-destructive"
+              : "bg-primary/15 border-primary/40 text-primary")
+          : "border-border/40 bg-transparent text-muted-foreground hover:border-border hover:text-foreground",
+      )}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
 
 function MetricTile({
   label, value, danger, hint, onClick,
@@ -356,7 +531,7 @@ function formatPhone(raw: string | null | undefined): string {
 }
 
 function ApplicantCard({
-  app, dragging, onDragStart, onDragEnd, onMoveToStage, onMarkContacted, onReject,
+  app, dragging, onDragStart, onDragEnd, onMoveToStage, onMarkContacted, onReject, onLogCall,
 }: {
   app: any;
   dragging: boolean;
@@ -365,11 +540,13 @@ function ApplicantCard({
   onMoveToStage: (s: StageKey) => void;
   onMarkContacted: () => void;
   onReject: (reason: string) => void;
+  onLogCall: (outcome: "connected" | "voicemail" | "no_answer" | "not_interested") => void;
 }) {
   const lastActivity = app.last_response_at || app.updated_at || app.created_at;
   const days = differenceInDays(new Date(), new Date(lastActivity));
   const stalled = days >= 7;
   const veryStalled = days >= 14;
+  const cta = nextAction(app);
 
   const tierColor =
     app.ai_score_tier === "A" ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" :
@@ -443,16 +620,69 @@ function ApplicantCard({
         </a>
       )}
 
-      {/* Always-visible action row */}
+      {/* Next-action badge — tells the caller exactly what to say */}
+      <div
+        className={cn(
+          "flex items-start gap-1.5 rounded-md px-2 py-1.5 mb-2 text-[11px] leading-snug",
+          cta.urgency === "hot"  && "bg-destructive/10 text-destructive border border-destructive/30",
+          cta.urgency === "warm" && "bg-amber-500/10 text-amber-500 border border-amber-500/30",
+          cta.urgency === "cold" && "bg-muted text-muted-foreground border border-border/40",
+        )}
+      >
+        {cta.urgency === "hot" ? <Flame className="h-3 w-3 mt-0.5 shrink-0" /> :
+         cta.urgency === "warm" ? <Zap className="h-3 w-3 mt-0.5 shrink-0" /> :
+         <Target className="h-3 w-3 mt-0.5 shrink-0" />}
+        <span className="font-medium">{cta.text}</span>
+      </div>
+
+      {/* Always-visible action row: Call (with outcome logger) + Text + More */}
       <div className="flex items-center gap-1 pt-2 border-t border-border/30">
+        {app.phone && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="sm" variant="default"
+                className="flex-1 h-7 text-[11px]"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <PhoneCall className="h-3 w-3 mr-1" /> Call
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-52">
+              <DropdownMenuItem asChild>
+                <a href={`tel:${app.phone}`} className="cursor-pointer">
+                  <Phone className="h-3.5 w-3.5 mr-2" /> Dial now ({formatPhone(app.phone)})
+                </a>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => onLogCall("connected")}>
+                <CheckCircle2 className="h-3.5 w-3.5 mr-2 text-emerald-500" /> Got through
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onLogCall("voicemail")}>
+                <Voicemail className="h-3.5 w-3.5 mr-2 text-sky-500" /> Left voicemail
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onLogCall("no_answer")}>
+                <PhoneOff className="h-3.5 w-3.5 mr-2 text-muted-foreground" /> No answer
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={() => onLogCall("not_interested")}
+              >
+                <XCircle className="h-3.5 w-3.5 mr-2" /> Not interested · release
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
         {app.phone && (
           <Button
             size="sm" variant="outline"
-            className="flex-1 h-7 text-[11px]"
+            className="h-7 px-2 text-[11px]"
             asChild
             onClick={(e) => e.stopPropagation()}
+            title="Text"
           >
-            <a href={`sms:${app.phone}`}><MessageSquare className="h-3 w-3 mr-1" /> Text</a>
+            <a href={`sms:${app.phone}`}><MessageSquare className="h-3 w-3" /></a>
           </Button>
         )}
         <Button

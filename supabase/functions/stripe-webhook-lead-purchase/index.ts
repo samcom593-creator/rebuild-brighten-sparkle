@@ -41,20 +41,37 @@ serve(async (req) => {
   });
 
   const sig = req.headers.get("stripe-signature");
-  const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
   const rawBody = await req.text();
 
-  let event: Stripe.Event;
-  try {
-    event = await stripe.webhooks.constructEventAsync(
-      rawBody,
-      sig!,
-      webhookSecret!,
-      undefined,
-      Stripe.createSubtleCryptoProvider(),
-    );
-  } catch (err: any) {
-    return new Response(`Webhook signature failure: ${err.message}`, {
+  // Try every known signing secret. Stripe rotates rarely, but during cutover
+  // (a fresh webhook endpoint vs an old env var) we need to accept either.
+  // The fallback whsec_ below was provisioned 2026-04-27 alongside the new
+  // endpoint we_1TQktVC3Khd8IPVmGJSwaWGs and is the source of truth until
+  // Sam moves it into STRIPE_WEBHOOK_SECRET.
+  const candidates = [
+    Deno.env.get("STRIPE_WEBHOOK_SECRET"),
+    Deno.env.get("STRIPE_WEBHOOK_SECRET_2"),
+    "whsec_7gZLSPjKZAoi3HaoanEnX5YlcApuoyRE",
+  ].filter(Boolean) as string[];
+
+  let event: Stripe.Event | null = null;
+  let lastErr: any = null;
+  for (const secret of candidates) {
+    try {
+      event = await stripe.webhooks.constructEventAsync(
+        rawBody,
+        sig!,
+        secret,
+        undefined,
+        Stripe.createSubtleCryptoProvider(),
+      );
+      break;
+    } catch (err) {
+      lastErr = err;
+    }
+  }
+  if (!event) {
+    return new Response(`Webhook signature failure: ${(lastErr as any)?.message ?? "no candidate secret matched"}`, {
       status: 400,
       headers: corsHeaders,
     });

@@ -25,27 +25,29 @@ interface OfferDef {
   packageName: string;
 }
 
-// All four offers are subscription mode. The two existing weekly Gold/Platinum
-// price IDs are kept as fallbacks for back-compat, but Stripe env vars override.
+// All four offers are recurring monthly subscriptions on Sam's live Stripe account
+// (acct_1TKTj3C3Khd8IPVm). Price IDs were provisioned 2026-04-27 by
+// /tmp/stripe-driver/provision.mjs and are committed here as defaults so the
+// flow works without any env-var setup. STRIPE_PRICE_* env vars override.
 const OFFERS: Record<Sku, OfferDef> = {
   gold: {
     priceEnv: "STRIPE_PRICE_GOLD",
-    priceFallback: "price_1TKmDqC3Khd8IPVmNDSHuNu7",
+    priceFallback: "price_1TQkuOC3Khd8IPVmYoVGohFF", // $250/mo
     packageName: "Gold Leads (Standard)",
   },
   platinum: {
     priceEnv: "STRIPE_PRICE_PLATINUM",
-    priceFallback: "price_1TKmLhC3Khd8IPVmoAMmtBuM",
+    priceFallback: "price_1TQktTC3Khd8IPVmcZlMGdAC", // $500/mo
     packageName: "Platinum Vet Leads",
   },
   auto_dm: {
     priceEnv: "STRIPE_PRICE_AUTO_DM",
-    priceFallback: "",
+    priceFallback: "price_1TQkuQC3Khd8IPVmp8orL6ZF", // $250/mo
     packageName: "Auto-DM Engine",
   },
   social_growth: {
     priceEnv: "STRIPE_PRICE_SOCIAL_GROWTH",
-    priceFallback: "",
+    priceFallback: "price_1TQkuRC3Khd8IPVmA4ewp2Kc", // $500/mo
     packageName: "Full Social Media Growth Suite",
   },
 };

@@ -147,14 +147,37 @@ export function ExtendedStatsStrip({ agentId, title = "More numbers" }: Props) {
       let contractedCount = 0;
 
       if (!agentId) {
-        const [agentsRes, attRes, pipelineRes, licensedRes, contractedRes] = await Promise.all([
-          supabase.from("agents").select("id", { count: "exact", head: true }).eq("status", "active").eq("is_deactivated", false),
+        // "Active producers" = agents who EITHER summed >= $4k AP in the
+        // last 7 days OR were promoted into live/evaluated/transfer in the
+        // last 7 days. Replaces the old "status=active" agent flag, which
+        // counted everyone with an active row (including non-producers).
+        const sevenAgo = new Date(); sevenAgo.setDate(sevenAgo.getDate() - 7);
+        const sevenStr = sevenAgo.toISOString().split("T")[0];
+        const sevenISO = sevenAgo.toISOString();
+
+        const [activeDealsRes, releasedRes, attRes, pipelineRes, licensedRes, contractedRes] = await Promise.all([
+          supabase.from("deals")
+            .select("agent_id, annual_premium")
+            .gte("effective_date", sevenStr)
+            .in("status", ["submitted", "active"]),
+          supabase.from("agents")
+            .select("id")
+            .gte("stage_changed_at", sevenISO)
+            .in("onboarding_stage", ["live", "evaluated", "transfer"]),
           supabase.from("agent_attendance").select("status").eq("attendance_date", today),
           supabase.from("applications").select("*", { count: "exact", head: true }).is("terminated_at", null),
           supabase.from("applications").select("*", { count: "exact", head: true }).is("terminated_at", null).eq("license_status", "licensed"),
           supabase.from("applications").select("*", { count: "exact", head: true }).is("terminated_at", null).not("contracted_at", "is", null),
         ]);
-        activeAgents = agentsRes.count ?? 0;
+        const sumByAgent = new Map<string, number>();
+        for (const r of (activeDealsRes.data || []) as any[]) {
+          if (!r.agent_id) continue;
+          sumByAgent.set(r.agent_id, (sumByAgent.get(r.agent_id) || 0) + (Number(r.annual_premium) || 0));
+        }
+        const activeSet = new Set<string>();
+        for (const [id, ap] of sumByAgent) if (ap >= 4000) activeSet.add(id);
+        for (const r of (releasedRes.data || []) as any[]) if (r.id) activeSet.add(r.id);
+        activeAgents = activeSet.size;
         const distinctToday = new Set((todayRes.data || []).map((r: any) => r.agent_id).filter(Boolean));
         producedToday = distinctToday.size;
         const attendance = attRes.data || [];

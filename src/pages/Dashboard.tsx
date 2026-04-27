@@ -324,23 +324,36 @@ export default function Dashboard() {
 
       const shouldScope = !isAdmin && myDownlineIds.length > 0;
 
-      // Deals-based queries (Agent Link truth).
-      // "Weekly ALP" = deals POSTED this week (what Agent Link calls submission date),
-      // NOT deals whose effective_date falls in this week. A policy written today
-      // with effective_date 5/15 counts as *this week's* production — that's how
-      // every agency measures it. Column: public.deals.posted_at (populated from
-      // Agent Link's createdAt field by agentlink_live_pull).
-      let activeQ  = supabase.from("deals").select("agent_id").gte("effective_date", thirtyDaysAgoStr);
-      let weekDealsQ = supabase.from("deals").select("annual_premium, agent_id").gte("posted_at", weekStart.toISOString());
+      // Deals-based queries — agency-wide production by EFFECTIVE_DATE (the
+      // date the policy is in force). posted_at was unreliable because
+      // Agent Link re-syncs rewrite it on every pull, which made re-pulled
+      // deals from prior days inflate today's number. effective_date is the
+      // single agency-truth column.
+      // Status filter: only "submitted" or "active" — never count "cancelled"
+      // or "lapsed" toward production totals.
+      const VALID_STATUS = ["submitted", "active"] as const;
+      const yesterdayStartLocal = new Date(now); yesterdayStartLocal.setDate(now.getDate() - 1); yesterdayStartLocal.setHours(0,0,0,0);
+      const todayStartLocal     = new Date(now); todayStartLocal.setHours(0,0,0,0);
+      const yStr = yesterdayStartLocal.toISOString().split("T")[0];
+      const tStr = todayStartLocal.toISOString().split("T")[0];
+      const prevWeekStartDate = new Date(weekStart); prevWeekStartDate.setDate(weekStart.getDate() - 7);
+      const prevWeekEndDate   = new Date(weekStart); prevWeekEndDate.setDate(weekStart.getDate() - 1);
+      const pwStr  = prevWeekStartDate.toISOString().split("T")[0];
+      const pweStr = prevWeekEndDate.toISOString().split("T")[0];
 
-      // Comparison windows — same day last week + same week last week (prior Mon–today)
-      const yesterdayStart = new Date(now); yesterdayStart.setDate(now.getDate() - 1); yesterdayStart.setHours(0,0,0,0);
-      const todayStart     = new Date(now); todayStart.setHours(0,0,0,0);
-      const prevWeekStart  = new Date(weekStart); prevWeekStart.setDate(weekStart.getDate() - 7);
-      const prevWeekEnd    = new Date(weekStart); prevWeekEnd.setDate(weekStart.getDate() - 1); prevWeekEnd.setHours(23,59,59,999);
-      let todayDealsQ   = supabase.from("deals").select("annual_premium").gte("posted_at", todayStart.toISOString());
-      let yesterdayQ    = supabase.from("deals").select("annual_premium").gte("posted_at", yesterdayStart.toISOString()).lt("posted_at", todayStart.toISOString());
-      let prevWeekQ     = supabase.from("deals").select("annual_premium").gte("posted_at", prevWeekStart.toISOString()).lte("posted_at", prevWeekEnd.toISOString());
+      // Active-agent rule (Sam, 2026-04-27):
+      //   counts only if (sum AP >= $4k over last 7d effective_date) OR
+      //   (stage promoted to live/evaluated/transfer in last 7d).
+      // Replaces the old 30-day "any deal at all" definition.
+      const sevenAgo = new Date(now); sevenAgo.setDate(now.getDate() - 7);
+      const sevenStr = sevenAgo.toISOString().split("T")[0];
+      const sevenISO = sevenAgo.toISOString();
+      let activeQ     = supabase.from("deals").select("agent_id, annual_premium").gte("effective_date", sevenStr).in("status", VALID_STATUS as unknown as string[]);
+      const releasedQ = supabase.from("agents").select("id").gte("stage_changed_at", sevenISO).in("onboarding_stage", ["live", "evaluated", "transfer"]);
+      let weekDealsQ  = supabase.from("deals").select("annual_premium, agent_id").gte("effective_date", weekStartStr).in("status", VALID_STATUS as unknown as string[]);
+      let todayDealsQ = supabase.from("deals").select("annual_premium").eq("effective_date", tStr).in("status", VALID_STATUS as unknown as string[]);
+      let yesterdayQ  = supabase.from("deals").select("annual_premium").eq("effective_date", yStr).in("status", VALID_STATUS as unknown as string[]);
+      let prevWeekQ   = supabase.from("deals").select("annual_premium").gte("effective_date", pwStr).lte("effective_date", pweStr).in("status", VALID_STATUS as unknown as string[]);
       if (shouldScope) {
         todayDealsQ = todayDealsQ.in("agent_id", myDownlineIds);
         yesterdayQ  = yesterdayQ.in("agent_id", myDownlineIds);
@@ -356,10 +369,18 @@ export default function Dashboard() {
         appsQ       = appsQ.or(`assigned_agent_id.in.(${myDownlineIds.join(",")}),hiring_manager_user_id.eq.${user?.id}`);
       }
 
-      const [activeRes, weekDealsRes, presRes, appsRes, todayRes, yesterdayRes, prevWeekRes] =
-        await Promise.all([activeQ, weekDealsQ, presQ, appsQ, todayDealsQ, yesterdayQ, prevWeekQ]);
+      const [activeRes, releasedRes, weekDealsRes, presRes, appsRes, todayRes, yesterdayRes, prevWeekRes] =
+        await Promise.all([activeQ, releasedQ, weekDealsQ, presQ, appsQ, todayDealsQ, yesterdayQ, prevWeekQ]);
 
-      const activeAgentIds = new Set((activeRes.data || []).map((r: any) => r.agent_id).filter(Boolean));
+      // Compose active set from the two halves of the rule.
+      const sumByAgent = new Map<string, number>();
+      for (const r of (activeRes.data || []) as any[]) {
+        if (!r.agent_id) continue;
+        sumByAgent.set(r.agent_id, (sumByAgent.get(r.agent_id) || 0) + (Number(r.annual_premium) || 0));
+      }
+      const activeAgentIds = new Set<string>();
+      for (const [id, ap] of sumByAgent) if (ap >= 4000) activeAgentIds.add(id);
+      for (const r of (releasedRes.data || []) as any[]) if (r.id) activeAgentIds.add(r.id);
       const weeklyALP      = (weekDealsRes.data || []).reduce((s: number, r: any) => s + (Number(r.annual_premium) || 0), 0);
       const todayALP       = (todayRes.data     || []).reduce((s: number, r: any) => s + (Number(r.annual_premium) || 0), 0);
       const yesterdayALP   = (yesterdayRes.data || []).reduce((s: number, r: any) => s + (Number(r.annual_premium) || 0), 0);
@@ -394,10 +415,9 @@ export default function Dashboard() {
       };
     },
     enabled: !!user && !authLoading && (isAdmin || myDownlineIds.length > 0),
-    // Auto-refresh every 15 min so Weekly ALP + dials stay live without page reloads.
-    staleTime: 900_000,           // 15 min — cached within window
-    refetchInterval: 900_000,     // 15 min polling tick
-    refetchOnWindowFocus: true,   // refetch when tab regains focus
+    staleTime: 60_000,            // 1 min — keep numbers tight
+    refetchInterval: 60_000,      // 1 min polling
+    refetchOnWindowFocus: true,
   });
 
   // Agents flagged only when they've done NEITHER in the last 7 days:

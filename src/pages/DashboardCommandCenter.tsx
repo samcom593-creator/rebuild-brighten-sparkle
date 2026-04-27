@@ -503,22 +503,61 @@ export default function DashboardCommandCenter() {
     return filtered.sort((a, b) => b.totalAlp - a.totalAlp);
   }, [agentsData, searchQuery, activeFilter]);
 
-  // Summary stats - updated "Needs Attention" logic
+  // Active-producer rule (Sam, 2026-04-27):
+  //   counts as "active" only if EITHER
+  //     (a) summed annual_premium >= $4,000 over the last 7 days
+  //         (effective_date, status in submitted/active), OR
+  //     (b) onboarding stage changed in the last 7 days into a
+  //         post-training stage (live / evaluated / transfer)
+  // Anything else does not count, even if status='active' on the agent row.
+  const { data: activeProducerSet } = useQuery({
+    queryKey: ["active-producer-set-v1"],
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const sevenAgo = new Date(); sevenAgo.setDate(sevenAgo.getDate() - 7);
+      const sevenStr = sevenAgo.toISOString().split("T")[0];
+      const sevenISO = sevenAgo.toISOString();
+
+      const [dealsRes, releasedRes] = await Promise.all([
+        supabase.from("deals")
+          .select("agent_id, annual_premium")
+          .gte("effective_date", sevenStr)
+          .in("status", ["submitted", "active"]),
+        supabase.from("agents")
+          .select("id, onboarding_stage, stage_changed_at")
+          .gte("stage_changed_at", sevenISO)
+          .in("onboarding_stage", ["live", "evaluated", "transfer"]),
+      ]);
+
+      const sumByAgent = new Map<string, number>();
+      for (const r of (dealsRes.data || []) as any[]) {
+        if (!r.agent_id) continue;
+        sumByAgent.set(r.agent_id, (sumByAgent.get(r.agent_id) || 0) + (Number(r.annual_premium) || 0));
+      }
+      const set = new Set<string>();
+      for (const [id, ap] of sumByAgent) if (ap >= 4000) set.add(id);
+      for (const r of (releasedRes.data || []) as any[]) if (r.id) set.add(r.id);
+      return set;
+    },
+  });
+
   const summaryStats = useMemo(() => {
     if (!agentsData) return { totalAlp: 0, activeAgents: 0, producers: 0, weakPerformers: 0, totalDeals: 0 };
-    
-    const activeAgents = agentsData.filter((a) => !a.isDeactivated && !a.isInactive && a.totalDeals > 0);
-    const producers = agentsData.filter((a) => a.totalAlp > 0);
-    // "Needs Attention" = LIVE agents under $5,000 for the week
+
+    const set = activeProducerSet ?? new Set<string>();
+    const activeAgents = agentsData.filter((a) => !a.isDeactivated && !a.isInactive && set.has(a.id));
+    const producers = activeAgents;
+
     const dayOfWeek = new Date().getDay();
     const isThursdayOrLater = dayOfWeek >= 4 || dayOfWeek === 0;
-    const weak = agentsData.filter((a) => 
-      !a.isDeactivated && 
-      !a.isInactive && 
+    const weak = agentsData.filter((a) =>
+      !a.isDeactivated &&
+      !a.isInactive &&
       a.totalAlp < 5000 &&
       (isThursdayOrLater ? true : a.totalAlp === 0)
     );
-    
+
     return {
       totalAlp: agentsData.reduce((sum, a) => sum + a.totalAlp, 0),
       activeAgents: activeAgents.length,
@@ -526,7 +565,7 @@ export default function DashboardCommandCenter() {
       weakPerformers: weak.length,
       totalDeals: agentsData.reduce((sum, a) => sum + a.totalDeals, 0),
     };
-  }, [agentsData]);
+  }, [agentsData, activeProducerSet]);
 
   if (!isAdmin) {
     return (

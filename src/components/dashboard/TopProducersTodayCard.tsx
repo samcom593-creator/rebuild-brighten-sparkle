@@ -26,13 +26,16 @@ export function TopProducersTodayCard() {
   useEffect(() => {
     let mounted = true;
     const load = async () => {
-      // Deals posted today (America/Chicago) — same rule as the Weekly widget
+      // Deals with effective_date = today (agency truth column).
+      // Excludes cancelled/lapsed so totals match the dashboard exactly.
       const now = new Date();
-      const todayStart = new Date(now); todayStart.setHours(0,0,0,0);
+      const todayLocal = new Date(now); todayLocal.setHours(0,0,0,0);
+      const tStr = todayLocal.toISOString().split("T")[0];
       const { data } = await supabase
         .from("deals")
         .select(`annual_premium, agent_id, agents:agent_id(profile:profiles(full_name, avatar_url))`)
-        .gte("posted_at", todayStart.toISOString());
+        .eq("effective_date", tStr)
+        .in("status", ["submitted", "active"]);
 
       const map = new Map<string, Row>();
       let sum = 0;
@@ -56,7 +59,7 @@ export function TopProducersTodayCard() {
       setLoading(false);
     };
     load();
-    const t = setInterval(load, 5 * 60 * 1000); // 5 min
+    const t = setInterval(load, 60 * 1000); // 1 min — match dashboard cadence
     return () => { mounted = false; clearInterval(t); };
   }, []);
 

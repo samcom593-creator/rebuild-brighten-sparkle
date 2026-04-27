@@ -27,6 +27,12 @@ function startOfTodayISO(): string {
   return d.toISOString();
 }
 
+function todayLocalDateStr(): string {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString().split("T")[0];
+}
+
 export function LivePulse() {
   const [apps, setApps] = useState(0);
   const [deals, setDeals] = useState(0);
@@ -43,13 +49,16 @@ export function LivePulse() {
     forcePulse((n) => n + 1);
   };
 
-  // Initial counts for today
+  // Initial counts for today.
+  // Deals counted by effective_date (agency truth) and only valid statuses,
+  // not by created_at — re-syncs would otherwise re-count the same deal.
   useEffect(() => {
     const start = startOfTodayISO();
+    const tStr = todayLocalDateStr();
     (async () => {
       const [a, d, m] = await Promise.all([
         supabase.from("applications").select("id", { count: "exact", head: true }).gte("created_at", start),
-        supabase.from("deals").select("id", { count: "exact", head: true }).gte("created_at", start),
+        supabase.from("deals").select("id", { count: "exact", head: true }).eq("effective_date", tStr).in("status", ["submitted", "active"]),
         supabase.from("inbox_messages").select("id", { count: "exact", head: true }).eq("direction", "inbound").gte("received_at", start),
       ]);
       setApps(a.count ?? 0);
@@ -58,14 +67,23 @@ export function LivePulse() {
     })();
   }, []);
 
-  // Realtime subscriptions
+  // Realtime subscriptions.
+  // Deal inserts only tick the counter if the new row's effective_date is
+  // today AND status is valid — re-syncs of historical deals don't inflate.
   useEffect(() => {
+    const todayStr = todayLocalDateStr();
     const ch = supabase.channel("apex-live-pulse")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "applications" }, () => {
         setApps((n) => n + 1); setActivity((n) => n + 1); pulse("apps"); pulse("activity");
       })
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "deals" }, () => {
-        setDeals((n) => n + 1); setActivity((n) => n + 1); pulse("deals"); pulse("activity");
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "deals" }, (payload: any) => {
+        const row = payload?.new ?? {};
+        const effOk = String(row.effective_date ?? "").startsWith(todayStr);
+        const statusOk = row.status === "submitted" || row.status === "active";
+        if (effOk && statusOk) {
+          setDeals((n) => n + 1); pulse("deals");
+        }
+        setActivity((n) => n + 1); pulse("activity");
       })
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "inbox_messages", filter: "direction=eq.inbound" }, () => {
         setDms((n) => n + 1); setActivity((n) => n + 1); pulse("dms"); pulse("activity");

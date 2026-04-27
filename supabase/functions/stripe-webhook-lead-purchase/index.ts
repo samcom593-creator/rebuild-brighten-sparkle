@@ -37,7 +37,7 @@ serve(async (req) => {
     const session = event.data.object as any;
     const metadata = session.metadata || {};
     const requestId = metadata.lead_purchase_request_id || metadata.lead_purchase_id;
-    const agentId = metadata.agent_id;
+    let agentId = metadata.agent_id;
     const packageType = metadata.package_type || "front_page";
 
     if (requestId) {
@@ -61,6 +61,85 @@ serve(async (req) => {
         status: "confirmed",
         confirmed_at: new Date().toISOString(),
       });
+    }
+
+    // Public Stripe Payment Links don't carry agent_id metadata. Resolve the
+    // payer to an APEX agent via customer email so the post-pay flow still
+    // records the charge + alerts Sam. Fix shipped 2026-04-27 after Sam
+    // reported a $250 payment that never landed in the DB.
+    const customerEmail =
+      session.customer_email ||
+      session.customer_details?.email ||
+      null;
+    const customerName =
+      session.customer_details?.name ||
+      null;
+
+    if (!agentId && customerEmail) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("email", customerEmail)
+        .maybeSingle();
+      if (profile?.id) {
+        const { data: agent } = await supabase
+          .from("agents")
+          .select("id")
+          .eq("profile_id", profile.id)
+          .maybeSingle();
+        if (agent?.id) agentId = agent.id;
+      }
+    }
+
+    // Always upsert into lead_purchases (canonical charge ledger). Idempotent
+    // on stripe_charge_id so retried webhooks don't double-insert.
+    const chargeKey = session.payment_intent || session.id;
+    if (chargeKey) {
+      await supabase.from("lead_purchases").upsert(
+        {
+          stripe_charge_id: chargeKey,
+          amount_cents: session.amount_total ?? null,
+          currency: session.currency || "usd",
+          customer_id: session.customer || null,
+          customer_email: customerEmail,
+          customer_name: customerName,
+          description: metadata.sku || metadata.package_type || "stripe payment link",
+          agent_id: agentId || null,
+          charged_at: new Date(((session.created as number) || Math.floor(Date.now() / 1000)) * 1000).toISOString(),
+          metadata: {
+            session_id: session.id,
+            subscription_id: session.subscription || null,
+            mode: session.mode || null,
+            payment_link: session.payment_link || null,
+            ...metadata,
+          },
+        },
+        { onConflict: "stripe_charge_id" },
+      );
+    }
+
+    // Fire Sam-facing alert (non-blocking) so every paid checkout pings him
+    // even when no agent was matched. The bot_alerts trigger fans this out
+    // to the dispatcher (email + ntfy + ProfitReveal).
+    try {
+      await supabase.from("bot_alerts").insert({
+        source: "stripe_webhook_lead_purchase",
+        event_type: "stripe_payment",
+        severity: "info",
+        subject: `💸 $${(session.amount_total ?? 0) / 100} from ${customerName || customerEmail || "unknown"}`,
+        body: JSON.stringify({
+          email: customerEmail,
+          name: customerName,
+          amount_cents: session.amount_total,
+          mode: session.mode,
+          session_id: session.id,
+          subscription_id: session.subscription,
+          agent_id: agentId,
+          sku: metadata.sku,
+        }),
+      });
+    } catch (e) {
+      console.error("bot_alerts insert failed", e);
     }
   }
 

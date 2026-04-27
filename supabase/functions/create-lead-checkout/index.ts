@@ -25,19 +25,19 @@ interface OfferDef {
   packageName: string;
 }
 
-// All four offers are recurring monthly subscriptions on Sam's live Stripe account
-// (acct_1TKTj3C3Khd8IPVm). Price IDs were provisioned 2026-04-27 by
-// /tmp/stripe-driver/provision.mjs and are committed here as defaults so the
-// flow works without any env-var setup. STRIPE_PRICE_* env vars override.
+// Live Stripe (acct_1TKTj3C3Khd8IPVm). Cadences:
+//   leads (gold/platinum) = WEEKLY  (Sunday-drop product cadence)
+//   social (auto_dm/social_growth) = MONTHLY
+// STRIPE_PRICE_* env vars override the fallbacks if set.
 const OFFERS: Record<Sku, OfferDef> = {
   gold: {
     priceEnv: "STRIPE_PRICE_GOLD",
-    priceFallback: "price_1TQkuOC3Khd8IPVmYoVGohFF", // $250/mo
+    priceFallback: "price_1TKmDqC3Khd8IPVmNDSHuNu7", // $250/wk
     packageName: "Gold Leads (Standard)",
   },
   platinum: {
     priceEnv: "STRIPE_PRICE_PLATINUM",
-    priceFallback: "price_1TQktTC3Khd8IPVmcZlMGdAC", // $500/mo
+    priceFallback: "price_1TKmLhC3Khd8IPVmoAMmtBuM", // $500/wk
     packageName: "Platinum Vet Leads",
   },
   auto_dm: {
@@ -98,6 +98,17 @@ Deno.serve(
         customer_email: customerId ? undefined : email,
         line_items: [{ price: priceId, quantity: 1 }],
         mode: "subscription",
+        // Sam wants every payment method enabled. Stripe will only show those
+        // valid for a recurring subscription + the customer's region.
+        payment_method_types: [
+          "card",         // covers Apple Pay + Google Pay automatically
+          "us_bank_account",
+          "link",
+          "cashapp",
+          "afterpay_clearpay",
+          "amazon_pay",
+          "klarna",
+        ],
         success_url: `${origin}/purchase-leads?success=true&sku=${sku}`,
         cancel_url: `${origin}/purchase-leads?canceled=true&sku=${sku}`,
         metadata: {

@@ -50,6 +50,7 @@ import { RecognitionQueue } from "@/components/admin/RecognitionQueue";
 import { DuplicateMergeTool } from "@/components/admin/DuplicateMergeTool";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 import { ActivityFeedWidget } from "@/components/dashboard/ActivityFeedWidget";
+import { ProfitReveal } from "@/components/dashboard/ProfitReveal";
 import { CourseProgressPanel } from "@/components/admin/CourseProgressPanel";
 import { StatCardPopup, type StatType } from "@/components/dashboard/StatCardPopup";
 import { InviteTeamModal } from "@/components/dashboard/InviteTeamModal";
@@ -1012,6 +1013,9 @@ export default function DashboardCommandCenter() {
             </HideableCard>
             <HideableCard cardKey="admin.activity-feed" label="Activity Feed">
               <ActivityFeedWidget limit={12} />
+            </HideableCard>
+            <HideableCard cardKey="admin.profit-reveal" label="APEX Offer Revenue">
+              <ProfitReveal />
             </HideableCard>
           </div>
         </div>

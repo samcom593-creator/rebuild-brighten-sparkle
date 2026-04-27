@@ -103,6 +103,22 @@ export function OffersPanel({
                 </div>
               )}
 
+              {offer.heroImageUrl && (
+                <div
+                  className={cn(
+                    "relative w-full overflow-hidden border-b border-border/30",
+                    compact ? "h-28" : "h-40",
+                  )}
+                >
+                  <img
+                    src={offer.heroImageUrl}
+                    alt={offer.heroImagePrompt}
+                    loading="lazy"
+                    className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+                </div>
+              )}
               <div className={cn("space-y-4", compact ? "p-4" : "p-6")}>
                 <div className="flex items-center gap-3">
                   <div className={cn("p-3 rounded-xl", accent.bg)}>
@@ -133,7 +149,9 @@ export function OffersPanel({
                   <span className={cn("font-bold", compact ? "text-2xl" : "text-3xl")}>
                     ${offer.price}
                   </span>
-                  <span className="text-xs text-muted-foreground">/month</span>
+                  <span className="text-xs text-muted-foreground">
+                    {offer.cadence === "weekly" ? "/week" : "/month"}
+                  </span>
                 </div>
 
                 <Button
@@ -154,7 +172,7 @@ export function OffersPanel({
                   )}
                 </Button>
                 <p className="text-[10px] text-muted-foreground -mt-2 text-center">
-                  Recurring monthly subscription · Cancel anytime
+                  Recurring {offer.cadence} subscription · Cancel anytime
                 </p>
               </div>
             </Card>

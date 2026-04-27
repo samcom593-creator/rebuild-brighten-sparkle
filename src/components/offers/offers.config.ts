@@ -9,11 +9,17 @@ export interface OfferDef {
   description: string;
   features: string[];
   price: number;
-  cadence: "monthly";
+  cadence: "weekly" | "monthly";
   popular?: boolean;
   category: "leads" | "social";
   icon: LucideIcon;
   accent: "amber" | "primary" | "fuchsia" | "violet";
+  /** Hero image rendered at the top of the offer card. Source it from Unsplash
+   *  by keyword (deterministic — same query, same image) so we don't need to
+   *  ship binary assets. Replace with a custom Cloudinary/CDN URL when ready. */
+  heroImageUrl: string;
+  /** Prompt to feed nanobanana / Sora when generating a custom hero image. */
+  heroImagePrompt: string;
 }
 
 export const OFFERS: OfferDef[] = [
@@ -24,17 +30,19 @@ export const OFFERS: OfferDef[] = [
     description:
       "Quality leads under 30 days old. Perfect for agents building a consistent pipeline with proven prospects.",
     features: [
-      "Unlimited leads every month",
+      "Unlimited leads every week",
       "30 days old or less",
       "Pre-qualified prospects",
       "Verified contact info",
-      "Weekly Sunday drops, midnight CST",
+      "Sunday midnight CST drop",
     ],
     price: 250,
-    cadence: "monthly",
+    cadence: "weekly",
     category: "leads",
     icon: Package,
     accent: "amber",
+    heroImageUrl: "https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=900&q=80",
+    heroImagePrompt: "Macro shot of a polished gold ingot stacked on a dark navy desk next to a glowing iPhone screen showing a CRM lead list, cinematic light, shallow depth of field",
   },
   {
     sku: "platinum",
@@ -43,18 +51,20 @@ export const OFFERS: OfferDef[] = [
     description:
       "Fresh leads logged within the past week. The hottest prospects with maximum conversion potential.",
     features: [
-      "Unlimited leads every month",
+      "Unlimited leads every week",
       "Logged this week — fresh",
       "Highest conversion rates",
       "First-priority access",
       "Exclusive territories",
     ],
     price: 500,
-    cadence: "monthly",
+    cadence: "weekly",
     popular: true,
     category: "leads",
     icon: Star,
     accent: "primary",
+    heroImageUrl: "https://images.unsplash.com/photo-1542228262-3d663b306a55?auto=format&fit=crop&w=900&q=80",
+    heroImagePrompt: "Veteran in dress uniform shaking hands with a young insurance agent across a clean desk, American flag softly blurred behind, golden-hour lighting, premium cinematic feel",
   },
   {
     sku: "auto_dm",
@@ -77,6 +87,8 @@ export const OFFERS: OfferDef[] = [
     category: "social",
     icon: Bot,
     accent: "fuchsia",
+    heroImageUrl: "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&w=900&q=80",
+    heroImagePrompt: "Phone screen overflowing with Instagram DM notification badges glowing magenta, set against a dark studio backdrop, hyper-realistic neon product shot",
   },
   {
     sku: "social_growth",
@@ -102,6 +114,8 @@ export const OFFERS: OfferDef[] = [
     category: "social",
     icon: Rocket,
     accent: "violet",
+    heroImageUrl: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=900&q=80",
+    heroImagePrompt: "Mission-control wall of screens showing real-time Instagram + TikTok analytics, follower counts climbing, dim purple ambient light, futuristic agency operations room",
   },
 ];
 

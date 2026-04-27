@@ -140,10 +140,13 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // UUID referrer (manager selected)
+    // UUID referrer (manager selected) — also populate referral_manager_id so
+    // recruit-credit dashboards that filter on either column show the right
+    // credit (Sam 2026-04-27: KJ/Jay's pull-ups were invisible because this
+    // column was null even though assigned_agent_id was right).
     const { error: updateError } = await supabaseAdmin
       .from("applications")
-      .update({ assigned_agent_id: selected })
+      .update({ assigned_agent_id: selected, referral_manager_id: selected })
       .eq("id", data.applicationId);
 
     if (updateError) {

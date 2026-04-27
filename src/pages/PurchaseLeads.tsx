@@ -72,8 +72,8 @@ export default function PurchaseLeads() {
       const isSocial = sku === "auto_dm" || sku === "social_growth";
       toast.success(
         isSocial
-          ? "🎉 Package activated! We'll reach out within 1 business day to onboard you."
-          : "🎉 Subscription activated! Your leads will start flowing.",
+          ? "🎉 Subscription activated! We'll reach out within 1 business day to onboard you."
+          : "🎉 Subscription activated! Your leads start flowing this week.",
       );
       playSound("celebrate");
       window.history.replaceState({}, "", window.location.pathname);

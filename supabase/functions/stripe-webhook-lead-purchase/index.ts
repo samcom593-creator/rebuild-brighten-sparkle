@@ -23,11 +23,13 @@ const SKU_NAME: Record<string, string> = {
   social_growth: "Full Social Media Growth Suite",
 };
 
+// All SKUs are subscriptions now (per-month). Field kept on the row for
+// future SKUs that might be one-off packages.
 const SKU_MODE: Record<string, "subscription" | "payment"> = {
   gold: "subscription",
   platinum: "subscription",
-  auto_dm: "payment",
-  social_growth: "payment",
+  auto_dm: "subscription",
+  social_growth: "subscription",
 };
 
 serve(async (req) => {

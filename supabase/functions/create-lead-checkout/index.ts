@@ -1,16 +1,17 @@
 // create-lead-checkout — single Stripe Checkout entry point for ALL 4 offers.
+// Every SKU is a recurring monthly subscription.
 //
 // SKUs (legacy "tier" alias kept for back-compat with the old PurchaseLeads page):
-//   gold              — subscription, $250/wk  (Gold Leads)
-//   platinum          — subscription, $500/wk  (Platinum Vet Leads)
-//   auto_dm           — one-time payment, $250 (Auto-DM Engine package)
-//   social_growth     — one-time payment, $500 (Full Social Media Growth Suite)
+//   gold              — $250/month (Gold Leads)
+//   platinum          — $500/month (Platinum Vet Leads)
+//   auto_dm           — $250/month (Auto-DM Engine)
+//   social_growth     — $500/month (Full Social Media Growth Suite)
 //
 // Optional body params:
 //   agent_id          — manager purchasing on behalf of an agent on their team
 //
-// Price IDs come from env first, then fall back to the production constants
-// so a fresh Stripe-MCP-provisioned price can drop in without a code change.
+// Price IDs come from env first, then fall back to the constants so the
+// Stripe-driven provisioning script can drop fresh IDs in without a redeploy.
 
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createHandler } from "../_shared/handler.ts";
@@ -21,33 +22,30 @@ type Sku = "gold" | "platinum" | "auto_dm" | "social_growth";
 interface OfferDef {
   priceEnv: string;
   priceFallback: string;
-  mode: "subscription" | "payment";
   packageName: string;
 }
 
+// All four offers are subscription mode. The two existing weekly Gold/Platinum
+// price IDs are kept as fallbacks for back-compat, but Stripe env vars override.
 const OFFERS: Record<Sku, OfferDef> = {
   gold: {
     priceEnv: "STRIPE_PRICE_GOLD",
     priceFallback: "price_1TKmDqC3Khd8IPVmNDSHuNu7",
-    mode: "subscription",
     packageName: "Gold Leads (Standard)",
   },
   platinum: {
     priceEnv: "STRIPE_PRICE_PLATINUM",
     priceFallback: "price_1TKmLhC3Khd8IPVmoAMmtBuM",
-    mode: "subscription",
     packageName: "Platinum Vet Leads",
   },
   auto_dm: {
     priceEnv: "STRIPE_PRICE_AUTO_DM",
     priceFallback: "",
-    mode: "payment",
     packageName: "Auto-DM Engine",
   },
   social_growth: {
     priceEnv: "STRIPE_PRICE_SOCIAL_GROWTH",
     priceFallback: "",
-    mode: "payment",
     packageName: "Full Social Media Growth Suite",
   },
 };
@@ -97,7 +95,7 @@ Deno.serve(
         customer: customerId,
         customer_email: customerId ? undefined : email,
         line_items: [{ price: priceId, quantity: 1 }],
-        mode: offer.mode,
+        mode: "subscription",
         success_url: `${origin}/purchase-leads?success=true&sku=${sku}`,
         cancel_url: `${origin}/purchase-leads?canceled=true&sku=${sku}`,
         metadata: {
@@ -107,31 +105,19 @@ Deno.serve(
           package_name: offer.packageName,
           agent_id: agentId ?? "",
         },
-        // Subscriptions inherit metadata to the subscription object too,
-        // so cancellation/refund events can still reach the right purchaser.
-        subscription_data: offer.mode === "subscription"
-          ? {
-              metadata: {
-                user_id: auth!.userId,
-                sku,
-                package_name: offer.packageName,
-                agent_id: agentId ?? "",
-              },
-            }
-          : undefined,
-        payment_intent_data: offer.mode === "payment"
-          ? {
-              metadata: {
-                user_id: auth!.userId,
-                sku,
-                package_name: offer.packageName,
-                agent_id: agentId ?? "",
-              },
-            }
-          : undefined,
+        // Subscription metadata propagates to the subscription object too,
+        // so cancellation events still resolve back to the right purchaser.
+        subscription_data: {
+          metadata: {
+            user_id: auth!.userId,
+            sku,
+            package_name: offer.packageName,
+            agent_id: agentId ?? "",
+          },
+        },
       });
 
-      return jsonResponse({ url: session.url, sku, mode: offer.mode });
+      return jsonResponse({ url: session.url, sku, mode: "subscription" });
     },
   ),
 );

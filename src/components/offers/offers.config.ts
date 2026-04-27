@@ -9,7 +9,7 @@ export interface OfferDef {
   description: string;
   features: string[];
   price: number;
-  cadence: "weekly" | "one-time";
+  cadence: "monthly";
   popular?: boolean;
   category: "leads" | "social";
   icon: LucideIcon;
@@ -24,14 +24,14 @@ export const OFFERS: OfferDef[] = [
     description:
       "Quality leads under 30 days old. Perfect for agents building a consistent pipeline with proven prospects.",
     features: [
-      "Unlimited leads each week",
+      "Unlimited leads every month",
       "30 days old or less",
       "Pre-qualified prospects",
       "Verified contact info",
-      "Weekly Sunday drop, midnight CST",
+      "Weekly Sunday drops, midnight CST",
     ],
     price: 250,
-    cadence: "weekly",
+    cadence: "monthly",
     category: "leads",
     icon: Package,
     accent: "amber",
@@ -43,14 +43,14 @@ export const OFFERS: OfferDef[] = [
     description:
       "Fresh leads logged within the past week. The hottest prospects with maximum conversion potential.",
     features: [
-      "Unlimited leads each week",
+      "Unlimited leads every month",
       "Logged this week — fresh",
       "Highest conversion rates",
       "First-priority access",
       "Exclusive territories",
     ],
     price: 500,
-    cadence: "weekly",
+    cadence: "monthly",
     popular: true,
     category: "leads",
     icon: Star,
@@ -73,7 +73,7 @@ export const OFFERS: OfferDef[] = [
       "CRM sync — every conversation logged",
     ],
     price: 250,
-    cadence: "one-time",
+    cadence: "monthly",
     category: "social",
     icon: Bot,
     accent: "fuchsia",
@@ -97,7 +97,7 @@ export const OFFERS: OfferDef[] = [
       "Priority support + onboarding call",
     ],
     price: 500,
-    cadence: "one-time",
+    cadence: "monthly",
     popular: true,
     category: "social",
     icon: Rocket,

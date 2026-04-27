@@ -133,9 +133,7 @@ export function OffersPanel({
                   <span className={cn("font-bold", compact ? "text-2xl" : "text-3xl")}>
                     ${offer.price}
                   </span>
-                  <span className="text-xs text-muted-foreground">
-                    {offer.cadence === "weekly" ? "/week" : "one-time"}
-                  </span>
+                  <span className="text-xs text-muted-foreground">/month</span>
                 </div>
 
                 <Button
@@ -151,15 +149,13 @@ export function OffersPanel({
                   ) : (
                     <>
                       <DollarSign className="h-4 w-4" />
-                      {agentId ? "Purchase for agent" : "Purchase"}
+                      {agentId ? "Subscribe agent" : "Subscribe"}
                     </>
                   )}
                 </Button>
-                {offer.cadence === "weekly" && (
-                  <p className="text-[10px] text-muted-foreground -mt-2 text-center">
-                    Recurring subscription · Cancel anytime
-                  </p>
-                )}
+                <p className="text-[10px] text-muted-foreground -mt-2 text-center">
+                  Recurring monthly subscription · Cancel anytime
+                </p>
               </div>
             </Card>
           );

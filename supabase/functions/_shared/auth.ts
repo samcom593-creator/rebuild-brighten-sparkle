@@ -25,8 +25,10 @@ export async function requireAuth(req: Request): Promise<AuthContext> {
   });
 
   const token = authHeader.replace("Bearer ", "");
-  const { data, error } = await client.auth.getClaims(token);
-  if (error || !data?.claims?.sub) {
+  // getUser is the stable API across Supabase JS 2.x.
+  // (getClaims was added in 2.46+ but sdk pinned to 2.45.0 throws "is not a function".)
+  const { data, error } = await client.auth.getUser(token);
+  if (error || !data?.user?.id) {
     throw new AuthError("Invalid token", 401);
   }
 
@@ -35,9 +37,9 @@ export async function requireAuth(req: Request): Promise<AuthContext> {
   });
 
   return {
-    userId: data.claims.sub,
-    email: data.claims.email as string | undefined,
-    role: data.claims.role as string | undefined,
+    userId: data.user.id,
+    email: data.user.email,
+    role: (data.user.app_metadata?.role || data.user.user_metadata?.role) as string | undefined,
     client,
     serviceClient,
   };

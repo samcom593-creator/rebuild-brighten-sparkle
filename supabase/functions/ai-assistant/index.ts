@@ -128,8 +128,11 @@ serve(async (req) => {
     );
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    
+    // getUser is the stable auth API; getClaims requires Supabase JS 2.46+ which isn't pinned here.
+    const { data: userData, error: userErr } = await supabase.auth.getUser(token);
+    const claimsData = userData?.user ? { claims: { sub: userData.user.id } } : null;
+    const claimsError = userErr;
+
     if (claimsError || !claimsData?.claims) {
       console.error('Invalid token:', claimsError?.message);
       return new Response(

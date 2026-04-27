@@ -13,12 +13,14 @@ name: Deploy Supabase (functions + migrations)
 
 on:
   push:
-    branches: [main]
+    branches: [main, "feat/**"]
     paths:
       - "supabase/functions/**"
       - "supabase/migrations/**"
       - "supabase/config.toml"
       - ".github/workflows/deploy-supabase.yml"
+  pull_request:
+    branches: [main]
   workflow_dispatch:
     inputs:
       only_function:

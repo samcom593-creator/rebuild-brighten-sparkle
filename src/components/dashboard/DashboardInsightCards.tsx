@@ -75,13 +75,18 @@ export function DashboardInsightCards() {
           .select("license_progress, license_status")
           .is("terminated_at", null)
           .neq("license_status", "licensed"),
-        // This week ALP — Agent Link truth source (deals.annual_premium by effective_date)
-        supabase.from("deals").select("annual_premium").gte("effective_date", weekStartStr),
-        // Last week ALP — same day-of-week range as this week so Wed-to-Wed compares cleanly
+        // This week ALP — submitted/active only, exclude cancelled/lapsed
         supabase.from("deals").select("annual_premium")
-          .gte("effective_date", lastWeekStartStr).lt("effective_date", lastWeekMatchedEndStr),
+          .gte("effective_date", weekStartStr)
+          .in("status", ["submitted", "active"]),
+        // Last week ALP — same day-of-week range
+        supabase.from("deals").select("annual_premium")
+          .gte("effective_date", lastWeekStartStr).lt("effective_date", lastWeekMatchedEndStr)
+          .in("status", ["submitted", "active"]),
         // Month-to-date ALP
-        supabase.from("deals").select("annual_premium").gte("effective_date", monthStartStr),
+        supabase.from("deals").select("annual_premium")
+          .gte("effective_date", monthStartStr)
+          .in("status", ["submitted", "active"]),
         // Insuracloud snapshots (real commissions)
         supabase.from("insuracloud_snapshots" as any)
           .select("*")
@@ -167,7 +172,8 @@ export function DashboardInsightCards() {
         estimate,
       };
     },
-    staleTime: 120000,
+    staleTime: 60_000,
+    refetchInterval: 60_000,
   });
 
   if (!data) return null;

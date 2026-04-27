@@ -184,8 +184,9 @@ export default function DashboardCommandCenter() {
   // Fetch all agents with production stats using server-side aggregation
   const { data: agentsData, isLoading, refetch } = useQuery({
     queryKey: ["command-center-agents", dateRange],
-    staleTime: 120000, // 2 minutes - prevent unnecessary refetches
-    gcTime: 600000, // 10 minutes cache
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+    gcTime: 600_000,
     queryFn: async () => {
       // First get all agents with profiles (with user_id fallback)
       const { data: agents, error: agentsError } = await supabase

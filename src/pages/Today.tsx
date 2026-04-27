@@ -41,14 +41,18 @@ export default function Today() {
         const weekStart7 = new Date(Date.now() - 7 * 86400000).toISOString();
 
         const [
-          { data: prod },
+          { data: deals },
           { data: agents },
           { data: apps },
           { data: unr },
           { data: contracted },
         ] = await Promise.all([
-          supabase.from("daily_production").select("agent_id, aop, deals_closed")
-            .gte("production_date", monday).lte("production_date", sunday),
+          // Pull from deals (Agent Link truth) by effective_date with valid
+          // status — matches the rest of the dashboards. daily_production
+          // is agent self-report and drifts from agency totals.
+          supabase.from("deals").select("agent_id, annual_premium")
+            .gte("effective_date", monday).lte("effective_date", sunday)
+            .in("status", ["submitted", "active"]),
           supabase.from("agents").select("id, profile:profiles(full_name)")
             .eq("is_deactivated", false).eq("is_inactive", false).eq("status", "active"),
           supabase.from("applications").select("id", { count: "exact", head: true })
@@ -66,10 +70,10 @@ export default function Today() {
 
         const totals: Record<string, number> = {};
         let totalAlp = 0, totalDeals = 0;
-        for (const r of (prod ?? []) as any[]) {
-          const n = Number(r.aop ?? 0);
-          totalAlp += n; totalDeals += Number(r.deals_closed ?? 0);
-          totals[r.agent_id] = (totals[r.agent_id] ?? 0) + n;
+        for (const r of (deals ?? []) as any[]) {
+          const n = Number(r.annual_premium ?? 0);
+          totalAlp += n; totalDeals += 1;
+          if (r.agent_id) totals[r.agent_id] = (totals[r.agent_id] ?? 0) + n;
         }
         const top = Object.entries(totals)
           .map(([id, alp]) => ({ name: nameById[id] ?? "Agent", alp }))

@@ -18,15 +18,21 @@ export default function MyTeam() {
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
 
       const [prodRes, agentsRes] = await Promise.all([
-        supabase.from("daily_production").select("agent_id, aop, deals_closed").in("agent_id", downlineIds).gte("production_date", monthStart),
+        // Pull from deals (effective_date + valid status) so MyTeam totals
+        // line up with the agency dashboard.
+        supabase.from("deals").select("agent_id, annual_premium")
+          .in("agent_id", downlineIds)
+          .gte("effective_date", monthStart)
+          .in("status", ["submitted", "active"]),
         supabase.from("agents").select("id, display_name, profile:profiles!agents_profile_id_fkey(full_name, avatar_url)").in("id", downlineIds).eq("is_deactivated", false),
       ]);
 
       const byAgent = new Map<string, { alp: number; deals: number }>();
       for (const p of (prodRes.data || []) as any[]) {
+        if (!p.agent_id) continue;
         const existing = byAgent.get(p.agent_id) || { alp: 0, deals: 0 };
-        existing.alp += Number(p.aop) || 0;
-        existing.deals += Number(p.deals_closed) || 0;
+        existing.alp += Number(p.annual_premium) || 0;
+        existing.deals += 1;
         byAgent.set(p.agent_id, existing);
       }
 

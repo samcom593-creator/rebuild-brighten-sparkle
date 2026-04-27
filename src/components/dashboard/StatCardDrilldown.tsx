@@ -40,13 +40,13 @@ export function StatCardDrilldown({ activeModal, onClose }: StatCardDrilldownPro
         .select("id, display_name, user_id, profile_id, status, onboarding_stage, is_deactivated")
         .eq("is_deactivated", false);
 
-      // Aggregate weekly production directly from the clean deals table — not
-      // daily_production (which drifted during the Agent Link backfill and had
-      // stale test-deal rows). Weekly = deals posted Monday-present.
+      // Weekly production from deals.effective_date (status submitted/active)
+      // posted_at gets rewritten on Agent Link re-syncs and was over-counting.
       const { data: dealsWeek } = await supabase
         .from("deals")
-        .select("agent_id, annual_premium, posted_at, created_at")
-        .gte("posted_at", new Date(weekStart).toISOString());
+        .select("agent_id, annual_premium, effective_date")
+        .gte("effective_date", weekStart)
+        .in("status", ["submitted", "active"]);
 
       const { data: profiles } = await supabase
         .from("profiles")
@@ -61,8 +61,8 @@ export function StatCardDrilldown({ activeModal, onClose }: StatCardDrilldownPro
         existing.aop += Number(r.annual_premium || 0);
         existing.deals += 1;
         existing.pres += 1;
-        const postedDate = (r.posted_at || r.created_at || "").slice(0, 10);
-        if (postedDate > existing.lastDate) existing.lastDate = postedDate;
+        const effDate = String(r.effective_date || "").slice(0, 10);
+        if (effDate > existing.lastDate) existing.lastDate = effDate;
         prodMap.set(r.agent_id, existing);
       });
 

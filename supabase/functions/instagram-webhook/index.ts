@@ -65,14 +65,72 @@ Deno.serve(async (req) => {
     { auth: { persistSession: false } },
   );
 
-  // Log every event for audit / later routing
+  // Process every event: log it AND if it's a DM, fire the auto-reply.
+  // Meta retries if we don't 200 within 5s, so the heavy lifting is
+  // launched async without blocking the response.
   const entries = (payload?.entry ?? []) as Array<any>;
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "https://msydzhzolwourcdmqxvn.supabase.co";
+
   for (const entry of entries) {
     await sb.from("instagram_events").insert({
       event_type: payload?.object ?? "unknown",
       external_id: entry?.id ?? null,
       payload: entry,
     }).catch(() => {});
+
+    // Pull DM events out — IG sends them as entry.messaging[].message.text
+    const dms = (entry?.messaging ?? []).filter((m: any) =>
+      m?.message?.text && !m?.message?.is_echo
+    );
+    for (const dm of dms) {
+      const senderId = dm?.sender?.id;          // IGSID we reply to
+      const messageText = dm?.message?.text;
+      if (!senderId || !messageText) continue;
+
+      // Idempotency: skip if we've already auto-replied to this sender
+      // in the last 60 minutes (prevents loops + spam from rapid msgs).
+      const { data: recent } = await sb.from("inbox_messages")
+        .select("id")
+        .eq("source", "instagram")
+        .eq("external_id", senderId)
+        .eq("direction", "outbound")
+        .gte("created_at", new Date(Date.now() - 60 * 60 * 1000).toISOString())
+        .limit(1);
+      if (recent && recent.length) continue;
+
+      // Forward to manychat-webhook for classification + reply selection.
+      // Reusing that classifier so we have one source of truth for tone.
+      try {
+        const cls = await fetch(`${supabaseUrl}/functions/v1/manychat-webhook`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-manychat-secret": Deno.env.get("MANYCHAT_WEBHOOK_SECRET") ?? "",
+          },
+          body: JSON.stringify({
+            source: "instagram",
+            subscriber_id: senderId,
+            sender_handle: senderId,  // IG webhook doesn't expose @handle directly
+            body: messageText,
+          }),
+        });
+        const clsResult = await cls.json().catch(() => ({}));
+        const reply: string | null = clsResult?.auto_reply ?? null;
+        if (!reply) continue;
+
+        // Fire the actual IG send. Don't await — keep the webhook fast.
+        fetch(`${supabaseUrl}/functions/v1/send-instagram-dm`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""}`,
+          },
+          body: JSON.stringify({ recipient_id: senderId, message: reply }),
+        }).catch((e) => console.error("[instagram-webhook] send failed", e));
+      } catch (e) {
+        console.error("[instagram-webhook] auto-reply pipeline failed", e);
+      }
+    }
   }
 
   // Meta expects 200 within 5 seconds or it retries.

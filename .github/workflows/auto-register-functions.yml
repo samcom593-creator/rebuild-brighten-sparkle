@@ -8,11 +8,13 @@ name: Auto-register Supabase functions
 
 on:
   push:
-    branches: [main]
+    branches: [main, "feat/**"]
     paths:
       - "supabase/functions/**"
       - "supabase/config.toml"
       - "scripts/sync-functions-config.sh"
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:

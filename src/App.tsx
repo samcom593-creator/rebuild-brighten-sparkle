@@ -57,6 +57,7 @@ const Install = lazy(() => import("./pages/Install"));
 const CourseProgress = lazy(() => import("./pages/CourseProgress"));
 const CourseContent = lazy(() => import("./pages/CourseContent"));
 const PurchaseLeads = lazy(() => import("./pages/PurchaseLeads"));
+const LeadsLanding = lazy(() => import("./pages/LeadsLanding"));
 const CallCenter = lazy(() => import("./pages/CallCenter"));
 const LeadCenter = lazy(() => import("./pages/LeadCenter"));
 const RecruiterDashboard = lazy(() => import("./pages/RecruiterDashboard"));
@@ -161,6 +162,9 @@ const App = () => (
                   <Route path="/apex-daily-numbers" element={<LogNumbers />} />
                   <Route path="/links" element={<LinksPage />} />
                   <Route path="/seminar" element={<SeminarPage />} />
+                  <Route path="/leads" element={<LeadsLanding />} />
+                  <Route path="/get-leads" element={<LeadsLanding />} />
+                  <Route path="/dialer" element={<LeadsLanding />} />
                   {/* checkin and daily-checkin routes removed */}
                   {/* field-checkin route removed */}
                   <Route path="/agent-flow" element={<AgentFlow />} />

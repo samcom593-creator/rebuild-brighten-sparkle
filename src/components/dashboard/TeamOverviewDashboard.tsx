@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getTodayPST, getDateDaysAgoPST } from "@/lib/dateUtils";
+import { format, subDays } from "date-fns";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
@@ -138,10 +139,29 @@ export function TeamOverviewDashboard() {
       });
       const avgCloseRate = closeRateCount > 0 ? totalCloseRate / closeRateCount : 0;
 
-      const activeProducerIds = new Set<string>();
-      for (const p of prod30) {
-        if ((p.deals_closed || 0) > 0) activeProducerIds.add(p.agent_id);
+      // Active producer rule (Sam, 2026-04-27): >= $4k AP in last 7d OR
+      // promoted to live/evaluated/transfer in last 7d. Pull both cheap
+      // queries; daily_production is unreliable for this signal.
+      const sevenAgo = format(subDays(new Date(), 7), "yyyy-MM-dd");
+      const sevenISO = subDays(new Date(), 7).toISOString();
+      const [sevenDayDealsRes, recentReleaseRes] = await Promise.all([
+        supabase.from("deals")
+          .select("agent_id, annual_premium")
+          .gte("effective_date", sevenAgo)
+          .in("status", ["submitted", "active"]),
+        supabase.from("agents")
+          .select("id")
+          .gte("stage_changed_at", sevenISO)
+          .in("onboarding_stage", ["live", "evaluated", "transfer"]),
+      ]);
+      const apByAgent = new Map<string, number>();
+      for (const r of (sevenDayDealsRes.data || []) as any[]) {
+        if (!r.agent_id) continue;
+        apByAgent.set(r.agent_id, (apByAgent.get(r.agent_id) || 0) + (Number(r.annual_premium) || 0));
       }
+      const activeProducerIds = new Set<string>();
+      for (const [id, ap] of apByAgent) if (ap >= 4000) activeProducerIds.add(id);
+      for (const r of (recentReleaseRes.data || []) as any[]) if (r.id) activeProducerIds.add(r.id);
       const activeProducers = activeProducerIds.size;
       const activationRate = totalActive > 0 ? (activeProducers / totalActive) * 100 : 0;
 

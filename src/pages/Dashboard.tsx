@@ -64,6 +64,7 @@ import { useMyDownline } from "@/hooks/useMyDownline";
 
 import { StalledAgentsAlert } from "@/components/dashboard/StalledAgentsAlert";
 import { ControlTerminal } from "@/components/dashboard/ControlTerminal";
+import { OffersTiles } from "@/components/dashboard/OffersTiles";
 import { ReferralTrackingCard } from "@/components/dashboard/ReferralTrackingCard";
 import { StatCardDrilldown } from "@/components/dashboard/StatCardDrilldown";
 import { HideableCard } from "@/components/dashboard/HideableCard";
@@ -512,8 +513,9 @@ export default function Dashboard() {
       </div>
 
       {isAdmin && (
-        <div className="mb-6">
+        <div className="mb-6 space-y-4">
           <ControlTerminal />
+          <OffersTiles />
         </div>
       )}
 

@@ -44,6 +44,11 @@ const TIER_META: Record<string, { label: string; accent: string; emoji: string }
   streak_5:            { label: "5-Streak",    accent: "border-rose-400/50 bg-rose-500/10 text-rose-300",         emoji: "🔥" },
   first_deal_of_day:   { label: "First Deal",  accent: "border-primary/50 bg-primary/10 text-primary",            emoji: "🌅" },
   diamond_week:        { label: "Diamond",     accent: "border-cyan-400/50 bg-cyan-500/10 text-cyan-300",         emoji: "💎" },
+  monthly_20k:         { label: "$20K Month",  accent: "border-violet-400/50 bg-violet-500/10 text-violet-300",   emoji: "👑" },
+  monthly_top6:        { label: "Top 6 Month", accent: "border-emerald-400/50 bg-emerald-500/10 text-emerald-300",emoji: "🏆" },
+  march_2026_top6:     { label: "March Top 6", accent: "border-emerald-400/50 bg-emerald-500/10 text-emerald-300",emoji: "🏆" },
+  team_total:          { label: "Team Total",  accent: "border-emerald-400/50 bg-emerald-500/10 text-emerald-300",emoji: "🚀" },
+  lifetime_100k:       { label: "$100K Club",  accent: "border-amber-400/50 bg-amber-500/10 text-amber-300",      emoji: "💎" },
 };
 
 function fmt$(n: number | null): string {
@@ -307,9 +312,9 @@ export default function AwardsGallery() {
                     <Badge variant="outline" className="text-[9px] border-emerald-500/30 text-emerald-300">emailed</Badge>
                   ) : null}
                 </div>
-                {p.image_svg_url ? (
+                {p.image_png_url || p.image_svg_url ? (
                   <div className="mb-3 rounded-md overflow-hidden bg-background/40" style={{ aspectRatio: "9 / 16", maxHeight: 220 }}>
-                    <img src={p.image_svg_url} alt="" className="w-full h-full object-contain" />
+                    <img src={p.image_png_url ?? p.image_svg_url ?? undefined} alt="" className="w-full h-full object-contain" loading="lazy" />
                   </div>
                 ) : (
                   <div className="mb-3 h-32 rounded-md bg-muted/20 flex items-center justify-center text-xs text-muted-foreground">
@@ -341,8 +346,8 @@ export default function AwardsGallery() {
 
           {editing && (
             <div className="space-y-4">
-              {editing.image_svg_url && (
-                <img src={editing.image_svg_url} alt="" className="w-full rounded-lg border border-border/40" />
+              {(editing.image_png_url || editing.image_svg_url) && (
+                <img src={editing.image_png_url ?? editing.image_svg_url ?? undefined} alt="" className="w-full rounded-lg border border-border/40" />
               )}
 
               <div>

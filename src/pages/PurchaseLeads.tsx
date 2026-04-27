@@ -1,58 +1,21 @@
 import { useState, useEffect, useMemo } from "react";
-import { 
-  Package, 
-  Clock, 
-  Users, 
-  Zap, 
-  Star,
+import {
+  Clock,
+  Users,
   Edit2,
   Check,
   X,
-  DollarSign,
   Flame,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { LeadPaymentTracker } from "@/components/dashboard/LeadPaymentTracker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
-
-// Package data
-const packages = [
-  {
-    id: "gold",
-    name: "Gold Leads",
-    description: "Quality leads that are 30 days old or less. Perfect for agents building a consistent pipeline with proven prospects.",
-    features: [
-      "Unlimited leads",
-      "Leads 30 days or less old",
-      "Pre-qualified prospects",
-      "Weekly delivery",
-    ],
-    price: 250,
-    popular: false,
-    stripeTier: "gold",
-  },
-  {
-    id: "platinum",
-    name: "Platinum Vet Leads",
-    description: "Fresh leads logged within the past week. Ideal for agents who want the hottest prospects with maximum conversion potential.",
-    features: [
-      "Unlimited leads",
-      "Leads logged this week",
-      "Highest conversion rates",
-      "First-priority access",
-    ],
-    price: 500,
-    popular: true,
-    stripeTier: "platinum",
-  },
-];
+import { OffersPanel } from "@/components/offers/OffersPanel";
 
 function getNextSundayMidnightCST(): Date {
   const now = new Date();
@@ -92,33 +55,11 @@ function useCountdown(targetDate: Date) {
 }
 
 export default function PurchaseLeads() {
-  const { user, isAdmin, profile } = useAuth();
+  const { isAdmin } = useAuth();
   const { playSound } = useSoundEffects();
   const [leadCount, setLeadCount] = useState(800);
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
-  const [checkingOut, setCheckingOut] = useState<string | null>(null);
-
-  const handleStripeCheckout = async (tier: string) => {
-    setCheckingOut(tier);
-    try {
-      const { data, error } = await supabase.functions.invoke("create-lead-checkout", {
-        body: { tier },
-      });
-      if (error) throw error;
-      if (data?.url) {
-        window.open(data.url, "_blank");
-      } else {
-        throw new Error("No checkout URL returned");
-      }
-    } catch (err: any) {
-      console.error("Stripe checkout error:", err);
-      toast.error("Failed to start checkout: " + (err.message || "Unknown error"));
-      playSound("error");
-    } finally {
-      setCheckingOut(null);
-    }
-  };
 
   const nextSunday = useMemo(() => getNextSundayMidnightCST(), []);
   const countdown = useCountdown(nextSunday);
@@ -126,8 +67,14 @@ export default function PurchaseLeads() {
   useEffect(() => {
     fetchLeadCount();
     const params = new URLSearchParams(window.location.search);
+    const sku = params.get("sku");
     if (params.get("success") === "true") {
-      toast.success("🎉 Subscription activated! Your leads will start flowing.");
+      const isSocial = sku === "auto_dm" || sku === "social_growth";
+      toast.success(
+        isSocial
+          ? "🎉 Package activated! We'll reach out within 1 business day to onboard you."
+          : "🎉 Subscription activated! Your leads will start flowing.",
+      );
       playSound("celebrate");
       window.history.replaceState({}, "", window.location.pathname);
     } else if (params.get("canceled") === "true") {
@@ -179,18 +126,19 @@ export default function PurchaseLeads() {
 
   return (
     <div className="min-h-screen p-4 md:p-8">
-      <div className="max-w-5xl mx-auto space-y-8">
+      <div className="max-w-6xl mx-auto space-y-10">
         {/* Header */}
         <div className="text-center space-y-4">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium">
             <Flame className="h-4 w-4" />
-            Exclusive Lead Packages
+            Leads + Social Growth Marketplace
           </div>
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
-            Fuel Your Pipeline
+            Fuel Your Pipeline. Grow Your Audience.
           </h1>
-          <p className="text-muted-foreground max-w-lg mx-auto">
-            Premium leads delivered weekly. Invest in your growth with our curated lead packages.
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            Two ways to win: get hot leads delivered every week, or own the social-media growth stack that
+            replaces ManyChat and runs your DMs while you sleep.
           </p>
         </div>
 
@@ -277,85 +225,17 @@ export default function PurchaseLeads() {
           </Card>
         </div>
 
-        {/* Package Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {packages.map((pkg) => (
-            <Card
-              key={pkg.id}
-              className={cn(
-                "relative overflow-hidden transition-all duration-300 hover:scale-[1.02]",
-                pkg.popular
-                  ? "border-primary/40 bg-gradient-to-br from-primary/5 via-background to-background"
-                  : "border-border/50"
-              )}
-            >
-              {pkg.popular && (
-                <div className="absolute top-4 right-4">
-                  <Badge className="bg-primary text-primary-foreground gap-1">
-                    <Star className="h-3 w-3" fill="currentColor" />
-                    Most Popular
-                  </Badge>
-                </div>
-              )}
-              
-              <div className="p-6 space-y-6">
-                {/* Package Header */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-3">
-                    <div className={cn(
-                      "p-3 rounded-xl",
-                      pkg.popular ? "bg-primary/20" : "bg-muted"
-                    )}>
-                      <Package className={cn(
-                        "h-6 w-6",
-                        pkg.popular ? "text-primary" : "text-muted-foreground"
-                      )} />
-                    </div>
-                    <h3 className="text-xl font-bold">{pkg.name}</h3>
-                  </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {pkg.description}
-                  </p>
-                </div>
+        <OffersPanel
+          category="leads"
+          heading="Lead Subscriptions"
+          subheading="Fresh leads delivered every Sunday at midnight CST. Cancel anytime."
+        />
 
-                {/* Features */}
-                <ul className="space-y-2">
-                  {pkg.features.map((feature, i) => (
-                    <li key={i} className="flex items-center gap-2 text-sm">
-                      <Zap className="h-4 w-4 text-primary flex-shrink-0" />
-                      <span className="text-muted-foreground">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                {/* Price */}
-                <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-bold">${pkg.price}</span>
-                  <span className="text-muted-foreground">/week</span>
-                </div>
-                <p className="text-xs text-muted-foreground -mt-4">
-                  Recurring subscription • Cancel anytime
-                </p>
-
-                {/* Single Stripe Button */}
-                <div className="pt-2">
-                  <Button
-                    onClick={() => handleStripeCheckout(pkg.stripeTier)}
-                    disabled={checkingOut === pkg.stripeTier}
-                    className="w-full gap-2 h-11 text-sm font-semibold"
-                    size="lg"
-                  >
-                    {checkingOut === pkg.stripeTier ? (
-                      <><Clock className="h-4 w-4 animate-spin" /> Processing...</>
-                    ) : (
-                      <><DollarSign className="h-4 w-4" /> Purchase Now</>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
+        <OffersPanel
+          category="social"
+          heading="Social Media Growth Packages"
+          subheading="White-label automation that does what ManyChat does — and more — without the per-message fees."
+        />
 
         {/* Admin Payment Tracker */}
         {isAdmin && <LeadPaymentTracker />}

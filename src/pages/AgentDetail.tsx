@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { User, Mail, Phone, ArrowLeft, DollarSign, TrendingUp, AlertTriangle, Loader2 } from "lucide-react";
+import { User, Mail, Phone, ArrowLeft, DollarSign, AlertTriangle, Loader2, ShoppingCart } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { OffersPanel } from "@/components/offers/OffersPanel";
 
 type AgentDetail = {
   id: string;
@@ -201,6 +202,26 @@ export default function AgentDetail() {
           </div>
         </GlassCard>
       )}
+
+      <GlassCard className="p-5 space-y-4">
+        <div className="flex items-center gap-2">
+          <ShoppingCart className="h-4 w-4 text-primary" />
+          <div className="text-sm font-semibold">
+            {canManage ? "Upgrade this agent" : "Upgrade your account"}
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground -mt-1">
+          {canManage
+            ? `Purchase a leads subscription or social-media growth package on behalf of ${agent.full_name ?? "this agent"}. Charges land in Sam's Stripe; the agent gets credited inside the dashboard.`
+            : "Boost your pipeline with leads or unlock our white-label social-growth stack."}
+        </p>
+        <OffersPanel
+          agentId={canManage ? agent.id : undefined}
+          compact
+          heading={null}
+          subheading={null}
+        />
+      </GlassCard>
     </div>
   );
 }

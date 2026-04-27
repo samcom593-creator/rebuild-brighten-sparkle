@@ -1,4 +1,5 @@
 import { Instagram, Zap, MessageCircle, Cloud, Repeat2, MousePointerClick, Bot, Heart } from "lucide-react";
+import { OffersPanel } from "@/components/offers/OffersPanel";
 
 const features = [
   {
@@ -111,13 +112,22 @@ export function InstagramGrowthSection() {
         </div>
 
         {/* Bottom callout */}
-        <div className="relative text-center bg-gradient-to-r from-[#E1306C]/10 via-[#E1306C]/5 to-transparent border border-[#E1306C]/20 rounded-2xl p-8">
+        <div className="relative text-center bg-gradient-to-r from-[#E1306C]/10 via-[#E1306C]/5 to-transparent border border-[#E1306C]/20 rounded-2xl p-8 mb-12">
           <h3 className="text-xl font-bold text-white mb-3" style={{ fontFamily: "Syne" }}>
             Reactions Pro
           </h3>
           <p className="text-white/50 max-w-xl mx-auto text-sm leading-relaxed">
             Our software uses human-like interaction techniques on IG to captivate the attention of users, diverting it seamlessly from one profile to yours. As a result, more eyes will be drawn to your profile, increasing visibility and engagement.
           </p>
+        </div>
+
+        {/* Pricing — Auto-DM + Full Social Growth */}
+        <div id="ig-pricing" className="scroll-mt-24">
+          <OffersPanel
+            category="social"
+            heading="Plug In. We Run It."
+            subheading="Two ways to upgrade your social game. Both are billed once via Stripe, white-label, and onboarded by our team within 1 business day."
+          />
         </div>
       </div>
     </section>

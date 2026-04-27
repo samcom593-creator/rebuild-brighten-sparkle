@@ -130,6 +130,7 @@ serve(async (req) => {
         html: `<p>${firstName} just went live on the platform. Production dashboard unlocked. Welcome email sent. They're on the leaderboard.</p>`,
       });
 
+      let managerName: string | null = null;
       if (agent.invited_by_manager_id) {
         const { data: manager } = await supabase
           .from("profiles")
@@ -137,6 +138,7 @@ serve(async (req) => {
           .eq("user_id", agent.invited_by_manager_id)
           .maybeSingle();
 
+        if (manager?.full_name) managerName = manager.full_name;
         if (manager?.email) {
           await resend.emails.send({
             from: "APEX System <alerts@apex-financial.org>",
@@ -149,6 +151,32 @@ serve(async (req) => {
       results.push("managers_notified");
     } catch {
       results.push("manager_notify_failed");
+    }
+
+    // STEP 5b: Post welcome to team_chat with manager attribution (Sam 2026-04-27 rule)
+    try {
+      let mgrName: string | null = null;
+      if (agent.invited_by_manager_id) {
+        const { data: m } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("user_id", agent.invited_by_manager_id)
+          .maybeSingle();
+        mgrName = (m as any)?.full_name ?? null;
+      }
+      const SAM_USER_ID = "4491dc82-a056-4fb3-ab38-b132afffb700";
+      const fullName = (agent as any).display_name ?? firstName;
+      const welcomeBody = mgrName
+        ? `🎉 Welcome to APEX, ${fullName}!\n\nHired by ${mgrName} — get them on the board this week.\n\nWho's first to make a deal happen?`
+        : `🎉 Welcome to APEX, ${fullName}!\n\nFresh on the team — let's get them on the board this week.`;
+      await supabase.from("team_chat_messages").insert({
+        user_id: SAM_USER_ID,
+        author_name: "APEX Pulse 🎉",
+        body: welcomeBody,
+      });
+      results.push("welcome_posted_team_chat");
+    } catch {
+      results.push("welcome_team_chat_failed");
     }
 
     // STEP 6: Schedule 7-day check-ins

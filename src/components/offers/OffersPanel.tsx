@@ -10,8 +10,8 @@ import { cn } from "@/lib/utils";
 import { OFFERS, accentClasses, type OfferDef, type OfferSku } from "./offers.config";
 
 interface OffersPanelProps {
-  /** Show only one category (defaults to all four). */
-  category?: "all" | "leads" | "social";
+  /** Show only one category (defaults to all). */
+  category?: "all" | "leads" | "social" | "fitness" | "course" | "high_ticket";
   /** When set, the manager is purchasing on behalf of this agent. */
   agentId?: string;
   /** Compact card padding for embedded contexts (manager dashboard). */
@@ -147,10 +147,10 @@ export function OffersPanel({
 
                 <div className="flex items-baseline gap-1">
                   <span className={cn("font-bold", compact ? "text-2xl" : "text-3xl")}>
-                    ${offer.price}
+                    ${offer.price.toLocaleString()}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    {offer.cadence === "weekly" ? "/week" : "/month"}
+                    {offer.cadence === "weekly" ? "/week" : offer.cadence === "monthly" ? "/month" : " one-time"}
                   </span>
                 </div>
 
@@ -167,12 +167,16 @@ export function OffersPanel({
                   ) : (
                     <>
                       <DollarSign className="h-4 w-4" />
-                      {agentId ? "Subscribe agent" : "Subscribe"}
+                      {offer.cadence === "one-time"
+                        ? agentId ? "Buy for agent" : "Buy now"
+                        : agentId ? "Subscribe agent" : "Subscribe"}
                     </>
                   )}
                 </Button>
                 <p className="text-[10px] text-muted-foreground -mt-2 text-center">
-                  Recurring {offer.cadence} subscription · Cancel anytime
+                  {offer.cadence === "one-time"
+                    ? "One-time payment · Lifetime access"
+                    : `Recurring ${offer.cadence} subscription · Cancel anytime`}
                 </p>
               </div>
             </Card>

@@ -21,15 +21,19 @@ const SKU_NAME: Record<string, string> = {
   platinum: "Platinum Vet Leads",
   auto_dm: "Auto-DM Engine",
   social_growth: "Full Social Media Growth Suite",
+  fitness_reset: "Fitness Reset Blueprint",
+  kingofsales_course: "King of Sales Course",
+  work_with_sam: "1:1 Work With Sam",
 };
 
-// All SKUs are subscriptions now (per-month). Field kept on the row for
-// future SKUs that might be one-off packages.
 const SKU_MODE: Record<string, "subscription" | "payment"> = {
   gold: "subscription",
   platinum: "subscription",
   auto_dm: "subscription",
   social_growth: "subscription",
+  fitness_reset: "payment",
+  kingofsales_course: "payment",
+  work_with_sam: "payment",
 };
 
 serve(async (req) => {

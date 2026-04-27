@@ -11,6 +11,7 @@ import { DealsTicker } from "@/components/landing/DealsTicker";
 import { ApplicationToast } from "@/components/landing/ApplicationToast";
 import { ApexLeadsSection } from "@/components/landing/ApexLeadsSection";
 import { InstagramGrowthSection } from "@/components/landing/InstagramGrowthSection";
+import { PremiumOffersSection } from "@/components/landing/PremiumOffersSection";
 
 const Index = () => {
   return (
@@ -26,6 +27,7 @@ const Index = () => {
         <CareerPathwaySection />
         <ApexLeadsSection />
         <InstagramGrowthSection />
+        <PremiumOffersSection />
         <CTASection />
       </main>
       <Footer />

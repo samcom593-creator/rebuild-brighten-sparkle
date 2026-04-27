@@ -33,7 +33,15 @@ const supabase = createClient(
   { auth: { persistSession: false } },
 );
 
-const SKUS = ["gold", "platinum", "auto_dm", "social_growth"] as const;
+const SKUS = [
+  "gold",
+  "platinum",
+  "auto_dm",
+  "social_growth",
+  "fitness_reset",
+  "kingofsales_course",
+  "work_with_sam",
+] as const;
 
 function dollars(cents: number) {
   return `$${(cents / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;

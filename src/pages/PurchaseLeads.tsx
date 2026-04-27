@@ -237,6 +237,24 @@ export default function PurchaseLeads() {
           subheading="White-label automation that does what ManyChat does — and more — without the per-message fees."
         />
 
+        <OffersPanel
+          category="course"
+          heading="Training & Courses"
+          subheading="The same training Sam used to build APEX. One payment, lifetime access."
+        />
+
+        <OffersPanel
+          category="fitness"
+          heading="Fitness Reset"
+          subheading="Stay sharp. Stay fast. Sam's exact 30-day reset for entrepreneurs."
+        />
+
+        <OffersPanel
+          category="high_ticket"
+          heading="1:1 With Sam"
+          subheading="Limited slots — Sam personally reviews every booking. For operators ready to scale."
+        />
+
         {/* Admin Payment Tracker */}
         {isAdmin && <LeadPaymentTracker />}
 

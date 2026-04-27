@@ -51,6 +51,7 @@ import { DuplicateMergeTool } from "@/components/admin/DuplicateMergeTool";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
 import { ActivityFeedWidget } from "@/components/dashboard/ActivityFeedWidget";
 import { ProfitReveal } from "@/components/dashboard/ProfitReveal";
+import { MoneyBuckets } from "@/components/dashboard/MoneyBuckets";
 import { CourseProgressPanel } from "@/components/admin/CourseProgressPanel";
 import { StatCardPopup, type StatType } from "@/components/dashboard/StatCardPopup";
 import { InviteTeamModal } from "@/components/dashboard/InviteTeamModal";
@@ -1016,6 +1017,9 @@ export default function DashboardCommandCenter() {
             </HideableCard>
             <HideableCard cardKey="admin.profit-reveal" label="APEX Offer Revenue">
               <ProfitReveal />
+            </HideableCard>
+            <HideableCard cardKey="admin.money-buckets" label="Money Buckets">
+              <MoneyBuckets />
             </HideableCard>
           </div>
         </div>

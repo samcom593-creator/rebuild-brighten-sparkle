@@ -580,3 +580,15 @@ verify_jwt = false
 
 [functions.xcel-import]
 verify_jwt = false
+
+[functions.admin-sql]
+verify_jwt = false
+
+[functions.generate-monthly-awards]
+verify_jwt = false
+
+[functions.send-instagram-dm]
+verify_jwt = false
+
+[functions.tiktok-dm-drafter]
+verify_jwt = false

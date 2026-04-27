@@ -39,45 +39,80 @@ const APPLY_URL = "https://apex-financial.org/apply";
 const CALENDLY_LICENSED = "https://calendly.com/sam-com593/1on1-call-clone";
 const GET_LICENSED_URL = "https://apex-financial.org/get-licensed";
 
-const INTEREST_PATTERNS = [
-  /\b(interested|info|tell me more|how|what|apply|application)\b/i,
-  /\b(licensed|license|insurance|agent|sell|selling)\b/i,
-  /\b(commission|income|money|opportunity|hiring)\b/i,
-];
-
+// Order matters in classify() — first match wins. Most specific first.
 const LICENSED_PATTERNS = [
-  /\b(licensed|have my license|life insurance license|got my license|life license|221[0-9]|2-?14|2-?15)\b/i,
+  /\b(i'?m licensed|have my license|got my license|life license|2-?15|2-?14|221[0-9])\b/i,
   /\b(nipr|resident license|non[- ]?resident)\b/i,
 ];
-
+const NOT_INTERESTED_PATTERNS = [
+  /\b(not interested|no thanks|stop|unsubscribe|leave me alone|never mind)\b/i,
+];
 const SPAM_PATTERNS = [
-  /\bcrypto\b/i,
-  /\bnft\b/i,
-  /\bguaranteed (profit|return)/i,
-  /\bonly fans\b/i,
-  /t\.me\//i,
+  /\bcrypto\b/i, /\bnft\b/i, /\bbtc\b/i, /\bguaranteed (profit|return)/i,
+  /\bonly\s?fans\b/i, /t\.me\//i, /\bbinary options\b/i, /forex signals/i,
+  /click here to claim/i, /\bgift card\b/i, /\bsugar (daddy|momma)\b/i,
+];
+const SCAM_SKEPTIC_PATTERNS = [
+  /\b(is this (a )?scam|too good to be true|sketchy|legit|real|fake|catch|red flag)\b/i,
+  /\b(mlm|pyramid|multi[- ]?level)\b/i,
+];
+const PRICING_PATTERNS = [
+  /\b(how much|salary|pay|earn|income|commission|comp(ensation)?|make money|how do (you|i) get paid)\b/i,
+  /\$\d+|\d+k|\bsix figures?\b/i,
+];
+const STATE_ASK_PATTERNS = [
+  /\b(what state|which state|do you hire in|available in|hire in|where are you)\b/i,
+];
+const TIME_TO_PRODUCE_PATTERNS = [
+  /\b(how long|how soon|when can i start|time(line)? to|days to|weeks to)\b/i,
+];
+const INTEREST_PATTERNS = [
+  /\b(interested|info|tell me more|sign me up|count me in|how (do|can) i (join|apply))\b/i,
+  /\b(insurance|agent|sell|selling|hiring|opportunity|recruiting)\b/i,
+  /\b(apply|application)\b/i,
+];
+const GREETING_ONLY_PATTERNS = [
+  /^(hey|hi|hello|yo|sup|whats up|wsg|hola|gm|good (morning|evening|afternoon))[\s!.?]*$/i,
 ];
 
-function classify(body: string): { intent: string; lead_score: number; reply_path: "licensed" | "unlicensed" | "generic" | "spam" | null } {
-  if (SPAM_PATTERNS.some((r) => r.test(body))) {
-    return { intent: "spam", lead_score: 0, reply_path: null };
-  }
-  const licensed = LICENSED_PATTERNS.some((r) => r.test(body));
-  const interested = INTEREST_PATTERNS.some((r) => r.test(body));
-  if (licensed) return { intent: "licensed", lead_score: 90, reply_path: "licensed" };
-  if (interested) return { intent: "interested", lead_score: 60, reply_path: "unlicensed" };
+type ReplyPath =
+  | "licensed" | "unlicensed" | "scam_skeptic" | "pricing"
+  | "state_ask" | "time_to_produce" | "greeting" | "generic";
+
+interface Classification {
+  intent: string;
+  lead_score: number;
+  reply_path: ReplyPath | null;
+}
+
+function classify(body: string): Classification {
+  const t = body.trim();
+  if (SPAM_PATTERNS.some(r => r.test(t)))           return { intent: "spam", lead_score: 0, reply_path: null };
+  if (NOT_INTERESTED_PATTERNS.some(r => r.test(t))) return { intent: "not_interested", lead_score: 0, reply_path: null };
+  if (LICENSED_PATTERNS.some(r => r.test(t)))       return { intent: "licensed", lead_score: 95, reply_path: "licensed" };
+  if (SCAM_SKEPTIC_PATTERNS.some(r => r.test(t)))   return { intent: "scam_skeptic", lead_score: 50, reply_path: "scam_skeptic" };
+  if (PRICING_PATTERNS.some(r => r.test(t)))        return { intent: "pricing", lead_score: 70, reply_path: "pricing" };
+  if (STATE_ASK_PATTERNS.some(r => r.test(t)))      return { intent: "state_ask", lead_score: 65, reply_path: "state_ask" };
+  if (TIME_TO_PRODUCE_PATTERNS.some(r => r.test(t))) return { intent: "time_to_produce", lead_score: 70, reply_path: "time_to_produce" };
+  if (GREETING_ONLY_PATTERNS.some(r => r.test(t)))  return { intent: "greeting", lead_score: 35, reply_path: "greeting" };
+  if (INTEREST_PATTERNS.some(r => r.test(t)))       return { intent: "interested", lead_score: 60, reply_path: "unlicensed" };
   return { intent: "unknown", lead_score: 20, reply_path: "generic" };
 }
 
-function replyFor(path: "licensed" | "unlicensed" | "generic", firstName?: string): string {
-  const name = firstName ? firstName : "there";
-  if (path === "licensed") {
-    return `Hey ${name}! Licensed? Perfect. We fast-track licensed producers (24–48h to contracted). Book a 15-min call with Sam: ${CALENDLY_LICENSED}`;
-  }
-  if (path === "unlicensed") {
-    return `Hey ${name}! APEX covers your licensing costs and gets you producing in ~2 weeks. Start here: ${GET_LICENSED_URL}`;
-  }
-  return `Hey ${name}! This is APEX Financial. If you're curious about joining: ${APPLY_URL}`;
+// Sam-voice: short, direct, lowercase-friendly, ends with link or question.
+function replyFor(path: ReplyPath, firstName?: string): string {
+  const n = (firstName?.trim() && firstName.split(" ")[0]) || "yo";
+  const replies: Record<ReplyPath, string> = {
+    licensed:        `${n} — licensed? we fast-track contracted producers in 24-48h. grab 15min with me: ${CALENDLY_LICENSED}`,
+    unlicensed:      `${n} — appreciate the dm 🙏 we cover your licensing course and get you producing in ~2 weeks. apply when you're ready: ${GET_LICENSED_URL}`,
+    scam_skeptic:    `${n} — fair question. no MLM, no upfront fees. you contract direct with the carriers, we train + send leads. apply and we'll show you everything: ${APPLY_URL}`,
+    pricing:         `${n} — 100% commission, paid 9-month advance. average rookie writes $20k+ ALP their first month after license. apply: ${APPLY_URL}`,
+    state_ask:       `${n} — we hire across all 50 states. what state are you in? then apply here: ${APPLY_URL}`,
+    time_to_produce: `${n} — licensed agents are contracted in 48h. unlicensed → ~2 weeks to your license, then producing same week. start here: ${APPLY_URL}`,
+    greeting:        `${n} 👋 sam from APEX. we hire + train life insurance agents. covered course, paid leads. you looking to get into the business? ${APPLY_URL}`,
+    generic:         `${n} — APEX Financial. we hire life insurance agents (licensed or not). curious? ${APPLY_URL}`,
+  };
+  return replies[path];
 }
 
 const supabase = createClient(

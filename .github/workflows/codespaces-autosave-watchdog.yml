@@ -1,0 +1,85 @@
+name: Codespaces Autosave Watchdog
+
+on:
+  schedule:
+    # Every 2 hours, on the hour. UTC.
+    - cron: '0 */2 * * *'
+  workflow_dispatch:
+    inputs:
+      prune_days:
+        description: "Delete autosave/* branches with no commits in N days"
+        default: "14"
+        required: false
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: codespaces-autosave-watchdog
+  cancel-in-progress: false
+
+jobs:
+  prune-and-heartbeat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name  "Codespaces Autosave Watchdog"
+          git config user.email "autosave-bot@users.noreply.github.com"
+
+      - name: Report autosave branch state
+        id: state
+        run: |
+          echo "=== autosave/* branches on origin ==="
+          git for-each-ref --format='%(refname:short) %(committerdate:iso-strict) %(authoremail)' refs/remotes/origin/autosave/ \
+            | sort -k2 -r | tee autosave-branches.txt || true
+          count=$(wc -l < autosave-branches.txt | tr -d ' ')
+          echo "branch_count=$count" >> "$GITHUB_OUTPUT"
+          echo "Found $count autosave branches"
+
+      - name: Prune stale autosave branches
+        env:
+          PRUNE_DAYS: ${{ github.event.inputs.prune_days || '14' }}
+        run: |
+          set -euo pipefail
+          cutoff=$(date -u -d "${PRUNE_DAYS} days ago" +%s 2>/dev/null || date -u -v-${PRUNE_DAYS}d +%s)
+          while read -r ref ts _; do
+            [[ -z "${ref:-}" ]] && continue
+            short="${ref#origin/}"
+            commit_ts=$(date -u -d "$ts" +%s 2>/dev/null || echo 0)
+            if [[ "$commit_ts" -lt "$cutoff" ]]; then
+              echo "pruning stale: $short (last commit $ts)"
+              git push origin --delete "$short" || true
+            fi
+          done < autosave-branches.txt
+
+      - name: Heartbeat summary
+        run: |
+          {
+            echo "## Codespaces Autosave Watchdog"
+            echo ""
+            echo "- Run time: $(date -u +%FT%TZ)"
+            echo "- Active autosave branches: ${{ steps.state.outputs.branch_count }}"
+            echo "- Repo: ${{ github.repository }}"
+            echo ""
+            echo "### Recent autosave commits (across all autosave/* branches)"
+            echo ""
+            echo '```'
+            git log --all --remotes='origin/autosave/*' --since='1 day ago' \
+              --pretty=format:'%h %ci %s' --max-count=20 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Notify on no recent activity
+        if: ${{ github.event_name == 'schedule' }}
+        run: |
+          recent=$(git log --all --remotes='origin/autosave/*' --since='6 hours ago' --oneline | wc -l | tr -d ' ')
+          if [[ "$recent" -eq 0 && "${{ steps.state.outputs.branch_count }}" -gt 0 ]]; then
+            echo "::warning::No autosave commits in the last 6 hours despite ${{ steps.state.outputs.branch_count }} active branches. The Codespace may be stopped."
+          fi

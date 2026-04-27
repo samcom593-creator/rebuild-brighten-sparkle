@@ -21,6 +21,14 @@ apex-bot-credentials.md
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# Codespaces autosave runtime artifacts
+/tmp/autosave-daemon.log
+/tmp/autosave-daemon.pid
+*.pre-autosave.bak
 .idea
 .DS_Store
 *.suo

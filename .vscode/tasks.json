@@ -1,0 +1,43 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "autosave: trigger commit",
+      "type": "shell",
+      "command": "bash .devcontainer/save-trigger.sh",
+      "presentation": {
+        "reveal": "never",
+        "panel": "dedicated",
+        "echo": false,
+        "showReuseMessage": false,
+        "clear": false,
+        "close": true
+      },
+      "problemMatcher": [],
+      "runOptions": {
+        "runOn": "folderOpen"
+      }
+    },
+    {
+      "label": "autosave: tail log",
+      "type": "shell",
+      "command": "tail -f /tmp/autosave-daemon.log",
+      "presentation": { "reveal": "always", "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      "label": "autosave: status",
+      "type": "shell",
+      "command": "if [ -f /tmp/autosave-daemon.pid ] && kill -0 $(cat /tmp/autosave-daemon.pid) 2>/dev/null; then echo 'autosave-daemon: RUNNING (pid '$(cat /tmp/autosave-daemon.pid)')'; tail -n 10 /tmp/autosave-daemon.log; else echo 'autosave-daemon: NOT RUNNING'; fi",
+      "presentation": { "reveal": "always", "panel": "shared" },
+      "problemMatcher": []
+    },
+    {
+      "label": "autosave: restart",
+      "type": "shell",
+      "command": "kill $(cat /tmp/autosave-daemon.pid 2>/dev/null) 2>/dev/null; rm -f /tmp/autosave-daemon.pid /tmp/autosave-daemon.lock; bash .devcontainer/post-start.sh",
+      "presentation": { "reveal": "always", "panel": "shared" },
+      "problemMatcher": []
+    }
+  ]
+}

@@ -158,6 +158,7 @@ export function GlobalSidebar({
     opsItems.push({ icon: Users, label: "Pipeline", href: isAgent && !isAdmin && !isManager ? "/agent-pipeline" : "/dashboard/applicants" });
     opsItems.push({ icon: Book, label: "Book of Business", href: "/dashboard/book-of-business" });
     opsItems.push({ icon: Trophy, label: "Awards", href: "/dashboard/awards" });
+    opsItems.push({ icon: Crown, label: "Hall of Fame", href: "/dashboard/hall-of-fame", special: true });
     opsItems.push({ icon: Trophy, label: "Leaderboard", href: "/dashboard/leaderboard", special: true });
     opsItems.push({ icon: Sparkles, label: "Rewards", href: "/dashboard/rewards" });
     opsItems.push({ icon: MessageSquare, label: "IG Inbox", href: "/dashboard/inbox/instagram" });

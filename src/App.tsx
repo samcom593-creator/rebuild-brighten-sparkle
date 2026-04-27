@@ -79,6 +79,7 @@ const ContentLibrary = lazy(() => import("./pages/ContentLibrary"));
 const HiringPipeline = lazy(() => import("./pages/HiringPipeline"));
 const BookOfBusiness = lazy(() => import("./pages/BookOfBusiness"));
 const AwardsGallery = lazy(() => import("./pages/AwardsGallery"));
+const HallOfFame = lazy(() => import("./pages/HallOfFame"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 const DataDeletion = lazy(() => import("./pages/DataDeletion"));
@@ -197,6 +198,8 @@ const App = () => (
                        <Route path="/dashboard/automation" element={<ProtectedRoute requireAdmin><AutomationHub /></ProtectedRoute>} />
                        <Route path="/dashboard/book-of-business" element={<ProtectedRoute><BookOfBusiness /></ProtectedRoute>} />
                        <Route path="/dashboard/awards" element={<ProtectedRoute><AwardsGallery /></ProtectedRoute>} />
+                       <Route path="/dashboard/hall-of-fame" element={<ProtectedRoute><HallOfFame /></ProtectedRoute>} />
+                       <Route path="/hall-of-fame" element={<HallOfFame />} />
                        {/* /privacy and /terms are public routes above — don't duplicate here */}
                        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                        <Route path="/terms-of-service" element={<TermsOfService />} />

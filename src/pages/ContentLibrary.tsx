@@ -652,7 +652,7 @@ export default function ContentLibrary() {
             </div>
             {icloudLink && (
               <div className="flex items-center gap-4 mt-2">
-                <a href={icloudLink} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">View iCloud album →</a>
+                <a href={icloudLink} target="_blank" rel="noopener noreferrer" rel="noopener noreferrer" className="text-xs text-primary hover:underline">View iCloud album →</a>
                 <span className="text-xs text-muted-foreground">Tap "Import from iPhone" to select photos from this album</span>
               </div>
             )}

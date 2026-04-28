@@ -408,7 +408,7 @@ export function CallCenterLeadCard({
           {lead.instagramHandle && (
             <motion.a
               href={`https://instagram.com/${lead.instagramHandle.replace("@", "")}`}
-              target="_blank"
+              target="_blank" rel="noopener noreferrer"
               rel="noopener noreferrer"
               whileHover={{ scale: 1.01, x: 2 }}
               className="flex items-center gap-4 p-3 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors"

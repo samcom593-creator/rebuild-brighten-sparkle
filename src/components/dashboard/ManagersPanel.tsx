@@ -369,7 +369,7 @@ export function ManagersPanel() {
                         </Button>
                       </div>
                     ) : manager.instagramHandle ? (
-                      <a href={`https://instagram.com/${manager.instagramHandle}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
+                      <a href={`https://instagram.com/${manager.instagramHandle}`} target="_blank" rel="noopener noreferrer" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
                         <Instagram className="h-3 w-3" />@{manager.instagramHandle}
                       </a>
                     ) : (

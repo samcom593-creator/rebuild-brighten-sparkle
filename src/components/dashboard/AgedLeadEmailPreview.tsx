@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Mail, Eye } from "lucide-react";
+import sanitizeHtml from "sanitize-html";
 
 interface AgedLeadEmailPreviewProps {
   isOpen: boolean;
@@ -101,6 +102,23 @@ export function AgedLeadEmailPreview({
   isLoading = false,
 }: AgedLeadEmailPreviewProps) {
   const previewHtml = getEmailPreviewHtml(sampleFirstName || "there");
+  const sanitized = sanitizeHtml(previewHtml, {
+    allowedTags: [
+      'div', 'h1', 'h2', 'p', 'br', 'a', 'ul', 'ol', 'li', 'span',
+      'strong', 'b', 'i', 'em', 'u'
+    ],
+    allowedAttributes: {
+      'a': ['href', 'target', 'rel'],
+      'div': ['style'],
+      'span': ['style'],
+      'h1': ['style'],
+      'h2': ['style'],
+      'p': ['style'],
+      'ul': ['style'],
+      'ol': ['style'],
+      'li': ['style'],
+    }
+  });
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -130,7 +148,7 @@ export function AgedLeadEmailPreview({
             
             <div 
               className="rounded-lg overflow-hidden"
-              dangerouslySetInnerHTML={{ __html: previewHtml }}
+              dangerouslySetInnerHTML={{ __html: sanitized }}
             />
           </div>
         </div>

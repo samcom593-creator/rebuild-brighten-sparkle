@@ -202,7 +202,7 @@ function ContactActions({ agent, onViewApp, onRecord, onEditLogin, onDeactivate,
       )}
       {agent.instagramHandle && (
         <Button variant="outline" size="sm" className="h-7 text-xs gap-1" asChild>
-          <a href={`https://instagram.com/${agent.instagramHandle.replace('@', '')}`} target="_blank" rel="noopener noreferrer">
+          <a href={`https://instagram.com/${agent.instagramHandle.replace('@', '')}`} target="_blank" rel="noopener noreferrer" rel="noopener noreferrer">
             <Instagram className="h-3 w-3" /> IG
           </a>
         </Button>
@@ -1508,7 +1508,7 @@ export default function DashboardCRM() {
                                         <Mail className="h-2.5 w-2.5" /> Email
                                       </a>
                                       {agent.instagramHandle && (
-                                        <a href={`https://instagram.com/${agent.instagramHandle.replace('@', '')}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium bg-pink-500/10 text-pink-600 dark:text-pink-400 hover:bg-pink-500/20 transition-colors">
+                                        <a href={`https://instagram.com/${agent.instagramHandle.replace('@', '')}`} target="_blank" rel="noopener noreferrer" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium bg-pink-500/10 text-pink-600 dark:text-pink-400 hover:bg-pink-500/20 transition-colors">
                                           <Instagram className="h-2.5 w-2.5" />
                                         </a>
                                       )}

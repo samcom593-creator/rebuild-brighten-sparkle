@@ -1033,7 +1033,7 @@ export default function DashboardAgedLeads() {
                         </a>
                       )}
                       {lead.instagramHandle && (
-                        <a href={`https://instagram.com/${lead.instagramHandle.replace("@","")}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="flex items-center gap-1.5 text-pink-400 hover:text-pink-300">
+                        <a href={`https://instagram.com/${lead.instagramHandle.replace("@","")}`} target="_blank" rel="noopener noreferrer" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="flex items-center gap-1.5 text-pink-400 hover:text-pink-300">
                           <Instagram className="h-3 w-3" /> @{lead.instagramHandle.replace("@","")}
                         </a>
                       )}

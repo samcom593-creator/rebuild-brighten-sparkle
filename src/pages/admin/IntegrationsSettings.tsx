@@ -536,7 +536,7 @@ export default function IntegrationsSettings() {
             Run this once in{" "}
             <a
               href="https://supabase.com/dashboard/project/msydzhzolwourcdmqxvn/sql/new"
-              target="_blank"
+              target="_blank" rel="noopener noreferrer"
               rel="noreferrer"
               className="text-sky-400 underline inline-flex items-center gap-0.5"
             >
@@ -595,7 +595,7 @@ export default function IntegrationsSettings() {
           <div className="flex gap-2 mt-2">
             <a
               href="https://supabase.com/dashboard/account/tokens"
-              target="_blank"
+              target="_blank" rel="noopener noreferrer"
               rel="noreferrer"
             >
               <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
@@ -604,7 +604,7 @@ export default function IntegrationsSettings() {
             </a>
             <a
               href="https://github.com/samcom593-creator/rebuild-brighten-sparkle/settings/secrets/actions"
-              target="_blank"
+              target="_blank" rel="noopener noreferrer"
               rel="noreferrer"
             >
               <Button variant="outline" size="sm" className="h-7 text-xs gap-1">

@@ -115,7 +115,7 @@ export default function ApplySuccessUnlicensed() {
             <p className="text-sm text-muted-foreground mb-4">
               Book a call with one of our team members to learn more about the licensing process.
             </p>
-            <a href={calendlyUrl} target="_blank" rel="noopener noreferrer">
+            <a href={calendlyUrl} target="_blank" rel="noopener noreferrer" rel="noopener noreferrer">
               <GradientButton variant="outline">
                 <Calendar className="h-4 w-4 mr-2" />
                 Schedule a Call
@@ -130,7 +130,7 @@ export default function ApplySuccessUnlicensed() {
             transition={{ delay: 0.7 }}
             className="text-center mb-6"
           >
-            <a href={WHATSAPP_GROUP_URL} target="_blank" rel="noopener noreferrer">
+            <a href={WHATSAPP_GROUP_URL} target="_blank" rel="noopener noreferrer" rel="noopener noreferrer">
               <GradientButton size="lg" className="w-full sm:w-auto text-lg px-8 bg-[#25D366] hover:bg-[#20BD5A] border-[#25D366]">
                 <MessageCircle className="h-5 w-5 mr-2" />
                 Join the APEX Hiring Chat

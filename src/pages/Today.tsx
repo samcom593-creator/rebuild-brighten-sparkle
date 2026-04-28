@@ -255,7 +255,7 @@ export default function Today() {
             <span className="text-xs text-muted-foreground mr-2">Push the huddle:</span>
             <Button onClick={copyHuddle} size="sm" className="gap-1.5"><Copy className="h-3.5 w-3.5" /> Copy</Button>
             <Button asChild size="sm" variant="outline" className="gap-1.5">
-              <a href={waHref} target="_blank" rel="noopener"><FileText className="h-3.5 w-3.5" /> WhatsApp</a>
+              <a href={waHref} target="_blank" rel="noopener noreferrer" rel="noopener"><FileText className="h-3.5 w-3.5" /> WhatsApp</a>
             </Button>
             <Button onClick={postToTeamChat} size="sm" variant="outline" className="gap-1.5">
               <FileText className="h-3.5 w-3.5" /> Team Chat
@@ -279,7 +279,7 @@ export default function Today() {
               <p className="text-xs text-muted-foreground">One-tap to share with a recruit or copy link for bio.</p>
             </div>
             <Button asChild size="sm" variant="outline" className="gap-1.5">
-              <a href={calendlyHref} target="_blank" rel="noopener">Open</a>
+              <a href={calendlyHref} target="_blank" rel="noopener noreferrer" rel="noopener">Open</a>
             </Button>
             <Button size="sm" className="gap-1.5" onClick={() => { navigator.clipboard.writeText(calendlyHref); toast.success("Calendly link copied"); }}>
               <Copy className="h-3.5 w-3.5" /> Copy link

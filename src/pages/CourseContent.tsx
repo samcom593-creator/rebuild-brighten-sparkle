@@ -197,7 +197,7 @@ export default function CourseContent() {
                             </span>
                             <a
                               href={module.video_url}
-                              target="_blank"
+                              target="_blank" rel="noopener noreferrer"
                               rel="noopener noreferrer"
                               className="text-primary hover:underline"
                             >
@@ -294,7 +294,7 @@ export default function CourseContent() {
                                 <div className="w-full h-full flex items-center justify-center text-muted-foreground">
                                   <a 
                                     href={module.video_url} 
-                                    target="_blank" 
+                                    target="_blank" rel="noopener noreferrer" 
                                     rel="noopener noreferrer"
                                     className="flex items-center gap-2 text-primary hover:underline"
                                   >

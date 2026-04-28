@@ -31,7 +31,7 @@ export function InstagramDirectory({ directory }: InstagramDirectoryProps) {
             <motion.a
               key={person.id}
               href={`https://instagram.com/${person.instagram_handle}`}
-              target="_blank"
+              target="_blank" rel="noopener noreferrer"
               rel="noopener noreferrer"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}

@@ -1,3 +1,5 @@
+import { Navigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "@/components/landing/Navbar";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { BenefitsSection } from "@/components/landing/BenefitsSection";
@@ -13,6 +15,9 @@ import { ApexLeadsSection } from "@/components/landing/ApexLeadsSection";
 import { InstagramGrowthSection } from "@/components/landing/InstagramGrowthSection";
 
 const Index = () => {
+  const { user, isLoading } = useAuth();
+  // Logged-in users land on their personalized dashboard, not the public marketing page.
+  if (!isLoading && user) return <Navigate to="/dashboard" replace />;
   return (
     <div className="min-h-screen bg-[#030712] overflow-x-hidden w-full max-w-full">
       <DealsTicker />

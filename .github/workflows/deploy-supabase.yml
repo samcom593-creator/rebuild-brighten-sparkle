@@ -78,10 +78,7 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add supabase/config.toml
-          git commit -m "chore(ci): auto-register new functions in config.toml
-
-Added by scripts/sync-functions-config.sh so Lovable's deploy pipeline
-won't skip newly created functions." || true
+          git commit -m "chore(ci): auto-register new functions in config.toml" || true
           # Rebase + push — tolerate Lovable racing commits
           git pull --rebase origin main || true
           git push || echo "::warning::config.toml sync-back push failed — will retry next run"

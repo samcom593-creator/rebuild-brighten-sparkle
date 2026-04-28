@@ -592,3 +592,6 @@ verify_jwt = false
 
 [functions.tiktok-dm-drafter]
 verify_jwt = false
+
+[functions.post-plaque-to-instagram]
+verify_jwt = false

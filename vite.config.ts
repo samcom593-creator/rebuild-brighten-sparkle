@@ -94,13 +94,14 @@ export default defineConfig(({ mode }) => ({
     cssMinify: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          "vendor-react": ["react", "react-dom", "react-router-dom"],
-          "vendor-supabase": ["@supabase/supabase-js"],
-          "vendor-charts": ["recharts"],
-          "vendor-motion": ["framer-motion"],
-          "vendor-dates": ["date-fns", "date-fns-tz"],
-          ui: ["@radix-ui/react-dialog", "@radix-ui/react-popover", "@radix-ui/react-select", "@radix-ui/react-tabs"],
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          if (/[\\/]node_modules[\\/](react|react-dom|react-router-dom|scheduler)[\\/]/.test(id)) return "vendor-react";
+          if (id.includes("@supabase/supabase-js")) return "vendor-supabase";
+          if (id.includes("recharts")) return "vendor-charts";
+          if (id.includes("framer-motion")) return "vendor-motion";
+          if (id.includes("date-fns")) return "vendor-dates";
+          if (id.includes("@radix-ui/react-dialog") || id.includes("@radix-ui/react-popover") || id.includes("@radix-ui/react-select") || id.includes("@radix-ui/react-tabs")) return "ui";
         },
       },
     },

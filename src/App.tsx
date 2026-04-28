@@ -90,7 +90,6 @@ const Today = lazy(() => import("./pages/Today"));
 const RecruitCommandCenter = lazy(() => import("./pages/RecruitCommandCenter"));
 const TeamChat = lazy(() => import("./pages/TeamChat"));
 const BulkDeals = lazy(() => import("./pages/BulkDeals"));
-const VoiceNote = lazy(() => import("./pages/VoiceNote"));
 const AgentLinkSync = lazy(() => import("./pages/AgentLinkSync"));
 const Setup = lazy(() => import("./pages/admin/Setup"));
 const Join = lazy(() => import("./pages/Join"));
@@ -221,8 +220,6 @@ const App = () => (
                        <Route path="/team-chat" element={<ProtectedRoute><TeamChat /></ProtectedRoute>} />
                        <Route path="/dashboard/bulk-deals" element={<ProtectedRoute><BulkDeals /></ProtectedRoute>} />
                        <Route path="/bulk-deals" element={<ProtectedRoute><BulkDeals /></ProtectedRoute>} />
-                       <Route path="/dashboard/voice" element={<ProtectedRoute><VoiceNote /></ProtectedRoute>} />
-                       <Route path="/voice" element={<ProtectedRoute><VoiceNote /></ProtectedRoute>} />
                        <Route path="/dashboard/agentlink-sync" element={<ProtectedRoute><AgentLinkSync /></ProtectedRoute>} />
                        <Route path="/agentlink-sync" element={<ProtectedRoute><AgentLinkSync /></ProtectedRoute>} />
                        <Route path="/setup" element={<ProtectedRoute requireAdmin><Setup /></ProtectedRoute>} />

@@ -200,7 +200,7 @@ export default function AgentPipeline() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortMode, setSortMode]         = useState<"urgency" | "recent" | "name">("urgency");
   const [teamMode, setTeamMode]         = useState<"mine" | "team">("mine");
-  const [expandedSection, setExpandedSection] = useState<string | null>("needs_outreach");
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(["needs_outreach"]));
   const [showFunnel, setShowFunnel]     = useState(false);
   const [selectedIds, setSelectedIds]   = useState<Set<string>>(new Set());
   const [bulkSending, setBulkSending]   = useState(false);
@@ -434,7 +434,20 @@ export default function AgentPipeline() {
   };
 
   const toggleSection = (id: string) => {
-    setExpandedSection((prev) => { playSound(prev === id ? "click" : "whoosh"); return prev === id ? null : id; });
+    setExpandedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) { next.delete(id); playSound("click"); }
+      else { next.add(id); playSound("whoosh"); }
+      return next;
+    });
+  };
+  const expandAllSections = () => {
+    setExpandedSections(new Set(KANBAN_COLUMNS.map((c) => c.id)));
+    playSound("whoosh");
+  };
+  const collapseAllSections = () => {
+    setExpandedSections(new Set());
+    playSound("click");
   };
 
   const renderAppRow = (app: Application) => {
@@ -706,9 +719,24 @@ export default function AgentPipeline() {
           />
         ) : (
           <div className="space-y-3">
+            <div className="flex items-center justify-end gap-2 -mt-2">
+              <button
+                onClick={expandAllSections}
+                className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+              >
+                Expand all
+              </button>
+              <span className="text-muted-foreground/40">·</span>
+              <button
+                onClick={collapseAllSections}
+                className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+              >
+                Collapse all
+              </button>
+            </div>
             {KANBAN_COLUMNS.map((col) => {
               const apps  = sectionApps[col.id] || [];
-              const isOpen = expandedSection === col.id;
+              const isOpen = expandedSections.has(col.id);
               const hasRisk = apps.some(isAtRisk);
               return (
                 <div key={col.id}>

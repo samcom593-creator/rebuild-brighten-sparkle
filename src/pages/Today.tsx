@@ -248,28 +248,24 @@ export default function Today() {
         </GlassCard>
       </div>
 
-      {/* Huddle message — one-tap share to WhatsApp, Discord, or Apex chat */}
-      <GlassCard className="p-5">
-        <div className="flex items-center gap-2 mb-3">
-          <Mic className="h-5 w-5 text-primary" /><h2 className="text-lg font-bold">Huddle Message</h2>
-          <Badge variant="outline" className="ml-auto text-[10px]">Auto-generated</Badge>
-        </div>
-        <pre className="whitespace-pre-wrap bg-background/50 border border-border/40 rounded-lg p-3 text-xs md:text-sm font-sans leading-relaxed mb-3">{huddleMsg}</pre>
-        <div className="flex flex-wrap gap-2">
-          <Button onClick={copyHuddle} size="sm" className="gap-1.5 btn-ripple"><Copy className="h-3.5 w-3.5" /> Copy</Button>
-          <Button asChild size="sm" variant="outline" className="gap-1.5 btn-ripple">
-            <a href={waHref} target="_blank" rel="noopener"><FileText className="h-3.5 w-3.5" /> WhatsApp share</a>
-          </Button>
-          <Button onClick={postToTeamChat} size="sm" variant="outline" className="gap-1.5 btn-ripple">
-            <FileText className="h-3.5 w-3.5" /> Post to Team Chat
-          </Button>
-          {isAdmin && (
-            <Button onClick={triggerMorningBrief} size="sm" variant="outline" className="gap-1.5 btn-ripple">
-              <FileText className="h-3.5 w-3.5" /> Fire Discord + Email
+      {/* Quick share row — copy huddle text, send to chat, or fire Discord */}
+      {isAdmin && (
+        <GlassCard className="p-4">
+          <div className="flex flex-wrap gap-2 items-center">
+            <span className="text-xs text-muted-foreground mr-2">Push the huddle:</span>
+            <Button onClick={copyHuddle} size="sm" className="gap-1.5"><Copy className="h-3.5 w-3.5" /> Copy</Button>
+            <Button asChild size="sm" variant="outline" className="gap-1.5">
+              <a href={waHref} target="_blank" rel="noopener"><FileText className="h-3.5 w-3.5" /> WhatsApp</a>
             </Button>
-          )}
-        </div>
-      </GlassCard>
+            <Button onClick={postToTeamChat} size="sm" variant="outline" className="gap-1.5">
+              <FileText className="h-3.5 w-3.5" /> Team Chat
+            </Button>
+            <Button onClick={triggerMorningBrief} size="sm" variant="outline" className="gap-1.5">
+              <FileText className="h-3.5 w-3.5" /> Discord + Email
+            </Button>
+          </div>
+        </GlassCard>
+      )}
 
       {/* Calendly */}
       {isAdmin && (

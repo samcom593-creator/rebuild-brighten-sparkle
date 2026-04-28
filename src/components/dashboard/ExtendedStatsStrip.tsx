@@ -67,55 +67,64 @@ export function ExtendedStatsStrip({ agentId, title = "More numbers" }: Props) {
       const dayOfMonth = now.getDate();
       const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
 
+      // Source of truth: deals table (Agent Link sync), filtered to
+      // submitted/active. daily_production was agent self-report and
+      // drifted from agency totals. Sam 2026-04-27: every "today/week/
+      // month" stat must agree with the rest of the dashboard.
+      const VALID_STATUS = ["submitted", "active"] as const;
       const filterAgent = (q: any) => (agentId ? q.eq("agent_id", agentId) : q);
 
       const [todayRes, weekRes, prevWeekRes, monthRes, prevMonthRes] = await Promise.all([
         filterAgent(
           supabase
-            .from("daily_production")
-            .select("aop, deals_closed")
-            .eq("production_date", today)
+            .from("deals")
+            .select("annual_premium, agent_id")
+            .eq("effective_date", today)
+            .in("status", VALID_STATUS as unknown as string[])
         ),
         filterAgent(
           supabase
-            .from("daily_production")
-            .select("aop, deals_closed")
-            .gte("production_date", isoDate(wkStart))
+            .from("deals")
+            .select("annual_premium")
+            .gte("effective_date", isoDate(wkStart))
+            .in("status", VALID_STATUS as unknown as string[])
         ),
         filterAgent(
           supabase
-            .from("daily_production")
-            .select("aop, deals_closed")
-            .gte("production_date", isoDate(prevWkStart))
-            .lte("production_date", isoDate(prevWkEnd))
+            .from("deals")
+            .select("annual_premium")
+            .gte("effective_date", isoDate(prevWkStart))
+            .lte("effective_date", isoDate(prevWkEnd))
+            .in("status", VALID_STATUS as unknown as string[])
         ),
         filterAgent(
           supabase
-            .from("daily_production")
-            .select("aop, deals_closed, agent_id, production_date")
-            .gte("production_date", isoDate(monthStart))
+            .from("deals")
+            .select("annual_premium, agent_id, effective_date")
+            .gte("effective_date", isoDate(monthStart))
+            .in("status", VALID_STATUS as unknown as string[])
         ),
         filterAgent(
           supabase
-            .from("daily_production")
-            .select("aop, deals_closed")
-            .gte("production_date", isoDate(prevMonthStart))
-            .lte("production_date", isoDate(prevMonthEnd))
+            .from("deals")
+            .select("annual_premium, effective_date")
+            .gte("effective_date", isoDate(prevMonthStart))
+            .lte("effective_date", isoDate(prevMonthEnd))
+            .in("status", VALID_STATUS as unknown as string[])
         ),
       ]);
 
-      const sumAop = (rows: any[] | null) =>
-        (rows || []).reduce((s, r: any) => s + (Number(r.aop) || 0), 0);
-      const sumDeals = (rows: any[] | null) =>
-        (rows || []).reduce((s, r: any) => s + (Number(r.deals_closed) || 0), 0);
+      const sumAP = (rows: any[] | null) =>
+        (rows || []).reduce((s, r: any) => s + (Number(r.annual_premium) || 0), 0);
+      const countDeals = (rows: any[] | null) => (rows || []).length;
 
-      const todayALP = sumAop(todayRes.data as any[]);
-      const todayDeals = sumDeals(todayRes.data as any[]);
-      const weekALP = sumAop(weekRes.data as any[]);
-      const prevWeekALP = sumAop(prevWeekRes.data as any[]);
-      const monthALP = sumAop(monthRes.data as any[]);
-      const monthDeals = sumDeals(monthRes.data as any[]);
-      const prevMonthALP = sumAop(prevMonthRes.data as any[]);
+      const todayALP = sumAP(todayRes.data as any[]);
+      const todayDeals = countDeals(todayRes.data as any[]);
+      const weekALP = sumAP(weekRes.data as any[]);
+      const prevWeekALP = sumAP(prevWeekRes.data as any[]);
+      const monthALP = sumAP(monthRes.data as any[]);
+      const monthDeals = countDeals(monthRes.data as any[]);
+      const prevMonthALP = sumAP(prevMonthRes.data as any[]);
 
       // 30-day pace projection (linear extrapolation from MTD pace)
       const projection =
@@ -124,7 +133,7 @@ export function ExtendedStatsStrip({ agentId, title = "More numbers" }: Props) {
       // Deal quality
       const avgPerDeal = monthDeals > 0 ? Math.round(monthALP / monthDeals) : 0;
       const biggestThisWeek = (weekRes.data || []).reduce(
-        (m: number, r: any) => Math.max(m, Number(r.aop) || 0),
+        (m: number, r: any) => Math.max(m, Number(r.annual_premium) || 0),
         0
       );
 
@@ -132,10 +141,10 @@ export function ExtendedStatsStrip({ agentId, title = "More numbers" }: Props) {
       const wowDelta = pctDelta(weekALP, prevWeekALP);
       // Month-over-month: compare same window (1..dayOfMonth) of prev month
       const prevMonthSameWindow = (prevMonthRes.data || []).filter((r: any) => {
-        const d = new Date(r.production_date || prevMonthStart);
+        const d = new Date(r.effective_date || prevMonthStart);
         return d.getDate() <= dayOfMonth;
       });
-      const prevMonthWindowALP = sumAop(prevMonthSameWindow as any[]);
+      const prevMonthWindowALP = sumAP(prevMonthSameWindow as any[]);
       const momDelta = pctDelta(monthALP, prevMonthWindowALP);
 
       // Team-only stats — skip when in agent-personal mode

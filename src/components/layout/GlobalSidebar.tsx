@@ -189,6 +189,7 @@ export function GlobalSidebar({
     if (isManager && !isAdmin) {
       teamItems.push({ icon: Users, label: "My Team", href: "/dashboard/my-team" });
     }
+    teamItems.push({ icon: CalendarDays, label: "Calendar", href: "/dashboard/calendar" });
     sections.push({ label: "TEAM", items: teamItems });
 
     // COMMUNICATIONS
@@ -233,11 +234,8 @@ export function GlobalSidebar({
     }
     sections.push({ label: "CONTENT", items: contentItems });
 
-    // EVENTS
-    const eventItems: NavItem[] = [
-      { icon: CalendarDays, label: "Calendar", href: "/dashboard/calendar" },
-    ];
-    sections.push({ label: "EVENTS", items: eventItems });
+    // Calendar moved into TEAM section below — old EVENTS heading removed
+    // (it was just a single link with no purpose; now collapsed into TEAM).
 
     // AUTOMATION (admin only)
     if (isAdmin) {

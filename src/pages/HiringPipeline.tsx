@@ -95,6 +95,8 @@ export default function HiringPipeline() {
   const [dragOver, setDragOver] = useState<StageKey | null>(null);
   // Mobile stage picker — one column visible at a time under md breakpoint
   const [mobileStage, setMobileStage] = useState<StageKey>("new");
+  // View mode: "kanban" = full board, "zoom" = stage counts + top 3 hottest each
+  const [viewMode, setViewMode] = useState<"kanban" | "zoom">("kanban");
 
   // Live updates: when ANY applications row changes, invalidate the query.
   // Means the board refreshes in real-time as agents mark progress,
@@ -315,6 +317,20 @@ export default function HiringPipeline() {
           </p>
         </div>
         <div className="flex gap-2">
+          <div className="flex items-center bg-muted rounded-md p-0.5 text-xs">
+            <button
+              onClick={() => setViewMode("kanban")}
+              className={cn("px-3 py-1 rounded font-medium transition", viewMode === "kanban" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground")}
+            >
+              Board
+            </button>
+            <button
+              onClick={() => setViewMode("zoom")}
+              className={cn("px-3 py-1 rounded font-medium transition", viewMode === "zoom" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground")}
+            >
+              Zoom Out
+            </button>
+          </div>
           <Button variant="outline" size="sm" onClick={() => refetch()}>
             <RefreshCw className="h-4 w-4 mr-1" /> Refresh
           </Button>
@@ -443,7 +459,54 @@ export default function HiringPipeline() {
         </div>
       </div>
 
+      {/* Zoom-out view — every stage as a tile w/ top 3 hottest names */}
+      {viewMode === "zoom" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+          {STAGES.map(stage => {
+            const items = grouped[stage.key];
+            const top3 = items.slice(0, 3);
+            return (
+              <div key={stage.key} className={cn("rounded-lg border-t-4 p-3 bg-card", stage.color)}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-semibold text-sm">{stage.label}</span>
+                  <Badge variant="outline" className="text-xs">{items.length}</Badge>
+                </div>
+                {items.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">empty</p>
+                ) : (
+                  <ul className="space-y-1">
+                    {top3.map((a: any) => {
+                      const days = differenceInDays(new Date(), new Date(a.last_response_at || a.updated_at || a.created_at));
+                      return (
+                        <li key={a.id} className="flex items-center justify-between text-xs">
+                          <span className="font-medium truncate">{a.first_name} {a.last_name}</span>
+                          <span className={cn("text-[10px] tabular-nums shrink-0 ml-2", days >= 7 ? "text-destructive" : "text-muted-foreground")}>
+                            {days}d
+                          </span>
+                        </li>
+                      );
+                    })}
+                    {items.length > 3 && (
+                      <li className="text-[10px] text-muted-foreground/70 pt-1">
+                        +{items.length - 3} more
+                      </li>
+                    )}
+                  </ul>
+                )}
+                <button
+                  onClick={() => setViewMode("kanban")}
+                  className="mt-2 text-[10px] text-primary hover:underline"
+                >
+                  open stage →
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* Kanban — horizontal scroll on md+, mobile shows one column full width */}
+      {viewMode === "kanban" && (
       <div className="md:overflow-x-auto pb-2 md:-mx-4 md:px-4 md:mx-0">
         <div className="flex flex-col md:grid md:grid-flow-col md:auto-cols-[300px] gap-3">
         {STAGES.map(stage => {
@@ -501,6 +564,7 @@ export default function HiringPipeline() {
         })}
         </div>
       </div>
+      )}
     </div>
   );
 }

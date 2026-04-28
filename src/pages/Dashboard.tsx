@@ -369,8 +369,20 @@ export default function Dashboard() {
         appsQ       = appsQ.or(`assigned_agent_id.in.(${myDownlineIds.join(",")}),hiring_manager_user_id.eq.${user?.id}`);
       }
 
-      const [activeRes, releasedRes, weekDealsRes, presRes, appsRes, todayRes, yesterdayRes, prevWeekRes] =
-        await Promise.all([activeQ, releasedQ, weekDealsQ, presQ, appsQ, todayDealsQ, yesterdayQ, prevWeekQ]);
+      // Use allSettled so one failed sub-query doesn't blank the whole header.
+      const settled = await Promise.allSettled([activeQ, releasedQ, weekDealsQ, presQ, appsQ, todayDealsQ, yesterdayQ, prevWeekQ]);
+      const safe = (i: number): any => (settled[i].status === "fulfilled" ? (settled[i] as any).value : { data: [], count: 0 });
+      const activeRes    = safe(0);
+      const releasedRes  = safe(1);
+      const weekDealsRes = safe(2);
+      const presRes      = safe(3);
+      const appsRes      = safe(4);
+      const todayRes     = safe(5);
+      const yesterdayRes = safe(6);
+      const prevWeekRes  = safe(7);
+      const failedNames = ["active","released","weekDeals","pres","apps","today","yesterday","prevWeek"]
+        .filter((_, i) => settled[i].status === "rejected");
+      if (failedNames.length) console.warn("[Dashboard topMetrics] partial failure:", failedNames);
 
       // Compose active set from the two halves of the rule.
       const sumByAgent = new Map<string, number>();

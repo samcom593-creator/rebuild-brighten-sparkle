@@ -164,25 +164,27 @@ export function TeamHierarchyManager() {
         supabase.from("user_roles").select("user_id").in("role", ["manager", "admin"]),
         supabase.from("onboarding_progress").select("agent_id, passed"),
         supabase.from("onboarding_modules").select("id").eq("is_active", true),
-        supabase.from("daily_production").select("agent_id, production_date, aop, deals_closed").in("agent_id", agentIds).gte("production_date", monthStartStr),
+        supabase.from("deals").select("agent_id, effective_date, annual_premium").in("agent_id", agentIds).gte("effective_date", monthStartStr).in("status", ["submitted", "active"]),
       ]);
 
       const profiles = profilesResult.data || [];
       const managerUserIds = new Set(managerRolesResult.data?.map(r => r.user_id) || []);
       const progressData = progressResult.data || [];
       const totalModules = modulesResult.data?.length || 1;
-      const productionData = productionResult.data || [];
+      const productionData = (productionResult.data || []) as any[];
 
-      // Aggregate production by agent
+      // Aggregate production by agent — deals truth, not self-reported daily_production
       const productionMap = new Map<string, { weeklyAlp: number; weeklyDeals: number; monthlyAlp: number; monthlyDeals: number }>();
-      productionData.forEach(p => {
-        const existing = productionMap.get(p.agent_id) || { weeklyAlp: 0, weeklyDeals: 0, monthlyAlp: 0, monthlyDeals: 0 };
-        const isThisWeek = p.production_date >= weekStartStr;
-        productionMap.set(p.agent_id, {
-          weeklyAlp: existing.weeklyAlp + (isThisWeek ? Number(p.aop) || 0 : 0),
-          weeklyDeals: existing.weeklyDeals + (isThisWeek ? p.deals_closed || 0 : 0),
-          monthlyAlp: existing.monthlyAlp + (Number(p.aop) || 0),
-          monthlyDeals: existing.monthlyDeals + (p.deals_closed || 0),
+      productionData.forEach((d) => {
+        if (!d.agent_id) return;
+        const existing = productionMap.get(d.agent_id) || { weeklyAlp: 0, weeklyDeals: 0, monthlyAlp: 0, monthlyDeals: 0 };
+        const isThisWeek = d.effective_date >= weekStartStr;
+        const ap = Number(d.annual_premium) || 0;
+        productionMap.set(d.agent_id, {
+          weeklyAlp: existing.weeklyAlp + (isThisWeek ? ap : 0),
+          weeklyDeals: existing.weeklyDeals + (isThisWeek ? 1 : 0),
+          monthlyAlp: existing.monthlyAlp + ap,
+          monthlyDeals: existing.monthlyDeals + 1,
         });
       });
 

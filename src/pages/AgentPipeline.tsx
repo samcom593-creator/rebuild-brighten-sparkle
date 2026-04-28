@@ -4,7 +4,7 @@ import { useMountedRef } from "@/hooks/useMountedRef";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, Phone, Mail, Search, LayoutGrid, List, Filter,
-  Clock, Award, Calendar, UserCheck, ChevronRight,
+  Clock, Award, Calendar, UserCheck, ChevronRight, KeyRound,
   UsersRound, User, Zap, TrendingUp, Activity, CheckSquare,
   Square, Send, RefreshCw, Flame, X,
 } from "lucide-react";
@@ -564,6 +564,27 @@ export default function AgentPipeline() {
                 licenseStatus={app.license_status as any}
               />
             )}
+            <Button
+              variant="ghost" size="icon"
+              className="h-8 w-8 text-violet-400 hover:text-violet-300 hover:bg-violet-500/10"
+              title="Send portal login link"
+              onClick={async () => {
+                if (!app.email) { toast.error("No email on file"); return; }
+                try {
+                  const { error } = await supabase.functions.invoke("send-agent-portal-login", {
+                    body: { applicationId: app.id, email: app.email },
+                  });
+                  if (error) throw error;
+                  toast.success(`Login link sent to ${app.email}`);
+                  playSound("success");
+                } catch (e: any) {
+                  toast.error(e?.message || "Failed to send login link");
+                  playSound("error");
+                }
+              }}
+            >
+              <KeyRound className="h-4 w-4" />
+            </Button>
             {app.phone && (
               <Button variant="ghost" size="icon"
                 className="h-8 w-8 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"

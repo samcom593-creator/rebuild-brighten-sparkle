@@ -44,24 +44,31 @@ export function TeamGoalsTracker({ className }: TeamGoalsTrackerProps) {
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
       const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
 
-      const { data, error } = await supabase
-        .from("daily_production")
-        .select("aop, deals_closed, presentations, referrals_caught")
-        .gte("production_date", firstDay)
-        .lte("production_date", lastDay);
+      // ALP + deal counts now from deals table (Agent Link truth);
+      // presentations + referrals_caught stay on daily_production
+      // (only authoritative source for those).
+      const [dealsRes, prodRes] = await Promise.all([
+        supabase
+          .from("deals")
+          .select("annual_premium")
+          .gte("effective_date", firstDay)
+          .lte("effective_date", lastDay)
+          .in("status", ["submitted", "active"]),
+        supabase
+          .from("daily_production")
+          .select("presentations, referrals_caught")
+          .gte("production_date", firstDay)
+          .lte("production_date", lastDay),
+      ]);
+      if (dealsRes.error) throw dealsRes.error;
+      if (prodRes.error) throw prodRes.error;
 
-      if (error) throw error;
-
-      // Aggregate team totals
-      const totals = (data || []).reduce(
-        (acc, row) => ({
-          alp: acc.alp + (row.aop || 0),
-          deals: acc.deals + (row.deals_closed || 0),
-          presentations: acc.presentations + (row.presentations || 0),
-          referrals: acc.referrals + (row.referrals_caught || 0),
-        }),
-        { alp: 0, deals: 0, presentations: 0, referrals: 0 }
-      );
+      const totals = {
+        alp: (dealsRes.data || []).reduce((s: number, r: any) => s + (Number(r.annual_premium) || 0), 0),
+        deals: (dealsRes.data || []).length,
+        presentations: (prodRes.data || []).reduce((s: number, r: any) => s + (Number(r.presentations) || 0), 0),
+        referrals: (prodRes.data || []).reduce((s: number, r: any) => s + (Number(r.referrals_caught) || 0), 0),
+      };
 
       const newGoals: GoalData[] = [
         {

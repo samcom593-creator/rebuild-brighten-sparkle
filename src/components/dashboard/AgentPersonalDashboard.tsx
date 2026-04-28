@@ -1,9 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { StatCard } from "@/components/dashboard/StatCard";
-import { DollarSign, TrendingUp, Target, Award } from "lucide-react";
+import { DollarSign, TrendingUp, Target, Award, Sparkles, ArrowRight } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 import { RealFinancesCard } from "@/components/finances/RealFinancesCard";
 import { ExtendedStatsStrip } from "@/components/dashboard/ExtendedStatsStrip";
+import { CompactLeaderboard } from "@/components/dashboard/CompactLeaderboard";
 
 interface Props {
   agentId?: string;
@@ -69,7 +72,40 @@ export function AgentPersonalDashboard({ agentId }: Props) {
     enabled: !!agentId,
   });
 
-  if (!agentId) return null;
+  // Onboarding state — user has the "agent" role but no agents-table row yet.
+  // Roughly half of role=agent users land here (no profile linkage) and previously
+  // saw a fully blank dashboard. Show a welcome card + the live agency leaderboard
+  // so they have something useful to look at.
+  if (!agentId) {
+    return (
+      <div className="space-y-6">
+        <div className="rounded-xl border border-primary/30 bg-gradient-to-br from-primary/10 via-background to-background p-6 reveal">
+          <div className="flex items-start gap-3">
+            <Sparkles className="h-6 w-6 text-primary mt-0.5" />
+            <div className="flex-1">
+              <h2 className="text-lg font-semibold">Welcome to APEX Financial</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Your agent profile is being finalized. While that finishes, here's the live agency leaderboard
+                so you can see what the top closers are pulling.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button asChild size="sm" variant="default">
+                  <Link to="/hall-of-fame">Hall of Fame <ArrowRight className="ml-1 h-3.5 w-3.5" /></Link>
+                </Button>
+                <Button asChild size="sm" variant="outline">
+                  <Link to="/leaderboard">Leaderboard</Link>
+                </Button>
+                <Button asChild size="sm" variant="outline">
+                  <Link to="/dashboard/today">Today</Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <CompactLeaderboard />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -118,12 +118,14 @@ export default function HiringPipeline() {
         .from("applications")
         .select("*")
         .is("terminated_at", null)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(2000);
       if (error) throw error;
       return data || [];
     },
     enabled: !!user && isAdmin,
-    staleTime: 30_000,
+    staleTime: 15_000,
+    refetchInterval: 30_000,
   });
 
   // Group by stage, apply search + filter pills. Within each column,

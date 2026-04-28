@@ -9,7 +9,7 @@ const NAV_LINKS = [
   { href: "#testimonials", label: "Success Stories" },
   { href: "#systems", label: "Systems" },
   { href: "#career", label: "Career Path" },
-  { href: "#leads", label: "Leads" },
+  { href: "/leads", label: "Buy Leads" },
   { href: "#ig-growth", label: "IG Growth" },
 ];
 
@@ -33,6 +33,10 @@ export function Navbar() {
     setSearchOpen(false);
     setSearchTerm("");
     setIsOpen(false);
+    if (href.startsWith("/")) {
+      window.location.href = href;
+      return;
+    }
     const el = document.querySelector(href);
     if (el) el.scrollIntoView({ behavior: "smooth" });
   };
@@ -118,6 +122,11 @@ export function Navbar() {
               </AnimatePresence>
             </div>
 
+            <Link to="/leads">
+              <button className="px-4 py-2 text-sm font-bold font-display text-[#22d3a5] hover:text-[#f1f5f9] transition-colors">
+                Buy Leads
+              </button>
+            </Link>
             <Link to="/login">
               <button className="px-4 py-2 text-sm font-bold font-display text-[#f1f5f9] hover:text-[#22d3a5] transition-colors">
                 Login
@@ -174,6 +183,11 @@ export function Navbar() {
               ))}
 
               <div className="flex flex-col gap-2 pt-4 border-t border-[#1e293b]">
+                <Link to="/leads" onClick={() => setIsOpen(false)}>
+                  <button className="w-full py-3 text-sm font-bold font-display border-2 border-[#22d3a5]/40 text-[#22d3a5] rounded-lg hover:border-[#22d3a5] hover:bg-[#22d3a5]/5 transition-colors">
+                    Buy Leads
+                  </button>
+                </Link>
                 <Link to="/login" onClick={() => setIsOpen(false)}>
                   <button className="w-full py-3 text-sm font-bold font-display border-2 border-[#1e293b] text-[#f1f5f9] rounded-lg hover:border-[#22d3a5] transition-colors">
                     Login

@@ -1,20 +1,15 @@
 import { useState, useEffect, useMemo } from "react";
-import { 
-  Package, 
-  Clock, 
-  Users, 
-  Zap, 
+import {
+  Package,
+  Clock,
+  Zap,
   Star,
-  Edit2,
-  Check,
-  X,
   DollarSign,
   Flame,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { LeadPaymentTracker } from "@/components/dashboard/LeadPaymentTracker";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -94,9 +89,6 @@ function useCountdown(targetDate: Date) {
 export default function PurchaseLeads() {
   const { user, isAdmin, profile } = useAuth();
   const { playSound } = useSoundEffects();
-  const [leadCount, setLeadCount] = useState(800);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState("");
   const [checkingOut, setCheckingOut] = useState<string | null>(null);
 
   const handleStripeCheckout = async (tier: string) => {
@@ -124,9 +116,8 @@ export default function PurchaseLeads() {
   const countdown = useCountdown(nextSunday);
 
   useEffect(() => {
-    fetchLeadCount();
     const params = new URLSearchParams(window.location.search);
-    if (params.get("success") === "true") {
+    if (params.get("success") === "true" || params.get("paid") === "1") {
       toast.success("🎉 Subscription activated! Your leads will start flowing.");
       playSound("celebrate");
       window.history.replaceState({}, "", window.location.pathname);
@@ -135,47 +126,6 @@ export default function PurchaseLeads() {
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, []);
-
-  const fetchLeadCount = async () => {
-    const { data } = await supabase
-      .from("lead_counter")
-      .select("count")
-      .limit(1)
-      .maybeSingle();
-    
-    if (data) {
-      setLeadCount(data.count);
-      setEditValue(String(data.count));
-    }
-  };
-
-  const handleSaveCount = async () => {
-    if (!isAdmin) {
-      toast.error("Only admins can edit the lead count.");
-      return;
-    }
-
-    const newCount = parseInt(editValue, 10);
-    if (isNaN(newCount) || newCount < 0) {
-      toast.error("Please enter a valid number");
-      return;
-    }
-
-    const { error } = await supabase
-      .from("lead_counter")
-      .update({ count: newCount, updated_at: new Date().toISOString() })
-      .neq("id", "00000000-0000-0000-0000-000000000000");
-
-    if (error) {
-      toast.error("Failed to update lead count");
-      playSound("error");
-    } else {
-      setLeadCount(newCount);
-      setIsEditing(false);
-      toast.success("Lead count updated!");
-      playSound("success");
-    }
-  };
 
   return (
     <div className="min-h-screen p-4 md:p-8">
@@ -194,58 +144,8 @@ export default function PurchaseLeads() {
           </p>
         </div>
 
-        {/* Live Counter + Timer Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Live Lead Counter */}
-          <Card className="p-6 bg-gradient-to-br from-primary/10 via-background to-background border-primary/20">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-primary/20">
-                  <Users className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Available Leads</p>
-                  {isEditing ? (
-                    <div className="flex items-center gap-2 mt-1">
-                      <Input
-                        type="number"
-                        value={editValue}
-                        onChange={(e) => setEditValue(e.target.value)}
-                        className="w-24 h-8 text-lg font-bold"
-                      />
-                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleSaveCount}>
-                        <Check className="h-4 w-4 text-green-500" />
-                      </Button>
-                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => setIsEditing(false)}>
-                        <X className="h-4 w-4 text-red-500" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <span className="text-3xl font-bold text-primary">
-                        {leadCount.toLocaleString()}+
-                      </span>
-                      {isAdmin && (
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-6 w-6 text-muted-foreground hover:text-primary"
-                          onClick={() => {
-                            setEditValue(String(leadCount));
-                            setIsEditing(true);
-                          }}
-                        >
-                          <Edit2 className="h-3 w-3" />
-                        </Button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            </div>
-          </Card>
-
+        {/* Timer Row */}
+        <div className="grid grid-cols-1 gap-4">
           {/* Timer */}
           <Card className="p-6 bg-gradient-to-br from-amber-500/10 via-background to-background border-amber-500/20">
             <div className="flex items-center gap-3">

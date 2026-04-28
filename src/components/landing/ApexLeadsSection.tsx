@@ -8,16 +8,18 @@ const packages = [
   {
     name: "Gold Leads",
     price: 250,
-    features: ["Unlimited leads", "30 days old or less", "Pre-qualified prospects", "Verified contact info", "Weekly delivery"],
+    features: ["Unlimited leads", "30 days old or less", "Pre-qualified prospects", "ReadyMode dialer included", "Weekly delivery"],
     popular: false,
     tier: "gold",
+    paymentUrl: "https://buy.stripe.com/dRm28q56XbDN7uH8w97ss02",
   },
   {
     name: "Platinum Vet Leads",
     price: 500,
-    features: ["Unlimited leads", "Fresh this week", "Highest conversion rates", "Priority delivery", "Exclusive territories"],
+    features: ["Unlimited leads", "Fresh this week", "Highest conversion rates", "ReadyMode dialer included", "First-priority drop"],
     popular: true,
     tier: "platinum",
+    paymentUrl: "https://buy.stripe.com/28E8wOfLB7nx8yLcMp7ss03",
   },
 ];
 
@@ -30,20 +32,22 @@ const trustSignals = [
 export function ApexLeadsSection() {
   const [checkingOut, setCheckingOut] = useState<string | null>(null);
 
-  const handlePurchase = async (tier: string) => {
+  const handlePurchase = async (tier: string, fallbackUrl: string) => {
     setCheckingOut(tier);
     try {
+      // Public visitors: send to direct payment link (no login needed).
+      // Logged-in agents: try edge function so checkout attaches agent_id.
       const { data, error } = await supabase.functions.invoke("create-lead-checkout", {
         body: { tier },
       });
-      if (error) throw error;
-      if (data?.url) {
+      if (!error && data?.url) {
         window.open(data.url, "_blank");
       } else {
-        throw new Error("No checkout URL returned");
+        window.open(fallbackUrl, "_blank");
       }
-    } catch (err: any) {
-      toast.error("Failed to start checkout. Please log in first.");
+    } catch {
+      // Always fall back to the direct Stripe Payment Link.
+      window.open(fallbackUrl, "_blank");
     } finally {
       setCheckingOut(null);
     }
@@ -83,13 +87,16 @@ export function ApexLeadsSection() {
                 ))}
               </ul>
               <Button
-                onClick={() => handlePurchase(pkg.tier)}
+                onClick={() => handlePurchase(pkg.tier, pkg.paymentUrl)}
                 disabled={checkingOut === pkg.tier}
                 className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
                 style={{ fontFamily: "Syne", fontWeight: 700 }}
               >
-                {checkingOut === pkg.tier ? "Processing..." : <>Purchase Now <ArrowRight className="h-4 w-4 ml-2" /></>}
+                {checkingOut === pkg.tier ? "Processing..." : <>Activate Now <ArrowRight className="h-4 w-4 ml-2" /></>}
               </Button>
+              <p className="mt-2 text-[11px] text-center text-white/40">
+                Card · Apple Pay · Cash App · Link · ACH
+              </p>
             </div>
           ))}
         </div>

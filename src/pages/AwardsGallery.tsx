@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { Trophy, Search, Filter, Mail, Loader2, Edit3, Upload, RefreshCw, Camera } from "lucide-react";
+import { Trophy, Search, Filter, Mail, Loader2, Edit3, Upload, RefreshCw, Camera, Download, Share2, Instagram } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -32,23 +32,90 @@ interface PlaqueRow {
 }
 
 const TIER_META: Record<string, { label: string; accent: string; emoji: string }> = {
-  single_day_platinum: { label: "Platinum",    accent: "border-purple-400/50 bg-purple-500/10 text-purple-300",  emoji: "💎" },
-  single_day:          { label: "Gold",        accent: "border-amber-400/50 bg-amber-500/10 text-amber-300",      emoji: "🥇" },
-  single_day_bronze:   { label: "Bronze",      accent: "border-orange-600/50 bg-orange-700/10 text-orange-300",   emoji: "🥉" },
-  weekly:              { label: "Weekly",      accent: "border-sky-400/50 bg-sky-500/10 text-sky-300",            emoji: "💠" },
-  monthly:             { label: "Monthly",     accent: "border-violet-400/50 bg-violet-500/10 text-violet-300",   emoji: "👑" },
-  hot_streak:          { label: "Streak",      accent: "border-rose-400/50 bg-rose-500/10 text-rose-300",         emoji: "🔥" },
-  team_week_50k:       { label: "Team Week",   accent: "border-emerald-400/50 bg-emerald-500/10 text-emerald-300",emoji: "🏆" },
-  team_two_day_20k:    { label: "Team 2-Day",  accent: "border-emerald-400/50 bg-emerald-500/10 text-emerald-300",emoji: "⚡" },
-  team_single_day_10k: { label: "Team Day",    accent: "border-emerald-400/50 bg-emerald-500/10 text-emerald-300",emoji: "⭐" },
-  streak_5:            { label: "5-Streak",    accent: "border-rose-400/50 bg-rose-500/10 text-rose-300",         emoji: "🔥" },
-  first_deal_of_day:   { label: "First Deal",  accent: "border-primary/50 bg-primary/10 text-primary",            emoji: "🌅" },
-  diamond_week:        { label: "Diamond",     accent: "border-cyan-400/50 bg-cyan-500/10 text-cyan-300",         emoji: "💎" },
-  monthly_20k:         { label: "$20K Month",  accent: "border-violet-400/50 bg-violet-500/10 text-violet-300",   emoji: "👑" },
-  monthly_top6:        { label: "Top 6 Month", accent: "border-emerald-400/50 bg-emerald-500/10 text-emerald-300",emoji: "🏆" },
-  march_2026_top6:     { label: "March Top 6", accent: "border-emerald-400/50 bg-emerald-500/10 text-emerald-300",emoji: "🏆" },
-  team_total:          { label: "Team Total",  accent: "border-emerald-400/50 bg-emerald-500/10 text-emerald-300",emoji: "🚀" },
-  lifetime_100k:       { label: "$100K Club",  accent: "border-amber-400/50 bg-amber-500/10 text-amber-300",      emoji: "💎" },
+  // Daily / single-day
+  single_day_platinum: { label: "Platinum Day",    accent: "border-purple-400/50 bg-purple-500/10 text-purple-300",  emoji: "💎" },
+  single_day:          { label: "Gold Day",        accent: "border-amber-400/50 bg-amber-500/10 text-amber-300",     emoji: "🥇" },
+  single_day_bronze:   { label: "Bronze Day",      accent: "border-orange-600/50 bg-orange-700/10 text-orange-300",  emoji: "🥉" },
+  first_deal_of_day:   { label: "First Deal",      accent: "border-primary/50 bg-primary/10 text-primary",           emoji: "🌅" },
+  late_night_closer:   { label: "Late-Night Close",accent: "border-indigo-400/50 bg-indigo-500/10 text-indigo-300",  emoji: "🌙" },
+  early_bird_close:    { label: "Early Bird",      accent: "border-yellow-300/50 bg-yellow-400/10 text-yellow-200",  emoji: "🐦" },
+  saturday_warrior:    { label: "Saturday Warrior",accent: "border-orange-400/50 bg-orange-500/10 text-orange-300", emoji: "⚔️" },
+  sunday_grinder:      { label: "Sunday Grinder",  accent: "border-red-400/50 bg-red-500/10 text-red-300",           emoji: "🔥" },
+  three_in_a_day:      { label: "3-In-A-Day",      accent: "border-amber-400/50 bg-amber-500/10 text-amber-300",     emoji: "🎯" },
+  five_in_a_day:       { label: "5-In-A-Day",      accent: "border-pink-400/50 bg-pink-500/10 text-pink-300",        emoji: "🚀" },
+  ten_in_a_day:        { label: "10-In-A-Day",     accent: "border-fuchsia-400/50 bg-fuchsia-500/10 text-fuchsia-300",emoji: "💥" },
+
+  // Weekly
+  weekly:              { label: "Top Producer Wk", accent: "border-sky-400/50 bg-sky-500/10 text-sky-300",          emoji: "💠" },
+  weekly_top3:         { label: "Top 3 Weekly",    accent: "border-blue-400/50 bg-blue-500/10 text-blue-300",       emoji: "🥈" },
+  weekly_top10:        { label: "Top 10 Weekly",   accent: "border-cyan-400/50 bg-cyan-500/10 text-cyan-300",       emoji: "📊" },
+  diamond_week:        { label: "Diamond Week",    accent: "border-cyan-400/50 bg-cyan-500/10 text-cyan-300",       emoji: "💎" },
+  weekly_5k:           { label: "$5K Week",        accent: "border-teal-400/50 bg-teal-500/10 text-teal-300",       emoji: "💵" },
+  weekly_10k:          { label: "$10K Week",       accent: "border-emerald-400/50 bg-emerald-500/10 text-emerald-300",emoji: "💰" },
+  weekly_20k:          { label: "$20K Week",       accent: "border-green-400/50 bg-green-500/10 text-green-300",   emoji: "🤑" },
+  weekly_30k:          { label: "$30K Week",       accent: "border-lime-400/50 bg-lime-500/10 text-lime-300",      emoji: "🏦" },
+  weekly_50k:          { label: "$50K Week",       accent: "border-amber-400/50 bg-amber-500/10 text-amber-300",   emoji: "🏆" },
+  weekly_100k:         { label: "$100K Week",      accent: "border-fuchsia-400/50 bg-fuchsia-500/10 text-fuchsia-300",emoji: "👑" },
+
+  // Monthly
+  monthly:             { label: "Monthly Champ",   accent: "border-violet-400/50 bg-violet-500/10 text-violet-300", emoji: "👑" },
+  monthly_top3:        { label: "Top 3 Month",     accent: "border-purple-400/50 bg-purple-500/10 text-purple-300", emoji: "🥉" },
+  monthly_top6:        { label: "Top 6 Month",     accent: "border-emerald-400/50 bg-emerald-500/10 text-emerald-300",emoji: "🏆" },
+  monthly_top10:       { label: "Top 10 Month",    accent: "border-indigo-400/50 bg-indigo-500/10 text-indigo-300", emoji: "🏅" },
+  monthly_20k:         { label: "$20K Month",      accent: "border-violet-400/50 bg-violet-500/10 text-violet-300", emoji: "👑" },
+  monthly_50k:         { label: "$50K Month",      accent: "border-fuchsia-400/50 bg-fuchsia-500/10 text-fuchsia-300",emoji: "💸" },
+  monthly_100k:        { label: "$100K Month",     accent: "border-amber-400/50 bg-amber-500/10 text-amber-300",   emoji: "🌟" },
+  rookie_of_month:     { label: "Rookie Of Month", accent: "border-pink-400/50 bg-pink-500/10 text-pink-300",      emoji: "🎓" },
+  comeback_of_month:   { label: "Comeback Kid",    accent: "border-rose-400/50 bg-rose-500/10 text-rose-300",      emoji: "🪂" },
+
+  // Streaks
+  hot_streak:          { label: "Hot Streak",      accent: "border-rose-400/50 bg-rose-500/10 text-rose-300",      emoji: "🔥" },
+  streak_3:            { label: "3-Day Streak",    accent: "border-orange-400/50 bg-orange-500/10 text-orange-300",emoji: "🔥" },
+  streak_5:            { label: "5-Day Streak",    accent: "border-rose-400/50 bg-rose-500/10 text-rose-300",      emoji: "🔥" },
+  streak_7:            { label: "7-Day Streak",    accent: "border-red-400/50 bg-red-500/10 text-red-300",         emoji: "🔥" },
+  streak_14:           { label: "2-Week Streak",   accent: "border-pink-400/50 bg-pink-500/10 text-pink-300",      emoji: "🔥" },
+  streak_30:           { label: "30-Day Streak",   accent: "border-fuchsia-400/50 bg-fuchsia-500/10 text-fuchsia-300",emoji: "🌋" },
+  unstoppable:         { label: "Unstoppable",     accent: "border-amber-400/50 bg-amber-500/10 text-amber-300",   emoji: "⚡" },
+
+  // Team / agency
+  team_total:          { label: "Team Total",      accent: "border-emerald-400/50 bg-emerald-500/10 text-emerald-300",emoji: "🚀" },
+  team_single_day_10k: { label: "Team $10K Day",   accent: "border-emerald-400/50 bg-emerald-500/10 text-emerald-300",emoji: "⭐" },
+  team_two_day_20k:    { label: "Team $20K 2-Day", accent: "border-emerald-400/50 bg-emerald-500/10 text-emerald-300",emoji: "⚡" },
+  team_week_50k:       { label: "Team $50K Week",  accent: "border-emerald-400/50 bg-emerald-500/10 text-emerald-300",emoji: "🏆" },
+  team_week_100k:      { label: "Team $100K Week", accent: "border-amber-400/50 bg-amber-500/10 text-amber-300",   emoji: "💎" },
+  team_month_250k:     { label: "Team $250K Month",accent: "border-fuchsia-400/50 bg-fuchsia-500/10 text-fuchsia-300",emoji: "👑" },
+  most_hires_week:     { label: "Most Hires Week", accent: "border-blue-400/50 bg-blue-500/10 text-blue-300",      emoji: "👥" },
+  most_hires_month:    { label: "Most Hires Month",accent: "border-cyan-400/50 bg-cyan-500/10 text-cyan-300",      emoji: "👥" },
+  most_recruits:       { label: "Top Recruiter",   accent: "border-indigo-400/50 bg-indigo-500/10 text-indigo-300",emoji: "🪄" },
+
+  // Activity / behavior
+  most_dials_day:      { label: "Most Dials Day",  accent: "border-blue-400/50 bg-blue-500/10 text-blue-300",      emoji: "📞" },
+  most_dials_week:     { label: "Most Dials Week", accent: "border-sky-400/50 bg-sky-500/10 text-sky-300",         emoji: "📞" },
+  most_appts_day:      { label: "Most Appts Day",  accent: "border-violet-400/50 bg-violet-500/10 text-violet-300",emoji: "📆" },
+  most_appts_week:     { label: "Most Appts Week", accent: "border-purple-400/50 bg-purple-500/10 text-purple-300",emoji: "📆" },
+  highest_avg_day:     { label: "Highest Avg AP",  accent: "border-emerald-400/50 bg-emerald-500/10 text-emerald-300",emoji: "📈" },
+  big_case:            { label: "Big Case",        accent: "border-yellow-400/50 bg-yellow-500/10 text-yellow-300",emoji: "🐳" },
+  whale:               { label: "Whale Closer",    accent: "border-blue-400/50 bg-blue-500/10 text-blue-300",      emoji: "🐋" },
+  perfect_week:        { label: "Perfect Week",    accent: "border-emerald-400/50 bg-emerald-500/10 text-emerald-300",emoji: "✅" },
+  zero_to_hero:        { label: "Zero-To-Hero",    accent: "border-pink-400/50 bg-pink-500/10 text-pink-300",      emoji: "🦸" },
+
+  // Personal milestones / lifetime
+  first_sale_ever:     { label: "First Sale Ever", accent: "border-pink-400/50 bg-pink-500/10 text-pink-300",      emoji: "🎉" },
+  hundred_lifetime:    { label: "100 Deals Career",accent: "border-cyan-400/50 bg-cyan-500/10 text-cyan-300",      emoji: "💯" },
+  five_hundred_lifetime:{label: "500 Deals Career",accent: "border-blue-400/50 bg-blue-500/10 text-blue-300",      emoji: "🏛️" },
+  thousand_lifetime:   { label: "1K Deals Career", accent: "border-purple-400/50 bg-purple-500/10 text-purple-300",emoji: "🏰" },
+  lifetime_50k:        { label: "$50K Lifetime",   accent: "border-emerald-400/50 bg-emerald-500/10 text-emerald-300",emoji: "💵" },
+  lifetime_100k:       { label: "$100K Club",      accent: "border-amber-400/50 bg-amber-500/10 text-amber-300",   emoji: "💎" },
+  lifetime_250k:       { label: "$250K Club",      accent: "border-yellow-400/50 bg-yellow-500/10 text-yellow-300",emoji: "👑" },
+  lifetime_500k:       { label: "$500K Club",      accent: "border-fuchsia-400/50 bg-fuchsia-500/10 text-fuchsia-300",emoji: "💎" },
+  lifetime_1m:         { label: "$1M Career",      accent: "border-amber-400/50 bg-amber-500/10 text-amber-300",   emoji: "🏆" },
+
+  // Special / event
+  march_2026_top6:     { label: "March '26 Top 6", accent: "border-emerald-400/50 bg-emerald-500/10 text-emerald-300",emoji: "🏆" },
+  apex_hall_of_fame:   { label: "Hall of Fame",    accent: "border-amber-400/50 bg-amber-500/10 text-amber-300",   emoji: "🏛️" },
+  agent_of_the_year:   { label: "Agent of Year",   accent: "border-yellow-300/50 bg-yellow-400/10 text-yellow-200",emoji: "🥇" },
+  president_circle:    { label: "President's Circle",accent: "border-violet-400/50 bg-violet-500/10 text-violet-300",emoji: "🎖️" },
+  closer_of_quarter:   { label: "Closer of Qtr",   accent: "border-fuchsia-400/50 bg-fuchsia-500/10 text-fuchsia-300",emoji: "💼" },
 };
 
 function fmt$(n: number | null): string {
@@ -66,6 +133,8 @@ export default function AwardsGallery() {
   const [tierFilter, setTier] = useState<string>("all");
   const [emailing, setEmailing] = useState(false);
   const [editing, setEditing] = useState<PlaqueRow | null>(null);
+  const [viewing, setViewing] = useState<PlaqueRow | null>(null);
+  const [downloading, setDownloading] = useState(false);
   const [rendering, setRendering] = useState(false);
   const [requestingPhotos, setRequestingPhotos] = useState(false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -288,15 +357,21 @@ export default function AwardsGallery() {
           {filtered.map(p => {
             const meta = TIER_META[p.milestone_type] ?? { label: p.milestone_type, accent: "border-border bg-muted/30 text-foreground", emoji: "🏅" };
             return (
-              <GlassCard key={p.id} className={cn(
-                "p-4 relative group card-tilt reveal",
-                meta.accent.split(" ")[0],
-                p.milestone_type === "single_day_platinum" && "win-glow",
-                p.milestone_type === "single_day" && "gold-glow",
-              )}>
+              <GlassCard
+                key={p.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => setViewing(p)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setViewing(p); } }}
+                className={cn(
+                  "p-4 relative group card-tilt reveal cursor-pointer transition-transform active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60",
+                  meta.accent.split(" ")[0],
+                  p.milestone_type === "single_day_platinum" && "win-glow",
+                  p.milestone_type === "single_day" && "gold-glow",
+                )}>
                 {isAdmin && (
                   <button
-                    onClick={() => setEditing(p)}
+                    onClick={(e) => { e.stopPropagation(); setEditing(p); }}
                     className="absolute top-3 right-3 h-7 w-7 rounded-full bg-black/60 border border-white/10 backdrop-blur text-white/80 hover:text-white hover:bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-10"
                     title="Edit plaque"
                   >
@@ -313,8 +388,11 @@ export default function AwardsGallery() {
                   ) : null}
                 </div>
                 {p.image_png_url || p.image_svg_url ? (
-                  <div className="mb-3 rounded-md overflow-hidden bg-background/40" style={{ aspectRatio: "9 / 16", maxHeight: 220 }}>
+                  <div className="mb-3 rounded-md overflow-hidden bg-background/40 relative" style={{ aspectRatio: "9 / 16", maxHeight: 220 }}>
                     <img src={p.image_png_url ?? p.image_svg_url ?? undefined} alt="" className="w-full h-full object-contain" loading="lazy" />
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2 opacity-0 group-hover:opacity-100 transition-opacity text-[11px] text-white/90 text-center">
+                      Tap to save / share
+                    </div>
                   </div>
                 ) : (
                   <div className="mb-3 h-32 rounded-md bg-muted/20 flex items-center justify-center text-xs text-muted-foreground">
@@ -333,6 +411,115 @@ export default function AwardsGallery() {
           })}
         </div>
       )}
+
+      {/* ── Tap-to-view: full plaque + mobile share/save ───────────────── */}
+      <Dialog open={!!viewing} onOpenChange={(open) => { if (!open) setViewing(null); }}>
+        <DialogContent className="max-w-md p-0 bg-background/95 backdrop-blur-xl border-border/40">
+          <DialogHeader className="px-5 pt-5">
+            <DialogTitle className="text-base">
+              {viewing && (TIER_META[viewing.milestone_type]?.label ?? viewing.milestone_type)}
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              {viewing?.agent_name} · {viewing?.milestone_date ? format(new Date(viewing.milestone_date), "MMM d, yyyy") : ""} · {fmt$(viewing?.amount ?? 0)}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="px-5">
+            {viewing && (viewing.image_png_url || viewing.image_svg_url) ? (
+              <div className="rounded-xl overflow-hidden bg-black/40" style={{ aspectRatio: "9 / 16" }}>
+                <img
+                  src={viewing.image_png_url ?? viewing.image_svg_url ?? undefined}
+                  alt=""
+                  className="w-full h-full object-contain"
+                />
+              </div>
+            ) : (
+              <div className="rounded-xl bg-muted/20 h-72 flex items-center justify-center text-sm text-muted-foreground">
+                Image still rendering — try again in a minute.
+              </div>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-2 p-5 pt-3">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              disabled={downloading || !viewing}
+              onClick={async () => {
+                if (!viewing) return;
+                const url = viewing.image_png_url ?? viewing.image_svg_url;
+                if (!url) { toast.error("Plaque image not ready yet"); return; }
+                setDownloading(true);
+                try {
+                  const res = await fetch(url);
+                  const blob = await res.blob();
+                  const fname = `apex-${viewing.milestone_type}-${(viewing.agent_name ?? "agent").replace(/\s+/g, "_")}.png`;
+                  const file = new File([blob], fname, { type: blob.type || "image/png" });
+                  // @ts-ignore navigator.canShare
+                  if (navigator.share && navigator.canShare?.({ files: [file] })) {
+                    await navigator.share({ files: [file], title: "APEX Award" });
+                  } else {
+                    const a = document.createElement("a");
+                    a.href = URL.createObjectURL(blob);
+                    a.download = fname;
+                    a.click();
+                    URL.revokeObjectURL(a.href);
+                    toast.success("Plaque saved");
+                  }
+                } catch (e: any) {
+                  toast.error(e?.message ?? "Couldn't save plaque");
+                } finally {
+                  setDownloading(false);
+                }
+              }}
+            >
+              {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              Save / Share
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              disabled={!viewing?.image_png_url && !viewing?.image_svg_url}
+              onClick={async () => {
+                if (!viewing) return;
+                const url = viewing.image_png_url ?? viewing.image_svg_url;
+                if (!url) return;
+                try {
+                  await navigator.clipboard.writeText(url);
+                  toast.success("Image link copied — paste in IG/Discord");
+                } catch {
+                  toast.error("Clipboard blocked — long-press the image instead");
+                }
+              }}
+            >
+              <Share2 className="h-4 w-4" />
+              Copy Link
+            </Button>
+            <Button
+              variant="default"
+              size="sm"
+              className="gap-1.5 col-span-2"
+              disabled={!viewing}
+              onClick={async () => {
+                if (!viewing) return;
+                try {
+                  const { error } = await supabase.functions.invoke("post-plaque-to-instagram", {
+                    body: { plaque_id: viewing.id },
+                  });
+                  if (error) throw error;
+                  toast.success("Queued to your Instagram — posts within a minute");
+                } catch (e: any) {
+                  toast.error(e?.message ?? "IG post queue not available");
+                }
+              }}
+            >
+              <Instagram className="h-4 w-4" />
+              Post to my Instagram
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
 
       {/* ── Admin edit dialog ─────────────────────────────────────────── */}
       <Dialog open={!!editing} onOpenChange={(open) => { if (!open) { setEditing(null); setPhotoFile(null); } }}>

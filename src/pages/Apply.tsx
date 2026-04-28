@@ -44,8 +44,13 @@ const applicationSchema = z.object({
   phone: z.string().min(10, "Valid phone number is required").max(20),
   city: z.string().min(2, "City is required").max(100),
   state: z.string().min(2, "State is required"),
-  instagramHandle: z.string().max(50).optional(),
-  
+  instagramHandle: z
+    .string()
+    .trim()
+    .min(1, "Instagram handle is required — we post your wins for you")
+    .max(50)
+    .regex(/^@?[A-Za-z0-9._]{1,30}$/i, "Letters, numbers, dot, or underscore only"),
+
   // Step 2: Experience
   hasInsuranceExperience: z.boolean().default(false),
   yearsExperience: z.preprocess(
@@ -74,6 +79,25 @@ const applicationSchema = z.object({
     message: "SMS consent is required to receive onboarding steps by text",
   }),
   emailConsent: z.boolean().default(false),
+}).superRefine((data, ctx) => {
+  // Licensed agents must provide NIPR (this is the ID they'll log in with)
+  if (data.licenseStatus === "licensed") {
+    const n = (data.niprNumber || "").trim();
+    if (!/^\d{6,12}$/.test(n)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["niprNumber"],
+        message: "Licensed agents: enter your 6–12 digit NIPR number",
+      });
+    }
+    if (!data.licensedStates || data.licensedStates.length === 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["licensedStates"],
+        message: "Pick at least one state you're licensed in",
+      });
+    }
+  }
 });
 
 type ApplicationFormData = z.infer<typeof applicationSchema>;
@@ -334,13 +358,13 @@ export default function Apply() {
     
     switch (step) {
       case 1:
-        fieldsToValidate = ["firstName", "lastName", "email", "phone", "city", "state"];
+        fieldsToValidate = ["firstName", "lastName", "email", "phone", "city", "state", "instagramHandle"];
         break;
       case 2:
         fieldsToValidate = ["hasInsuranceExperience"];
         break;
       case 3:
-        fieldsToValidate = ["licenseStatus"];
+        fieldsToValidate = ["licenseStatus", "niprNumber", "licensedStates"];
         break;
       case 4:
         fieldsToValidate = ["availability", "smsConsent", "motivation"];
@@ -692,21 +716,25 @@ export default function Apply() {
                         </div>
                       </div>
 
-                      {/* Instagram Handle Field */}
+                      {/* Instagram Handle Field — REQUIRED so we can auto-post your plaques */}
                       <div className="space-y-2">
                         <Label htmlFor="instagramHandle" className="flex items-center gap-2">
                           <Instagram className="h-4 w-4 text-primary" />
-                          Instagram Handle (optional)
+                          Instagram Handle <span className="text-destructive">*</span>
                         </Label>
                         <Input
                           id="instagramHandle"
                           {...register("instagramHandle")}
                           placeholder="@yourhandle"
                           className="bg-input"
+                          required
                         />
                         <p className="text-xs text-muted-foreground">
-                          We may reach out via Instagram for faster communication
+                          We post your wins to your Instagram automatically — required.
                         </p>
+                        {errors.instagramHandle && (
+                          <p className="text-sm text-destructive">{errors.instagramHandle.message as string}</p>
+                        )}
                       </div>
 
                       {/* Mobile Carrier Field */}

@@ -38,6 +38,7 @@ import { ResendLicensingButton } from "@/components/callcenter/ResendLicensingBu
 import { QuickEmailMenu } from "@/components/dashboard/QuickEmailMenu";
 import { QuickAssignMenu } from "@/components/dashboard/QuickAssignMenu";
 import { ActivityTimeline } from "@/components/recruiter/ActivityTimeline";
+import { BattleStations } from "@/components/recruiter/BattleStations";
 import { InterviewScheduler } from "@/components/dashboard/InterviewScheduler";
 import { LeadDetailSheet } from "@/components/recruiter/LeadDetailSheet";
 import { DormantBadge } from "@/components/recruiter/DormantBadge";
@@ -1123,8 +1124,8 @@ function RecruiterDashboardInner() {
           <div className="flex-1">
             <div className="flex items-center gap-3">
               <Sparkles className="h-5 w-5 text-pink-400" />
-              <h1 className="text-xl font-bold bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">
-                Recruiter HQ
+              <h1 className="text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-pink-400 via-fuchsia-400 to-purple-400 bg-clip-text text-transparent tracking-tight">
+                Recruiter Command Center
               </h1>
               {advancedToday > 0 && (
                 <Badge variant="outline" className="flex items-center gap-1 bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs font-bold">
@@ -1134,7 +1135,7 @@ function RecruiterDashboardInner() {
               )}
             </div>
             <p className="text-sm text-muted-foreground">
-              Track every unlicensed hire → get them licensed 💪
+              Battle Stations below shows your next 5 calls, ranked by urgency. Hit Gold every day. 🔥
             </p>
           </div>
 
@@ -1189,6 +1190,14 @@ function RecruiterDashboardInner() {
         </div>
 
       </div>
+
+      {/* ── Battle Stations: top-5 hot leads + critical stats ── */}
+      <BattleStations
+        onLeadClick={(id) => {
+          const lead = leads.find((l) => l.id === id);
+          if (lead) setDetailLead(lead);
+        }}
+      />
 
       {/* ── Stat bubbles ── */}
       <div className="grid grid-cols-4 gap-1.5">

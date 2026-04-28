@@ -30,3 +30,4 @@ apex-bot-credentials.md
 *.sw?
 .env
 .env.local
+.vercel

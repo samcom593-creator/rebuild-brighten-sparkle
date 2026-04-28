@@ -14,6 +14,198 @@ export type Database = {
   }
   public: {
     Tables: {
+      _garbage_policy_backup_2026_04_28: {
+        Row: {
+          agent_id: string
+          annual_premium: number
+          archived_at: string
+          carrier_id: string | null
+          client_dob: string
+          client_first_name: string
+          client_last_name: string
+          client_phone: string
+          created_at: string
+          effective_date: string
+          external_deal_id: string | null
+          face_amount: number
+          id: string
+          insuracloud_sync_error: string | null
+          monthly_premium: number
+          notes: string | null
+          pipeline_stage: string | null
+          policy_expiration_date: string | null
+          policy_number: string
+          policy_status_standard: string | null
+          policy_term_months: number | null
+          posted_at: string | null
+          product_sold: string
+          source: string | null
+          status: string | null
+          status_updated_at: string | null
+          synced_to_insuracloud_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          annual_premium: number
+          archived_at?: string
+          carrier_id?: string | null
+          client_dob: string
+          client_first_name: string
+          client_last_name: string
+          client_phone: string
+          created_at?: string
+          effective_date: string
+          external_deal_id?: string | null
+          face_amount: number
+          id?: string
+          insuracloud_sync_error?: string | null
+          monthly_premium: number
+          notes?: string | null
+          pipeline_stage?: string | null
+          policy_expiration_date?: string | null
+          policy_number: string
+          policy_status_standard?: string | null
+          policy_term_months?: number | null
+          posted_at?: string | null
+          product_sold: string
+          source?: string | null
+          status?: string | null
+          status_updated_at?: string | null
+          synced_to_insuracloud_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          annual_premium?: number
+          archived_at?: string
+          carrier_id?: string | null
+          client_dob?: string
+          client_first_name?: string
+          client_last_name?: string
+          client_phone?: string
+          created_at?: string
+          effective_date?: string
+          external_deal_id?: string | null
+          face_amount?: number
+          id?: string
+          insuracloud_sync_error?: string | null
+          monthly_premium?: number
+          notes?: string | null
+          pipeline_stage?: string | null
+          policy_expiration_date?: string | null
+          policy_number?: string
+          policy_status_standard?: string | null
+          policy_term_months?: number | null
+          posted_at?: string | null
+          product_sold?: string
+          source?: string | null
+          status?: string | null
+          status_updated_at?: string | null
+          synced_to_insuracloud_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      _sam_agent_flag_backup_2026_04_28: {
+        Row: {
+          agent_id: string
+          backed_up_at: string | null
+          was_insuracloud_user_id: number | null
+          was_is_deactivated: boolean | null
+          was_is_inactive: boolean | null
+          was_status: string | null
+        }
+        Insert: {
+          agent_id: string
+          backed_up_at?: string | null
+          was_insuracloud_user_id?: number | null
+          was_is_deactivated?: boolean | null
+          was_is_inactive?: boolean | null
+          was_status?: string | null
+        }
+        Update: {
+          agent_id?: string
+          backed_up_at?: string | null
+          was_insuracloud_user_id?: number | null
+          was_is_deactivated?: boolean | null
+          was_is_inactive?: boolean | null
+          was_status?: string | null
+        }
+        Relationships: []
+      }
+      _sam_profile_dup_backup_2026_04_28: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          carrier: string | null
+          city: string | null
+          created_at: string
+          deleted_at: string
+          discord_webhook_url: string | null
+          email: string
+          full_name: string | null
+          id: string
+          instagram_handle: string | null
+          phone: string | null
+          state: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          carrier?: string | null
+          city?: string | null
+          created_at?: string
+          deleted_at?: string
+          discord_webhook_url?: string | null
+          email: string
+          full_name?: string | null
+          id?: string
+          instagram_handle?: string | null
+          phone?: string | null
+          state?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          carrier?: string | null
+          city?: string | null
+          created_at?: string
+          deleted_at?: string
+          discord_webhook_url?: string | null
+          email?: string
+          full_name?: string | null
+          id?: string
+          instagram_handle?: string | null
+          phone?: string | null
+          state?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      _sam_zero_backup_2026_04_27: {
+        Row: {
+          backed_up_at: string
+          payload: Json | null
+          source: string | null
+        }
+        Insert: {
+          backed_up_at?: string
+          payload?: Json | null
+          source?: string | null
+        }
+        Update: {
+          backed_up_at?: string
+          payload?: Json | null
+          source?: string | null
+        }
+        Relationships: []
+      }
       achievements: {
         Row: {
           created_at: string
@@ -2637,6 +2829,30 @@ export type Database = {
         }
         Relationships: []
       }
+      autoposter_watchdog_log: {
+        Row: {
+          findings: Json
+          id: string
+          metrics: Json
+          ok: boolean
+          ran_at: string
+        }
+        Insert: {
+          findings?: Json
+          id?: string
+          metrics?: Json
+          ok: boolean
+          ran_at?: string
+        }
+        Update: {
+          findings?: Json
+          id?: string
+          metrics?: Json
+          ok?: boolean
+          ran_at?: string
+        }
+        Relationships: []
+      }
       award_batches: {
         Row: {
           award_type: string
@@ -3160,6 +3376,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "commission_audit_log_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deals_needing_real_policy"
+            referencedColumns: ["id"]
+          },
         ]
       }
       commission_ledger: {
@@ -3238,6 +3461,13 @@ export type Database = {
             columns: ["deal_id"]
             isOneToOne: true
             referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commission_ledger_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "v_deals_needing_real_policy"
             referencedColumns: ["id"]
           },
         ]
@@ -3533,6 +3763,45 @@ export type Database = {
           reason?: string | null
           requested_at?: string | null
           status?: string | null
+        }
+        Relationships: []
+      }
+      deal_attribution_audit: {
+        Row: {
+          changed_at: string
+          deal_id: string
+          external_deal_id: string | null
+          id: number
+          new_agent_id: string | null
+          old_agent_id: string | null
+          op: string
+          policy_number: string | null
+          reason: string | null
+          source: string | null
+        }
+        Insert: {
+          changed_at?: string
+          deal_id: string
+          external_deal_id?: string | null
+          id?: number
+          new_agent_id?: string | null
+          old_agent_id?: string | null
+          op: string
+          policy_number?: string | null
+          reason?: string | null
+          source?: string | null
+        }
+        Update: {
+          changed_at?: string
+          deal_id?: string
+          external_deal_id?: string | null
+          id?: number
+          new_agent_id?: string | null
+          old_agent_id?: string | null
+          op?: string
+          policy_number?: string | null
+          reason?: string | null
+          source?: string | null
         }
         Relationships: []
       }
@@ -7456,6 +7725,64 @@ export type Database = {
         }
         Relationships: []
       }
+      v_deals_needing_real_policy: {
+        Row: {
+          agent_id: string | null
+          annual_premium: number | null
+          carrier_id: string | null
+          client_first_name: string | null
+          client_last_name: string | null
+          created_at: string | null
+          effective_date: string | null
+          id: string | null
+          policy_number: string | null
+        }
+        Insert: {
+          agent_id?: string | null
+          annual_premium?: number | null
+          carrier_id?: string | null
+          client_first_name?: string | null
+          client_last_name?: string | null
+          created_at?: string | null
+          effective_date?: string | null
+          id?: string | null
+          policy_number?: string | null
+        }
+        Update: {
+          agent_id?: string | null
+          annual_premium?: number | null
+          carrier_id?: string | null
+          client_first_name?: string | null
+          client_last_name?: string | null
+          created_at?: string | null
+          effective_date?: string | null
+          id?: string | null
+          policy_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agent_revenue_estimate"
+            referencedColumns: ["agent_id"]
+          },
+          {
+            foreignKeyName: "deals_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_carrier_id_fkey"
+            columns: ["carrier_id"]
+            isOneToOne: false
+            referencedRelation: "carriers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       admin_configure_integration: {
@@ -7602,6 +7929,13 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      agentlink_upsert_from_payload: {
+        Args: { p_payload: Json }
+        Returns: {
+          inserted: number
+          updated: number
+        }[]
+      }
       agentlink_watchdog: {
         Args: never
         Returns: {
@@ -7643,6 +7977,7 @@ export type Database = {
         }[]
       }
       auto_assign_hiring_manager: { Args: never; Returns: Json }
+      autoposter_leak_watchdog: { Args: never; Returns: Json }
       backfill_monthly_awards: {
         Args: { p_months_back?: number; p_threshold?: number }
         Returns: Json
@@ -7719,6 +8054,7 @@ export type Database = {
       }
       drain_sms_fallback_queue: { Args: never; Returns: Json }
       ensure_next_month_partitions: { Args: never; Returns: undefined }
+      execute_sql: { Args: { q: string }; Returns: Json }
       fn_commission_rate: {
         Args: { p_agent_id: string; p_carrier_id: string }
         Returns: {
@@ -7795,6 +8131,10 @@ export type Database = {
       }
       in_course_peer_pressure: { Args: never; Returns: Json }
       is_first_monday_of_month: { Args: never; Returns: boolean }
+      is_fresh_deal_close: {
+        Args: { p_created: string; p_eff_date: string; p_posted: string }
+        Returns: boolean
+      }
       job_run_finish: {
         Args: {
           p_error?: string
@@ -7814,6 +8154,10 @@ export type Database = {
         Returns: {
           agent_id: string
         }[]
+      }
+      normalize_policy_number: {
+        Args: { p_external: string; p_id_fallback: string; p_pol: string }
+        Returns: string
       }
       nudge_day2_not_enrolled: { Args: never; Returns: Json }
       nudge_day4_not_enrolled: { Args: never; Returns: Json }

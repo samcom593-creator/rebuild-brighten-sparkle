@@ -95,25 +95,41 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
         }
       }
       
-      // Get all production for the period (agency-wide for comparison)
-      const { data: allProduction } = await supabase
-        .from("daily_production")
-        .select("agent_id, closing_rate, presentations, aop, deals_closed")
-        .gte("production_date", dateRange.start)
-        .lte("production_date", dateRange.end);
+      // ALP + deals from deals table (Agent Link truth, status submitted/
+      // active by effective_date). Presentations stay on daily_production
+      // — only authoritative source.
+      const [presRes, dealsRes] = await Promise.all([
+        supabase
+          .from("daily_production")
+          .select("agent_id, presentations")
+          .gte("production_date", dateRange.start)
+          .lte("production_date", dateRange.end),
+        supabase
+          .from("deals")
+          .select("agent_id, annual_premium")
+          .gte("effective_date", dateRange.start)
+          .lte("effective_date", dateRange.end)
+          .in("status", ["submitted", "active"]),
+      ]);
+      const presRows = (presRes.data || []) as any[];
+      const dealRows = (dealsRes.data || []) as any[];
 
-      if (allProduction && allProduction.length > 0) {
+      if ((presRows.length + dealRows.length) > 0) {
         // Aggregate by agent for accurate averages
         const agentTotals = new Map<string, { closingRate: number; presentations: number; alp: number; deals: number; count: number }>();
-        allProduction.forEach((p) => {
+        presRows.forEach((p) => {
+          if (!p.agent_id) return;
           const existing = agentTotals.get(p.agent_id) || { closingRate: 0, presentations: 0, alp: 0, deals: 0, count: 0 };
-          agentTotals.set(p.agent_id, {
-            closingRate: existing.closingRate + Number(p.closing_rate || 0),
-            presentations: existing.presentations + Number(p.presentations || 0),
-            alp: existing.alp + Number(p.aop || 0),
-            deals: existing.deals + Number(p.deals_closed || 0),
-            count: existing.count + 1,
-          });
+          existing.presentations += Number(p.presentations || 0);
+          existing.count += 1;
+          agentTotals.set(p.agent_id, existing);
+        });
+        dealRows.forEach((d) => {
+          if (!d.agent_id) return;
+          const existing = agentTotals.get(d.agent_id) || { closingRate: 0, presentations: 0, alp: 0, deals: 0, count: 0 };
+          existing.alp += Number(d.annual_premium || 0);
+          existing.deals += 1;
+          agentTotals.set(d.agent_id, existing);
         });
 
         // Filter agents with at least $2,000 ALP for agency averages (exclude new agents)
@@ -161,18 +177,18 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
         setPersonalStats({ closingRate: 0, presentations: 0, alp: 0, deals: 0 });
       }
 
-      // Get personal best ALP (all-time) - for agents only, or skip for admin/manager
+      // Personal best ALP — biggest single deal ever closed (deals truth)
       if (!isAdmin && !isManager) {
         const { data: bestData } = await supabase
-          .from("daily_production")
-          .select("aop")
+          .from("deals")
+          .select("annual_premium")
           .eq("agent_id", agentId)
-          .order("aop", { ascending: false })
+          .in("status", ["submitted", "active"])
+          .order("annual_premium", { ascending: false })
           .limit(1)
           .maybeSingle();
-
         if (bestData) {
-          setPersonalBest(Number(bestData.aop));
+          setPersonalBest(Number((bestData as any).annual_premium));
         }
       } else {
         setPersonalBest(0); // No personal best for team views

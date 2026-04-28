@@ -97,32 +97,42 @@ export function DownlineStatsCard() {
           endDate = customRange.to ? format(customRange.to, "yyyy-MM-dd") : format(today, "yyyy-MM-dd");
         }
 
-        // Query production data
-        const query = supabase
-          .from("daily_production")
-          .select("aop, deals_closed, presentations")
-          .in("agent_id", agentIds)
-          .gte("production_date", startDate)
-          .lte("production_date", endDate);
+        // ALP + deals from deals table (Agent Link truth, status submitted/
+        // active by effective_date). Presentations stay on daily_production
+        // — only authoritative source.
+        const [dealsRes, presRes] = await Promise.all([
+          supabase
+            .from("deals")
+            .select("annual_premium, agent_id")
+            .in("agent_id", agentIds)
+            .gte("effective_date", startDate)
+            .lte("effective_date", endDate)
+            .in("status", ["submitted", "active"]),
+          supabase
+            .from("daily_production")
+            .select("presentations")
+            .in("agent_id", agentIds)
+            .gte("production_date", startDate)
+            .lte("production_date", endDate),
+        ]);
 
+        const dealsData = (dealsRes.data || []) as any[];
+        const totalALP = dealsData.reduce((sum, d) => sum + (Number(d.annual_premium) || 0), 0);
+        const totalDeals = dealsData.length;
+        const totalPresentations = (presRes.data || []).reduce(
+          (sum: number, p: any) => sum + (Number(p.presentations) || 0),
+          0,
+        );
+        const avgCloseRate = totalPresentations > 0
+          ? Math.round((totalDeals / totalPresentations) * 100)
+          : 0;
 
-        const { data: productionData } = await query;
-
-        if (productionData) {
-          const totalALP = productionData.reduce((sum, p) => sum + (Number(p.aop) || 0), 0);
-          const totalDeals = productionData.reduce((sum, p) => sum + (p.deals_closed || 0), 0);
-          const totalPresentations = productionData.reduce((sum, p) => sum + (p.presentations || 0), 0);
-          const avgCloseRate = totalPresentations > 0 
-            ? Math.round((totalDeals / totalPresentations) * 100) 
-            : 0;
-
-          setStats({
-            totalALP,
-            totalDeals,
-            agentCount: agentIds.length,
-            avgCloseRate,
-          });
-        }
+        setStats({
+          totalALP,
+          totalDeals,
+          agentCount: agentIds.length,
+          avgCloseRate,
+        });
       } catch (error) {
         console.error("Error fetching downline stats:", error);
       } finally {

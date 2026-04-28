@@ -72,20 +72,36 @@ export function TeamOverviewDashboard() {
   const { data, isLoading } = useQuery({
     queryKey: ["team-overview", today],
     queryFn: async (): Promise<TeamOverviewData> => {
-      const [agentsRes, prodRes7, prodRes30, deactivatedRes, applicationsRes] = await Promise.all([
+      // ALP + deal counts come from deals table (Agent Link truth, status
+      // submitted/active by effective_date). daily_production stays only
+      // as the source of presentations (its only authoritative field).
+      const VALID_STATUS = ["submitted", "active"] as const;
+      const [agentsRes, presRes7, presRes30, dealsRes7, dealsRes30, deactivatedRes, applicationsRes] = await Promise.all([
         supabase
           .from("agents")
           .select("id, is_deactivated, is_inactive, license_status, onboarding_stage, invited_by_manager_id, user_id, profile:profiles!agents_profile_id_fkey(full_name)"),
         supabase
           .from("daily_production")
-          .select("agent_id, aop, deals_closed, presentations")
+          .select("agent_id, presentations")
           .gte("production_date", sevenDaysAgo)
           .lte("production_date", today),
         supabase
           .from("daily_production")
-          .select("agent_id, aop, deals_closed, presentations")
+          .select("agent_id, presentations")
           .gte("production_date", thirtyDaysAgo)
           .lte("production_date", today),
+        supabase
+          .from("deals")
+          .select("agent_id, annual_premium")
+          .gte("effective_date", sevenDaysAgo)
+          .lte("effective_date", today)
+          .in("status", VALID_STATUS as unknown as string[]),
+        supabase
+          .from("deals")
+          .select("agent_id, annual_premium")
+          .gte("effective_date", thirtyDaysAgo)
+          .lte("effective_date", today)
+          .in("status", VALID_STATUS as unknown as string[]),
         supabase
           .from("agents")
           .select("id")
@@ -113,20 +129,31 @@ export function TeamOverviewDashboard() {
       const inFieldTraining = activeAgents.filter(a => a.onboarding_stage === "in_field_training").length;
       const liveInField = activeAgents.filter(a => a.onboarding_stage === "evaluated" || !a.onboarding_stage).length;
 
-      const prod7 = prodRes7.data || [];
-      const aop7 = prod7.reduce((sum, p) => sum + (Number(p.aop) || 0), 0);
-
-      const prod30 = prodRes30.data || [];
-      const aop30 = prod30.reduce((sum, p) => sum + (Number(p.aop) || 0), 0);
+      const deals7 = (dealsRes7.data || []) as any[];
+      const deals30 = (dealsRes30.data || []) as any[];
+      const aop7 = deals7.reduce((sum, d) => sum + (Number(d.annual_premium) || 0), 0);
+      const aop30 = deals30.reduce((sum, d) => sum + (Number(d.annual_premium) || 0), 0);
+      const presBy30 = new Map<string, number>();
+      for (const p of (presRes30.data || []) as any[]) {
+        if (!p.agent_id) continue;
+        presBy30.set(p.agent_id, (presBy30.get(p.agent_id) || 0) + (Number(p.presentations) || 0));
+      }
 
       const agentProd30 = new Map<string, { deals: number; presentations: number; aop: number }>();
-      for (const p of prod30) {
-        const existing = agentProd30.get(p.agent_id) || { deals: 0, presentations: 0, aop: 0 };
-        agentProd30.set(p.agent_id, {
-          deals: existing.deals + (p.deals_closed || 0),
-          presentations: existing.presentations + (p.presentations || 0),
-          aop: existing.aop + (Number(p.aop) || 0),
+      for (const d of deals30) {
+        if (!d.agent_id) continue;
+        const existing = agentProd30.get(d.agent_id) || { deals: 0, presentations: 0, aop: 0 };
+        agentProd30.set(d.agent_id, {
+          deals: existing.deals + 1,
+          presentations: existing.presentations,
+          aop: existing.aop + (Number(d.annual_premium) || 0),
         });
+      }
+      // Backfill presentations onto every agent (incl. those with no deals)
+      for (const [aid, pres] of presBy30) {
+        const existing = agentProd30.get(aid) || { deals: 0, presentations: 0, aop: 0 };
+        existing.presentations = pres;
+        agentProd30.set(aid, existing);
       }
 
       let totalCloseRate = 0;
@@ -209,22 +236,21 @@ export function TeamOverviewDashboard() {
         managerMap.set(mgrId, existing);
       }
 
-      for (const p of prod30) {
-        const agent = activeAgents.find(a => a.id === p.agent_id);
+      for (const d of deals30) {
+        const agent = activeAgents.find(a => a.id === d.agent_id);
         if (!agent?.invited_by_manager_id) continue;
         const mgrEntry = managerMap.get(agent.invited_by_manager_id);
         if (mgrEntry) {
-          mgrEntry.teamAlp += Number(p.aop) || 0;
-          if ((p.deals_closed || 0) > 0 || (Number(p.aop) || 0) > 0) {
-            mgrEntry.producingAgentIds.add(p.agent_id);
-          }
+          const ap = Number(d.annual_premium) || 0;
+          mgrEntry.teamAlp += ap;
+          if (ap > 0) mgrEntry.producingAgentIds.add(d.agent_id);
         }
       }
 
       for (const [mgrId, entry] of managerMap) {
-        const ownAlp = prod30
-          .filter(p => p.agent_id === mgrId)
-          .reduce((sum, p) => sum + (Number(p.aop) || 0), 0);
+        const ownAlp = deals30
+          .filter((d) => d.agent_id === mgrId)
+          .reduce((sum, d) => sum + (Number(d.annual_premium) || 0), 0);
         entry.ownAlp = ownAlp;
       }
 

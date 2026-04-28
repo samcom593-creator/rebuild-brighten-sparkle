@@ -245,13 +245,15 @@ export function CompactLeaderboard({ currentAgentId, className, refreshKey }: Co
           endDate = startDate;
       }
 
-      let query = supabase
-        .from("daily_production")
-        .select(`agent_id, aop, deals_closed, production_date`)
-        .gte("production_date", startDate)
-        .lte("production_date", endDate);
-
-      const { data: production } = await query;
+      // Pull from deals (Agent Link truth) — daily_production was self-
+      // reported and drifted from agency totals. Status submitted/active
+      // by effective_date matches every other dashboard surface.
+      const { data: production } = await supabase
+        .from("deals")
+        .select("agent_id, annual_premium, effective_date")
+        .gte("effective_date", startDate)
+        .lte("effective_date", endDate)
+        .in("status", ["submitted", "active"]);
 
       if (!production || production.length === 0) {
         setEntries([]);
@@ -261,12 +263,13 @@ export function CompactLeaderboard({ currentAgentId, className, refreshKey }: Co
 
       const agentTotals: Record<string, { alp: number; deals: number }> = {};
 
-      production.forEach((p) => {
+      production.forEach((p: any) => {
+        if (!p.agent_id) return;
         if (!agentTotals[p.agent_id]) {
           agentTotals[p.agent_id] = { alp: 0, deals: 0 };
         }
-        agentTotals[p.agent_id].alp += Number(p.aop || 0);
-        agentTotals[p.agent_id].deals += Number(p.deals_closed || 0);
+        agentTotals[p.agent_id].alp += Number(p.annual_premium || 0);
+        agentTotals[p.agent_id].deals += 1;
       });
 
       const agentIds = Object.keys(agentTotals);

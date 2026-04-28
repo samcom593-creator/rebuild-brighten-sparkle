@@ -473,6 +473,29 @@ export default function Dashboard() {
     staleTime: 300000,
   });
 
+  // Agent Link sync health — surfaces deals that came back with null/
+  // unknown status so Sam can SEE when upstream sync is missing rows
+  // instead of wondering why the totals look off.
+  const { data: agentLinkSyncIssues } = useQuery({
+    queryKey: ["agentlink-sync-issues"],
+    queryFn: async () => {
+      const VALID = ["submitted", "active", "cancelled", "lapsed", "pending"];
+      const [nullRes, unknownRes, lastSyncRes] = await Promise.all([
+        supabase.from("deals").select("id", { count: "exact", head: true }).is("status", null),
+        supabase.from("deals").select("id", { count: "exact", head: true }).not("status", "in", `(${VALID.join(",")})`),
+        supabase.from("deals").select("created_at").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      ]);
+      return {
+        nullStatus: nullRes.count || 0,
+        unknownStatus: unknownRes.count || 0,
+        lastSync: (lastSyncRes.data as any)?.created_at || null,
+      };
+    },
+    enabled: !!user && !authLoading && isAdmin,
+    staleTime: 120_000,
+    refetchInterval: 300_000,
+  });
+
   // Fetch pending lead purchase requests count
   const { data: pendingPurchases } = useQuery({
     queryKey: ["dashboard-pending-purchases"],
@@ -668,6 +691,19 @@ export default function Dashboard() {
             {staleAgents.length > 5 ? ` +${staleAgents.length - 5} more` : ""}
           </p>
         </div>
+      )}
+
+      {isAdmin && agentLinkSyncIssues && (agentLinkSyncIssues.nullStatus > 0 || agentLinkSyncIssues.unknownStatus > 0) && (
+        <Link to="/dashboard/agentlink-sync">
+          <div className="mb-4 p-3 rounded-lg border border-orange-500/30 bg-orange-500/5 cursor-pointer hover:border-orange-500/50 transition-all">
+            <div className="flex items-center gap-2 flex-wrap">
+              <AlertTriangle className="h-4 w-4 text-orange-500" />
+              <span className="text-sm font-semibold text-orange-400">
+                Agent Link sync gap: {agentLinkSyncIssues.nullStatus} null-status / {agentLinkSyncIssues.unknownStatus} unknown-status deals — totals may be light. Tap to re-sync.
+              </span>
+            </div>
+          </div>
+        </Link>
       )}
 
       {isAdmin && (pendingPurchases ?? 0) > 0 && (

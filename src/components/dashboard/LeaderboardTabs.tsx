@@ -118,28 +118,28 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
           startDate = getTodayPST();
       }
 
-      let query = supabase
+      // Truth source split (post-2026-04-27 lockdown):
+      //   • ALP and deal counts come from `deals` (immutable upstream).
+      //   • presentations / hours_called / passed_price / referrals stay on
+      //     `daily_production` — those are hand-logged and have no upstream.
+      //   • closing rate is recomputed from deals/presentations.
+      let dealsQuery = supabase
+        .from("deals")
+        .select("agent_id, annual_premium, effective_date")
+        .gte("effective_date", startDate);
+      let prodQuery = supabase
         .from("daily_production")
-        .select(`
-          agent_id,
-          aop,
-          deals_closed,
-          presentations,
-          passed_price,
-          closing_rate,
-          hours_called,
-          referrals_caught,
-          production_date
-        `)
+        .select("agent_id, presentations, passed_price, hours_called, referrals_caught, production_date")
         .gte("production_date", startDate);
 
       if (period === "day") {
-        query = query.eq("production_date", startDate);
+        dealsQuery = dealsQuery.eq("effective_date", startDate);
+        prodQuery = prodQuery.eq("production_date", startDate);
       }
 
-      const { data: production } = await query;
+      const [{ data: dealsRows }, { data: production }] = await Promise.all([dealsQuery, prodQuery]);
 
-      if (!production) {
+      if (!dealsRows && !production) {
         setEntries([]);
         setLoading(false);
         return;
@@ -155,27 +155,24 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
         closingRates: number[];
       }> = {};
 
-      production.forEach((p) => {
-        if (!agentTotals[p.agent_id]) {
-          agentTotals[p.agent_id] = {
-            alp: 0,
-            deals: 0,
-            presentations: 0,
-            passedPrice: 0,
-            hoursCalled: 0,
-            referrals: 0,
-            closingRates: [],
-          };
+      const ensure = (id: string) => {
+        if (!agentTotals[id]) {
+          agentTotals[id] = { alp: 0, deals: 0, presentations: 0, passedPrice: 0, hoursCalled: 0, referrals: 0, closingRates: [] };
         }
-        agentTotals[p.agent_id].alp += Number(p.aop || 0);
-        agentTotals[p.agent_id].deals += Number(p.deals_closed || 0);
-        agentTotals[p.agent_id].presentations += Number(p.presentations || 0);
-        agentTotals[p.agent_id].passedPrice += Number(p.passed_price || 0);
-        agentTotals[p.agent_id].hoursCalled += Number(p.hours_called || 0);
-        agentTotals[p.agent_id].referrals += Number(p.referrals_caught || 0);
-        if (Number(p.closing_rate) > 0) {
-          agentTotals[p.agent_id].closingRates.push(Number(p.closing_rate));
-        }
+        return agentTotals[id];
+      };
+
+      (dealsRows || []).forEach((d: any) => {
+        const t = ensure(d.agent_id);
+        t.alp += Number(d.annual_premium || 0);
+        t.deals += 1;
+      });
+      (production || []).forEach((p: any) => {
+        const t = ensure(p.agent_id);
+        t.presentations += Number(p.presentations || 0);
+        t.passedPrice += Number(p.passed_price || 0);
+        t.hoursCalled += Number(p.hours_called || 0);
+        t.referrals += Number(p.referrals_caught || 0);
       });
 
       const agentIds = Object.keys(agentTotals);

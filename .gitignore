@@ -28,3 +28,5 @@ apex-bot-credentials.md
 *.njsproj
 *.sln
 *.sw?
+.env
+.env.local

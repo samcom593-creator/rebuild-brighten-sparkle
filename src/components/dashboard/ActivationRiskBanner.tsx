@@ -67,7 +67,8 @@ export function ActivationRiskBanner() {
           .from("deals")
           .select("agent_id, effective_date")
           .in("agent_id", agentIds)
-          .gte("effective_date", cutoff),
+          .gte("effective_date", cutoff)
+          .in("status", ["submitted", "active"]),
       ]);
 
       const activeAgentIds = new Set<string>();

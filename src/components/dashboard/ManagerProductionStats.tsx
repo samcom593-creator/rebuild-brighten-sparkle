@@ -58,14 +58,24 @@ export function ManagerProductionStats({ managerId }: ManagerProductionStatsProp
       const weekStart = getWeekStartPST();
       const monthStart = getMonthStartPST();
 
-      // Fetch production data
-      const { data: production } = await supabase
-        .from("daily_production")
-        .select("agent_id, aop, deals_closed, presentations, closing_rate, production_date")
-        .in("agent_id", agentIds)
-        .gte("production_date", monthStart);
+      // Production from deals (Agent Link truth) — match the rest of the
+      // dashboards. Presentations stay on daily_production since that's the
+      // only source.
+      const [dealsRes, presRes] = await Promise.all([
+        supabase
+          .from("deals")
+          .select("agent_id, annual_premium, effective_date")
+          .in("agent_id", agentIds)
+          .gte("effective_date", monthStart)
+          .in("status", ["submitted", "active"]),
+        supabase
+          .from("daily_production")
+          .select("agent_id, deals_closed, presentations, production_date")
+          .in("agent_id", agentIds)
+          .gte("production_date", monthStart),
+      ]);
 
-      if (!production) {
+      if (!dealsRes.data) {
         setLoading(false);
         return;
       }
@@ -78,28 +88,20 @@ export function ManagerProductionStats({ managerId }: ManagerProductionStatsProp
       let totalPresentations = 0;
       let totalDeals = 0;
 
-      production.forEach(p => {
-        const alp = Number(p.aop || 0);
-        const deals = Number(p.deals_closed || 0);
-        const presentations = Number(p.presentations || 0);
-
+      for (const d of dealsRes.data as any[]) {
+        const alp = Number(d.annual_premium || 0);
         monthALP += alp;
-        totalDeals += deals;
-        totalPresentations += presentations;
+        totalDeals += 1;
+        if (d.effective_date === today) { todayALP += alp; todayDeals += 1; }
+        if (d.effective_date >= weekStart) { weekALP += alp; weekDeals += 1; }
+      }
 
-        if (p.production_date === today) {
-          todayALP += alp;
-          todayDeals += deals;
-        }
+      for (const p of (presRes.data || []) as any[]) {
+        totalPresentations += Number(p.presentations || 0);
+      }
 
-        if (p.production_date >= weekStart) {
-          weekALP += alp;
-          weekDeals += deals;
-        }
-      });
-
-      const avgCloseRate = totalPresentations > 0 
-        ? (totalDeals / totalPresentations) * 100 
+      const avgCloseRate = totalPresentations > 0
+        ? (totalDeals / totalPresentations) * 100
         : 0;
 
       setStats({

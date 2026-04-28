@@ -26,26 +26,38 @@ export function AgentPersonalDashboard({ agentId }: Props) {
       weekStart.setHours(0, 0, 0, 0);
       const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-      const [weekRes, monthRes, estimateRes] = await Promise.all([
-        supabase.from("daily_production")
-          .select("aop, deals_closed, presentations")
+      const weekStartStr = weekStart.toISOString().split("T")[0];
+      const monthStartStr = monthStart.toISOString().split("T")[0];
+
+      // Pull this agent's own deals (effective_date + valid status) for ALP
+      // and deal counts. Presentations stays on daily_production since
+      // that's the only source.
+      const [weekDealsRes, monthDealsRes, weekPresRes, estimateRes] = await Promise.all([
+        supabase.from("deals")
+          .select("annual_premium")
           .eq("agent_id", agentId)
-          .gte("production_date", weekStart.toISOString().split("T")[0]),
-        supabase.from("daily_production")
-          .select("aop, deals_closed")
+          .gte("effective_date", weekStartStr)
+          .in("status", ["submitted", "active"]),
+        supabase.from("deals")
+          .select("annual_premium")
           .eq("agent_id", agentId)
-          .gte("production_date", monthStart.toISOString().split("T")[0]),
+          .gte("effective_date", monthStartStr)
+          .in("status", ["submitted", "active"]),
+        supabase.from("daily_production")
+          .select("presentations")
+          .eq("agent_id", agentId)
+          .gte("production_date", weekStartStr),
         supabase.from("agent_revenue_estimate" as any)
           .select("*")
           .eq("agent_id", agentId)
           .maybeSingle(),
       ]);
 
-      const weekALP = (weekRes.data || []).reduce((s, r: any) => s + (Number(r.aop) || 0), 0);
-      const weekDeals = (weekRes.data || []).reduce((s, r: any) => s + (Number(r.deals_closed) || 0), 0);
-      const weekPres = (weekRes.data || []).reduce((s, r: any) => s + (Number(r.presentations) || 0), 0);
-      const monthALP = (monthRes.data || []).reduce((s, r: any) => s + (Number(r.aop) || 0), 0);
-      const monthDeals = (monthRes.data || []).reduce((s, r: any) => s + (Number(r.deals_closed) || 0), 0);
+      const weekALP = (weekDealsRes.data || []).reduce((s, r: any) => s + (Number(r.annual_premium) || 0), 0);
+      const weekDeals = (weekDealsRes.data || []).length;
+      const weekPres = (weekPresRes.data || []).reduce((s, r: any) => s + (Number(r.presentations) || 0), 0);
+      const monthALP = (monthDealsRes.data || []).reduce((s, r: any) => s + (Number(r.annual_premium) || 0), 0);
+      const monthDeals = (monthDealsRes.data || []).length;
 
       return {
         weekALP, weekDeals, weekPres,

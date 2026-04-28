@@ -114,19 +114,35 @@ export function TeamSnapshotCard() {
         return;
       }
 
-      const { data: productionData } = await supabase
-        .from("daily_production")
-        .select("aop, deals_closed, presentations, agent_id, hours_called")
-        .in("agent_id", agentIds)
-        .gte("production_date", startDate)
-        .lte("production_date", endDate);
+      // Production from deals (Agent Link truth) — aligns with the rest
+      // of the dashboards. Presentations + hours stay on daily_production.
+      const [dealsData, productionData] = await Promise.all([
+        supabase
+          .from("deals")
+          .select("annual_premium, agent_id")
+          .in("agent_id", agentIds)
+          .gte("effective_date", startDate)
+          .lte("effective_date", endDate)
+          .in("status", ["submitted", "active"])
+          .then(r => r.data || []),
+        supabase
+          .from("daily_production")
+          .select("presentations, agent_id, hours_called")
+          .in("agent_id", agentIds)
+          .gte("production_date", startDate)
+          .lte("production_date", endDate)
+          .then(r => r.data || []),
+      ]);
 
-      if (productionData && productionData.length > 0) {
-        const totalALP = productionData.reduce((sum, p) => sum + (Number(p.aop) || 0), 0);
-        const totalDeals = productionData.reduce((sum, p) => sum + (p.deals_closed || 0), 0);
-        const totalPresentations = productionData.reduce((sum, p) => sum + (p.presentations || 0), 0);
-        const totalHours = productionData.reduce((sum, p) => sum + (Number(p.hours_called) || 0), 0);
-        const uniqueAgents = new Set(productionData.map(p => p.agent_id));
+      if (dealsData.length > 0 || productionData.length > 0) {
+        const totalALP = dealsData.reduce((sum: number, d: any) => sum + (Number(d.annual_premium) || 0), 0);
+        const totalDeals = dealsData.length;
+        const totalPresentations = productionData.reduce((sum: number, p: any) => sum + (Number(p.presentations) || 0), 0);
+        const totalHours = productionData.reduce((sum: number, p: any) => sum + (Number(p.hours_called) || 0), 0);
+        const uniqueAgents = new Set([
+          ...dealsData.map((d: any) => d.agent_id).filter(Boolean),
+          ...productionData.map((p: any) => p.agent_id).filter(Boolean),
+        ]);
         const agentCount = uniqueAgents.size || agentIds.length;
         const avgCloseRate = totalPresentations > 0 
           ? Math.round((totalDeals / totalPresentations) * 100) 

@@ -116,6 +116,27 @@ Deno.serve(async (req) => {
         });
         const clsResult = await cls.json().catch(() => ({}));
         const reply: string | null = clsResult?.auto_reply ?? null;
+        const leadScore: number = Number(clsResult?.lead_score ?? 0);
+        const intent: string = String(clsResult?.intent ?? "unknown");
+
+        // Real-time Discord ping for hot leads (≥70). Sam wakes to a
+        // mobile push — he can manually reply to the lead in seconds
+        // even if our auto-send fails.
+        if (leadScore >= 70) {
+          const { data: setting } = await sb.from("system_settings")
+            .select("value").eq("key", "discord_webhook_url").maybeSingle();
+          const webhook = (setting as any)?.value;
+          if (webhook) {
+            fetch(webhook, {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                username: "APEX 🔥 HOT IG DM",
+                content: `**${intent.toUpperCase()}** · score ${leadScore}\n\`\`\`\n${messageText.slice(0, 500)}\n\`\`\`\nFrom IGSID \`${senderId}\` — auto-reply queued / will fire if token configured.`,
+              }),
+            }).catch(() => {});
+          }
+        }
+
         if (!reply) continue;
 
         // Fire the actual IG send. Don't await — keep the webhook fast.

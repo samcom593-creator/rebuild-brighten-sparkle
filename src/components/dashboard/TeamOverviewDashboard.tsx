@@ -312,8 +312,8 @@ export function TeamOverviewDashboard() {
   ];
 
   const financialMetrics = [
-    { label: "7-Day AOP", value: data.aop7, currency: true, icon: DollarSign, color: "text-primary" },
-    { label: "30-Day AOP", value: data.aop30, currency: true, icon: DollarSign, color: "text-emerald-500" },
+    { label: "7-Day ALP", value: data.aop7, currency: true, icon: DollarSign, color: "text-primary" },
+    { label: "30-Day ALP", value: data.aop30, currency: true, icon: DollarSign, color: "text-emerald-500" },
     { label: "Avg Close Rate", value: data.avgCloseRate, suffix: "%", icon: Percent, color: "text-blue-500" },
     { label: "Activation Rate", value: data.activationRate, suffix: "%", icon: Activity, color: "text-violet-500" },
     { label: "Retention Rate", value: data.retentionRate, suffix: "%", icon: UserCheck, color: "text-emerald-500" },
@@ -473,7 +473,7 @@ export function TeamOverviewDashboard() {
                               <tr className="bg-muted/30 border-b">
                                 <th className="text-left px-3 py-1.5 font-medium text-muted-foreground">Agent</th>
                                 <th className="text-left px-3 py-1.5 font-medium text-muted-foreground">Stage</th>
-                                <th className="text-right px-3 py-1.5 font-medium text-muted-foreground">30-Day AOP</th>
+                                <th className="text-right px-3 py-1.5 font-medium text-muted-foreground">30-Day ALP</th>
                                 <th className="text-right px-3 py-1.5 font-medium text-muted-foreground">Deals</th>
                               </tr>
                             </thead>

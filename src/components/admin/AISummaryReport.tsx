@@ -27,12 +27,15 @@ export function AISummaryReport() {
       const weekAgo = format(subDays(new Date(), 7), "yyyy-MM-dd");
       const monthAgo = format(subDays(new Date(), 30), "yyyy-MM-dd");
 
-      // Active agents count
+      // Active agents count — aligned with TeamOverviewDashboard truth rule
+      // (must be not deactivated AND not inactive). The legacy
+      // status='active' column drifts; ~35 agents had status='active' but
+      // is_inactive=true, inflating this number from 23 to 58.
       const { count: activeAgents } = await supabase
         .from("agents")
         .select("id", { count: "exact", head: true })
-        .eq("status", "active")
-        .eq("is_deactivated", false);
+        .eq("is_deactivated", false)
+        .eq("is_inactive", false);
 
       // This week's production
       const { data: weekProd } = await supabase

@@ -74,16 +74,20 @@ export function AgentCompetitiveDashboard({ agentId, weeklyTarget = 10000 }: Pro
         nameMap[a.id] = a.profile?.full_name ?? "Agent";
       }
 
+      // Truth-layer 2026-04-28: pull from deals (status submitted/active by
+      // effective_date) instead of daily_production.aop (drifts vs truth +
+      // held the AL phantom-Sam pollution).
       const { data: prod } = await supabase
-        .from("daily_production")
-        .select("agent_id, aop")
-        .gte("production_date", monday)
-        .lte("production_date", sunday)
+        .from("deals")
+        .select("agent_id, annual_premium")
+        .gte("effective_date", monday)
+        .lte("effective_date", sunday)
+        .in("status", ["submitted", "active"])
         .in("agent_id", agentIds.length ? agentIds : ["00000000-0000-0000-0000-000000000000"]);
 
       const alpMap: Record<string, number> = {};
-      for (const r of (prod ?? []) as Array<{ agent_id: string; aop: number | null }>) {
-        alpMap[r.agent_id] = (alpMap[r.agent_id] ?? 0) + Number(r.aop ?? 0);
+      for (const r of (prod ?? []) as Array<{ agent_id: string; annual_premium: number | null }>) {
+        alpMap[r.agent_id] = (alpMap[r.agent_id] ?? 0) + Number(r.annual_premium ?? 0);
       }
 
       const lb = agentIds

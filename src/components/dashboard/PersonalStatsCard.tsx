@@ -258,7 +258,7 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
       highlight: myDeals >= 3,
     },
     {
-      label: `${periodLabels[timePeriod]} AOP`,
+      label: `${periodLabels[timePeriod]} ALP`,
       value: myAlp,
       formatAsCurrency: true,
       icon: Award,

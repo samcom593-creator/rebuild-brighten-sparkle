@@ -63,15 +63,48 @@ export function LiveLeaderboard({ currentAgentId, showAISummary = true }: LiveLe
     try {
       const today = getTodayPST();
       
-      // Get today's production data
-      const { data: productionData, error: prodError } = await supabase
-        .from("daily_production")
-        .select("agent_id, aop, presentations, deals_closed, closing_rate")
-        .eq("production_date", today);
+      // Truth-layer 2026-04-28: ALP/deal counts come from deals table
+      // (status submitted/active by effective_date). presentations stays
+      // from daily_production (its only authoritative field).
+      const [dealsRes, presRes] = await Promise.all([
+        supabase
+          .from("deals")
+          .select("agent_id, annual_premium")
+          .eq("effective_date", today)
+          .in("status", ["submitted", "active"])
+          .neq("agent_id", "7c3c5581-3544-437f-bfe2-91391afb217d"),
+        supabase
+          .from("daily_production")
+          .select("agent_id, presentations, closing_rate")
+          .eq("production_date", today),
+      ]);
 
-      if (prodError) throw prodError;
+      // Aggregate deals by agent
+      const agentAgg = new Map<string, { aop: number; deals_closed: number; presentations: number; closing_rate: number }>();
+      for (const d of (dealsRes.data ?? []) as any[]) {
+        if (!d.agent_id) continue;
+        const ex = agentAgg.get(d.agent_id) ?? { aop: 0, deals_closed: 0, presentations: 0, closing_rate: 0 };
+        ex.aop += Number(d.annual_premium) || 0;
+        ex.deals_closed += 1;
+        agentAgg.set(d.agent_id, ex);
+      }
+      for (const p of (presRes.data ?? []) as any[]) {
+        if (!p.agent_id) continue;
+        const ex = agentAgg.get(p.agent_id) ?? { aop: 0, deals_closed: 0, presentations: 0, closing_rate: 0 };
+        ex.presentations = Number(p.presentations) || 0;
+        ex.closing_rate = Number(p.closing_rate) || 0;
+        agentAgg.set(p.agent_id, ex);
+      }
 
-      if (!productionData?.length) {
+      const productionData = Array.from(agentAgg.entries()).map(([agent_id, v]) => ({
+        agent_id,
+        aop: v.aop,
+        deals_closed: v.deals_closed,
+        presentations: v.presentations,
+        closing_rate: v.closing_rate,
+      }));
+
+      if (!productionData.length) {
         setEntries([]);
         setLoading(false);
         return;

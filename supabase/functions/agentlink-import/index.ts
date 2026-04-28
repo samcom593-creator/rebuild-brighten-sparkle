@@ -90,11 +90,19 @@ Deno.serve(async (req) => {
       .eq("is_deactivated", false)
       .eq("is_inactive", false);
 
+    // Hard rule (Sam, 2026-04-27): each agent must use THEIR OWN
+    // insuracloud_api_token. We never silently fall back to the agency
+    // master token (DEFAULT_TOKEN) — that path was returning Sam's
+    // entire downline book and stamping every policy with whatever
+    // agent_id we were looping on (causing 100+ duplicate deals on Sam
+    // and false attributions across the team).
+    const SAM_AGENT_ID = "7c3c5581-3544-437f-bfe2-91391afb217d";
     const pairs: Array<{ agent_id: string; token: string; label: string }> = [];
     for (const a of (agents ?? []) as any[]) {
       if (specificAgent && a.id !== specificAgent) continue;
-      const t = a.insuracloud_api_token || DEFAULT_TOKEN;
-      if (!t || t.length < 10) continue;
+      if (a.id === SAM_AGENT_ID) continue; // never auto-import to agency owner
+      const t = a.insuracloud_api_token;
+      if (!t || t.length < 10) continue; // no fallback — skip without own token
       pairs.push({ agent_id: a.id, token: t, label: a.profile?.full_name ?? "Agent" });
     }
 
@@ -176,10 +184,21 @@ Deno.serve(async (req) => {
           external_deal_id:   external,
         };
 
-        const { error } = await sb
-          .from("deals")
-          .upsert(row, { onConflict: "external_deal_id" });
-
+        // Dedup by (agent_id, policy_number) — external_deal_id rotates on
+        // every Agent Link re-pull and was creating duplicate copies of
+        // the same policy.
+        const policyKey = String(row.policy_number || external).trim();
+        if (policyKey) {
+          const { data: existing } = await sb
+            .from("deals")
+            .select("id")
+            .eq("agent_id", row.agent_id)
+            .eq("policy_number", policyKey)
+            .limit(1)
+            .maybeSingle();
+          if (existing) { continue; } // already imported, skip
+        }
+        const { error } = await sb.from("deals").insert(row);
         if (error) summary.errors.push(`upsert ${external}: ${error.message}`);
         else       summary.deals_inserted++;
       }

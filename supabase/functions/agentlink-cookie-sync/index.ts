@@ -103,8 +103,27 @@ Deno.serve(async (req) => {
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Resolve the importing user → agent_id (if provided) or from /api/v1/me
-    const agent_id = body.agent_id || (me.body as any)?.agent_id || (me.body as any)?.id || null;
+    // Resolve the agent_id for THIS sync. Hard rule (Sam, 2026-04-27):
+    // we NEVER fall back to the cookie-owner's id. The cookie owner is
+    // Sam (agency owner) — every policy he can SEE in book-of-business
+    // belongs to a downline rep, not to him. If the caller doesn't pass
+    // an explicit agent_id, we refuse to import (returning the policy
+    // list so the caller can route policy-by-policy).
+    const agent_id = body.agent_id || null;
+    if (!agent_id) {
+      return new Response(JSON.stringify({
+        error: "agent_id required — sync refuses to default to cookie owner",
+        hint:  "Pass body.agent_id explicitly. Each policy in this book belongs to a specific downline rep, not the cookie holder.",
+        policies_seen: policies.length,
+      }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    // Sam's agent_id is hard-blocked too — defensive belt-and-braces.
+    const SAM_AGENT_ID = "7c3c5581-3544-437f-bfe2-91391afb217d";
+    if (agent_id === SAM_AGENT_ID) {
+      return new Response(JSON.stringify({
+        error: "Refusing to attribute deals to the agency owner (Sam). He doesn't write policies; downline does.",
+      }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     // Build carrier lookup
     const { data: carriers } = await sb.from("carriers").select("id, name, insuracloud_carrier_id");
@@ -153,7 +172,22 @@ Deno.serve(async (req) => {
         external_deal_id:        external,
       };
 
-      const { error } = await sb.from("deals").upsert(row, { onConflict: "external_deal_id" });
+      // Dedup by (agent_id, policy_number) — external_deal_id rotates on
+      // every Agent Link re-pull which was creating 5-11 copies of the
+      // same policy. Skip if a row already exists for this agent +
+      // policy_number; otherwise insert.
+      const policyKey = (row.policy_number || external).toString().trim();
+      if (policyKey) {
+        const { data: existing } = await sb
+          .from("deals")
+          .select("id")
+          .eq("agent_id", row.agent_id)
+          .eq("policy_number", policyKey)
+          .limit(1)
+          .maybeSingle();
+        if (existing) { summary.deals_skipped++; continue; }
+      }
+      const { error } = await sb.from("deals").insert(row);
       if (error) summary.errors.push(`${external}: ${error.message}`);
       else       summary.deals_inserted++;
     }

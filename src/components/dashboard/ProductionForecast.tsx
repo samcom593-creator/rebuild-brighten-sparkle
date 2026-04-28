@@ -20,29 +20,37 @@ export function ProductionForecast({ agentId: _agentId }: ProductionForecastProp
       const historyStart = format(historyStartDate, "yyyy-MM-dd");
       const todayStr = format(today, "yyyy-MM-dd");
 
-      const { data } = await supabase
-        .from("daily_production")
-        .select("production_date, aop, deals_closed, presentations")
-        .gte("production_date", historyStart)
-        .lte("production_date", todayStr)
-        .order("production_date", { ascending: true });
+      // Use deals truth (status submitted/active by effective_date) for
+      // ALP/deal counts. daily_production stays only for presentations —
+      // its aop/deals_closed self-report drifts +$345k vs deals truth on
+      // 30d windows (inflates the projection ~80%).
+      const [dealsRes, presRes] = await Promise.all([
+        supabase
+          .from("deals")
+          .select("effective_date, annual_premium")
+          .gte("effective_date", historyStart)
+          .lte("effective_date", todayStr)
+          .in("status", ["submitted", "active"]),
+        supabase
+          .from("daily_production")
+          .select("production_date, presentations")
+          .gte("production_date", historyStart)
+          .lte("production_date", todayStr),
+      ]);
 
-      // Aggregate all agents by date
       const byDate = new Map<string, { production_date: string; aop: number; deals_closed: number; presentations: number }>();
-      (data || []).forEach((row) => {
-        const existing = byDate.get(row.production_date);
-        if (existing) {
-          existing.aop += Number(row.aop || 0);
-          existing.deals_closed += row.deals_closed || 0;
-          existing.presentations += row.presentations || 0;
-        } else {
-          byDate.set(row.production_date, {
-            production_date: row.production_date,
-            aop: Number(row.aop || 0),
-            deals_closed: row.deals_closed || 0,
-            presentations: row.presentations || 0,
-          });
-        }
+      (dealsRes.data || []).forEach((row: any) => {
+        const date = row.effective_date;
+        const existing = byDate.get(date) || { production_date: date, aop: 0, deals_closed: 0, presentations: 0 };
+        existing.aop += Number(row.annual_premium || 0);
+        existing.deals_closed += 1;
+        byDate.set(date, existing);
+      });
+      (presRes.data || []).forEach((row: any) => {
+        const date = row.production_date;
+        const existing = byDate.get(date) || { production_date: date, aop: 0, deals_closed: 0, presentations: 0 };
+        existing.presentations += row.presentations || 0;
+        byDate.set(date, existing);
       });
 
       // Fill missing days with zeroes so 7d/30d math and regression are stable
@@ -98,7 +106,7 @@ export function ProductionForecast({ agentId: _agentId }: ProductionForecastProp
       <div className="flex items-center justify-between mb-3">
         <h4 className="font-semibold text-sm flex items-center gap-2">
           <TrendingUp className="h-4 w-4 text-primary" />
-          30-Day AOP Forecast
+          30-Day ALP Forecast
         </h4>
         <Badge
           variant="outline"

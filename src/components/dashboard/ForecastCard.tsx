@@ -1,6 +1,7 @@
 // ForecastCard — "at current pace you'll hit $X this month."
-// Simple linear projection from MTD daily_production.aop: (mtd / days_elapsed) * days_in_month.
-// Compares against last month same-days-elapsed for a trend arrow.
+// Linear projection from MTD deals (status submitted/active by effective_date).
+// Migrated off daily_production.aop on 2026-04-27 — that column drifts
+// +$345k vs deals truth on 30d windows, inflating month-end projections.
 
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
@@ -20,6 +21,7 @@ type Forecast = {
   delta: number;
   daysIn: number;
   daysOfMonth: number;
+  confidence: "low" | "medium" | "high";
 };
 
 async function fetchForecast(): Promise<Forecast> {
@@ -33,16 +35,31 @@ async function fetchForecast(): Promise<Forecast> {
   const lastMonthSameDayEnd = new Date(now.getFullYear(), now.getMonth() - 1, daysIn).toISOString().slice(0, 10);
 
   const [mtdRes, lastRes] = await Promise.all([
-    supabase.from("daily_production").select("aop").gte("production_date", monthStart),
-    supabase.from("daily_production").select("aop").gte("production_date", lastMonthStart).lte("production_date", lastMonthSameDayEnd),
+    supabase.from("deals").select("annual_premium,effective_date").gte("effective_date", monthStart).in("status", ["submitted", "active"]),
+    supabase.from("deals").select("annual_premium").gte("effective_date", lastMonthStart).lte("effective_date", lastMonthSameDayEnd).in("status", ["submitted", "active"]),
   ]);
 
-  const mtd = (mtdRes.data ?? []).reduce((s: number, r: any) => s + Number(r.aop ?? 0), 0);
-  const lastMonthSameDays = (lastRes.data ?? []).reduce((s: number, r: any) => s + Number(r.aop ?? 0), 0);
-  const projection = daysIn > 0 ? (mtd / daysIn) * daysOfMonth : 0;
+  const mtdRows = mtdRes.data ?? [];
+  const mtd = mtdRows.reduce((s: number, r: any) => s + Number(r.annual_premium ?? 0), 0);
+  const lastMonthSameDays = (lastRes.data ?? []).reduce((s: number, r: any) => s + Number(r.annual_premium ?? 0), 0);
+
+  // Guardrails: count distinct days with non-zero production for confidence,
+  // and require >= 3 active days before extrapolating month-end. Also clamp
+  // projection at 5x MTD so a single big day on day-1 doesn't yield $4M.
+  const activeDaySet = new Set<string>();
+  for (const r of mtdRows as any[]) if (Number(r.annual_premium) > 0 && r.effective_date) activeDaySet.add(String(r.effective_date).slice(0, 10));
+  const activeDays = activeDaySet.size;
+  const confidence: "low" | "medium" | "high" =
+    activeDays >= 10 ? "high" : activeDays >= 5 ? "medium" : "low";
+
+  const rawProjection = daysIn > 0 ? (mtd / daysIn) * daysOfMonth : 0;
+  // Cap projection at 5x MTD to neutralize single-day spikes when daysIn is small
+  const cappedProjection = activeDays >= 3 ? Math.min(rawProjection, mtd * 5) : mtd;
+  const projection = Math.max(0, cappedProjection);
+
   const delta = lastMonthSameDays > 0 ? ((mtd - lastMonthSameDays) / lastMonthSameDays) * 100 : (mtd > 0 ? 100 : 0);
 
-  return { mtd, projection, lastMonthSameDays, delta, daysIn, daysOfMonth };
+  return { mtd, projection, lastMonthSameDays, delta, daysIn, daysOfMonth, confidence };
 }
 
 export function ForecastCard() {
@@ -88,7 +105,7 @@ export function ForecastCard() {
             {fmt$(data.projection)}
           </motion.div>
           <div className="text-sm text-muted-foreground mt-1">
-            <span className="font-semibold text-foreground">{fmt$(data.mtd)}</span> MTD · day {data.daysIn}/{data.daysOfMonth} · pace projects to month-end
+            <span className="font-semibold text-foreground">{fmt$(data.mtd)}</span> MTD · day {data.daysIn}/{data.daysOfMonth} · {data.confidence} confidence
           </div>
         </div>
 

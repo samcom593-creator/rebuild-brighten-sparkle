@@ -34,12 +34,22 @@ export function AgentRankBadge({
       const today = getTodayPST();
       const yesterday = getDateDaysAgoPST(1);
 
-      // Fetch today's rankings by ALP
-      const { data: todayData } = await supabase
-        .from("daily_production")
-        .select("agent_id, aop")
-        .eq("production_date", today)
-        .order("aop", { ascending: false });
+      // Truth-layer 2026-04-28: rank by deals truth (status submitted/active by
+      // effective_date), not daily_production.aop.
+      const { data: dealsTodayRaw } = await supabase
+        .from("deals")
+        .select("agent_id, annual_premium")
+        .eq("effective_date", today)
+        .in("status", ["submitted", "active"])
+        .neq("agent_id", "7c3c5581-3544-437f-bfe2-91391afb217d");
+      const todayMap = new Map<string, number>();
+      for (const r of (dealsTodayRaw ?? []) as any[]) {
+        if (!r.agent_id) continue;
+        todayMap.set(r.agent_id, (todayMap.get(r.agent_id) ?? 0) + Number(r.annual_premium ?? 0));
+      }
+      const todayData = Array.from(todayMap.entries())
+        .map(([agent_id, aop]) => ({ agent_id, aop }))
+        .sort((a, b) => b.aop - a.aop);
 
       if (todayData && todayData.length > 0) {
         const myIndex = todayData.findIndex(p => p.agent_id === agentId);
@@ -52,13 +62,22 @@ export function AgentRankBadge({
         setCurrentRank(null);
       }
 
-      // Fetch yesterday's rankings for comparison
+      // Fetch yesterday's rankings for comparison (also via deals truth)
       if (showChange) {
-        const { data: yesterdayData } = await supabase
-          .from("daily_production")
-          .select("agent_id, aop")
-          .eq("production_date", yesterday)
-          .order("aop", { ascending: false });
+        const { data: dealsYestRaw } = await supabase
+          .from("deals")
+          .select("agent_id, annual_premium")
+          .eq("effective_date", yesterday)
+          .in("status", ["submitted", "active"])
+          .neq("agent_id", "7c3c5581-3544-437f-bfe2-91391afb217d");
+        const yestMap = new Map<string, number>();
+        for (const r of (dealsYestRaw ?? []) as any[]) {
+          if (!r.agent_id) continue;
+          yestMap.set(r.agent_id, (yestMap.get(r.agent_id) ?? 0) + Number(r.annual_premium ?? 0));
+        }
+        const yesterdayData = Array.from(yestMap.entries())
+          .map(([agent_id, aop]) => ({ agent_id, aop }))
+          .sort((a, b) => b.aop - a.aop);
 
         if (yesterdayData && yesterdayData.length > 0) {
           const myYesterdayIndex = yesterdayData.findIndex(p => p.agent_id === agentId);

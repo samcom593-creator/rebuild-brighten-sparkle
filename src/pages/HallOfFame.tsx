@@ -84,16 +84,18 @@ export default function HallOfFame() {
     let mounted = true;
     (async () => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("awards_plaques")
+      // Truth-layer fix 2026-04-28: table is `plaque_awards` not `awards_plaques`,
+      // and the join goes through agents → profiles (not direct agent_id → profiles).
+      const { data, error } = await (supabase
+        .from("plaque_awards")
         .select(`
           id, agent_id, milestone_type, milestone_date, amount,
           badge_label, color_hex, image_svg_url, image_png_url,
           custom_photo_url, awarded_at,
-          profiles:agent_id (full_name, avatar_url)
+          agent:agents!inner(profile:profiles!agents_profile_id_fkey(full_name, avatar_url))
         `)
         .order("awarded_at", { ascending: false })
-        .limit(120);
+        .limit(120) as any);
       if (!mounted) return;
       if (error) {
         console.error("HoF load error", error);

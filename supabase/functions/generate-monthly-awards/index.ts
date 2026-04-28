@@ -256,9 +256,12 @@ Deno.serve(async (req) => {
       ORDER BY alp DESC LIMIT 6
     `}).catch(async () => {
       // Fallback to direct query if execute_sql RPC doesn't exist
+      // Truth-layer 2026-04-28: status submitted/active + Sam excluded
       return sb.from("deals")
         .select("agent_id, annual_premium, agent:agents!inner(id, profile:profiles!agents_profile_id_fkey(full_name, email, avatar_url))")
-        .gte("effective_date", start).lte("effective_date", end);
+        .gte("effective_date", start).lte("effective_date", end)
+        .in("status", ["submitted", "active"])
+        .neq("agent_id", "7c3c5581-3544-437f-bfe2-91391afb217d");
     });
 
     const top6Rows: Array<{ agent_id: string; full_name: string; email: string | null; avatar_url: string | null; deals: number; alp: number }> =

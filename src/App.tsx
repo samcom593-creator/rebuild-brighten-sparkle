@@ -38,6 +38,7 @@ const DashboardApplicants = lazy(() => import("./pages/DashboardApplicants"));
 const DashboardAdmin = lazy(() => import("./pages/DashboardAdmin"));
 const DashboardAccounts = lazy(() => import("./pages/DashboardAccounts"));
 const OffersPage = lazy(() => import("./pages/OffersPage"));
+const Storefront = lazy(() => import("./pages/Storefront"));
 const DashboardCRM = lazy(() => import("./pages/DashboardCRM"));
 const DashboardAgedLeads = lazy(() => import("./pages/DashboardAgedLeads"));
 const DashboardCommandCenter = lazy(() => import("./pages/DashboardCommandCenter"));
@@ -163,6 +164,7 @@ const App = () => (
                   <Route path="/links" element={<LinksPage />} />
                   <Route path="/seminar" element={<SeminarPage />} />
                   <Route path="/leads" element={<LeadsLanding />} />
+                  <Route path="/storefront" element={<Storefront />} />
                   <Route path="/get-leads" element={<LeadsLanding />} />
                   <Route path="/dialer" element={<LeadsLanding />} />
                   {/* checkin and daily-checkin routes removed */}

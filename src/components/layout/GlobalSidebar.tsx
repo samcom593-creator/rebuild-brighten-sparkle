@@ -222,6 +222,7 @@ export function GlobalSidebar({
     }
     if (isAdmin) {
       leadItems.push({ icon: Target, label: "Lead Center", href: "/dashboard/leads" });
+      leadItems.push({ icon: ShoppingCart, label: "Offers", href: "/dashboard/offers" });
     }
     sections.push({ label: "LEADS", items: leadItems });
 

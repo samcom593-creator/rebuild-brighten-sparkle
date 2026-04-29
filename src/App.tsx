@@ -37,6 +37,7 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const DashboardApplicants = lazy(() => import("./pages/DashboardApplicants"));
 const DashboardAdmin = lazy(() => import("./pages/DashboardAdmin"));
 const DashboardAccounts = lazy(() => import("./pages/DashboardAccounts"));
+const OffersPage = lazy(() => import("./pages/OffersPage"));
 const DashboardCRM = lazy(() => import("./pages/DashboardCRM"));
 const DashboardAgedLeads = lazy(() => import("./pages/DashboardAgedLeads"));
 const DashboardCommandCenter = lazy(() => import("./pages/DashboardCommandCenter"));
@@ -176,6 +177,7 @@ const App = () => (
                     <Route path="/dashboard/applicants" element={<DashboardApplicants />} />
                     <Route path="/dashboard/admin" element={<DashboardAdmin />} />
                     <Route path="/dashboard/accounts" element={<ProtectedRoute requireAdmin><DashboardAccounts /></ProtectedRoute>} />
+                    <Route path="/dashboard/offers" element={<ProtectedRoute requireAdmin><OffersPage /></ProtectedRoute>} />
                     <Route path="/dashboard/settings" element={<Settings />} />
                     <Route path="/dashboard/settings/deleted-leads" element={<ProtectedRoute requireAdmin><DeletedLeadsVault /></ProtectedRoute>} />
                     <Route path="/dashboard/team" element={<Navigate to="/dashboard/hierarchy" replace />} />

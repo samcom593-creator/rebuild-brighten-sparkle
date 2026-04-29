@@ -18,11 +18,16 @@ type Sku = {
   blurb: string;
   Icon: React.ComponentType<any>;
   accent: string; // tailwind color
+  /** Direct Stripe Payment Link URL — bypasses the create-lead-checkout
+   *  edge function (which currently 500s with `client.auth.getClaims is
+   *  not a function` because the deployed SDK is older than the source).
+   *  Sam: "click and pay links don't work" — fix is the direct link. */
+  paymentLink?: string;
 };
 
 const SKUS: Sku[] = [
-  { id: "gold",               name: "Gold Leads",                category: "leads",       cadence: "weekly",   amount: 250,  blurb: "Quality leads ≤30 days old · weekly drop", Icon: ShieldCheck, accent: "from-amber-500 to-yellow-300" },
-  { id: "platinum",           name: "Platinum Vet Leads",        category: "leads",       cadence: "weekly",   amount: 500,  blurb: "Hottest leads from this week · first access", Icon: Crown,       accent: "from-violet-500 to-purple-300" },
+  { id: "gold",               name: "Gold Leads",                category: "leads",       cadence: "weekly",   amount: 250,  blurb: "Quality leads ≤30 days old · weekly drop", Icon: ShieldCheck, accent: "from-amber-500 to-yellow-300", paymentLink: "https://buy.stripe.com/dRm28q56XbDN7uH8w97ss02" },
+  { id: "platinum",           name: "Platinum Vet Leads",        category: "leads",       cadence: "weekly",   amount: 500,  blurb: "Hottest leads from this week · first access", Icon: Crown,       accent: "from-violet-500 to-purple-300", paymentLink: "https://buy.stripe.com/28E8wOfLB7nx8yLcMp7ss03" },
   { id: "auto_dm",            name: "Auto-DM Engine",            category: "social",      cadence: "monthly",  amount: 250,  blurb: "Hands-off Instagram DM outreach", Icon: Mail,        accent: "from-emerald-500 to-teal-300" },
   { id: "social_growth",      name: "Full Social Growth Suite",  category: "social",      cadence: "monthly",  amount: 500,  blurb: "DM + content + manager-managed growth", Icon: Zap,         accent: "from-emerald-500 to-cyan-300" },
   { id: "fitness_reset",      name: "Fitness Reset Blueprint",   category: "fitness",     cadence: "one-time", amount: 97,   blurb: "Sam's reset routine · pdf + audio", Icon: Dumbbell,    accent: "from-rose-500 to-orange-300" },
@@ -36,6 +41,12 @@ export function OffersTiles() {
   const [busy, setBusy] = useState<string | null>(null);
 
   const buy = async (sku: Sku) => {
+    // Direct Stripe Payment Link — never breaks, no edge fn dependency.
+    if (sku.paymentLink) {
+      window.open(sku.paymentLink, "_blank", "noopener");
+      return;
+    }
+    // Fallback: edge fn (only used for SKUs without a Payment Link yet).
     setBusy(sku.id);
     try {
       const { data, error } = await supabase.functions.invoke("create-lead-checkout", {
@@ -46,7 +57,7 @@ export function OffersTiles() {
       if (!url) throw new Error("no checkout URL");
       window.open(url, "_blank", "noopener");
     } catch (e: any) {
-      toast.error(e?.message ?? "checkout failed — check create-lead-checkout fn");
+      toast.error("Checkout for this SKU is being wired up — DM Sam to buy directly.");
     } finally {
       setBusy(null);
     }

@@ -160,11 +160,18 @@ export default function CallCenter() {
 
       // Fetch applications if source filter allows
       if (sourceFilter === "all" || sourceFilter === "applications") {
+        // Sam 2026-04-29: hired/contracted/terminated apps must never appear
+        // in the call list. He kept seeing Kyle and others he'd already
+        // hired show up in the funnel because we only excluded
+        // terminated_at + contracted_at; closed_at (hired) was leaking
+        // through. Three-way exclusion now matches the dashboard's
+        // active-funnel definition.
         let appQuery = supabase
           .from("applications")
-          .select("id, first_name, last_name, email, phone, instagram_handle, notes, license_status, license_progress, test_scheduled_date, created_at, status, contacted_at, last_contacted_at, previous_company, nipr_number, licensed_states, city, state, availability, assigned_agent_id, agents!applications_assigned_agent_id_fkey(display_name)")
+          .select("id, first_name, last_name, email, phone, instagram_handle, notes, license_status, license_progress, test_scheduled_date, created_at, status, contacted_at, last_contacted_at, previous_company, nipr_number, licensed_states, city, state, availability, assigned_agent_id, hiring_manager_user_id, agents!applications_assigned_agent_id_fkey(display_name)")
           .is("terminated_at", null)
           .is("contracted_at", null)
+          .is("closed_at", null)
           .order("created_at", { ascending: sortOrder === "oldest_first" });
 
         // Status filter for applications (source-of-truth = contact timestamps)

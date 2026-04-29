@@ -3,7 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check, TrendingUp, Users, Award, ArrowRight, Star } from "lucide-react";
 import { Link } from "react-router-dom";
 
-export function LeadsLanding() {
+// Default export required because App.tsx loads this via React.lazy
+// (`lazy(() => import("./pages/LeadsLanding"))`). Without it,
+// /leads, /get-leads, and /dialer all crash with React error #306
+// "element type is invalid: undefined."
+export default function LeadsLanding() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
       {/* Navigation */}

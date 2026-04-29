@@ -283,23 +283,26 @@ export default function AgentPipeline() {
         )
       );
 
-      // Fire Discord notification (fire-and-forget, never blocks UI)
-      if (app) {
-        const eventType = newStage === "licensed" ? "milestone" : "stage_change";
+      // Fire Discord notification (fire-and-forget, never blocks UI).
+      // discord-webhook-notify only supports 8 event_types — sending
+      // "stage_change" or "milestone" returns 400 and the call silently
+      // failed (the .catch swallowed it). The right ping for "this
+      // applicant just got licensed and is now an active agent" is
+      // `agent_activated`. For interim stage promotions there's no
+      // matching Discord event yet, so we simply skip the post rather
+      // than send a request that's guaranteed to 400.
+      if (app && newStage === "licensed") {
         supabase.functions.invoke("discord-webhook-notify", {
           body: {
-            event_type: eventType,
-            agent_name: `${app.first_name} ${app.last_name}`,
-            details: eventType === "milestone"
-              ? { milestone_type: "licensed", value: "1" }
-              : {
-                  from_stage: prevStage,
-                  to_stage:   newStage,
-                  email:      app.email,
-                  recruiter:  app.assigned_manager_name ?? "",
-                },
+            event_type: "agent_activated",
+            details: {
+              agent_name:  `${app.first_name} ${app.last_name}`,
+              hired_by:    app.assigned_manager_name ?? "APEX",
+              referred_by: null,
+              instagram_handle: null,
+            },
           },
-        }).catch(() => {});
+        }).catch((err) => console.warn("[AgentPipeline] discord ping failed:", err));
       }
 
       if (newStage === "licensed") {

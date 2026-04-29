@@ -389,19 +389,25 @@ export default function IntegrationsSettings() {
     setTestStatus("loading");
     setTestMsg("");
     try {
-      const { error } = await supabase.functions.invoke("discord-webhook-notify", {
+      // discord-webhook-notify only knows 8 event types (see fn source).
+      // "stage_change" / "milestone" used to be sent here and from
+      // AgentPipeline; the fn returned 400 "Unknown event_type" and the
+      // call silently failed. Use new_application for the test ping —
+      // it's the lightest supported event and produces a visible Discord
+      // post so the admin can confirm wiring end-to-end.
+      const { data, error } = await supabase.functions.invoke("discord-webhook-notify", {
         body: {
-          event_type: "stage_change",
-          agent_name: "Test Agent",
+          event_type: "new_application",
           details: {
-            from_stage: "unlicensed",
-            to_stage: "course_purchased",
-            email: "test@apex-financial.org",
-            recruiter: "Sam James",
+            first_name: "Test",
+            last_name: "Ping",
+            state: "TX",
+            instagram_handle: null,
           },
         },
       });
       if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
       setTestStatus("ok");
       setTestMsg("Test message sent to Discord!");
       toast.success("Discord test notification sent!");

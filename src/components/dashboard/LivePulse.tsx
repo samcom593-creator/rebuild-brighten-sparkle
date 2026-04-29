@@ -1,22 +1,23 @@
 // Live pulse widget — always-on realtime counters that tick as things happen.
-// Subscribes to Supabase realtime on applications / deals / inbox_messages
-// INSERTs. When a row arrives, the relevant counter pulses (scale + color
-// flash) and the cumulative number updates instantly.
+// Subscribes to Supabase realtime on applications / deals / new-hire INSERTs.
+// When a row arrives, the relevant counter pulses (scale + color flash) and
+// the cumulative number updates instantly.
 //
-// Lightweight: no heavy query every second — uses realtime events to
-// increment a local counter, and pulls the initial today-count once on
-// mount.
+// Sam 2026-04-29: replaced "DMs today" + "events all day" (low-signal) with
+// "hires today" (closed_at = today) + "live producers" (distinct agents
+// with a deal today). Both reflect the only metrics that actually move
+// the agency forward.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { FileText, DollarSign, MessageSquare, Activity } from "lucide-react";
+import { FileText, DollarSign, UserCheck, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 type Tile = {
   key: string;
   label: string;
   count: number;
-  Icon: typeof Activity;
+  Icon: typeof Sparkles;
   color: string;
   pulsedAt: number; // ms timestamp — drives the flash animation
 };
@@ -36,13 +37,14 @@ function todayLocalDateStr(): string {
 export function LivePulse() {
   const [apps, setApps] = useState(0);
   const [deals, setDeals] = useState(0);
-  const [dms, setDms] = useState(0);
-  const [activity, setActivity] = useState(0);
+  const [hires, setHires] = useState(0);
+  const [liveProducers, setLiveProducers] = useState(0);
 
   const pulsedRef = useRef<Record<string, number>>({
-    apps: 0, deals: 0, dms: 0, activity: 0,
+    apps: 0, deals: 0, hires: 0, liveProducers: 0,
   });
   const [, forcePulse] = useState(0);
+  const liveAgentSetRef = useRef<Set<string>>(new Set());
 
   const pulse = (key: string) => {
     pulsedRef.current[key] = Date.now();
@@ -50,20 +52,27 @@ export function LivePulse() {
   };
 
   // Initial counts for today.
-  // Deals counted by effective_date (agency truth) and only valid statuses,
-  // not by created_at — re-syncs would otherwise re-count the same deal.
+  // Deals counted by effective_date (agency truth) and only valid statuses
+  // — re-syncs would otherwise re-count the same deal.
   useEffect(() => {
     const start = startOfTodayISO();
     const tStr = todayLocalDateStr();
     (async () => {
-      const [a, d, m] = await Promise.all([
+      const [a, d, h, prod] = await Promise.all([
         supabase.from("applications").select("id", { count: "exact", head: true }).gte("created_at", start),
         supabase.from("deals").select("id", { count: "exact", head: true }).eq("effective_date", tStr).in("status", ["submitted", "active"]),
-        supabase.from("inbox_messages").select("id", { count: "exact", head: true }).eq("direction", "inbound").gte("received_at", start),
+        // Hires = applications closed today (closed_at >= start of day local)
+        supabase.from("applications").select("id", { count: "exact", head: true }).gte("closed_at", start),
+        // Live producers = distinct agent_ids with a deal that's effective today
+        supabase.from("deals").select("agent_id").eq("effective_date", tStr).in("status", ["submitted", "active"]),
       ]);
       setApps(a.count ?? 0);
       setDeals(d.count ?? 0);
-      setDms(m.count ?? 0);
+      setHires(h.count ?? 0);
+      const ids = new Set<string>();
+      (prod.data ?? []).forEach((r: any) => r.agent_id && ids.add(r.agent_id));
+      liveAgentSetRef.current = ids;
+      setLiveProducers(ids.size);
     })();
   }, []);
 
@@ -74,7 +83,17 @@ export function LivePulse() {
     const todayStr = todayLocalDateStr();
     const ch = supabase.channel("apex-live-pulse")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "applications" }, () => {
-        setApps((n) => n + 1); setActivity((n) => n + 1); pulse("apps"); pulse("activity");
+        setApps((n) => n + 1); pulse("apps");
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "applications" }, (payload: any) => {
+        // Detect a hire: closed_at goes from null → today.
+        const oldRow = payload?.old ?? {};
+        const newRow = payload?.new ?? {};
+        const wasNull = !oldRow.closed_at;
+        const nowSet = !!newRow.closed_at && String(newRow.closed_at).startsWith(todayStr);
+        if (wasNull && nowSet) {
+          setHires((n) => n + 1); pulse("hires");
+        }
       })
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "deals" }, (payload: any) => {
         const row = payload?.new ?? {};
@@ -82,22 +101,23 @@ export function LivePulse() {
         const statusOk = row.status === "submitted" || row.status === "active";
         if (effOk && statusOk) {
           setDeals((n) => n + 1); pulse("deals");
+          if (row.agent_id && !liveAgentSetRef.current.has(row.agent_id)) {
+            liveAgentSetRef.current.add(row.agent_id);
+            setLiveProducers(liveAgentSetRef.current.size);
+            pulse("liveProducers");
+          }
         }
-        setActivity((n) => n + 1); pulse("activity");
-      })
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "inbox_messages", filter: "direction=eq.inbound" }, () => {
-        setDms((n) => n + 1); setActivity((n) => n + 1); pulse("dms"); pulse("activity");
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, []);
 
   const tiles = useMemo<Tile[]>(() => [
-    { key: "apps",     label: "apps today",       count: apps,    Icon: FileText,       color: "#3b82f6", pulsedAt: pulsedRef.current.apps },
-    { key: "deals",    label: "deals today",      count: deals,   Icon: DollarSign,     color: "#10b981", pulsedAt: pulsedRef.current.deals },
-    { key: "dms",      label: "DMs today",        count: dms,     Icon: MessageSquare,  color: "#8b5cf6", pulsedAt: pulsedRef.current.dms },
-    { key: "activity", label: "events all day",   count: activity,Icon: Activity,       color: "#f59e0b", pulsedAt: pulsedRef.current.activity },
-  ], [apps, deals, dms, activity]);
+    { key: "apps",          label: "apps today",      count: apps,          Icon: FileText,   color: "#3b82f6", pulsedAt: pulsedRef.current.apps },
+    { key: "deals",         label: "deals today",     count: deals,         Icon: DollarSign, color: "#10b981", pulsedAt: pulsedRef.current.deals },
+    { key: "hires",         label: "hires today",     count: hires,         Icon: UserCheck,  color: "#8b5cf6", pulsedAt: pulsedRef.current.hires },
+    { key: "liveProducers", label: "live producers",  count: liveProducers, Icon: Sparkles,   color: "#f59e0b", pulsedAt: pulsedRef.current.liveProducers },
+  ], [apps, deals, hires, liveProducers]);
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">

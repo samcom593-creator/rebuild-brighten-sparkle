@@ -3,6 +3,7 @@ import { formatDistanceToNowStrict } from "date-fns";
 import {
   Target, Phone, Mail, MessageSquare, Flame, Snowflake, Clock,
   CheckCircle2, Search, ChevronRight, Sparkles, Users, RefreshCw, Loader2,
+  UserCheck, FileCheck,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -67,9 +68,11 @@ export default function RecruitCommandCenter() {
     try {
       const sinceWeek = new Date(Date.now() - 7 * 86400000).toISOString();
       const [{ data: list }, { count: ctw }] = await Promise.all([
+        // Exclude hired (closed_at) too — Sam: hired people kept appearing
+        // in the recruit funnel even after being marked through.
         supabase.from("applications")
           .select("id, first_name, last_name, email, phone, state, city, lead_score, license_status, license_progress, contacted_at, last_contacted_at, created_at, status")
-          .is("terminated_at", null).is("contracted_at", null)
+          .is("terminated_at", null).is("contracted_at", null).is("closed_at", null)
           .order("created_at", { ascending: false }).limit(400),
         supabase.from("applications").select("id", { count: "exact", head: true })
           .gte("contracted_at", sinceWeek).is("terminated_at", null),
@@ -115,6 +118,50 @@ export default function RecruitCommandCenter() {
       await load();
     } catch (e: any) {
       toast.error(e?.message ?? "Failed");
+    } finally { setMarking(null); }
+  };
+
+  // Mark hired directly from the Recruit page (Sam: "I called Kyle, marked
+  // him hired, nothing happened" — that was on a different page; this lets
+  // him do it from here so the applicant disappears from the funnel
+  // immediately).
+  const markHired = async (a: Applicant) => {
+    setMarking(a.id);
+    try {
+      const nowISO = new Date().toISOString();
+      const { error } = await supabase.from("applications")
+        .update({ closed_at: nowISO, contacted_at: a.contacted_at ?? nowISO })
+        .eq("id", a.id);
+      if (error) throw error;
+      toast.success(`🎉 ${a.first_name} marked HIRED`);
+      screenFlash("emerald", 600);
+      coinRain(28, 3000);
+      levelUpBanner(`HIRED · ${a.first_name.toUpperCase()} ${a.last_name?.toUpperCase() ?? ""}`, 3000);
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to mark hired");
+    } finally { setMarking(null); }
+  };
+
+  const markContracted = async (a: Applicant) => {
+    setMarking(a.id);
+    try {
+      const nowISO = new Date().toISOString();
+      const { error } = await supabase.from("applications")
+        .update({
+          contracted_at: nowISO,
+          closed_at: a.contacted_at ?? nowISO, // contracted implies hired first
+          contacted_at: a.contacted_at ?? nowISO,
+        })
+        .eq("id", a.id);
+      if (error) throw error;
+      toast.success(`💎 ${a.first_name} CONTRACTED`);
+      screenFlash("violet", 600);
+      coinRain(40, 3500);
+      levelUpBanner(`CONTRACTED · ${a.first_name.toUpperCase()} ${a.last_name?.toUpperCase() ?? ""}`, 3200);
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Failed to mark contracted");
     } finally { setMarking(null); }
   };
 
@@ -242,9 +289,27 @@ export default function RecruitCommandCenter() {
                         </a>
                       </Button>
                     )}
-                    <Button onClick={() => markContacted(a)} size="sm" className="gap-1.5 h-8" disabled={marking === a.id}>
+                    <Button onClick={() => markContacted(a)} size="sm" variant="outline" className="gap-1.5 h-8" disabled={marking === a.id}>
                       {marking === a.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
-                      Mark contacted
+                      Contacted
+                    </Button>
+                    <Button
+                      onClick={() => markHired(a)}
+                      size="sm"
+                      className="gap-1.5 h-8 bg-emerald-500 hover:bg-emerald-600 text-white"
+                      disabled={marking === a.id}
+                      title="Mark Hired (closed_at = now)"
+                    >
+                      <UserCheck className="h-3 w-3" /> Hired
+                    </Button>
+                    <Button
+                      onClick={() => markContracted(a)}
+                      size="sm"
+                      className="gap-1.5 h-8 bg-violet-500 hover:bg-violet-600 text-white"
+                      disabled={marking === a.id}
+                      title="Mark Contracted (contracted_at = now)"
+                    >
+                      <FileCheck className="h-3 w-3" /> Contracted
                     </Button>
                   </div>
                 </div>

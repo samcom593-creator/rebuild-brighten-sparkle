@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { motion } from "framer-motion";
 import { Crown, Play, FileText, GraduationCap, Calendar, CheckCircle2 } from "lucide-react";
 import { GradientButton } from "@/components/ui/gradient-button";
@@ -26,6 +27,7 @@ const steps = [
 ];
 
 export default function GetLicensed() {
+  usePageTitle("Get Licensed · Start Your APEX Career");
   const videoUrl = "https://www.youtube.com/embed/i1e5p-GEfAU";
   const documentUrl = "https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg/edit?usp=sharing";
   const courseUrl = "https://partners.xcelsolutions.com/afe";

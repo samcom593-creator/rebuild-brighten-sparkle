@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { CalendlyEmbed } from "@/components/landing/CalendlyEmbed";
 import { Link } from "react-router-dom";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 /**
  * Phase 12: Calendly Strategy
@@ -16,6 +17,7 @@ const LICENSED_CALENDLY = "https://calendly.com/sam-com593/1on1-call-clone";
 const UNLICENSED_CALENDLY = "https://calendly.com/sam-com593/licensed-prospect-call-clone";
 
 export default function ScheduleCall() {
+  usePageTitle("Schedule a Call · APEX Financial");
   const [hasLicense, setHasLicense] = useState<boolean | null>(null);
 
   // Show inline Calendly embed instead of redirecting

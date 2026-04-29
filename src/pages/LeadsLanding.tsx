@@ -2,12 +2,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check, TrendingUp, Users, Award, ArrowRight, Star } from "lucide-react";
 import { Link } from "react-router-dom";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 // Default export required because App.tsx loads this via React.lazy
 // (`lazy(() => import("./pages/LeadsLanding"))`). Without it,
 // /leads, /get-leads, and /dialer all crash with React error #306
 // "element type is invalid: undefined."
 export default function LeadsLanding() {
+  usePageTitle("APEX Leads & Dialer · Daily Warm Leads");
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
       {/* Navigation */}
@@ -49,8 +51,11 @@ export default function LeadsLanding() {
                   Get Started <ArrowRight className="h-5 w-5" />
                 </Link>
               </Button>
+              {/* Was self-looping back to /dialer (which IS this page).
+                  Anchors to the platform-demo section so the button
+                  actually shows the demo content. */}
               <Button asChild variant="outline" size="lg">
-                <Link to="/dialer">See Platform Demo</Link>
+                <a href="#platform-demo">See Platform Demo</a>
               </Button>
             </div>
 
@@ -103,8 +108,8 @@ export default function LeadsLanding() {
         </div>
       </section>
 
-      {/* What You Get Section */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8">
+      {/* What You Get Section — anchor for the "See Platform Demo" CTA */}
+      <section id="platform-demo" className="py-24 px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-white mb-4">

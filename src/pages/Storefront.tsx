@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { CheckCircle2, ArrowRight, Crown, Phone, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,6 +30,7 @@ const SKUS = [
 ];
 
 export default function Storefront() {
+  usePageTitle("APEX Storefront · Subscribe");
   const [params] = useSearchParams();
   const paid = params.get("paid") === "1";
   const [showConfetti, setShowConfetti] = useState(false);

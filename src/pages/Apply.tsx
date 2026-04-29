@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { motion, AnimatePresence } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -93,6 +94,7 @@ const steps = [
 ];
 
 export default function Apply() {
+  usePageTitle("Apply to APEX Financial · Insurance Career Pathway");
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const refSlug = searchParams.get("ref");

@@ -151,6 +151,10 @@ const App = () => (
                   <Route path="/login" element={<Login />} />
                   <Route path="/signup" element={<Signup />} />
                   <Route path="/join" element={<Join />} />
+                  {/* /agent-signup is the canonical recruiting URL referenced from
+                      Install.tsx and many email CTAs; /join is the legacy alias and
+                      now points at AgentSignup as well so neither URL ever 404s. */}
+                  <Route path="/agent-signup" element={<AgentSignup />} />
                   <Route path="/join" element={<AgentSignup />} />
                   <Route path="/agent-login" element={<AgentNumbersLogin />} />
                   <Route path="/magic-login" element={<MagicLogin />} />
@@ -160,7 +164,9 @@ const App = () => (
                   <Route path="/terms" element={<Terms />} />
                   <Route path="/disclosures" element={<Disclosures />} />
                   <Route path="/install" element={<Install />} />
-                  <Route path="/apex-daily-numbers" element={<LogNumbers />} />
+                  {/* /apex-daily-numbers is internal-only — was publicly exposing
+                      production-entry UI. Now requires a logged-in user (any role). */}
+                  <Route path="/apex-daily-numbers" element={<ProtectedRoute><LogNumbers /></ProtectedRoute>} />
                   <Route path="/links" element={<LinksPage />} />
                   <Route path="/seminar" element={<SeminarPage />} />
                   <Route path="/leads" element={<LeadsLanding />} />
@@ -170,7 +176,9 @@ const App = () => (
                   {/* checkin and daily-checkin routes removed */}
                   {/* field-checkin route removed */}
                   <Route path="/agent-flow" element={<AgentFlow />} />
-                  <Route path="/awards" element={<AwardGraphics />} />
+                  {/* /awards exposes Instagram-ready award graphics generation.
+                      Admin-only — was publicly accessible. */}
+                  <Route path="/awards" element={<ProtectedRoute requireAdmin><AwardGraphics /></ProtectedRoute>} />
                   {/* Public plaque share — no auth required */}
                   <Route path="/plaque/:slug" element={<PlaqueShare />} />
                   {/* Authenticated shell - sidebar mounted once */}

@@ -114,8 +114,18 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!firstName || !lastName || !email || !phone || !managerId) {
-      toast.error("Please fill in all required fields");
+    // Sam 2026-04-29: surface specific missing-field message instead of a
+    // generic "fill in all required fields" toast — multiple users reported
+    // "Add Agent button not working" but the real issue was a missed field
+    // on a tall form that they didn't scroll back to.
+    const missing: string[] = [];
+    if (!firstName.trim()) missing.push("First name");
+    if (!lastName.trim()) missing.push("Last name");
+    if (!email.trim()) missing.push("Email");
+    if (!phone.trim()) missing.push("Phone");
+    if (!managerId) missing.push("Manager");
+    if (missing.length) {
+      toast.error(`Missing: ${missing.join(", ")}`);
       return;
     }
 
@@ -139,14 +149,25 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
         },
       });
 
+      // Surface every failure mode loudly. The previous code returned with
+      // only a single toast for transport errors; data-level errors landed
+      // in a separate branch; and a "neither succeeds nor errors" return
+      // (e.g. empty body / 500 with no JSON) silently no-oped.
       if (error) {
-        console.error("Error adding agent:", error);
-        toast.error(error.message || "Failed to add agent");
+        console.error("[AddAgentModal] transport error:", error);
+        toast.error(error.message || `Add Agent failed (${(error as any)?.context?.status ?? "network"})`);
         return;
       }
 
       if (data?.error) {
-        toast.error(data.error);
+        console.error("[AddAgentModal] server error:", data.error);
+        toast.error(typeof data.error === "string" ? data.error : JSON.stringify(data.error));
+        return;
+      }
+
+      if (!data || (typeof data === "object" && Object.keys(data).length === 0)) {
+        console.error("[AddAgentModal] empty response", data);
+        toast.error("Server returned no response — agent may not have been created. Refresh to verify.");
         return;
       }
 
@@ -303,7 +324,7 @@ export function AddAgentModal({ onAgentAdded, trigger }: AddAgentModalProps) {
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading || managers.length === 0}>
+            <Button type="submit" disabled={loading}>
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />

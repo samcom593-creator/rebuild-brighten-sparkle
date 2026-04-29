@@ -43,6 +43,7 @@ import {
   Book,
   MessageSquare,
   Sunrise,
+  GraduationCap,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -210,6 +211,9 @@ export function GlobalSidebar({
     ];
     if (isAdmin || isManager) {
       trainingItems.push({ icon: BarChart3, label: "Course Progress", href: "/course-progress" });
+    }
+    if (isAdmin) {
+      trainingItems.push({ icon: GraduationCap, label: "Xcel Pipeline", href: "/dashboard/xcel-pipeline" });
     }
     sections.push({ label: "TRAINING", items: trainingItems });
 

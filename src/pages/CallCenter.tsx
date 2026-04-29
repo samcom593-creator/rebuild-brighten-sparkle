@@ -9,6 +9,8 @@ import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { ContractedModal } from "@/components/dashboard/ContractedModal";
 import { ConfettiCelebration } from "@/components/dashboard/ConfettiCelebration";
 import { HireConfirmModal } from "@/components/callcenter/HireConfirmModal";
+import { InterviewScheduler } from "@/components/dashboard/InterviewScheduler";
+import { CalendarPlus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   CallCenterFilters,
@@ -66,6 +68,9 @@ export default function CallCenter() {
   const [showContractedModal, setShowContractedModal] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
   const [showHireConfirm, setShowHireConfirm] = useState(false);
+  // Schedule Meeting modal — Sam: "fix the schedule button, actually
+  // work a schedule a meeting." It was never wired into CallCenter.
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
 
   // Filters
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
@@ -807,6 +812,24 @@ export default function CallCenter() {
             processing={processing}
             canGoPrevious={currentIndex > 0}
           />
+
+          {/* Schedule meeting button — sits below the action grid. Only
+              applies to applicants (source='applications'), since the
+              interview record + applicant email need an application_id. */}
+          {currentLead?.source === "applications" && (
+            <div className="mt-3 flex justify-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowScheduleModal(true)}
+                disabled={processing}
+                className="gap-2 border-violet-500/40 text-violet-300 hover:bg-violet-500/10"
+              >
+                <CalendarPlus className="h-4 w-4" />
+                Schedule a meeting with {currentLead.firstName}
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
@@ -838,6 +861,22 @@ export default function CallCenter() {
           onConfirm={handleHireConfirm}
           applicantName={`${currentLead.firstName} ${currentLead.lastName || ""}`.trim()}
           isUnlicensed={currentLead.licenseStatus !== "licensed"}
+        />
+      )}
+
+      {/* Schedule Meeting Modal — full date+time+type picker, posts to
+          schedule-interview edge fn, sends email + Google Calendar URL. */}
+      {currentLead && currentLead.source === "applications" && (
+        <InterviewScheduler
+          open={showScheduleModal}
+          onOpenChange={setShowScheduleModal}
+          applicationId={currentLead.id}
+          applicantName={`${currentLead.firstName} ${currentLead.lastName || ""}`.trim()}
+          applicantEmail={currentLead.email || ""}
+          onScheduled={() => {
+            toast.success("Meeting scheduled — applicant emailed");
+            setShowScheduleModal(false);
+          }}
         />
       )}
 

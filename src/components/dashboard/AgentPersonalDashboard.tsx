@@ -23,11 +23,14 @@ export function AgentPersonalDashboard({ agentId }: Props) {
       if (!agentId) return null;
 
       const now = new Date();
+      // Rolling 7d so "My Weekly ALP" doesn't crash to near-zero on Monday/Tuesday.
       const weekStart = new Date(now);
-      const day = now.getDay();
-      weekStart.setDate(now.getDate() + (day === 0 ? -6 : 1 - day));
+      weekStart.setDate(now.getDate() - 6);
       weekStart.setHours(0, 0, 0, 0);
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      // Rolling 30d for "My Monthly ALP" so May 1 doesn't suddenly show $0 either.
+      const monthStart = new Date(now);
+      monthStart.setDate(now.getDate() - 29);
+      monthStart.setHours(0, 0, 0, 0);
 
       const weekStartStr = weekStart.toISOString().split("T")[0];
       const monthStartStr = monthStart.toISOString().split("T")[0];

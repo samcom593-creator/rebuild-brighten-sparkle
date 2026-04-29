@@ -311,10 +311,13 @@ export default function Dashboard() {
     queryKey: ["dashboard-top-metrics-v2-deals", isAdmin ? "agency" : "downline", myDownlineIds.join(",")],
     queryFn: async () => {
       const now = new Date();
+      // Weekly window = ROLLING 7 days (today + 6 prior). The previous Mon-Sun
+      // ISO definition collapsed to 1-2 days every Monday/Tuesday morning,
+      // making "Weekly ALP" look broken early in the week. Rolling 7d always
+      // reflects ~a full week of activity which matches the language and
+      // matches the active-agent rule (Sam, 2026-04-27 dashboard truth).
       const weekStart = new Date(now);
-      const day = now.getDay();
-      const diffToMonday = day === 0 ? -6 : 1 - day;
-      weekStart.setDate(now.getDate() + diffToMonday);
+      weekStart.setDate(now.getDate() - 6);
       weekStart.setHours(0, 0, 0, 0);
       const weekStartStr = weekStart.toISOString().split("T")[0];
 
@@ -336,6 +339,8 @@ export default function Dashboard() {
       const todayStartLocal     = new Date(now); todayStartLocal.setHours(0,0,0,0);
       const yStr = yesterdayStartLocal.toISOString().split("T")[0];
       const tStr = todayStartLocal.toISOString().split("T")[0];
+      // Prev week = the 7 days immediately before this rolling 7-day window
+      // (i.e. days 8-14 ago). Used for the WoW arrow on Weekly ALP.
       const prevWeekStartDate = new Date(weekStart); prevWeekStartDate.setDate(weekStart.getDate() - 7);
       const prevWeekEndDate   = new Date(weekStart); prevWeekEndDate.setDate(weekStart.getDate() - 1);
       const pwStr  = prevWeekStartDate.toISOString().split("T")[0];

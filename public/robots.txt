@@ -13,4 +13,4 @@ Allow: /
 User-agent: facebookexternalhit
 Allow: /
 
-Sitemap: https://agentlink.insuracloud.ai/sitemap.xml
+Sitemap: https://apex-financial.org/sitemap.xml

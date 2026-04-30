@@ -11,7 +11,9 @@
     "preview": "vite preview",
     "sync:functions": "bash scripts/sync-functions-config.sh",
     "predev": "bash scripts/sync-functions-config.sh || true",
-    "prebuild": "bash scripts/sync-functions-config.sh || true"
+    "prebuild": "bash scripts/sync-functions-config.sh || true",
+    "smoke": "node scripts/route-smoke.mjs",
+    "smoke:prod": "BASE=https://apex-financial.org node scripts/route-smoke.mjs"
   },
   "dependencies": {
     "@alloc/quick-lru": "5.2.0",

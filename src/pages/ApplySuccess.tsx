@@ -4,8 +4,10 @@ import { CheckCircle2, Crown, ArrowRight, Mail, Phone, Calendar, AlertTriangle, 
 import { WHATSAPP_GROUP_URL } from "@/lib/constants";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { GlassCard } from "@/components/ui/glass-card";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function ApplySuccess() {
+  usePageTitle("Application Received · APEX Financial");
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       {/* Background Effects */}

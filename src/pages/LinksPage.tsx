@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { z } from "zod";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const waitlistSchema = z.object({
   firstName: z.string().trim().min(2, "First name required").max(50),
@@ -80,6 +81,7 @@ const offerCards = [
 ];
 
 export default function LinksPage() {
+  usePageTitle("Sam James · Links");
   const [showEliteForm, setShowEliteForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);

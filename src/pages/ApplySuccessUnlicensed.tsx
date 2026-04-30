@@ -4,8 +4,10 @@ import { Crown, CheckCircle2, ArrowRight, Calendar, Sparkles, AlertTriangle, Mes
 import { GradientButton } from "@/components/ui/gradient-button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { WHATSAPP_GROUP_URL } from "@/lib/constants";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function ApplySuccessUnlicensed() {
+  usePageTitle("Get Licensed · APEX Financial");
   const calendlyUrl = "https://calendly.com/sam-com593/licensed-prospect-call-clone";
 
   return (

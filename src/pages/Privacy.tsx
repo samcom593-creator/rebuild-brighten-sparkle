@@ -3,8 +3,10 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Shield } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Footer } from "@/components/landing/Footer";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function Privacy() {
+  usePageTitle("Privacy Policy · APEX Financial");
   return (
     <div className="min-h-screen bg-background">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,hsl(var(--primary)/0.1)_0%,transparent_50%)]" />

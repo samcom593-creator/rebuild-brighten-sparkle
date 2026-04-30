@@ -5,8 +5,10 @@ import { GradientButton } from "@/components/ui/gradient-button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { CalendlyEmbed } from "@/components/landing/CalendlyEmbed";
 import { WHATSAPP_GROUP_URL } from "@/lib/constants";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function ApplySuccessLicensed() {
+  usePageTitle("Schedule Your Call · APEX Financial");
   const calendlyUrl = "https://calendly.com/sam-com593/1on1-call-clone";
 
   return (

@@ -6,8 +6,10 @@ import { GradientButton } from "@/components/ui/gradient-button";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function PendingApproval() {
+  usePageTitle("Pending Approval · APEX Financial");
   const navigate = useNavigate();
 
   const handleSignOut = async () => {

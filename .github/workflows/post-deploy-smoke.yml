@@ -1,0 +1,42 @@
+name: Post-deploy route smoke
+
+# Fires after Vercel ships. Pings every public route on production and
+# fails non-zero on any HTTP error, visual 404 (SPA shell returning 200
+# while inner route is missing — the /agent-signup bug class), or
+# runtime React crash (the LeadsLanding default-export bug class).
+#
+# A failure here notifies Sam on the GitHub run page and via the
+# notification hooks. Catches the "deploy looks green but funnel is
+# broken" pattern from 2026-04-29 before users hit it.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Vercel takes ~30s to promote on average. Wait + give it room.
+concurrency:
+  group: post-deploy-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wait for Vercel promote
+        # Sleep for 90s so the new deploy has time to flip into production
+        # (Vercel build takes ~15-30s + edge propagation). If the build was
+        # already promoted, this just adds 90s of cushion.
+        run: sleep 90
+
+      - name: Run smoke
+        run: node scripts/route-smoke.mjs
+        env:
+          BASE: https://apex-financial.org
+
+      - name: Post failure summary
+        if: failure()
+        run: |
+          echo "::warning::Post-deploy smoke FAILED on ${{ github.sha }} — check the route output above. The Vercel deploy is live; one or more routes regressed."

@@ -1,49 +1,30 @@
 {
-  "name": "APEX Financial - Agent Platform",
-  "short_name": "APEX Financial",
-  "description": "Lead generation and agent empowerment platform for insurance agents",
+  "name": "APEX Financial - Daily Numbers",
+  "short_name": "APEX Numbers",
+  "description": "Track your daily production, see your ranking, and compete on the leaderboard.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "orientation": "portrait-primary",
-  "background_color": "#0a0a0a",
-  "theme_color": "#14b8a6",
+  "orientation": "portrait",
+  "background_color": "#0a0f1a",
+  "theme_color": "#0a0f1a",
+  "lang": "en",
   "icons": [
     {
-      "src": "/favicon-16x16.png",
-      "sizes": "16x16",
-      "type": "image/png"
-    },
-    {
-      "src": "/favicon-32x32.png",
-      "sizes": "32x32",
-      "type": "image/png"
-    },
-    {
-      "src": "/favicon-192x192.png",
+      "src": "/pwa-192x192.png",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
+      "type": "image/png"
     },
     {
-      "src": "/favicon-512x512.png",
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/pwa-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "/screenshot-narrow.png",
-      "sizes": "540x720",
-      "type": "image/png",
-      "form_factor": "narrow"
-    },
-    {
-      "src": "/screenshot-wide.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide"
     }
   ],
   "categories": ["business", "productivity"],
@@ -54,10 +35,7 @@
       "description": "Go to your agent dashboard",
       "url": "/dashboard",
       "icons": [
-        {
-          "src": "/favicon-192x192.png",
-          "sizes": "192x192"
-        }
+        { "src": "/pwa-192x192.png", "sizes": "192x192" }
       ]
     },
     {
@@ -66,10 +44,7 @@
       "description": "Access the call dialer",
       "url": "/dialer",
       "icons": [
-        {
-          "src": "/favicon-192x192.png",
-          "sizes": "192x192"
-        }
+        { "src": "/pwa-192x192.png", "sizes": "192x192" }
       ]
     },
     {
@@ -78,21 +53,8 @@
       "description": "Apply to become an agent",
       "url": "/apply",
       "icons": [
-        {
-          "src": "/favicon-192x192.png",
-          "sizes": "192x192"
-        }
+        { "src": "/pwa-192x192.png", "sizes": "192x192" }
       ]
     }
-  ],
-  "share_target": {
-    "action": "/share",
-    "method": "POST",
-    "enctype": "multipart/form-data",
-    "params": {
-      "title": "title",
-      "text": "text",
-      "url": "url"
-    }
-  }
+  ]
 }

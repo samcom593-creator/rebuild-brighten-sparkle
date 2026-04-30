@@ -31,3 +31,4 @@ apex-bot-credentials.md
 .env
 .env.local
 .vercel
+supabase/.temp/

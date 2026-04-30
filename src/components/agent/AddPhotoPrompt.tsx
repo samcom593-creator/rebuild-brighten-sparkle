@@ -22,14 +22,18 @@ export function AddPhotoPrompt() {
       setDismissed(true);
       return;
     }
-    // Re-check avatar_url directly in case profile hook is stale
+    // Re-check avatar_url directly in case profile hook is stale.
+    // Tolerate the photo_url column being absent (post-migration projects
+    // may not have it). If the query errors entirely, default to "has photo"
+    // so we never show a stuck prompt to someone who actually has one.
     (async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("profiles")
-        .select("avatar_url, photo_url")
+        .select("avatar_url")
         .eq("user_id", user.id)
         .maybeSingle();
-      setHasPhoto(!!(data as any)?.avatar_url || !!(data as any)?.photo_url);
+      if (error) { setHasPhoto(true); return; }
+      setHasPhoto(!!(data as any)?.avatar_url);
     })();
   }, [user?.id, profile]);
 

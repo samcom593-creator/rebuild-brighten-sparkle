@@ -196,20 +196,27 @@ CREATE POLICY "admins_managers_all_inactive_queue" ON public.inactive_agent_queu
   USING (public.has_role(auth.uid(), 'admin'::app_role) OR public.has_role(auth.uid(), 'manager'::app_role))
   WITH CHECK (public.has_role(auth.uid(), 'admin'::app_role) OR public.has_role(auth.uid(), 'manager'::app_role));
 
--- 7. BACKFILL existing agents
-INSERT INTO public.getting_started_progress (agent_id, current_stage)
-SELECT id,
-  CASE
-    WHEN onboarding_stage::text = 'active' THEN 'producing'
-    WHEN onboarding_stage::text = 'inactive' THEN 'inactive'
-    WHEN onboarding_stage::text IN ('pre_licensed', 'applied') THEN 'onboarding'
-    WHEN onboarding_stage::text = 'in_field_training' THEN 'field_training'
-    ELSE 'signed_up'
-  END
-FROM public.agents
-WHERE COALESCE(is_deactivated, false) = false
-  AND NOT EXISTS (SELECT 1 FROM public.getting_started_progress gsp WHERE gsp.agent_id = agents.id)
-ON CONFLICT (agent_id) DO NOTHING;
+-- 7. BACKFILL existing agents (skip on fresh project where agents.onboarding_stage doesn't exist)
+DO $$ BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'agents' AND column_name = 'onboarding_stage'
+  ) THEN
+    INSERT INTO public.getting_started_progress (agent_id, current_stage)
+    SELECT id,
+      CASE
+        WHEN onboarding_stage::text = 'active' THEN 'producing'
+        WHEN onboarding_stage::text = 'inactive' THEN 'inactive'
+        WHEN onboarding_stage::text IN ('pre_licensed', 'applied') THEN 'onboarding'
+        WHEN onboarding_stage::text = 'in_field_training' THEN 'field_training'
+        ELSE 'signed_up'
+      END
+    FROM public.agents
+    WHERE COALESCE(is_deactivated, false) = false
+      AND NOT EXISTS (SELECT 1 FROM public.getting_started_progress gsp WHERE gsp.agent_id = agents.id)
+    ON CONFLICT (agent_id) DO NOTHING;
+  END IF;
+END $$;
 
 -- 8. AUTO-CREATE on new agent
 CREATE OR REPLACE FUNCTION public.auto_create_getting_started()

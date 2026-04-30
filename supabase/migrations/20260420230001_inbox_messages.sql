@@ -32,10 +32,12 @@ CREATE INDEX IF NOT EXISTS idx_inbox_messages_unreplied ON public.inbox_messages
 
 ALTER TABLE public.inbox_messages ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "Admins manage all inbox"
+DROP POLICY IF EXISTS "Admins manage all inbox" ON public.inbox_messages;
+CREATE POLICY "Admins manage all inbox"
   ON public.inbox_messages FOR ALL TO public
   USING (has_role(auth.uid(), 'admin'::app_role));
 
-CREATE POLICY IF NOT EXISTS "Assigned user sees own"
+DROP POLICY IF EXISTS "Assigned user sees own" ON public.inbox_messages;
+CREATE POLICY "Assigned user sees own"
   ON public.inbox_messages FOR SELECT TO public
   USING (assigned_to = auth.uid());

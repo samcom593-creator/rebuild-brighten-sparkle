@@ -83,6 +83,17 @@ BEGIN
 END;
 $$;
 
+-- Ensure agents.onboarding_stage exists (Lovable-platform creates it on hosted projects;
+-- on self-hosted/fresh projects we add it explicitly so this trigger can attach)
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'agents' AND column_name = 'onboarding_stage'
+  ) THEN
+    ALTER TABLE public.agents ADD COLUMN onboarding_stage public.onboarding_stage;
+  END IF;
+END $$;
+
 DROP TRIGGER IF EXISTS trg_auto_advance_gs_on_agent_change ON public.agents;
 CREATE TRIGGER trg_auto_advance_gs_on_agent_change
   AFTER INSERT OR UPDATE OF onboarding_stage, license_status, is_deactivated ON public.agents

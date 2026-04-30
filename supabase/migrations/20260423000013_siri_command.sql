@@ -29,10 +29,13 @@ CREATE POLICY cal_admin ON public.calendar_events FOR SELECT TO authenticated
   USING (public.has_role(auth.uid(),'admin'::public.app_role));
 CREATE POLICY cal_svc   ON public.calendar_events FOR ALL    TO service_role USING (true);
 
+-- Ensure pgcrypto for gen_random_bytes
+CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
+
 -- Generate the Siri bearer token if not present (single-tenant — only Sam needs one)
 INSERT INTO public.system_settings (key, value)
 SELECT 'siri_shortcut_token',
-  encode(gen_random_bytes(24), 'hex')
+  encode(extensions.gen_random_bytes(24), 'hex')
 WHERE NOT EXISTS (SELECT 1 FROM public.system_settings WHERE key = 'siri_shortcut_token');
 
 -- Trigger: when a calendar_event lands with source='siri', also drop a notification

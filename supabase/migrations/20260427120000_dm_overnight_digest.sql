@@ -59,7 +59,7 @@ BEGIN
   ),
   hot_html AS (
     SELECT string_agg(format(
-      E'<div style="margin:8px 0;padding:10px;background:#f8fafc;border-left:3px solid #10b981;border-radius:4px"><strong>%s</strong> · <span style="color:#10b981;font-weight:700">tier %s</span> · <span style="color:#64748b;font-size:12px">%s</span><br/><span style="color:#0f172a">%s</span></div>',
+      '<div style="margin:8px 0;padding:10px;background:#f8fafc;border-left:3px solid #10b981;border-radius:4px"><strong>%s</strong> · <span style="color:#10b981;font-weight:700">tier %s</span> · <span style="color:#64748b;font-size:12px">%s</span><br/><span style="color:#0f172a">%s</span></div>',
       COALESCE(NULLIF(sender_name,''), sender_handle, 'unknown'),
       lead_score,
       to_char(created_at AT TIME ZONE 'America/Chicago', 'HH12:MI AM'),
@@ -68,20 +68,20 @@ BEGIN
   ),
   skipped_html AS (
     SELECT string_agg(format(
-      E'<div style="margin:6px 0;padding:8px;background:#fef9c3;border-radius:4px;font-size:13px"><strong>%s</strong> said: "%s" <span style="color:#854d0e">(intent: %s, no auto-reply fired)</span></div>',
+      '<div style="margin:6px 0;padding:8px;background:#fef9c3;border-radius:4px;font-size:13px"><strong>%s</strong> said: "%s" <span style="color:#854d0e">(intent: %s, no auto-reply fired)</span></div>',
       COALESCE(sender_handle, 'unknown'),
       LEFT(msg, 120),
       intent), '') AS html
     FROM skipped
   )
   SELECT format(
-    E'<h2 style="margin:0 0 8px 0">DM digest — overnight</h2>'
-    E'<p style="color:#64748b;margin:0 0 16px 0">%s inbound · %s auto-replies fired · %s hot leads (≥70) · %s needed your manual touch</p>'
-    E'<h3 style="color:#0f172a;border-bottom:1px solid #e2e8f0;padding-bottom:6px">🔥 Hot leads (call these first)</h3>'
-    E'%s'
-    E'<h3 style="color:#0f172a;border-bottom:1px solid #e2e8f0;padding-bottom:6px;margin-top:24px">⚠️ Got past the auto-replier — needs you</h3>'
-    E'%s'
-    E'<p style="margin-top:24px"><a href="https://apex-financial.org/dashboard/inbox" style="color:#0ea5e9">Open inbox →</a></p>',
+    '<h2 style="margin:0 0 8px 0">DM digest — overnight</h2>'
+    '<p style="color:#64748b;margin:0 0 16px 0">%s inbound · %s auto-replies fired · %s hot leads (≥70) · %s needed your manual touch</p>'
+    '<h3 style="color:#0f172a;border-bottom:1px solid #e2e8f0;padding-bottom:6px">🔥 Hot leads (call these first)</h3>'
+    '%s'
+    '<h3 style="color:#0f172a;border-bottom:1px solid #e2e8f0;padding-bottom:6px;margin-top:24px">⚠️ Got past the auto-replier — needs you</h3>'
+    '%s'
+    '<p style="margin-top:24px"><a href="https://apex-financial.org/dashboard/inbox" style="color:#0ea5e9">Open inbox →</a></p>',
     v_inbound_count, v_replied_count, v_hot_count, v_skipped_count,
     COALESCE((SELECT html FROM hot_html), '<p style="color:#64748b">no hot leads tonight</p>'),
     COALESCE((SELECT html FROM skipped_html), '<p style="color:#64748b">none — auto-replier covered everything</p>')

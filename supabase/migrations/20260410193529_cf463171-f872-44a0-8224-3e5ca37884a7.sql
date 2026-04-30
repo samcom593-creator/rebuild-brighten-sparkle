@@ -1,5 +1,14 @@
 
--- Add missing enum values to onboarding_stage
+-- Create onboarding_stage enum if it doesn't exist (Lovable-platform creates this in old projects;
+-- on a fresh project we need it before ALTERing)
+DO $$ BEGIN
+  CREATE TYPE public.onboarding_stage AS ENUM (
+    'applied', 'meeting_attendance', 'pre_licensed', 'transfer',
+    'below_10k', 'live', 'need_followup', 'inactive', 'pending_review'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- Add missing enum values (no-op on fresh project, idempotent on old)
 ALTER TYPE public.onboarding_stage ADD VALUE IF NOT EXISTS 'applied';
 ALTER TYPE public.onboarding_stage ADD VALUE IF NOT EXISTS 'meeting_attendance';
 ALTER TYPE public.onboarding_stage ADD VALUE IF NOT EXISTS 'pre_licensed';

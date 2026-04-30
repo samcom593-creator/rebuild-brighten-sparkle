@@ -137,6 +137,9 @@ EXCEPTION WHEN others THEN
 END;
 $$;
 
+-- Ensure agents.contracted_at exists (added later by 20260421010000 but trigger needs it now)
+ALTER TABLE public.agents ADD COLUMN IF NOT EXISTS contracted_at timestamptz;
+
 DROP TRIGGER IF EXISTS trg_agent_activated_discord ON public.agents;
 CREATE TRIGGER trg_agent_activated_discord
   AFTER UPDATE OF contracted_at ON public.agents
@@ -264,7 +267,7 @@ CREATE TRIGGER trg_streak_7day_discord
 DO $outer$
 BEGIN
   -- Daily leaderboard — every night 9pm EST
-  -- Outer uses $outer$ to avoid $$ nesting conflict with cron.schedule bodies.
+  -- Outer uses a different dollar-tag to avoid nesting conflict with cron.schedule bodies.
   IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
     IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'discord-daily-leaderboard') THEN PERFORM cron.unschedule('discord-daily-leaderboard'); END IF;
     IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'discord-weekly-leaderboard') THEN PERFORM cron.unschedule('discord-weekly-leaderboard'); END IF;

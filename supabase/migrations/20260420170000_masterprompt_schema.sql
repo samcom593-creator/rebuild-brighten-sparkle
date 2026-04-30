@@ -61,6 +61,11 @@ CREATE TABLE IF NOT EXISTS public.licensing_delegates (
   created_at timestamptz DEFAULT now(),
   UNIQUE(manager_id, delegate_agent_id)
 );
+-- If the table existed with an older schema (different col names), add what we need
+ALTER TABLE public.licensing_delegates ADD COLUMN IF NOT EXISTS manager_id uuid REFERENCES public.agents(id) ON DELETE CASCADE;
+ALTER TABLE public.licensing_delegates ADD COLUMN IF NOT EXISTS delegate_agent_id uuid REFERENCES public.agents(id) ON DELETE CASCADE;
+ALTER TABLE public.licensing_delegates ADD COLUMN IF NOT EXISTS can_view_prelicensing boolean DEFAULT true;
+ALTER TABLE public.licensing_delegates ADD COLUMN IF NOT EXISTS can_call_prelicensing boolean DEFAULT true;
 CREATE INDEX IF NOT EXISTS idx_ld_delegate ON public.licensing_delegates(delegate_agent_id);
 ALTER TABLE public.licensing_delegates ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Admins manage delegates" ON public.licensing_delegates;

@@ -31,7 +31,7 @@ export default function GetLicensed() {
   const videoUrl = "https://www.youtube.com/embed/i1e5p-GEfAU";
   const documentUrl = "https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg/edit?usp=sharing";
   const courseUrl = "https://partners.xcelsolutions.com/afe";
-  const calendlyUrl = "https://calendly.com/sam-com593/licensed-prospect-call-clone";
+  const calendlyUrl = "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone";
 
   return (
     <div className="min-h-screen bg-background py-8 px-4">

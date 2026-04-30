@@ -456,7 +456,7 @@ export function CallCenterVoiceRecorder({
                       onClick={async () => {
                         setSendingFollowUp(true);
                         try {
-                          await onSendFollowUp("https://calendly.com/apexlifeadvisors/15-minute-discovery");
+                          await onSendFollowUp("https://calendly.com/apexfinancialempire/licensed-prospect-call-clone");
                           setFollowUpSent("licensed");
                         } catch {
                           // error handled by parent
@@ -487,7 +487,7 @@ export function CallCenterVoiceRecorder({
                       onClick={async () => {
                         setSendingFollowUp(true);
                         try {
-                          await onSendFollowUp("https://calendly.com/apexlifeadvisors/15min");
+                          await onSendFollowUp("https://calendly.com/apexfinancialempire/licensed-prospect-call-clone");
                           setFollowUpSent("unlicensed");
                         } catch {
                           // error handled by parent

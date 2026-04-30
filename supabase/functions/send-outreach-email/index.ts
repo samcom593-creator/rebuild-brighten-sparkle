@@ -77,7 +77,7 @@ const emailTemplates = {
         <strong style="color:#ffffff;">Would you be open to a quick 15-minute call</strong> to explore if this might be a good fit? No pressure, just a conversation about where you're at and where you want to go.
       </p>
       
-      ${ctaButton("https://calendly.com/apexlifeadvisors/15-minute-discovery", "Schedule a Call")}
+      ${ctaButton("https://calendly.com/apexfinancialempire/licensed-prospect-call-clone", "Schedule a Call")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Looking forward to connecting,<br>
@@ -124,7 +124,7 @@ const emailTemplates = {
         <strong style="color:#ffffff;">No sales pitch—just a real conversation</strong> about what this industry looks like and how you can start building income from day one.
       </p>
       
-      ${ctaButton("https://calendly.com/apexlifeadvisors/15min", "Let's Talk")}
+      ${ctaButton("https://calendly.com/apexfinancialempire/licensed-prospect-call-clone", "Let's Talk")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Here whenever you're ready,<br>
@@ -171,7 +171,7 @@ const emailTemplates = {
         <strong style="color:#ffffff;">When works best for a follow-up call?</strong> I want to walk you through our compensation structure and show you exactly what top producers are earning.
       </p>
       
-      ${ctaButton("https://calendly.com/apexlifeadvisors/15-minute-discovery", "Book Follow-Up Call")}
+      ${ctaButton("https://calendly.com/apexfinancialempire/licensed-prospect-call-clone", "Book Follow-Up Call")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Talk soon,<br>
@@ -218,7 +218,7 @@ const emailTemplates = {
         <strong style="color:#ffffff;">If now isn't the right time, no worries.</strong> But if there's any part of you that's curious, let's revisit the conversation. Sometimes timing is everything.
       </p>
       
-      ${ctaButton("https://calendly.com/apexlifeadvisors/15-minute-discovery", "Let's Reconnect")}
+      ${ctaButton("https://calendly.com/apexfinancialempire/licensed-prospect-call-clone", "Let's Reconnect")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Here when you're ready,<br>
@@ -265,7 +265,7 @@ const emailTemplates = {
         <strong style="color:#ffffff;">Let me know where you're at</strong> and I can point you in the right direction. No pressure—just want to make sure you have the support you need.
       </p>
       
-      ${ctaButton("https://calendly.com/sam-com593/licensed-prospect-call-clone", "Let's Chat About Your Progress")}
+      ${ctaButton("https://calendly.com/apexfinancialempire/licensed-prospect-call-clone", "Let's Chat About Your Progress")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Rooting for you,<br>
@@ -312,7 +312,7 @@ const emailTemplates = {
         <strong style="color:#ffffff;">If you're still interested, let's talk.</strong> I can walk you through exactly what you need to do to get started—step by step.
       </p>
       
-      ${ctaButton("https://calendly.com/sam-com593/licensed-prospect-call-clone", "Get Licensed & Start Earning")}
+      ${ctaButton("https://calendly.com/apexfinancialempire/licensed-prospect-call-clone", "Get Licensed & Start Earning")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Believe in you,<br>
@@ -366,7 +366,7 @@ const emailTemplates = {
         <strong style="color:#ffffff;">Need help getting started with your course?</strong> Let's hop on a quick call and I'll walk you through the fastest path to getting licensed.
       </p>
       
-      ${ctaButton("https://calendly.com/sam-com593/licensed-prospect-call-clone", "Get Help With Licensing")}
+      ${ctaButton("https://calendly.com/apexfinancialempire/licensed-prospect-call-clone", "Get Help With Licensing")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Here to help,<br>
@@ -423,7 +423,7 @@ const emailTemplates = {
         <strong style="color:#ffffff;">No judgment, no pressure.</strong> I just want to make sure you're not stuck and have everything you need to move forward.
       </p>
       
-      ${ctaButton("https://calendly.com/sam-com593/licensed-prospect-call-clone", "Let's Chat—I'm Here to Help")}
+      ${ctaButton("https://calendly.com/apexfinancialempire/licensed-prospect-call-clone", "Let's Chat—I'm Here to Help")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         In your corner,<br>
@@ -480,7 +480,7 @@ const emailTemplates = {
         <strong style="color:#ffffff;">Let's hop on a quick call</strong> so I can answer your questions and make sure you're on the fastest path to getting licensed!
       </p>
       
-      ${ctaButton("https://calendly.com/sam-com593/licensed-prospect-call-clone", "Get Course Help")}
+      ${ctaButton("https://calendly.com/apexfinancialempire/licensed-prospect-call-clone", "Get Course Help")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Here to help you succeed,<br>
@@ -537,7 +537,7 @@ const emailTemplates = {
         <strong style="color:#ffffff;">No pressure, no sales pitch</strong>—just a real conversation to see if this is the right fit for you.
       </p>
       
-      ${ctaButton("https://calendly.com/sam-com593/licensed-prospect-call-clone", "Schedule Your Consultation")}
+      ${ctaButton("https://calendly.com/apexfinancialempire/licensed-prospect-call-clone", "Schedule Your Consultation")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Looking forward to connecting,<br>
@@ -591,7 +591,7 @@ const emailTemplates = {
         We're excited to chat with you about how you can start building a <strong style="color:#14b8a6;">high-income career</strong> in financial services.
       </p>
       
-      ${ctaButton("https://calendly.com/apexlifeadvisors/15min", "Schedule a Call")}
+      ${ctaButton("https://calendly.com/apexfinancialempire/licensed-prospect-call-clone", "Schedule a Call")}
       
       <p style="font-size:14px;color:#9ca3af;margin:24px 0 0 0;">
         Talk soon,<br>

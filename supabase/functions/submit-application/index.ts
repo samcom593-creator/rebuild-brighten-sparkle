@@ -497,7 +497,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
     const isLicensed = sanitized.licenseStatus === 'licensed';
     
     // Licensed applicants get call scheduling, unlicensed get licensing resources
-    const licensedCalendlyUrl = 'https://calendly.com/sam-com593/1on1-call-clone';
+    const licensedCalendlyUrl = 'https://calendly.com/apexfinancialempire/1on1-call-clone';
     const testimonialsVideoUrl = 'https://youtu.be/YmlLSIwfGdE';
     const unlicensedVideoUrl = 'https://youtu.be/i1e5p-GEfAU?si=KMthNhQzcQnj9A6u';
     const licensingDocUrl = 'https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg/edit?usp=sharing';

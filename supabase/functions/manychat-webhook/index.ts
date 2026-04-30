@@ -36,7 +36,7 @@ const corsHeaders = {
 };
 
 const APPLY_URL = "https://apex-financial.org/apply";
-const CALENDLY_LICENSED = "https://calendly.com/sam-com593/1on1-call-clone";
+const CALENDLY_LICENSED = "https://calendly.com/apexfinancialempire/1on1-call-clone";
 const GET_LICENSED_URL = "https://apex-financial.org/get-licensed";
 
 // Order matters in classify() — first match wins. Most specific first.

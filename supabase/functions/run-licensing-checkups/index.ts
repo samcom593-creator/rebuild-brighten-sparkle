@@ -337,7 +337,7 @@ serve(async (req: Request) => {
                 <h2>Hey ${firstName},</h2>
                 <p>It's been 60 days. I know there's something holding you back, and I want to help remove it.</p>
                 <p>Let's get on a quick call — no pressure, just a conversation about what's going on and how we can get you across the finish line.</p>
-                <p><a href="https://calendly.com/sam-com593/1on1-call-clone" style="background:#059669;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">Book a Call with Sam →</a></p>
+                <p><a href="https://calendly.com/apexfinancialempire/1on1-call-clone" style="background:#059669;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">Book a Call with Sam →</a></p>
                 <p>— Sam James</p>
               </div>`,
             });

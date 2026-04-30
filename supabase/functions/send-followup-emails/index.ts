@@ -25,8 +25,8 @@ const resend = resendApiKey ? new Resend(resendApiKey) : null;
 const ADMIN_EMAIL = "sam@apex-financial.org";
 
 // Calendly URLs
-const UNLICENSED_CALENDLY = "https://calendly.com/sam-com593/licensed-prospect-call-clone";
-const LICENSED_CALENDLY = "https://calendly.com/sam-com593/1on1-call-clone";
+const UNLICENSED_CALENDLY = "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone";
+const LICENSED_CALENDLY = "https://calendly.com/apexfinancialempire/1on1-call-clone";
 const DASHBOARD_URL = "https://rebuild-brighten-sparkle.lovable.app/dashboard/applicants";
 
 async function getManagerEmailForApp(appId: string): Promise<string | null> {

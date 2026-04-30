@@ -8,7 +8,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function ApplySuccessUnlicensed() {
   usePageTitle("Get Licensed · APEX Financial");
-  const calendlyUrl = "https://calendly.com/sam-com593/licensed-prospect-call-clone";
+  const calendlyUrl = "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone";
 
   return (
     <div className="min-h-screen bg-background py-8 px-4">

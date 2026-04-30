@@ -87,7 +87,7 @@ const handler = async (req: Request): Promise<Response> => {
                 <p style="color: #4b5563; line-height: 1.6;">
                   Schedule your 1-on-1 onboarding call to fast-track your career:
                 </p>
-                <a href="https://calendly.com/sam-com593/1on1-call-clone" style="display: inline-block; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 10px 0;">
+                <a href="https://calendly.com/apexfinancialempire/1on1-call-clone" style="display: inline-block; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 10px 0;">
                   📅 Schedule Your Onboarding Call
                 </a>
 
@@ -165,7 +165,7 @@ const handler = async (req: Request): Promise<Response> => {
                 <p style="color: #4b5563; line-height: 1.6;">
                   Schedule a call with our team:
                 </p>
-                <a href="https://calendly.com/sam-com593/licensed-prospect-call-clone" style="display: inline-block; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 10px 0;">
+                <a href="https://calendly.com/apexfinancialempire/licensed-prospect-call-clone" style="display: inline-block; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 10px 0;">
                   📅 Schedule a Call
                 </a>
 
@@ -429,7 +429,7 @@ const handler = async (req: Request): Promise<Response> => {
                 </ul>
 
                 <div style="text-align: center; margin-top: 25px;">
-                  <a href="https://calendly.com/sam-com593/licensed-prospect-call-clone" style="display: inline-block; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                  <a href="https://calendly.com/apexfinancialempire/licensed-prospect-call-clone" style="display: inline-block; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600;">
                     📅 Schedule a Call - Let's Talk!
                   </a>
                 </div>
@@ -482,7 +482,7 @@ const handler = async (req: Request): Promise<Response> => {
                 </p>
                 
                 <div style="text-align: center; margin: 25px 0;">
-                  <a href="https://calendly.com/sam-com593/1on1-call-clone" 
+                  <a href="https://calendly.com/apexfinancialempire/1on1-call-clone" 
                      style="display: inline-block; background: linear-gradient(135deg, #059669, #047857); color: white; 
                             padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;
                             box-shadow: 0 4px 14px rgba(5, 150, 105, 0.4);">
@@ -509,7 +509,7 @@ const handler = async (req: Request): Promise<Response> => {
                 </div>
                 
                 <div style="text-align: center; margin: 25px 0;">
-                  <a href="https://calendly.com/sam-com593/licensed-prospect-call-clone" 
+                  <a href="https://calendly.com/apexfinancialempire/licensed-prospect-call-clone" 
                      style="display: inline-block; background: #f59e0b; color: white; 
                             padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;">
                     📞 I Need Help Getting Licensed
@@ -568,7 +568,7 @@ const handler = async (req: Request): Promise<Response> => {
                 </ul>
 
                 <div style="text-align: center; margin-top: 25px;">
-                  <a href="https://calendly.com/sam-com593/1on1-call-clone" style="display: inline-block; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                  <a href="https://calendly.com/apexfinancialempire/1on1-call-clone" style="display: inline-block; background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600;">
                     📅 Schedule Your 1-on-1 Call Now
                   </a>
                 </div>

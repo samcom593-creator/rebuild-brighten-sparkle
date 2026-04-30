@@ -7,7 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const CALENDLY_LINK = "https://calendly.com/sam-com593/licensed-prospect-call-clone-1";
+const CALENDLY_LINK = "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone-1";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {

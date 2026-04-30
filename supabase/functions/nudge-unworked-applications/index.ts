@@ -25,7 +25,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-request-id, idempotency-key",
 };
 
-const CALENDLY_LICENSED = "https://calendly.com/sam-com593/1on1-call-clone";
+const CALENDLY_LICENSED = "https://calendly.com/apexfinancialempire/1on1-call-clone";
 const GET_LICENSED_URL = "https://apex-financial.org/get-licensed";
 const APPLY_URL = "https://apex-financial.org/apply";
 

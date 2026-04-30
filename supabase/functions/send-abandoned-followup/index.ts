@@ -23,7 +23,7 @@ const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
 const APPLY_URL = "https://apex-financial.org/apply";
-const CALENDLY_URL = "https://calendly.com/sam-com593/licensed-prospect-call-clone";
+const CALENDLY_URL = "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone";
 const ADMIN_EMAIL = "sam@apex-financial.org";
 
 function sanitizeHtml(str: string | null | undefined): string {

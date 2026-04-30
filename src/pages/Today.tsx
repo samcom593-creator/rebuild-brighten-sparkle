@@ -166,7 +166,7 @@ export default function Today() {
   };
 
   const waHref = `https://wa.me/?text=${encodeURIComponent(huddleMsg)}`;
-  const calendlyHref = "https://calendly.com/sam-com593/1on1-call-clone";
+  const calendlyHref = "https://calendly.com/apexfinancialempire/1on1-call-clone";
 
   if (loading) {
     return (

@@ -7,8 +7,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const UNLICENSED_CALENDLY = "https://calendly.com/sam-com593/licensed-prospect-call-clone";
-const LICENSED_CALENDLY = "https://calendly.com/sam-com593/1on1-call-clone";
+const UNLICENSED_CALENDLY = "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone";
+const LICENSED_CALENDLY = "https://calendly.com/apexfinancialempire/1on1-call-clone";
 const ADMIN_EMAIL = "sam@apex-financial.org";
 
 async function getManagerEmail(supabase: any, agentId: string): Promise<string | null> {

@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-const CALENDLY_LINK = "https://calendly.com/sam-com593/licensed-prospect-call-clone-1";
+const CALENDLY_LINK = "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone-1";
 
 interface LowCloseRateRequest {
   agentId: string;

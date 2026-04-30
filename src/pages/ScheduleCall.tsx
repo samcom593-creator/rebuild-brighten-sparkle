@@ -13,8 +13,8 @@ import { usePageTitle } from "@/hooks/usePageTitle";
  * Licensed → inline embed (keeps user on-site)
  * Unlicensed → inline embed (different calendar)
  */
-const LICENSED_CALENDLY = "https://calendly.com/sam-com593/1on1-call-clone";
-const UNLICENSED_CALENDLY = "https://calendly.com/sam-com593/licensed-prospect-call-clone";
+const LICENSED_CALENDLY = "https://calendly.com/apexfinancialempire/1on1-call-clone";
+const UNLICENSED_CALENDLY = "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone";
 
 export default function ScheduleCall() {
   usePageTitle("Schedule a Call · APEX Financial");

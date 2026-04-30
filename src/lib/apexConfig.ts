@@ -101,8 +101,8 @@ export const PROGRESS_COLUMNS = [
 
 // ─── Scheduling Links ─────────────────────────────────────────────────────────
 export const SCHEDULING_LINKS = {
-  unlicensed: "https://calendly.com/apexlifeadvisors/15min",
-  licensed: "https://calendly.com/apexlifeadvisors/30min",
+  unlicensed: "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone",
+  licensed: "https://calendly.com/apexfinancialempire/1on1-call-clone",
 } as const;
 
 // ─── Call Outcomes ────────────────────────────────────────────────────────────

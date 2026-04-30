@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
   // Meta retries if we don't 200 within 5s, so the heavy lifting is
   // launched async without blocking the response.
   const entries = (payload?.entry ?? []) as Array<any>;
-  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "https://msydzhzolwourcdmqxvn.supabase.co";
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "https://xrzweoneiieddzxogewk.supabase.co";
 
   for (const entry of entries) {
     await sb.from("instagram_events").insert({

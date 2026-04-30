@@ -48,8 +48,5 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add supabase/config.toml
-          git commit -m "chore(ci): auto-register new Supabase functions
-
-Keeps config.toml in lockstep with supabase/functions/ so Lovable's
-deploy pipeline never silently skips a newly created function."
+          git commit -m "chore(ci): auto-register new Supabase functions"
           git push

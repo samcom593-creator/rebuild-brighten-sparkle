@@ -161,8 +161,16 @@ export function InterviewScheduler({
       toast.success(`Interview scheduled with ${applicantName}!`);
       onScheduled?.();
     } catch (err: any) {
+      // Surface the actual cause so Sam never sees a generic "Failed to
+      // schedule interview" again. Common failure modes:
+      //   - scheduled_interviews table missing or RLS-blocked (PGRST403/PGRST116)
+      //   - schedule-interview edge fn 5xx (Resend down, Supabase data plane stuck)
+      //   - applications.status enum doesn't accept 'interview' (UDT mismatch)
       console.error("Error scheduling interview:", err);
-      toast.error("Failed to schedule interview");
+      const code   = err?.code ?? err?.status ?? "";
+      const detail = err?.details ?? err?.hint ?? err?.message ?? String(err);
+      const short  = code ? `${code}: ${detail}` : detail;
+      toast.error(`Schedule failed — ${short}`.slice(0, 220));
     } finally {
       setSubmitting(false);
     }

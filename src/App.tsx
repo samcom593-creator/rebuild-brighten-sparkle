@@ -12,6 +12,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AuthenticatedShell } from "@/components/layout/AuthenticatedShell";
 import { RouteTelemetry } from "@/shared/telemetry/useRouteTelemetry";
+import { SupabaseHealthBanner } from "@/components/SupabaseHealthBanner";
 import { initTelemetry } from "@/shared/telemetry/track";
 
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -137,6 +138,7 @@ const App = () => (
           <SidebarProvider>
             <Toaster />
             <Sonner />
+            <SupabaseHealthBanner />
             <BrowserRouter>
               <ScrollToTop />
               <RouteTelemetry />

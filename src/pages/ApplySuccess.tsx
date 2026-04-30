@@ -101,7 +101,7 @@ export default function ApplySuccess() {
                 Back to Home
               </GradientButton>
             </Link>
-            <a href="mailto:careers@apexfinancial.com">
+            <a href="mailto:info@apex-financial.org">
               <GradientButton>
                 Contact Us
                 <ArrowRight className="h-4 w-4 ml-2" />

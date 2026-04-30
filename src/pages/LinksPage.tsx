@@ -23,9 +23,9 @@ const waitlistSchema = z.object({
 });
 
 const socialLinks = [
-  { icon: Instagram, label: "Instagram", href: "https://instagram.com/apexfinancial", gradient: "from-pink-500 to-purple-600", hoverGlow: "hover:shadow-[0_0_30px_hsl(330_80%_50%/0.3)]" },
-  { icon: Video, label: "TikTok", href: "https://tiktok.com/@apexfinancial", gradient: "from-cyan-400 to-pink-500", hoverGlow: "hover:shadow-[0_0_30px_hsl(180_80%_50%/0.3)]" },
-  { icon: MessageCircle, label: "Snapchat", href: "https://snapchat.com/add/apexfinancial", gradient: "from-yellow-400 to-yellow-500", hoverGlow: "hover:shadow-[0_0_30px_hsl(50_90%_55%/0.3)]" },
+  { icon: Instagram, label: "Instagram", href: "https://instagram.com/theprincejamez", gradient: "from-pink-500 to-purple-600", hoverGlow: "hover:shadow-[0_0_30px_hsl(330_80%_50%/0.3)]" },
+  { icon: Video, label: "TikTok", href: "https://tiktok.com/@theprincejamez", gradient: "from-cyan-400 to-pink-500", hoverGlow: "hover:shadow-[0_0_30px_hsl(180_80%_50%/0.3)]" },
+  { icon: MessageCircle, label: "Snapchat", href: "https://snapchat.com/add/theprincejamez", gradient: "from-yellow-400 to-yellow-500", hoverGlow: "hover:shadow-[0_0_30px_hsl(50_90%_55%/0.3)]" },
 ];
 
 const offerCards = [

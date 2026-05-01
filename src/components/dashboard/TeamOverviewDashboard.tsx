@@ -196,7 +196,12 @@ export function TeamOverviewDashboard() {
       const retentionRate = (totalActive + deactivatedLast90) > 0
         ? (totalActive / (totalActive + deactivatedLast90)) * 100
         : 100;
-      const revenuePerAgent = totalActive > 0 ? aop30 / totalActive : 0;
+      // Rev / Agent — only counts agents who actually produced in the window.
+       // Dividing by ALL non-deactivated agents (incl. brand-new, in-training,
+       // never sold) made the per-agent number look artificially low and was
+       // misleading. Sam 2026-05-01 explicit: "only qualify for agents who
+       // sell" — exclude non-producers from the denominator.
+      const revenuePerAgent = activeProducers > 0 ? aop30 / activeProducers : 0;
 
       // Manager breakdown with agent roster
       const managerMap = new Map<string, {

@@ -232,6 +232,17 @@ export default function HiringPipeline() {
     qc.invalidateQueries({ queryKey: ["hiring-pipeline-v2"] });
   }
 
+  async function markFailedTest(id: string) {
+    const now = new Date().toISOString();
+    const { error } = await supabase.from("applications").update({
+      license_progress: "failed_test",
+      updated_at: now,
+    }).eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Marked failed test — applicant can retake");
+    qc.invalidateQueries({ queryKey: ["hiring-pipeline-v2"] });
+  }
+
   async function rejectApplicant(id: string, reason: string) {
     const { error } = await supabase.from("applications").update({
       terminated_at: new Date().toISOString(),
@@ -556,6 +567,7 @@ export default function HiringPipeline() {
                       onMoveToStage={(s) => moveToStage(a.id, s)}
                       onMarkContacted={() => markContacted(a.id)}
                       onReject={(reason) => rejectApplicant(a.id, reason)}
+                      onMarkFailed={() => markFailedTest(a.id)}
                       onLogCall={(outcome) => logCallOutcome(a.id, outcome)}
                     />
                   ))
@@ -627,7 +639,7 @@ function formatPhone(raw: string | null | undefined): string {
 }
 
 function ApplicantCard({
-  app, dragging, onDragStart, onDragEnd, onMoveToStage, onMarkContacted, onReject, onLogCall,
+  app, dragging, onDragStart, onDragEnd, onMoveToStage, onMarkContacted, onReject, onLogCall, onMarkFailed,
 }: {
   app: any;
   dragging: boolean;
@@ -637,6 +649,7 @@ function ApplicantCard({
   onMarkContacted: () => void;
   onReject: (reason: string) => void;
   onLogCall: (outcome: "connected" | "voicemail" | "no_answer" | "not_interested") => void;
+  onMarkFailed?: () => void;
 }) {
   const lastActivity = app.last_response_at || app.updated_at || app.created_at;
   const days = differenceInDays(new Date(), new Date(lastActivity));
@@ -827,6 +840,19 @@ function ApplicantCard({
               onClick={() => onReject("not_interested")}
             >
               <XCircle className="h-3.5 w-3.5 mr-2" /> Reject · Not Interested
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-amber-500"
+              onClick={() => onMarkFailed?.()}
+            >
+              <XCircle className="h-3.5 w-3.5 mr-2" /> Failed Test (retake)
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="text-destructive"
+              onClick={() => onReject("fired")}
+            >
+              <XCircle className="h-3.5 w-3.5 mr-2" /> Fire · Terminate
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

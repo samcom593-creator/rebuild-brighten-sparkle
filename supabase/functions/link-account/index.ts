@@ -172,6 +172,13 @@ const handler = async (req: Request): Promise<Response> => {
     // ----- STEP 3: Create agent record if none exists -----
     if (!agent && application) {
       console.log(`[link-account] Creating new agent for application ${application.id}`);
+      // recruiter_id wins: this is who actually shared the link/recruited
+      // the applicant. assigned_agent_id is just whoever the routing
+      // dropped them on (often the admin fallback) and doesn't reflect
+      // the real attribution. Sam 2026-05-01: KJ wasn't getting hire
+      // emails for his recruits because their agent records inherited
+      // assigned_agent_id (admin) instead of his recruiter_id.
+      const inviterId = application.recruiter_id ?? application.assigned_agent_id;
       const { data: newAgent, error: createErr } = await supabaseAdmin
         .from("agents")
         .insert({
@@ -181,7 +188,7 @@ const handler = async (req: Request): Promise<Response> => {
           license_status: application.license_status || "unlicensed",
           onboarding_stage:
             application.license_status === "licensed" ? "in_field_training" : "pre_licensed",
-          invited_by_manager_id: application.assigned_agent_id,
+          invited_by_manager_id: inviterId,
         })
         .select()
         .single();

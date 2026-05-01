@@ -6,9 +6,16 @@ import { SkeletonLoader } from "@/components/ui/skeleton-loader";
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAdmin?: boolean;
+  /**
+   * If true and the page is requireAdmin, also let managers through.
+   * Pages opt in when they handle the manager-scoped data view themselves
+   * (e.g. HiringPipeline filters to the manager's downline). RLS still
+   * enforces row-level access on the server.
+   */
+  allowManagers?: boolean;
 }
 
-export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, requireAdmin = false, allowManagers = false }: ProtectedRouteProps) {
   const { user, isLoading, isAdmin, isManager } = useAuth();
   const location = useLocation();
   // Once we've confirmed auth at least once, never show the skeleton again
@@ -31,8 +38,8 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
     return <Navigate to={loginPath} state={{ from: location }} replace />;
   }
 
-  // Admin required but user is not admin
-  if (requireAdmin && !isAdmin) {
+  // Admin required but user is not admin (or manager when opted-in)
+  if (requireAdmin && !isAdmin && !(allowManagers && isManager)) {
     return <Navigate to="/dashboard" replace />;
   }
 

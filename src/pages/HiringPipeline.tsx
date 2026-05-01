@@ -86,7 +86,7 @@ function nextAction(a: any): { text: string; urgency: "cold" | "warm" | "hot" } 
 type Filter = "stalled" | "has_phone" | "top_tier" | "in_licensing" | "no_contact_7d";
 
 export default function HiringPipeline() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isManager } = useAuth();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [activeFilters, setActiveFilters] = useState<Set<Filter>>(new Set());
@@ -112,18 +112,29 @@ export default function HiringPipeline() {
   }, [qc]);
 
   const { data: apps = [], isLoading, refetch } = useQuery({
-    queryKey: ["hiring-pipeline-v2"],
+    queryKey: ["hiring-pipeline-v2", isAdmin ? "admin" : "manager"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Admin: see everyone. Manager: scope to their full downline (their
+      // direct recruits + recruits' recruits) via the my_downline_agent_ids
+      // RPC. RLS already enforces this on the server, but filtering
+      // explicitly here gives a faster + clearer query.
+      let query = supabase
         .from("applications")
         .select("*")
         .is("terminated_at", null)
         .order("created_at", { ascending: false })
         .limit(2000);
+      if (!isAdmin && isManager) {
+        const { data: dl } = await supabase.rpc("my_downline_agent_ids" as any);
+        const downlineIds = (dl ?? []).map((r: any) => r.agent_id);
+        if (downlineIds.length === 0) return [];
+        query = query.in("assigned_agent_id", downlineIds);
+      }
+      const { data, error } = await query;
       if (error) throw error;
       return data || [];
     },
-    enabled: !!user && isAdmin,
+    enabled: !!user && (isAdmin || isManager),
     staleTime: 15_000,
     refetchInterval: 30_000,
   });

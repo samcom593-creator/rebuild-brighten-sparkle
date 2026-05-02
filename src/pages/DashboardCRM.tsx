@@ -38,6 +38,8 @@ import { differenceInDays } from "date-fns";
 import { BulkComposeDrawer } from "@/components/dashboard/BulkComposeDrawer";
 import { useRealtimeTable } from "@/shared/realtime/useRealtimeTable";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
+import { getBusinessDayKey, getBusinessMonthBounds, getBusinessWeekBounds, getMatchedPriorWeekBounds } from "@/lib/dateUtils";
+import { getCloseRate, sumAnnualPremium } from "@/lib/metricTruth";
 
 /** Feature flag: hide destructive bulk delete by default. Set VITE_ENABLE_CRM_BULK_DELETE=true to enable. */
 const ENABLE_BULK_DELETE = import.meta.env.VITE_ENABLE_CRM_BULK_DELETE === "true";
@@ -622,30 +624,51 @@ export default function DashboardCRM() {
       const liveAgentIds = agentData.filter(a => a.onboarding_stage === "evaluated").map(a => a.id);
       const allAgentIds = agentData.map(a => a.id);
 
-      const today = new Date();
-      const dayOfWeek = today.getDay();
-      const weekStart = new Date(today);
-      weekStart.setDate(today.getDate() - dayOfWeek);
-      const weekStartStr = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, '0')}-${String(weekStart.getDate()).padStart(2, '0')}`;
-      // monthlyALP is the rolling-30-day window (not MTD). Matches the CRM's
-      // "Live / Below $20K" buckets which compare against the last 30 days.
-      const thirtyDaysAgo = new Date(today);
-      thirtyDaysAgo.setDate(today.getDate() - 30);
-      const monthStartStr = thirtyDaysAgo.toISOString().split("T")[0];
+      const weekBounds = getBusinessWeekBounds();
+      const monthBounds = getBusinessMonthBounds();
+      const priorWeekBounds = getMatchedPriorWeekBounds();
+      const weekStartStr = getBusinessDayKey(weekBounds.start);
 
-      // Previous week range
-      const prevWeekEnd = new Date(weekStart);
-      prevWeekEnd.setDate(prevWeekEnd.getDate() - 1);
-      const prevWeekStart = new Date(prevWeekEnd);
-      prevWeekStart.setDate(prevWeekStart.getDate() - 6);
-      const prevWeekStartStr = `${prevWeekStart.getFullYear()}-${String(prevWeekStart.getMonth() + 1).padStart(2, '0')}-${String(prevWeekStart.getDate()).padStart(2, '0')}`;
-      const prevWeekEndStr = `${prevWeekEnd.getFullYear()}-${String(prevWeekEnd.getMonth() + 1).padStart(2, '0')}-${String(prevWeekEnd.getDate()).padStart(2, '0')}`;
+      const weekEndStr = getBusinessDayKey();
 
-      const [profilesResult, managerAgentsResult, monthlyProductionResult, prevWeekProductionResult, appContactsResult, appLicenseResult, paymentsResult] = await Promise.all([
+      const [profilesResult, managerAgentsResult, monthlyDealsResult, weeklyDealsResult, prevWeekDealsResult, weeklyProductionResult, appContactsResult, appLicenseResult, paymentsResult] = await Promise.all([
         supabase.from("profiles").select("user_id, full_name, email, phone, avatar_url, instagram_handle").in("user_id", userIds),
         managerIds.length > 0 ? supabase.from("agents").select("id, user_id").in("id", managerIds) : Promise.resolve({ data: [] as any[] }),
-        allAgentIds.length > 0 ? supabase.from("daily_production").select("agent_id, aop, presentations, deals_closed, production_date").in("agent_id", allAgentIds).gte("production_date", monthStartStr) : Promise.resolve({ data: [] as any[] }),
-        allAgentIds.length > 0 ? supabase.from("daily_production").select("agent_id, aop").in("agent_id", allAgentIds).gte("production_date", prevWeekStartStr).lte("production_date", prevWeekEndStr) : Promise.resolve({ data: [] as any[] }),
+        allAgentIds.length > 0
+          ? supabase
+              .from("deals")
+              .select("agent_id, annual_premium")
+              .in("agent_id", allAgentIds)
+              .gte("posted_at", monthBounds.startIso)
+              .lt("posted_at", monthBounds.endIso)
+              .in("status", ["submitted", "active"])
+          : Promise.resolve({ data: [] as any[] }),
+        allAgentIds.length > 0
+          ? supabase
+              .from("deals")
+              .select("agent_id, annual_premium")
+              .in("agent_id", allAgentIds)
+              .gte("posted_at", weekBounds.startIso)
+              .lt("posted_at", weekBounds.endIso)
+              .in("status", ["submitted", "active"])
+          : Promise.resolve({ data: [] as any[] }),
+        allAgentIds.length > 0
+          ? supabase
+              .from("deals")
+              .select("agent_id, annual_premium")
+              .in("agent_id", allAgentIds)
+              .gte("posted_at", priorWeekBounds.startIso)
+              .lt("posted_at", priorWeekBounds.endIso)
+              .in("status", ["submitted", "active"])
+          : Promise.resolve({ data: [] as any[] }),
+        allAgentIds.length > 0
+          ? supabase
+              .from("daily_production")
+              .select("agent_id, presentations, production_date")
+              .in("agent_id", allAgentIds)
+              .gte("production_date", weekStartStr)
+              .lte("production_date", weekEndStr)
+          : Promise.resolve({ data: [] as any[] }),
         supabase.from("applications").select("assigned_agent_id, last_contacted_at").in("assigned_agent_id", allAgentIds).not("last_contacted_at", "is", null).order("last_contacted_at", { ascending: false }),
         supabase.from("applications").select("id, email, license_progress, test_scheduled_date, ai_score_tier").is("terminated_at", null),
         supabase.from("lead_payment_tracking").select("agent_id, tier, paid").eq("week_start", weekStartStr).eq("paid", true),
@@ -662,22 +685,40 @@ export default function DashboardCRM() {
         managerAgentsData.forEach((ma: any) => { if (ma.user_id) managerProfileMap.set(ma.id, userToName.get(ma.user_id) || "Unknown"); });
       }
 
-      const weeklyProductionMap = new Map<string, { aop: number; presentations: number; deals: number }>();
+      const weeklyProductionMap = new Map<string, { alp: number; presentations: number; deals: number }>();
       const monthlyProductionMap = new Map<string, number>();
       const monthlyDealsMap = new Map<string, number>();
-      for (const prod of monthlyProductionResult.data || []) {
-        monthlyProductionMap.set(prod.agent_id, (monthlyProductionMap.get(prod.agent_id) || 0) + (Number(prod.aop) || 0));
-        monthlyDealsMap.set(prod.agent_id, (monthlyDealsMap.get(prod.agent_id) || 0) + (prod.deals_closed || 0));
-        if (prod.production_date >= weekStartStr) {
-          const e = weeklyProductionMap.get(prod.agent_id) || { aop: 0, presentations: 0, deals: 0 };
-          weeklyProductionMap.set(prod.agent_id, { aop: e.aop + (Number(prod.aop) || 0), presentations: e.presentations + (prod.presentations || 0), deals: e.deals + (prod.deals_closed || 0) });
-        }
+      for (const deal of monthlyDealsResult.data || []) {
+        monthlyProductionMap.set(
+          deal.agent_id,
+          (monthlyProductionMap.get(deal.agent_id) || 0) + (Number(deal.annual_premium) || 0),
+        );
+        monthlyDealsMap.set(deal.agent_id, (monthlyDealsMap.get(deal.agent_id) || 0) + 1);
+      }
+      for (const deal of weeklyDealsResult.data || []) {
+        const current = weeklyProductionMap.get(deal.agent_id) || { alp: 0, presentations: 0, deals: 0 };
+        weeklyProductionMap.set(deal.agent_id, {
+          alp: current.alp + (Number(deal.annual_premium) || 0),
+          presentations: current.presentations,
+          deals: current.deals + 1,
+        });
+      }
+      for (const production of weeklyProductionResult.data || []) {
+        const current = weeklyProductionMap.get(production.agent_id) || { alp: 0, presentations: 0, deals: 0 };
+        weeklyProductionMap.set(production.agent_id, {
+          alp: current.alp,
+          presentations: current.presentations + (production.presentations || 0),
+          deals: current.deals,
+        });
       }
 
       // Previous week ALP
       const prevWeekALPMap = new Map<string, number>();
-      for (const prod of prevWeekProductionResult.data || []) {
-        prevWeekALPMap.set(prod.agent_id, (prevWeekALPMap.get(prod.agent_id) || 0) + (Number(prod.aop) || 0));
+      for (const deal of prevWeekDealsResult.data || []) {
+        prevWeekALPMap.set(
+          deal.agent_id,
+          (prevWeekALPMap.get(deal.agent_id) || 0) + (Number(deal.annual_premium) || 0),
+        );
       }
 
       const lastContactMap = new Map<string, string>();
@@ -752,8 +793,8 @@ export default function DashboardCRM() {
           isDeactivated: agent.is_deactivated || false, isInactive: (agent as any).is_inactive || false,
           managerId: agent.invited_by_manager_id || undefined, managerName: agent.invited_by_manager_id ? managerProfileMap.get(agent.invited_by_manager_id) : undefined,
           weekly10kBadges: agent.weekly_10k_badges || 0, sortOrder: agent.sort_order ?? index,
-          weeklyALP: ws.aop, weeklyPresentations: ws.presentations, weeklyDeals: ws.deals,
-          weeklyClosingRate: ws.presentations > 0 ? Math.round((ws.deals / ws.presentations) * 100) : 0,
+          weeklyALP: ws.alp, weeklyPresentations: ws.presentations, weeklyDeals: ws.deals,
+          weeklyClosingRate: Math.round(getCloseRate(ws.deals, ws.presentations)),
           monthlyALP: monthlyProductionMap.get(agent.id) || 0, monthlyDeals: monthlyDealsMap.get(agent.id) || 0,
           prevWeekALP: prevWeekALPMap.get(agent.id) || 0,
           lastContactedAt: lastContactMap.get(agent.id) || null, standardPaid: pay.standard, premiumPaid: pay.premium,

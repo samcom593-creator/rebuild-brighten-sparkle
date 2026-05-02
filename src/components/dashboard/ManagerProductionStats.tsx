@@ -3,7 +3,8 @@ import { motion } from "framer-motion";
 import { Users, DollarSign, TrendingUp, Percent } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { supabase } from "@/integrations/supabase/client";
-import { getTodayPST, getWeekStartPST, getMonthStartPST } from "@/lib/dateUtils";
+import { getBusinessDayBounds, getBusinessDayKey, getBusinessMonthBounds, getBusinessWeekBounds } from "@/lib/dateUtils";
+import { getCloseRate } from "@/lib/metricTruth";
 
 interface ManagerProductionStatsProps {
   managerId: string;
@@ -54,23 +55,23 @@ export function ManagerProductionStats({ managerId }: ManagerProductionStatsProp
       }
 
       const agentIds = teamAgents.map(a => a.id);
-      const today = getTodayPST();
-      const weekStart = getWeekStartPST();
-      const monthStart = getMonthStartPST();
+      const today = getBusinessDayKey();
+      const dayBounds = getBusinessDayBounds();
+      const weekBounds = getBusinessWeekBounds();
+      const monthBounds = getBusinessMonthBounds();
+      const monthStart = getBusinessDayKey(monthBounds.start);
 
-      // Production from deals (Agent Link truth) — match the rest of the
-      // dashboards. Presentations stay on daily_production since that's the
-      // only source.
       const [dealsRes, presRes] = await Promise.all([
         supabase
           .from("deals")
-          .select("agent_id, annual_premium, effective_date")
+          .select("agent_id, annual_premium, posted_at")
           .in("agent_id", agentIds)
-          .gte("effective_date", monthStart)
+          .gte("posted_at", monthBounds.startIso)
+          .lt("posted_at", monthBounds.endIso)
           .in("status", ["submitted", "active"]),
         supabase
           .from("daily_production")
-          .select("agent_id, deals_closed, presentations, production_date")
+          .select("agent_id, presentations, production_date")
           .in("agent_id", agentIds)
           .gte("production_date", monthStart),
       ]);
@@ -92,17 +93,16 @@ export function ManagerProductionStats({ managerId }: ManagerProductionStatsProp
         const alp = Number(d.annual_premium || 0);
         monthALP += alp;
         totalDeals += 1;
-        if (d.effective_date === today) { todayALP += alp; todayDeals += 1; }
-        if (d.effective_date >= weekStart) { weekALP += alp; weekDeals += 1; }
+        const postedAt = String(d.posted_at || "");
+        if (postedAt >= dayBounds.startIso && postedAt < dayBounds.endIso) { todayALP += alp; todayDeals += 1; }
+        if (postedAt >= weekBounds.startIso && postedAt < weekBounds.endIso) { weekALP += alp; weekDeals += 1; }
       }
 
       for (const p of (presRes.data || []) as any[]) {
         totalPresentations += Number(p.presentations || 0);
       }
 
-      const avgCloseRate = totalPresentations > 0
-        ? (totalDeals / totalPresentations) * 100
-        : 0;
+      const avgCloseRate = getCloseRate(totalDeals, totalPresentations);
 
       setStats({
         todayALP,

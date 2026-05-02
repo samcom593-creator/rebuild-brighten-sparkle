@@ -1,6 +1,6 @@
 /**
  * TopProducersTodayCard — replaces the generic "Recruiting Pipeline" tile.
- * Shows today's top 5 deal writers sorted by AOP, with avatars + deal count,
+ * Shows today's top 5 deal writers sorted by ALP, with avatars + deal count,
  * plus live Agent Link posted-today total. Auto-refreshes every 5 minutes.
  */
 
@@ -9,12 +9,13 @@ import { Trophy, TrendingUp, Flame } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
 import { cn } from "@/lib/utils";
+import { getBusinessDayBounds } from "@/lib/dateUtils";
 
 type Row = {
   agentId: string;
   name: string;
   avatar: string | null;
-  aop: number;
+  alp: number;
   deals: number;
 };
 
@@ -26,15 +27,12 @@ export function TopProducersTodayCard() {
   useEffect(() => {
     let mounted = true;
     const load = async () => {
-      // Deals with effective_date = today (agency truth column).
-      // Excludes cancelled/lapsed so totals match the dashboard exactly.
-      const now = new Date();
-      const todayLocal = new Date(now); todayLocal.setHours(0,0,0,0);
-      const tStr = todayLocal.toISOString().split("T")[0];
+      const { startIso, endIso } = getBusinessDayBounds();
       const { data } = await supabase
         .from("deals")
         .select(`annual_premium, agent_id, agents:agent_id(profile:profiles(full_name, avatar_url))`)
-        .eq("effective_date", tStr)
+        .gte("posted_at", startIso)
+        .lt("posted_at", endIso)
         .in("status", ["submitted", "active"]);
 
       const map = new Map<string, Row>();
@@ -47,15 +45,15 @@ export function TopProducersTodayCard() {
           agentId: r.agent_id,
           name:   r.agents?.profile?.full_name ?? "Agent",
           avatar: r.agents?.profile?.avatar_url ?? null,
-          aop: 0, deals: 0,
+          alp: 0, deals: 0,
         };
-        cur.aop += alp;
+        cur.alp += alp;
         cur.deals += 1;
         map.set(r.agent_id, cur);
       }
       if (!mounted) return;
       setTotal(sum);
-      setRows([...map.values()].sort((a, b) => b.aop - a.aop).slice(0, 5));
+      setRows([...map.values()].sort((a, b) => b.alp - a.alp).slice(0, 5));
       setLoading(false);
     };
     load();
@@ -105,7 +103,7 @@ export function TopProducersTodayCard() {
                 <div className="text-[10px] text-muted-foreground">{r.deals} deal{r.deals === 1 ? "" : "s"}</div>
               </div>
               <div className="text-right font-bold tabular-nums text-emerald-400 text-sm">
-                ${Math.round(r.aop).toLocaleString()}
+                ${Math.round(r.alp).toLocaleString()}
               </div>
             </div>
           ))}

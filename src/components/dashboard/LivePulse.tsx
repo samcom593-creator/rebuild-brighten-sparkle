@@ -12,6 +12,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FileText, DollarSign, UserCheck, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { getBusinessDayBounds, getBusinessDayKey } from "@/lib/dateUtils";
+import { METRIC_REGISTRY, getTodayMetricSummary } from "@/lib/metricTruth";
 
 type Tile = {
   key: string;
@@ -19,26 +21,16 @@ type Tile = {
   count: number;
   Icon: typeof Sparkles;
   color: string;
-  pulsedAt: number; // ms timestamp — drives the flash animation
+  pulsedAt: number;
+  hint: string;
 };
-
-function startOfTodayISO(): string {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString();
-}
-
-function todayLocalDateStr(): string {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString().split("T")[0];
-}
 
 export function LivePulse() {
   const [apps, setApps] = useState(0);
   const [deals, setDeals] = useState(0);
   const [hires, setHires] = useState(0);
   const [liveProducers, setLiveProducers] = useState(0);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
 
   const pulsedRef = useRef<Record<string, number>>({
     apps: 0, deals: 0, hires: 0, liveProducers: 0,
@@ -51,20 +43,16 @@ export function LivePulse() {
     forcePulse((n) => n + 1);
   };
 
-  // Initial counts for today.
-  // Deals counted by effective_date (agency truth) and only valid statuses
-  // — re-syncs would otherwise re-count the same deal.
+  // Initial counts for today in America/Chicago.
   useEffect(() => {
-    const start = startOfTodayISO();
-    const tStr = todayLocalDateStr();
+    const { startIso, endIso } = getBusinessDayBounds();
     (async () => {
-      const [a, d, h, prod] = await Promise.all([
-        supabase.from("applications").select("id", { count: "exact", head: true }).gte("created_at", start),
-        supabase.from("deals").select("id", { count: "exact", head: true }).eq("effective_date", tStr).in("status", ["submitted", "active"]),
-        // Hires = applications closed today (closed_at >= start of day local)
-        supabase.from("applications").select("id", { count: "exact", head: true }).gte("closed_at", start),
-        // Live producers = distinct agent_ids with a deal that's effective today
-        supabase.from("deals").select("agent_id").eq("effective_date", tStr).in("status", ["submitted", "active"]),
+      const [a, d, h, prod, syncRow] = await Promise.all([
+        supabase.from("applications").select("id", { count: "exact", head: true }).gte("created_at", startIso).lt("created_at", endIso),
+        supabase.from("deals").select("id", { count: "exact", head: true }).gte("posted_at", startIso).lt("posted_at", endIso).in("status", ["submitted", "active"]),
+        supabase.from("applications").select("id", { count: "exact", head: true }).gte("closed_at", startIso).lt("closed_at", endIso),
+        supabase.from("deals").select("agent_id").gte("posted_at", startIso).lt("posted_at", endIso).in("status", ["submitted", "active"]),
+        supabase.from("agentlink_sync_log" as any).select("finished_at, started_at").eq("status", "ok").order("started_at", { ascending: false }).limit(1).maybeSingle(),
       ]);
       setApps(a.count ?? 0);
       setDeals(d.count ?? 0);
@@ -73,17 +61,26 @@ export function LivePulse() {
       (prod.data ?? []).forEach((r: any) => r.agent_id && ids.add(r.agent_id));
       liveAgentSetRef.current = ids;
       setLiveProducers(ids.size);
+      const latestSync = syncRow.data as { finished_at?: string | null; started_at?: string | null } | null;
+      setLastUpdatedAt(latestSync?.finished_at || latestSync?.started_at || null);
     })();
   }, []);
 
   // Realtime subscriptions.
-  // Deal inserts only tick the counter if the new row's effective_date is
-  // today AND status is valid — re-syncs of historical deals don't inflate.
+  // Deal inserts only tick the counter if the new row's posted_at falls inside
+  // the current Central-time day and the status is production-valid.
   useEffect(() => {
-    const todayStr = todayLocalDateStr();
+    const { startIso, endIso } = getBusinessDayBounds();
+    const todayStr = getBusinessDayKey();
     const ch = supabase.channel("apex-live-pulse")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "applications" }, () => {
-        setApps((n) => n + 1); pulse("apps");
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "applications" }, (payload: any) => {
+        const row = payload?.new ?? {};
+        const createdAt = row.created_at ? new Date(row.created_at).toISOString() : "";
+        const createdToday = createdAt >= startIso && createdAt < endIso;
+        if (createdToday) {
+          setApps((n) => n + 1);
+          pulse("apps");
+        }
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "applications" }, (payload: any) => {
         // Detect a hire: closed_at goes from null → today.
@@ -97,9 +94,10 @@ export function LivePulse() {
       })
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "deals" }, (payload: any) => {
         const row = payload?.new ?? {};
-        const effOk = String(row.effective_date ?? "").startsWith(todayStr);
+        const postedAt = row.posted_at ? new Date(row.posted_at).toISOString() : "";
+        const postedToday = postedAt >= startIso && postedAt < endIso;
         const statusOk = row.status === "submitted" || row.status === "active";
-        if (effOk && statusOk) {
+        if (postedToday && statusOk) {
           setDeals((n) => n + 1); pulse("deals");
           if (row.agent_id && !liveAgentSetRef.current.has(row.agent_id)) {
             liveAgentSetRef.current.add(row.agent_id);
@@ -108,20 +106,60 @@ export function LivePulse() {
           }
         }
       })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "agentlink_sync_log" }, (payload: any) => {
+        const row = payload?.new ?? {};
+        if (row.status === "ok") {
+          setLastUpdatedAt(row.finished_at || row.started_at || null);
+        }
+      })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, []);
 
   const tiles = useMemo<Tile[]>(() => [
-    { key: "apps",          label: "apps today",      count: apps,          Icon: FileText,   color: "#3b82f6", pulsedAt: pulsedRef.current.apps },
-    { key: "deals",         label: "deals today",     count: deals,         Icon: DollarSign, color: "#10b981", pulsedAt: pulsedRef.current.deals },
-    { key: "hires",         label: "hires today",     count: hires,         Icon: UserCheck,  color: "#8b5cf6", pulsedAt: pulsedRef.current.hires },
-    { key: "liveProducers", label: "live producers",  count: liveProducers, Icon: Sparkles,   color: "#f59e0b", pulsedAt: pulsedRef.current.liveProducers },
+    {
+      key: "apps",
+      label: "Applications Today",
+      count: apps,
+      Icon: FileText,
+      color: "#3b82f6",
+      pulsedAt: pulsedRef.current.apps,
+      hint: "applications.created_at",
+    },
+    {
+      key: "deals",
+      label: "Deals Today",
+      count: deals,
+      Icon: DollarSign,
+      color: "#10b981",
+      pulsedAt: pulsedRef.current.deals,
+      hint: METRIC_REGISTRY.dealsToday.dateField,
+    },
+    {
+      key: "hires",
+      label: "Hires Today",
+      count: hires,
+      Icon: UserCheck,
+      color: "#8b5cf6",
+      pulsedAt: pulsedRef.current.hires,
+      hint: "applications.closed_at",
+    },
+    {
+      key: "liveProducers",
+      label: "Live Producers",
+      count: liveProducers,
+      Icon: Sparkles,
+      color: "#f59e0b",
+      pulsedAt: pulsedRef.current.liveProducers,
+      hint: "distinct agent_id from deals.posted_at",
+    },
   ], [apps, deals, hires, liveProducers]);
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-      {tiles.map((t) => {
+    <div className="mb-5 space-y-2">
+      <p className="text-[11px] text-muted-foreground">{getTodayMetricSummary(lastUpdatedAt)}</p>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {tiles.map((t) => {
         const fresh = Date.now() - t.pulsedAt < 2000;
         return (
           <motion.div
@@ -148,7 +186,7 @@ export function LivePulse() {
                 <t.Icon className="w-4 h-4" />
               </div>
               <div className="flex-1">
-                <div className="text-xs text-muted-foreground uppercase tracking-wide">{t.label}</div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">{t.label}</div>
                 <motion.div
                   key={t.count}
                   initial={{ y: -6, opacity: 0 }}
@@ -159,6 +197,7 @@ export function LivePulse() {
                 >
                   {t.count}
                 </motion.div>
+                <div className="mt-0.5 text-[10px] text-muted-foreground">{t.hint}</div>
               </div>
               {fresh && (
                 <motion.div
@@ -171,7 +210,8 @@ export function LivePulse() {
             </div>
           </motion.div>
         );
-      })}
+        })}
+      </div>
     </div>
   );
 }

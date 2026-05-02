@@ -21,6 +21,7 @@ import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
 import { getTodayPST, getWeekStartPST, getMonthStartPST, getDateDaysAgoPST } from "@/lib/dateUtils";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 import { getClosingRateColor } from "@/lib/closingRateColors";
+import { formatMetricSource, getCloseRate, getMetricBounds, METRIC_REGISTRY } from "@/lib/metricTruth";
 
 interface LeaderboardTabsProps {
   currentAgentId?: string;
@@ -76,6 +77,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
   const [loading, setLoading] = useState(true);
   const [showConfetti, setShowConfetti] = useState(false);
   const [leaderboardMode, setLeaderboardMode] = useState<"production" | "building">("production");
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<{ 
     id: string; 
@@ -97,49 +99,42 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
     try {
       if (isInitialLoad) setLoading(true);
       
-      let startDate: string;
-      
-      // Use PST timezone for all date calculations
-      switch (period) {
-        case "week":
-          startDate = getWeekStartPST();
-          break;
-        case "month":
-          startDate = getMonthStartPST();
-          break;
-        case "custom":
-          if (customDateRange.from) {
-            startDate = format(customDateRange.from, "yyyy-MM-dd");
-          } else {
-            startDate = getDateDaysAgoPST(30);
-          }
-          break;
-        default:
-          startDate = getTodayPST();
-      }
+      const bounds = getMetricBounds(period, customDateRange);
+      const [dealsRes, productionRes, syncRes] = await Promise.all([
+        supabase
+          .from("deals")
+          .select("agent_id, annual_premium")
+          .gte("posted_at", bounds.startIso)
+          .lt("posted_at", bounds.endIso)
+          .in("status", ["submitted", "active"]),
+        supabase
+          .from("daily_production")
+          .select(`
+            agent_id,
+            presentations,
+            passed_price,
+            closing_rate,
+            hours_called,
+            referrals_caught,
+            production_date
+          `)
+          .gte("production_date", bounds.startIso.slice(0, 10))
+          .lte("production_date", bounds.endIso.slice(0, 10)),
+        supabase
+          .from("agentlink_sync_log" as any)
+          .select("finished_at, started_at")
+          .eq("status", "ok")
+          .order("started_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
 
-      let query = supabase
-        .from("daily_production")
-        .select(`
-          agent_id,
-          aop,
-          deals_closed,
-          presentations,
-          passed_price,
-          closing_rate,
-          hours_called,
-          referrals_caught,
-          production_date
-        `)
-        .gte("production_date", startDate);
+      const production = productionRes.data ?? [];
+      const deals = dealsRes.data ?? [];
+      const syncRow = syncRes.data as { finished_at?: string | null; started_at?: string | null } | null;
+      setLastUpdatedAt(syncRow?.finished_at || syncRow?.started_at || null);
 
-      if (period === "day") {
-        query = query.eq("production_date", startDate);
-      }
-
-      const { data: production } = await query;
-
-      if (!production) {
+      if (production.length === 0 && deals.length === 0) {
         setEntries([]);
         setLoading(false);
         return;
@@ -155,6 +150,22 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
         closingRates: number[];
       }> = {};
 
+      deals.forEach((p: any) => {
+        if (!agentTotals[p.agent_id]) {
+          agentTotals[p.agent_id] = {
+            alp: 0,
+            deals: 0,
+            presentations: 0,
+            passedPrice: 0,
+            hoursCalled: 0,
+            referrals: 0,
+            closingRates: [],
+          };
+        }
+        agentTotals[p.agent_id].alp += Number(p.annual_premium || 0);
+        agentTotals[p.agent_id].deals += 1;
+      });
+
       production.forEach((p) => {
         if (!agentTotals[p.agent_id]) {
           agentTotals[p.agent_id] = {
@@ -167,8 +178,6 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
             closingRates: [],
           };
         }
-        agentTotals[p.agent_id].alp += Number(p.aop || 0);
-        agentTotals[p.agent_id].deals += Number(p.deals_closed || 0);
         agentTotals[p.agent_id].presentations += Number(p.presentations || 0);
         agentTotals[p.agent_id].passedPrice += Number(p.passed_price || 0);
         agentTotals[p.agent_id].hoursCalled += Number(p.hours_called || 0);
@@ -222,9 +231,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
         
         const avgClosingRate = totals.closingRates.length > 0
           ? totals.closingRates.reduce((a, b) => a + b, 0) / totals.closingRates.length
-          : totals.presentations > 0
-            ? (totals.deals / totals.presentations) * 100
-            : 0;
+          : getCloseRate(totals.deals, totals.presentations);
 
         // Name fallback: profile_id profile -> user_id profile -> RPC profile -> display_name -> Unknown
         const rpcProfile = rpcProfiles?.find((p: any) => p.user_id === agent?.user_id);
@@ -385,8 +392,8 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
           onUpdate={fetchLeaderboard}
           period={selectedAgent.period}
           dateRange={{ from: selectedAgent.startDate, to: selectedAgent.endDate }}
-        />
-      )}
+          />
+        )}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -496,6 +503,9 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
             </div>
           )}
           </div>
+          <p className="mb-3 text-[11px] text-muted-foreground">
+            {formatMetricSource(METRIC_REGISTRY.leaderboards, lastUpdatedAt)}
+          </p>
 
           {/* Leaderboard Content with Flip Animation */}
           <AnimatePresence mode="popLayout">

@@ -8,6 +8,8 @@ import { AgentRankBadge } from "@/components/dashboard/AgentRankBadge";
 import { SkeletonLoader } from "@/components/ui/skeleton-loader";
 import { GlassCard } from "@/components/ui/glass-card";
 import { useAuth } from "@/hooks/useAuth";
+import { getBusinessWeekBounds } from "@/lib/dateUtils";
+import { sumAnnualPremium } from "@/lib/metricTruth";
 
 export default function Numbers() {
   const { user, isLoading: authLoading } = useAuth();
@@ -71,27 +73,30 @@ export default function Numbers() {
     let mounted = true;
 
     const loadWeekly = async () => {
-      const weekStart = new Date();
-      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-      const weekStartStr = weekStart.toISOString().split("T")[0];
+      const weekBounds = getBusinessWeekBounds();
 
-      const { data: myProd } = await supabase
-        .from("daily_production")
-        .select("aop, deals_closed")
+      const { data: myDeals } = await supabase
+        .from("deals")
+        .select("annual_premium")
         .eq("agent_id", agentId)
-        .gte("production_date", weekStartStr);
+        .gte("posted_at", weekBounds.startIso)
+        .lt("posted_at", weekBounds.endIso)
+        .in("status", ["submitted", "active"]);
 
-      const alp = myProd?.reduce((s, r) => s + Number(r.aop || 0), 0) || 0;
-      const deals = myProd?.reduce((s, r) => s + Number(r.deals_closed || 0), 0) || 0;
+      const alp = sumAnnualPremium((myDeals || []) as Array<{ annual_premium?: number | null }>);
+      const deals = myDeals?.length || 0;
 
-      const { data: allProd } = await supabase
-        .from("daily_production")
-        .select("agent_id, aop")
-        .gte("production_date", weekStartStr);
+      const { data: allDeals } = await supabase
+        .from("deals")
+        .select("agent_id, annual_premium")
+        .gte("posted_at", weekBounds.startIso)
+        .lt("posted_at", weekBounds.endIso)
+        .in("status", ["submitted", "active"]);
 
       const agentTotals: Record<string, number> = {};
-      (allProd || []).forEach((r: any) => {
-        agentTotals[r.agent_id] = (agentTotals[r.agent_id] || 0) + Number(r.aop || 0);
+      (allDeals || []).forEach((r: any) => {
+        if (!r.agent_id) return;
+        agentTotals[r.agent_id] = (agentTotals[r.agent_id] || 0) + Number(r.annual_premium || 0);
       });
 
       const sorted = Object.entries(agentTotals).sort(([, a], [, b]) => b - a);

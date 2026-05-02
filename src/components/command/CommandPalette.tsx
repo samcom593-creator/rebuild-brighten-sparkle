@@ -44,11 +44,11 @@ interface ApplicationResult {
 
 const ROUTES = [
   { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard, group: "Navigate" },
-  { label: "Command Center", path: "/dashboard/command-center", icon: Activity, group: "Navigate" },
+  { label: "Command Center", path: "/dashboard/command", icon: Activity, group: "Navigate" },
   { label: "Team Directory", path: "/dashboard/team", icon: Users, group: "Navigate" },
   { label: "Hiring Pipeline", path: "/dashboard/hiring-pipeline", icon: UserPlus, group: "Navigate" },
   { label: "Agent CRM", path: "/dashboard/crm", icon: Briefcase, group: "Navigate" },
-  { label: "Lead Center", path: "/dashboard/lead-center", icon: TrendingUp, group: "Navigate" },
+  { label: "Lead Center", path: "/dashboard/leads", icon: TrendingUp, group: "Navigate" },
   { label: "Aged Leads", path: "/dashboard/aged-leads", icon: Users, group: "Navigate" },
   { label: "Call Center", path: "/dashboard/call-center", icon: Phone, group: "Navigate" },
   { label: "Course Catalog", path: "/course-catalog", icon: GraduationCap, group: "Navigate" },
@@ -57,10 +57,10 @@ const ROUTES = [
   { label: "Notifications", path: "/dashboard/notifications", icon: Bell, group: "Navigate" },
   { label: "Content Library", path: "/dashboard/content", icon: ImageIcon, group: "Navigate" },
   { label: "Award Graphics", path: "/dashboard/awards", icon: ImageIcon, group: "Navigate" },
-  { label: "Purchase Leads", path: "/dashboard/purchase-leads", icon: ShoppingCart, group: "Navigate" },
+  { label: "Purchase Leads", path: "/purchase-leads", icon: ShoppingCart, group: "Navigate" },
   { label: "Automation Hub", path: "/dashboard/automation", icon: Activity, group: "Navigate" },
   { label: "System Health", path: "/dashboard/system-health", icon: Activity, group: "Navigate" },
-  { label: "Deleted Leads Vault", path: "/dashboard/deleted-leads", icon: Trash2, group: "Navigate" },
+  { label: "Deleted Leads Vault", path: "/dashboard/settings/deleted-leads", icon: Trash2, group: "Navigate" },
   { label: "Settings", path: "/dashboard/settings", icon: SettingsIcon, group: "Navigate" },
 ];
 

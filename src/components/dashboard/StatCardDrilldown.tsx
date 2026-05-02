@@ -15,8 +15,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
-import { startOfWeek, format } from "date-fns";
+import { format } from "date-fns";
 import { toast } from "sonner";
+import { getBusinessDayKey, getBusinessWeekBounds } from "@/lib/dateUtils";
+import { getCloseRate } from "@/lib/metricTruth";
 
 type DrilldownType = "agents" | "alp" | "apps" | "closerate" | null;
 
@@ -30,7 +32,8 @@ function initials(name: string) {
 }
 
 export function StatCardDrilldown({ activeModal, onClose }: StatCardDrilldownProps) {
-  const weekStart = format(startOfWeek(new Date(), { weekStartsOn: 1 }), "yyyy-MM-dd");
+  const weekBounds = getBusinessWeekBounds();
+  const weekStart = getBusinessDayKey(weekBounds.start);
 
   const { data: agents } = useQuery({
     queryKey: ["drilldown-agents"],
@@ -40,13 +43,18 @@ export function StatCardDrilldown({ activeModal, onClose }: StatCardDrilldownPro
         .select("id, display_name, user_id, profile_id, status, onboarding_stage, is_deactivated")
         .eq("is_deactivated", false);
 
-      // Weekly production from deals.effective_date (status submitted/active)
-      // posted_at gets rewritten on Agent Link re-syncs and was over-counting.
-      const { data: dealsWeek } = await supabase
-        .from("deals")
-        .select("agent_id, annual_premium, effective_date")
-        .gte("effective_date", weekStart)
-        .in("status", ["submitted", "active"]);
+      const [{ data: dealsWeek }, { data: productionWeek }] = await Promise.all([
+        supabase
+          .from("deals")
+          .select("agent_id, annual_premium, posted_at")
+          .gte("posted_at", weekBounds.startIso)
+          .lt("posted_at", weekBounds.endIso)
+          .in("status", ["submitted", "active"]),
+        supabase
+          .from("daily_production")
+          .select("agent_id, presentations")
+          .gte("production_date", weekStart),
+      ]);
 
       const { data: profiles } = await supabase
         .from("profiles")
@@ -60,16 +68,23 @@ export function StatCardDrilldown({ activeModal, onClose }: StatCardDrilldownPro
         const existing = prodMap.get(r.agent_id) || { aop: 0, deals: 0, pres: 0, lastDate: "" };
         existing.aop += Number(r.annual_premium || 0);
         existing.deals += 1;
-        existing.pres += 1;
-        const effDate = String(r.effective_date || "").slice(0, 10);
-        if (effDate > existing.lastDate) existing.lastDate = effDate;
+        const postedDate = String(r.posted_at || "").slice(0, 10);
+        if (postedDate > existing.lastDate) existing.lastDate = postedDate;
+        prodMap.set(r.agent_id, existing);
+      });
+
+      (productionWeek || []).forEach((r: any) => {
+        if (!r.agent_id) return;
+        const existing = prodMap.get(r.agent_id) || { aop: 0, deals: 0, pres: 0, lastDate: "" };
+        existing.pres += Number(r.presentations || 0);
         prodMap.set(r.agent_id, existing);
       });
 
       const { data: appData } = await supabase
         .from("applications")
         .select("id, first_name, last_name, email, phone, license_status, ai_score_tier, created_at, assigned_agent_id")
-        .gte("created_at", new Date(weekStart).toISOString());
+        .gte("created_at", weekBounds.startIso)
+        .lt("created_at", weekBounds.endIso);
 
       return {
         agents: (agentData || []).map((a: any) => {
@@ -85,7 +100,7 @@ export function StatCardDrilldown({ activeModal, onClose }: StatCardDrilldownPro
             weeklyAlp: prod.aop,
             deals: prod.deals,
             presentations: prod.pres,
-            closeRate: prod.pres > 0 ? Math.round((prod.deals / prod.pres) * 100) : 0,
+            closeRate: Math.round(getCloseRate(prod.deals, prod.pres)),
             lastActive: prod.lastDate,
           };
         }),

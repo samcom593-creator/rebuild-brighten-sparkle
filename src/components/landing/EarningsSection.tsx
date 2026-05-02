@@ -2,24 +2,21 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { TrendingUp, Award, Clock, Users } from "lucide-react";
 import { SectionHeading } from "@/components/ui/section-heading";
-import { AnimatedCounter } from "@/components/ui/animated-counter";
 
 const earningsData = {
   fullTime: {
-    label: "Full-Time",
-    description: "30-60 hours/week",
-    monthly: 20833,
-    yearly: 250000,
-    policiesPerMonth: 30,
-    commissionRate: "70%-145%",
+    label: "Licensed Path",
+    description: "For agents ready to write soon",
+    headline: "Lead, train, and close",
+    supporting: "Warm lead flow, coaching, and accountability once you're licensed.",
+    bullets: ["Warm lead access", "Sales training", "Carrier-ready process"],
   },
   topProducer: {
-    label: "Top Producer",
-    description: "40+ hours/week",
-    monthly: 42000,
-    yearly: 504000,
-    policiesPerMonth: 35,
-    commissionRate: "90%-145%",
+    label: "Pre-Licensing Path",
+    description: "For agents still getting licensed",
+    headline: "Clear next steps",
+    supporting: "Video, guide, course link, and a simple path into onboarding once you finish.",
+    bullets: ["Video overview", "Licensing guide", "Course + onboarding call"],
   },
 };
 
@@ -41,8 +38,8 @@ export function EarningsSection() {
       <div className="container mx-auto px-4 relative z-10">
         <SectionHeading
           badge="Earnings Potential"
-          title="Your Income, Your Choice"
-          subtitle="See what's possible at APEX. Your income is determined by your effort and commitment."
+          title="How The Opportunity Works"
+          subtitle="We only show what we can stand behind. APEX gives you the path, the support, and the lead flow once you're ready to sell."
         />
 
         {/* Earnings Toggle */}
@@ -75,31 +72,18 @@ export function EarningsSection() {
           <div className="p-8 md:p-12 rounded-xl bg-gradient-to-br from-[#0f172a] to-[#070d1b] border border-[#1e293b] shadow-[0_0_40px_hsl(168_84%_42%/0.1)]">
             <div className="text-center mb-8">
               <p className="text-[#94a3b8] mb-2">{data.description}</p>
-              <div className="text-6xl md:text-8xl font-extrabold text-[#22d3a5] text-glow mb-2 font-display">
-                $<AnimatedCounter value={data.yearly} />
+              <div className="text-4xl md:text-6xl font-extrabold text-[#22d3a5] text-glow mb-2 font-display">
+                {data.headline}
               </div>
-              <p className="text-xl text-[#94a3b8]">per year</p>
+              <p className="text-xl text-[#94a3b8]">{data.supporting}</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 border-t border-[#1e293b] pt-8">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-[#f1f5f9] font-display">
-                  $<AnimatedCounter value={data.monthly} />
+              {data.bullets.map((bullet) => (
+                <div key={bullet} className="text-center">
+                  <div className="text-2xl font-bold text-[#22d3a5] font-display">{bullet}</div>
                 </div>
-                <p className="text-sm text-[#94a3b8]">Monthly Income</p>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-[#f1f5f9] font-display">
-                  <AnimatedCounter value={data.policiesPerMonth} />
-                </div>
-                <p className="text-sm text-[#94a3b8]">Policies/Month</p>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-[#22d3a5] font-display">
-                  {data.commissionRate}
-                </div>
-                <p className="text-sm text-[#94a3b8]">Commission Rate</p>
-              </div>
+              ))}
             </div>
           </div>
         </motion.div>

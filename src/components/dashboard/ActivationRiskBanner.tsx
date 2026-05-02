@@ -17,6 +17,7 @@ import { subDays, format, differenceInDays } from "date-fns";
 import { toast } from "sonner";
 import { DeactivateAgentDialog } from "./DeactivateAgentDialog";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { getBusinessDayBounds } from "@/lib/dateUtils";
 
 interface AtRiskAgent {
   id: string;
@@ -49,6 +50,7 @@ export function ActivationRiskBanner() {
 
       if (!agents || agents.length === 0) return [];
 
+      const cutoffBounds = getBusinessDayBounds(subDays(new Date(), 14));
       const cutoff = format(subDays(new Date(), 14), "yyyy-MM-dd");
       const agentIds = agents.map((a) => a.id);
 
@@ -65,9 +67,9 @@ export function ActivationRiskBanner() {
           .gte("production_date", cutoff),
         supabase
           .from("deals")
-          .select("agent_id, effective_date")
+          .select("agent_id, posted_at")
           .in("agent_id", agentIds)
-          .gte("effective_date", cutoff)
+          .gte("posted_at", cutoffBounds.startIso)
           .in("status", ["submitted", "active"]),
       ]);
 
@@ -81,7 +83,7 @@ export function ActivationRiskBanner() {
 
       const atRiskIds = atRiskAgentRecords.map((a) => a.id);
 
-      // "Last activity" = max(last production_date, last deal.effective_date)
+      // "Last activity" = max(last production_date, last posted deal)
       const [lastProdRes, lastDealRes] = await Promise.all([
         supabase
           .from("daily_production")
@@ -90,9 +92,9 @@ export function ActivationRiskBanner() {
           .order("production_date", { ascending: false }),
         supabase
           .from("deals")
-          .select("agent_id, effective_date")
+          .select("agent_id, posted_at")
           .in("agent_id", atRiskIds)
-          .order("effective_date", { ascending: false }),
+          .order("posted_at", { ascending: false }),
       ]);
 
       const lastProdMap = new Map<string, string>();
@@ -100,9 +102,10 @@ export function ActivationRiskBanner() {
         if (!lastProdMap.has(p.agent_id)) lastProdMap.set(p.agent_id, p.production_date);
       });
       (lastDealRes.data || []).forEach((d: any) => {
-        if (!d.agent_id || !d.effective_date) return;
+        if (!d.agent_id || !d.posted_at) return;
         const prior = lastProdMap.get(d.agent_id);
-        if (!prior || d.effective_date > prior) lastProdMap.set(d.agent_id, d.effective_date);
+        const postedDate = String(d.posted_at).slice(0, 10);
+        if (!prior || postedDate > prior) lastProdMap.set(d.agent_id, postedDate);
       });
 
       const userIds = atRiskAgentRecords.map((a) => a.user_id).filter(Boolean) as string[];

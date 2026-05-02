@@ -1,125 +1,158 @@
-// ForecastCard — "at current pace you'll hit $X this month."
-// Linear projection from MTD deals (status submitted/active by effective_date).
-// Migrated off daily_production.aop on 2026-04-27 — that column drifts
-// +$345k vs deals truth on 30d windows, inflating month-end projections.
-
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { TrendingUp, TrendingDown, Zap } from "lucide-react";
+import { TrendingDown, TrendingUp, Zap } from "lucide-react";
+import { addDays, startOfMonth, subMonths } from "date-fns";
+import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  BUSINESS_TIMEZONE,
+  countDistinctBusinessDays,
+  METRIC_REGISTRY,
+  formatMetricSource,
+  projectMonthEndAlp,
+  sumAnnualPremium,
+} from "@/lib/metricTruth";
+import { getBusinessMonthBounds, getBusinessNow } from "@/lib/dateUtils";
 
 function fmt$(n: number): string {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
   if (n >= 1_000) return `$${(n / 1_000).toFixed(1)}k`;
-  return `$${Math.round(n)}`;
+  return `$${Math.round(n).toLocaleString()}`;
 }
 
 type Forecast = {
   mtd: number;
   projection: number;
-  lastMonthSameDays: number;
+  comparisonWindowAlp: number;
   delta: number;
-  daysIn: number;
-  daysOfMonth: number;
   confidence: "low" | "medium" | "high";
+  activeDays: number;
+  elapsedCalendarDays: number;
+  daysInMonth: number;
+  lastUpdatedAt: string | null;
 };
 
 async function fetchForecast(): Promise<Forecast> {
-  const now = new Date();
-  const daysIn = now.getDate();
-  const daysOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
-  const lastMonthSameDayEnd = new Date(now.getFullYear(), now.getMonth() - 1, daysIn, 23, 59, 59).toISOString();
+  const monthBounds = getBusinessMonthBounds();
+  const now = getBusinessNow();
+  const comparisonMonthStart = startOfMonth(subMonths(now, 1));
+  const comparisonMonthStartKey = formatInTimeZone(comparisonMonthStart, BUSINESS_TIMEZONE, "yyyy-MM-dd");
+  const comparisonEndKey = formatInTimeZone(
+    addDays(comparisonMonthStart, now.getDate()),
+    BUSINESS_TIMEZONE,
+    "yyyy-MM-dd",
+  );
+  const comparisonStart = fromZonedTime(`${comparisonMonthStartKey}T00:00:00`, BUSINESS_TIMEZONE);
+  const comparisonEnd = fromZonedTime(`${comparisonEndKey}T00:00:00`, BUSINESS_TIMEZONE);
 
-  // Forecast = sales velocity, so we measure by created_at (the day a policy
-  // was written), not effective_date. effective_date is often dated weeks in
-  // the future for life policies, which front-loads MTD on day-1 of the
-  // month and explodes the linear projection.
-  const [mtdRes, lastRes] = await Promise.all([
-    supabase.from("deals").select("annual_premium,created_at").gte("created_at", monthStart).in("status", ["submitted", "active"]),
-    supabase.from("deals").select("annual_premium").gte("created_at", lastMonthStart).lte("created_at", lastMonthSameDayEnd).in("status", ["submitted", "active"]),
+  const [mtdRes, comparisonRes, syncRes] = await Promise.all([
+    supabase
+      .from("deals")
+      .select("annual_premium, posted_at")
+      .gte("posted_at", monthBounds.startIso)
+      .lt("posted_at", monthBounds.endIso)
+      .in("status", ["submitted", "active"]),
+    supabase
+      .from("deals")
+      .select("annual_premium")
+      .gte("posted_at", comparisonStart.toISOString())
+      .lt("posted_at", comparisonEnd.toISOString())
+      .in("status", ["submitted", "active"]),
+    supabase
+      .from("agentlink_sync_log" as any)
+      .select("finished_at, started_at")
+      .eq("status", "ok")
+      .order("started_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
-  const mtdRows = mtdRes.data ?? [];
-  const mtd = mtdRows.reduce((s: number, r: any) => s + Number(r.annual_premium ?? 0), 0);
-  const lastMonthSameDays = (lastRes.data ?? []).reduce((s: number, r: any) => s + Number(r.annual_premium ?? 0), 0);
+  const mtdRows = (mtdRes.data ?? []) as Array<{ annual_premium?: number | null; posted_at?: string | null }>;
+  const mtd = sumAnnualPremium(mtdRows);
+  const comparisonWindowAlp = sumAnnualPremium((comparisonRes.data ?? []) as Array<{ annual_premium?: number | null }>);
+  const activeDays = countDistinctBusinessDays(mtdRows);
+  const projectionResult = projectMonthEndAlp(mtd, activeDays);
+  const delta = comparisonWindowAlp > 0
+    ? ((mtd - comparisonWindowAlp) / comparisonWindowAlp) * 100
+    : (mtd > 0 ? 100 : 0);
+  const syncRow = syncRes.data as { finished_at?: string | null; started_at?: string | null } | null;
 
-  const activeDaySet = new Set<string>();
-  for (const r of mtdRows as any[]) if (Number(r.annual_premium) > 0 && r.created_at) activeDaySet.add(String(r.created_at).slice(0, 10));
-  const activeDays = activeDaySet.size;
-  const confidence: "low" | "medium" | "high" =
-    activeDays >= 10 ? "high" : activeDays >= 5 ? "medium" : "low";
-
-  // Don't extrapolate when we don't have enough signal — show MTD instead so
-  // day-1 of the month doesn't display a $4M projection.
-  let projection: number;
-  if (daysIn < 3 || activeDays < 3) {
-    projection = mtd;
-  } else {
-    const rawProjection = (mtd / daysIn) * daysOfMonth;
-    projection = Math.max(0, Math.min(rawProjection, mtd * 3));
-  }
-
-  const delta = lastMonthSameDays > 0 ? ((mtd - lastMonthSameDays) / lastMonthSameDays) * 100 : (mtd > 0 ? 100 : 0);
-
-  return { mtd, projection, lastMonthSameDays, delta, daysIn, daysOfMonth, confidence };
+  return {
+    mtd,
+    projection: projectionResult.projection,
+    comparisonWindowAlp,
+    delta,
+    confidence: projectionResult.confidence,
+    activeDays: projectionResult.activeDays,
+    elapsedCalendarDays: projectionResult.elapsedCalendarDays,
+    daysInMonth: projectionResult.daysInMonth,
+    lastUpdatedAt: syncRow?.finished_at || syncRow?.started_at || null,
+  };
 }
 
 export function ForecastCard() {
   const { data } = useQuery({
-    queryKey: ["apex-forecast"],
+    queryKey: ["apex-forecast-truth"],
     queryFn: fetchForecast,
     staleTime: 5 * 60 * 1000,
-    refetchInterval: 10 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
   });
 
   if (!data) return null;
+
   const up = data.delta >= 0;
   const TrendIcon = up ? TrendingUp : TrendingDown;
   const tint = up ? "#10b981" : "#ef4444";
+  const sourceHint = formatMetricSource(METRIC_REGISTRY.monthlyAlp, data.lastUpdatedAt);
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.1, duration: 0.35 }}
-      className="rounded-xl border bg-gradient-to-br from-background via-background to-muted/40 p-5 mb-5 relative overflow-hidden"
+      className="relative mb-5 overflow-hidden rounded-xl border bg-gradient-to-br from-background via-background to-muted/40 p-5"
     >
       <motion.div
         animate={{ opacity: [0.2, 0.4, 0.2] }}
         transition={{ duration: 3, repeat: Infinity }}
-        className="absolute -top-16 -right-16 w-48 h-48 rounded-full pointer-events-none"
+        className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full"
         style={{ background: `radial-gradient(circle, ${tint}33, transparent 70%)` }}
       />
 
-      <div className="flex items-start justify-between gap-4 relative">
+      <div className="relative flex items-start justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 text-[10px] tracking-[0.2em] uppercase text-muted-foreground font-bold">
-            <Zap className="w-3.5 h-3.5" />
+          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+            <Zap className="h-3.5 w-3.5" />
             Month-end forecast
           </div>
           <motion.div
             key={data.projection}
             initial={{ y: -4, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            className="text-3xl font-bold mt-1 tabular-nums"
+            className="mt-1 text-3xl font-bold tabular-nums"
             style={{ color: tint }}
           >
             {fmt$(data.projection)}
           </motion.div>
-          <div className="text-sm text-muted-foreground mt-1">
-            <span className="font-semibold text-foreground">{fmt$(data.mtd)}</span> MTD · day {data.daysIn}/{data.daysOfMonth} · {data.confidence} confidence
+          <div className="mt-1 text-sm text-muted-foreground">
+            <span className="font-semibold text-foreground">{fmt$(data.mtd)}</span> MTD · day {data.elapsedCalendarDays}/{data.daysInMonth} · {data.confidence} confidence
           </div>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {data.activeDays < 3
+              ? "Projection is suppressed until at least 3 posted-sales days exist this month."
+              : sourceHint}
+          </p>
         </div>
 
         <div className="text-right">
           <div className="inline-flex items-center gap-1 text-sm font-semibold" style={{ color: tint }}>
-            <TrendIcon className="w-4 h-4" />
+            <TrendIcon className="h-4 w-4" />
             {up ? "+" : ""}{data.delta.toFixed(0)}%
           </div>
-          <div className="text-[10px] text-muted-foreground mt-0.5">
-            vs last month<br />same days
+          <div className="mt-0.5 text-[10px] text-muted-foreground">
+            vs last month
+            <br />
+            same pace window
           </div>
         </div>
       </div>

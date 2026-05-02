@@ -1,219 +1,190 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { StatCard } from "@/components/dashboard/StatCard";
 import {
-  CalendarDays,
-  TrendingUp,
-  Users,
-  UserCheck,
-  Trophy,
-  Target,
-  ArrowUpRight,
   ArrowDownRight,
-  GraduationCap,
+  ArrowUpRight,
+  CalendarDays,
   FileText,
+  GraduationCap,
+  Target,
+  TrendingUp,
+  Trophy,
+  UserCheck,
+  Users,
 } from "lucide-react";
+import { StatCard } from "@/components/dashboard/StatCard";
+import { supabase } from "@/integrations/supabase/client";
+import { getBusinessDayBounds, getBusinessMonthBounds, getBusinessWeekBounds, getMatchedPriorWeekBounds } from "@/lib/dateUtils";
+import {
+  ACTIVE_PRODUCER_AP_THRESHOLD_7D,
+  ACTIVE_PROMOTED_STAGES,
+  METRIC_REGISTRY,
+  countDistinctAgents,
+  countDistinctBusinessDays,
+  formatMetricSource,
+  getCloseRate,
+  projectMonthEndAlp,
+  sumAnnualPremium,
+} from "@/lib/metricTruth";
 
 interface Props {
-  /** When provided, all stats are scoped to this single agent (personal view). */
   agentId?: string;
-  /** Optional title above the strip. */
   title?: string;
 }
 
-function pctDelta(curr: number, prev: number): number {
-  if (!prev) return curr > 0 ? 100 : 0;
-  return Math.round(((curr - prev) / prev) * 1000) / 10;
+function fmtMoney(amount: number): string {
+  return `$${Math.round(amount).toLocaleString()}`;
 }
 
-function startOfWeek(d: Date): Date {
-  const x = new Date(d);
-  const day = x.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
-  x.setDate(x.getDate() + diff);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-
-function isoDate(d: Date): string {
-  return d.toISOString().split("T")[0];
-}
-
-/**
- * Drop-in stats strip that supplements the main dashboard with:
- * – Today's production
- * – MTD ALP + 30-day projection (pace)
- * – Team activity (active, produced today, attendance %)
- * – Recruiting funnel (pipeline, licensed, contracted)
- * – Deal quality (avg ALP/deal, biggest deal this week)
- * – Week-over-week & month-over-month deltas
- *
- * Pass `agentId` to render the personal variant (no team / no recruiting).
- */
 export function ExtendedStatsStrip({ agentId, title = "More numbers" }: Props) {
   const { data, isLoading } = useQuery({
-    queryKey: ["extended-stats-strip", agentId ?? "agency"],
+    queryKey: ["extended-stats-strip-truth", agentId ?? "agency"],
     queryFn: async () => {
-      const now = new Date();
-      const today = isoDate(now);
-      const wkStart = startOfWeek(now);
-      const prevWkStart = new Date(wkStart);
-      prevWkStart.setDate(prevWkStart.getDate() - 7);
-      const prevWkEnd = new Date(wkStart);
-      prevWkEnd.setDate(prevWkEnd.getDate() - 1);
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-      const dayOfMonth = now.getDate();
-      const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      const dayBounds = getBusinessDayBounds();
+      const weekBounds = getBusinessWeekBounds();
+      const monthBounds = getBusinessMonthBounds();
+      const priorWeekBounds = getMatchedPriorWeekBounds();
 
-      // 2026-05-01: today/week/month windows measure sales velocity, so
-      // filter by created_at (the day a policy was written) — not
-      // effective_date. effective_date is often weeks in the future for life
-      // policies, which made these windows feel "off" (a deal sold today
-      // wouldn't show up under "Today" if its effective_date was next week).
-      const VALID_STATUS = ["submitted", "active"] as const;
-      const filterAgent = (q: any) => (agentId ? q.eq("agent_id", agentId) : q);
-      const todayStartIso = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-      const todayEndIso = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
-      const wkStartIso = wkStart.toISOString();
-      const prevWkStartIso = prevWkStart.toISOString();
-      const prevWkEndIso = new Date(prevWkEnd.getFullYear(), prevWkEnd.getMonth(), prevWkEnd.getDate(), 23, 59, 59).toISOString();
-      const monthStartIso = monthStart.toISOString();
-      const prevMonthStartIso = prevMonthStart.toISOString();
-      const prevMonthEndIso = new Date(prevMonthEnd.getFullYear(), prevMonthEnd.getMonth(), prevMonthEnd.getDate(), 23, 59, 59).toISOString();
+      const applyAgentFilter = <T,>(query: T & { eq: (column: string, value: string) => T }) =>
+        agentId ? query.eq("agent_id", agentId) : query;
 
-      const [todayRes, weekRes, prevWeekRes, monthRes, prevMonthRes] = await Promise.all([
-        filterAgent(
+      const [todayRes, weekRes, priorWeekRes, monthRes, syncRes] = await Promise.all([
+        applyAgentFilter(
           supabase
             .from("deals")
-            .select("annual_premium, agent_id")
-            .gte("created_at", todayStartIso)
-            .lte("created_at", todayEndIso)
-            .in("status", VALID_STATUS as unknown as string[])
+            .select("annual_premium, agent_id, posted_at")
+            .gte("posted_at", dayBounds.startIso)
+            .lt("posted_at", dayBounds.endIso)
+            .in("status", ["submitted", "active"]),
         ),
-        filterAgent(
+        applyAgentFilter(
+          supabase
+            .from("deals")
+            .select("annual_premium, posted_at")
+            .gte("posted_at", weekBounds.startIso)
+            .lt("posted_at", weekBounds.endIso)
+            .in("status", ["submitted", "active"]),
+        ),
+        applyAgentFilter(
           supabase
             .from("deals")
             .select("annual_premium")
-            .gte("created_at", wkStartIso)
-            .in("status", VALID_STATUS as unknown as string[])
+            .gte("posted_at", priorWeekBounds.startIso)
+            .lt("posted_at", priorWeekBounds.endIso)
+            .in("status", ["submitted", "active"]),
         ),
-        filterAgent(
+        applyAgentFilter(
           supabase
             .from("deals")
-            .select("annual_premium")
-            .gte("created_at", prevWkStartIso)
-            .lte("created_at", prevWkEndIso)
-            .in("status", VALID_STATUS as unknown as string[])
+            .select("annual_premium, posted_at")
+            .gte("posted_at", monthBounds.startIso)
+            .lt("posted_at", monthBounds.endIso)
+            .in("status", ["submitted", "active"]),
         ),
-        filterAgent(
-          supabase
-            .from("deals")
-            .select("annual_premium, agent_id, created_at")
-            .gte("created_at", monthStartIso)
-            .in("status", VALID_STATUS as unknown as string[])
-        ),
-        filterAgent(
-          supabase
-            .from("deals")
-            .select("annual_premium, created_at")
-            .gte("created_at", prevMonthStartIso)
-            .lte("created_at", prevMonthEndIso)
-            .in("status", VALID_STATUS as unknown as string[])
-        ),
+        supabase
+          .from("agentlink_sync_log" as any)
+          .select("finished_at, started_at")
+          .eq("status", "ok")
+          .order("started_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
       ]);
 
-      const sumAP = (rows: any[] | null) =>
-        (rows || []).reduce((s, r: any) => s + (Number(r.annual_premium) || 0), 0);
-      const countDeals = (rows: any[] | null) => (rows || []).length;
+      const todayRows = (todayRes.data ?? []) as Array<{ annual_premium?: number | null; agent_id?: string | null; posted_at?: string | null }>;
+      const weekRows = (weekRes.data ?? []) as Array<{ annual_premium?: number | null; posted_at?: string | null }>;
+      const priorWeekRows = (priorWeekRes.data ?? []) as Array<{ annual_premium?: number | null }>;
+      const monthRows = (monthRes.data ?? []) as Array<{ annual_premium?: number | null; posted_at?: string | null }>;
+      const syncRow = syncRes.data as { finished_at?: string | null; started_at?: string | null } | null;
 
-      const todayALP = sumAP(todayRes.data as any[]);
-      const todayDeals = countDeals(todayRes.data as any[]);
-      const weekALP = sumAP(weekRes.data as any[]);
-      const prevWeekALP = sumAP(prevWeekRes.data as any[]);
-      const monthALP = sumAP(monthRes.data as any[]);
-      const monthDeals = countDeals(monthRes.data as any[]);
-      const prevMonthALP = sumAP(prevMonthRes.data as any[]);
+      const todayALP = sumAnnualPremium(todayRows);
+      const todayDeals = todayRows.length;
+      const weekALP = sumAnnualPremium(weekRows);
+      const priorWeekALP = sumAnnualPremium(priorWeekRows);
+      const monthALP = sumAnnualPremium(monthRows);
+      const avgPerDeal = monthRows.length > 0 ? monthALP / monthRows.length : 0;
+      const biggestToday = todayRows.reduce((max, row) => Math.max(max, Number(row.annual_premium ?? 0)), 0);
+      const projection = projectMonthEndAlp(monthALP, countDistinctBusinessDays(monthRows));
+      const weekDelta = priorWeekALP > 0 ? ((weekALP - priorWeekALP) / priorWeekALP) * 100 : (weekALP > 0 ? 100 : 0);
 
-      // 30-day pace projection (linear extrapolation from MTD pace)
-      const projection =
-        dayOfMonth > 0 ? Math.round((monthALP / dayOfMonth) * daysInMonth) : 0;
-
-      // Deal quality
-      const avgPerDeal = monthDeals > 0 ? Math.round(monthALP / monthDeals) : 0;
-      const biggestThisWeek = (weekRes.data || []).reduce(
-        (m: number, r: any) => Math.max(m, Number(r.annual_premium) || 0),
-        0
-      );
-
-      // Deltas
-      const wowDelta = pctDelta(weekALP, prevWeekALP);
-      // Month-over-month: compare same window (1..dayOfMonth) of prev month
-      const prevMonthSameWindow = (prevMonthRes.data || []).filter((r: any) => {
-        const d = new Date(r.created_at || prevMonthStart);
-        return d.getDate() <= dayOfMonth;
-      });
-      const prevMonthWindowALP = sumAP(prevMonthSameWindow as any[]);
-      const momDelta = pctDelta(monthALP, prevMonthWindowALP);
-
-      // Team-only stats — skip when in agent-personal mode
-      let activeAgents = 0;
-      let producedToday = 0;
-      let attendancePct = 0;
-      let pipelineApps = 0;
-      let licensedCount = 0;
-      let contractedCount = 0;
+      let team: {
+        activeAgents: number;
+        producedToday: number;
+        pipelineApps: number;
+        licensedCount: number;
+        contractedCount: number;
+        presentations: number;
+        closeRate: number;
+      } | null = null;
 
       if (!agentId) {
-        // "Active producers" = agents who EITHER summed >= $4k AP in the
-        // last 7 days OR were promoted into live/evaluated/transfer in the
-        // last 7 days. Replaces the old "status=active" agent flag, which
-        // counted everyone with an active row (including non-producers).
-        const sevenAgo = new Date(); sevenAgo.setDate(sevenAgo.getDate() - 7);
-        const sevenStr = sevenAgo.toISOString().split("T")[0];
-        const sevenISO = sevenAgo.toISOString();
-
-        const [activeDealsRes, releasedRes, attRes, pipelineRes, licensedRes, contractedRes] = await Promise.all([
-          supabase.from("deals")
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        const [activeDealsRes, promotedRes, pipelineRes, licensedRes, contractedRes, presentationsRes] = await Promise.all([
+          supabase
+            .from("deals")
             .select("agent_id, annual_premium")
-            .gte("effective_date", sevenStr)
+            .gte("posted_at", sevenDaysAgo)
             .in("status", ["submitted", "active"]),
-          supabase.from("agents")
+          supabase
+            .from("agents")
             .select("id")
-            .gte("stage_changed_at", sevenISO)
-            .in("onboarding_stage", ["live", "evaluated", "transfer"]),
-          supabase.from("agent_attendance").select("status").eq("attendance_date", today),
-          supabase.from("applications").select("*", { count: "exact", head: true }).is("terminated_at", null),
-          supabase.from("applications").select("*", { count: "exact", head: true }).is("terminated_at", null).eq("license_status", "licensed"),
-          supabase.from("applications").select("*", { count: "exact", head: true }).is("terminated_at", null).not("contracted_at", "is", null),
+            .gte("stage_changed_at", sevenDaysAgo)
+            .in("onboarding_stage", ACTIVE_PROMOTED_STAGES as unknown as string[]),
+          supabase
+            .from("applications")
+            .select("id", { count: "exact", head: true })
+            .is("terminated_at", null)
+            .is("closed_at", null),
+          supabase
+            .from("applications")
+            .select("id", { count: "exact", head: true })
+            .is("terminated_at", null)
+            .eq("license_status", "licensed"),
+          supabase
+            .from("applications")
+            .select("id", { count: "exact", head: true })
+            .is("terminated_at", null)
+            .not("contracted_at", "is", null),
+          supabase
+            .from("daily_production")
+            .select("presentations")
+            .gte("production_date", weekBounds.startIso.slice(0, 10))
+            .lte("production_date", weekBounds.endIso.slice(0, 10)),
         ]);
-        const sumByAgent = new Map<string, number>();
-        for (const r of (activeDealsRes.data || []) as any[]) {
-          if (!r.agent_id) continue;
-          sumByAgent.set(r.agent_id, (sumByAgent.get(r.agent_id) || 0) + (Number(r.annual_premium) || 0));
-        }
+
+        const rollingAgentTotals = new Map<string, number>();
+        (activeDealsRes.data ?? []).forEach((row: any) => {
+          if (!row.agent_id) return;
+          rollingAgentTotals.set(row.agent_id, (rollingAgentTotals.get(row.agent_id) || 0) + Number(row.annual_premium ?? 0));
+        });
         const activeSet = new Set<string>();
-        for (const [id, ap] of sumByAgent) if (ap >= 4000) activeSet.add(id);
-        for (const r of (releasedRes.data || []) as any[]) if (r.id) activeSet.add(r.id);
-        activeAgents = activeSet.size;
-        const distinctToday = new Set((todayRes.data || []).map((r: any) => r.agent_id).filter(Boolean));
-        producedToday = distinctToday.size;
-        const attendance = attRes.data || [];
-        const present = attendance.filter((a: any) => a.status === "present" || a.status === "late").length;
-        attendancePct = attendance.length > 0 ? Math.round((present / attendance.length) * 100) : 0;
-        pipelineApps = pipelineRes.count ?? 0;
-        licensedCount = licensedRes.count ?? 0;
-        contractedCount = contractedRes.count ?? 0;
+        rollingAgentTotals.forEach((alp, id) => {
+          if (alp >= ACTIVE_PRODUCER_AP_THRESHOLD_7D) activeSet.add(id);
+        });
+        (promotedRes.data ?? []).forEach((row: any) => row.id && activeSet.add(row.id));
+        const presentations = (presentationsRes.data ?? []).reduce((sum, row: { presentations?: number | null }) => sum + Number(row.presentations ?? 0), 0);
+
+        team = {
+          activeAgents: activeSet.size,
+          producedToday: countDistinctAgents(todayRows),
+          pipelineApps: pipelineRes.count || 0,
+          licensedCount: licensedRes.count || 0,
+          contractedCount: contractedRes.count || 0,
+          presentations,
+          closeRate: getCloseRate(weekRows.length, presentations),
+        };
       }
 
       return {
-        todayALP, todayDeals,
-        monthALP, projection,
-        avgPerDeal, biggestThisWeek,
-        wowDelta, momDelta,
-        activeAgents, producedToday, attendancePct,
-        pipelineApps, licensedCount, contractedCount,
+        todayALP,
+        todayDeals,
+        weekALP,
+        priorWeekALP,
+        weekDelta,
+        monthALP,
+        avgPerDeal,
+        biggestToday,
+        projection,
+        team,
+        lastUpdatedAt: syncRow?.finished_at || syncRow?.started_at || null,
       };
     },
     staleTime: 60_000,
@@ -222,92 +193,97 @@ export function ExtendedStatsStrip({ agentId, title = "More numbers" }: Props) {
 
   if (isLoading || !data) return null;
 
-  const fmtMoney = (n: number) => `$${n.toLocaleString()}`;
-  const wowPositive = data.wowDelta >= 0;
-  const momPositive = data.momDelta >= 0;
+  const sourceHint = formatMetricSource(METRIC_REGISTRY.dealsToday, data.lastUpdatedAt);
 
   return (
-    <section className="space-y-3 mb-6">
+    <section className="mb-6 space-y-3">
       <div className="flex items-center gap-2">
-        <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground font-semibold">
-          {title}
-        </p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">{title}</p>
         <div className="h-px flex-1 bg-border/30" />
       </div>
 
-      {/* Today + Pace + Deal quality + Deltas */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
         <StatCard
           title="Today's ALP"
           value={fmtMoney(data.todayALP)}
           icon={CalendarDays}
           variant="primary"
-          hint={`${data.todayDeals} deals today`}
+          hint={`${data.todayDeals} deals · ${sourceHint}`}
         />
         <StatCard
-          title="30-Day Projection"
-          value={fmtMoney(data.projection)}
+          title="Month-end Projection"
+          value={fmtMoney(data.projection.projection)}
           icon={Target}
           variant="success"
-          hint={`MTD ${fmtMoney(data.monthALP)}`}
+          hint={
+            data.projection.activeDays < 3
+              ? `MTD ${fmtMoney(data.monthALP)} · waiting on more posted sales days`
+              : `MTD ${fmtMoney(data.monthALP)} · ${data.projection.confidence} confidence`
+          }
         />
         <StatCard
-          title="Avg ALP / Deal"
+          title="Average ALP Per Deal"
           value={fmtMoney(data.avgPerDeal)}
           icon={TrendingUp}
           variant="default"
-          hint={`Top this week: ${fmtMoney(data.biggestThisWeek)}`}
+          hint={data.biggestToday > 0 ? `Biggest today: ${fmtMoney(data.biggestToday)}` : "No deals posted yet today"}
         />
         <StatCard
-          title="Week vs Prior"
-          value={`${wowPositive ? "+" : ""}${data.wowDelta}%`}
-          icon={wowPositive ? ArrowUpRight : ArrowDownRight}
-          variant={wowPositive ? "success" : "warning"}
-          hint={`MTD vs prior: ${momPositive ? "+" : ""}${data.momDelta}%`}
+          title="Week Prior"
+          value={`${data.weekDelta >= 0 ? "+" : ""}${data.weekDelta.toFixed(0)}%`}
+          icon={data.weekDelta >= 0 ? ArrowUpRight : ArrowDownRight}
+          variant={data.weekDelta >= 0 ? "success" : "warning"}
+          hint={`${fmtMoney(data.weekALP)} now vs ${fmtMoney(data.priorWeekALP)} same weekdays last week`}
         />
-      </div>
 
-      {/* Team & recruiting — only in agency mode */}
-      {!agentId && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          <StatCard
-            title="Active Agents"
-            value={data.activeAgents}
-            icon={Users}
-            variant="default"
-          />
-          <StatCard
-            title="Produced Today"
-            value={`${data.producedToday}/${data.activeAgents}`}
-            icon={Trophy}
-            variant="success"
-          />
-          <StatCard
-            title="Attendance"
-            value={`${data.attendancePct}%`}
-            icon={UserCheck}
-            variant={data.attendancePct >= 80 ? "success" : "warning"}
-          />
-          <StatCard
-            title="Pipeline Apps"
-            value={data.pipelineApps}
-            icon={FileText}
-            variant="primary"
-          />
-          <StatCard
-            title="Licensed"
-            value={data.licensedCount}
-            icon={GraduationCap}
-            variant="success"
-          />
-          <StatCard
-            title="Contracted"
-            value={data.contractedCount}
-            icon={UserCheck}
-            variant="default"
-          />
-        </div>
-      )}
+        {data.team && (
+          <>
+            <StatCard
+              title="Agency Production"
+              value={fmtMoney(data.weekALP)}
+              icon={Trophy}
+              variant="success"
+              hint={`${data.team.closeRate}% close rate · WTD`}
+            />
+            <StatCard
+              title="Active Agents"
+              value={data.team.activeAgents}
+              icon={Users}
+              hint={`${data.team.producedToday} produced today`}
+            />
+            <StatCard
+              title="Pipeline Applications"
+              value={data.team.pipelineApps}
+              icon={FileText}
+              hint={`${data.team.licensedCount} licensed · ${data.team.contractedCount} contracted`}
+            />
+            <StatCard
+              title="Presentations This Week"
+              value={data.team.presentations}
+              icon={UserCheck}
+              hint={`${data.team.closeRate}% close rate`}
+            />
+          </>
+        )}
+
+        {agentId && (
+          <>
+            <StatCard
+              title="This Week's ALP"
+              value={fmtMoney(data.weekALP)}
+              icon={Trophy}
+              variant="success"
+              hint={`${fmtMoney(data.priorWeekALP)} same weekdays last week`}
+            />
+            <StatCard
+              title="Calendar MTD"
+              value={fmtMoney(data.monthALP)}
+              icon={GraduationCap}
+              hint={`${data.projection.activeDays} active sales day${data.projection.activeDays === 1 ? "" : "s"} this month`}
+            />
+          </>
+        )}
+      </div>
     </section>
   );
 }

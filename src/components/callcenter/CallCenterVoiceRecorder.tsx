@@ -15,6 +15,9 @@ interface CallSummary {
   briefSummary: string;
 }
 
+const LICENSED_FOLLOW_UP_URL = "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone";
+const UNLICENSED_FOLLOW_UP_URL = "https://apex-financial.org/get-licensed";
+
 interface CallCenterVoiceRecorderProps {
   onTranscriptionUpdate: (text: string) => void;
   onRecordingStateChange?: (isRecording: boolean) => void;
@@ -456,7 +459,7 @@ export function CallCenterVoiceRecorder({
                       onClick={async () => {
                         setSendingFollowUp(true);
                         try {
-                          await onSendFollowUp("https://calendly.com/apexfinancialempire/licensed-prospect-call-clone");
+                          await onSendFollowUp(LICENSED_FOLLOW_UP_URL);
                           setFollowUpSent("licensed");
                         } catch {
                           // error handled by parent
@@ -487,7 +490,7 @@ export function CallCenterVoiceRecorder({
                       onClick={async () => {
                         setSendingFollowUp(true);
                         try {
-                          await onSendFollowUp("https://calendly.com/apexfinancialempire/licensed-prospect-call-clone");
+                          await onSendFollowUp(UNLICENSED_FOLLOW_UP_URL);
                           setFollowUpSent("unlicensed");
                         } catch {
                           // error handled by parent

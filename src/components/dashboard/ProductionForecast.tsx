@@ -1,143 +1,111 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { TrendingDown, TrendingUp, Minus } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { subDays, format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { countDistinctBusinessDays, projectMonthEndAlp, sumAnnualPremium } from "@/lib/metricTruth";
+import { getBusinessMonthBounds } from "@/lib/dateUtils";
 
 interface ProductionForecastProps {
   agentId: string;
 }
 
-export function ProductionForecast({ agentId: _agentId }: ProductionForecastProps) {
+export function ProductionForecast({ agentId }: ProductionForecastProps) {
   const { data: production } = useQuery({
-    queryKey: ["production-forecast-agency"],
+    queryKey: ["production-forecast-agent", agentId],
     queryFn: async () => {
-      const today = new Date();
-      const historyStartDate = subDays(today, 29);
-      const historyStart = format(historyStartDate, "yyyy-MM-dd");
-      const todayStr = format(today, "yyyy-MM-dd");
-
-      // Use deals truth (status submitted/active by effective_date) for
-      // ALP/deal counts. daily_production stays only for presentations —
-      // its aop/deals_closed self-report drifts +$345k vs deals truth on
-      // 30d windows (inflates the projection ~80%).
+      const monthBounds = getBusinessMonthBounds();
       const [dealsRes, presRes] = await Promise.all([
         supabase
           .from("deals")
-          .select("effective_date, annual_premium")
-          .gte("effective_date", historyStart)
-          .lte("effective_date", todayStr)
+          .select("posted_at, annual_premium")
+          .eq("agent_id", agentId)
+          .gte("posted_at", monthBounds.startIso)
+          .lt("posted_at", monthBounds.endIso)
           .in("status", ["submitted", "active"]),
         supabase
           .from("daily_production")
-          .select("production_date, presentations")
-          .gte("production_date", historyStart)
-          .lte("production_date", todayStr),
+          .select("presentations")
+          .eq("agent_id", agentId)
+          .gte("production_date", monthBounds.startIso.slice(0, 10))
+          .lte("production_date", monthBounds.endIso.slice(0, 10)),
       ]);
 
-      const byDate = new Map<string, { production_date: string; aop: number; deals_closed: number; presentations: number }>();
-      (dealsRes.data || []).forEach((row: any) => {
-        const date = row.effective_date;
-        const existing = byDate.get(date) || { production_date: date, aop: 0, deals_closed: 0, presentations: 0 };
-        existing.aop += Number(row.annual_premium || 0);
-        existing.deals_closed += 1;
-        byDate.set(date, existing);
-      });
-      (presRes.data || []).forEach((row: any) => {
-        const date = row.production_date;
-        const existing = byDate.get(date) || { production_date: date, aop: 0, deals_closed: 0, presentations: 0 };
-        existing.presentations += row.presentations || 0;
-        byDate.set(date, existing);
-      });
+      const dealRows = (dealsRes.data ?? []) as Array<{ posted_at?: string | null; annual_premium?: number | null }>;
+      const totalAlp = sumAnnualPremium(dealRows);
+      const activeDays = countDistinctBusinessDays(dealRows);
+      const projection = projectMonthEndAlp(totalAlp, activeDays);
+      const presentations = (presRes.data ?? []).reduce((sum, row: { presentations?: number | null }) => sum + Number(row.presentations ?? 0), 0);
 
-      // Fill missing days with zeroes so 7d/30d math and regression are stable
-      return Array.from({ length: 30 }, (_, i) => {
-        const date = format(subDays(today, 29 - i), "yyyy-MM-dd");
-        return byDate.get(date) || {
-          production_date: date,
-          aop: 0,
-          deals_closed: 0,
-          presentations: 0,
-        };
-      });
+      return {
+        totalAlp,
+        activeDays,
+        projection,
+        deals: dealRows.length,
+        presentations,
+      };
     },
     staleTime: 120_000,
+    refetchInterval: 120_000,
   });
 
-  const forecast = useMemo(() => {
-    if (!production || production.length < 3) {
-      return { projected: 0, trend: "flat" as const, confidence: "low", last7: 0, last30: 0 };
-    }
-
-    const last7 = production
-      .slice(-7)
-      .reduce((s, p) => s + Number(p.aop || 0), 0);
-
-    const last30 = production.reduce((s, p) => s + Number(p.aop || 0), 0);
-
-    // Count days with actual production (non-zero) for pace-based projection
-    const activeDays = production.filter(p => Number(p.aop || 0) > 0).length;
-    const dailyPace = activeDays > 0 ? last30 / activeDays : 0;
-    
-    // Use last 7 days pace if available (more recent = more accurate)
-    const last7ActiveDays = production.slice(-7).filter(p => Number(p.aop || 0) > 0).length;
-    const recentPace = last7ActiveDays > 0 ? last7 / last7ActiveDays : dailyPace;
-    
-    // Assume ~5 working days per week, 4.3 weeks per month ≈ 21.5 working days
-    const workingDaysPerMonth = 22;
-    const projected = Math.max(0, Math.round(recentPace * workingDaysPerMonth));
-
-    // Trend based on comparing last 7d pace vs previous 7d pace
-    const prev7 = production.slice(-14, -7).reduce((s, p) => s + Number(p.aop || 0), 0);
-    const trend = last7 > prev7 * 1.1 ? "up" : last7 < prev7 * 0.9 ? "down" : "flat";
-    const confidence = activeDays >= 14 ? "high" : activeDays >= 7 ? "medium" : "low";
-
-    return { projected, trend, confidence, last7, last30 };
+  const trend = useMemo(() => {
+    if (!production) return "flat" as const;
+    if (production.projection.projection > production.totalAlp) return "up" as const;
+    if (production.projection.projection < production.totalAlp) return "down" as const;
+    return "flat" as const;
   }, [production]);
 
-  const TrendIcon = forecast.trend === "up" ? TrendingUp : forecast.trend === "down" ? TrendingDown : Minus;
-  const trendColor = forecast.trend === "up" ? "text-emerald-400" : forecast.trend === "down" ? "text-rose-400" : "text-muted-foreground";
+  if (!production) return null;
+
+  const TrendIcon = trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : Minus;
+  const trendColor = trend === "up" ? "text-emerald-400" : trend === "down" ? "text-rose-400" : "text-muted-foreground";
 
   return (
     <GlassCard className="p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h4 className="font-semibold text-sm flex items-center gap-2">
+      <div className="mb-3 flex items-center justify-between">
+        <h4 className="flex items-center gap-2 text-sm font-semibold">
           <TrendingUp className="h-4 w-4 text-primary" />
-          30-Day ALP Forecast
+          Month-end ALP forecast
         </h4>
         <Badge
           variant="outline"
           className={cn(
             "text-[10px]",
-            forecast.confidence === "high" ? "text-emerald-400 border-emerald-500/30" :
-            forecast.confidence === "medium" ? "text-amber-400 border-amber-500/30" :
+            production.projection.confidence === "high" ? "border-emerald-500/30 text-emerald-400" :
+            production.projection.confidence === "medium" ? "border-amber-500/30 text-amber-400" :
             "text-muted-foreground"
           )}
         >
-          {forecast.confidence} confidence
+          {production.projection.confidence} confidence
         </Badge>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
         <div className="text-center">
-          <p className="text-[10px] text-muted-foreground">Last 7 Days</p>
-          <p className="text-lg font-bold">${forecast.last7.toLocaleString()}</p>
+          <p className="text-[10px] text-muted-foreground">This Month</p>
+          <p className="text-lg font-bold">${production.totalAlp.toLocaleString()}</p>
         </div>
         <div className="text-center">
-          <p className="text-[10px] text-muted-foreground">Last 30 Days</p>
-          <p className="text-lg font-bold">${forecast.last30.toLocaleString()}</p>
+          <p className="text-[10px] text-muted-foreground">Posted Sales Days</p>
+          <p className="text-lg font-bold">{production.activeDays}</p>
         </div>
         <div className="text-center">
-          <p className="text-[10px] text-muted-foreground">Projected 30d</p>
+          <p className="text-[10px] text-muted-foreground">Projected Month</p>
           <div className="flex items-center justify-center gap-1">
-            <p className="text-lg font-bold">${forecast.projected.toLocaleString()}</p>
+            <p className="text-lg font-bold">${production.projection.projection.toLocaleString()}</p>
             <TrendIcon className={cn("h-4 w-4", trendColor)} />
           </div>
         </div>
       </div>
+
+      <p className="mt-3 text-[11px] text-muted-foreground">
+        {production.projection.activeDays < 3
+          ? "Projection stays pinned to current MTD until at least 3 posted-sales days exist."
+          : `${production.deals} deals written this month · ${production.presentations} presentations logged.`}
+      </p>
     </GlassCard>
   );
 }

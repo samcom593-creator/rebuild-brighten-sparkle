@@ -3,9 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useDebouncedRefetch } from "./useDebouncedRefetch";
 
 /**
- * Centralized realtime hook for daily_production updates.
- * Uses a singleton pattern - only ONE channel for the entire app.
- * All components share this channel and get debounced updates.
+ * Centralized realtime hook for truth-critical dashboard updates.
+ * Uses a singleton pattern so dashboard surfaces refresh together when
+ * deals, applications, daily_production, or AgentLink sync rows change.
  */
 
 let sharedChannel: ReturnType<typeof supabase.channel> | null = null;
@@ -31,7 +31,27 @@ export function useProductionRealtime(onUpdate: () => void, delay = 800) {
           "postgres_changes",
           { event: "*", schema: "public", table: "daily_production" },
           () => {
-            // Broadcast to all subscribers via custom event
+            window.dispatchEvent(new CustomEvent(PRODUCTION_UPDATE_EVENT));
+          }
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "deals" },
+          () => {
+            window.dispatchEvent(new CustomEvent(PRODUCTION_UPDATE_EVENT));
+          }
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "applications" },
+          () => {
+            window.dispatchEvent(new CustomEvent(PRODUCTION_UPDATE_EVENT));
+          }
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "agentlink_sync_log" },
+          () => {
             window.dispatchEvent(new CustomEvent(PRODUCTION_UPDATE_EVENT));
           }
         )

@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react";
-import { Trophy, Crown, Medal, TrendingUp, Calendar, Loader2 } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Crown, Loader2, Medal, TrendingUp, Calendar, Clock3 } from "lucide-react";
+import { formatDistanceToNowStrict } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { formatMetricSource, getMetricBounds, METRIC_REGISTRY, sumAnnualPremium } from "@/lib/metricTruth";
+import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 
 type Period = "daily" | "weekly" | "monthly";
 type Row = {
@@ -13,125 +15,182 @@ type Row = {
   agent_id: string;
   deals: number;
   alp: number;
-  mp: number;
   agent_name: string | null;
   avatar_url: string | null;
 };
 
-const RANK_ICONS: Record<number, { icon: any; color: string }> = {
-  1: { icon: Crown,  color: "text-amber-400" },
-  2: { icon: Medal,  color: "text-slate-300" },
-  3: { icon: Medal,  color: "text-orange-400" },
+const RANK_ICONS: Record<number, { icon: typeof Crown; color: string }> = {
+  1: { icon: Crown, color: "text-amber-400" },
+  2: { icon: Medal, color: "text-slate-300" },
+  3: { icon: Medal, color: "text-orange-400" },
 };
+
+function periodToWindow(period: Period) {
+  return period === "daily" ? "day" : period === "weekly" ? "week" : "month";
+}
 
 export default function Leaderboard() {
   const [period, setPeriod] = useState<Period>("monthly");
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
-  const [snapshotDate, setSnapshotDate] = useState<string>("");
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
 
-  const load = async (p: Period) => {
+  const load = useCallback(async (activePeriod: Period) => {
     setLoading(true);
     try {
-      const { data: latest } = await supabase
-        .from("leaderboard_snapshots" as any)
-        .select("snapshot_date")
-        .eq("period", p)
-        .order("snapshot_date", { ascending: false })
-        .limit(1);
-      const date = (latest as any)?.[0]?.snapshot_date;
-      if (!date) { setRows([]); return; }
-      setSnapshotDate(date);
+      const bounds = getMetricBounds(periodToWindow(activePeriod));
+      const [{ data: dealRows }, { data: syncRow }] = await Promise.all([
+        supabase
+          .from("deals")
+          .select("agent_id, annual_premium")
+          .gte("posted_at", bounds.startIso)
+          .lt("posted_at", bounds.endIso)
+          .in("status", ["submitted", "active"]),
+        supabase
+          .from("agentlink_sync_log" as any)
+          .select("finished_at, started_at")
+          .eq("status", "ok")
+          .order("started_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
 
-      const { data } = await supabase
-        .from("leaderboard_snapshots" as any)
-        .select("rank, agent_id, deals, alp, mp")
-        .eq("period", p)
-        .eq("snapshot_date", date)
-        .order("rank");
-      if (!data) { setRows([]); return; }
+      const grouped = new Map<string, { deals: number; annualPremiums: Array<{ annual_premium?: number | null }> }>();
+      (dealRows ?? []).forEach((deal: any) => {
+        if (!deal.agent_id) return;
+        if (!grouped.has(deal.agent_id)) {
+          grouped.set(deal.agent_id, { deals: 0, annualPremiums: [] });
+        }
+        const row = grouped.get(deal.agent_id)!;
+        row.deals += 1;
+        row.annualPremiums.push({ annual_premium: deal.annual_premium });
+      });
 
-      const ids = (data as any[]).map(r => r.agent_id);
+      const ids = Array.from(grouped.keys());
+      if (ids.length === 0) {
+        setRows([]);
+        setLastUpdatedAt((syncRow.data as any)?.finished_at || (syncRow.data as any)?.started_at || null);
+        return;
+      }
+
       const { data: agents } = await supabase
         .from("agents")
         .select("id, profile:profiles(full_name, avatar_url)")
         .in("id", ids);
-      const byId = new Map((agents ?? []).map((a: any) => [a.id, a.profile]));
 
-      setRows((data as any[]).map(r => ({
-        rank: r.rank,
-        agent_id: r.agent_id,
-        deals: r.deals,
-        alp: Number(r.alp),
-        mp: Number(r.mp),
-        agent_name: (byId.get(r.agent_id) as any)?.full_name ?? null,
-        avatar_url:  (byId.get(r.agent_id) as any)?.avatar_url ?? null,
-      })));
-    } finally { setLoading(false); }
-  };
-  useEffect(() => { load(period); }, [period]);
+      const byId = new Map((agents ?? []).map((agent: any) => [agent.id, agent.profile]));
+      const builtRows = ids
+        .map((agentId) => {
+          const totals = grouped.get(agentId)!;
+          return {
+            rank: 0,
+            agent_id: agentId,
+            deals: totals.deals,
+            alp: sumAnnualPremium(totals.annualPremiums),
+            agent_name: (byId.get(agentId) as any)?.full_name ?? null,
+            avatar_url: (byId.get(agentId) as any)?.avatar_url ?? null,
+          };
+        })
+        .sort((a, b) => b.alp - a.alp || b.deals - a.deals)
+        .map((row, index) => ({ ...row, rank: index + 1 }));
+
+      setRows(builtRows);
+      setLastUpdatedAt((syncRow.data as any)?.finished_at || (syncRow.data as any)?.started_at || null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load(period);
+  }, [period, load]);
+
+  useProductionRealtime(() => {
+    load(period);
+  }, 300);
+
+  const sourceHint = formatMetricSource(METRIC_REGISTRY.leaderboards, lastUpdatedAt);
 
   return (
-    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-4">
+    <div className="mx-auto max-w-5xl space-y-4 p-4 md:p-6">
       <div className="flex items-center gap-3">
-        <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-amber-500/30 to-yellow-500/20 flex items-center justify-center">
-          <Trophy className="h-6 w-6 text-amber-300" />
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500/30 to-yellow-500/20">
+          <Crown className="h-6 w-6 text-amber-300" />
         </div>
         <div className="flex-1">
           <h1 className="apex-headline text-3xl font-bold">Leaderboard</h1>
           <p className="text-sm text-muted-foreground">
-            Live rankings from Agent Link — refreshed nightly. Top producers earn badges automatically.
+            Live rankings from posted deals in Chicago time. Day, week, and month all use the same truth layer.
           </p>
         </div>
-        {snapshotDate && <Badge variant="outline" className="gap-1.5"><Calendar className="h-3 w-3" />{new Date(snapshotDate).toLocaleDateString()}</Badge>}
+        {lastUpdatedAt && (
+          <Badge variant="outline" className="gap-1.5">
+            <Calendar className="h-3 w-3" />
+            {formatDistanceToNowStrict(new Date(lastUpdatedAt), { addSuffix: true })}
+          </Badge>
+        )}
       </div>
 
-      <Tabs value={period} onValueChange={v => setPeriod(v as Period)}>
-        <TabsList className="grid grid-cols-3 w-full md:w-auto">
+      <p className="text-xs text-muted-foreground">{sourceHint}</p>
+
+      <Tabs value={period} onValueChange={(value) => setPeriod(value as Period)}>
+        <TabsList className="grid w-full grid-cols-3 md:w-auto">
           <TabsTrigger value="daily">Daily</TabsTrigger>
           <TabsTrigger value="weekly">Weekly</TabsTrigger>
           <TabsTrigger value="monthly">Monthly</TabsTrigger>
         </TabsList>
 
-        {(["daily","weekly","monthly"] as Period[]).map(p => (
-          <TabsContent key={p} value={p} className="mt-4">
+        {(["daily", "weekly", "monthly"] as Period[]).map((tab) => (
+          <TabsContent key={tab} value={tab} className="mt-4">
             {loading ? (
               <div className="flex items-center justify-center py-12 text-muted-foreground">
-                <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading…
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading…
               </div>
             ) : rows.length === 0 ? (
               <GlassCard className="p-12 text-center text-muted-foreground">
-                No {p} leaderboard data yet. Wait for the nightly top-producers cron (03:05 UTC) to fire.
+                No {tab} leaderboard data yet. The leaderboard will populate as soon as posted deals land in the truth layer.
               </GlassCard>
             ) : (
-              <GlassCard className="p-0 overflow-hidden">
+              <GlassCard className="overflow-hidden p-0">
                 <div className="divide-y divide-border/40">
-                  {rows.map(r => {
-                    const RankIcon = RANK_ICONS[r.rank]?.icon ?? TrendingUp;
-                    const rankColor = RANK_ICONS[r.rank]?.color ?? "text-muted-foreground";
-                    const highlight = r.rank <= 3;
+                  {rows.map((row) => {
+                    const RankIcon = RANK_ICONS[row.rank]?.icon ?? TrendingUp;
+                    const rankColor = RANK_ICONS[row.rank]?.color ?? "text-muted-foreground";
+                    const highlight = row.rank <= 3;
+
                     return (
-                      <div key={r.rank}
+                      <div
+                        key={row.agent_id}
                         className={cn(
                           "flex items-center gap-3 px-4 py-3 transition-all",
-                          highlight && "bg-gradient-to-r from-amber-500/10 to-transparent"
-                        )}>
-                        <div className={cn("w-10 text-center font-bold text-lg", rankColor)}>
-                          #{r.rank}
+                          highlight && "bg-gradient-to-r from-amber-500/10 to-transparent",
+                        )}
+                      >
+                        <div className={cn("w-10 text-center text-lg font-bold", rankColor)}>
+                          #{row.rank}
                         </div>
                         <RankIcon className={cn("h-5 w-5", rankColor)} />
-                        {r.avatar_url
-                          ? <img src={r.avatar_url} alt="" className="h-9 w-9 rounded-full ring-2 ring-border/40" />
-                          : <div className="h-9 w-9 rounded-full bg-muted/50 flex items-center justify-center text-xs font-semibold">
-                              {(r.agent_name ?? "?").split(" ").map(n => n[0]).slice(0,2).join("")}
-                            </div>}
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold truncate">{r.agent_name ?? "Unknown agent"}</div>
-                          <div className="text-xs text-muted-foreground">{r.deals} deal{r.deals === 1 ? "" : "s"}</div>
+                        {row.avatar_url ? (
+                          <img src={row.avatar_url} alt="" className="h-9 w-9 rounded-full ring-2 ring-border/40" />
+                        ) : (
+                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted/50 text-xs font-semibold">
+                            {(row.agent_name ?? "?").split(" ").map((part) => part[0]).slice(0, 2).join("")}
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate font-semibold">{row.agent_name ?? "Unknown agent"}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {row.deals} deal{row.deals === 1 ? "" : "s"}
+                          </div>
                         </div>
                         <div className="text-right">
-                          <div className="font-bold tabular-nums text-emerald-400">${r.alp.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                          <div className="text-xs text-muted-foreground tabular-nums">${r.mp.toLocaleString(undefined, { minimumFractionDigits: 2 })}/mo</div>
+                          <div className="font-bold tabular-nums text-emerald-400">
+                            ${row.alp.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </div>
+                          <div className="mt-0.5 flex items-center justify-end gap-1 text-xs text-muted-foreground">
+                            <Clock3 className="h-3 w-3" />
+                            posted deals truth
+                          </div>
                         </div>
                       </div>
                     );

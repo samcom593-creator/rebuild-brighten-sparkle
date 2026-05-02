@@ -24,7 +24,7 @@ const packages = [
 const trustSignals = [
   { icon: Shield, text: "Real people who requested info" },
   { icon: Check, text: "Verified phone numbers" },
-  { icon: TrendingUp, text: "Agents average 3.2x ROI" },
+  { icon: TrendingUp, text: "Built for faster follow-up" },
 ];
 
 export function ApexLeadsSection() {

@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { RealFinancesCard } from "@/components/finances/RealFinancesCard";
 import { ExtendedStatsStrip } from "@/components/dashboard/ExtendedStatsStrip";
 import { CompactLeaderboard } from "@/components/dashboard/CompactLeaderboard";
+import { getBusinessMonthBounds, getBusinessWeekBounds } from "@/lib/dateUtils";
+import { sumAnnualPremium, getCloseRate } from "@/lib/metricTruth";
 
 interface Props {
   agentId?: string;
@@ -22,53 +24,46 @@ export function AgentPersonalDashboard({ agentId }: Props) {
     queryFn: async () => {
       if (!agentId) return null;
 
-      const now = new Date();
-      // Rolling 7d so "My Weekly ALP" doesn't crash to near-zero on Monday/Tuesday.
-      const weekStart = new Date(now);
-      weekStart.setDate(now.getDate() - 6);
-      weekStart.setHours(0, 0, 0, 0);
-      // Rolling 30d for "My Monthly ALP" so May 1 doesn't suddenly show $0 either.
-      const monthStart = new Date(now);
-      monthStart.setDate(now.getDate() - 29);
-      monthStart.setHours(0, 0, 0, 0);
+      const weekBounds = getBusinessWeekBounds();
+      const monthBounds = getBusinessMonthBounds();
 
-      const weekStartStr = weekStart.toISOString().split("T")[0];
-      const monthStartStr = monthStart.toISOString().split("T")[0];
-
-      // Pull this agent's own deals (effective_date + valid status) for ALP
+      // Pull this agent's own deals (posted_at + valid status) for ALP
       // and deal counts. Presentations stays on daily_production since
       // that's the only source.
       const [weekDealsRes, monthDealsRes, weekPresRes, estimateRes] = await Promise.all([
         supabase.from("deals")
-          .select("annual_premium")
+          .select("annual_premium, posted_at")
           .eq("agent_id", agentId)
-          .gte("effective_date", weekStartStr)
+          .gte("posted_at", weekBounds.startIso)
+          .lt("posted_at", weekBounds.endIso)
           .in("status", ["submitted", "active"]),
         supabase.from("deals")
-          .select("annual_premium")
+          .select("annual_premium, posted_at")
           .eq("agent_id", agentId)
-          .gte("effective_date", monthStartStr)
+          .gte("posted_at", monthBounds.startIso)
+          .lt("posted_at", monthBounds.endIso)
           .in("status", ["submitted", "active"]),
         supabase.from("daily_production")
           .select("presentations")
           .eq("agent_id", agentId)
-          .gte("production_date", weekStartStr),
+          .gte("production_date", weekBounds.startIso.slice(0, 10))
+          .lte("production_date", weekBounds.endIso.slice(0, 10)),
         supabase.from("agent_revenue_estimate" as any)
           .select("*")
           .eq("agent_id", agentId)
           .maybeSingle(),
       ]);
 
-      const weekALP = (weekDealsRes.data || []).reduce((s, r: any) => s + (Number(r.annual_premium) || 0), 0);
+      const weekALP = sumAnnualPremium((weekDealsRes.data || []) as Array<{ annual_premium?: number | null }>);
       const weekDeals = (weekDealsRes.data || []).length;
       const weekPres = (weekPresRes.data || []).reduce((s, r: any) => s + (Number(r.presentations) || 0), 0);
-      const monthALP = (monthDealsRes.data || []).reduce((s, r: any) => s + (Number(r.annual_premium) || 0), 0);
+      const monthALP = sumAnnualPremium((monthDealsRes.data || []) as Array<{ annual_premium?: number | null }>);
       const monthDeals = (monthDealsRes.data || []).length;
 
       return {
         weekALP, weekDeals, weekPres,
         monthALP, monthDeals,
-        closeRate: weekPres > 0 ? Math.round((weekDeals / weekPres) * 1000) / 10 : 0,
+        closeRate: getCloseRate(weekDeals, weekPres),
         estimate: estimateRes.data as any,
       };
     },
@@ -118,9 +113,9 @@ export function AgentPersonalDashboard({ agentId }: Props) {
 
       {/* Personal stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard title="My Weekly ALP" value={`$${(me?.weekALP || 0).toLocaleString()}`} icon={DollarSign} variant="success" />
+        <StatCard title="My Weekly ALP" value={`$${(me?.weekALP || 0).toLocaleString()}`} icon={DollarSign} variant="success" hint="Calendar week-to-date" />
         <StatCard title="My Weekly Deals" value={me?.weekDeals || 0} icon={TrendingUp} variant="primary" />
-        <StatCard title="My Monthly ALP" value={`$${(me?.monthALP || 0).toLocaleString()}`} icon={Target} variant="success" />
+        <StatCard title="My Monthly ALP" value={`$${(me?.monthALP || 0).toLocaleString()}`} icon={Target} variant="success" hint="Calendar month-to-date" />
         <StatCard title="My Close Rate" value={`${me?.closeRate || 0}%`} icon={Award} variant="default" />
       </div>
 

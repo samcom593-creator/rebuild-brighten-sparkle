@@ -5,9 +5,10 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { subDays, format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
+import { subDays, format } from "date-fns";
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
+import { formatMetricSource, getMetricBounds, METRIC_REGISTRY } from "@/lib/metricTruth";
 
 interface CompactLeaderboardProps {
   currentAgentId?: string;
@@ -216,6 +217,7 @@ export function CompactLeaderboard({ currentAgentId, className, refreshKey }: Co
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [isConnected, setIsConnected] = useState(true);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
   const [customRange, setCustomRange] = useState<DateRange>({
     from: subDays(new Date(), 30),
     to: new Date(),
@@ -223,37 +225,25 @@ export function CompactLeaderboard({ currentAgentId, className, refreshKey }: Co
 
   const fetchLeaderboard = useCallback(async () => {
     try {
-      let startDate: string;
-      let endDate: string;
-      const today = new Date();
-      
-      switch (period) {
-        case "week":
-          startDate = format(startOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd");
-          endDate = format(endOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd");
-          break;
-        case "month":
-          startDate = format(startOfMonth(today), "yyyy-MM-dd");
-          endDate = format(endOfMonth(today), "yyyy-MM-dd");
-          break;
-        case "custom":
-          startDate = customRange.from ? format(customRange.from, "yyyy-MM-dd") : format(subDays(today, 30), "yyyy-MM-dd");
-          endDate = customRange.to ? format(customRange.to, "yyyy-MM-dd") : format(today, "yyyy-MM-dd");
-          break;
-        default: // day
-          startDate = format(today, "yyyy-MM-dd");
-          endDate = startDate;
-      }
+      const bounds = getMetricBounds(period, customRange);
 
-      // Pull from deals (Agent Link truth) — daily_production was self-
-      // reported and drifted from agency totals. Status submitted/active
-      // by effective_date matches every other dashboard surface.
-      const { data: production } = await supabase
-        .from("deals")
-        .select("agent_id, annual_premium, effective_date")
-        .gte("effective_date", startDate)
-        .lte("effective_date", endDate)
-        .in("status", ["submitted", "active"]);
+      const [{ data: production }, { data: syncRow }] = await Promise.all([
+        supabase
+          .from("deals")
+          .select("agent_id, annual_premium, posted_at")
+          .gte("posted_at", bounds.startIso)
+          .lt("posted_at", bounds.endIso)
+          .in("status", ["submitted", "active"]),
+        supabase
+          .from("agentlink_sync_log" as any)
+          .select("finished_at, started_at")
+          .eq("status", "ok")
+          .order("started_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
+      const lastSync = syncRow as { finished_at?: string | null; started_at?: string | null } | null;
+      setLastUpdatedAt(lastSync?.finished_at || lastSync?.started_at || null);
 
       if (!production || production.length === 0) {
         setEntries([]);
@@ -391,6 +381,9 @@ export function CompactLeaderboard({ currentAgentId, className, refreshKey }: Co
           )}
         </div>
       </div>
+      <p className="mb-3 text-[11px] text-muted-foreground">
+        {formatMetricSource(METRIC_REGISTRY.leaderboards, lastUpdatedAt)}
+      </p>
 
       <AnimatePresence mode="popLayout">
         {loading ? (

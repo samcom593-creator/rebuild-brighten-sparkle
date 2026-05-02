@@ -124,7 +124,7 @@ export default function GetLicensed() {
                 Our comprehensive guide walks you through every step of the licensing process, from application to exam preparation.
               </p>
               
-              <a href={documentUrl} target="_blank" rel="noopener noreferrer" rel="noopener noreferrer">
+              <a href={documentUrl} target="_blank" rel="noopener noreferrer">
                 <GradientButton variant="outline" className="w-full">
                   <FileText className="h-4 w-4 mr-2" />
                   View Licensing Document
@@ -149,7 +149,7 @@ export default function GetLicensed() {
                 Complete your state-required pre-licensing education through our partner program. We cover the cost!
               </p>
               
-              <a href={courseUrl} target="_blank" rel="noopener noreferrer" rel="noopener noreferrer">
+              <a href={courseUrl} target="_blank" rel="noopener noreferrer">
                 <GradientButton className="w-full">
                   <GraduationCap className="h-4 w-4 mr-2" />
                   Start Your Course
@@ -198,7 +198,7 @@ export default function GetLicensed() {
             <p className="text-muted-foreground mb-6 max-w-lg mx-auto">
               After you finish your pre-licensing course and pass your exam, book a call with us to get started on your APEX journey!
             </p>
-            <a href={calendlyUrl} target="_blank" rel="noopener noreferrer" rel="noopener noreferrer">
+            <a href={calendlyUrl} target="_blank" rel="noopener noreferrer">
               <GradientButton size="lg" className="text-lg px-8">
                 <Calendar className="h-5 w-5 mr-2" />
                 Book Your Onboarding Call

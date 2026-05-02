@@ -27,7 +27,6 @@ import { AnalyticsPieChart } from "@/components/dashboard/AnalyticsPieChart";
 import { ManagerTeamView } from "@/components/dashboard/ManagerTeamView";
 
 import { LeaderboardTabs } from "@/components/dashboard/LeaderboardTabs";
-import { ClosingRateLeaderboard } from "@/components/dashboard/ClosingRateLeaderboard";
 import { ReferralLeaderboard } from "@/components/dashboard/ReferralLeaderboard";
 import { TeamSnapshotCard } from "@/components/dashboard/TeamSnapshotCard";
 import { TeamPerformanceBreakdown } from "@/components/dashboard/TeamPerformanceBreakdown";
@@ -63,14 +62,16 @@ import { AgentPersonalDashboard } from "@/components/dashboard/AgentPersonalDash
 import { useMyDownline } from "@/hooks/useMyDownline";
 
 import { StalledAgentsAlert } from "@/components/dashboard/StalledAgentsAlert";
-import { ControlTerminal } from "@/components/dashboard/ControlTerminal";
 import { ReferralTrackingCard } from "@/components/dashboard/ReferralTrackingCard";
 import { StatCardDrilldown } from "@/components/dashboard/StatCardDrilldown";
 import { HideableCard } from "@/components/dashboard/HideableCard";
 import { HiddenCardsManager } from "@/components/dashboard/HiddenCardsManager";
+import { DataFreshnessBanner } from "@/components/dashboard/DataFreshnessBanner";
 import { useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { getBusinessDayBounds, getBusinessWeekBounds } from "@/lib/dateUtils";
+import { ACTIVE_PRODUCER_AP_THRESHOLD_7D, ACTIVE_PROMOTED_STAGES, getCloseRate, getPriorWeekMatchedBounds, sumAnnualPremium } from "@/lib/metricTruth";
 
 const HIDEABLE_CARDS: Record<string, string> = {
   "dashboard.insight-cards": "Insight Cards",
@@ -309,62 +310,56 @@ export default function Dashboard() {
   const { data: topMetrics } = useQuery({
     queryKey: ["dashboard-top-metrics-v2-deals", isAdmin ? "agency" : "downline", myDownlineIds.join(",")],
     queryFn: async () => {
-      const now = new Date();
-      // Weekly window = ROLLING 7 days (today + 6 prior). The previous Mon-Sun
-      // ISO definition collapsed to 1-2 days every Monday/Tuesday morning,
-      // making "Weekly ALP" look broken early in the week. Rolling 7d always
-      // reflects ~a full week of activity which matches the language and
-      // matches the active-agent rule (Sam, 2026-04-27 dashboard truth).
-      const weekStart = new Date(now);
-      weekStart.setDate(now.getDate() - 6);
-      weekStart.setHours(0, 0, 0, 0);
-      const weekStartStr = weekStart.toISOString().split("T")[0];
-
-      const thirtyDaysAgo = new Date(now);
-      thirtyDaysAgo.setDate(now.getDate() - 30);
-      const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split("T")[0];
+      const weekBounds = getBusinessWeekBounds();
+      const dayBounds = getBusinessDayBounds();
+      const priorWeekBounds = getPriorWeekMatchedBounds();
 
       const shouldScope = !isAdmin && myDownlineIds.length > 0;
 
-      // Deals-based queries — agency-wide production by EFFECTIVE_DATE (the
-      // date the policy is in force). posted_at was unreliable because
-      // Agent Link re-syncs rewrite it on every pull, which made re-pulled
-      // deals from prior days inflate today's number. effective_date is the
-      // single agency-truth column.
-      // Status filter: only "submitted" or "active" — never count "cancelled"
-      // or "lapsed" toward production totals.
       const VALID_STATUS = ["submitted", "active"] as const;
-      const yesterdayStartLocal = new Date(now); yesterdayStartLocal.setDate(now.getDate() - 1); yesterdayStartLocal.setHours(0,0,0,0);
-      const todayStartLocal     = new Date(now); todayStartLocal.setHours(0,0,0,0);
-      const yStr = yesterdayStartLocal.toISOString().split("T")[0];
-      const tStr = todayStartLocal.toISOString().split("T")[0];
-      // Prev week = the 7 days immediately before this rolling 7-day window
-      // (i.e. days 8-14 ago). Used for the WoW arrow on Weekly ALP.
-      const prevWeekStartDate = new Date(weekStart); prevWeekStartDate.setDate(weekStart.getDate() - 7);
-      const prevWeekEndDate   = new Date(weekStart); prevWeekEndDate.setDate(weekStart.getDate() - 1);
-      const pwStr  = prevWeekStartDate.toISOString().split("T")[0];
-      const pweStr = prevWeekEndDate.toISOString().split("T")[0];
-
-      // Active-agent rule (Sam, 2026-04-27):
-      //   counts only if (sum AP >= $4k over last 7d effective_date) OR
-      //   (stage promoted to live/evaluated/transfer in last 7d).
-      // Replaces the old 30-day "any deal at all" definition.
-      const sevenAgo = new Date(now); sevenAgo.setDate(now.getDate() - 7);
-      const sevenStr = sevenAgo.toISOString().split("T")[0];
-      const sevenISO = sevenAgo.toISOString();
-      let activeQ     = supabase.from("deals").select("agent_id, annual_premium").gte("effective_date", sevenStr).in("status", VALID_STATUS as unknown as string[]);
-      const releasedQ = supabase.from("agents").select("id").gte("stage_changed_at", sevenISO).in("onboarding_stage", ["live", "evaluated", "transfer"]);
-      let weekDealsQ  = supabase.from("deals").select("annual_premium, agent_id").gte("effective_date", weekStartStr).in("status", VALID_STATUS as unknown as string[]);
-      let todayDealsQ = supabase.from("deals").select("annual_premium").eq("effective_date", tStr).in("status", VALID_STATUS as unknown as string[]);
-      let yesterdayQ  = supabase.from("deals").select("annual_premium").eq("effective_date", yStr).in("status", VALID_STATUS as unknown as string[]);
-      let prevWeekQ   = supabase.from("deals").select("annual_premium").gte("effective_date", pwStr).lte("effective_date", pweStr).in("status", VALID_STATUS as unknown as string[]);
+      const sevenDaysAgoIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      let activeQ = supabase
+        .from("deals")
+        .select("agent_id, annual_premium")
+        .gte("posted_at", sevenDaysAgoIso)
+        .in("status", VALID_STATUS as unknown as string[]);
+      const releasedQ = supabase
+        .from("agents")
+        .select("id")
+        .gte("stage_changed_at", sevenDaysAgoIso)
+        .in("onboarding_stage", ACTIVE_PROMOTED_STAGES as unknown as string[]);
+      let weekDealsQ = supabase
+        .from("deals")
+        .select("annual_premium, agent_id")
+        .gte("posted_at", weekBounds.startIso)
+        .lt("posted_at", weekBounds.endIso)
+        .in("status", VALID_STATUS as unknown as string[]);
+      let todayDealsQ = supabase
+        .from("deals")
+        .select("annual_premium")
+        .gte("posted_at", dayBounds.startIso)
+        .lt("posted_at", dayBounds.endIso)
+        .in("status", VALID_STATUS as unknown as string[]);
+      let prevWeekQ = supabase
+        .from("deals")
+        .select("annual_premium")
+        .gte("posted_at", priorWeekBounds.startIso)
+        .lt("posted_at", priorWeekBounds.endIso)
+        .in("status", VALID_STATUS as unknown as string[]);
       if (shouldScope) {
         todayDealsQ = todayDealsQ.in("agent_id", myDownlineIds);
-        yesterdayQ  = yesterdayQ.in("agent_id", myDownlineIds);
         prevWeekQ   = prevWeekQ.in("agent_id", myDownlineIds);
       }
-      let presQ    = supabase.from("daily_production").select("presentations, agent_id").gte("production_date", weekStartStr);
-      let appsQ    = supabase.from("applications").select("id", { count: "exact", head: true }).gte("created_at", weekStart.toISOString());
+      let presQ = supabase
+        .from("daily_production")
+        .select("presentations, agent_id")
+        .gte("production_date", weekBounds.startIso.slice(0, 10))
+        .lte("production_date", weekBounds.endIso.slice(0, 10));
+      let appsQ = supabase
+        .from("applications")
+        .select("id", { count: "exact", head: true })
+        .gte("created_at", weekBounds.startIso)
+        .lt("created_at", weekBounds.endIso);
 
       if (shouldScope) {
         activeQ     = activeQ.in("agent_id", myDownlineIds);
@@ -374,7 +369,7 @@ export default function Dashboard() {
       }
 
       // Use allSettled so one failed sub-query doesn't blank the whole header.
-      const settled = await Promise.allSettled([activeQ, releasedQ, weekDealsQ, presQ, appsQ, todayDealsQ, yesterdayQ, prevWeekQ]);
+      const settled = await Promise.allSettled([activeQ, releasedQ, weekDealsQ, presQ, appsQ, todayDealsQ, prevWeekQ]);
       const safe = (i: number): any => (settled[i].status === "fulfilled" ? (settled[i] as any).value : { data: [], count: 0 });
       const activeRes    = safe(0);
       const releasedRes  = safe(1);
@@ -382,9 +377,8 @@ export default function Dashboard() {
       const presRes      = safe(3);
       const appsRes      = safe(4);
       const todayRes     = safe(5);
-      const yesterdayRes = safe(6);
-      const prevWeekRes  = safe(7);
-      const failedNames = ["active","released","weekDeals","pres","apps","today","yesterday","prevWeek"]
+      const prevWeekRes  = safe(6);
+      const failedNames = ["active","released","weekDeals","pres","apps","today","prevWeek"]
         .filter((_, i) => settled[i].status === "rejected");
       if (failedNames.length) console.warn("[Dashboard topMetrics] partial failure:", failedNames);
 
@@ -395,17 +389,15 @@ export default function Dashboard() {
         sumByAgent.set(r.agent_id, (sumByAgent.get(r.agent_id) || 0) + (Number(r.annual_premium) || 0));
       }
       const activeAgentIds = new Set<string>();
-      for (const [id, ap] of sumByAgent) if (ap >= 4000) activeAgentIds.add(id);
+      for (const [id, ap] of sumByAgent) if (ap >= ACTIVE_PRODUCER_AP_THRESHOLD_7D) activeAgentIds.add(id);
       for (const r of (releasedRes.data || []) as any[]) if (r.id) activeAgentIds.add(r.id);
-      const weeklyALP      = (weekDealsRes.data || []).reduce((s: number, r: any) => s + (Number(r.annual_premium) || 0), 0);
-      const todayALP       = (todayRes.data     || []).reduce((s: number, r: any) => s + (Number(r.annual_premium) || 0), 0);
-      const yesterdayALP   = (yesterdayRes.data || []).reduce((s: number, r: any) => s + (Number(r.annual_premium) || 0), 0);
-      const prevWeekALP    = (prevWeekRes.data  || []).reduce((s: number, r: any) => s + (Number(r.annual_premium) || 0), 0);
-      const dayOverDayPct  = yesterdayALP > 0 ? Math.round(((todayALP - yesterdayALP) / yesterdayALP) * 100) : null;
+      const weeklyALP      = sumAnnualPremium((weekDealsRes.data || []) as Array<{ annual_premium?: number | null }>);
+      const todayALP       = sumAnnualPremium((todayRes.data || []) as Array<{ annual_premium?: number | null }>);
+      const prevWeekALP    = sumAnnualPremium((prevWeekRes.data || []) as Array<{ annual_premium?: number | null }>);
       const weekOverWeekPct = prevWeekALP > 0 ? Math.round(((weeklyALP - prevWeekALP) / prevWeekALP) * 100) : null;
       const totalDeals     = (weekDealsRes.data || []).length;
       const totalPres      = (presRes.data || []).reduce((s: number, r: any) => s + (Number(r.presentations) || 0), 0);
-      const rawCloseRate   = totalPres > 0 ? (totalDeals / totalPres) * 100 : 0;
+      const rawCloseRate   = getCloseRate(totalDeals, totalPres);
       // Cap the DISPLAYED rate at 100 — a 120%+ number means agents are
       // writing deals without logging presentations, not that they're
       // closing harder than physics allows. Keep the raw value around so
@@ -417,9 +409,7 @@ export default function Dashboard() {
         activeAgents: activeAgentIds.size,
         weeklyALP,
         todayALP,
-        yesterdayALP,
         prevWeekALP,
-        dayOverDayPct,
         weekOverWeekPct,
         appsThisWeek: appsRes.count || 0,
         closeRate: Math.round(cappedCloseRate * 10) / 10,
@@ -571,18 +561,10 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ControlTerminal stays admin-only on dashboard. OffersTiles moved
-          to its own /dashboard/offers route (admin-only) and surfaced via
-          the LEADS section of the sidebar so the dashboard reads as
-          intel-dense rather than commerce-dense. */}
-      {isAdmin && (
-        <div className="mb-6 space-y-4">
-          <ControlTerminal />
-        </div>
-      )}
-
       {/* Focus Now — top priority card from bot_priorities */}
       <FocusNow />
+
+      <DataFreshnessBanner autoRepair className="mb-5" />
 
       {/* Month-end forecast */}
       <ForecastCard />
@@ -618,13 +600,10 @@ export default function Dashboard() {
                 variant="success"
                 hint={(() => {
                   const today = `Today $${Math.round(topMetrics.todayALP).toLocaleString()}`;
-                  const dod = topMetrics.dayOverDayPct !== null
-                    ? ` (${topMetrics.dayOverDayPct >= 0 ? "▲" : "▼"}${Math.abs(topMetrics.dayOverDayPct)}% vs yesterday)`
-                    : "";
                   const wow = topMetrics.weekOverWeekPct !== null
-                    ? ` · ${topMetrics.weekOverWeekPct >= 0 ? "▲" : "▼"}${Math.abs(topMetrics.weekOverWeekPct)}% vs last week`
+                    ? ` · ${topMetrics.weekOverWeekPct >= 0 ? "▲" : "▼"}${Math.abs(topMetrics.weekOverWeekPct)}% vs matched last week`
                     : ` · last week $${Math.round(topMetrics.prevWeekALP).toLocaleString()}`;
-                  return today + dod + wow;
+                  return today + wow;
                 })()}
               />
             </div>
@@ -870,8 +849,7 @@ export default function Dashboard() {
           <LeaderboardTabs currentAgentId={currentAgentId} />
 
           {/* Secondary Leaderboards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <ClosingRateLeaderboard />
+          <div className="grid grid-cols-1 gap-4">
             <ReferralLeaderboard />
           </div>
 
@@ -1159,4 +1137,3 @@ function PortalLoginsDialog() {
     </Dialog>
   );
 }
-

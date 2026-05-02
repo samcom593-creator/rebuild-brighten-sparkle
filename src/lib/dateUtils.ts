@@ -1,98 +1,172 @@
-import { format, subDays, startOfWeek, startOfMonth, endOfWeek, endOfMonth } from "date-fns";
-import { toZonedTime } from "date-fns-tz";
+import {
+  addDays,
+  differenceInCalendarDays,
+  endOfMonth,
+  format,
+  startOfMonth,
+  startOfWeek,
+  subDays,
+  subWeeks,
+} from "date-fns";
+import { formatInTimeZone, fromZonedTime, toZonedTime } from "date-fns-tz";
 
-const PST_TIMEZONE = "America/Los_Angeles";
+export const BUSINESS_TIMEZONE = "America/Chicago";
+
+function toBusinessTime(date: Date = new Date()): Date {
+  return toZonedTime(date, BUSINESS_TIMEZONE);
+}
+
+function businessDayKey(date: Date = new Date()): string {
+  return formatInTimeZone(date, BUSINESS_TIMEZONE, "yyyy-MM-dd");
+}
+
+function startOfBusinessDay(date: Date = new Date()): Date {
+  return fromZonedTime(`${businessDayKey(date)}T00:00:00`, BUSINESS_TIMEZONE);
+}
+
+function endOfBusinessDay(date: Date = new Date()): Date {
+  return fromZonedTime(`${businessDayKey(addDays(toBusinessTime(date), 1))}T00:00:00`, BUSINESS_TIMEZONE);
+}
+
+function businessWeekStartDate(date: Date = new Date()): Date {
+  return startOfWeek(toBusinessTime(date), { weekStartsOn: 1 });
+}
+
+function businessMonthStartDate(date: Date = new Date()): Date {
+  return startOfMonth(toBusinessTime(date));
+}
 
 /**
- * Get the current date/time in PST timezone
+ * Legacy name kept for compatibility. Returns the current business-time Date
+ * in America/Chicago, not Pacific.
  */
 export function getNowPST(): Date {
-  return toZonedTime(new Date(), PST_TIMEZONE);
+  return toBusinessTime();
 }
 
 /**
- * Get today's date in PST timezone as YYYY-MM-DD string
+ * Legacy name kept for compatibility. Returns today's America/Chicago date key.
  */
 export function getTodayPST(): string {
-  const pstNow = getNowPST();
-  return format(pstNow, "yyyy-MM-dd");
+  return businessDayKey();
 }
 
 /**
- * Get a date N days ago in PST timezone as YYYY-MM-DD string
+ * Legacy name kept for compatibility. Returns N days ago in America/Chicago.
  */
 export function getDateDaysAgoPST(daysAgo: number): string {
-  const pstNow = getNowPST();
-  return format(subDays(pstNow, daysAgo), "yyyy-MM-dd");
+  return businessDayKey(subDays(toBusinessTime(), daysAgo));
 }
 
 /**
- * Start of the current ROLLING 7-day window in PST (today minus 6 days), as
- * YYYY-MM-DD. We dropped the ISO Mon-Sun window because it collapsed to 1-2
- * days every Monday/Tuesday morning, making "this week" look broken until
- * Friday. Rolling 7d always reflects ~a full week of activity, matches
- * Sam's active-agent rule (>=$4k AP last 7d), and matches the intuitive
- * meaning of "weekly" on the dashboard.
- *
- * Note: the function is named `WeekStartPST` for backwards compatibility
- * across many call sites; it now returns the rolling 7d start.
+ * Legacy name kept for compatibility. Returns the current calendar week's
+ * Monday in America/Chicago.
  */
 export function getWeekStartPST(): string {
-  const pstNow = getNowPST();
-  return format(subDays(pstNow, 6), "yyyy-MM-dd");
+  return format(businessWeekStartDate(), "yyyy-MM-dd");
 }
 
 /**
- * Start of the current ROLLING 30-day window in PST (today minus 29 days),
- * as YYYY-MM-DD. Same reasoning as `getWeekStartPST` — calendar-month-MTD
- * crashed to $0 every May 1, July 1, etc., even though production was
- * unchanged. Rolling 30d reads as "this month" without the cliff.
+ * Legacy name kept for compatibility. Returns the current calendar month's
+ * first day in America/Chicago.
  */
 export function getMonthStartPST(): string {
-  const pstNow = getNowPST();
-  return format(subDays(pstNow, 29), "yyyy-MM-dd");
+  return format(businessMonthStartDate(), "yyyy-MM-dd");
 }
 
-/**
- * Calendar-week (ISO Mon-Sun) start in PST. Reserved for surfaces that
- * specifically need calendar-week semantics (cohort tables, weekly recap
- * digests). Most dashboard widgets should use `getWeekStartPST` instead.
- */
 export function getIsoWeekStartPST(): string {
-  const pstNow = getNowPST();
-  return format(startOfWeek(pstNow, { weekStartsOn: 1 }), "yyyy-MM-dd");
+  return getWeekStartPST();
 }
 
-/**
- * Calendar-month (date_trunc('month')) start in PST. Reserved for
- * surfaces that specifically need MTD semantics (commission rollups,
- * monthly recap emails). Most dashboard widgets should use
- * `getMonthStartPST` instead.
- */
 export function getCalendarMonthStartPST(): string {
-  const pstNow = getNowPST();
-  return format(startOfMonth(pstNow), "yyyy-MM-dd");
+  return getMonthStartPST();
 }
 
-/**
- * Format a Date object as YYYY-MM-DD string
- */
 export function formatDateString(date: Date): string {
   return format(date, "yyyy-MM-dd");
 }
 
-/**
- * Get the end of current week in PST (Saturday end) as YYYY-MM-DD string
- */
 export function getWeekEndPST(): string {
-  const pstNow = getNowPST();
-  return format(endOfWeek(pstNow, { weekStartsOn: 1 }), "yyyy-MM-dd");
+  return businessDayKey(addDays(businessWeekStartDate(), 6));
 }
 
-/**
- * Get the end of current month in PST as YYYY-MM-DD string
- */
 export function getMonthEndPST(): string {
-  const pstNow = getNowPST();
-  return format(endOfMonth(pstNow), "yyyy-MM-dd");
+  return format(endOfMonth(toBusinessTime()), "yyyy-MM-dd");
+}
+
+export function getBusinessNow(): Date {
+  return toBusinessTime();
+}
+
+export function getBusinessDayKey(date: Date = new Date()): string {
+  return businessDayKey(date);
+}
+
+export function getBusinessDayBounds(date: Date = new Date()): { start: Date; end: Date; startIso: string; endIso: string } {
+  const start = startOfBusinessDay(date);
+  const end = endOfBusinessDay(date);
+  return {
+    start,
+    end,
+    startIso: start.toISOString(),
+    endIso: end.toISOString(),
+  };
+}
+
+export function getBusinessWeekBounds(date: Date = new Date()): { start: Date; end: Date; startIso: string; endIso: string } {
+  const weekStartKey = format(businessWeekStartDate(date), "yyyy-MM-dd");
+  const start = fromZonedTime(`${weekStartKey}T00:00:00`, BUSINESS_TIMEZONE);
+  const end = endOfBusinessDay(date);
+  return {
+    start,
+    end,
+    startIso: start.toISOString(),
+    endIso: end.toISOString(),
+  };
+}
+
+export function getBusinessMonthBounds(date: Date = new Date()): { start: Date; end: Date; startIso: string; endIso: string } {
+  const monthStartKey = format(businessMonthStartDate(date), "yyyy-MM-dd");
+  const start = fromZonedTime(`${monthStartKey}T00:00:00`, BUSINESS_TIMEZONE);
+  const end = endOfBusinessDay(date);
+  return {
+    start,
+    end,
+    startIso: start.toISOString(),
+    endIso: end.toISOString(),
+  };
+}
+
+export function getMatchedPriorWeekBounds(date: Date = new Date()): {
+  start: Date;
+  end: Date;
+  startIso: string;
+  endIso: string;
+  elapsedDays: number;
+} {
+  const businessNow = toBusinessTime(date);
+  const currentWeekStart = businessWeekStartDate(businessNow);
+  const elapsedDays = differenceInCalendarDays(businessNow, currentWeekStart);
+  const priorWeekStart = subWeeks(currentWeekStart, 1);
+  const priorWeekEnd = addDays(priorWeekStart, elapsedDays + 1);
+  const start = fromZonedTime(`${format(priorWeekStart, "yyyy-MM-dd")}T00:00:00`, BUSINESS_TIMEZONE);
+  const end = fromZonedTime(`${format(priorWeekEnd, "yyyy-MM-dd")}T00:00:00`, BUSINESS_TIMEZONE);
+  return {
+    start,
+    end,
+    startIso: start.toISOString(),
+    endIso: end.toISOString(),
+    elapsedDays,
+  };
+}
+
+export function getBusinessMonthProjectionContext(date: Date = new Date()): {
+  elapsedCalendarDays: number;
+  daysInMonth: number;
+} {
+  const businessNow = toBusinessTime(date);
+  return {
+    elapsedCalendarDays: businessNow.getDate(),
+    daysInMonth: endOfMonth(businessNow).getDate(),
+  };
 }

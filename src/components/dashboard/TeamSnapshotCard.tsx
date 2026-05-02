@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
+import { getCloseRate, getMetricBounds, sumAnnualPremium } from "@/lib/metricTruth";
 
 interface SnapshotStats {
   totalALP: number;
@@ -31,7 +32,7 @@ interface SnapshotStats {
 interface AgentBreakdown {
   id: string;
   name: string;
-  aop: number;
+  alp: number;
   deals: number;
   presentations: number;
   closeRate: number;
@@ -114,15 +115,16 @@ export function TeamSnapshotCard() {
         return;
       }
 
-      // Production from deals (Agent Link truth) — aligns with the rest
-      // of the dashboards. Presentations + hours stay on daily_production.
+      const metricWindow = period === "today" ? "day" : period === "week" ? "week" : period === "month" ? "month" : "custom";
+      const bounds = getMetricBounds(metricWindow, range);
+
       const [dealsData, productionData] = await Promise.all([
         supabase
           .from("deals")
           .select("annual_premium, agent_id")
           .in("agent_id", agentIds)
-          .gte("effective_date", startDate)
-          .lte("effective_date", endDate)
+          .gte("posted_at", bounds.startIso)
+          .lt("posted_at", bounds.endIso)
           .in("status", ["submitted", "active"])
           .then(r => r.data || []),
         supabase
@@ -135,7 +137,7 @@ export function TeamSnapshotCard() {
       ]);
 
       if (dealsData.length > 0 || productionData.length > 0) {
-        const totalALP = dealsData.reduce((sum: number, d: any) => sum + (Number(d.annual_premium) || 0), 0);
+        const totalALP = sumAnnualPremium(dealsData as Array<{ annual_premium?: number | null }>);
         const totalDeals = dealsData.length;
         const totalPresentations = productionData.reduce((sum: number, p: any) => sum + (Number(p.presentations) || 0), 0);
         const totalHours = productionData.reduce((sum: number, p: any) => sum + (Number(p.hours_called) || 0), 0);
@@ -144,9 +146,7 @@ export function TeamSnapshotCard() {
           ...productionData.map((p: any) => p.agent_id).filter(Boolean),
         ]);
         const agentCount = uniqueAgents.size || agentIds.length;
-        const avgCloseRate = totalPresentations > 0 
-          ? Math.round((totalDeals / totalPresentations) * 100) 
-          : 0;
+        const avgCloseRate = Math.round(getCloseRate(totalDeals, totalPresentations));
         const avgDealSize = totalDeals > 0 ? Math.round(totalALP / totalDeals) : 0;
         const avgHoursCalled = agentCount > 0 ? Math.round((totalHours / agentCount) * 10) / 10 : 0;
 
@@ -177,7 +177,7 @@ export function TeamSnapshotCard() {
     } finally {
       setLoading(false);
     }
-  }, [user, authLoading, isAdmin, isManager, isAgent, startDate, endDate]);
+  }, [user, authLoading, isAdmin, isManager, isAgent, period, range, startDate, endDate]);
 
   const fetchDrilldown = useCallback(async (type: DrilldownType) => {
     if (!user || !type) return;
@@ -208,49 +208,76 @@ export function TeamSnapshotCard() {
         }
       }
 
-      // Get production data with agent info
-      const { data: productionData } = await supabase
-        .from("daily_production")
-        .select(`
-          aop, deals_closed, presentations, agent_id,
-          agent:agents!inner(
-            id,
-            profile:profiles!agents_profile_id_fkey(full_name)
-          )
-        `)
-        .in("agent_id", agentIds)
-        .gte("production_date", startDate)
-        .lte("production_date", endDate);
+      const metricWindow = period === "today" ? "day" : period === "week" ? "week" : period === "month" ? "month" : "custom";
+      const bounds = getMetricBounds(metricWindow, range);
+      const [{ data: dealsData }, { data: productionData }, { data: agentRows }] = await Promise.all([
+        supabase
+          .from("deals")
+          .select("annual_premium, agent_id")
+          .in("agent_id", agentIds)
+          .gte("posted_at", bounds.startIso)
+          .lt("posted_at", bounds.endIso)
+          .in("status", ["submitted", "active"]),
+        supabase
+          .from("daily_production")
+          .select("presentations, agent_id")
+          .in("agent_id", agentIds)
+          .gte("production_date", startDate)
+          .lte("production_date", endDate),
+        supabase
+          .from("agents")
+          .select("id, profile:profiles!agents_profile_id_fkey(full_name)")
+          .in("id", agentIds),
+      ]);
 
       // Aggregate by agent
       const agentMap = new Map<string, AgentBreakdown>();
-      
-      productionData?.forEach((p: any) => {
-        const agentId = p.agent_id;
-        const agentName = p.agent?.profile?.full_name || "Unknown";
-        
+      const agentNames = new Map(
+        (agentRows ?? []).map((row: any) => [row.id, row.profile?.full_name || "Unknown"]),
+      );
+
+      dealsData?.forEach((deal: any) => {
+        const agentId = deal.agent_id;
+        if (!agentId) return;
+
         if (!agentMap.has(agentId)) {
           agentMap.set(agentId, {
             id: agentId,
-            name: agentName,
-            aop: 0,
+            name: agentNames.get(agentId) || "Unknown",
+            alp: 0,
             deals: 0,
             presentations: 0,
             closeRate: 0,
           });
         }
-        
+
         const agent = agentMap.get(agentId)!;
-        agent.aop += Number(p.aop) || 0;
-        agent.deals += p.deals_closed || 0;
-        agent.presentations += p.presentations || 0;
+        agent.alp += Number(deal.annual_premium) || 0;
+        agent.deals += 1;
+      });
+
+      productionData?.forEach((production: any) => {
+        const agentId = production.agent_id;
+        if (!agentId) return;
+
+        if (!agentMap.has(agentId)) {
+          agentMap.set(agentId, {
+            id: agentId,
+            name: agentNames.get(agentId) || "Unknown",
+            alp: 0,
+            deals: 0,
+            presentations: 0,
+            closeRate: 0,
+          });
+        }
+
+        const agent = agentMap.get(agentId)!;
+        agent.presentations += Number(production.presentations) || 0;
       });
 
       // Calculate close rates
       agentMap.forEach((agent) => {
-        agent.closeRate = agent.presentations > 0 
-          ? Math.round((agent.deals / agent.presentations) * 100) 
-          : 0;
+        agent.closeRate = Math.round(getCloseRate(agent.deals, agent.presentations));
       });
 
       // Sort based on drilldown type
@@ -258,7 +285,7 @@ export function TeamSnapshotCard() {
       
       switch (type) {
         case "alp":
-          sortedAgents.sort((a, b) => b.aop - a.aop);
+          sortedAgents.sort((a, b) => b.alp - a.alp);
           break;
         case "deals":
           sortedAgents.sort((a, b) => b.deals - a.deals);
@@ -267,7 +294,7 @@ export function TeamSnapshotCard() {
           sortedAgents.sort((a, b) => b.closeRate - a.closeRate);
           break;
         default:
-          sortedAgents.sort((a, b) => b.aop - a.aop);
+          sortedAgents.sort((a, b) => b.alp - a.alp);
       }
 
       setAgentBreakdown(sortedAgents);
@@ -276,7 +303,7 @@ export function TeamSnapshotCard() {
     } finally {
       setDrilldownLoading(false);
     }
-  }, [user, isAdmin, isManager, startDate, endDate]);
+  }, [user, isAdmin, isManager, period, range, startDate, endDate]);
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -446,11 +473,11 @@ export function TeamSnapshotCard() {
                 />
               </div>
 
-              {/* Avg Pages */}
+              {/* Avg Hours */}
               <div className="bg-background/50 rounded-xl p-4 border border-border/50">
                 <div className="flex items-center gap-2 text-pink-500 mb-2">
                   <FileText className="h-5 w-5" />
-                  <span className="text-xs font-medium uppercase tracking-wide">Avg Pages</span>
+                  <span className="text-xs font-medium uppercase tracking-wide">Avg Hours</span>
                 </div>
                 <AnimatedCounter
                   value={stats.avgHoursCalled}
@@ -511,7 +538,7 @@ export function TeamSnapshotCard() {
                     <div className="text-right">
                       {drilldownType === "alp" && (
                         <span className="font-bold text-primary">
-                          ${agent.aop.toLocaleString()}
+                          ${agent.alp.toLocaleString()}
                         </span>
                       )}
                       {drilldownType === "deals" && (
@@ -521,7 +548,7 @@ export function TeamSnapshotCard() {
                       )}
                       {drilldownType === "agents" && (
                         <span className="text-sm text-muted-foreground">
-                          ${agent.aop.toLocaleString()} • {agent.deals} deals
+                          ${agent.alp.toLocaleString()} • {agent.deals} deals
                         </span>
                       )}
                       {drilldownType === "closeRate" && (

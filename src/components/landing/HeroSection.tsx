@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import { ArrowRight, Shield, TrendingUp, Users } from "lucide-react";
 import { GradientButton } from "@/components/ui/gradient-button";
-import { useLeadCounter } from "@/hooks/useLeadCounter";
 
 const carriers = [
   "National Life Group", "American Amicable", "Aflac", "Ethos Life",
@@ -14,7 +13,6 @@ const carriers = [
 ];
 
 export function HeroSection() {
-  const { count: dealCount, isLoading: isCountLoading } = useLeadCounter();
   const [currentCarrierIndex, setCurrentCarrierIndex] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -64,10 +62,8 @@ export function HeroSection() {
               <span className="relative inline-flex rounded-full h-3 w-3 bg-[#22d3a5]" />
             </span>
             <span className="text-sm text-[#94a3b8]">
-              <span className="text-[#22d3a5] font-bold font-display">
-                {isCountLoading ? "..." : (dealCount || 840).toLocaleString()}
-              </span>
-              {" "}first-day deals closed
+              <span className="text-[#22d3a5] font-bold font-display">Licensed and unlicensed</span>
+              {" "}paths available
             </span>
           </motion.div>
 
@@ -111,7 +107,7 @@ export function HeroSection() {
           >
             Join the fastest-growing life insurance agency in America. Whether you're 
             licensed or just starting out, we provide the leads, training, and support 
-            you need to earn <span className="text-[#22d3a5] font-semibold">$150K+ your first year</span>.
+            you need to build real momentum with a clear recruiting and licensing path.
           </motion.p>
 
           {/* CTA Buttons - Green Apply + Outline Schedule */}
@@ -142,9 +138,9 @@ export function HeroSection() {
             transition={{ duration: 0.5, delay: 0.4 }}
           >
             {[
-              { icon: TrendingUp, label: "Top 1% Commission Rates", value: "70%-145%" },
-              { icon: Users, label: "Warm Leads Ready to Call", value: "166,000 Ready" },
-              { icon: Shield, label: "No Experience Required", value: "We Train You" },
+              { icon: TrendingUp, label: "Commission-based upside", value: "Performance Paid" },
+              { icon: Users, label: "Warm lead access", value: "Lead Flow Ready" },
+              { icon: Shield, label: "No experience required", value: "We Train You" },
             ].map((item, index) => (
               <div
                 key={index}
@@ -194,10 +190,10 @@ export function HeroSection() {
                   aria-label={`Show carrier ${index + 1}`}
                 />
               ))}
-              <span className="text-xs text-[#64748b] ml-1">+{carriers.length - 6}</span>
+              <span className="text-xs text-[#64748b] ml-1">Multiple options</span>
             </div>
             <p className="text-xs text-[#64748b] mt-3 font-medium font-display">
-              & 30+ More Top-Rated Carriers
+              Carrier access varies by market and licensing status
             </p>
           </motion.div>
         </div>

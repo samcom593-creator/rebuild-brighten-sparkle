@@ -1,24 +1,27 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  DollarSign, 
-  Target, 
-  TrendingUp, 
-  Presentation, 
+import {
+  DollarSign,
+  Target,
+  TrendingUp,
+  Presentation,
   ChevronDown,
   ChevronRight,
   BarChart3,
-  Users
+  Users,
 } from "lucide-react";
+import { addDays, format, startOfWeek, subWeeks } from "date-fns";
+import { fromZonedTime, toZonedTime } from "date-fns-tz";
 import { GlassCard } from "@/components/ui/glass-card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { format, subWeeks, startOfWeek, endOfWeek, isWithinInterval, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 import { getClosingRateColor } from "@/lib/closingRateColors";
+import { BUSINESS_TIMEZONE, getBusinessDayBounds, getBusinessNow } from "@/lib/dateUtils";
+import { getCloseRate, sumAnnualPremium } from "@/lib/metricTruth";
 
 interface WeeklyStats {
   weekLabel: string;
@@ -29,15 +32,41 @@ interface WeeklyStats {
   totalPresentations: number;
   closeRate: number;
   agentCount: number;
+  startIso: string;
+  endIso: string;
 }
 
 interface AgentBreakdown {
   id: string;
   name: string;
-  aop: number;
+  alp: number;
   deals: number;
   presentations: number;
   closeRate: number;
+}
+
+function buildWeekWindow(baseDate: Date, offset: number): WeeklyStats {
+  const weekStartDate = startOfWeek(subWeeks(baseDate, offset), { weekStartsOn: 1 });
+  const weekStart = format(weekStartDate, "yyyy-MM-dd");
+  const weekEndDate = addDays(weekStartDate, 6);
+  const weekEnd = format(weekEndDate, "yyyy-MM-dd");
+  const start = fromZonedTime(`${weekStart}T00:00:00`, BUSINESS_TIMEZONE);
+  const rawEnd = offset === 0
+    ? getBusinessDayBounds().end
+    : fromZonedTime(`${format(addDays(weekStartDate, 7), "yyyy-MM-dd")}T00:00:00`, BUSINESS_TIMEZONE);
+
+  return {
+    weekLabel: offset === 0 ? "This Week" : offset === 1 ? "Last Week" : `Week of ${format(weekStartDate, "MMM d")}`,
+    weekStart,
+    weekEnd,
+    totalALP: 0,
+    totalDeals: 0,
+    totalPresentations: 0,
+    closeRate: 0,
+    agentCount: 0,
+    startIso: start.toISOString(),
+    endIso: rawEnd.toISOString(),
+  };
 }
 
 export function TeamPerformanceBreakdown() {
@@ -48,10 +77,37 @@ export function TeamPerformanceBreakdown() {
   const [loading, setLoading] = useState(true);
   const [breakdownLoading, setBreakdownLoading] = useState(false);
 
+  const resolveAgentIds = useCallback(async (): Promise<string[]> => {
+    if (!user) return [];
+
+    if (isAdmin) {
+      const { data: allAgents } = await supabase.from("agents").select("id");
+      return allAgents?.map((agent) => agent.id) || [];
+    }
+
+    if (isManager) {
+      const { data: currentAgent } = await supabase
+        .from("agents")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (!currentAgent) return [];
+
+      const { data: downlineAgents } = await supabase
+        .from("agents")
+        .select("id")
+        .eq("invited_by_manager_id", currentAgent.id);
+
+      return [currentAgent.id, ...(downlineAgents?.map((agent) => agent.id) || [])];
+    }
+
+    return [];
+  }, [user, isAdmin, isManager]);
+
   const fetchWeeklyData = useCallback(async () => {
     if (!user || authLoading) return;
 
-    // Check role access
     if (!isManager && !isAdmin) {
       setLoading(false);
       return;
@@ -59,194 +115,142 @@ export function TeamPerformanceBreakdown() {
 
     try {
       setLoading(true);
-
-      // Get agent IDs based on role
-      let agentIds: string[] = [];
-
-      if (isAdmin) {
-        const { data: allAgents } = await supabase
-          .from("agents")
-          .select("id");
-        agentIds = allAgents?.map(a => a.id) || [];
-      } else if (isManager) {
-        const { data: currentAgent } = await supabase
-          .from("agents")
-          .select("id")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (currentAgent) {
-          const { data: downlineAgents } = await supabase
-            .from("agents")
-            .select("id")
-            .eq("invited_by_manager_id", currentAgent.id);
-
-          agentIds = [currentAgent.id, ...(downlineAgents?.map(a => a.id) || [])];
-        }
-      }
+      const agentIds = await resolveAgentIds();
 
       if (agentIds.length === 0) {
         setWeeklyData([]);
-        setLoading(false);
         return;
       }
 
-      // Get last 4 weeks of data
-      const today = new Date();
-      const weeks: WeeklyStats[] = [];
+      const baseDate = getBusinessNow();
+      const weeks = Array.from({ length: 4 }, (_, index) => buildWeekWindow(baseDate, index));
+      const oldestWeek = weeks[weeks.length - 1];
+      const currentWeek = weeks[0];
 
-      for (let i = 0; i < 4; i++) {
-        const weekEnd = endOfWeek(subWeeks(today, i), { weekStartsOn: 1 });
-        const weekStart = startOfWeek(subWeeks(today, i), { weekStartsOn: 1 });
+      const [{ data: dealsRows }, { data: productionRows }] = await Promise.all([
+        supabase
+          .from("deals")
+          .select("annual_premium, agent_id, posted_at")
+          .in("agent_id", agentIds)
+          .gte("posted_at", oldestWeek.startIso)
+          .lt("posted_at", currentWeek.endIso)
+          .in("status", ["submitted", "active"]),
+        supabase
+          .from("daily_production")
+          .select("presentations, agent_id, production_date")
+          .in("agent_id", agentIds)
+          .gte("production_date", oldestWeek.weekStart)
+          .lte("production_date", currentWeek.weekEnd),
+      ]);
 
-        const weekLabel = i === 0 
-          ? "This Week" 
-          : i === 1 
-            ? "Last Week" 
-            : `Week of ${format(weekStart, "MMM d")}`;
-
-        weeks.push({
-          weekLabel,
-          weekStart: format(weekStart, "yyyy-MM-dd"),
-          weekEnd: format(weekEnd, "yyyy-MM-dd"),
-          totalALP: 0,
-          totalDeals: 0,
-          totalPresentations: 0,
-          closeRate: 0,
-          agentCount: 0,
+      const rowsByWeek = weeks.map((week) => {
+        const weekDeals = (dealsRows ?? []).filter((deal: any) => {
+          return Boolean(deal.posted_at) && deal.posted_at >= week.startIso && deal.posted_at < week.endIso;
         });
-      }
-
-      // Fetch all production data for the last 4 weeks
-      const oldestWeek = weeks[weeks.length - 1].weekStart;
-      const { data: productionData } = await supabase
-        .from("daily_production")
-        .select("aop, deals_closed, presentations, agent_id, production_date")
-        .in("agent_id", agentIds)
-        .gte("production_date", oldestWeek)
-        .lte("production_date", weeks[0].weekEnd);
-
-      // Aggregate data by week
-      productionData?.forEach(p => {
-        const prodDate = parseISO(p.production_date);
-        
-        for (const week of weeks) {
-          const weekStart = parseISO(week.weekStart);
-          const weekEnd = parseISO(week.weekEnd);
-          
-          if (isWithinInterval(prodDate, { start: weekStart, end: weekEnd })) {
-            week.totalALP += Number(p.aop) || 0;
-            week.totalDeals += p.deals_closed || 0;
-            week.totalPresentations += p.presentations || 0;
-            break;
-          }
-        }
-      });
-
-      // Calculate close rates and agent counts
-      weeks.forEach(week => {
-        week.closeRate = week.totalPresentations > 0 
-          ? Math.round((week.totalDeals / week.totalPresentations) * 100) 
-          : 0;
-        
-        // Count unique agents with production in this week
-        const weekAgents = new Set(
-          productionData
-            ?.filter(p => {
-              const prodDate = parseISO(p.production_date);
-              return isWithinInterval(prodDate, { 
-                start: parseISO(week.weekStart), 
-                end: parseISO(week.weekEnd) 
-              });
-            })
-            .map(p => p.agent_id)
+        const weekProduction = (productionRows ?? []).filter((row: any) => {
+          return row.production_date >= week.weekStart && row.production_date <= week.weekEnd;
+        });
+        const agentCount = new Set([
+          ...weekDeals.map((deal: any) => deal.agent_id).filter(Boolean),
+          ...weekProduction.map((row: any) => row.agent_id).filter(Boolean),
+        ]).size;
+        const totalDeals = weekDeals.length;
+        const totalPresentations = weekProduction.reduce(
+          (sum: number, row: any) => sum + Number(row.presentations || 0),
+          0,
         );
-        week.agentCount = weekAgents.size || 0;
+
+        return {
+          ...week,
+          totalALP: sumAnnualPremium(weekDeals as Array<{ annual_premium?: number | null }>),
+          totalDeals,
+          totalPresentations,
+          closeRate: Math.round(getCloseRate(totalDeals, totalPresentations)),
+          agentCount,
+        };
       });
 
-      setWeeklyData(weeks);
+      setWeeklyData(rowsByWeek);
     } catch (error) {
       console.error("Error fetching weekly data:", error);
     } finally {
       setLoading(false);
     }
-  }, [user, authLoading, isAdmin, isManager]);
+  }, [user, authLoading, isAdmin, isManager, resolveAgentIds]);
 
-  const fetchWeekBreakdown = useCallback(async (weekStart: string, weekEnd: string) => {
+  const fetchWeekBreakdown = useCallback(async (selectedWeek: WeeklyStats) => {
     if (!user) return;
 
     setBreakdownLoading(true);
     try {
-      let agentIds: string[] = [];
+      const agentIds = await resolveAgentIds();
 
-      if (isAdmin) {
-        const { data: allAgents } = await supabase
+      const [{ data: dealsRows }, { data: productionRows }, { data: agentRows }] = await Promise.all([
+        supabase
+          .from("deals")
+          .select("annual_premium, agent_id")
+          .in("agent_id", agentIds)
+          .gte("posted_at", selectedWeek.startIso)
+          .lt("posted_at", selectedWeek.endIso)
+          .in("status", ["submitted", "active"]),
+        supabase
+          .from("daily_production")
+          .select("presentations, agent_id")
+          .in("agent_id", agentIds)
+          .gte("production_date", selectedWeek.weekStart)
+          .lte("production_date", selectedWeek.weekEnd),
+        supabase
           .from("agents")
-          .select("id");
-        agentIds = allAgents?.map(a => a.id) || [];
-      } else if (isManager) {
-        const { data: currentAgent } = await supabase
-          .from("agents")
-          .select("id")
-          .eq("user_id", user.id)
-          .maybeSingle();
+          .select("id, profile:profiles!agents_profile_id_fkey(full_name)")
+          .in("id", agentIds),
+      ]);
 
-        if (currentAgent) {
-          const { data: downlineAgents } = await supabase
-            .from("agents")
-            .select("id")
-            .eq("invited_by_manager_id", currentAgent.id);
-
-          agentIds = [currentAgent.id, ...(downlineAgents?.map(a => a.id) || [])];
-        }
-      }
-
-      const { data: productionData } = await supabase
-        .from("daily_production")
-        .select(`
-          aop, deals_closed, presentations, agent_id,
-          agent:agents!inner(
-            id,
-            profile:profiles!agents_profile_id_fkey(full_name)
-          )
-        `)
-        .in("agent_id", agentIds)
-        .gte("production_date", weekStart)
-        .lte("production_date", weekEnd);
-
-      // Aggregate by agent
+      const names = new Map(
+        (agentRows ?? []).map((row: any) => [row.id, row.profile?.full_name || "Unknown"]),
+      );
       const agentMap = new Map<string, AgentBreakdown>();
 
-      productionData?.forEach((p: any) => {
-        const agentId = p.agent_id;
-        const agentName = p.agent?.profile?.full_name || "Unknown";
-
+      (dealsRows ?? []).forEach((deal: any) => {
+        const agentId = deal.agent_id;
+        if (!agentId) return;
         if (!agentMap.has(agentId)) {
           agentMap.set(agentId, {
             id: agentId,
-            name: agentName,
-            aop: 0,
+            name: names.get(agentId) || "Unknown",
+            alp: 0,
             deals: 0,
             presentations: 0,
             closeRate: 0,
           });
         }
-
         const agent = agentMap.get(agentId)!;
-        agent.aop += Number(p.aop) || 0;
-        agent.deals += p.deals_closed || 0;
-        agent.presentations += p.presentations || 0;
+        agent.alp += Number(deal.annual_premium) || 0;
+        agent.deals += 1;
       });
 
-      // Calculate close rates and sort
+      (productionRows ?? []).forEach((row: any) => {
+        const agentId = row.agent_id;
+        if (!agentId) return;
+        if (!agentMap.has(agentId)) {
+          agentMap.set(agentId, {
+            id: agentId,
+            name: names.get(agentId) || "Unknown",
+            alp: 0,
+            deals: 0,
+            presentations: 0,
+            closeRate: 0,
+          });
+        }
+        const agent = agentMap.get(agentId)!;
+        agent.presentations += Number(row.presentations) || 0;
+      });
+
       const sortedAgents = Array.from(agentMap.values())
-        .map(agent => ({
+        .map((agent) => ({
           ...agent,
-          closeRate: agent.presentations > 0 
-            ? Math.round((agent.deals / agent.presentations) * 100) 
-            : 0,
+          closeRate: Math.round(getCloseRate(agent.deals, agent.presentations)),
         }))
-        .sort((a, b) => b.aop - a.aop);
+        .sort((a, b) => b.alp - a.alp);
 
       setAgentBreakdown(sortedAgents);
     } catch (error) {
@@ -254,7 +258,7 @@ export function TeamPerformanceBreakdown() {
     } finally {
       setBreakdownLoading(false);
     }
-  }, [user, isAdmin, isManager]);
+  }, [user, resolveAgentIds]);
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -262,20 +266,19 @@ export function TeamPerformanceBreakdown() {
     }
   }, [fetchWeeklyData, authLoading, user]);
 
-  // Use shared realtime hook for instant updates
   useProductionRealtime(fetchWeeklyData, 300);
 
   const handleWeekClick = (week: WeeklyStats) => {
     if (expandedWeek === week.weekStart) {
       setExpandedWeek(null);
       setAgentBreakdown([]);
-    } else {
-      setExpandedWeek(week.weekStart);
-      fetchWeekBreakdown(week.weekStart, week.weekEnd);
+      return;
     }
+
+    setExpandedWeek(week.weekStart);
+    fetchWeekBreakdown(week);
   };
 
-  // Don't render for non-managers/admins
   if (!isManager && !isAdmin) {
     return null;
   }
@@ -283,16 +286,16 @@ export function TeamPerformanceBreakdown() {
   if (loading) {
     return (
       <GlassCard className="p-6">
-        <div className="flex items-center gap-3 mb-6">
+        <div className="mb-6 flex items-center gap-3">
           <Skeleton className="h-12 w-12 rounded-xl" />
           <div>
             <Skeleton className="h-6 w-48" />
-            <Skeleton className="h-4 w-32 mt-1" />
+            <Skeleton className="mt-1 h-4 w-32" />
           </div>
         </div>
         <div className="space-y-3">
-          {[1, 2, 3, 4].map(i => (
-            <Skeleton key={i} className="h-20 rounded-xl" />
+          {[1, 2, 3, 4].map((index) => (
+            <Skeleton key={index} className="h-20 rounded-xl" />
           ))}
         </div>
       </GlassCard>
@@ -301,44 +304,40 @@ export function TeamPerformanceBreakdown() {
 
   return (
     <div className="transition-opacity duration-100">
-      <GlassCard className="p-6 relative">
-        {/* Powered by Apex watermark */}
-        <div className="absolute top-3 right-4">
-          <p className="text-[9px] text-muted-foreground/50 uppercase tracking-widest">
+      <GlassCard className="relative p-6">
+        <div className="absolute right-4 top-3">
+          <p className="text-[9px] uppercase tracking-widest text-muted-foreground/50">
             Powered by <span className="font-semibold text-primary/60">Apex</span>
           </p>
         </div>
 
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+        <div className="mb-6 flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-600">
             <BarChart3 className="h-6 w-6 text-white" />
           </div>
           <div>
             <h2 className="text-xl font-bold">Performance Breakdown</h2>
             <p className="text-sm text-muted-foreground">
-              Click any week to see agent breakdown
+              Calendar weeks in Chicago time. ALP comes from posted deals; presentations come from logged production.
             </p>
           </div>
         </div>
 
-        {/* Weekly Cards */}
         <div className="space-y-3">
           {weeklyData.map((week, index) => (
             <div key={week.weekStart}>
               <motion.button
                 onClick={() => handleWeekClick(week)}
                 className={cn(
-                  "w-full p-4 rounded-xl border transition-all text-left",
+                  "w-full rounded-xl border p-4 text-left transition-all",
                   expandedWeek === week.weekStart
-                    ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-                    : "border-border/50 hover:border-primary/50 hover:bg-muted/30"
+                    ? "bg-primary/5 ring-2 ring-primary/20 border-primary"
+                    : "border-border/50 hover:border-primary/50 hover:bg-muted/30",
                 )}
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.99 }}
               >
-                {/* Week Header */}
-                <div className="flex items-center justify-between mb-3">
+                <div className="mb-3 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     {expandedWeek === week.weekStart ? (
                       <ChevronDown className="h-4 w-4 text-primary" />
@@ -347,44 +346,43 @@ export function TeamPerformanceBreakdown() {
                     )}
                     <span className="font-semibold">{week.weekLabel}</span>
                     {index === 0 && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
                         CURRENT
                       </span>
                     )}
                   </div>
                   <span className="text-xs text-muted-foreground">
-                    {week.agentCount} agent{week.agentCount !== 1 ? 's' : ''} active
+                    {week.agentCount} agent{week.agentCount !== 1 ? "s" : ""} active
                   </span>
                 </div>
 
-                {/* Stats Grid */}
                 <div className="grid grid-cols-4 gap-3">
-                  <div className="text-center p-2 rounded-lg bg-background/50">
-                    <div className="flex items-center justify-center gap-1 text-primary mb-1">
+                  <div className="rounded-lg bg-background/50 p-2 text-center">
+                    <div className="mb-1 flex items-center justify-center gap-1 text-primary">
                       <DollarSign className="h-3 w-3" />
                     </div>
                     <p className="text-lg font-bold">${week.totalALP.toLocaleString()}</p>
                     <p className="text-[10px] text-muted-foreground">ALP</p>
                   </div>
 
-                  <div className="text-center p-2 rounded-lg bg-background/50">
-                    <div className="flex items-center justify-center gap-1 text-emerald-500 mb-1">
+                  <div className="rounded-lg bg-background/50 p-2 text-center">
+                    <div className="mb-1 flex items-center justify-center gap-1 text-emerald-500">
                       <Target className="h-3 w-3" />
                     </div>
                     <p className="text-lg font-bold">{week.totalDeals}</p>
                     <p className="text-[10px] text-muted-foreground">Deals</p>
                   </div>
 
-                  <div className="text-center p-2 rounded-lg bg-background/50">
-                    <div className="flex items-center justify-center gap-1 text-violet-500 mb-1">
+                  <div className="rounded-lg bg-background/50 p-2 text-center">
+                    <div className="mb-1 flex items-center justify-center gap-1 text-violet-500">
                       <Presentation className="h-3 w-3" />
                     </div>
                     <p className="text-lg font-bold">{week.totalPresentations}</p>
                     <p className="text-[10px] text-muted-foreground">Presentations</p>
                   </div>
 
-                  <div className="text-center p-2 rounded-lg bg-background/50">
-                    <div className="flex items-center justify-center gap-1 text-amber-500 mb-1">
+                  <div className="rounded-lg bg-background/50 p-2 text-center">
+                    <div className="mb-1 flex items-center justify-center gap-1 text-amber-500">
                       <TrendingUp className="h-3 w-3" />
                     </div>
                     <p className="text-lg font-bold">{week.closeRate}%</p>
@@ -393,7 +391,6 @@ export function TeamPerformanceBreakdown() {
                 </div>
               </motion.button>
 
-              {/* Expanded Agent Breakdown */}
               <AnimatePresence>
                 {expandedWeek === week.weekStart && (
                   <motion.div
@@ -403,20 +400,20 @@ export function TeamPerformanceBreakdown() {
                     transition={{ duration: 0.2 }}
                     className="overflow-hidden"
                   >
-                    <div className="mt-2 ml-6 p-4 rounded-xl bg-muted/20 border border-border/30">
-                      <div className="flex items-center gap-2 mb-3">
+                    <div className="mt-2 ml-6 rounded-xl border border-border/30 bg-muted/20 p-4">
+                      <div className="mb-3 flex items-center gap-2">
                         <Users className="h-4 w-4 text-primary" />
                         <span className="text-sm font-semibold">Agent Breakdown</span>
                       </div>
 
                       {breakdownLoading ? (
                         <div className="space-y-2">
-                          {[1, 2, 3].map(i => (
-                            <Skeleton key={i} className="h-12 rounded-lg" />
+                          {[1, 2, 3].map((index) => (
+                            <Skeleton key={index} className="h-12 rounded-lg" />
                           ))}
                         </div>
                       ) : agentBreakdown.length === 0 ? (
-                        <p className="text-sm text-muted-foreground text-center py-4">
+                        <p className="py-4 text-center text-sm text-muted-foreground">
                           No production data for this week
                         </p>
                       ) : (
@@ -425,17 +422,17 @@ export function TeamPerformanceBreakdown() {
                             {agentBreakdown.map((agent, agentIndex) => (
                               <div
                                 key={agent.id}
-                                className="flex items-center justify-between p-3 rounded-lg bg-background/50 hover:bg-background/80 transition-colors"
+                                className="flex items-center justify-between rounded-lg bg-background/50 p-3 transition-colors hover:bg-background/80"
                               >
                                 <div className="flex items-center gap-3">
-                                  <span className="text-xs font-bold text-muted-foreground w-5">
+                                  <span className="w-5 text-xs font-bold text-muted-foreground">
                                     #{agentIndex + 1}
                                   </span>
-                                  <span className="font-medium text-sm">{agent.name}</span>
+                                  <span className="text-sm font-medium">{agent.name}</span>
                                 </div>
                                 <div className="flex items-center gap-4 text-xs">
-                                  <span className="text-primary font-semibold">
-                                    ${agent.aop.toLocaleString()}
+                                  <span className="font-semibold text-primary">
+                                    ${agent.alp.toLocaleString()}
                                   </span>
                                   <span className="text-emerald-500">
                                     {agent.deals} deals

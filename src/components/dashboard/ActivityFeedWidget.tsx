@@ -29,7 +29,7 @@ const ENTITY_ROUTES: Record<string, (id: string) => string> = {
   applicant: (id) => `/dashboard/applicants?focus=${id}`,
   agent: () => `/dashboard/team`,
   notification: () => `/dashboard/notifications`,
-  lead: () => `/dashboard/lead-center`,
+  lead: () => `/dashboard/leads`,
   aged_lead: () => `/dashboard/aged-leads`,
 };
 

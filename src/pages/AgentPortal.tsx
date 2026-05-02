@@ -26,7 +26,6 @@ import { ProductionEntry } from "@/components/dashboard/ProductionEntry";
 import { LeaderboardTabs } from "@/components/dashboard/LeaderboardTabs";
 import { PersonalStatsCard } from "@/components/dashboard/PersonalStatsCard";
 import { ProductionHistoryChart } from "@/components/dashboard/ProductionHistoryChart";
-import { ClosingRateLeaderboard } from "@/components/dashboard/ClosingRateLeaderboard";
 import { ReferralLeaderboard } from "@/components/dashboard/ReferralLeaderboard";
 import { TeamGoalsTracker } from "@/components/dashboard/TeamGoalsTracker";
 import { IncomeGoalTracker } from "@/components/dashboard/IncomeGoalTracker";
@@ -64,7 +63,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { getTodayPST } from "@/lib/dateUtils";
+import { getBusinessDayBounds, getTodayPST } from "@/lib/dateUtils";
+import { getCloseRate, getMetricBounds, sumAnnualPremium } from "@/lib/metricTruth";
 import apexIcon from "@/assets/apex-icon.png";
 import { ProductionForecast } from "@/components/dashboard/ProductionForecast";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
@@ -214,21 +214,27 @@ export default function AgentPortal() {
       
       if (agentIds.length === 0) return;
       
-      // Fetch production based on time range
-      const { start, end } = getDateRange(timeRange);
-      const { data: teamProduction } = await supabase
-        .from("daily_production")
-        .select("aop, deals_closed, presentations, closing_rate")
-        .in("agent_id", agentIds)
-        .gte("production_date", start)
-        .lte("production_date", end);
+      const bounds = getMetricBounds(timeRange, customRange);
+      const [dealsRes, teamProduction] = await Promise.all([
+        supabase
+          .from("deals")
+          .select("annual_premium, agent_id")
+          .in("agent_id", agentIds)
+          .gte("posted_at", bounds.startIso)
+          .lt("posted_at", bounds.endIso)
+          .in("status", ["submitted", "active"]),
+        supabase
+          .from("daily_production")
+          .select("presentations")
+          .in("agent_id", agentIds)
+          .gte("production_date", bounds.startIso.slice(0, 10))
+          .lte("production_date", bounds.endIso.slice(0, 10)),
+      ]);
       
-      const totalALP = (teamProduction || []).reduce((sum, p) => sum + Number(p.aop || 0), 0);
-      const totalDeals = (teamProduction || []).reduce((sum, p) => sum + (p.deals_closed || 0), 0);
-      const totalPresentations = (teamProduction || []).reduce((sum, p) => sum + (p.presentations || 0), 0);
-      const avgCloseRate = totalPresentations > 0 
-        ? Math.round((totalDeals / totalPresentations) * 100) 
-        : 0;
+      const totalALP = sumAnnualPremium((dealsRes.data || []) as Array<{ annual_premium?: number | null }>);
+      const totalDeals = (dealsRes.data || []).length;
+      const totalPresentations = (teamProduction.data || []).reduce((sum, p) => sum + (p.presentations || 0), 0);
+      const avgCloseRate = Math.round(getCloseRate(totalDeals, totalPresentations));
       
       if (!mounted.current) return;
       setTeamTodayStats({ totalALP, totalDeals, totalPresentations, avgCloseRate });
@@ -260,15 +266,30 @@ export default function AgentPortal() {
         if (!mounted.current) return;
         if (agent) {
           setAgentId(agent.id);
-          // Fetch today's production for their agent record (PST timezone)
+          const dayBounds = getBusinessDayBounds();
           const today = getTodayPST();
-          const { data: production } = await supabase
-            .from("daily_production")
-            .select("*")
-            .eq("agent_id", agent.id)
-          .eq("production_date", today)
-          .maybeSingle();
-          if (mounted.current && production) setTodayProduction(production);
+          const [dealRes, production] = await Promise.all([
+            supabase
+              .from("deals")
+              .select("annual_premium")
+              .eq("agent_id", agent.id)
+              .gte("posted_at", dayBounds.startIso)
+              .lt("posted_at", dayBounds.endIso)
+              .in("status", ["submitted", "active"]),
+            supabase
+              .from("daily_production")
+              .select("*")
+              .eq("agent_id", agent.id)
+              .eq("production_date", today)
+              .maybeSingle(),
+          ]);
+          if (mounted.current) {
+            setTodayProduction({
+              ...(production.data || {}),
+              aop: sumAnnualPremium((dealRes.data || []) as Array<{ annual_premium?: number | null }>),
+              deals_closed: (dealRes.data || []).length,
+            });
+          }
           
           // Fetch team stats for managers/admins
           await fetchTeamStats(agent.id);
@@ -318,16 +339,30 @@ export default function AgentPortal() {
       setAgentId(agent.id);
 
       // Get today's production if exists (PST timezone)
+      const dayBounds = getBusinessDayBounds();
       const today = getTodayPST();
-      const { data: production } = await supabase
-        .from("daily_production")
-        .select("*")
-        .eq("agent_id", agent.id)
-        .eq("production_date", today)
-        .maybeSingle();
+      const [dealRes, production] = await Promise.all([
+        supabase
+          .from("deals")
+          .select("annual_premium")
+          .eq("agent_id", agent.id)
+          .gte("posted_at", dayBounds.startIso)
+          .lt("posted_at", dayBounds.endIso)
+          .in("status", ["submitted", "active"]),
+        supabase
+          .from("daily_production")
+          .select("*")
+          .eq("agent_id", agent.id)
+          .eq("production_date", today)
+          .maybeSingle(),
+      ]);
 
-      if (mounted.current && production) {
-        setTodayProduction(production);
+      if (mounted.current) {
+        setTodayProduction({
+          ...(production.data || {}),
+          aop: sumAnnualPremium((dealRes.data || []) as Array<{ annual_premium?: number | null }>),
+          deals_closed: (dealRes.data || []).length,
+        });
       }
     } catch (error) {
       console.error("Error fetching agent data:", error);
@@ -495,7 +530,7 @@ export default function AgentPortal() {
           {(() => {
             // Show team stats ONLY for admin (not managers)
             const showTeamStats = isAdmin;
-            const timeLabel = statsTimeRange === "week" ? "Week" : statsTimeRange === "month" ? "Month" : "All Time";
+            const timeLabel = statsTimeRange === "week" ? "Week" : statsTimeRange === "month" ? "Month" : "Custom";
             const statsLabel = showTeamStats ? `Team (${timeLabel})` : "Today's";
             const displayALP = showTeamStats ? teamTodayStats.totalALP : todayALP;
             const displayDeals = showTeamStats ? teamTodayStats.totalDeals : todayDeals;
@@ -688,12 +723,7 @@ export default function AgentPortal() {
         {/* Additional Leaderboards */}
         <HideableCard cardKey="agent.extra-leaderboards" label={HIDEABLE_CARDS["agent.extra-leaderboards"]} className="hidden sm:block">
           <section>
-            <div className="grid md:grid-cols-2 gap-4">
-              <ClosingRateLeaderboard 
-                key={`closing-${refreshKey}`}
-                currentAgentId={agentId || undefined}
-                period="week" 
-              />
+            <div className="grid gap-4">
               <ReferralLeaderboard 
                 key={`referral-${refreshKey}`}
                 currentAgentId={agentId || undefined} 

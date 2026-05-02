@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
-import { startOfWeek, startOfMonth, subWeeks, format } from "date-fns";
+import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { getBusinessNow, getBusinessMonthBounds, getBusinessWeekBounds, getMatchedPriorWeekBounds } from "@/lib/dateUtils";
 
 export function DashboardInsightCards() {
   const { user } = useAuth();
@@ -21,23 +22,13 @@ export function DashboardInsightCards() {
 
   const [hiresDialogOpen, setHiresDialogOpen] = useState(false);
 
-  const now = new Date();
-  const weekStart = startOfWeek(now, { weekStartsOn: 1 });
-  const lastWeekStart = subWeeks(weekStart, 1);
-  const monthStart = startOfMonth(now);
-
-  // Matched-range: only pull last-week production through the same weekday as today
-  const daysIntoWeek = Math.max(1, Math.min(7, Math.floor((now.getTime() - weekStart.getTime()) / 86400000) + 1));
-  const lastWeekMatchedEnd = new Date(lastWeekStart);
-  lastWeekMatchedEnd.setDate(lastWeekMatchedEnd.getDate() + daysIntoWeek);
-
-  const weekStartStr = format(weekStart, "yyyy-MM-dd");
-  const lastWeekStartStr = format(lastWeekStart, "yyyy-MM-dd");
-  const lastWeekMatchedEndStr = format(lastWeekMatchedEnd, "yyyy-MM-dd");
-  const monthStartStr = format(monthStart, "yyyy-MM-dd");
+  const now = getBusinessNow();
+  const weekBounds = getBusinessWeekBounds();
+  const monthBounds = getBusinessMonthBounds();
+  const priorWeekBounds = getMatchedPriorWeekBounds();
 
   const { data } = useQuery({
-    queryKey: ["dashboard-insight-cards-v5-deals", weekStartStr, monthStartStr, user?.id],
+    queryKey: ["dashboard-insight-cards-v6-deals", weekBounds.startIso, monthBounds.startIso, user?.id],
     queryFn: async () => {
       // Per-agent revenue estimate (uses contract % + override rate from view)
       let estimate: any = null;
@@ -62,13 +53,15 @@ export function DashboardInsightCards() {
         supabase.from("applications")
           .select("id, first_name, last_name, contracted_at", { count: "exact" })
           .not("contracted_at", "is", null)
-          .gte("contracted_at", weekStart.toISOString())
+          .gte("contracted_at", weekBounds.startIso)
+          .lt("contracted_at", weekBounds.endIso)
           .order("contracted_at", { ascending: false })
           .limit(500),
         // Applications this week (Monday-start)
         supabase.from("applications")
           .select("id", { count: "exact", head: true })
-          .gte("created_at", weekStart.toISOString())
+          .gte("created_at", weekBounds.startIso)
+          .lt("created_at", weekBounds.endIso)
           .is("terminated_at", null),
         // License progress across EVERY active applicant (not just contracted)
         supabase.from("applications")
@@ -77,15 +70,18 @@ export function DashboardInsightCards() {
           .neq("license_status", "licensed"),
         // This week ALP — submitted/active only, exclude cancelled/lapsed
         supabase.from("deals").select("annual_premium")
-          .gte("effective_date", weekStartStr)
+          .gte("posted_at", weekBounds.startIso)
+          .lt("posted_at", weekBounds.endIso)
           .in("status", ["submitted", "active"]),
         // Last week ALP — same day-of-week range
         supabase.from("deals").select("annual_premium")
-          .gte("effective_date", lastWeekStartStr).lt("effective_date", lastWeekMatchedEndStr)
+          .gte("posted_at", priorWeekBounds.startIso)
+          .lt("posted_at", priorWeekBounds.endIso)
           .in("status", ["submitted", "active"]),
         // Month-to-date ALP
         supabase.from("deals").select("annual_premium")
-          .gte("effective_date", monthStartStr)
+          .gte("posted_at", monthBounds.startIso)
+          .lt("posted_at", monthBounds.endIso)
           .in("status", ["submitted", "active"]),
         // Insuracloud snapshots (real commissions)
         supabase.from("insuracloud_snapshots" as any)

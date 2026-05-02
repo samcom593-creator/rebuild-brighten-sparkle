@@ -1,18 +1,22 @@
+import { Suspense, lazy } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "@/components/landing/Navbar";
 import { HeroSection } from "@/components/landing/HeroSection";
-import { BenefitsSection } from "@/components/landing/BenefitsSection";
-import { EarningsSection } from "@/components/landing/EarningsSection";
-import { TestimonialsSection } from "@/components/landing/TestimonialsSection";
-import { SystemsSection } from "@/components/landing/SystemsSection";
-import { CareerPathwaySection } from "@/components/landing/CareerPathwaySection";
-import { CTASection } from "@/components/landing/CTASection";
 import { Footer } from "@/components/landing/Footer";
-import { DealsTicker } from "@/components/landing/DealsTicker";
-import { ApplicationToast } from "@/components/landing/ApplicationToast";
-import { ApexLeadsSection } from "@/components/landing/ApexLeadsSection";
-import { InstagramGrowthSection } from "@/components/landing/InstagramGrowthSection";
+
+const BenefitsSection = lazy(() => import("@/components/landing/BenefitsSection").then((mod) => ({ default: mod.BenefitsSection })));
+const EarningsSection = lazy(() => import("@/components/landing/EarningsSection").then((mod) => ({ default: mod.EarningsSection })));
+const TestimonialsSection = lazy(() => import("@/components/landing/TestimonialsSection").then((mod) => ({ default: mod.TestimonialsSection })));
+const SystemsSection = lazy(() => import("@/components/landing/SystemsSection").then((mod) => ({ default: mod.SystemsSection })));
+const CareerPathwaySection = lazy(() => import("@/components/landing/CareerPathwaySection").then((mod) => ({ default: mod.CareerPathwaySection })));
+const CTASection = lazy(() => import("@/components/landing/CTASection").then((mod) => ({ default: mod.CTASection })));
+const ApexLeadsSection = lazy(() => import("@/components/landing/ApexLeadsSection").then((mod) => ({ default: mod.ApexLeadsSection })));
+const InstagramGrowthSection = lazy(() => import("@/components/landing/InstagramGrowthSection").then((mod) => ({ default: mod.InstagramGrowthSection })));
+
+function SectionFallback() {
+  return <div className="mx-auto h-24 max-w-5xl animate-pulse rounded-2xl bg-white/[0.03]" />;
+}
 
 const Index = () => {
   const { user, isLoading } = useAuth();
@@ -20,21 +24,21 @@ const Index = () => {
   if (!isLoading && user) return <Navigate to="/dashboard" replace />;
   return (
     <div className="min-h-screen bg-[#030712] overflow-x-hidden w-full max-w-full">
-      <DealsTicker />
       <Navbar />
       <main>
         <HeroSection />
-        <BenefitsSection />
-        <EarningsSection />
-        <TestimonialsSection />
-        <SystemsSection />
-        <CareerPathwaySection />
-        <ApexLeadsSection />
-        <InstagramGrowthSection />
-        <CTASection />
+        <Suspense fallback={<SectionFallback />}>
+          <BenefitsSection />
+          <EarningsSection />
+          <TestimonialsSection />
+          <SystemsSection />
+          <CareerPathwaySection />
+          <ApexLeadsSection />
+          <InstagramGrowthSection />
+          <CTASection />
+        </Suspense>
       </main>
       <Footer />
-      <ApplicationToast />
     </div>
   );
 };

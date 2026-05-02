@@ -80,6 +80,7 @@ import { format } from "date-fns";
 import { getTodayPST, getWeekStartPST, getMonthStartPST } from "@/lib/dateUtils";
 import { toast } from "sonner";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
+import { ControlTerminal } from "@/components/dashboard/ControlTerminal";
 
 type TimePeriod = "day" | "week" | "month" | "custom";
 type FilterType = "all" | "producers" | "weak" | "zero" | "inactive";
@@ -623,6 +624,8 @@ export default function DashboardCommandCenter() {
             </Button>
           </div>
         </div>
+
+        <ControlTerminal />
 
         {/* Team Commissions (InsuraCloud Live) - sits ABOVE the stat grid */}
         <HideableCard cardKey="admin.team-commissions" label="Team Commissions (Live)">

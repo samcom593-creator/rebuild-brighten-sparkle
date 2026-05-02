@@ -1,0 +1,7 @@
+{
+  "recommendations": [
+    "wayou.vscode-todo-highlight",
+    "Gruntfuggly.todo-tree"
+  ],
+  "//note": "An Apple Reminders VS Code extension is not validated in the marketplace as of this commit. See tasks/README.md for current limitations."
+}

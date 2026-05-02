@@ -1,0 +1,89 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Tasks: Add Reminder",
+      "type": "shell",
+      "command": "bun",
+      "args": [
+        "run",
+        "${workspaceFolder}/tasks/cli.ts",
+        "add",
+        "${input:taskTitle}",
+        "--list",
+        "${input:taskList}",
+        "--priority",
+        "${input:taskPriority}",
+        "--due",
+        "${input:taskDue}"
+      ],
+      "presentation": {
+        "echo": true,
+        "reveal": "silent",
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": false
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Tasks: Pull Today's Reminders",
+      "type": "shell",
+      "command": "bun",
+      "args": ["run", "${workspaceFolder}/tasks/cli.ts", "pull"],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "problemMatcher": [],
+      "runOptions": {
+        "instanceLimit": 1
+      }
+    },
+    {
+      "label": "Tasks: Sync All",
+      "type": "shell",
+      "command": "bun",
+      "args": ["run", "${workspaceFolder}/tasks/cli.ts", "sync"],
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "taskTitle",
+      "type": "promptString",
+      "description": "Task title",
+      "default": ""
+    },
+    {
+      "id": "taskList",
+      "type": "pickString",
+      "description": "Which list?",
+      "options": ["APEX-Daily", "Recruiting", "Build", "Follow-ups"],
+      "default": "APEX-Daily"
+    },
+    {
+      "id": "taskPriority",
+      "type": "pickString",
+      "description": "Priority",
+      "options": ["urgent", "high", "medium", "low"],
+      "default": "medium"
+    },
+    {
+      "id": "taskDue",
+      "type": "promptString",
+      "description": "Due (today, tomorrow, YYYY-MM-DD, +Nd, or blank)",
+      "default": "today"
+    }
+  ]
+}

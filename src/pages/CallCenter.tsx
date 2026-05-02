@@ -98,11 +98,14 @@ export default function CallCenter() {
   }, [user?.id]);
 
   const fetchLeads = useCallback(async () => {
-    // CRITICAL: Never fetch without agentId — unfiltered queries return all leads
+    // CRITICAL: Never fetch without agentId — unfiltered queries return all leads.
+    // Admin path (Sam): bypass assigned-only and lifecycle-status filters so
+    // every lead in the system stays visible. v2026-05-02-admin-bypass.
     if (!agentId && !isAdmin) {
       setLeads([]);
       return;
     }
+    if (typeof console !== "undefined") console.debug("[CallCenter] fetchLeads admin=", isAdmin, "agentId=", agentId);
 
     setLoading(true);
     try {

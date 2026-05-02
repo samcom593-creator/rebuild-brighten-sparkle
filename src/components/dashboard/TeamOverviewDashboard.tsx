@@ -72,9 +72,13 @@ export function TeamOverviewDashboard() {
   const { data, isLoading } = useQuery({
     queryKey: ["team-overview", today],
     queryFn: async (): Promise<TeamOverviewData> => {
-      // ALP + deal counts come from deals table (Agent Link truth, status
-      // submitted/active by effective_date). daily_production stays only
-      // as the source of presentations (its only authoritative field).
+      // ALP + deal counts come from deals table (Agent Link truth). For
+      // sales-velocity windows (7d / 30d ALP) we filter by created_at — the
+      // day a policy was written — not effective_date. Effective dates are
+      // often weeks in the future for life policies, which makes window-
+      // based "ALP this week" miss what was actually sold.
+      const sevenISO = subDays(new Date(), 7).toISOString();
+      const thirtyISO = subDays(new Date(), 30).toISOString();
       const VALID_STATUS = ["submitted", "active"] as const;
       const [agentsRes, presRes7, presRes30, dealsRes7, dealsRes30, deactivatedRes, applicationsRes] = await Promise.all([
         supabase
@@ -93,14 +97,12 @@ export function TeamOverviewDashboard() {
         supabase
           .from("deals")
           .select("agent_id, annual_premium")
-          .gte("effective_date", sevenDaysAgo)
-          .lte("effective_date", today)
+          .gte("created_at", sevenISO)
           .in("status", VALID_STATUS as unknown as string[]),
         supabase
           .from("deals")
           .select("agent_id, annual_premium")
-          .gte("effective_date", thirtyDaysAgo)
-          .lte("effective_date", today)
+          .gte("created_at", thirtyISO)
           .in("status", VALID_STATUS as unknown as string[]),
         supabase
           .from("agents")
@@ -169,12 +171,10 @@ export function TeamOverviewDashboard() {
       // Active producer rule (Sam, 2026-04-27): >= $4k AP in last 7d OR
       // promoted to live/evaluated/transfer in last 7d. Pull both cheap
       // queries; daily_production is unreliable for this signal.
-      const sevenAgo = format(subDays(new Date(), 7), "yyyy-MM-dd");
-      const sevenISO = subDays(new Date(), 7).toISOString();
       const [sevenDayDealsRes, recentReleaseRes] = await Promise.all([
         supabase.from("deals")
           .select("agent_id, annual_premium")
-          .gte("effective_date", sevenAgo)
+          .gte("created_at", sevenISO)
           .in("status", ["submitted", "active"]),
         supabase.from("agents")
           .select("id")

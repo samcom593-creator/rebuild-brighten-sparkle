@@ -67,49 +67,59 @@ export function ExtendedStatsStrip({ agentId, title = "More numbers" }: Props) {
       const dayOfMonth = now.getDate();
       const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
 
-      // Source of truth: deals table (Agent Link sync), filtered to
-      // submitted/active. daily_production was agent self-report and
-      // drifted from agency totals. Sam 2026-04-27: every "today/week/
-      // month" stat must agree with the rest of the dashboard.
+      // 2026-05-01: today/week/month windows measure sales velocity, so
+      // filter by created_at (the day a policy was written) — not
+      // effective_date. effective_date is often weeks in the future for life
+      // policies, which made these windows feel "off" (a deal sold today
+      // wouldn't show up under "Today" if its effective_date was next week).
       const VALID_STATUS = ["submitted", "active"] as const;
       const filterAgent = (q: any) => (agentId ? q.eq("agent_id", agentId) : q);
+      const todayStartIso = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+      const todayEndIso = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
+      const wkStartIso = wkStart.toISOString();
+      const prevWkStartIso = prevWkStart.toISOString();
+      const prevWkEndIso = new Date(prevWkEnd.getFullYear(), prevWkEnd.getMonth(), prevWkEnd.getDate(), 23, 59, 59).toISOString();
+      const monthStartIso = monthStart.toISOString();
+      const prevMonthStartIso = prevMonthStart.toISOString();
+      const prevMonthEndIso = new Date(prevMonthEnd.getFullYear(), prevMonthEnd.getMonth(), prevMonthEnd.getDate(), 23, 59, 59).toISOString();
 
       const [todayRes, weekRes, prevWeekRes, monthRes, prevMonthRes] = await Promise.all([
         filterAgent(
           supabase
             .from("deals")
             .select("annual_premium, agent_id")
-            .eq("effective_date", today)
+            .gte("created_at", todayStartIso)
+            .lte("created_at", todayEndIso)
             .in("status", VALID_STATUS as unknown as string[])
         ),
         filterAgent(
           supabase
             .from("deals")
             .select("annual_premium")
-            .gte("effective_date", isoDate(wkStart))
+            .gte("created_at", wkStartIso)
             .in("status", VALID_STATUS as unknown as string[])
         ),
         filterAgent(
           supabase
             .from("deals")
             .select("annual_premium")
-            .gte("effective_date", isoDate(prevWkStart))
-            .lte("effective_date", isoDate(prevWkEnd))
+            .gte("created_at", prevWkStartIso)
+            .lte("created_at", prevWkEndIso)
             .in("status", VALID_STATUS as unknown as string[])
         ),
         filterAgent(
           supabase
             .from("deals")
-            .select("annual_premium, agent_id, effective_date")
-            .gte("effective_date", isoDate(monthStart))
+            .select("annual_premium, agent_id, created_at")
+            .gte("created_at", monthStartIso)
             .in("status", VALID_STATUS as unknown as string[])
         ),
         filterAgent(
           supabase
             .from("deals")
-            .select("annual_premium, effective_date")
-            .gte("effective_date", isoDate(prevMonthStart))
-            .lte("effective_date", isoDate(prevMonthEnd))
+            .select("annual_premium, created_at")
+            .gte("created_at", prevMonthStartIso)
+            .lte("created_at", prevMonthEndIso)
             .in("status", VALID_STATUS as unknown as string[])
         ),
       ]);
@@ -141,7 +151,7 @@ export function ExtendedStatsStrip({ agentId, title = "More numbers" }: Props) {
       const wowDelta = pctDelta(weekALP, prevWeekALP);
       // Month-over-month: compare same window (1..dayOfMonth) of prev month
       const prevMonthSameWindow = (prevMonthRes.data || []).filter((r: any) => {
-        const d = new Date(r.effective_date || prevMonthStart);
+        const d = new Date(r.created_at || prevMonthStart);
         return d.getDate() <= dayOfMonth;
       });
       const prevMonthWindowALP = sumAP(prevMonthSameWindow as any[]);

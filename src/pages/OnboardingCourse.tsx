@@ -360,13 +360,35 @@ export default function OnboardingCourse() {
                               onRetry={() => {}}
                             />
                           )
+                        ) : currentProgress?.passed ? (
+                          <Card className="border-2 border-emerald-500/30">
+                            <CardContent className="pt-8 pb-8 text-center">
+                              <Award className="h-16 w-16 text-emerald-500 mx-auto mb-4" />
+                              <h3 className="text-xl font-bold mb-2">Module Completed!</h3>
+                              {currentModuleIndex < modules.length - 1 && (
+                                <Button onClick={() => {
+                                  setCurrentModuleIndex(currentModuleIndex + 1);
+                                  setActiveTab("video");
+                                }}>
+                                  Continue to Next Module
+                                </Button>
+                              )}
+                            </CardContent>
+                          </Card>
                         ) : (
                           <Card>
                             <CardContent className="pt-8 pb-8 text-center">
                               <HelpCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                              <p className="text-muted-foreground">
-                                Quiz questions are being prepared for this module.
+                              <p className="text-muted-foreground mb-4">
+                                No quiz for this module — finish the video and mark it complete to unlock the next one.
                               </p>
+                              <Button
+                                onClick={() => handleQuizSubmit([], 100, true)}
+                                disabled={!canTakeQuiz(currentModule.id)}
+                                size="lg"
+                              >
+                                {canTakeQuiz(currentModule.id) ? "Mark Module Complete" : "Watch 80% to unlock"}
+                              </Button>
                             </CardContent>
                           </Card>
                         )}

@@ -74,14 +74,15 @@ export function AgentCompetitiveDashboard({ agentId, weeklyTarget = 10000 }: Pro
         nameMap[a.id] = a.profile?.full_name ?? "Agent";
       }
 
-      // Truth-layer 2026-04-28: pull from deals (status submitted/active by
-      // effective_date) instead of daily_production.aop (drifts vs truth +
-      // held the AL phantom-Sam pollution).
+      // 2026-05-01: weekly ALP measures sales velocity — filter by created_at
+      // (the day the policy was written), not effective_date. effective_date
+      // is often weeks in the future for life policies so a deal sold this
+      // Monday could otherwise be missed entirely from "Weekly ALP".
       const { data: prod } = await supabase
         .from("deals")
         .select("agent_id, annual_premium")
-        .gte("effective_date", monday)
-        .lte("effective_date", sunday)
+        .gte("created_at", monday)
+        .lte("created_at", sunday + "T23:59:59")
         .in("status", ["submitted", "active"])
         .in("agent_id", agentIds.length ? agentIds : ["00000000-0000-0000-0000-000000000000"]);
 

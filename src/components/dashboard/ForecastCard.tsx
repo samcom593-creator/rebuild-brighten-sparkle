@@ -28,34 +28,38 @@ async function fetchForecast(): Promise<Forecast> {
   const now = new Date();
   const daysIn = now.getDate();
   const daysOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+  const lastMonthSameDayEnd = new Date(now.getFullYear(), now.getMonth() - 1, daysIn, 23, 59, 59).toISOString();
 
-  // Last month, same number of days
-  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10);
-  const lastMonthSameDayEnd = new Date(now.getFullYear(), now.getMonth() - 1, daysIn).toISOString().slice(0, 10);
-
+  // Forecast = sales velocity, so we measure by created_at (the day a policy
+  // was written), not effective_date. effective_date is often dated weeks in
+  // the future for life policies, which front-loads MTD on day-1 of the
+  // month and explodes the linear projection.
   const [mtdRes, lastRes] = await Promise.all([
-    supabase.from("deals").select("annual_premium,effective_date").gte("effective_date", monthStart).in("status", ["submitted", "active"]),
-    supabase.from("deals").select("annual_premium").gte("effective_date", lastMonthStart).lte("effective_date", lastMonthSameDayEnd).in("status", ["submitted", "active"]),
+    supabase.from("deals").select("annual_premium,created_at").gte("created_at", monthStart).in("status", ["submitted", "active"]),
+    supabase.from("deals").select("annual_premium").gte("created_at", lastMonthStart).lte("created_at", lastMonthSameDayEnd).in("status", ["submitted", "active"]),
   ]);
 
   const mtdRows = mtdRes.data ?? [];
   const mtd = mtdRows.reduce((s: number, r: any) => s + Number(r.annual_premium ?? 0), 0);
   const lastMonthSameDays = (lastRes.data ?? []).reduce((s: number, r: any) => s + Number(r.annual_premium ?? 0), 0);
 
-  // Guardrails: count distinct days with non-zero production for confidence,
-  // and require >= 3 active days before extrapolating month-end. Also clamp
-  // projection at 5x MTD so a single big day on day-1 doesn't yield $4M.
   const activeDaySet = new Set<string>();
-  for (const r of mtdRows as any[]) if (Number(r.annual_premium) > 0 && r.effective_date) activeDaySet.add(String(r.effective_date).slice(0, 10));
+  for (const r of mtdRows as any[]) if (Number(r.annual_premium) > 0 && r.created_at) activeDaySet.add(String(r.created_at).slice(0, 10));
   const activeDays = activeDaySet.size;
   const confidence: "low" | "medium" | "high" =
     activeDays >= 10 ? "high" : activeDays >= 5 ? "medium" : "low";
 
-  const rawProjection = daysIn > 0 ? (mtd / daysIn) * daysOfMonth : 0;
-  // Cap projection at 5x MTD to neutralize single-day spikes when daysIn is small
-  const cappedProjection = activeDays >= 3 ? Math.min(rawProjection, mtd * 5) : mtd;
-  const projection = Math.max(0, cappedProjection);
+  // Don't extrapolate when we don't have enough signal — show MTD instead so
+  // day-1 of the month doesn't display a $4M projection.
+  let projection: number;
+  if (daysIn < 3 || activeDays < 3) {
+    projection = mtd;
+  } else {
+    const rawProjection = (mtd / daysIn) * daysOfMonth;
+    projection = Math.max(0, Math.min(rawProjection, mtd * 3));
+  }
 
   const delta = lastMonthSameDays > 0 ? ((mtd - lastMonthSameDays) / lastMonthSameDays) * 100 : (mtd > 0 ? 100 : 0);
 

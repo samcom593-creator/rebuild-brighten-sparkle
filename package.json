@@ -12,8 +12,10 @@
     "sync:functions": "bash scripts/sync-functions-config.sh",
     "predev": "bash scripts/sync-functions-config.sh || true",
     "prebuild": "bash scripts/sync-functions-config.sh || true",
+    "check:metric-truth": "node scripts/check-metric-truth.mjs",
     "smoke": "node scripts/route-smoke.mjs",
-    "smoke:prod": "BASE=https://apex-financial.org node scripts/route-smoke.mjs"
+    "smoke:prod": "BASE=https://apex-financial.org node scripts/route-smoke.mjs",
+    "verify:core": "npm run check:metric-truth && npx tsc --noEmit && npm run build"
   },
   "dependencies": {
     "@alloc/quick-lru": "5.2.0",

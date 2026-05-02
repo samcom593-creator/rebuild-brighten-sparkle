@@ -7,6 +7,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { getBusinessMonthBounds } from "@/lib/dateUtils";
 
 type AgentDetail = {
   id: string;
@@ -31,6 +32,7 @@ type Deal = {
   annual_premium: number;
   status: string;
   effective_date: string;
+  posted_at?: string | null;
   carrier_name: string | null;
 };
 
@@ -75,21 +77,31 @@ export default function AgentDetail() {
         churn_90d_pct: (a as any).metadata?.churn_90d_pct ?? null,
       });
 
-      const { data: d } = await supabase
-        .from("deals")
-        .select(`id, client_first_name, client_last_name, annual_premium, status, effective_date,
-          carrier:carriers(name)`)
-        .eq("agent_id", id)
-        .order("effective_date", { ascending: false })
-        .limit(50);
-      const deals: Deal[] = (d as any[] ?? []).map(x => ({
+      const monthBounds = getBusinessMonthBounds();
+      const [dealsRes, monthRes] = await Promise.all([
+        supabase
+          .from("deals")
+          .select(`id, client_first_name, client_last_name, annual_premium, status, effective_date, posted_at,
+            carrier:carriers(name)`)
+          .eq("agent_id", id)
+          .order("posted_at", { ascending: false })
+          .limit(50),
+        supabase
+          .from("deals")
+          .select("annual_premium")
+          .eq("agent_id", id)
+          .gte("posted_at", monthBounds.startIso)
+          .lt("posted_at", monthBounds.endIso)
+          .in("status", ["submitted", "active"]),
+      ]);
+      const deals: Deal[] = (dealsRes.data as any[] ?? []).map(x => ({
         id: x.id, client_first_name: x.client_first_name, client_last_name: x.client_last_name,
         annual_premium: Number(x.annual_premium), status: x.status, effective_date: x.effective_date,
+        posted_at: x.posted_at ?? null,
         carrier_name: x.carrier?.name ?? null,
       }));
       setDeals(deals);
-      setMtdAlp(deals.filter(d => new Date(d.effective_date) >= new Date(new Date().getFullYear(), new Date().getMonth(), 1))
-        .reduce((a, d) => a + d.annual_premium, 0));
+      setMtdAlp((monthRes.data ?? []).reduce((sum: number, deal: any) => sum + Number(deal.annual_premium ?? 0), 0));
       setActiveAlp(deals.filter(d => d.status === "active").reduce((a, d) => a + d.annual_premium, 0));
 
       const { data: ledger } = await supabase

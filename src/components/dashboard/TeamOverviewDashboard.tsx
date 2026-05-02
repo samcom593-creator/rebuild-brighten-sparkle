@@ -9,13 +9,13 @@ import {
   ChevronDown, ChevronUp,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getTodayPST, getDateDaysAgoPST } from "@/lib/dateUtils";
-import { format, subDays } from "date-fns";
+import { getDateDaysAgoPST } from "@/lib/dateUtils";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { getMetricBounds } from "@/lib/metricTruth";
 
 interface ManagerAgent {
   id: string;
@@ -63,22 +63,18 @@ const STAGE_LABELS: Record<string, string> = {
 };
 
 export function TeamOverviewDashboard() {
-  const today = getTodayPST();
-  const sevenDaysAgo = getDateDaysAgoPST(7);
-  const thirtyDaysAgo = getDateDaysAgoPST(30);
+  const weekBounds = getMetricBounds("week");
+  const monthBounds = getMetricBounds("month");
+  const weekEndDate = new Date(weekBounds.end.getTime() - 1_000).toISOString().slice(0, 10);
+  const monthEndDate = new Date(monthBounds.end.getTime() - 1_000).toISOString().slice(0, 10);
   const ninetyDaysAgo = getDateDaysAgoPST(90);
   const [expandedManager, setExpandedManager] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ["team-overview", today],
+    queryKey: ["team-overview", weekBounds.startIso, monthBounds.startIso],
     queryFn: async (): Promise<TeamOverviewData> => {
-      // ALP + deal counts come from deals table (Agent Link truth). For
-      // sales-velocity windows (7d / 30d ALP) we filter by created_at — the
-      // day a policy was written — not effective_date. Effective dates are
-      // often weeks in the future for life policies, which makes window-
-      // based "ALP this week" miss what was actually sold.
-      const sevenISO = subDays(new Date(), 7).toISOString();
-      const thirtyISO = subDays(new Date(), 30).toISOString();
+      // Use the same week/month posted-deal truth as the rest of the dashboard
+      // so admin overview cards stop drifting from what the board shows.
       const VALID_STATUS = ["submitted", "active"] as const;
       const [agentsRes, presRes7, presRes30, dealsRes7, dealsRes30, deactivatedRes, applicationsRes] = await Promise.all([
         supabase
@@ -87,22 +83,24 @@ export function TeamOverviewDashboard() {
         supabase
           .from("daily_production")
           .select("agent_id, presentations")
-          .gte("production_date", sevenDaysAgo)
-          .lte("production_date", today),
+          .gte("production_date", weekBounds.startIso.slice(0, 10))
+          .lte("production_date", weekEndDate),
         supabase
           .from("daily_production")
           .select("agent_id, presentations")
-          .gte("production_date", thirtyDaysAgo)
-          .lte("production_date", today),
+          .gte("production_date", monthBounds.startIso.slice(0, 10))
+          .lte("production_date", monthEndDate),
         supabase
           .from("deals")
           .select("agent_id, annual_premium")
-          .gte("created_at", sevenISO)
+          .gte("posted_at", weekBounds.startIso)
+          .lt("posted_at", weekBounds.endIso)
           .in("status", VALID_STATUS as unknown as string[]),
         supabase
           .from("deals")
           .select("agent_id, annual_premium")
-          .gte("created_at", thirtyISO)
+          .gte("posted_at", monthBounds.startIso)
+          .lt("posted_at", monthBounds.endIso)
           .in("status", VALID_STATUS as unknown as string[]),
         supabase
           .from("agents")
@@ -174,11 +172,12 @@ export function TeamOverviewDashboard() {
       const [sevenDayDealsRes, recentReleaseRes] = await Promise.all([
         supabase.from("deals")
           .select("agent_id, annual_premium")
-          .gte("created_at", sevenISO)
+          .gte("posted_at", weekBounds.startIso)
+          .lt("posted_at", weekBounds.endIso)
           .in("status", ["submitted", "active"]),
         supabase.from("agents")
           .select("id")
-          .gte("stage_changed_at", sevenISO)
+          .gte("stage_changed_at", weekBounds.startIso)
           .in("onboarding_stage", ["live", "evaluated", "transfer"]),
       ]);
       const apByAgent = new Map<string, number>();
@@ -317,8 +316,8 @@ export function TeamOverviewDashboard() {
   ];
 
   const financialMetrics = [
-    { label: "7-Day ALP", value: data.aop7, currency: true, icon: DollarSign, color: "text-primary" },
-    { label: "30-Day ALP", value: data.aop30, currency: true, icon: DollarSign, color: "text-emerald-500" },
+    { label: "Week ALP", value: data.aop7, currency: true, icon: DollarSign, color: "text-primary" },
+    { label: "Month ALP", value: data.aop30, currency: true, icon: DollarSign, color: "text-emerald-500" },
     { label: "Avg Close Rate", value: data.avgCloseRate, suffix: "%", icon: Percent, color: "text-blue-500" },
     { label: "Activation Rate", value: data.activationRate, suffix: "%", icon: Activity, color: "text-violet-500" },
     { label: "Retention Rate", value: data.retentionRate, suffix: "%", icon: UserCheck, color: "text-emerald-500" },

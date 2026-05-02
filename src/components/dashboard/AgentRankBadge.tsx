@@ -9,8 +9,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { getTodayPST, getDateDaysAgoPST } from "@/lib/dateUtils";
+import { getBusinessDayBounds } from "@/lib/dateUtils";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
+import { subDays } from "date-fns";
 
 interface AgentRankBadgeProps {
   agentId: string;
@@ -31,15 +32,16 @@ export function AgentRankBadge({
 
   const fetchRanks = useCallback(async () => {
     try {
-      const today = getTodayPST();
-      const yesterday = getDateDaysAgoPST(1);
+      const todayBounds = getBusinessDayBounds();
+      const yesterdayBounds = getBusinessDayBounds(subDays(new Date(), 1));
 
-      // Truth-layer 2026-04-28: rank by deals truth (status submitted/active by
-      // effective_date), not daily_production.aop.
+      // Rank by posted deals so the badge uses the same Chicago-time daily
+      // truth as the rest of the leaderboard stack.
       const { data: dealsTodayRaw } = await supabase
         .from("deals")
         .select("agent_id, annual_premium")
-        .eq("effective_date", today)
+        .gte("posted_at", todayBounds.startIso)
+        .lt("posted_at", todayBounds.endIso)
         .in("status", ["submitted", "active"])
         .neq("agent_id", "7c3c5581-3544-437f-bfe2-91391afb217d");
       const todayMap = new Map<string, number>();
@@ -67,7 +69,8 @@ export function AgentRankBadge({
         const { data: dealsYestRaw } = await supabase
           .from("deals")
           .select("agent_id, annual_premium")
-          .eq("effective_date", yesterday)
+          .gte("posted_at", yesterdayBounds.startIso)
+          .lt("posted_at", yesterdayBounds.endIso)
           .in("status", ["submitted", "active"])
           .neq("agent_id", "7c3c5581-3544-437f-bfe2-91391afb217d");
         const yestMap = new Map<string, number>();

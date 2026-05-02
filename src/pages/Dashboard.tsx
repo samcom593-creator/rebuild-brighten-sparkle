@@ -438,7 +438,8 @@ export default function Dashboard() {
       if (!isAdmin) return [];
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      const cutoff = sevenDaysAgo.toISOString().split("T")[0];
+      const cutoffIso = getBusinessDayBounds(sevenDaysAgo).startIso;
+      const cutoffDate = cutoffIso.slice(0, 10);
 
       const { data: agents } = await supabase
         .from("agents")
@@ -450,8 +451,8 @@ export default function Dashboard() {
       if (!agents || agents.length === 0) return [];
 
       const [prodRes, dealsRes] = await Promise.all([
-        supabase.from("daily_production").select("agent_id").gte("production_date", cutoff),
-        supabase.from("deals").select("agent_id").gte("effective_date", cutoff),
+        supabase.from("daily_production").select("agent_id").gte("production_date", cutoffDate),
+        supabase.from("deals").select("agent_id").gte("posted_at", cutoffIso),
       ]);
 
       const activeIds = new Set<string>();
@@ -477,12 +478,18 @@ export default function Dashboard() {
       const [nullRes, unknownRes, lastSyncRes] = await Promise.all([
         supabase.from("deals").select("id", { count: "exact", head: true }).is("status", null),
         supabase.from("deals").select("id", { count: "exact", head: true }).not("status", "in", `(${VALID.join(",")})`),
-        supabase.from("deals").select("created_at").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+        supabase
+          .from("agentlink_sync_log" as any)
+          .select("finished_at, started_at")
+          .eq("status", "ok")
+          .order("finished_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
       ]);
       return {
         nullStatus: nullRes.count || 0,
         unknownStatus: unknownRes.count || 0,
-        lastSync: (lastSyncRes.data as any)?.created_at || null,
+        lastSync: (lastSyncRes.data as any)?.finished_at || (lastSyncRes.data as any)?.started_at || null,
       };
     },
     enabled: !!user && !authLoading && isAdmin,

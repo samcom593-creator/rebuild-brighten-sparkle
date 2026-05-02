@@ -42,7 +42,7 @@ export default function LeadsLanding() {
             </h1>
             
             <p className="text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed">
-              Stop cold calling. Get warm, pre-qualified leads delivered directly to your inbox with a system built to help agents stay consistent, coachable, and scalable.
+              Stop cold calling. Get warm, pre-qualified leads delivered daily with the same dialer, coaching, and comp structure built to help serious agents push toward $10,000 months.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-8">
@@ -62,8 +62,8 @@ export default function LeadsLanding() {
             {/* Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-16">
               <div className="space-y-2">
-                <div className="text-3xl font-bold text-teal-400">Daily</div>
-                <p className="text-slate-400">Lead delivery and follow-up rhythm</p>
+                <div className="text-3xl font-bold text-teal-400">$10K+</div>
+                <p className="text-slate-400">Monthly pace serious agents can build toward</p>
               </div>
               <div className="space-y-2">
                 <div className="text-3xl font-bold text-blue-400">Warm</div>
@@ -204,7 +204,7 @@ export default function LeadsLanding() {
       <section className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-r from-teal-600/20 to-blue-600/20">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-4xl font-bold text-white mb-6">
-            Ready to Start Earning?
+            Ready to Build Your First $10K Month?
           </h2>
           <p className="text-xl text-slate-300 mb-8">
             Join our community of successful agents and start receiving qualified leads today. Limited spots available this month.
@@ -267,7 +267,7 @@ const benefits = [
   {
     icon: Award,
     title: "Performance-Based Compensation",
-    description: "A real comp structure with room to grow as you produce, improve, and lead.",
+    description: "A comp structure built for serious agents who want to grow into $10,000+ months as they improve and lead.",
   },
   {
     icon: Users,
@@ -295,7 +295,7 @@ const features = [
 const faqs = [
   {
     q: "How much can I earn?",
-    a: "Results vary by effort, skill, consistency, and lead follow-up. We focus on giving agents a real system, real coaching, and a scalable path to grow.",
+    a: "The system is built for coachable agents who want a real shot at $10,000 months. Results still depend on effort, consistency, skill, and follow-up, but the model is designed around that target.",
   },
   {
     q: "Do I need experience?",

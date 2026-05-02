@@ -5,6 +5,7 @@ import { useMyDownline } from "@/hooks/useMyDownline";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { Users, DollarSign, TrendingUp, Target } from "lucide-react";
+import { getBusinessMonthBounds } from "@/lib/dateUtils";
 
 export default function MyTeam() {
   const { isManager } = useAuth();
@@ -14,15 +15,15 @@ export default function MyTeam() {
     queryKey: ["my-team-stats", downlineIds.join(",")],
     queryFn: async () => {
       if (downlineIds.length === 0) return null;
-      const now = new Date();
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+      const monthBounds = getBusinessMonthBounds();
 
       const [prodRes, agentsRes] = await Promise.all([
-        // Pull from deals (effective_date + valid status) so MyTeam totals
-        // line up with the agency dashboard.
+        // Pull from posted deals so manager month totals match the same
+        // calendar MTD truth layer used across the dashboard.
         supabase.from("deals").select("agent_id, annual_premium")
           .in("agent_id", downlineIds)
-          .gte("effective_date", monthStart)
+          .gte("posted_at", monthBounds.startIso)
+          .lt("posted_at", monthBounds.endIso)
           .in("status", ["submitted", "active"]),
         supabase.from("agents").select("id, display_name, profile:profiles!agents_profile_id_fkey(full_name, avatar_url)").in("id", downlineIds).eq("is_deactivated", false),
       ]);

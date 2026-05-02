@@ -6,7 +6,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { getTodayPST } from "@/lib/dateUtils";
+import { getBusinessDayBounds, getTodayPST } from "@/lib/dateUtils";
 import { AgentQuickEditDialog } from "./AgentQuickEditDialog";
 import { getClosingRateColor } from "@/lib/closingRateColors";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
@@ -62,15 +62,17 @@ export function LiveLeaderboard({ currentAgentId, showAISummary = true }: LiveLe
   const fetchLeaderboard = useCallback(async () => {
     try {
       const today = getTodayPST();
+      const dayBounds = getBusinessDayBounds();
       
-      // Truth-layer 2026-04-28: ALP/deal counts come from deals table
-      // (status submitted/active by effective_date). presentations stays
-      // from daily_production (its only authoritative field).
+      // ALP/deal counts come from posted deals in the shared truth layer.
+      // Presentations stay on daily_production because that is still the
+      // authoritative source for that metric.
       const [dealsRes, presRes] = await Promise.all([
         supabase
           .from("deals")
           .select("agent_id, annual_premium")
-          .eq("effective_date", today)
+          .gte("posted_at", dayBounds.startIso)
+          .lt("posted_at", dayBounds.endIso)
           .in("status", ["submitted", "active"])
           .neq("agent_id", "7c3c5581-3544-437f-bfe2-91391afb217d"),
         supabase

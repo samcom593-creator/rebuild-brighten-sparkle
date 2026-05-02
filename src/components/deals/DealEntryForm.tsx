@@ -125,73 +125,21 @@ export function DealEntryForm({ onSaved }: { onSaved?: () => void }) {
         const agentName  = (profile as any)?.full_name        || "An agent";
         const instagram  = (profile as any)?.instagram_handle || null;
 
-        // Discord webhook URL (loaded from automation_settings, falls back to hardcoded channel)
-        const { data: hookRow } = await supabase
-          .from("automation_settings" as any)
-          .select("description")
-          .eq("name", "Discord Webhook")
-          .maybeSingle();
-        const webhookUrl =
-          (hookRow as any)?.description ||
-          "https://discord.com/api/webhooks/1425987081418571779/3JrtT5W00gDos8XY2iYc5_nb5sxr9S9ztagW1bBigI-8daIrb170vTyxIqXV2E8x2S0T";
-
-        const fmt$ = (n: number) => {
-          const v = n || 0;
-          if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(2)}M`;
-          if (v >= 1_000)     return `$${(v / 1_000).toFixed(1)}k`;
-          return `$${v.toFixed(0)}`;
-        };
-        const aop     = annualPremium;
-        const monthly = aop / 12;
-        const igLine  = instagram
-          ? `\n📸 [@${String(instagram).replace(/^@/, "")}](https://instagram.com/${String(instagram).replace(/^@/, "")})`
-          : "";
-
-        const embed = {
-          title: "🔥  DEAL CLOSED!",
-          description: `**${agentName}** just slammed a deal shut! The money is IN! 💥${igLine}`,
-          color: 0x10b981,
-          fields: [
-            { name: "💰 ALP",      value: fmt$(aop),              inline: true },
-            { name: "📅 Monthly",  value: fmt$(monthly),          inline: true },
-            { name: "📦 Product",  value: form.product_sold || "—", inline: true },
-          ],
-          footer: { text: "Apex Financial • Deal Alert" },
-          timestamp: new Date().toISOString(),
-        };
-
-        // Direct Discord webhook (CORS-allowed)
-        fetch(webhookUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ embeds: [embed] }),
+        // Route deal celebration + milestone detection through the server-side
+        // Discord function so webhook secrets never live in the browser and the
+        // milestone logic stays aligned with the backend truth layer.
+        supabase.functions.invoke("discord-webhook-notify", {
+          body: {
+            event_type: "deal_closed",
+            details: {
+              agent_id: agentRow.id,
+              agent_name: agentName,
+              instagram_handle: instagram,
+              aop: annualPremium,
+              product_type: form.product_sold || null,
+            },
+          },
         }).catch(() => {});
-
-        // Milestone reward email: detect 25K / 40K / 75K / 100K monthly ALP crossings
-        (async () => {
-          try {
-            const monthStart = new Date();
-            monthStart.setDate(1);
-            const monthStartISO = monthStart.toISOString().split("T")[0];
-            const { data: mtdRows } = await supabase
-              .from("daily_production")
-              .select("aop")
-              .eq("agent_id", agentRow.id)
-              .gte("production_date", monthStartISO);
-            const mtdBefore = (mtdRows ?? []).reduce(
-              (s: number, r: { aop: number | null }) => s + Number(r.aop ?? 0),
-              0,
-            );
-            const mtdAfter  = mtdBefore + annualPremium;
-            const TIERS     = [100000, 75000, 40000, 25000];
-            const crossed   = TIERS.find(t => mtdBefore < t && mtdAfter >= t);
-            if (crossed) {
-              supabase.functions.invoke("send-milestone-reward", {
-                body: { agent_id: agentRow.id, milestone: crossed, mtd_production: mtdAfter },
-              }).catch(() => {});
-            }
-          } catch { /* non-blocking */ }
-        })();
 
         // InsuraCloud: hand off to the outbox edge function (it reads the
         // agent's insuracloud_api_token from the DB and handles retries).

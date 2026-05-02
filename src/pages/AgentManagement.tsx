@@ -25,6 +25,7 @@ import {
 import { formatDistanceToNow, format } from "date-fns";
 import { toast } from "sonner";
 import { AgentQuickEditDialog } from "@/components/dashboard/AgentQuickEditDialog";
+import { getBusinessMonthBounds, getBusinessWeekBounds } from "@/lib/dateUtils";
 
 // ─── Types ─────────────────────────────────────────────────────
 interface AgentRow {
@@ -138,19 +139,19 @@ export default function AgentManagement() {
 
       const agentIds = (agents || []).map((a: any) => a.id);
 
-      const now = new Date();
-      const weekStart = new Date(now);
-      const day = now.getDay();
-      weekStart.setDate(now.getDate() + (day === 0 ? -6 : 1 - day));
-      weekStart.setHours(0, 0, 0, 0);
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const weekBounds = getBusinessWeekBounds();
+      const monthBounds = getBusinessMonthBounds();
 
       const [prodWeek, prodMonth, prodLast] = agentIds.length
         ? await Promise.all([
-            supabase.from("daily_production").select("agent_id, aop").in("agent_id", agentIds)
-              .gte("production_date", weekStart.toISOString().split("T")[0]),
-            supabase.from("daily_production").select("agent_id, aop").in("agent_id", agentIds)
-              .gte("production_date", monthStart.toISOString().split("T")[0]),
+            supabase.from("deals").select("agent_id, annual_premium").in("agent_id", agentIds)
+              .gte("posted_at", weekBounds.startIso)
+              .lt("posted_at", weekBounds.endIso)
+              .in("status", ["submitted", "active"]),
+            supabase.from("deals").select("agent_id, annual_premium").in("agent_id", agentIds)
+              .gte("posted_at", monthBounds.startIso)
+              .lt("posted_at", monthBounds.endIso)
+              .in("status", ["submitted", "active"]),
             supabase.from("agent_lifetime_production" as any)
               .select("agent_id, lifetime_alp, last_production_date")
               .in("agent_id", agentIds),
@@ -159,11 +160,11 @@ export default function AgentManagement() {
 
       const weekMap = new Map<string, number>();
       for (const r of (prodWeek.data || []) as any[]) {
-        weekMap.set(r.agent_id, (weekMap.get(r.agent_id) || 0) + Number(r.aop || 0));
+        weekMap.set(r.agent_id, (weekMap.get(r.agent_id) || 0) + Number(r.annual_premium || 0));
       }
       const monthMap = new Map<string, number>();
       for (const r of (prodMonth.data || []) as any[]) {
-        monthMap.set(r.agent_id, (monthMap.get(r.agent_id) || 0) + Number(r.aop || 0));
+        monthMap.set(r.agent_id, (monthMap.get(r.agent_id) || 0) + Number(r.annual_premium || 0));
       }
       const lifetimeMap = new Map<string, { lifetime: number; last: string | null }>();
       for (const r of (prodLast.data || []) as any[]) {

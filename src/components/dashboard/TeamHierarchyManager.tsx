@@ -51,6 +51,7 @@ import { AddToCourseButton } from "./AddToCourseButton";
 import { AgentProfileEditor } from "@/components/admin/AgentProfileEditor";
 import { DeactivateAgentDialog } from "./DeactivateAgentDialog";
 import { DuplicateMergeTool } from "@/components/admin/DuplicateMergeTool";
+import { getBusinessMonthBounds, getBusinessWeekBounds } from "@/lib/dateUtils";
 
 interface AgentHierarchyEntry {
   id: string;
@@ -146,25 +147,15 @@ export function TeamHierarchyManager() {
       const userIds = agentsData.map(a => a.user_id).filter(Boolean);
       const agentIds = agentsData.map(a => a.id);
       
-      // Get week start (Monday) in PST
-      const now = new Date();
-      const dayOfWeek = now.getDay();
-      const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-      const weekStart = new Date(now);
-      weekStart.setDate(now.getDate() + diffToMonday);
-      weekStart.setHours(0, 0, 0, 0);
-      const weekStartStr = weekStart.toISOString().split('T')[0];
-      
-      // Get month start
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      const monthStartStr = monthStart.toISOString().split('T')[0];
+      const weekBounds = getBusinessWeekBounds();
+      const monthBounds = getBusinessMonthBounds();
       
       const [profilesResult, managerRolesResult, progressResult, modulesResult, productionResult] = await Promise.all([
         supabase.from("profiles").select("user_id, full_name, email, phone").in("user_id", userIds),
         supabase.from("user_roles").select("user_id").in("role", ["manager", "admin"]),
         supabase.from("onboarding_progress").select("agent_id, passed"),
         supabase.from("onboarding_modules").select("id").eq("is_active", true),
-        supabase.from("deals").select("agent_id, effective_date, annual_premium").in("agent_id", agentIds).gte("effective_date", monthStartStr).in("status", ["submitted", "active"]),
+        supabase.from("deals").select("agent_id, posted_at, annual_premium").in("agent_id", agentIds).gte("posted_at", monthBounds.startIso).lt("posted_at", monthBounds.endIso).in("status", ["submitted", "active"]),
       ]);
 
       const profiles = profilesResult.data || [];
@@ -173,12 +164,13 @@ export function TeamHierarchyManager() {
       const totalModules = modulesResult.data?.length || 1;
       const productionData = (productionResult.data || []) as any[];
 
-      // Aggregate production by agent — deals truth, not self-reported daily_production
+      // Aggregate production by agent from posted deals so week/month totals
+      // match the shared dashboard truth.
       const productionMap = new Map<string, { weeklyAlp: number; weeklyDeals: number; monthlyAlp: number; monthlyDeals: number }>();
       productionData.forEach((d) => {
         if (!d.agent_id) return;
         const existing = productionMap.get(d.agent_id) || { weeklyAlp: 0, weeklyDeals: 0, monthlyAlp: 0, monthlyDeals: 0 };
-        const isThisWeek = d.effective_date >= weekStartStr;
+        const isThisWeek = typeof d.posted_at === "string" && d.posted_at >= weekBounds.startIso;
         const ap = Number(d.annual_premium) || 0;
         productionMap.set(d.agent_id, {
           weeklyAlp: existing.weeklyAlp + (isThisWeek ? ap : 0),

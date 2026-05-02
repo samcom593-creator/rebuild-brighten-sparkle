@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import { DateRangePicker, DateRange } from "@/components/ui/date-range-picker";
+import { getMetricBounds } from "@/lib/metricTruth";
 
 type TimePeriod = "week" | "month" | "custom";
 
@@ -80,33 +81,25 @@ export function DownlineStatsCard() {
           return;
         }
 
-        // Build date range based on period
-        const today = new Date();
-        let startDate: string;
-        let endDate: string;
+        const bounds = getMetricBounds(
+          period === "custom" ? "custom" : period,
+          customRange.from && customRange.to
+            ? { from: customRange.from, to: customRange.to }
+            : undefined,
+        );
+        const startDate = bounds.startIso.slice(0, 10);
+        const endDate = new Date(bounds.end.getTime() - 1_000).toISOString().slice(0, 10);
 
-        if (period === "week") {
-          startDate = format(startOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd");
-          endDate = format(endOfWeek(today, { weekStartsOn: 1 }), "yyyy-MM-dd");
-        } else if (period === "month") {
-          startDate = format(startOfMonth(today), "yyyy-MM-dd");
-          endDate = format(endOfMonth(today), "yyyy-MM-dd");
-        } else {
-          // Custom range
-          startDate = customRange.from ? format(customRange.from, "yyyy-MM-dd") : format(subDays(today, 30), "yyyy-MM-dd");
-          endDate = customRange.to ? format(customRange.to, "yyyy-MM-dd") : format(today, "yyyy-MM-dd");
-        }
-
-        // ALP + deals from deals table (Agent Link truth, status submitted/
-        // active by effective_date). Presentations stay on daily_production
-        // — only authoritative source.
+        // ALP + deals come from posted deals in the canonical truth layer.
+        // Presentations stay on daily_production because that is still their
+        // authoritative source.
         const [dealsRes, presRes] = await Promise.all([
           supabase
             .from("deals")
             .select("annual_premium, agent_id")
             .in("agent_id", agentIds)
-            .gte("effective_date", startDate)
-            .lte("effective_date", endDate)
+            .gte("posted_at", bounds.startIso)
+            .lt("posted_at", bounds.endIso)
             .in("status", ["submitted", "active"]),
           supabase
             .from("daily_production")

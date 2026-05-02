@@ -17,6 +17,7 @@ import {
   User, Crown, ChevronDown, ChevronUp, Loader2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { getBusinessWeekBounds } from "@/lib/dateUtils";
 
 const STAGES = [
   { key: "applied",        label: "Applied",         color: "bg-blue-500/20 text-blue-400 border-blue-500/30",    dot: "bg-blue-400" },
@@ -98,17 +99,17 @@ export default function AgentPipelineSimple() {
         .select("id, display_name, user_id, invited_by_manager_id")
         .not("user_id", "is", null);
 
-      const today = new Date();
-      const weekStart = new Date(today);
-      weekStart.setDate(today.getDate() - today.getDay());
+      const weekBounds = getBusinessWeekBounds();
       const { data: prodData } = await supabase
-        .from("daily_production")
-        .select("agent_id, aop")
-        .gte("production_date", weekStart.toISOString().split("T")[0]);
+        .from("deals")
+        .select("agent_id, annual_premium")
+        .gte("posted_at", weekBounds.startIso)
+        .lt("posted_at", weekBounds.endIso)
+        .in("status", ["submitted", "active"]);
 
       const alpByAgent: Record<string, number> = {};
       prodData?.forEach((p: any) => {
-        alpByAgent[p.agent_id] = (alpByAgent[p.agent_id] || 0) + (Number(p.aop) || 0);
+        alpByAgent[p.agent_id] = (alpByAgent[p.agent_id] || 0) + (Number(p.annual_premium) || 0);
       });
 
       const managerList: Manager[] = (mgrAgents || []).map((m: any) => ({

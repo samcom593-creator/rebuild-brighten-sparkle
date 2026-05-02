@@ -15,7 +15,6 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 const DISCORD_KEY = "discord_webhook_url";
-const BOOTSTRAP_WEBHOOK = "https://discord.com/api/webhooks/1425987081418571779/3JrtT5W00gDos8XY2iYc5_nb5sxr9S9ztagW1bBigI-8daIrb170vTyxIqXV2E8x2S0T";
 
 const SETUP_SQL = `-- ══════════════════════════════════════════════════════════════════════
 -- APEX MASTER ACTIVATION — paste once, run once. Safe to re-run.
@@ -27,7 +26,7 @@ const SETUP_SQL = `-- ═══════════════════�
 -- 1. Discord webhook
 INSERT INTO public.system_settings (key, value)
 VALUES ('discord_webhook_url',
-  'https://discord.com/api/webhooks/1425987081418571779/3JrtT5W00gDos8XY2iYc5_nb5sxr9S9ztagW1bBigI-8daIrb170vTyxIqXV2E8x2S0T')
+  'YOUR_DISCORD_WEBHOOK_URL')
 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
 
 -- 2. Service role key — replace with yours from Project Settings → API
@@ -352,14 +351,10 @@ export default function IntegrationsSettings() {
         .eq("key", DISCORD_KEY)
         .maybeSingle();
       const val = (data as any)?.value ?? "";
-      // Pre-fill with bootstrap if nothing in DB
-      if (!webhookDraft) setWebhookDraft(val || BOOTSTRAP_WEBHOOK);
+      if (!webhookDraft) setWebhookDraft(val);
       return val;
     },
   });
-
-  // Discord is active if stored in DB OR if bootstrap webhook is in place
-  const bootstrapActive = !currentWebhook;
 
   const saveMutation = useMutation({
     mutationFn: async (url: string) => {
@@ -376,7 +371,7 @@ export default function IntegrationsSettings() {
     },
     onError: (err: any) => {
       if (err?.message?.includes("Could not find the function")) {
-        toast.error("Run SETUP.sql in Supabase SQL Editor to persist the URL — Discord is still active via built-in webhook.");
+        toast.error("Run SETUP.sql in Supabase SQL Editor to persist the URL.");
       } else {
         toast.error(err?.message ?? "Failed to save webhook");
       }
@@ -384,7 +379,12 @@ export default function IntegrationsSettings() {
   });
 
   async function handleTest() {
-    // Always test — function uses bootstrap webhook if DB is empty
+    if (!currentWebhook) {
+      setTestStatus("error");
+      setTestMsg("Save a Discord webhook first.");
+      toast.error("Save a Discord webhook first.");
+      return;
+    }
 
     setTestStatus("loading");
     setTestMsg("");
@@ -418,7 +418,7 @@ export default function IntegrationsSettings() {
     }
   }
 
-  const webhookActive = (!!currentWebhook && currentWebhook.length > 20) || bootstrapActive;
+  const webhookActive = !!currentWebhook && currentWebhook.length > 20;
 
   if (!isAdmin) {
     return (
@@ -460,7 +460,7 @@ export default function IntegrationsSettings() {
                     : "border-amber-500/30 text-amber-400 bg-amber-500/10"
                 )}
               >
-                {currentWebhook ? "Active (DB)" : bootstrapActive ? "Active (built-in)" : "Not configured"}
+                {currentWebhook ? "Configured" : "Not configured"}
               </Badge>
             </div>
           </div>

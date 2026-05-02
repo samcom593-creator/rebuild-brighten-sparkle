@@ -9,7 +9,7 @@ import { useRankChange } from "@/hooks/useRankChange";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 import { getClosingRateColor } from "@/lib/closingRateColors";
 import { cn } from "@/lib/utils";
-import { getTodayPST, getWeekStartPST, getMonthStartPST } from "@/lib/dateUtils";
+import { getMetricBounds } from "@/lib/metricTruth";
 
 interface ClosingRateLeaderboardProps {
   currentAgentId?: string;
@@ -46,20 +46,10 @@ export function ClosingRateLeaderboard({ currentAgentId, period = "week" }: Clos
   const fetchLeaderboard = async (isInitialLoad = true) => {
     try {
       if (isInitialLoad) setLoading(true);
-      
-      let startDate: string;
-      
-      // Use PST timezone for all date calculations
-      switch (period) {
-        case "month":
-          startDate = getMonthStartPST();
-          break;
-        case "day":
-          startDate = getTodayPST();
-          break;
-        default:
-          startDate = getWeekStartPST();
-      }
+
+      const bounds = getMetricBounds(period);
+      const startDate = bounds.startIso.slice(0, 10);
+      const endDate = new Date(bounds.end.getTime() - 1_000).toISOString().slice(0, 10);
 
       // Presentations come from daily_production (manual log — there's no other source).
       // Deals come from the `deals` table (Agent Link truth) so closing rate matches
@@ -68,11 +58,14 @@ export function ClosingRateLeaderboard({ currentAgentId, period = "week" }: Clos
         supabase
           .from("daily_production")
           .select("agent_id, presentations")
-          .gte("production_date", startDate),
+          .gte("production_date", startDate)
+          .lte("production_date", endDate),
         supabase
           .from("deals")
           .select("agent_id")
-          .gte("effective_date", startDate),
+          .gte("posted_at", bounds.startIso)
+          .lt("posted_at", bounds.endIso)
+          .in("status", ["submitted", "active"]),
       ]);
 
       const production = productionRes.data;
@@ -191,7 +184,7 @@ export function ClosingRateLeaderboard({ currentAgentId, period = "week" }: Clos
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Percent className="h-4 w-4 text-emerald-500" />
-          <h4 className="font-semibold text-sm">Highest Closing Rates</h4>
+          <h4 className="font-semibold text-sm">Closing Rate Leaders</h4>
         </div>
         <div className="flex items-center gap-1 text-[10px] text-emerald-500">
           <Radio className="h-2.5 w-2.5 animate-pulse" />

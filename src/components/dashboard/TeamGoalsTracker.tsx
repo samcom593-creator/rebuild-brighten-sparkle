@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Target, Trophy, TrendingUp, Users, Sparkles, CheckCircle2 } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -6,6 +6,9 @@ import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { AnimatedNumber } from "./AnimatedNumber";
 import confetti from "canvas-confetti";
+import { getBusinessMonthBounds } from "@/lib/dateUtils";
+import { sumAnnualPremium } from "@/lib/metricTruth";
+import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 
 interface GoalData {
   label: string;
@@ -33,16 +36,11 @@ export function TeamGoalsTracker({ className }: TeamGoalsTrackerProps) {
     referrals: 100, // 100 referrals caught
   };
 
-  useEffect(() => {
-    fetchTeamProgress();
-  }, []);
-
-  const fetchTeamProgress = async () => {
+  const fetchTeamProgress = useCallback(async () => {
     try {
-      // Get first and last day of current month
-      const now = new Date();
-      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
-      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
+      const monthBounds = getBusinessMonthBounds();
+      const firstDay = monthBounds.startIso.slice(0, 10);
+      const lastDay = monthBounds.endIso.slice(0, 10);
 
       // ALP + deal counts now from deals table (Agent Link truth);
       // presentations + referrals_caught stay on daily_production
@@ -51,8 +49,8 @@ export function TeamGoalsTracker({ className }: TeamGoalsTrackerProps) {
         supabase
           .from("deals")
           .select("annual_premium")
-          .gte("effective_date", firstDay)
-          .lte("effective_date", lastDay)
+          .gte("posted_at", monthBounds.startIso)
+          .lt("posted_at", monthBounds.endIso)
           .in("status", ["submitted", "active"]),
         supabase
           .from("daily_production")
@@ -64,7 +62,7 @@ export function TeamGoalsTracker({ className }: TeamGoalsTrackerProps) {
       if (prodRes.error) throw prodRes.error;
 
       const totals = {
-        alp: (dealsRes.data || []).reduce((s: number, r: any) => s + (Number(r.annual_premium) || 0), 0),
+        alp: sumAnnualPremium((dealsRes.data || []) as Array<{ annual_premium?: number | null }>),
         deals: (dealsRes.data || []).length,
         presentations: (prodRes.data || []).reduce((s: number, r: any) => s + (Number(r.presentations) || 0), 0),
         referrals: (prodRes.data || []).reduce((s: number, r: any) => s + (Number(r.referrals_caught) || 0), 0),
@@ -116,7 +114,13 @@ export function TeamGoalsTracker({ className }: TeamGoalsTrackerProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [celebratedGoals]);
+
+  useEffect(() => {
+    fetchTeamProgress();
+  }, [fetchTeamProgress]);
+
+  useProductionRealtime(fetchTeamProgress, 300);
 
   const triggerCelebration = () => {
     // Burst from both sides

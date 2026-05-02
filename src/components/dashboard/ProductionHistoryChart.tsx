@@ -15,6 +15,8 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { format, subDays } from "date-fns";
+import { getBusinessDayKey } from "@/lib/dateUtils";
+import { getMetricBounds, sumAnnualPremium } from "@/lib/metricTruth";
 
 // Memoized tooltip component to prevent ref warnings
 const CustomTooltip = memo(({ active, payload, label }: any) => {
@@ -71,53 +73,49 @@ export function ProductionHistoryChart({
       const today = new Date();
       const daysBack = selectedWeeks * 7;
       const startDate = subDays(today, daysBack);
+      const bounds = getMetricBounds("custom", { from: startDate, to: today });
       
       let query = supabase
-        .from("daily_production")
-        .select("production_date, aop, deals_closed, closing_rate")
-        .gte("production_date", startDate.toISOString().split("T")[0])
-        .order("production_date", { ascending: true });
+        .from("deals")
+        .select("posted_at, annual_premium")
+        .gte("posted_at", bounds.startIso)
+        .lt("posted_at", bounds.endIso)
+        .in("status", ["submitted", "active"])
+        .order("posted_at", { ascending: true });
       
       // If showing individual agent, filter by agent_id
       if (!showAgencyWide && agentId) {
         query = query.eq("agent_id", agentId);
       }
       
-      const { data: production } = await query;
+      const { data: deals } = await query;
 
-      if (production) {
+      if (deals) {
         // Aggregate by date (for agency-wide, sum all agents per day)
-        const dateMap: Record<string, { alp: number; deals: number; closingRates: number[] }> = {};
+        const dateMap: Record<string, { alp: number; deals: number }> = {};
         
-        production.forEach((p) => {
-          const dateStr = p.production_date;
+        deals.forEach((deal) => {
+          const dateStr = getBusinessDayKey(new Date(deal.posted_at));
           if (!dateMap[dateStr]) {
-            dateMap[dateStr] = { alp: 0, deals: 0, closingRates: [] };
+            dateMap[dateStr] = { alp: 0, deals: 0 };
           }
-          dateMap[dateStr].alp += Number(p.aop || 0);
-          dateMap[dateStr].deals += Number(p.deals_closed || 0);
-          if (Number(p.closing_rate) > 0) {
-            dateMap[dateStr].closingRates.push(Number(p.closing_rate));
-          }
+          dateMap[dateStr].alp += Number(deal.annual_premium || 0);
+          dateMap[dateStr].deals += 1;
         });
 
         // Fill in missing days with zeros
         const filledData: DayData[] = [];
         for (let i = daysBack - 1; i >= 0; i--) {
           const date = subDays(today, i);
-          const dateStr = date.toISOString().split("T")[0];
+          const dateStr = getBusinessDayKey(date);
           const existing = dateMap[dateStr];
-          
-          const avgClosingRate = existing?.closingRates.length 
-            ? existing.closingRates.reduce((a, b) => a + b, 0) / existing.closingRates.length 
-            : 0;
           
           filledData.push({
             date: dateStr,
             displayDate: format(date, "MMM d"),
             alp: existing?.alp || 0,
             deals: existing?.deals || 0,
-            closingRate: avgClosingRate,
+            closingRate: 0,
           });
         }
 
@@ -125,7 +123,7 @@ export function ProductionHistoryChart({
 
         // Calculate summary
         const withProduction = filledData.filter((d) => d.alp > 0);
-        const totalAlp = filledData.reduce((sum, d) => sum + d.alp, 0);
+        const totalAlp = sumAnnualPremium(filledData.map((d) => ({ annual_premium: d.alp })));
         const totalDeals = filledData.reduce((sum, d) => sum + d.deals, 0);
         const avgDaily = withProduction.length > 0 ? totalAlp / withProduction.length : 0;
         

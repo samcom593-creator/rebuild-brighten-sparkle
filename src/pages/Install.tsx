@@ -7,6 +7,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -14,6 +15,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export default function Install() {
+  usePageTitle("Install Apex Numbers");
   const navigate = useNavigate();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);

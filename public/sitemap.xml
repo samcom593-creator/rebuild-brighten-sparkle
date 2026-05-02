@@ -31,22 +31,16 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://apex-financial.org/faq</loc>
-    <lastmod>2026-04-29</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
     <loc>https://apex-financial.org/contact</loc>
     <lastmod>2026-04-29</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://apex-financial.org/pricing</loc>
+    <loc>https://apex-financial.org/data-deletion</loc>
     <lastmod>2026-04-29</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
+    <changefreq>yearly</changefreq>
+    <priority>0.3</priority>
   </url>
   <url>
     <loc>https://apex-financial.org/privacy</loc>

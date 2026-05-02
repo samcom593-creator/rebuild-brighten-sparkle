@@ -3,10 +3,12 @@ import { motion } from "framer-motion";
 import { Play, Pause, Volume2, VolumeX, Maximize, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const SEMINAR_VIDEO_URL = "https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0&modestbranding=1";
 
 export default function SeminarPage() {
+  usePageTitle("Weekly Career Seminar · APEX Financial");
   const [muted, setMuted] = useState(false);
 
   return (

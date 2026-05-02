@@ -9,10 +9,10 @@ import { DateRangePicker, type DateRange } from "@/components/ui/date-range-pick
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { getTodayPST, getWeekStartPST, getMonthStartPST } from "@/lib/dateUtils";
-import { toZonedTime } from "date-fns-tz";
 import { useAuth } from "@/hooks/useAuth";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 import { getClosingRateColor } from "@/lib/closingRateColors";
+import { getMetricBounds } from "@/lib/metricTruth";
 
 type TimePeriod = "day" | "week" | "month" | "custom";
 
@@ -96,8 +96,14 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
       }
       
       // ALP + deals from deals table (Agent Link truth, status submitted/
-      // active by effective_date). Presentations stay on daily_production
+      // active by posted_at). Presentations stay on daily_production
       // — only authoritative source.
+      const bounds = getMetricBounds(
+        timePeriod === "custom" ? "custom" : timePeriod,
+        customDateRange.from && customDateRange.to
+          ? { from: customDateRange.from, to: customDateRange.to }
+          : undefined,
+      );
       const [presRes, dealsRes] = await Promise.all([
         supabase
           .from("daily_production")
@@ -107,8 +113,8 @@ export function PersonalStatsCard({ agentId, todayProduction }: PersonalStatsCar
         supabase
           .from("deals")
           .select("agent_id, annual_premium")
-          .gte("effective_date", dateRange.start)
-          .lte("effective_date", dateRange.end)
+          .gte("posted_at", bounds.startIso)
+          .lt("posted_at", bounds.endIso)
           .in("status", ["submitted", "active"]),
       ]);
       const presRows = (presRes.data || []) as any[];

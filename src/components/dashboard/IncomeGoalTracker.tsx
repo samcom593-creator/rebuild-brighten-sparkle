@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment } from "react";
+import { useState, useEffect, Fragment, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Target, Lock, DollarSign, TrendingUp, Calendar, Sparkles, AlertCircle } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -9,6 +9,9 @@ import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getBusinessDayKey, getBusinessMonthBounds } from "@/lib/dateUtils";
+import { sumAnnualPremium } from "@/lib/metricTruth";
+import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 
 interface IncomeGoalTrackerProps {
   agentId: string;
@@ -30,33 +33,41 @@ export function IncomeGoalTracker({ agentId }: IncomeGoalTrackerProps) {
   const [compInput, setCompInput] = useState("75");
   const [isEditing, setIsEditing] = useState(false);
 
-  const currentMonth = new Date().toISOString().slice(0, 7); // e.g., "2026-02"
+  const currentMonth = getBusinessDayKey(getBusinessMonthBounds().start).slice(0, 7);
   const monthName = new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" });
 
-  useEffect(() => {
-    fetchData();
-  }, [agentId]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
-      // Get production history
-      const { data: production, error: prodError } = await supabase
-        .from("daily_production")
-        .select("aop, deals_closed, presentations, production_date")
-        .eq("agent_id", agentId);
+      const monthBounds = getBusinessMonthBounds();
+      const [{ data: production, error: prodError }, { data: deals, error: dealsError }] = await Promise.all([
+        supabase
+          .from("daily_production")
+          .select("presentations, production_date")
+          .eq("agent_id", agentId),
+        supabase
+          .from("deals")
+          .select("annual_premium, posted_at")
+          .eq("agent_id", agentId)
+          .in("status", ["submitted", "active"]),
+      ]);
 
       if (prodError) throw prodError;
+      if (dealsError) throw dealsError;
 
-      // Calculate stats
-      const totalDays = production?.length || 0;
-      const totalALP = production?.reduce((sum, p) => sum + Number(p.aop || 0), 0) || 0;
-      const totalDeals = production?.reduce((sum, p) => sum + Number(p.deals_closed || 0), 0) || 0;
       const totalPresentations = production?.reduce((sum, p) => sum + Number(p.presentations || 0), 0) || 0;
-
-      // Current month's ALP
-      const monthStart = `${currentMonth}-01`;
-      const monthlyProduction = production?.filter(p => p.production_date >= monthStart) || [];
-      const monthlyALP = monthlyProduction.reduce((sum, p) => sum + Number(p.aop || 0), 0);
+      const totalDeals = deals?.length || 0;
+      const totalALP = sumAnnualPremium((deals ?? []) as Array<{ annual_premium?: number | null }>);
+      const totalDays = new Set([
+        ...(production ?? []).map((p) => p.production_date),
+        ...(deals ?? [])
+          .map((deal) => deal.posted_at)
+          .filter(Boolean)
+          .map((postedAt) => getBusinessDayKey(new Date(postedAt as string))),
+      ]).size;
+      const monthlyDeals = (deals ?? []).filter((deal) =>
+        deal.posted_at && deal.posted_at >= monthBounds.startIso && deal.posted_at < monthBounds.endIso,
+      );
+      const monthlyALP = sumAnnualPremium(monthlyDeals as Array<{ annual_premium?: number | null }>);
 
       setStats({
         avgDealSize: totalDeals > 0 ? totalALP / totalDeals : 0,
@@ -83,7 +94,13 @@ export function IncomeGoalTracker({ agentId }: IncomeGoalTrackerProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [agentId, currentMonth]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  useProductionRealtime(fetchData, 300);
 
   const handleSaveGoal = async () => {
     const income = parseFloat(incomeInput);

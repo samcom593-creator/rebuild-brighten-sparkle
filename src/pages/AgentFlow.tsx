@@ -2,6 +2,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, ArrowRight, GraduationCap, Award, FileCheck, Phone, Users, Briefcase, BookOpen, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const licensedSteps = [
   { icon: FileCheck, title: "Application Submitted", desc: "Apply through our portal", color: "text-blue-400" },
@@ -56,6 +57,7 @@ function FlowTimeline({ steps, title, accent }: { steps: typeof licensedSteps; t
 }
 
 export default function AgentFlow() {
+  usePageTitle("Agent Onboarding Flow · APEX Financial");
   return (
     <div className="min-h-screen bg-background p-4 md:p-8 max-w-5xl mx-auto space-y-8">
       <div className="text-center space-y-2">

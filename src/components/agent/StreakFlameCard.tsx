@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Flame, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
 import { cn } from "@/lib/utils";
+import { getBusinessDayKey } from "@/lib/dateUtils";
+import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 
 interface Props { agentId: string | null | undefined; }
 
@@ -15,45 +17,58 @@ export function StreakFlameCard({ agentId }: Props) {
   const [bestStreak, setBestStreak] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!agentId) { setLoading(false); return; }
-    let cancelled = false;
-    (async () => {
-      try {
-        const { data } = await supabase.from("daily_production")
-          .select("production_date, aop")
-          .eq("agent_id", agentId)
-          .order("production_date", { ascending: false })
-          .limit(180);
+  const load = useCallback(async () => {
+    if (!agentId) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    try {
+      const { data } = await supabase.from("deals")
+        .select("posted_at")
+        .eq("agent_id", agentId)
+        .in("status", ["submitted", "active"])
+        .order("posted_at", { ascending: false })
+        .limit(180);
 
-        const days = new Set((data ?? []).filter((r: any) => Number(r.aop) > 0).map((r: any) => r.production_date));
-        const ymd = (d: Date) => d.toISOString().slice(0, 10);
+      const days = new Set(
+        (data ?? [])
+          .map((r: any) => r.posted_at)
+          .filter(Boolean)
+          .map((postedAt: string) => getBusinessDayKey(new Date(postedAt))),
+      );
 
-        let cur = 0;
-        const today = new Date();
-        for (let i = 0; i < 180; i++) {
-          const d = new Date(today); d.setDate(today.getDate() - i);
-          if (days.has(ymd(d))) cur++;
-          else if (i > 0) break;  // end of current streak (allow today to not have a log yet)
-        }
+      let cur = 0;
+      const today = new Date();
+      for (let i = 0; i < 180; i++) {
+        const d = new Date(today); d.setDate(today.getDate() - i);
+        if (days.has(getBusinessDayKey(d))) cur++;
+        else if (i > 0) break;
+      }
 
-        // Best streak
-        let best = 0, running = 0;
-        const sorted = Array.from(days).sort();
-        let prev: Date | null = null;
-        for (const ds of sorted) {
-          const d = new Date(ds);
-          if (prev && (d.getTime() - prev.getTime()) === 86_400_000) running++;
-          else running = 1;
-          best = Math.max(best, running);
-          prev = d;
-        }
+      let best = 0, running = 0;
+      const sorted = Array.from(days).sort();
+      let prev: Date | null = null;
+      for (const ds of sorted) {
+        const d = new Date(ds);
+        if (prev && (d.getTime() - prev.getTime()) === 86_400_000) running++;
+        else running = 1;
+        best = Math.max(best, running);
+        prev = d;
+      }
 
-        if (!cancelled) { setStreak(cur); setBestStreak(best); }
-      } finally { if (!cancelled) setLoading(false); }
-    })();
-    return () => { cancelled = true; };
+      setStreak(cur);
+      setBestStreak(best);
+    } finally {
+      setLoading(false);
+    }
   }, [agentId]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useProductionRealtime(load, 200);
 
   if (loading || !agentId) return null;
 

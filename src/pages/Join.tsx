@@ -16,8 +16,10 @@ import { GradientButton } from "@/components/ui/gradient-button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function Join() {
+  usePageTitle("Join APEX");
   const nav = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

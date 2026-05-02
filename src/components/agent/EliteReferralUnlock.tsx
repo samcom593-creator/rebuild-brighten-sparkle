@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Crown, Copy, Share2, Instagram, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,6 +6,8 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getMetricBounds, sumAnnualPremium } from "@/lib/metricTruth";
+import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 
 interface Props {
   agentId: string;
@@ -25,52 +27,47 @@ export function EliteReferralUnlock({ agentId, threshold = 10_000 }: Props) {
   const [displayName, setDisplayName] = useState<string>("agent");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!agentId) return;
-    let cancelled = false;
+    setLoading(true);
+    try {
+      const monthBounds = getMetricBounds("month");
+      const { data: deals } = await supabase
+        .from("deals")
+        .select("annual_premium")
+        .eq("agent_id", agentId)
+        .gte("posted_at", monthBounds.startIso)
+        .lt("posted_at", monthBounds.endIso)
+        .in("status", ["submitted", "active"]);
+      const sum = sumAnnualPremium((deals ?? []) as Array<{ annual_premium?: number | null }>);
 
-    (async () => {
-      try {
-        // MTD production
-        const monthStart = new Date();
-        monthStart.setDate(1);
-        const monthStartISO = monthStart.toISOString().split("T")[0];
-        const { data: prod } = await supabase
-          .from("daily_production")
-          .select("aop")
-          .eq("agent_id", agentId)
-          .gte("production_date", monthStartISO);
-        const sum = (prod ?? []).reduce(
-          (s: number, r: { aop: number | null }) => s + Number(r.aop ?? 0),
-          0,
-        );
+      const { data: agent } = await supabase
+        .from("agents")
+        .select("ref_slug, display_name")
+        .eq("id", agentId)
+        .maybeSingle();
 
-        // Ref slug (generate if missing)
-        const { data: agent } = await supabase
-          .from("agents")
-          .select("ref_slug, display_name")
-          .eq("id", agentId)
-          .maybeSingle();
-
-        let slug = (agent as { ref_slug?: string })?.ref_slug ?? null;
-        const name = (agent as { display_name?: string })?.display_name || "agent";
-        if (!slug) {
-          const base = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "agent";
-          slug = `${base}-${agentId.slice(0, 6)}`;
-          await supabase.from("agents").update({ ref_slug: slug }).eq("id", agentId);
-        }
-
-        if (cancelled) return;
-        setMtd(sum);
-        setRefSlug(slug);
-        setDisplayName(name);
-      } finally {
-        if (!cancelled) setLoading(false);
+      let slug = (agent as { ref_slug?: string })?.ref_slug ?? null;
+      const name = (agent as { display_name?: string })?.display_name || "agent";
+      if (!slug) {
+        const base = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "agent";
+        slug = `${base}-${agentId.slice(0, 6)}`;
+        await supabase.from("agents").update({ ref_slug: slug }).eq("id", agentId);
       }
-    })();
 
-    return () => { cancelled = true; };
+      setMtd(sum);
+      setRefSlug(slug);
+      setDisplayName(name);
+    } finally {
+      setLoading(false);
+    }
   }, [agentId]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  useProductionRealtime(load, 200);
 
   if (loading) return null;
 

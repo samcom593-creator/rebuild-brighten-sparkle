@@ -89,6 +89,7 @@ const HallOfFame = lazy(() => import("./pages/HallOfFame"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 const DataDeletion = lazy(() => import("./pages/DataDeletion"));
+const Contact = lazy(() => import("./pages/Contact"));
 const BotToken = lazy(() => import("./pages/BotToken"));
 const InstagramInbox = lazy(() => import("./pages/InstagramInbox"));
 const Today = lazy(() => import("./pages/Today"));
@@ -156,10 +157,9 @@ const App = () => (
                   <Route path="/signup" element={<Signup />} />
                   <Route path="/join" element={<Join />} />
                   {/* /agent-signup is the canonical recruiting URL referenced from
-                      Install.tsx and many email CTAs; /join is the legacy alias and
-                      now points at AgentSignup as well so neither URL ever 404s. */}
+                      Install.tsx and recruiting CTAs. /join remains the separate
+                      combined sign-in / create-account flow used by existing links. */}
                   <Route path="/agent-signup" element={<AgentSignup />} />
-                  <Route path="/join" element={<AgentSignup />} />
                   <Route path="/agent-login" element={<AgentNumbersLogin />} />
                   <Route path="/magic-login" element={<MagicLogin />} />
                   <Route path="/schedule-call" element={<ScheduleCall />} />
@@ -174,9 +174,12 @@ const App = () => (
                   <Route path="/links" element={<LinksPage />} />
                   <Route path="/seminar" element={<SeminarPage />} />
                   <Route path="/leads" element={<LeadsLanding />} />
+                  <Route path="/contact" element={<Contact />} />
                   <Route path="/storefront" element={<Storefront />} />
                   <Route path="/get-leads" element={<LeadsLanding />} />
                   <Route path="/dialer" element={<LeadsLanding />} />
+                  <Route path="/data-deletion" element={<DataDeletion />} />
+                  <Route path="/delete-my-data" element={<DataDeletion />} />
                   {/* checkin and daily-checkin routes removed */}
                   {/* field-checkin route removed */}
                   <Route path="/agent-flow" element={<AgentFlow />} />
@@ -223,8 +226,6 @@ const App = () => (
                        {/* /privacy and /terms are public routes above — don't duplicate here */}
                        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                        <Route path="/terms-of-service" element={<TermsOfService />} />
-                       <Route path="/data-deletion" element={<DataDeletion />} />
-                       <Route path="/delete-my-data" element={<DataDeletion />} />
                        <Route path="/bot-token" element={<ProtectedRoute requireAdmin><BotToken /></ProtectedRoute>} />
                        <Route path="/dashboard/bot-token" element={<ProtectedRoute requireAdmin><BotToken /></ProtectedRoute>} />
                        <Route path="/dashboard/inbox/instagram" element={<ProtectedRoute><InstagramInbox /></ProtectedRoute>} />

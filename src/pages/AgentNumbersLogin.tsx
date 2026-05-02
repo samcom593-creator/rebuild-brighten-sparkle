@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import apexIcon from "@/assets/apex-icon.png";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 type FlowStep = "identifier" | "password" | "set-password" | "create-account" | "reset-sent";
 
@@ -41,6 +42,7 @@ type SetPasswordFormData = z.infer<typeof setPasswordSchema>;
 type CreateAccountFormData = z.infer<typeof createAccountSchema>;
 
 export default function AgentNumbersLogin() {
+  usePageTitle("Agent Login · Apex Daily Numbers");
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();

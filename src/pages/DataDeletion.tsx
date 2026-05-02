@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { toast } from "sonner";
 
 /**
@@ -11,6 +12,7 @@ import { toast } from "sonner";
  * Self-service form → logs a deletion request; we process within 30 days.
  */
 export default function DataDeletion() {
+  usePageTitle("Delete My Data · APEX Financial");
   const [email, setEmail] = useState("");
   const [reason, setReason] = useState("");
   const [submitted, setSubmitted] = useState(false);

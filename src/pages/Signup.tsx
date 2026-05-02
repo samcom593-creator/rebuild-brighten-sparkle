@@ -11,6 +11,7 @@ import { GradientButton } from "@/components/ui/gradient-button";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const signupSchema = z.object({
   fullName: z.string().min(2, "Full name is required"),
@@ -25,6 +26,7 @@ const signupSchema = z.object({
 type SignupFormData = z.infer<typeof signupSchema>;
 
 export default function Signup() {
+  usePageTitle("Manager Signup · APEX Financial");
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);

@@ -5,6 +5,7 @@ import { Loader2, AlertCircle, CheckCircle, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 type LoginState = "verifying" | "signing-in" | "success" | "error";
 
@@ -14,6 +15,7 @@ interface ErrorInfo {
 }
 
 export default function MagicLogin() {
+  usePageTitle("Secure Login Link · APEX Financial");
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [state, setState] = useState<LoginState>("verifying");

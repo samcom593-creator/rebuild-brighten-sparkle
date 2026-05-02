@@ -3,8 +3,9 @@ import { motion } from "framer-motion";
 import { Users, DollarSign, TrendingUp, Percent } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { supabase } from "@/integrations/supabase/client";
-import { getBusinessDayBounds, getBusinessDayKey, getBusinessMonthBounds, getBusinessWeekBounds } from "@/lib/dateUtils";
+import { getBusinessDayBounds, getBusinessMonthBounds, getBusinessWeekBounds } from "@/lib/dateUtils";
 import { getCloseRate } from "@/lib/metricTruth";
+import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 
 interface ManagerProductionStatsProps {
   managerId: string;
@@ -59,7 +60,6 @@ export function ManagerProductionStats({ managerId }: ManagerProductionStatsProp
       const dayBounds = getBusinessDayBounds();
       const weekBounds = getBusinessWeekBounds();
       const monthBounds = getBusinessMonthBounds();
-      const monthStart = getBusinessDayKey(monthBounds.start);
 
       const [dealsRes, presRes] = await Promise.all([
         supabase
@@ -73,7 +73,7 @@ export function ManagerProductionStats({ managerId }: ManagerProductionStatsProp
           .from("daily_production")
           .select("agent_id, presentations, production_date")
           .in("agent_id", agentIds)
-          .gte("production_date", monthStart),
+          .gte("production_date", monthBounds.startIso.slice(0, 10)),
       ]);
 
       if (!dealsRes.data) {
@@ -123,21 +123,9 @@ export function ManagerProductionStats({ managerId }: ManagerProductionStatsProp
   // Initial fetch and real-time subscription
   useEffect(() => {
     fetchTeamStats();
-
-    // Subscribe to real-time production updates
-    const channel = supabase
-      .channel("manager-production-live")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "daily_production" },
-        () => fetchTeamStats()
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, [fetchTeamStats]);
+
+  useProductionRealtime(fetchTeamStats, 300);
 
   if (loading) {
     return (

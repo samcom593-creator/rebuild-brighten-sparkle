@@ -42,7 +42,7 @@ export default function LeadsLanding() {
             </h1>
             
             <p className="text-xl text-slate-300 max-w-2xl mx-auto leading-relaxed">
-              Stop cold calling. Get warm, pre-qualified leads delivered directly to your inbox every single day. Our agents earn $10,000+ monthly producing consistent results.
+              Stop cold calling. Get warm, pre-qualified leads delivered directly to your inbox with a system built to help agents stay consistent, coachable, and scalable.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-8">
@@ -62,16 +62,16 @@ export default function LeadsLanding() {
             {/* Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-16">
               <div className="space-y-2">
-                <div className="text-3xl font-bold text-teal-400">$20,000+</div>
-                <p className="text-slate-400">Average monthly earnings</p>
+                <div className="text-3xl font-bold text-teal-400">Daily</div>
+                <p className="text-slate-400">Lead delivery and follow-up rhythm</p>
               </div>
               <div className="space-y-2">
-                <div className="text-3xl font-bold text-blue-400">500+</div>
-                <p className="text-slate-400">Leads distributed daily</p>
+                <div className="text-3xl font-bold text-blue-400">Warm</div>
+                <p className="text-slate-400">Pre-qualified lead flow</p>
               </div>
               <div className="space-y-2">
-                <div className="text-3xl font-bold text-teal-400">70-145%</div>
-                <p className="text-slate-400">Commission structure</p>
+                <div className="text-3xl font-bold text-teal-400">Scalable</div>
+                <p className="text-slate-400">Coaching, dialer, and recruiting support</p>
               </div>
             </div>
           </div>
@@ -236,8 +236,8 @@ export default function LeadsLanding() {
             <div>
               <h4 className="font-semibold text-white mb-4">Company</h4>
               <ul className="space-y-2 text-slate-400 text-sm">
-                <li><a href="https://apex-financial.org" rel="noopener noreferrer" className="hover:text-teal-400 transition">About</a></li>
-                <li><a href="https://apex-financial.org/contact" rel="noopener noreferrer" className="hover:text-teal-400 transition">Contact</a></li>
+                <li><Link to="/" className="hover:text-teal-400 transition">About</Link></li>
+                <li><Link to="/contact" className="hover:text-teal-400 transition">Contact</Link></li>
               </ul>
             </div>
             <div>
@@ -262,12 +262,12 @@ const benefits = [
   {
     icon: TrendingUp,
     title: "Warm Leads Daily",
-    description: "Receive pre-qualified leads delivered directly to your inbox. No cold calling required. Average 50+ leads per week.",
+    description: "Receive pre-qualified leads delivered directly to your inbox. No cold calling required. Built for consistent daily follow-up.",
   },
   {
     icon: Award,
-    title: "70-145% Commission",
-    description: "Start at 70% and earn up to 145% commission based on performance. Zero caps on earning potential.",
+    title: "Performance-Based Compensation",
+    description: "A real comp structure with room to grow as you produce, improve, and lead.",
   },
   {
     icon: Users,
@@ -282,7 +282,7 @@ const benefits = [
 ];
 
 const features = [
-  { title: "Lead Distribution", desc: "500+ fresh leads every day" },
+  { title: "Lead Distribution", desc: "Fresh lead drops built around consistent follow-up" },
   { title: "Cloud Dialer", desc: "Professional VoIP calling system" },
   { title: "Lead Management", desc: "CRM to track all your applications" },
   { title: "Performance Tracking", desc: "Real-time earnings dashboard" },
@@ -295,7 +295,7 @@ const features = [
 const faqs = [
   {
     q: "How much can I earn?",
-    a: "Our top agents earn $20,000+ monthly. Earnings depend on your effort, sales skills, and lead quality. You control your income with no caps.",
+    a: "Results vary by effort, skill, consistency, and lead follow-up. We focus on giving agents a real system, real coaching, and a scalable path to grow.",
   },
   {
     q: "Do I need experience?",

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { format, startOfWeek, endOfWeek } from "date-fns";
+import { getBusinessWeekBounds } from "@/lib/dateUtils";
 import { Trophy, TrendingUp, Target, Crown, Medal, Users, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -57,9 +58,7 @@ export function AgentCompetitiveDashboard({ agentId, weeklyTarget = 10000 }: Pro
 
   const load = useCallback(async () => {
     try {
-      const now = new Date();
-      const monday = format(startOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd");
-      const sunday = format(endOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd");
+      const weekBounds = getBusinessWeekBounds();
 
       // ── Weekly production for all active agents ──
       const { data: agents } = await supabase
@@ -74,15 +73,13 @@ export function AgentCompetitiveDashboard({ agentId, weeklyTarget = 10000 }: Pro
         nameMap[a.id] = a.profile?.full_name ?? "Agent";
       }
 
-      // 2026-05-01: weekly ALP measures sales velocity — filter by created_at
-      // (the day the policy was written), not effective_date. effective_date
-      // is often weeks in the future for life policies so a deal sold this
-      // Monday could otherwise be missed entirely from "Weekly ALP".
+      // Weekly ALP uses posted_at so the agent portal, dashboard, and
+      // leaderboards all read the same truth layer.
       const { data: prod } = await supabase
         .from("deals")
         .select("agent_id, annual_premium")
-        .gte("created_at", monday)
-        .lte("created_at", sunday + "T23:59:59")
+        .gte("posted_at", weekBounds.startIso)
+        .lt("posted_at", weekBounds.endIso)
         .in("status", ["submitted", "active"])
         .in("agent_id", agentIds.length ? agentIds : ["00000000-0000-0000-0000-000000000000"]);
 
@@ -103,8 +100,8 @@ export function AgentCompetitiveDashboard({ agentId, weeklyTarget = 10000 }: Pro
       const { data: recruits } = await supabase
         .from("applications")
         .select("referral_manager_id")
-        .gte("created_at", monday)
-        .lte("created_at", sunday + "T23:59:59")
+        .gte("created_at", weekBounds.startIso)
+        .lt("created_at", weekBounds.endIso)
         .not("referral_manager_id", "is", null);
 
       const recruitMap: Record<string, number> = {};

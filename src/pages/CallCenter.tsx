@@ -124,16 +124,16 @@ export default function CallCenter() {
           query = query.not("contacted_at", "is", null);
         }
 
-        // Always exclude already-processed leads
-        query = query.not("status", "in", '("contracted","hired")');
-
         // License filter
         if (licenseFilter !== "all") {
           query = query.eq("license_status", licenseFilter);
         }
 
-        // Role-based filtering — always filter by current user's agent ID
-        if (agentId) {
+        // Role-based filtering — admins see EVERY lead regardless of who it
+        // is assigned to (Sam: "I should be able to see them unless I
+        // physically put them somewhere else"). Non-admins still see only
+        // leads assigned to them.
+        if (!isAdmin && agentId) {
           query = query.eq("assigned_manager_id", agentId);
         }
 
@@ -173,10 +173,7 @@ export default function CallCenter() {
         // active-funnel definition.
         let appQuery = supabase
           .from("applications")
-          .select("id, first_name, last_name, email, phone, instagram_handle, notes, license_status, license_progress, test_scheduled_date, created_at, status, contacted_at, last_contacted_at, previous_company, nipr_number, licensed_states, city, state, availability, assigned_agent_id, hiring_manager_user_id, agents!applications_assigned_agent_id_fkey(display_name)")
-          .is("terminated_at", null)
-          .is("contracted_at", null)
-          .is("closed_at", null)
+          .select("id, first_name, last_name, email, phone, instagram_handle, notes, license_status, license_progress, test_scheduled_date, created_at, status, contacted_at, last_contacted_at, previous_company, nipr_number, licensed_states, city, state, availability, assigned_agent_id, hiring_manager_user_id, terminated_at, contracted_at, closed_at, agents!applications_assigned_agent_id_fkey(display_name)")
           .order("created_at", { ascending: sortOrder === "oldest_first" });
 
         // Status filter for applications (source-of-truth = contact timestamps)
@@ -198,9 +195,17 @@ export default function CallCenter() {
           appQuery = appQuery.eq("license_progress", progressFilter);
         }
 
-        // Role-based filtering — always filter by current user's agent ID
-        if (agentId) {
-          appQuery = appQuery.eq("assigned_agent_id", agentId);
+        // Role-based filtering — admins see every application regardless of
+        // assignment + lifecycle status (Sam wants visibility, not curation).
+        // Non-admins keep the existing assigned-only + active-only filter.
+        if (!isAdmin) {
+          appQuery = appQuery
+            .is("terminated_at", null)
+            .is("contracted_at", null)
+            .is("closed_at", null);
+          if (agentId) {
+            appQuery = appQuery.eq("assigned_agent_id", agentId);
+          }
         }
 
         const { data: appData, error: appError } = await appQuery;

@@ -6,10 +6,11 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { CalendlyEmbed } from "@/components/landing/CalendlyEmbed";
 import { WHATSAPP_GROUP_URL } from "@/lib/constants";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { SCHEDULING_LINKS } from "@/lib/apexConfig";
 
 export default function ApplySuccessLicensed() {
   usePageTitle("Schedule Your Call · APEX Financial");
-  const calendlyUrl = "https://calendly.com/apexfinancialempire/1on1-call-clone";
+  const calendlyUrl = SCHEDULING_LINKS.licensed;
 
   return (
     <div className="min-h-screen bg-background py-8 px-4">
@@ -110,7 +111,7 @@ export default function ApplySuccessLicensed() {
             transition={{ delay: 0.6 }}
             className="text-center mb-6"
           >
-            <a href={WHATSAPP_GROUP_URL} target="_blank" rel="noopener noreferrer" rel="noopener noreferrer">
+            <a href={WHATSAPP_GROUP_URL} target="_blank" rel="noopener noreferrer">
               <GradientButton size="lg" className="w-full sm:w-auto text-lg px-8 bg-[#25D366] hover:bg-[#20BD5A] border-[#25D366]">
                 <MessageCircle className="h-5 w-5 mr-2" />
                 Join the APEX Hiring Chat

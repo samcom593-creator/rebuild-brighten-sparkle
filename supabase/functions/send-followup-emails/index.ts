@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { SCHEDULING_LINKS } from "../_shared/apex.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,9 +26,8 @@ const resend = resendApiKey ? new Resend(resendApiKey) : null;
 const ADMIN_EMAIL = "sam@apex-financial.org";
 
 // Calendly URLs
-const UNLICENSED_CALENDLY = "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone";
-const LICENSED_CALENDLY = "https://calendly.com/apexfinancialempire/1on1-call-clone";
-const DASHBOARD_URL = "https://rebuild-brighten-sparkle.lovable.app/dashboard/applicants";
+const UNLICENSED_CALENDLY = SCHEDULING_LINKS.unlicensed;
+const LICENSED_CALENDLY = SCHEDULING_LINKS.licensed;
 
 async function getManagerEmailForApp(appId: string): Promise<string | null> {
   try {

@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Crown, Play, FileText, GraduationCap, Calendar, CheckCircle2 } from "lucide-react";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { GlassCard } from "@/components/ui/glass-card";
+import { SCHEDULING_LINKS } from "@/lib/apexConfig";
 
 const steps = [
   {
@@ -31,7 +32,7 @@ export default function GetLicensed() {
   const videoUrl = "https://www.youtube.com/embed/i1e5p-GEfAU";
   const documentUrl = "https://docs.google.com/document/d/1WBN_bh7Tl6IkhdXwQvrUa6Q58xmV9As_q048aKAeyNg/edit?usp=sharing";
   const courseUrl = "https://partners.xcelsolutions.com/afe";
-  const calendlyUrl = "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone";
+  const calendlyUrl = SCHEDULING_LINKS.unlicensed;
 
   return (
     <div className="min-h-screen bg-background py-8 px-4">
@@ -219,7 +220,7 @@ export default function GetLicensed() {
             <p className="text-muted-foreground mb-4 max-w-lg mx-auto text-sm">
               Need help with the licensing process? We're here for you.
             </p>
-            <a href={calendlyUrl} target="_blank" rel="noopener noreferrer" rel="noopener noreferrer">
+            <a href={calendlyUrl} target="_blank" rel="noopener noreferrer">
               <GradientButton variant="outline">
                 <Calendar className="h-4 w-4 mr-2" />
                 Schedule a Call

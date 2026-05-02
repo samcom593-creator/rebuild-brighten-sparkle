@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { buildAppUrl } from "../_shared/apex.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,8 +18,6 @@ const CARRIER_GATEWAYS: Record<string, string> = {
   metro: "mymetropcs.com",
   boost: "sms.myboostmobile.com",
 };
-
-const APP_URL = "https://rebuild-brighten-sparkle.lovable.app";
 
 async function logNotification(supabase: any, data: any) {
   try {
@@ -64,7 +63,7 @@ serve(async (req: Request) => {
     for (let i = 0; i < applicants.length; i += BATCH_SIZE) {
       const batch = applicants.slice(i, i + BATCH_SIZE);
       await Promise.allSettled(batch.map(async (app) => {
-        const checkinUrl = `${APP_URL}/checkin?id=${app.id}`;
+        const checkinUrl = `${buildAppUrl("/checkin")}?id=${app.id}`;
         const smsText = `Daily check-in time! Update your licensing progress: ${checkinUrl}${whatsappLink ? ` | Join WhatsApp: ${whatsappLink}` : ""}`
           .substring(0, 160);
 

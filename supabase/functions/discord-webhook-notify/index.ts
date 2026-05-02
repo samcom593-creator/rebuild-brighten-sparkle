@@ -15,10 +15,12 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeaders } from "../_shared/cors.ts";
-
-// ─── Bootstrap webhook (self-heals until system_settings is populated) ────────
-const BOOTSTRAP_WEBHOOK =
-  "https://discord.com/api/webhooks/1425987081418571779/3JrtT5W00gDos8XY2iYc5_nb5sxr9S9ztagW1bBigI-8daIrb170vTyxIqXV2E8x2S0T";
+import {
+  getBusinessMonthBounds,
+  resolveDiscordWebhook,
+  VALID_DEAL_STATUSES,
+  type DiscordAudience,
+} from "../_shared/apex.ts";
 
 // ─── Discord embed colors ─────────────────────────────────────────────────────
 const CLR = {
@@ -66,6 +68,12 @@ function productLabel(raw: string | null | undefined): string {
 const RANK_MEDALS = ["🥇", "🥈", "🥉"];
 function rankEmoji(i: number): string {
   return i < 3 ? RANK_MEDALS[i] : `${i + 1}.`;
+}
+
+const RECRUITING_EVENTS = new Set(["new_application", "agent_activated", "pipeline_leaderboard"]);
+
+function getDiscordAudience(eventType: string): DiscordAudience {
+  return RECRUITING_EVENTS.has(eventType) ? "recruiting" : "production";
 }
 
 // ─── Embed builders ───────────────────────────────────────────────────────────
@@ -120,7 +128,7 @@ function embedDealClosed(d: Record<string, unknown>) {
       description: `**${name}${insta}** closed a **${product}** deal`,
       color:       CLR.gold,
       fields: [
-        { name: "Annual Premium", value: fmt$(aop),   inline: true },
+        { name: "ALP", value: fmt$(aop), inline: true },
         { name: "Product",        value: product,     inline: true },
       ],
       timestamp: new Date().toISOString(),
@@ -183,7 +191,7 @@ function embedDailyLeaderboard(d: Record<string, unknown>) {
       title:       `📊 Daily Leaderboard — ${date}`,
       description: desc,
       color:       CLR.blue,
-      footer:      { text: "Top 10 producers by commission · Posted 9pm EST" },
+      footer:      { text: "Top 10 producers by ALP · Posted 9pm CT" },
       timestamp:   new Date().toISOString(),
     }],
   };
@@ -204,7 +212,7 @@ function embedWeeklyLeaderboard(d: Record<string, unknown>) {
       title:       `🏆 Weekly Leaderboard — ${weekRange}`,
       description: desc,
       color:       CLR.purple,
-      footer:      { text: "Top 10 weekly producers · Mon–Sun · Posted Sundays 9pm EST" },
+      footer:      { text: "Top 10 weekly producers · Mon-Sun · Posted Sundays 9pm CT" },
       timestamp:   new Date().toISOString(),
     }],
   };
@@ -284,20 +292,6 @@ async function sendToDiscord(webhookUrl: string, payload: Record<string, unknown
 }
 
 // ─── Resolve webhook URL ──────────────────────────────────────────────────────
-async function resolveWebhook(supabase: ReturnType<typeof createClient>): Promise<string> {
-  const envUrl = Deno.env.get("DISCORD_WEBHOOK_URL");
-  if (envUrl) return envUrl;
-
-  const { data } = await supabase
-    .from("system_settings")
-    .select("value")
-    .eq("key", "discord_webhook_url")
-    .maybeSingle();
-
-  const val = (data as any)?.value;
-  return (val && val.length > 20) ? val : BOOTSTRAP_WEBHOOK;
-}
-
 // ─── Milestone auto-check (fires after deal_closed) ──────────────────────────
 async function checkAndFireMilestone(
   supabase: ReturnType<typeof createClient>,
@@ -307,19 +301,21 @@ async function checkAndFireMilestone(
 ): Promise<void> {
   if (!agentId || !dealAop) return;
 
-  const now   = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
-  const today = now.toISOString().split("T")[0];
+  const monthBounds = getBusinessMonthBounds();
 
-  // MTD ALP from daily_production
+  // MTD ALP from posted deals truth
   const { data: rows } = await supabase
-    .from("daily_production")
-    .select("aop")
+    .from("deals")
+    .select("annual_premium, status")
     .eq("agent_id", agentId)
-    .gte("production_date", start)
-    .lte("production_date", today);
+    .in("status", [...VALID_DEAL_STATUSES])
+    .gte("posted_at", monthBounds.startIso)
+    .lt("posted_at", monthBounds.endIso);
 
-  const mtd     = (rows ?? []).reduce((s: number, r: { aop: number | null }) => s + (Number(r.aop) || 0), 0);
+  const mtd = (rows ?? []).reduce(
+    (sum: number, row: { annual_premium: number | null }) => sum + (Number(row.annual_premium) || 0),
+    0,
+  );
   const prevMtd = mtd - dealAop;
 
   for (const t of MILESTONES) {
@@ -376,7 +372,7 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const webhookUrl = await resolveWebhook(supabase);
+    const webhookUrl = await resolveDiscordWebhook(supabase, getDiscordAudience(event_type));
     await sendToDiscord(webhookUrl, payload);
 
     // After deal_closed: auto-check monthly milestones

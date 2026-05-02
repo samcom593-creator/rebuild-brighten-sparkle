@@ -10,6 +10,7 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { resolveDiscordWebhook } from "../_shared/apex.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,9 +18,6 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-request-id, idempotency-key",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
-
-const BOOTSTRAP_WEBHOOK =
-  "https://discord.com/api/webhooks/1425987081418571779/3JrtT5W00gDos8XY2iYc5_nb5sxr9S9ztagW1bBigI-8daIrb170vTyxIqXV2E8x2S0T";
 
 const CLR = { blue: 0x3b82f6, purple: 0x8b5cf6, cyan: 0x06b6d4 };
 
@@ -38,14 +36,6 @@ const MEDALS = ["🥇", "🥈", "🥉"];
 function rank(i: number): string { return i < 3 ? MEDALS[i] : `${i + 1}.`; }
 
 function isoDate(d: Date): string { return d.toISOString().split("T")[0]; }
-
-async function resolveWebhook(sb: ReturnType<typeof createClient>): Promise<string> {
-  const env = Deno.env.get("DISCORD_WEBHOOK_URL");
-  if (env) return env;
-  const { data } = await sb.from("system_settings").select("value").eq("key", "discord_webhook_url").maybeSingle();
-  const v = (data as { value?: string })?.value;
-  return v && v.length > 20 ? v : BOOTSTRAP_WEBHOOK;
-}
 
 async function post(webhookUrl: string, payload: Record<string, unknown>): Promise<void> {
   const backoff = [0, 800, 2000, 5000];
@@ -86,7 +76,7 @@ async function buildDaily(sb: ReturnType<typeof createClient>): Promise<Record<s
       title:       `📊 Daily Leaderboard — ${date_label}`,
       description: desc,
       color:       CLR.blue,
-      footer:      { text: "Top 10 producers by commission · Posted 9pm EST" },
+      footer:      { text: "Top 10 producers by ALP · Posted 9pm CT" },
       timestamp:   new Date().toISOString(),
       url:         "https://apex-financial.org/dashboard/leaderboard",
     }],
@@ -126,7 +116,7 @@ async function buildWeekly(sb: ReturnType<typeof createClient>): Promise<Record<
       title:       `🏆 Weekly Leaderboard — ${week_range}`,
       description: desc,
       color:       CLR.purple,
-      footer:      { text: "Top 10 weekly producers (Mon–Sun) · Posted Sundays 9pm EST" },
+      footer:      { text: "Top 10 weekly producers (Mon-Sun) · Posted Sundays 9pm CT" },
       timestamp:   new Date().toISOString(),
       url:         "https://apex-financial.org/dashboard/leaderboard?period=weekly",
     }],
@@ -257,7 +247,7 @@ async function buildPipeline(sb: ReturnType<typeof createClient>): Promise<Recor
         { name: "⚡ Fastest to License (MTD)", value: fastLines, inline: false },
         { name: "📈 Manager Completion Rate",  value: rateLines, inline: false },
       ],
-      footer:    { text: "Ranked by activation speed & licensing completion rate · Posted 9pm EST" },
+      footer:    { text: "Ranked by activation speed and licensing completion rate · Posted 9pm CT" },
       timestamp: new Date().toISOString(),
     }],
   };
@@ -279,7 +269,7 @@ Deno.serve(async (req: Request) => {
     const { type } = await req.json();
     if (!type) throw new Error("Missing type: daily | weekly | pipeline");
 
-    const webhookUrl = await resolveWebhook(sb);
+    const webhookUrl = await resolveDiscordWebhook(sb, type === "pipeline" ? "recruiting" : "production");
 
     let payload: Record<string, unknown>;
     if      (type === "daily")    payload = await buildDaily(sb);

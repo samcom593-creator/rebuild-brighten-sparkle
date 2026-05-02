@@ -73,7 +73,7 @@ const AdminCalendar = lazy(() => import("./pages/AdminCalendar"));
 const AdminBoardAccess = lazy(() => import("./pages/AdminBoardAccess"));
 const AwardGraphics = lazy(() => import("./pages/AwardGraphics"));
 const SeminarPage = lazy(() => import("./pages/SeminarPage"));
-// DailyCheckin and ApplicantCheckin removed per Fix 9
+const ApplicantCheckin = lazy(() => import("./pages/ApplicantCheckin"));
 const AgentFlow = lazy(() => import("./pages/AgentFlow"));
 const InboxPage = lazy(() => import("./pages/InboxPage"));
 const AutomationHub = lazy(() => import("./pages/AutomationHub"));
@@ -180,7 +180,8 @@ const App = () => (
                   <Route path="/dialer" element={<LeadsLanding />} />
                   <Route path="/data-deletion" element={<DataDeletion />} />
                   <Route path="/delete-my-data" element={<DataDeletion />} />
-                  {/* checkin and daily-checkin routes removed */}
+                  <Route path="/checkin" element={<ApplicantCheckin />} />
+                  <Route path="/daily-checkin" element={<ApplicantCheckin />} />
                   {/* field-checkin route removed */}
                   <Route path="/agent-flow" element={<AgentFlow />} />
                   {/* /awards exposes Instagram-ready award graphics generation.

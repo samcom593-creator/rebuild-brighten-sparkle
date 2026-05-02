@@ -3,6 +3,7 @@ import { Resend } from "npm:resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { logFunctionError, writeAudit } from "../_shared/audit.ts";
+import { SCHEDULING_LINKS } from "../_shared/apex.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const ADMIN_EMAIL = "sam@apex-financial.org";
@@ -151,7 +152,7 @@ const handler = async (req: Request): Promise<Response> => {
                     <table role="presentation" cellspacing="0" cellpadding="0" width="100%">
                       <tr>
                         <td align="center" bgcolor="#667eea" style="background-color: #667eea; border-radius: 8px;">
-                          <a href="https://calendly.com/apexfinancialmarketing/apex-financial-onboarding" 
+                          <a href="${SCHEDULING_LINKS.licensed}" 
                              style="display: inline-block; width: 100%; color: #ffffff; text-decoration: none; padding: 16px 32px; font-size: 18px; font-weight: 600; text-align: center; box-sizing: border-box;" target="_blank">
                             📅 Schedule Your Onboarding Call
                           </a>
@@ -309,7 +310,7 @@ const handler = async (req: Request): Promise<Response> => {
                     <table role="presentation" cellspacing="0" cellpadding="0" width="100%">
                       <tr>
                         <td align="center" bgcolor="#f093fb" style="background-color: #f093fb; border-radius: 8px;">
-                          <a href="https://calendly.com/apexfinancialmarketing/apex-interview" 
+                          <a href="${SCHEDULING_LINKS.unlicensed}" 
                              style="display: inline-block; width: 100%; color: #ffffff; text-decoration: none; padding: 16px 32px; font-size: 18px; font-weight: 600; text-align: center; box-sizing: border-box;" target="_blank">
                             📞 Need Help? Schedule a Call
                           </a>
@@ -372,7 +373,7 @@ const handler = async (req: Request): Promise<Response> => {
     if (phone) {
       try {
         const smsMsg = licenseStatus === "licensed"
-          ? `Hey ${firstName}, welcome to Apex! Check your email for onboarding steps or schedule here: https://calendly.com/apexfinancialmarketing/apex-financial-onboarding${whatsappLink ? `\n\nJoin our WhatsApp group: ${whatsappLink}` : ''}`
+          ? `Hey ${firstName}, welcome to Apex! Check your email for onboarding steps or schedule here: ${SCHEDULING_LINKS.licensed}${whatsappLink ? `\n\nJoin our WhatsApp group: ${whatsappLink}` : ''}`
           : `Hey ${firstName}, your licensing resources are in your email! Start here: https://partners.xcelsolutions.com/afe${whatsappLink ? `\n\nJoin our WhatsApp group: ${whatsappLink}` : ''}`;
 
         const smsRes = await fetch(`${supabaseUrl}/functions/v1/send-sms-auto-detect`, {

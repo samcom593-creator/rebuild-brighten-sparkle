@@ -13,6 +13,7 @@ import {
 import { invokeEdge } from "@/lib/edgeInvoke";
 import { toast } from "sonner";
 import { EmailPreviewModal } from "./EmailPreviewModal";
+import { SCHEDULING_LINKS } from "@/lib/apexConfig";
 
 interface QuickEmailMenuProps {
   applicationId: string;
@@ -55,8 +56,13 @@ const emailTemplateLabels: Record<EmailTemplate, string> = {
 };
 
 // Email templates for outreach
-const getEmailContent = (template: EmailTemplate, name: string): { subject: string; html: string } => {
+const getEmailContent = (
+  template: EmailTemplate,
+  name: string,
+  licenseStatus: QuickEmailMenuProps["licenseStatus"],
+): { subject: string; html: string } => {
   const firstName = name.split(" ")[0];
+  const callbackLink = licenseStatus === "licensed" ? SCHEDULING_LINKS.licensed : SCHEDULING_LINKS.unlicensed;
   
   const templates: Record<EmailTemplate, { subject: string; html: string }> = {
     cold_licensed: {
@@ -101,7 +107,7 @@ const getEmailContent = (template: EmailTemplate, name: string): { subject: stri
     },
     couldnt_reach_you: {
       subject: `${firstName}, We Tried to Call You! 📞`,
-      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;background-color:#f9fafb;"><div style="max-width:500px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;box-shadow:0 2px 8px rgba(0,0,0,0.05);"><h2 style="color:#14b8a6;margin:0 0 16px 0;">Hey ${firstName}!</h2><p style="color:#374151;line-height:1.6;margin:0 0 16px 0;">We tried reaching out to you today about the opportunity at <strong>Apex Financial</strong>, but we couldn't get through to your number.</p><p style="color:#374151;line-height:1.6;margin:0 0 16px 0;">No worries—we still want to connect! Here's what you can do:</p><ul style="color:#374151;line-height:1.8;margin:0 0 24px 0;padding-left:20px;"><li>✓ Reply to this email with your best phone number</li><li>✓ Or schedule a time that works for you below</li></ul><div style="text-align:center;margin:24px 0;"><a href="https://calendly.com/apexfinancialempire/licensed-prospect-call-clone" style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#fff;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:bold;">Schedule a Call</a></div><p style="color:#6b7280;font-size:14px;margin:24px 0 0 0;">Talk soon,<br/><strong style="color:#111827;">Apex Financial Team</strong></p></div></body></html>`,
+      html: `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:20px;background-color:#f9fafb;"><div style="max-width:500px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;box-shadow:0 2px 8px rgba(0,0,0,0.05);"><h2 style="color:#14b8a6;margin:0 0 16px 0;">Hey ${firstName}!</h2><p style="color:#374151;line-height:1.6;margin:0 0 16px 0;">We tried reaching out to you today about the opportunity at <strong>Apex Financial</strong>, but we couldn't get through to your number.</p><p style="color:#374151;line-height:1.6;margin:0 0 16px 0;">No worries—we still want to connect! Here's what you can do:</p><ul style="color:#374151;line-height:1.8;margin:0 0 24px 0;padding-left:20px;"><li>✓ Reply to this email with your best phone number</li><li>✓ Or schedule a time that works for you below</li></ul><div style="text-align:center;margin:24px 0;"><a href="${callbackLink}" style="display:inline-block;background:linear-gradient(135deg,#14b8a6,#0ea5e9);color:#fff;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:bold;">Schedule a Call</a></div><p style="color:#6b7280;font-size:14px;margin:24px 0 0 0;">Talk soon,<br/><strong style="color:#111827;">Apex Financial Team</strong></p></div></body></html>`,
     },
   };
   
@@ -126,7 +132,7 @@ export function QuickEmailMenu({
   const [previewContent, setPreviewContent] = useState<{ subject: string; html: string }>({ subject: "", html: "" });
 
   const handlePreviewEmail = (templateType: EmailTemplate) => {
-    const content = getEmailContent(templateType, recipientName);
+    const content = getEmailContent(templateType, recipientName, licenseStatus);
     setSelectedTemplate(templateType);
     setPreviewContent(content);
     setPreviewOpen(true);

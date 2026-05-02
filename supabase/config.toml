@@ -595,3 +595,6 @@ verify_jwt = false
 
 [functions.post-plaque-to-instagram]
 verify_jwt = false
+
+[functions.applicant-checkin]
+verify_jwt = false

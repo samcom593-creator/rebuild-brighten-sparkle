@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { Resend } from "npm:resend@2.0.0";
+import { SCHEDULING_LINKS } from "../_shared/apex.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -89,9 +90,9 @@ const handler = async (req: Request): Promise<Response> => {
     const ccList = [ADMIN_EMAIL, managerEmail].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i) as string[];
 
     const isLicensed = licenseStatus === "licensed";
-    const defaultCalendarLink = isLicensed 
-      ? "https://calendly.com/apex-financial/licensed-consultation"
-      : "https://calendly.com/apex-financial/getting-started";
+    const defaultCalendarLink = isLicensed
+      ? SCHEDULING_LINKS.licensed
+      : SCHEDULING_LINKS.unlicensed;
     const finalCalendarLink = calendarLink || defaultCalendarLink;
 
     const subjectLines: Record<string, string> = {

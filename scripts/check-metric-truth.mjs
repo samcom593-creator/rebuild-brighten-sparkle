@@ -21,6 +21,25 @@ const filesToCheck = [
   "src/components/dashboard/ForecastCard.tsx",
 ];
 
+const criticalRecruitingFiles = [
+  "src/App.tsx",
+  "src/pages/GetLicensed.tsx",
+  "src/pages/ScheduleCall.tsx",
+  "src/pages/ApplySuccessLicensed.tsx",
+  "src/pages/ApplySuccessUnlicensed.tsx",
+  "src/components/callcenter/CallCenterVoiceRecorder.tsx",
+  "src/components/dashboard/QuickEmailMenu.tsx",
+  "supabase/functions/discord-webhook-notify/index.ts",
+  "supabase/functions/discord-leaderboards/index.ts",
+  "supabase/functions/send-course-enrollment-email/index.ts",
+  "supabase/functions/send-unlicensed-process-update/index.ts",
+  "supabase/functions/send-daily-checkin-prompt/index.ts",
+  "supabase/functions/send-whatsapp-onboarding-blast/index.ts",
+  "supabase/functions/send-followup-emails/index.ts",
+  "supabase/functions/send-post-call-followup/index.ts",
+  "supabase/functions/send-licensing-instructions/index.ts",
+];
+
 const forbiddenPatterns = [
   {
     regex: /\.from\("deals"\)[\s\S]{0,600}\.(?:eq|gt|gte|lt|lte|order)\("effective_date"/m,
@@ -49,6 +68,32 @@ for (const relativePath of filesToCheck) {
   }
 }
 
+for (const relativePath of criticalRecruitingFiles) {
+  const absolutePath = path.join(repoRoot, relativePath);
+  const source = fs.readFileSync(absolutePath, "utf8");
+
+  if (/rebuild-brighten-sparkle\.lovable\.app/.test(source)) {
+    violations.push(`${relativePath}: critical recruiting flows must not point at the legacy lovable.app domain`);
+  }
+
+  if (/https:\/\/calendly\.com\/apexfinancialmarketing\/|https:\/\/calendly\.com\/apex-financial\/|licensed-prospect-call-clone-1/.test(source)) {
+    violations.push(`${relativePath}: critical recruiting flows must use the canonical Apex Calendly links`);
+  }
+}
+
+const appSource = fs.readFileSync(path.join(repoRoot, "src/App.tsx"), "utf8");
+if (!appSource.includes('path="/checkin"') || !appSource.includes('path="/daily-checkin"')) {
+  violations.push("src/App.tsx: applicant check-in routes must remain mounted");
+}
+
+const discordNotifySource = fs.readFileSync(
+  path.join(repoRoot, "supabase/functions/discord-webhook-notify/index.ts"),
+  "utf8",
+);
+if (/daily_production/.test(discordNotifySource)) {
+  violations.push("supabase/functions/discord-webhook-notify/index.ts: Discord milestones must not read daily_production");
+}
+
 function walk(dir) {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   for (const entry of entries) {
@@ -66,6 +111,7 @@ function walk(dir) {
 }
 
 walk(path.join(repoRoot, "src"));
+walk(path.join(repoRoot, "supabase/functions"));
 
 if (violations.length > 0) {
   console.error("Metric truth guardrail failed:");

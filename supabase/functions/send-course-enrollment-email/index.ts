@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { APP_BASE_URL } from "../_shared/apex.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,7 +10,7 @@ const corsHeaders = {
 };
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-const BASE_URL = "https://rebuild-brighten-sparkle.lovable.app";
+const BASE_URL = APP_BASE_URL;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const ADMIN_EMAIL = "sam@apex-financial.org";
 

@@ -6,6 +6,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { CalendlyEmbed } from "@/components/landing/CalendlyEmbed";
 import { Link } from "react-router-dom";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { SCHEDULING_LINKS } from "@/lib/apexConfig";
 
 /**
  * Phase 12: Calendly Strategy
@@ -13,8 +14,8 @@ import { usePageTitle } from "@/hooks/usePageTitle";
  * Licensed → inline embed (keeps user on-site)
  * Unlicensed → inline embed (different calendar)
  */
-const LICENSED_CALENDLY = "https://calendly.com/apexfinancialempire/1on1-call-clone";
-const UNLICENSED_CALENDLY = "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone";
+const LICENSED_CALENDLY = SCHEDULING_LINKS.licensed;
+const UNLICENSED_CALENDLY = SCHEDULING_LINKS.unlicensed;
 
 export default function ScheduleCall() {
   usePageTitle("Schedule a Call · APEX Financial");

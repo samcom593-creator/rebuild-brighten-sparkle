@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { buildAppUrl } from "../_shared/apex.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,8 +9,6 @@ const corsHeaders = {
 };
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-const APP_URL = "https://rebuild-brighten-sparkle.lovable.app";
-
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -45,7 +44,7 @@ serve(async (req: Request) => {
       await Promise.allSettled(
         batch.map(async (app) => {
           if (!app.email) return;
-          const checkinUrl = `${APP_URL}/checkin?id=${app.id}`;
+          const checkinUrl = `${buildAppUrl("/checkin")}?id=${app.id}`;
 
           await resend.emails.send({
             from: "APEX Financial Empire <notifications@apex-financial.org>",

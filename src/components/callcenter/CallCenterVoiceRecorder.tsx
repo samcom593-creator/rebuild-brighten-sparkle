@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { SCHEDULING_LINKS } from "@/lib/apexConfig";
 
 interface CallSummary {
   keyPoints: string[];
@@ -15,7 +16,7 @@ interface CallSummary {
   briefSummary: string;
 }
 
-const LICENSED_FOLLOW_UP_URL = "https://calendly.com/apexfinancialempire/licensed-prospect-call-clone";
+const LICENSED_FOLLOW_UP_URL = SCHEDULING_LINKS.licensed;
 const UNLICENSED_FOLLOW_UP_URL = "https://apex-financial.org/get-licensed";
 
 interface CallCenterVoiceRecorderProps {

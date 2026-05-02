@@ -6,32 +6,41 @@
       // After the 2026-04-30 Supabase migration, any device with a cached
       // service worker or old auth token is locked out with "Invalid login
       // credentials" because requests still route to the dead old project.
-      // This runs on every page load: detects stale state, nukes it, reloads.
+      // Also bumped on 2026-05-02 because the CallCenter chunk had a stale
+      // copy with the old "assigned_manager_id only" filter still in it,
+      // making admins (Sam) see zero leads even after the fix shipped.
+      // BUMP_VERSION below — increment whenever a cache-eviction is needed.
       (function() {
+        var BUMP_VERSION = '2026-05-02-callcenter-admin-fix';
         try {
           var staleKeys = [];
           for (var i = 0; i < localStorage.length; i++) {
             var k = localStorage.key(i);
-            // any old-project auth token = stale
             if (k && k.indexOf('msydzhzolwourcdmqxvn') !== -1) staleKeys.push(k);
           }
-          if (staleKeys.length > 0 && !sessionStorage.getItem('apex_cache_busted')) {
+          var seenBump = localStorage.getItem('apex_bump_version');
+          var hadStaleAuth = staleKeys.length > 0 && !sessionStorage.getItem('apex_cache_busted');
+          var needsBump = seenBump !== BUMP_VERSION;
+          if (hadStaleAuth || needsBump) {
             sessionStorage.setItem('apex_cache_busted', '1');
+            localStorage.setItem('apex_bump_version', BUMP_VERSION);
             staleKeys.forEach(function(k) { localStorage.removeItem(k); });
-            // Unregister any service worker
             if ('serviceWorker' in navigator) {
               navigator.serviceWorker.getRegistrations().then(function(regs) {
                 regs.forEach(function(r) { r.unregister(); });
               });
             }
-            // Clear caches API
             if (typeof caches !== 'undefined') {
               caches.keys().then(function(keys) {
                 keys.forEach(function(k) { caches.delete(k); });
               });
             }
-            // Force fresh reload
-            location.replace(location.pathname + (location.search ? location.search + '&' : '?') + '_freshv=' + Date.now());
+            // Only auto-reload on the migration case (preserves intent of
+            // original script). Bump-only updates take effect next visit
+            // because the SW/caches are cleared but page already loaded.
+            if (hadStaleAuth) {
+              location.replace(location.pathname + (location.search ? location.search + '&' : '?') + '_freshv=' + Date.now());
+            }
           }
         } catch (e) { /* swallow — never block page on cache-bust */ }
       })();

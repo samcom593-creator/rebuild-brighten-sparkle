@@ -16,6 +16,11 @@ export type LicenseFilter = "all" | "licensed" | "unlicensed";
 export type StatusFilter = "new" | "no_pickup" | "contacted";
 export type ProgressFilter = "all" | "course_purchased" | "passed_test" | "waiting_on_license";
 export type SortOrder = "newest_first" | "oldest_first";
+// 2026-05-04 (Sam): "filter whether I'm calling all applicants or applicants
+// who applied and marked my name down". `mine` = referred-by-me;
+// `no_referrer` = applied without naming anyone (default-routed so they
+// can't be poached by other managers' boxes).
+export type RefererFilter = "all" | "mine" | "no_referrer";
 
 interface CallCenterFiltersProps {
   sourceFilter: SourceFilter;
@@ -23,11 +28,13 @@ interface CallCenterFiltersProps {
   statusFilter: StatusFilter;
   progressFilter: ProgressFilter;
   sortOrder: SortOrder;
+  refererFilter: RefererFilter;
   onSourceChange: (value: SourceFilter) => void;
   onLicenseChange: (value: LicenseFilter) => void;
   onStatusChange: (value: StatusFilter) => void;
   onProgressChange: (value: ProgressFilter) => void;
   onSortOrderChange: (value: SortOrder) => void;
+  onRefererChange: (value: RefererFilter) => void;
   onStart: () => void;
   disabled?: boolean;
   className?: string;
@@ -58,11 +65,13 @@ export function CallCenterFilters({
   statusFilter,
   progressFilter,
   sortOrder,
+  refererFilter,
   onSourceChange,
   onLicenseChange,
   onStatusChange,
   onProgressChange,
   onSortOrderChange,
+  onRefererChange,
   onStart,
   disabled,
   className,
@@ -126,6 +135,16 @@ export function CallCenterFilters({
                   { value: "all", label: "All Sources" },
                   { value: "aged_leads", label: "Aged Leads" },
                   { value: "applications", label: "New Drip-Ins" },
+                ],
+              },
+              {
+                label: "Referrer",
+                value: refererFilter,
+                onChange: onRefererChange,
+                options: [
+                  { value: "all", label: "All Applicants" },
+                  { value: "mine", label: "Marked Me As Referrer" },
+                  { value: "no_referrer", label: "No Referrer (Unclaimed)" },
                 ],
               },
               {

@@ -22,6 +22,7 @@ import {
   type StatusFilter,
   type ProgressFilter,
   type SortOrder,
+  type RefererFilter,
   type ActionId,
   type LicensingStage,
 } from "@/components/callcenter";
@@ -51,6 +52,7 @@ interface UnifiedLead {
   state?: string;
   availability?: string;
   referredBy?: string;
+  hasNoReferrer?: boolean;
   assignedManagerName?: string;
 }
 
@@ -78,6 +80,9 @@ export default function CallCenter() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("new");
   const [progressFilter, setProgressFilter] = useState<ProgressFilter>("all");
   const [sortOrder, setSortOrder] = useState<SortOrder>("oldest_first");
+  // Sam 2026-05-04: filter applicants by referrer attribution. Default "all"
+  // so existing behavior is unchanged unless he picks "mine" or "no_referrer".
+  const [refererFilter, setRefererFilter] = useState<RefererFilter>("all");
 
   const currentLead = leads[currentIndex];
   const totalLeads = leads.length;
@@ -176,8 +181,17 @@ export default function CallCenter() {
         // active-funnel definition.
         let appQuery = supabase
           .from("applications")
-          .select("id, first_name, last_name, email, phone, instagram_handle, notes, license_status, license_progress, test_scheduled_date, created_at, status, contacted_at, last_contacted_at, previous_company, nipr_number, licensed_states, city, state, availability, assigned_agent_id, hiring_manager_user_id, terminated_at, contracted_at, closed_at, agents!applications_assigned_agent_id_fkey(display_name)")
+          .select("id, first_name, last_name, email, phone, instagram_handle, notes, license_status, license_progress, test_scheduled_date, created_at, status, contacted_at, last_contacted_at, previous_company, nipr_number, licensed_states, city, state, availability, assigned_agent_id, hiring_manager_user_id, referral_manager_id, terminated_at, contracted_at, closed_at, agents!applications_assigned_agent_id_fkey(display_name), referrer:agents!applications_referral_manager_id_fkey(display_name)")
           .order("created_at", { ascending: sortOrder === "oldest_first" });
+
+        // Referrer filter (Sam 2026-05-04). "mine" = applicants who marked
+        // me/my agent as referrer; "no_referrer" = applicants who didn't
+        // name anyone (default-routed for distribution).
+        if (refererFilter === "mine" && agentId) {
+          appQuery = appQuery.eq("referral_manager_id", agentId);
+        } else if (refererFilter === "no_referrer") {
+          appQuery = appQuery.is("referral_manager_id", null);
+        }
 
         // Status filter for applications (source-of-truth = contact timestamps)
         if (statusFilter === "new") {
@@ -217,6 +231,7 @@ export default function CallCenter() {
         (appData || []).forEach((app: any) => {
           const agentData = app.agents;
           const managerName = agentData?.display_name || undefined;
+          const referrerName = app.referrer?.display_name || undefined;
           allLeads.push({
             id: app.id,
             source: "applications",
@@ -241,6 +256,8 @@ export default function CallCenter() {
             state: app.state || undefined,
             availability: app.availability || undefined,
             assignedManagerName: managerName,
+            referredBy: referrerName,
+            hasNoReferrer: !app.referral_manager_id,
           });
         });
       }
@@ -261,7 +278,7 @@ export default function CallCenter() {
     } finally {
       setLoading(false);
     }
-  }, [sourceFilter, licenseFilter, statusFilter, progressFilter, sortOrder, isAdmin, isManager, agentId]);
+  }, [sourceFilter, licenseFilter, statusFilter, progressFilter, sortOrder, refererFilter, isAdmin, isManager, agentId]);
 
   const agentIdLoading = !agentId && !isAdmin && !!user;
 
@@ -707,11 +724,13 @@ export default function CallCenter() {
         statusFilter={statusFilter}
         progressFilter={progressFilter}
         sortOrder={sortOrder}
+        refererFilter={refererFilter}
         onSourceChange={setSourceFilter}
         onLicenseChange={setLicenseFilter}
         onStatusChange={setStatusFilter}
         onProgressChange={setProgressFilter}
         onSortOrderChange={setSortOrder}
+        onRefererChange={setRefererFilter}
         onStart={handleStartCalling}
         disabled={agentIdLoading}
       />

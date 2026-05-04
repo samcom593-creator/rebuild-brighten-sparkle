@@ -66,6 +66,7 @@ interface UnifiedLead {
   state?: string;
   availability?: string;
   referredBy?: string;
+  hasNoReferrer?: boolean;
   assignedManagerName?: string;
 }
 
@@ -237,6 +238,17 @@ export function CallCenterLeadCard({
                 >
                   <User className="h-3 w-3" />
                   {lead.referredBy}
+                </motion.span>
+              )}
+              {lead.source === "applications" && lead.hasNoReferrer && !lead.referredBy && (
+                <motion.span
+                  variants={badgeVariants}
+                  whileHover={{ scale: 1.05 }}
+                  className="text-xs px-3 py-1 rounded-full font-medium bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center gap-1"
+                  title="Applied without naming a referrer — yours by default"
+                >
+                  <User className="h-3 w-3" />
+                  No referrer
                 </motion.span>
               )}
             </motion.div>

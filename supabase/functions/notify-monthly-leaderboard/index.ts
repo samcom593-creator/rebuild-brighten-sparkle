@@ -30,32 +30,49 @@ serve(async (req) => {
     const monthName = lastMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" });
     const newMonthName = now.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 
-    // Get all production for last month grouped by agent
-    const { data: monthlyData, error: dataError } = await supabase
+    // 2026-05-04: Source of truth is the deals table, not daily_production.
+    // The old daily_production-based query produced wrong April recap numbers
+    // (memory note: notify_monthly_leaderboard_bug.md). Now matches dashboard
+    // truth — submitted/active by created_at within the month window. The
+    // window covers full days, so use ISO timestamps with day boundaries.
+    const startIso = `${startDate}T00:00:00Z`;
+    const endIso = `${endDate}T23:59:59Z`;
+
+    const { data: dealRows, error: dealsErr } = await supabase
+      .from("deals")
+      .select("agent_id, annual_premium, status")
+      .gte("created_at", startIso)
+      .lte("created_at", endIso)
+      .in("status", ["submitted", "active"]);
+
+    if (dealsErr) {
+      console.error("Error fetching monthly deals:", dealsErr);
+      throw dealsErr;
+    }
+
+    // Presentations still come from daily_production (only authoritative
+    // source for that field — agents log it manually in /numbers).
+    const { data: presRows } = await supabase
       .from("daily_production")
-      .select(`
-        agent_id,
-        aop,
-        deals_closed,
-        presentations
-      `)
+      .select("agent_id, presentations")
       .gte("production_date", startDate)
       .lte("production_date", endDate);
 
-    if (dataError) {
-      console.error("Error fetching monthly data:", dataError);
-      throw dataError;
-    }
-
-    // Aggregate by agent
+    // Aggregate by agent: ALP + deal count from deals table, presentations
+    // from daily_production.
     const agentTotals: Record<string, { aop: number; deals: number; presentations: number }> = {};
-    for (const row of monthlyData || []) {
-      if (!agentTotals[row.agent_id]) {
-        agentTotals[row.agent_id] = { aop: 0, deals: 0, presentations: 0 };
-      }
-      agentTotals[row.agent_id].aop += Number(row.aop || 0);
-      agentTotals[row.agent_id].deals += Number(row.deals_closed || 0);
-      agentTotals[row.agent_id].presentations += Number(row.presentations || 0);
+    for (const row of dealRows || []) {
+      const id = (row as any).agent_id;
+      if (!id) continue;
+      if (!agentTotals[id]) agentTotals[id] = { aop: 0, deals: 0, presentations: 0 };
+      agentTotals[id].aop += Number((row as any).annual_premium || 0);
+      agentTotals[id].deals += 1;
+    }
+    for (const row of presRows || []) {
+      const id = (row as any).agent_id;
+      if (!id) continue;
+      if (!agentTotals[id]) agentTotals[id] = { aop: 0, deals: 0, presentations: 0 };
+      agentTotals[id].presentations += Number((row as any).presentations || 0);
     }
 
     // Get agent profiles
@@ -177,7 +194,7 @@ serve(async (req) => {
             <p style="color: rgba(255,255,255,0.9); font-size: 15px; margin: 0 0 20px 0;">
               Set your income goal for the new month and track your progress!
             </p>
-            <a href="https://rebuild-brighten-sparkle.lovable.app/agent-portal" 
+            <a href="https://apex-financial.org/agent-portal" 
                style="display: inline-block; background: #0a0f1a; color: #14b8a6; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
               Set My Monthly Goal →
             </a>

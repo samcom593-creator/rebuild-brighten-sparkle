@@ -87,7 +87,7 @@ export async function sendEmail(input: SendEmailInput): Promise<SendEmailResult>
   // Route to the unsubscribe edge function directly so one-click works
   // regardless of whether the marketing site is up, and so the HTML
   // confirmation is always served.
-  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "https://msydzhzolwourcdmqxvn.supabase.co";
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "https://xrzweoneiieddzxogewk.supabase.co";
   const unsubscribeUrl  = `${supabaseUrl}/functions/v1/unsubscribe?u=${unsubToken}`;
   const unsubscribeMail = `mailto:unsubscribe@${DOMAIN}?subject=unsubscribe`;
   const finalHtml = ensureUnsubscribeFooter(resolvedHtml, unsubscribeUrl);

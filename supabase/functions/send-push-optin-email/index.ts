@@ -56,7 +56,7 @@ const handler = async (req: Request): Promise<Response> => {
                   <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
                     <tr>
                       <td align="center" bgcolor="#3b82f6" style="border-radius:10px;">
-                        <a href="https://rebuild-brighten-sparkle.lovable.app/dashboard/settings" style="display:inline-block;color:#ffffff;text-decoration:none;padding:16px 40px;font-weight:700;font-size:18px;">
+                        <a href="https://apex-financial.org/dashboard/settings" style="display:inline-block;color:#ffffff;text-decoration:none;padding:16px 40px;font-weight:700;font-size:18px;">
                           Enable Notifications →
                         </a>
                       </td>

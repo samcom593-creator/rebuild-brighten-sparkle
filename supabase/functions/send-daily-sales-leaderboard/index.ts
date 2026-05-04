@@ -384,7 +384,7 @@ serve(async (req) => {
           <!-- CTA Button -->
           <tr>
             <td style="padding: 0 24px 32px 24px; text-align: center;">
-              <a href="https://rebuild-brighten-sparkle.lovable.app/numbers" 
+              <a href="https://apex-financial.org/numbers" 
                  style="display: inline-block; background: linear-gradient(135deg, #d4af37 0%, #b8941d 100%); color: #0a0a0a; font-size: 14px; font-weight: 800; text-decoration: none; padding: 16px 40px; border-radius: 12px; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 8px 20px rgba(212, 175, 55, 0.3); max-width: 100%; box-sizing: border-box;">
                 🎯 LOG TOMORROW'S NUMBERS
               </a>

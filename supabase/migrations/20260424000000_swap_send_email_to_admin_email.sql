@@ -29,7 +29,7 @@ BEGIN
 
   SELECT value INTO v_svc_url FROM public.system_settings WHERE key='supabase_url';
   SELECT value INTO v_svc_key FROM public.system_settings WHERE key='supabase_anon_key';
-  IF v_svc_url IS NULL THEN v_svc_url := 'https://msydzhzolwourcdmqxvn.supabase.co'; END IF;
+  IF v_svc_url IS NULL THEN v_svc_url := 'https://xrzweoneiieddzxogewk.supabase.co'; END IF;
 
   v_name := COALESCE(NEW.first_name,'') || ' ' || COALESCE(NEW.last_name,'');
 
@@ -93,7 +93,7 @@ BEGIN
 
   SELECT value INTO v_svc_url FROM public.system_settings WHERE key='supabase_url';
   SELECT value INTO v_svc_key FROM public.system_settings WHERE key='supabase_anon_key';
-  IF v_svc_url IS NULL THEN v_svc_url := 'https://msydzhzolwourcdmqxvn.supabase.co'; END IF;
+  IF v_svc_url IS NULL THEN v_svc_url := 'https://xrzweoneiieddzxogewk.supabase.co'; END IF;
 
   WITH stuck AS (
     SELECT first_name, last_name, email, phone, license_progress,
@@ -165,7 +165,7 @@ BEGIN
 
   SELECT value INTO v_svc_url FROM public.system_settings WHERE key='supabase_url';
   SELECT value INTO v_svc_key FROM public.system_settings WHERE key='supabase_anon_key';
-  IF v_svc_url IS NULL THEN v_svc_url := 'https://msydzhzolwourcdmqxvn.supabase.co'; END IF;
+  IF v_svc_url IS NULL THEN v_svc_url := 'https://xrzweoneiieddzxogewk.supabase.co'; END IF;
 
   FOR m IN
     SELECT DISTINCT hma.manager_user_id AS user_id, p.email, p.full_name

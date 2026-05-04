@@ -9,7 +9,7 @@ const corsHeaders = {
 };
 
 const ADMIN_EMAIL = "sam@apex-financial.org";
-const BASE_URL = "https://rebuild-brighten-sparkle.lovable.app";
+const BASE_URL = "https://apex-financial.org";
 
 async function generateMagicToken(
   supabaseClient: any,

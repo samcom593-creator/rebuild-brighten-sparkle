@@ -216,7 +216,7 @@ const handler = async (req: Request): Promise<Response> => {
                 <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
                   <tr>
                     <td align="center" bgcolor="#d4af37" style="border-radius:8px;">
-                      <a href="https://rebuild-brighten-sparkle.lovable.app/dashboard/applicants?lead=${applicationId}" style="display:inline-block;color:#0a0a0a;text-decoration:none;padding:14px 28px;font-weight:600;font-size:16px;">
+                      <a href="https://apex-financial.org/dashboard/applicants?lead=${applicationId}" style="display:inline-block;color:#0a0a0a;text-decoration:none;padding:14px 28px;font-weight:600;font-size:16px;">
                         📞 View Lead & Call Now →
                       </a>
                     </td>

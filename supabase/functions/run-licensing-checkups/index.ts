@@ -40,7 +40,7 @@ const NUDGE_SCHEDULE: NudgeScheduleItem[] = [
         <h2 style="color:#059669;">Hey ${name},</h2>
         <p>Welcome to the APEX team! Your first step is to purchase and start the pre-licensing course.</p>
         <p>The course takes 2-4 weeks to complete. Agents who start in Week 1 get licensed <strong>3x faster</strong>.</p>
-        <p style="margin:24px 0;"><a href="https://rebuild-brighten-sparkle.lovable.app/get-licensed" style="background:#059669;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">Start Your Course →</a></p>
+        <p style="margin:24px 0;"><a href="https://apex-financial.org/get-licensed" style="background:#059669;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">Start Your Course →</a></p>
         <p>Your first paycheck is closer than you think.</p>
         <p>— The APEX Team</p>
       </div>`,
@@ -67,7 +67,7 @@ const NUDGE_SCHEDULE: NudgeScheduleItem[] = [
         ${stage === "course_purchased" 
           ? "<p>Great job getting the course! How's studying going? Try to knock out at least 2 hours today.</p>"
           : "<p>It's Day 3 and we haven't seen course activity yet. Don't let the momentum fade — agents who start this week get their license fastest.</p>"}
-        <p style="margin:24px 0;"><a href="https://rebuild-brighten-sparkle.lovable.app/get-licensed" style="background:#059669;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">Check Your Progress →</a></p>
+        <p style="margin:24px 0;"><a href="https://apex-financial.org/get-licensed" style="background:#059669;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">Check Your Progress →</a></p>
         <p>— APEX Financial</p>
       </div>`,
     smsBody: (name) => `APEX: Day 3 check-in ${name}. How's your progress? Stay consistent — 2-3 hours a day gets you licensed fast.`,
@@ -81,7 +81,7 @@ const NUDGE_SCHEDULE: NudgeScheduleItem[] = [
         <p>It's been 5 days since you joined APEX and we haven't seen course activity yet.</p>
         <p>Agents who start the course in Week 1 are licensed <strong>3x faster</strong> than those who wait.</p>
         <p>Every day you wait is a day without income. Let's change that today.</p>
-        <p style="margin:24px 0;"><a href="https://rebuild-brighten-sparkle.lovable.app/get-licensed" style="background:#dc2626;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">Start Now →</a></p>
+        <p style="margin:24px 0;"><a href="https://apex-financial.org/get-licensed" style="background:#dc2626;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">Start Now →</a></p>
         <p>— Sam James, APEX Financial</p>
       </div>`,
     smsBody: (name) => `APEX: ${name}, agents who start the course in week 1 are licensed 3x faster. Don't wait. Start today.`,

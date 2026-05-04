@@ -13,7 +13,7 @@ SELECT cron.schedule(
   '*/15 * * * *',  -- Every 15 minutes
   $$
   SELECT net.http_post(
-    url := 'https://msydzhzolwourcdmqxvn.supabase.co/functions/v1/check-abandoned-applications',
+    url := 'https://xrzweoneiieddzxogewk.supabase.co/functions/v1/check-abandoned-applications',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'Authorization', 'Bearer ' || current_setting('app.settings.service_role_key', true)

@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
             <h2 style="color:#ef4444">⚠️ ${droppedLeads.length} Dropped Leads</h2>
             <p style="color:rgba(255,255,255,0.7)">These applicants have NOT been contacted in 48+ hours:</p>
             <table style="width:100%;color:white;font-size:13px"><thead><tr><th style="text-align:left;padding:8px;color:#22d3a5">Name</th><th style="text-align:left;padding:8px;color:#22d3a5">Email</th><th style="text-align:left;padding:8px;color:#22d3a5">Phone</th><th style="text-align:left;padding:8px;color:#22d3a5">Waiting</th></tr></thead><tbody>${leadRows}</tbody></table>
-            <a href="https://rebuild-brighten-sparkle.lovable.app/dashboard/applicants" style="display:block;text-align:center;background:#22d3a5;color:#030712;padding:14px;border-radius:8px;font-weight:700;text-decoration:none;margin-top:24px">VIEW IN CRM →</a>
+            <a href="https://apex-financial.org/dashboard/applicants" style="display:block;text-align:center;background:#22d3a5;color:#030712;padding:14px;border-radius:8px;font-weight:700;text-decoration:none;margin-top:24px">VIEW IN CRM →</a>
           </div>`,
         }),
       }).catch(console.error);

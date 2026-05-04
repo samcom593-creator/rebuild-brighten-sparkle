@@ -54,7 +54,7 @@ serve(async (req: Request) => {
                   <p>Life gets busy. I get it.</p>
                   <p>But some of the agents who started after you are now in the field earning real income. The door is still open for you.</p>
                   <p>One email or call and we pick up exactly where you left off.</p>
-                  <p style="margin:24px 0;"><a href="https://rebuild-brighten-sparkle.lovable.app/apply" style="background:#059669;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">I'm Ready to Start Again →</a></p>
+                  <p style="margin:24px 0;"><a href="https://apex-financial.org/apply" style="background:#059669;color:white;padding:14px 28px;border-radius:8px;text-decoration:none;font-weight:bold;">I'm Ready to Start Again →</a></p>
                   <p>— Sam<br/><strong style="color:#059669;">Managing Partner, APEX Financial</strong></p>
                 </div>
               </div>`,

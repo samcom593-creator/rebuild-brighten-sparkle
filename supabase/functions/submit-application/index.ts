@@ -278,7 +278,7 @@ async function sendManagerNotification(
               ` : ''}
               <tr>
                 <td align="center" style="padding: 6px;">
-                  <a href="https://rebuild-brighten-sparkle.lovable.app/dashboard/applicants?lead=${applicationId}" style="display: inline-block; background: #111827; color: white; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 14px; max-width: 100%; box-sizing: border-box;">
+                  <a href="https://apex-financial.org/dashboard/applicants?lead=${applicationId}" style="display: inline-block; background: #111827; color: white; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 600; font-size: 14px; max-width: 100%; box-sizing: border-box;">
                     👤 View Lead in Dashboard
                   </a>
                 </td>
@@ -475,7 +475,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
             </div>
 
             <div style="margin-top: 25px; text-align: center;">
-              <a href="https://rebuild-brighten-sparkle.lovable.app/dashboard/applicants?lead=${applicationId}" style="${callToActionStyle}">
+              <a href="https://apex-financial.org/dashboard/applicants?lead=${applicationId}" style="${callToActionStyle}">
                 ${callToActionText}
               </a>
               ${isLicensedApplicant ? `
@@ -718,7 +718,7 @@ async function sendEmailNotifications(data: SubmitApplicationRequest, applicatio
             <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
               <h3 style="color: #1e40af; margin-top: 0; margin-bottom: 10px; font-size: 16px;">📋 Daily Check-In</h3>
               <p style="color: #2563eb; font-size: 13px; margin-bottom: 15px;">Submit your daily licensing progress check-in here:</p>
-              <a href="https://rebuild-brighten-sparkle.lovable.app/daily-checkin" 
+              <a href="https://apex-financial.org/daily-checkin" 
                  style="display: inline-block; background: #2563eb; color: white; 
                         padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 14px;
                         box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);">

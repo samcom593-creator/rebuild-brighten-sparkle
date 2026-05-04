@@ -68,7 +68,7 @@ DECLARE v_req bigint;
 BEGIN
   PERFORM set_config('statement_timeout','0', true);
   v_req := net.http_post(
-    url := 'https://msydzhzolwourcdmqxvn.supabase.co/functions/v1/stripe-sync',
+    url := 'https://xrzweoneiieddzxogewk.supabase.co/functions/v1/stripe-sync',
     headers := jsonb_build_object('Content-Type','application/json'),
     body := '{}'::jsonb,
     timeout_milliseconds := 30000);

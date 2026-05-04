@@ -48,7 +48,7 @@ BEGIN
     SELECT value INTO v_base_url FROM public.system_settings WHERE key = 'supabase_url';
   END IF;
   IF v_base_url IS NULL OR v_base_url = '' THEN
-    v_base_url := 'https://msydzhzolwourcdmqxvn.supabase.co';
+    v_base_url := 'https://xrzweoneiieddzxogewk.supabase.co';
   END IF;
 
   v_url := v_base_url || '/functions/v1/' || p_function_name;

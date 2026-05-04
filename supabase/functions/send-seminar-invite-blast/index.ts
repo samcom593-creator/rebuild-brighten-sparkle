@@ -18,7 +18,7 @@ const CARRIER_GATEWAYS: Record<string, string> = {
   boost: "sms.myboostmobile.com",
 };
 
-const APP_URL = "https://rebuild-brighten-sparkle.lovable.app";
+const APP_URL = "https://apex-financial.org";
 
 function buildSeminarEmail(firstName: string, registrationUrl: string, whatsappLink: string): string {
   return `

@@ -33,7 +33,7 @@ const getEmailHtml = (agentName: string, type: EmailType, percentComplete: numbe
           <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
             <tr>
               <td align="center" bgcolor="#6366f1" style="border-radius:8px;">
-                <a href="https://rebuild-brighten-sparkle.lovable.app/onboarding" style="display:inline-block;color:#ffffff;padding:14px 28px;text-decoration:none;font-weight:600;">
+                <a href="https://apex-financial.org/onboarding" style="display:inline-block;color:#ffffff;padding:14px 28px;text-decoration:none;font-weight:600;">
                   Continue My Training →
                 </a>
               </td>
@@ -63,7 +63,7 @@ const getEmailHtml = (agentName: string, type: EmailType, percentComplete: numbe
           <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto;">
             <tr>
               <td align="center" bgcolor="#f59e0b" style="border-radius:8px;">
-                <a href="https://rebuild-brighten-sparkle.lovable.app/onboarding" style="display:inline-block;color:#ffffff;padding:14px 28px;text-decoration:none;font-weight:600;">
+                <a href="https://apex-financial.org/onboarding" style="display:inline-block;color:#ffffff;padding:14px 28px;text-decoration:none;font-weight:600;">
                   Finish My Course Now →
                 </a>
               </td>
@@ -90,7 +90,7 @@ const getEmailHtml = (agentName: string, type: EmailType, percentComplete: numbe
           We need you to finish your course TODAY. Your manager is waiting to move you into field training, and every day you wait is a day you're not earning.
         </p>
         <div style="margin: 30px 0; text-align: center;">
-          <a href="https://rebuild-brighten-sparkle.lovable.app/onboarding" 
+          <a href="https://apex-financial.org/onboarding" 
              style="background: #dc2626; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
             ⚡ Complete Training NOW
           </a>

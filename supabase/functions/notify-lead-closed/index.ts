@@ -137,7 +137,7 @@ const handler = async (req: Request): Promise<Response> => {
               <p style="margin: 0; color: #047857; font-weight: 500;">Keep up the great work! Your dedication is paying off. 💪</p>
             </div>
             <div style="text-align: center; margin-top: 25px;">
-              <a href="https://rebuild-brighten-sparkle.lovable.app/dashboard/applicants?lead=${applicationId}" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">📋 View Closed Lead →</a>
+              <a href="https://apex-financial.org/dashboard/applicants?lead=${applicationId}" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">📋 View Closed Lead →</a>
               <p style="color: #6b7280; font-size: 14px; margin-top: 15px;">Closed on ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
             </div>
           </div>

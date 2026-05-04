@@ -24,7 +24,7 @@ const handler = async (req: Request): Promise<Response> => {
     const results: string[] = [];
 
     const sendReminder = async (email: string, name: string, attendanceType: string) => {
-      const crmUrl = "https://rebuild-brighten-sparkle.lovable.app/dashboard/crm";
+      const crmUrl = "https://apex-financial.org/dashboard/crm";
       const { error } = await resend.emails.send({
         from: "Apex Financial <notifications@apex-financial.org>",
         to: [email],
@@ -113,7 +113,7 @@ const handler = async (req: Request): Promise<Response> => {
   }
 };
 
-const crmUrl = "https://rebuild-brighten-sparkle.lovable.app/dashboard/crm";
+const crmUrl = "https://apex-financial.org/dashboard/crm";
 
 async function getPhoneForEmail(supabase: any, email: string): Promise<string | null> {
   const { data } = await supabase

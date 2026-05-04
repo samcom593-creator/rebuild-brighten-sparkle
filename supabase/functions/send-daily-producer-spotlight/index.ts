@@ -112,7 +112,7 @@ Deno.serve(async (req) => {
           In less time than it takes most people to decide if this is real, <strong style="color:white">${firstName}</strong> built a machine. No leads handed to them. No shortcuts. Pure execution on the system we all have access to.
         </p>
         <p style="font-size:14px;color:#64748b;margin:0 0 32px">What's the difference between you and them right now? One logged their numbers. Log yours today.</p>
-        <a href="https://rebuild-brighten-sparkle.lovable.app/agent-portal" style="display:block;text-align:center;background:#22d3a5;color:#030712;padding:16px;border-radius:8px;font-weight:700;font-size:15px;text-decoration:none;font-family:'Syne',sans-serif;letter-spacing:0.5px">
+        <a href="https://apex-financial.org/agent-portal" style="display:block;text-align:center;background:#22d3a5;color:#030712;padding:16px;border-radius:8px;font-weight:700;font-size:15px;text-decoration:none;font-family:'Syne',sans-serif;letter-spacing:0.5px">
           LOG TODAY'S NUMBERS →
         </a>
       </div>

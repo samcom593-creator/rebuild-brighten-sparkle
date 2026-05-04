@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
                 <p style="color:rgba(255,255,255,0.8);line-height:1.6">Hey ${firstName},</p>
                 <p style="color:rgba(255,255,255,0.8);line-height:1.6">${smsText.replace("APEX: ", "")}</p>
                 ${licensingSteps}
-                <a href="https://rebuild-brighten-sparkle.lovable.app/get-licensed" 
+                <a href="https://apex-financial.org/get-licensed" 
                    style="display:block;text-align:center;background:#22d3a5;color:#030712;padding:14px;border-radius:8px;font-weight:700;text-decoration:none;margin-top:24px">
                   CHECK YOUR PROGRESS →
                 </a>

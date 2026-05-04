@@ -224,7 +224,7 @@ function BotSqlSection() {
 
   const testActive = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL ?? "https://msydzhzolwourcdmqxvn.supabase.co"}/functions/v1/bot-sql`, {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL ?? "https://xrzweoneiieddzxogewk.supabase.co"}/functions/v1/bot-sql`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${currentToken}`,
@@ -243,7 +243,7 @@ function BotSqlSection() {
     }
   };
 
-  const endpoint = "https://msydzhzolwourcdmqxvn.supabase.co/functions/v1/bot-sql";
+  const endpoint = "https://xrzweoneiieddzxogewk.supabase.co/functions/v1/bot-sql";
   const masked = currentToken ? `${currentToken.slice(0, 8)}…${currentToken.slice(-4)}` : "";
 
   return (
@@ -541,7 +541,7 @@ export default function IntegrationsSettings() {
           <CardDescription className="text-xs">
             Run this once in{" "}
             <a
-              href="https://supabase.com/dashboard/project/msydzhzolwourcdmqxvn/sql/new"
+              href="https://supabase.com/dashboard/project/xrzweoneiieddzxogewk/sql/new"
               target="_blank" rel="noopener noreferrer"
               rel="noreferrer"
               className="text-sky-400 underline inline-flex items-center gap-0.5"

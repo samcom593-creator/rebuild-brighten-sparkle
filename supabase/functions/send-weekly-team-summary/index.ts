@@ -230,7 +230,7 @@ const handler = async (req: Request): Promise<Response> => {
         ` : ''}
 
         <div style="text-align: center; padding: 20px;">
-          <a href="https://rebuild-brighten-sparkle.lovable.app/dashboard" 
+          <a href="https://apex-financial.org/dashboard" 
              style="display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 500;">
             View Dashboard
           </a>

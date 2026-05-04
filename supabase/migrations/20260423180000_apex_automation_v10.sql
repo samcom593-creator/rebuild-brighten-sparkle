@@ -99,7 +99,7 @@ BEGIN
 
   SELECT value INTO v_svc_url FROM public.system_settings WHERE key='supabase_url';
   SELECT value INTO v_svc_key FROM public.system_settings WHERE key='supabase_anon_key';
-  IF v_svc_url IS NULL THEN v_svc_url := 'https://msydzhzolwourcdmqxvn.supabase.co'; END IF;
+  IF v_svc_url IS NULL THEN v_svc_url := 'https://xrzweoneiieddzxogewk.supabase.co'; END IF;
 
   FOR r IN
     SELECT id, first_name, last_name, email, phone, license_progress,
@@ -251,7 +251,7 @@ BEGIN
 
   SELECT value INTO v_svc_url FROM public.system_settings WHERE key='supabase_url';
   SELECT value INTO v_svc_key FROM public.system_settings WHERE key='supabase_anon_key';
-  IF v_svc_url IS NULL THEN v_svc_url := 'https://msydzhzolwourcdmqxvn.supabase.co'; END IF;
+  IF v_svc_url IS NULL THEN v_svc_url := 'https://xrzweoneiieddzxogewk.supabase.co'; END IF;
 
   FOR m IN
     SELECT DISTINCT hma.manager_user_id AS user_id, p.email, p.full_name
@@ -329,7 +329,7 @@ BEGIN
   SELECT value INTO v_svc_url FROM public.system_settings WHERE key='supabase_url';
   SELECT value INTO v_svc_key FROM public.system_settings WHERE key='supabase_anon_key';
   SELECT value INTO v_webhook FROM public.system_settings WHERE key='discord_webhook_url';
-  IF v_svc_url IS NULL THEN v_svc_url := 'https://msydzhzolwourcdmqxvn.supabase.co'; END IF;
+  IF v_svc_url IS NULL THEN v_svc_url := 'https://xrzweoneiieddzxogewk.supabase.co'; END IF;
 
   -- 1. Kick off portal login email
   IF v_svc_key IS NOT NULL AND NEW.email IS NOT NULL THEN

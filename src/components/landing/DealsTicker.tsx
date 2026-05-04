@@ -1,19 +1,15 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
-const deals = [
-  { agent: "MOODY", amount: "$3,324", color: "#22d3a5" },
-  { agent: "CHUDI", amount: "$2,575", color: "#22d3ee" },
-  { agent: "KJ", amount: "$3,441", color: "#f59e0b" },
-  { agent: "OBI", amount: "$5,189", color: "#f43f5e" },
-  { agent: "JACOB", amount: "$4,174", color: "#a78bfa" },
-  { agent: "AISHA", amount: "$1,559", color: "#22d3a5" },
-  { agent: "XAVIAR", amount: "$2,483", color: "#38bdf8" },
-  { agent: "SAMUEL", amount: "$1,430", color: "#fb923c" },
-  { agent: "DALTON", amount: "$1,430", color: "#ec4899" },
-  { agent: "MARCOS", amount: "$1,775", color: "#2dd4bf" },
-  { agent: "WENDELL", amount: "$1,325", color: "#84cc16" },
-  { agent: "LUIS", amount: "$840", color: "#d946ef" },
-  { agent: "DUDLEY", amount: "$1,847", color: "#818cf8" },
+// 2026-05-04: previously hardcoded fake names+amounts (Sam: "no fake"). Now
+// pulls live top-13 producers from the last 30 days via a SECURITY DEFINER
+// RPC that anon can call. Returns first-name only + rounded ALP — no PII.
+type DealHighlight = { agent: string; amount: number };
+
+const palette = [
+  "#22d3a5", "#22d3ee", "#f59e0b", "#f43f5e", "#a78bfa",
+  "#22d3a5", "#38bdf8", "#fb923c", "#ec4899", "#2dd4bf",
+  "#84cc16", "#d946ef", "#818cf8",
 ];
 
 const carriers = [
@@ -24,9 +20,12 @@ const carriers = [
   "Guarantee Trust Life", "Newbridge",
 ];
 
-// Build ticker items: interleave deals with carrier mentions
-function buildTickerItems() {
-  const items: Array<{ type: "deal"; agent: string; amount: string; color: string } | { type: "carrier"; name: string }> = [];
+type TickerItem =
+  | { type: "deal"; agent: string; amount: string; color: string }
+  | { type: "carrier"; name: string };
+
+function buildTickerItems(deals: Array<{ agent: string; amount: string; color: string }>): TickerItem[] {
+  const items: TickerItem[] = [];
   const maxLen = Math.max(deals.length, carriers.length);
   for (let i = 0; i < maxLen; i++) {
     if (i < deals.length) items.push({ type: "deal", ...deals[i] });
@@ -35,10 +34,29 @@ function buildTickerItems() {
   return items;
 }
 
-const tickerItems = buildTickerItems();
-
 export function DealsTicker() {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [tickerItems, setTickerItems] = useState<TickerItem[]>(() =>
+    // Carriers-only on first paint while the RPC resolves, so the bar never
+    // shows fake numbers for even one frame.
+    buildTickerItems([])
+  );
+
+  // Pull live top producers — sanitized first-name + 30d ALP, no PII.
+  useEffect(() => {
+    let cancelled = false;
+    supabase.rpc("landing_deal_highlights" as any).then(({ data, error }) => {
+      if (cancelled || error || !data) return;
+      const rows = (data as DealHighlight[]).map((d, i) => ({
+        type: "deal" as const,
+        agent: d.agent,
+        amount: `$${d.amount.toLocaleString()}`,
+        color: palette[i % palette.length],
+      }));
+      setTickerItems(buildTickerItems(rows));
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -49,7 +67,6 @@ export function DealsTicker() {
 
     const tick = () => {
       pos += speed;
-      // When we've scrolled past the first copy, reset
       if (pos >= el.scrollWidth / 2) pos = 0;
       el.style.transform = `translateX(-${pos}px)`;
       raf = requestAnimationFrame(tick);
@@ -66,9 +83,9 @@ export function DealsTicker() {
       cancelAnimationFrame(raf);
       document.removeEventListener("visibilitychange", handleVis);
     };
-  }, []);
+  }, [tickerItems]);
 
-  const renderItem = (item: (typeof tickerItems)[number], idx: number) => {
+  const renderItem = (item: TickerItem, idx: number) => {
     if (item.type === "deal") {
       return (
         <span key={`d-${idx}`} className="inline-flex items-center gap-1.5 px-4 whitespace-nowrap">

@@ -105,7 +105,7 @@ serve(async (req) => {
     const weekStartStr = weekStart.toISOString().split("T")[0];
 
     let sentCount = 0;
-    const crmUrl = "https://rebuild-brighten-sparkle.lovable.app/crm";
+    const crmUrl = "https://apex-financial.org/crm";
 
     for (const manager of managerAgents) {
       const profile = profileMap.get(manager.user_id);

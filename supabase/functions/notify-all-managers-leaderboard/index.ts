@@ -102,7 +102,7 @@ function buildLeaderboardEmail(
   const isOrganic = scoringManagerName === "Organic Lead";
   const safeName = sanitizeHtml(applicantName);
   const safeManager = sanitizeHtml(scoringManagerName);
-  const appUrl = `https://rebuild-brighten-sparkle.lovable.app/dashboard/applicants?lead=${applicationId}`;
+  const appUrl = `https://apex-financial.org/dashboard/applicants?lead=${applicationId}`;
 
   const subject = isOrganic
     ? `🔥 New Organic Lead: ${safeName}!`

@@ -123,7 +123,7 @@ serve(async (req) => {
               <p style="color: white; font-size: 20px; font-weight: 700; margin: 0 0 20px 0; font-style: italic;">
                 "The leaderboard is shaking up!"
               </p>
-              <a href="https://rebuild-brighten-sparkle.lovable.app/agent-portal" 
+              <a href="https://apex-financial.org/agent-portal" 
                  style="display: inline-block; background: linear-gradient(135deg, #fef08a 0%, #fbbf24 100%); color: #6d28d9; font-size: 16px; font-weight: 800; text-decoration: none; padding: 16px 40px; border-radius: 12px; text-transform: uppercase; letter-spacing: 1px;">
                 📊 CHECK THE LEADERBOARD
               </a>

@@ -44,7 +44,7 @@ BEGIN
   VALUES (p_job_name, 'running')
   RETURNING id INTO v_log_id;
 
-  v_url := 'https://msydzhzolwourcdmqxvn.supabase.co/functions/v1/' || p_function_name;
+  v_url := 'https://xrzweoneiieddzxogewk.supabase.co/functions/v1/' || p_function_name;
   v_service_key := current_setting('app.settings.service_role_key', true);
 
   IF v_service_key IS NULL OR v_service_key = '' THEN

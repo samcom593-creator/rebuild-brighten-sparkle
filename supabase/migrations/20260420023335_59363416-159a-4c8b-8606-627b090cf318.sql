@@ -28,7 +28,7 @@ BEGIN
   END IF;
 
   PERFORM net.http_post(
-    url := 'https://msydzhzolwourcdmqxvn.supabase.co/functions/v1/insuracloud-outbox',
+    url := 'https://xrzweoneiieddzxogewk.supabase.co/functions/v1/insuracloud-outbox',
     body := jsonb_build_object('deal_id', NEW.id),
     headers := jsonb_build_object(
       'Content-Type', 'application/json',

@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
           headers: { Authorization: `Bearer ${serviceKey}`, "Content-Type": "application/json" },
           body: JSON.stringify({
             to: phone,
-            message: `APEX: ${firstName} — don't forget to log your numbers today! https://rebuild-brighten-sparkle.lovable.app/numbers`,
+            message: `APEX: ${firstName} — don't forget to log your numbers today! https://apex-financial.org/numbers`,
           }),
         }).catch(console.error);
         alerts++;
@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
             headers: { Authorization: `Bearer ${serviceKey}`, "Content-Type": "application/json" },
             body: JSON.stringify({
               to: phone,
-              message: `APEX: ${firstName} — 2 days no numbers. Your manager has been notified. Log now: https://rebuild-brighten-sparkle.lovable.app/numbers`,
+              message: `APEX: ${firstName} — 2 days no numbers. Your manager has been notified. Log now: https://apex-financial.org/numbers`,
             }),
           }).catch(console.error);
         }

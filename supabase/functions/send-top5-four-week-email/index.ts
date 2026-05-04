@@ -135,7 +135,7 @@ serve(async (req) => {
     </div>
     <div style="background:linear-gradient(135deg,#14b8a6 0%,#0d9488 100%);border-radius:12px;padding:24px;text-align:center;margin-bottom:32px;">
       <h2 style="color:#ffffff;font-size:20px;margin:0 0 12px 0;">Keep pushing! Every deal counts 🔥</h2>
-      <a href="https://rebuild-brighten-sparkle.lovable.app/agent-portal" style="display:inline-block;background:#0a0f1a;color:#14b8a6;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">
+      <a href="https://apex-financial.org/agent-portal" style="display:inline-block;background:#0a0f1a;color:#14b8a6;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;">
         Log Today's Numbers →
       </a>
     </div>

@@ -157,7 +157,7 @@ export default function BotToken() {
       <GlassCard className="w-full max-w-2xl p-5 text-xs text-muted-foreground">
         <p className="font-semibold text-foreground mb-2">Endpoint</p>
         <code className="block bg-background/60 border border-border/40 rounded p-2 font-mono text-[11px] break-all">
-          https://msydzhzolwourcdmqxvn.supabase.co/functions/v1/bot-sql
+          https://xrzweoneiieddzxogewk.supabase.co/functions/v1/bot-sql
         </code>
         <p className="font-semibold text-foreground mt-4 mb-2">Usage</p>
         <code className="block bg-background/60 border border-border/40 rounded p-2 font-mono text-[11px] leading-relaxed whitespace-pre">{`POST ${"${endpoint}"}

@@ -1,0 +1,88 @@
+name: External cron backup (pg_cron resilience)
+
+# pg_cron in this Supabase project goes silent every 1-2 days because the
+# bgworker dies and only a project Restart brings it back. This workflow is
+# our independent heartbeat: every 10 minutes from GitHub's infrastructure
+# we hit bot-sql and fire the most critical sync jobs directly. Even if
+# pg_cron is dead for 48 hours, the agent-link / deal / lead pipelines
+# keep moving.
+#
+# Required GitHub repo secret:
+#   APEX_BOT_TOKEN — Bearer token accepted by the bot-sql edge function.
+#                    The persistent fallback ("CLAUDE_PERSISTENT_TOKEN" in
+#                    bot-sql's source) is the safe value to use here.
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'  # every 10 min (GH Actions minimum is 5)
+  workflow_dispatch:
+
+concurrency:
+  group: external-cron-backup
+  cancel-in-progress: false
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      BOT_SQL: https://xrzweoneiieddzxogewk.supabase.co/functions/v1/bot-sql
+      BOT_TOKEN: ${{ secrets.APEX_BOT_TOKEN }}
+      NTFY: https://ntfy.sh/sams-agent-yrkv9kbqp9e987nb
+    steps:
+      - name: Preflight — token present?
+        run: |
+          if [ -z "$BOT_TOKEN" ]; then
+            echo "::error::APEX_BOT_TOKEN secret missing — set it in repo Settings → Secrets → Actions"
+            exit 1
+          fi
+
+      - name: Check pg_cron heartbeat
+        id: cron
+        run: |
+          gap=$(curl -s -X POST "$BOT_SQL" \
+            -H "Authorization: Bearer $BOT_TOKEN" \
+            -H "content-type: application/json" \
+            -d '{"query":"SELECT EXTRACT(EPOCH FROM (now()-max(start_time)))::int AS gap FROM cron.job_run_details;"}' \
+            | python3 -c "import json,sys; r=json.load(sys.stdin); print(r['rows'][0]['gap']) if r.get('ok') else print(99999)")
+          echo "gap=$gap" >> "$GITHUB_OUTPUT"
+          echo "pg_cron gap: ${gap}s"
+          if [ "$gap" -gt 600 ]; then
+            curl -s -X POST "$NTFY" \
+              -H "Title: pg_cron stalled — external cron firing fallback" \
+              -H "Priority: 5" \
+              -H "Tags: rotating_light" \
+              --data-binary "pg_cron heartbeat is ${gap}s stale. External backup is running critical jobs. Click Restart in Supabase dashboard when you can."
+          fi
+
+      - name: Fire critical jobs
+        run: |
+          # Each job is idempotent — safe to call when pg_cron is alive too.
+          fire() {
+            local fn=$1
+            local label=$2
+            echo "── $label ──"
+            curl -s -X POST "$BOT_SQL" \
+              -H "Authorization: Bearer $BOT_TOKEN" \
+              -H "content-type: application/json" \
+              --max-time 60 \
+              -d "{\"query\":\"SELECT $fn::text AS r;\"}" | head -c 200
+            echo
+          }
+          # Highest priority: agent link + deal sync (operational data freshness)
+          fire "public.agentlink_watchdog()" "agentlink-watchdog"
+          fire "public.agentlink_live_pull()" "agentlink-live-pull"
+          # Deal sync queue (stale deal pushes)
+          fire "public.deal_sync_queue_promote_dead()" "deal-sync-queue-promote-dead" || true
+          # Auto-assign newly-arrived applications
+          fire "public.auto_assign_hiring_manager()" "auto-assign-hiring-manager"
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### External cron backup"
+            echo "- pg_cron gap: ${{ steps.cron.outputs.gap }}s"
+            echo "- Fired: agentlink_watchdog, agentlink_live_pull, deal_sync_queue_promote_dead, auto_assign_hiring_manager"
+            echo "- Trigger: ${{ github.event_name }}"
+          } >> $GITHUB_STEP_SUMMARY

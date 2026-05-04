@@ -190,12 +190,17 @@ export default function CallCenter() {
           .order("created_at", { ascending: sortOrder === "oldest_first" });
 
         // Referrer filter (Sam 2026-05-04). "mine" = applicants who marked
-        // me/my agent as referrer; "no_referrer" = applicants who didn't
-        // name anyone (default-routed for distribution).
+        // me/my agent as referrer; "no_referrer" = applicants with NO
+        // manager attribution at all (neither referral_manager_id nor
+        // assigned_agent_id). A lead that's been manually assigned to a
+        // manager is no longer "no referrer" even if the referrer column
+        // hasn't been backfilled — Sam was seeing leads with "Manager
+        // Aisha" + "No referrer" badge stuck together because the badge
+        // only checked one field.
         if (refererFilter === "mine" && agentId) {
           appQuery = appQuery.eq("referral_manager_id", agentId);
         } else if (refererFilter === "no_referrer") {
-          appQuery = appQuery.is("referral_manager_id", null);
+          appQuery = appQuery.is("referral_manager_id", null).is("assigned_agent_id", null);
         }
 
         // Status filter for applications (source-of-truth = contact timestamps)
@@ -260,7 +265,10 @@ export default function CallCenter() {
             state: app.state || undefined,
             availability: app.availability || undefined,
             assignedManagerName: managerName,
-            hasNoReferrer: !app.referral_manager_id,
+            // Only "no referrer" if BOTH the referrer column AND the
+            // assigned_agent_id are empty. A lead with a real manager
+            // attached is never unattributed.
+            hasNoReferrer: !app.referral_manager_id && !app.assigned_agent_id,
           });
         });
       }

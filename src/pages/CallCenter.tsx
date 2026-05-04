@@ -179,9 +179,14 @@ export default function CallCenter() {
         // terminated_at + contracted_at; closed_at (hired) was leaking
         // through. Three-way exclusion now matches the dashboard's
         // active-funnel definition.
+        // Note: no embed for the referrer agent — that FK constraint
+        // (applications_referral_manager_id_fkey) doesn't exist yet, and
+        // including the embed makes the entire query 400. Migration
+        // 20260504143100_add_referral_manager_fk adds it; once it's applied
+        // we can re-add `referrer:agents!fkname(display_name)` here.
         let appQuery = supabase
           .from("applications")
-          .select("id, first_name, last_name, email, phone, instagram_handle, notes, license_status, license_progress, test_scheduled_date, created_at, status, contacted_at, last_contacted_at, previous_company, nipr_number, licensed_states, city, state, availability, assigned_agent_id, hiring_manager_user_id, referral_manager_id, terminated_at, contracted_at, closed_at, agents!applications_assigned_agent_id_fkey(display_name), referrer:agents!applications_referral_manager_id_fkey(display_name)")
+          .select("id, first_name, last_name, email, phone, instagram_handle, notes, license_status, license_progress, test_scheduled_date, created_at, status, contacted_at, last_contacted_at, previous_company, nipr_number, licensed_states, city, state, availability, assigned_agent_id, hiring_manager_user_id, referral_manager_id, terminated_at, contracted_at, closed_at, agents!applications_assigned_agent_id_fkey(display_name)")
           .order("created_at", { ascending: sortOrder === "oldest_first" });
 
         // Referrer filter (Sam 2026-05-04). "mine" = applicants who marked
@@ -231,7 +236,6 @@ export default function CallCenter() {
         (appData || []).forEach((app: any) => {
           const agentData = app.agents;
           const managerName = agentData?.display_name || undefined;
-          const referrerName = app.referrer?.display_name || undefined;
           allLeads.push({
             id: app.id,
             source: "applications",
@@ -256,7 +260,6 @@ export default function CallCenter() {
             state: app.state || undefined,
             availability: app.availability || undefined,
             assignedManagerName: managerName,
-            referredBy: referrerName,
             hasNoReferrer: !app.referral_manager_id,
           });
         });

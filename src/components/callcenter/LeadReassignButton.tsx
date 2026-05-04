@@ -92,9 +92,16 @@ export function LeadReassignButton({
           .eq("id", leadId);
         if (error) throw error;
       } else {
+        // Sam 2026-05-04: reassigning a lead = setting that manager as the
+        // referrer too. Otherwise the "No referrer" filter keeps matching
+        // the lead even after manual assignment, and Sam loses track of
+        // where each lead is supposed to live.
         const { error } = await supabase
           .from("applications")
-          .update({ assigned_agent_id: managerId })
+          .update({
+            assigned_agent_id: managerId,
+            referral_manager_id: managerId,
+          })
           .eq("id", leadId);
         if (error) throw error;
       }

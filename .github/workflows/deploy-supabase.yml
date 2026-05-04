@@ -6,7 +6,7 @@ name: Deploy Supabase (functions + migrations)
 #
 # Required secrets (add once at github.com/<repo>/settings/secrets/actions):
 #   SUPABASE_ACCESS_TOKEN   — personal access token for the account that owns
-#                             project msydzhzolwourcdmqxvn
+#                             project xrzweoneiieddzxogewk
 #                             Get from: https://supabase.com/dashboard/account/tokens
 #   SUPABASE_DB_PASSWORD    — database password (for `db push`)
 #                             Get from: project settings → database → connection
@@ -45,7 +45,7 @@ jobs:
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD:  ${{ secrets.SUPABASE_DB_PASSWORD }}
-      PROJECT_REF: msydzhzolwourcdmqxvn
+      PROJECT_REF: xrzweoneiieddzxogewk
     steps:
       - uses: actions/checkout@v4
         with:

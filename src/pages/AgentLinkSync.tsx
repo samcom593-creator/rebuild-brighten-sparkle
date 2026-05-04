@@ -49,8 +49,12 @@ export default function AgentLinkSync() {
     if (!user?.id) { toast.error("Not signed in"); return; }
     setLoading(true);
     try {
+      // Filter on user_id, not profile_id. After Path B migration profile_id
+      // (FK into profiles.id) and the auth uid have diverged for some rows;
+      // user_id is the canonical auth linkage. Same fix shipped in the
+      // 20260504093000_fix_agent_user_rls migration.
       const { data: agent } = await supabase
-        .from("agents").select("id").eq("profile_id", user.id).maybeSingle();
+        .from("agents").select("id").eq("user_id", user.id).maybeSingle();
       if (!agent?.id) { toast.error("Your user has no agent record — ask an admin to link you"); return; }
 
       const { error: e1 } = await supabase.from("system_settings" as any).upsert(

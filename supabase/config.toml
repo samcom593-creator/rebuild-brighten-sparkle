@@ -1,4 +1,4 @@
-project_id = "msydzhzolwourcdmqxvn"
+project_id = "xrzweoneiieddzxogewk"
 
 [functions.discord-webhook-notify]
 verify_jwt = false

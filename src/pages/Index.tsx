@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Navbar } from "@/components/landing/Navbar";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { Footer } from "@/components/landing/Footer";
+import { DealsTicker } from "@/components/landing/DealsTicker";
 
 const BenefitsSection = lazy(() => import("@/components/landing/BenefitsSection").then((mod) => ({ default: mod.BenefitsSection })));
 const EarningsSection = lazy(() => import("@/components/landing/EarningsSection").then((mod) => ({ default: mod.EarningsSection })));
@@ -24,6 +25,7 @@ const Index = () => {
   if (!isLoading && user) return <Navigate to="/dashboard" replace />;
   return (
     <div className="min-h-screen bg-[#030712] overflow-x-hidden w-full max-w-full">
+      <DealsTicker />
       <Navbar />
       <main>
         <HeroSection />

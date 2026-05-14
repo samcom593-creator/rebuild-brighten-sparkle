@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { formatMetricSource, getMetricBounds, METRIC_REGISTRY, sumAnnualPremium } from "@/lib/metricTruth";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
+import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr } from "@/lib/dealTruth";
 
 type Period = "daily" | "weekly" | "monthly";
 type Row = {
@@ -42,10 +43,9 @@ export default function Leaderboard() {
       const [{ data: dealRows }, { data: syncRow }] = await Promise.all([
         supabase
           .from("deals")
-          .select("agent_id, annual_premium")
-          .gte("posted_at", bounds.startIso)
-          .lt("posted_at", bounds.endIso)
-          .in("status", ["submitted", "active"]),
+          .select("agent_id, annual_premium, posted_at, created_at")
+          .or(dealTruthWindowOr(bounds.startIso, bounds.endIso))
+          .in("status", DEAL_TRUTH_STATUS_FILTER),
         supabase
           .from("agentlink_sync_log" as any)
           .select("finished_at, started_at")
@@ -69,7 +69,7 @@ export default function Leaderboard() {
       const ids = Array.from(grouped.keys());
       if (ids.length === 0) {
         setRows([]);
-        setLastUpdatedAt((syncRow.data as any)?.finished_at || (syncRow.data as any)?.started_at || null);
+        setLastUpdatedAt((syncRow as any)?.finished_at || (syncRow as any)?.started_at || null);
         return;
       }
 
@@ -95,7 +95,7 @@ export default function Leaderboard() {
         .map((row, index) => ({ ...row, rank: index + 1 }));
 
       setRows(builtRows);
-      setLastUpdatedAt((syncRow.data as any)?.finished_at || (syncRow.data as any)?.started_at || null);
+      setLastUpdatedAt((syncRow as any)?.finished_at || (syncRow as any)?.started_at || null);
     } finally {
       setLoading(false);
     }

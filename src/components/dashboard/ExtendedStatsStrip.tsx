@@ -25,6 +25,7 @@ import {
   projectMonthEndAlp,
   sumAnnualPremium,
 } from "@/lib/metricTruth";
+import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr, liveDealWindowOr } from "@/lib/dealTruth";
 
 interface Props {
   agentId?: string;
@@ -44,41 +45,40 @@ export function ExtendedStatsStrip({ agentId, title = "More numbers" }: Props) {
       const monthBounds = getBusinessMonthBounds();
       const priorWeekBounds = getMatchedPriorWeekBounds();
 
-      const applyAgentFilter = <T,>(query: T & { eq: (column: string, value: string) => T }) =>
-        agentId ? query.eq("agent_id", agentId) : query;
+      // Type-erase to any inside the helper. Supabase's chained-builder types
+      // explode through a generic helper and trip TS2589 "instantiation
+      // excessively deep". Behavior is unchanged.
+      const applyAgentFilter = <T,>(query: T): T =>
+        (agentId ? (query as any).eq("agent_id", agentId) : query) as T;
 
       const [todayRes, weekRes, priorWeekRes, monthRes, syncRes] = await Promise.all([
         applyAgentFilter(
           supabase
             .from("deals")
-            .select("annual_premium, agent_id, posted_at")
-            .gte("posted_at", dayBounds.startIso)
-            .lt("posted_at", dayBounds.endIso)
-            .in("status", ["submitted", "active"]),
+            .select("annual_premium, agent_id, posted_at, created_at")
+            .or(dealTruthWindowOr(dayBounds.startIso, dayBounds.endIso))
+            .in("status", DEAL_TRUTH_STATUS_FILTER),
         ),
         applyAgentFilter(
           supabase
             .from("deals")
-            .select("annual_premium, posted_at")
-            .gte("posted_at", weekBounds.startIso)
-            .lt("posted_at", weekBounds.endIso)
-            .in("status", ["submitted", "active"]),
+            .select("annual_premium, posted_at, created_at")
+            .or(dealTruthWindowOr(weekBounds.startIso, weekBounds.endIso))
+            .in("status", DEAL_TRUTH_STATUS_FILTER),
         ),
         applyAgentFilter(
           supabase
             .from("deals")
-            .select("annual_premium")
-            .gte("posted_at", priorWeekBounds.startIso)
-            .lt("posted_at", priorWeekBounds.endIso)
-            .in("status", ["submitted", "active"]),
+            .select("annual_premium, posted_at, created_at")
+            .or(dealTruthWindowOr(priorWeekBounds.startIso, priorWeekBounds.endIso))
+            .in("status", DEAL_TRUTH_STATUS_FILTER),
         ),
         applyAgentFilter(
           supabase
             .from("deals")
-            .select("annual_premium, posted_at")
-            .gte("posted_at", monthBounds.startIso)
-            .lt("posted_at", monthBounds.endIso)
-            .in("status", ["submitted", "active"]),
+            .select("annual_premium, posted_at, created_at")
+            .or(dealTruthWindowOr(monthBounds.startIso, monthBounds.endIso))
+            .in("status", DEAL_TRUTH_STATUS_FILTER),
         ),
         supabase
           .from("agentlink_sync_log" as any)
@@ -120,9 +120,9 @@ export function ExtendedStatsStrip({ agentId, title = "More numbers" }: Props) {
         const [activeDealsRes, pipelineRes, licensedRes, contractedRes, presentationsRes] = await Promise.all([
           supabase
             .from("deals")
-            .select("agent_id")
-            .gte("posted_at", liveCutoffIso)
-            .in("status", ["submitted", "active"]),
+            .select("agent_id, posted_at, created_at")
+            .or(liveDealWindowOr(liveCutoffIso))
+            .in("status", DEAL_TRUTH_STATUS_FILTER),
           supabase
             .from("applications")
             .select("id", { count: "exact", head: true })

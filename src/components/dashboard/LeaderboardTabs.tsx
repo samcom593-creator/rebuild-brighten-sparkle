@@ -22,6 +22,7 @@ import { getTodayPST, getWeekStartPST, getMonthStartPST, getDateDaysAgoPST } fro
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 import { getClosingRateColor } from "@/lib/closingRateColors";
 import { formatMetricSource, getCloseRate, getMetricBounds, METRIC_REGISTRY } from "@/lib/metricTruth";
+import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr } from "@/lib/dealTruth";
 
 interface LeaderboardTabsProps {
   currentAgentId?: string;
@@ -103,10 +104,9 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
       const [dealsRes, productionRes, syncRes] = await Promise.all([
         supabase
           .from("deals")
-          .select("agent_id, annual_premium")
-          .gte("posted_at", bounds.startIso)
-          .lt("posted_at", bounds.endIso)
-          .in("status", ["submitted", "active"]),
+          .select("agent_id, annual_premium, posted_at, created_at")
+          .or(dealTruthWindowOr(bounds.startIso, bounds.endIso))
+          .in("status", DEAL_TRUTH_STATUS_FILTER),
         supabase
           .from("daily_production")
           .select(`
@@ -119,7 +119,7 @@ export function LeaderboardTabs({ currentAgentId }: LeaderboardTabsProps) {
             production_date
           `)
           .gte("production_date", bounds.startIso.slice(0, 10))
-          .lte("production_date", bounds.endIso.slice(0, 10)),
+          .lt("production_date", bounds.endIso.slice(0, 10)),
         supabase
           .from("agentlink_sync_log" as any)
           .select("finished_at, started_at")

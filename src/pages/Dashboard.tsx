@@ -72,6 +72,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { getBusinessDayBounds, getBusinessWeekBounds } from "@/lib/dateUtils";
 import { LIVE_AGENT_DEAL_WINDOW_DAYS, getCloseRate, getLiveAgentCutoffIso, getPriorWeekMatchedBounds, sumAnnualPremium } from "@/lib/metricTruth";
+import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr, liveDealWindowOr } from "@/lib/dealTruth";
 
 const HIDEABLE_CARDS: Record<string, string> = {
   "dashboard.insight-cards": "Insight Cards",
@@ -317,31 +318,27 @@ export default function Dashboard() {
 
       const shouldScope = !isAdmin && myDownlineIds.length > 0;
 
-      const VALID_STATUS = ["submitted", "active"] as const;
       const liveCutoffIso = getLiveAgentCutoffIso();
       let activeQ = supabase
         .from("deals")
-        .select("agent_id")
-        .gte("posted_at", liveCutoffIso)
-        .in("status", VALID_STATUS as unknown as string[]);
+        .select("agent_id, posted_at, created_at")
+        .or(liveDealWindowOr(liveCutoffIso))
+        .in("status", DEAL_TRUTH_STATUS_FILTER);
       let weekDealsQ = supabase
         .from("deals")
-        .select("annual_premium, agent_id")
-        .gte("posted_at", weekBounds.startIso)
-        .lt("posted_at", weekBounds.endIso)
-        .in("status", VALID_STATUS as unknown as string[]);
+        .select("annual_premium, agent_id, posted_at, created_at")
+        .or(dealTruthWindowOr(weekBounds.startIso, weekBounds.endIso))
+        .in("status", DEAL_TRUTH_STATUS_FILTER);
       let todayDealsQ = supabase
         .from("deals")
-        .select("annual_premium")
-        .gte("posted_at", dayBounds.startIso)
-        .lt("posted_at", dayBounds.endIso)
-        .in("status", VALID_STATUS as unknown as string[]);
+        .select("annual_premium, posted_at, created_at")
+        .or(dealTruthWindowOr(dayBounds.startIso, dayBounds.endIso))
+        .in("status", DEAL_TRUTH_STATUS_FILTER);
       let prevWeekQ = supabase
         .from("deals")
-        .select("annual_premium")
-        .gte("posted_at", priorWeekBounds.startIso)
-        .lt("posted_at", priorWeekBounds.endIso)
-        .in("status", VALID_STATUS as unknown as string[]);
+        .select("annual_premium, posted_at, created_at")
+        .or(dealTruthWindowOr(priorWeekBounds.startIso, priorWeekBounds.endIso))
+        .in("status", DEAL_TRUTH_STATUS_FILTER);
       if (shouldScope) {
         todayDealsQ = todayDealsQ.in("agent_id", myDownlineIds);
         prevWeekQ   = prevWeekQ.in("agent_id", myDownlineIds);
@@ -436,9 +433,9 @@ export default function Dashboard() {
 
       const { data: dealRows } = await supabase
         .from("deals")
-        .select("agent_id")
-        .gte("posted_at", cutoffIso)
-        .in("status", ["submitted", "active"]);
+        .select("agent_id, posted_at, created_at")
+        .or(liveDealWindowOr(cutoffIso))
+        .in("status", DEAL_TRUTH_STATUS_FILTER);
 
       const activeIds = new Set<string>();
       (dealRows || []).forEach((d: any) => d.agent_id && activeIds.add(d.agent_id));

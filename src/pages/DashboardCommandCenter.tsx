@@ -82,6 +82,7 @@ import { toast } from "sonner";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { ControlTerminal } from "@/components/dashboard/ControlTerminal";
 import { LIVE_AGENT_DEAL_WINDOW_DAYS, getLiveAgentCutoffIso } from "@/lib/metricTruth";
+import { DEAL_TRUTH_STATUS_FILTER, liveDealWindowOr } from "@/lib/dealTruth";
 
 type TimePeriod = "day" | "week" | "month" | "custom";
 type FilterType = "all" | "producers" | "weak" | "zero" | "inactive";
@@ -516,9 +517,9 @@ export default function DashboardCommandCenter() {
     refetchInterval: 60_000,
     queryFn: async () => {
       const dealsRes = await supabase.from("deals")
-        .select("agent_id")
-        .gte("posted_at", getLiveAgentCutoffIso())
-        .in("status", ["submitted", "active"]);
+        .select("agent_id, posted_at, created_at")
+        .or(liveDealWindowOr(getLiveAgentCutoffIso()))
+        .in("status", DEAL_TRUTH_STATUS_FILTER);
 
       const set = new Set<string>();
       for (const r of (dealsRes.data || []) as any[]) {

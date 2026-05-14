@@ -19,6 +19,7 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { getBusinessDayKey, getBusinessWeekBounds } from "@/lib/dateUtils";
 import { LIVE_AGENT_DEAL_WINDOW_DAYS, getCloseRate, getLiveAgentCutoffIso } from "@/lib/metricTruth";
+import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr, liveDealWindowOr } from "@/lib/dealTruth";
 
 type DrilldownType = "agents" | "alp" | "apps" | "closerate" | null;
 
@@ -47,15 +48,14 @@ export function StatCardDrilldown({ activeModal, onClose }: StatCardDrilldownPro
       const [{ data: dealsWeek }, { data: dealsLive }, { data: productionWeek }] = await Promise.all([
         supabase
           .from("deals")
-          .select("agent_id, annual_premium, posted_at")
-          .gte("posted_at", weekBounds.startIso)
-          .lt("posted_at", weekBounds.endIso)
-          .in("status", ["submitted", "active"]),
+          .select("agent_id, annual_premium, posted_at, created_at")
+          .or(dealTruthWindowOr(weekBounds.startIso, weekBounds.endIso))
+          .in("status", DEAL_TRUTH_STATUS_FILTER),
         supabase
           .from("deals")
-          .select("agent_id, posted_at")
-          .gte("posted_at", liveCutoffIso)
-          .in("status", ["submitted", "active"]),
+          .select("agent_id, posted_at, created_at")
+          .or(liveDealWindowOr(liveCutoffIso))
+          .in("status", DEAL_TRUTH_STATUS_FILTER),
         supabase
           .from("daily_production")
           .select("agent_id, presentations")
@@ -75,7 +75,7 @@ export function StatCardDrilldown({ activeModal, onClose }: StatCardDrilldownPro
         const existing = prodMap.get(r.agent_id) || { aop: 0, deals: 0, pres: 0, lastDate: "" };
         existing.aop += Number(r.annual_premium || 0);
         existing.deals += 1;
-        const postedDate = String(r.posted_at || "").slice(0, 10);
+        const postedDate = String(r.posted_at || r.created_at || "").slice(0, 10);
         if (postedDate > existing.lastDate) existing.lastDate = postedDate;
         prodMap.set(r.agent_id, existing);
       });

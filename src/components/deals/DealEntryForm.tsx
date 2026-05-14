@@ -144,10 +144,21 @@ export function DealEntryForm({ onSaved }: { onSaved?: () => void }) {
         // InsuraCloud: hand off to the outbox edge function (it reads the
         // agent's insuracloud_api_token from the DB and handles retries).
         // Cross-origin CORS blocks a direct browser→agentlink POST, so we
-        // must go through Supabase.
-        supabase.functions.invoke("insuracloud-outbox", {
-          body: { deal_id: dealId },
-        }).catch(() => {});
+        // must go through Supabase. Surface failures so the agent knows the
+        // deal didn't reach AgentLink — the row's sync_status badge in
+        // My Deals will show the retry state.
+        supabase.functions
+          .invoke("insuracloud-outbox", { body: { deal_id: dealId } })
+          .then(({ error }) => {
+            if (error) {
+              console.error("insuracloud-outbox failed", error);
+              toast.warning("Deal saved, but AgentLink sync didn't run. Check My Deals for status.");
+            }
+          })
+          .catch((err) => {
+            console.error("insuracloud-outbox threw", err);
+            toast.warning("Deal saved, but AgentLink sync threw. Check My Deals for status.");
+          });
       }
     } catch (e: any) {
       toast.error(e.message || "Failed to save deal");

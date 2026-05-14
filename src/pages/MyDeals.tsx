@@ -6,8 +6,30 @@ import { DealEntryForm } from "@/components/deals/DealEntryForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DollarSign, Plus } from "lucide-react";
+import { DollarSign, Plus, CheckCircle2, AlertTriangle, Clock } from "lucide-react";
 import { format } from "date-fns";
+
+function SyncStatus({ deal }: { deal: any }) {
+  if (deal.synced_to_insuracloud_at) {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] text-emerald-500" title={`Synced ${deal.synced_to_insuracloud_at}`}>
+        <CheckCircle2 className="h-3 w-3" /> Synced
+      </span>
+    );
+  }
+  if (deal.insuracloud_sync_error) {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] text-destructive" title={deal.insuracloud_sync_error}>
+        <AlertTriangle className="h-3 w-3" /> Sync failed
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground" title="Queued for AgentLink sync">
+      <Clock className="h-3 w-3" /> Pending sync
+    </span>
+  );
+}
 
 const statusColor = (s: string) => {
   switch (s) {
@@ -93,7 +115,10 @@ export default function MyDeals() {
                     <p className="font-semibold text-sm">${Number(d.annual_premium).toLocaleString()}</p>
                     <p className="text-[10px] text-muted-foreground">${Number(d.monthly_premium).toFixed(2)}/mo</p>
                   </div>
-                  <Badge variant="outline" className={statusColor(d.status)}>{d.status}</Badge>
+                  <div className="flex flex-col items-end gap-1">
+                    <Badge variant="outline" className={statusColor(d.status)}>{d.status}</Badge>
+                    <SyncStatus deal={d} />
+                  </div>
                 </div>
               ))}
             </div>

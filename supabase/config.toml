@@ -334,6 +334,9 @@ verify_jwt = false
 [functions.stripe-webhook-lead-purchase]
 verify_jwt = false
 
+[functions.readymode-webhook]
+verify_jwt = false
+
 [functions.send-agent-nudge]
 verify_jwt = false
 

@@ -1,19 +1,166 @@
-import { useState, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Play, Pause, Volume2, VolumeX, Maximize, Crown } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Crown, CalendarClock, CheckCircle2, Loader2, ArrowRight } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { GlassCard } from "@/components/ui/glass-card";
+import { GradientButton } from "@/components/ui/gradient-button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-const SEMINAR_VIDEO_URL = "https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0&modestbranding=1";
+const schema = z.object({
+  firstName: z.string().min(2, "First name is required").max(50),
+  lastName: z.string().min(2, "Last name is required").max(50),
+  email: z.string().email("Valid email is required"),
+  phone: z.string().min(10, "Valid phone number is required").max(20),
+  licenseStatus: z.enum(["licensed", "unlicensed", "unknown"]),
+  seminarSlot: z.string().min(1, "Pick a seminar date"),
+});
+
+type FormData = z.infer<typeof schema>;
+
+// Sam runs Wed 7pm CT and Sat 10am CT weekly. seminar_date column is type `date`
+// so we send YYYY-MM-DD. Time of day is implied by day-of-week.
+function nextSeminarSlots(): { date: string; label: string; clockLabel: string }[] {
+  const slots: { date: string; label: string; clockLabel: string }[] = [];
+  const now = new Date();
+
+  for (let add = 0; add < 28 && slots.length < 6; add++) {
+    const d = new Date(now);
+    d.setDate(now.getDate() + add);
+    const dow = d.getDay();
+    if (dow !== 3 && dow !== 6) continue;
+    const clockLabel = dow === 3 ? "7:00 PM CT" : "10:00 AM CT";
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const dateStr = `${y}-${m}-${dd}`;
+    const label = new Intl.DateTimeFormat("en-US", {
+      weekday: "long",
+      month: "short",
+      day: "numeric",
+    }).format(d);
+    slots.push({ date: dateStr, label: `${label} · ${clockLabel}`, clockLabel });
+  }
+  return slots;
+}
 
 export default function SeminarPage() {
-  usePageTitle("Weekly Career Seminar · APEX Financial");
-  const [muted, setMuted] = useState(false);
+  usePageTitle("Join the APEX Career Seminar · Group Interview");
+  const [params] = useSearchParams();
+  const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState<null | { slotLabel: string; isNew: boolean }>(null);
+
+  const slots = useMemo(() => nextSeminarSlots(), []);
+
+  const form = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      firstName: params.get("first") ?? "",
+      lastName: params.get("last") ?? "",
+      email: params.get("email") ?? "",
+      phone: params.get("phone") ?? "",
+      licenseStatus: (params.get("license") as "licensed" | "unlicensed" | "unknown") || "unlicensed",
+      seminarSlot: slots[0]?.date ?? "",
+    },
+  });
+
+  // Capture UTMs from URL once for analytics passthrough
+  const utms = useMemo(() => ({
+    utm_source: params.get("utm_source") || undefined,
+    utm_medium: params.get("utm_medium") || undefined,
+    utm_campaign: params.get("utm_campaign") || undefined,
+  }), [params]);
+
+  async function onSubmit(values: FormData) {
+    setSubmitting(true);
+    try {
+      const { data, error } = await (supabase.rpc as any)("register_for_seminar", {
+        p_first_name: values.firstName,
+        p_last_name: values.lastName,
+        p_email: values.email.trim().toLowerCase(),
+        p_phone: values.phone,
+        p_seminar_date: values.seminarSlot,
+        p_license_status: values.licenseStatus,
+        p_source: "website-seminar-form",
+        p_utm_source: utms.utm_source,
+        p_utm_medium: utms.utm_medium,
+        p_utm_campaign: utms.utm_campaign,
+      });
+
+      if (error) throw error;
+
+      const slotLabel = slots.find((s) => s.date === values.seminarSlot)?.label ?? values.seminarSlot;
+      // The RPC returns rows like { registration_id, application_id, is_new_application }
+      const row = Array.isArray(data) ? data[0] : data;
+      setSuccess({ slotLabel, isNew: !!row?.is_new_application });
+      toast.success("You're registered. Check your email for confirmation.");
+    } catch (err: any) {
+      console.error("[seminar.register]", err);
+      toast.error(err?.message ?? "Couldn't register — try again in a moment.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (success) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-xl"
+        >
+          <GlassCard className="p-8 text-center space-y-4">
+            <div className="flex items-center justify-center gap-2 text-primary">
+              <CheckCircle2 className="h-6 w-6" />
+              <span className="text-sm uppercase tracking-wider">Registered</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold">
+              You're locked in for {success.slotLabel}
+            </h1>
+            <p className="text-muted-foreground">
+              You'll get a reminder 24 hours before and 1 hour before. Bring your questions and bring focus —
+              we move fast.
+            </p>
+            {success.isNew ? (
+              <div className="border border-primary/30 bg-primary/5 rounded-xl p-4 text-left">
+                <p className="text-sm font-semibold mb-1">Finish your application while you wait</p>
+                <p className="text-xs text-muted-foreground mb-3">
+                  We started an application from your registration — finish it in 90 seconds so you're ready on day one.
+                </p>
+                <Link to="/apply">
+                  <GradientButton className="w-full">
+                    Finish my application
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </GradientButton>
+                </Link>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                We already have an application on file for you. See you on the call.
+              </p>
+            )}
+          </GlassCard>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -21,41 +168,117 @@ export default function SeminarPage() {
       >
         <div className="flex items-center justify-center gap-2 mb-2">
           <Crown className="h-6 w-6 text-primary" />
-          <span className="text-lg font-bold text-foreground" style={{ fontFamily: "Syne" }}>
-            APEX Financial
-          </span>
+          <span className="text-lg font-bold" style={{ fontFamily: "Syne" }}>APEX Financial</span>
         </div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-1">
-          Weekly Career Seminar
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Every Thursday at 7:00 PM CST • Watch the latest replay below
+        <h1 className="text-2xl sm:text-3xl font-bold mb-1">Lock your seat for the next career seminar</h1>
+        <p className="text-sm text-muted-foreground max-w-xl mx-auto">
+          Group interview with the team. Live, fast-paced, 60 minutes. You'll leave knowing
+          exactly what your first 30 days look like.
         </p>
       </motion.div>
 
-      {/* Video Player */}
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
+        initial={{ opacity: 0, scale: 0.97 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.2 }}
-        className="flex-1 flex items-center justify-center px-4 pb-8"
+        transition={{ delay: 0.15 }}
+        className="flex-1 flex items-start justify-center px-4 pb-8"
       >
-        <div className="w-full max-w-5xl aspect-video rounded-2xl overflow-hidden border border-white/10 shadow-2xl shadow-primary/10">
-          <iframe
-            src={SEMINAR_VIDEO_URL}
-            title="APEX Weekly Seminar"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowFullScreen
-            className="w-full h-full"
-            style={{ border: 0 }}
-          />
-        </div>
+        <GlassCard className="w-full max-w-xl p-6 sm:p-8 space-y-5">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="firstName">First name</Label>
+                <Input id="firstName" autoComplete="given-name" {...form.register("firstName")} />
+                {form.formState.errors.firstName && (
+                  <p className="text-xs text-destructive">{form.formState.errors.firstName.message}</p>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="lastName">Last name</Label>
+                <Input id="lastName" autoComplete="family-name" {...form.register("lastName")} />
+                {form.formState.errors.lastName && (
+                  <p className="text-xs text-destructive">{form.formState.errors.lastName.message}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" autoComplete="email" {...form.register("email")} />
+                {form.formState.errors.email && (
+                  <p className="text-xs text-destructive">{form.formState.errors.email.message}</p>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="phone">Phone</Label>
+                <Input id="phone" type="tel" autoComplete="tel" {...form.register("phone")} />
+                {form.formState.errors.phone && (
+                  <p className="text-xs text-destructive">{form.formState.errors.phone.message}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>License status</Label>
+              <Select
+                value={form.watch("licenseStatus")}
+                onValueChange={(v) => form.setValue("licenseStatus", v as FormData["licenseStatus"], { shouldValidate: true })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Pick one" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unlicensed">Not licensed yet</SelectItem>
+                  <SelectItem value="licensed">Licensed already</SelectItem>
+                  <SelectItem value="unknown">Not sure</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="flex items-center gap-2">
+                <CalendarClock className="h-4 w-4" />
+                Pick a seminar
+              </Label>
+              <Select
+                value={form.watch("seminarSlot")}
+                onValueChange={(v) => form.setValue("seminarSlot", v, { shouldValidate: true })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Pick a date" />
+                </SelectTrigger>
+                <SelectContent>
+                  {slots.map((s) => (
+                    <SelectItem key={s.date} value={s.date}>{s.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {form.formState.errors.seminarSlot && (
+                <p className="text-xs text-destructive">{form.formState.errors.seminarSlot.message}</p>
+              )}
+            </div>
+
+            <GradientButton type="submit" disabled={submitting} className="w-full">
+              {submitting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Saving your seat…
+                </span>
+              ) : (
+                "Lock my seat"
+              )}
+            </GradientButton>
+
+            <p className="text-[11px] text-muted-foreground text-center">
+              By registering you agree to SMS + email reminders for this seminar. Reply STOP to opt out.
+            </p>
+          </form>
+        </GlassCard>
       </motion.div>
 
-      {/* Bottom Info */}
       <div className="p-4 text-center">
         <p className="text-xs text-muted-foreground">
-          New recordings are posted every Friday morning. Check back each week for the latest session.
+          Already applied? <Link to="/apply" className="underline">Finish your application →</Link>
         </p>
       </div>
     </div>

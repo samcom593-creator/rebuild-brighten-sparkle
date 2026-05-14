@@ -118,6 +118,31 @@ serve(async (req) => {
       );
     }
 
+    // If this looks like an ICA payment from an applicant (no lead-purchase
+    // metadata, has a customer email), try to mark the matching application
+    // paid. The RPC is idempotent — repeat calls are safe.
+    if (!requestId && customerEmail) {
+      try {
+        const { data: paidResult, error: paidErr } = await supabase.rpc(
+          "mark_application_paid",
+          {
+            p_email: customerEmail,
+            p_amount_cents: session.amount_total ?? null,
+            p_stripe_customer_id: typeof session.customer === "string" ? session.customer : null,
+            p_stripe_checkout_session_id: session.id,
+            p_paid_at: new Date().toISOString(),
+          },
+        );
+        if (paidErr) {
+          console.error("mark_application_paid failed", paidErr);
+        } else if (paidResult && paidResult.length > 0) {
+          console.log("ICA marked paid", paidResult[0]);
+        }
+      } catch (e) {
+        console.error("mark_application_paid threw", e);
+      }
+    }
+
     // Fire Sam-facing alert (non-blocking) so every paid checkout pings him
     // even when no agent was matched. The bot_alerts trigger fans this out
     // to the dispatcher (email + ntfy + ProfitReveal).

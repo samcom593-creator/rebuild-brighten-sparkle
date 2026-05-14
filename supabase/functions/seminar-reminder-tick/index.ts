@@ -5,6 +5,13 @@
 // Required secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY.
 // Schedule via pg_cron or external cron. config.toml: this runs on a schedule;
 // verify_jwt is left default (authenticated invokes only).
+//
+// TODO (SMS reminders): we deliberately do NOT send SMS here yet. APEX has
+// no SMS provider wired (Twilio creds aren't set). Adding a fake SMS path
+// would silently fail. When Sam picks a provider, plumb it in here behind
+// `Deno.env.get("TWILIO_ACCOUNT_SID")` or equivalent, using the same
+// idempotency key namespace ("seminar_reminder:<id>:24h_sms") to avoid
+// double-sends.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { sendEmail } from "../_shared/email.ts";
@@ -17,18 +24,59 @@ const supabase = createClient(
 );
 
 const APP_URL = Deno.env.get("APP_BASE_URL") || "https://apex-financial.org";
+const SEMINAR_TZ = "America/Chicago";
 
-function fmtSeminarTime(date: string): string {
-  // seminar_date is a DATE column (Y-M-D). Sam runs Wed 7pm CT and Sat 10am CT.
-  const d = new Date(`${date}T00:00:00-05:00`);
-  const dow = d.getUTCDay(); // 0..6, treating Y-M-D as local CT date
-  const hour = dow === 3 ? 19 : 10;
-  const clock = dow === 3 ? "7:00 PM CT" : "10:00 AM CT";
-  const ts = new Date(`${date}T${String(hour).padStart(2, "0")}:00:00-05:00`);
-  return `${new Intl.DateTimeFormat("en-US", { weekday: "long", month: "short", day: "numeric" }).format(ts)} · ${clock}`;
+// Returns the CT UTC offset (in minutes) for a given UTC instant. Handles
+// DST transitions automatically — never hardcode -05:00 or -06:00.
+function ctOffsetMinutes(at: Date): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: SEMINAR_TZ,
+    timeZoneName: "shortOffset",
+  }).formatToParts(at);
+  const tz = parts.find((p) => p.type === "timeZoneName")?.value ?? "GMT-6";
+  // e.g. "GMT-5" → -300, "GMT-6" → -360
+  const match = /GMT([+-]?\d+)(?::(\d+))?/.exec(tz);
+  if (!match) return -360;
+  const hours = Number(match[1]);
+  const mins = Number(match[2] ?? 0);
+  const sign = hours < 0 ? -1 : 1;
+  return sign * (Math.abs(hours) * 60 + mins);
 }
 
-function reminderHtml(name: string, when: string, hoursOut: 24 | 1): string {
+// Compute the UTC timestamp for a given CT date (YYYY-MM-DD) at the given
+// CT hour-of-day. DST-safe.
+function ctDateAtHour(dateStr: string, hourCT: number): Date {
+  // Probe with an arbitrary UTC instant near that date to figure out the
+  // current CT offset, then construct the UTC timestamp accordingly.
+  const probe = new Date(`${dateStr}T${String(hourCT).padStart(2, "0")}:00:00Z`);
+  const offMin = ctOffsetMinutes(probe);
+  // CT clock time - offset = UTC. offset for CT is negative (e.g. -300).
+  return new Date(probe.getTime() - offMin * 60 * 1000);
+}
+
+function fmtSeminarTime(date: string): string {
+  // seminar_date is a DATE column (YYYY-MM-DD). Sam runs Wed 7pm CT and
+  // Sat 10am CT. Compute the day-of-week by parsing the date as midnight UTC.
+  const probe = new Date(`${date}T12:00:00Z`);
+  const ctDow = parseInt(
+    new Intl.DateTimeFormat("en-US", { timeZone: SEMINAR_TZ, weekday: "narrow" })
+      .formatToParts(probe)
+      .find((p) => p.type === "weekday")?.value ?? "0",
+    10,
+  );
+  // Intl narrow weekday is a letter not a number; better to compute via Date methods on a CT-zoned timestamp.
+  const noonCT = ctDateAtHour(date, 12);
+  const dow = new Intl.DateTimeFormat("en-US", { timeZone: SEMINAR_TZ, weekday: "long" }).format(noonCT);
+  const hour = dow === "Wednesday" ? 19 : 10;
+  const clock = dow === "Wednesday" ? "7:00 PM CT" : "10:00 AM CT";
+  const ts = ctDateAtHour(date, hour);
+  void ctDow; // narrow-letter path retained above for completeness
+  return `${new Intl.DateTimeFormat("en-US", {
+    timeZone: SEMINAR_TZ, weekday: "long", month: "short", day: "numeric",
+  }).format(ts)} · ${clock}`;
+}
+
+function reminderHtml(name: string, when: string, hoursOut: 24 | 1, meetingUrl: string, meetingLabel: string): string {
   const headline = hoursOut === 24 ? "See you tomorrow" : "Starting in 1 hour";
   return `
     <div style="font-family:system-ui,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#111">
@@ -37,14 +85,27 @@ function reminderHtml(name: string, when: string, hoursOut: 24 | 1): string {
       <p>This is your reminder for the Apex Financial career seminar:</p>
       <p style="font-size:18px;font-weight:600">${when}</p>
       <p>Show up locked in. We move fast and we go deep.</p>
-      <p><a href="${APP_URL}/seminar" style="display:inline-block;padding:12px 20px;background:#c8a445;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">Join the seminar</a></p>
+      <p><a href="${meetingUrl}" style="display:inline-block;padding:12px 20px;background:#c8a445;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">${meetingLabel}</a></p>
       <p style="margin-top:24px;font-size:12px;color:#666">If you can't make it, reply STOP — we'll rebook you.</p>
     </div>`;
+}
+
+async function loadMeetingConfig(): Promise<{ url: string; label: string }> {
+  const { data } = await supabase
+    .from("system_settings")
+    .select("key, value")
+    .in("key", ["seminar_meeting_url", "seminar_meeting_url_label"]);
+  const map = new Map((data ?? []).map((r: any) => [r.key, r.value as string]));
+  return {
+    url: map.get("seminar_meeting_url") || `${APP_URL}/seminar/join`,
+    label: map.get("seminar_meeting_url_label") || "Join the seminar",
+  };
 }
 
 Deno.serve(async (_req) => {
   const now = new Date();
   const horizon = new Date(now.getTime() + 26 * 60 * 60 * 1000);
+  const meetingCfg = await loadMeetingConfig();
 
   // seminar_date is DATE — pull anything dated today or in the next ~26h.
   const todayIso = now.toISOString().slice(0, 10);
@@ -65,12 +126,11 @@ Deno.serve(async (_req) => {
   const out: any[] = [];
   for (const r of regs ?? []) {
     if (!r.email || !r.seminar_date) continue;
-    const seminarTs = new Date(
-      `${r.seminar_date}T${(() => {
-        const dow = new Date(`${r.seminar_date}T00:00:00-05:00`).getUTCDay();
-        return dow === 3 ? "19:00" : "10:00";
-      })()}:00-05:00`,
-    ).getTime();
+    // Use the DST-safe CT helper instead of a hardcoded -05:00 offset.
+    const noonCT = ctDateAtHour(r.seminar_date, 12);
+    const dow = new Intl.DateTimeFormat("en-US", { timeZone: SEMINAR_TZ, weekday: "long" }).format(noonCT);
+    const startHour = dow === "Wednesday" ? 19 : 10;
+    const seminarTs = ctDateAtHour(r.seminar_date, startHour).getTime();
     const hoursOut = (seminarTs - now.getTime()) / 36e5;
     const window = hoursOut >= 23.5 && hoursOut <= 24.5
       ? 24
@@ -88,7 +148,7 @@ Deno.serve(async (_req) => {
       await sendEmail({
         to: r.email,
         subject: window === 24 ? "Reminder: Apex seminar tomorrow" : "Starting in 1 hour — Apex seminar",
-        html: reminderHtml(r.first_name ?? "there", fmtSeminarTime(r.seminar_date), window),
+        html: reminderHtml(r.first_name ?? "there", fmtSeminarTime(r.seminar_date), window, meetingCfg.url, meetingCfg.label),
         tagName: "seminar_reminder",
       });
       out.push({ id: r.id, window });

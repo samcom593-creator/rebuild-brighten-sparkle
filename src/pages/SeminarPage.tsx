@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
@@ -64,6 +65,25 @@ export default function SeminarPage() {
   const [success, setSuccess] = useState<null | { slotLabel: string; isNew: boolean }>(null);
 
   const slots = useMemo(() => nextSeminarSlots(), []);
+
+  // Real meeting URL comes from system_settings so Sam can rotate it
+  // (Zoom/Meet link) without a redeploy. Falls back to a /seminar/join
+  // route for the rare case the row is missing.
+  const meetingCfg = useQuery({
+    queryKey: ["seminar-meeting-url"],
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("system_settings")
+        .select("key, value")
+        .in("key", ["seminar_meeting_url", "seminar_meeting_url_label"]);
+      const map = new Map((data ?? []).map((r: any) => [r.key, r.value as string]));
+      return {
+        url: map.get("seminar_meeting_url") || "/seminar/join",
+        label: map.get("seminar_meeting_url_label") || "Join the seminar",
+      };
+    },
+  });
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -135,6 +155,19 @@ export default function SeminarPage() {
               You'll get a reminder 24 hours before and 1 hour before. Bring your questions and bring focus —
               we move fast.
             </p>
+            {meetingCfg.data?.url ? (
+              <a
+                href={meetingCfg.data.url}
+                target={meetingCfg.data.url.startsWith("http") ? "_blank" : undefined}
+                rel="noopener noreferrer"
+                className="inline-block"
+              >
+                <GradientButton className="w-full">
+                  {meetingCfg.data.label}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </GradientButton>
+              </a>
+            ) : null}
             {success.isNew ? (
               <div className="border border-primary/30 bg-primary/5 rounded-xl p-4 text-left">
                 <p className="text-sm font-semibold mb-1">Finish your application while you wait</p>
@@ -142,7 +175,7 @@ export default function SeminarPage() {
                   We started an application from your registration — finish it in 90 seconds so you're ready on day one.
                 </p>
                 <Link to="/apply">
-                  <GradientButton className="w-full">
+                  <GradientButton className="w-full" variant="ghost">
                     Finish my application
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </GradientButton>

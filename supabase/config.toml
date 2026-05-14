@@ -604,3 +604,8 @@ verify_jwt = false
 
 [functions.applicant-checkin]
 verify_jwt = false
+
+# seminar-reminder-tick intentionally KEEPS the default `verify_jwt = true`.
+# It runs on a 15-minute cron and is invoked either by pg_cron with the
+# service_role JWT or by an admin. There is no public/webhook caller, so
+# allowing anonymous POSTs would just let anyone trigger reminder emails.

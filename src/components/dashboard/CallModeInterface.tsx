@@ -323,7 +323,6 @@ function formatPhoneDisplay(phone: string): string {
                        <a
                          href={`https://instagram.com/${currentLead.instagramHandle.replace("@", "")}`}
                          target="_blank" rel="noopener noreferrer"
-                         rel="noopener noreferrer"
                          className="flex items-center gap-3 text-muted-foreground hover:text-foreground transition-colors"
                        >
                          <Instagram className="h-5 w-5 text-pink-500" />

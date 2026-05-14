@@ -18,6 +18,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 import { getCloseRate, getMetricBounds, sumAnnualPremium } from "@/lib/metricTruth";
+import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr } from "@/lib/dealTruth";
 
 interface SnapshotStats {
   totalALP: number;
@@ -121,18 +122,17 @@ export function TeamSnapshotCard() {
       const [dealsData, productionData] = await Promise.all([
         supabase
           .from("deals")
-          .select("annual_premium, agent_id")
+          .select("annual_premium, agent_id, posted_at, created_at")
           .in("agent_id", agentIds)
-          .gte("posted_at", bounds.startIso)
-          .lt("posted_at", bounds.endIso)
-          .in("status", ["submitted", "active"])
+          .or(dealTruthWindowOr(bounds.startIso, bounds.endIso))
+          .in("status", DEAL_TRUTH_STATUS_FILTER)
           .then(r => r.data || []),
         supabase
           .from("daily_production")
           .select("presentations, agent_id, hours_called")
           .in("agent_id", agentIds)
           .gte("production_date", startDate)
-          .lte("production_date", endDate)
+          .lt("production_date", bounds.endIso.slice(0, 10))
           .then(r => r.data || []),
       ]);
 
@@ -141,12 +141,9 @@ export function TeamSnapshotCard() {
         const totalDeals = dealsData.length;
         const totalPresentations = productionData.reduce((sum: number, p: any) => sum + (Number(p.presentations) || 0), 0);
         const totalHours = productionData.reduce((sum: number, p: any) => sum + (Number(p.hours_called) || 0), 0);
-        const uniqueAgents = new Set([
-          ...dealsData.map((d: any) => d.agent_id).filter(Boolean),
-          ...productionData.map((p: any) => p.agent_id).filter(Boolean),
-        ]);
-        const agentCount = uniqueAgents.size || agentIds.length;
-        const avgCloseRate = Math.round(getCloseRate(totalDeals, totalPresentations));
+        const liveAgents = new Set(dealsData.map((d: any) => d.agent_id).filter(Boolean));
+        const agentCount = liveAgents.size;
+        const avgCloseRate = Math.min(Math.round(getCloseRate(totalDeals, totalPresentations)), 100);
         const avgDealSize = totalDeals > 0 ? Math.round(totalALP / totalDeals) : 0;
         const avgHoursCalled = agentCount > 0 ? Math.round((totalHours / agentCount) * 10) / 10 : 0;
 
@@ -163,7 +160,7 @@ export function TeamSnapshotCard() {
         setStats({
           totalALP: 0,
           totalDeals: 0,
-          agentCount: agentIds.length,
+          agentCount: 0,
           avgCloseRate: 0,
           totalPresentations: 0,
           avgDealSize: 0,
@@ -213,17 +210,16 @@ export function TeamSnapshotCard() {
       const [{ data: dealsData }, { data: productionData }, { data: agentRows }] = await Promise.all([
         supabase
           .from("deals")
-          .select("annual_premium, agent_id")
+          .select("annual_premium, agent_id, posted_at, created_at")
           .in("agent_id", agentIds)
-          .gte("posted_at", bounds.startIso)
-          .lt("posted_at", bounds.endIso)
-          .in("status", ["submitted", "active"]),
+          .or(dealTruthWindowOr(bounds.startIso, bounds.endIso))
+          .in("status", DEAL_TRUTH_STATUS_FILTER),
         supabase
           .from("daily_production")
           .select("presentations, agent_id")
           .in("agent_id", agentIds)
           .gte("production_date", startDate)
-          .lte("production_date", endDate),
+          .lt("production_date", bounds.endIso.slice(0, 10)),
         supabase
           .from("agents")
           .select("id, profile:profiles!agents_profile_id_fkey(full_name)")

@@ -32,7 +32,6 @@ export function InstagramDirectory({ directory }: InstagramDirectoryProps) {
               key={person.id}
               href={`https://instagram.com/${person.instagram_handle}`}
               target="_blank" rel="noopener noreferrer"
-              rel="noopener noreferrer"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.03 }}

@@ -208,10 +208,9 @@ const App = () => (
                     <Route path="/dashboard/crm" element={<DashboardCRM />} />
                     <Route path="/dashboard/aged-leads" element={<DashboardAgedLeads />} />
                     <Route path="/dashboard/command" element={<ProtectedRoute requireAdmin><DashboardCommandCenter /></ProtectedRoute>} />
-                    {/* Seminar control: admins always; managers via allowManagers; KJ
-                        and other presenters are admitted by the component-level
-                        guard in SeminarControl (is_presenting=true on agents row). */}
-                    <Route path="/dashboard/seminar-control" element={<ProtectedRoute requireAdmin allowManagers><SeminarControl /></ProtectedRoute>} />
+                    {/* Seminar control: admins, managers, and flagged presenters
+                        such as KJ (agents.is_presenting=true). */}
+                    <Route path="/dashboard/seminar-control" element={<ProtectedRoute requireAdmin allowManagers allowPresenters><SeminarControl /></ProtectedRoute>} />
                     {/* Manager referral pipeline: admin or manager. */}
                     <Route path="/dashboard/referrals" element={<ProtectedRoute requireAdmin allowManagers><ReferralPipeline /></ProtectedRoute>} />
                     {/* Agent self-service: any authenticated user. */}

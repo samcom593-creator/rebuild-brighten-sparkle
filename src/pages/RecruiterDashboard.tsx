@@ -1167,7 +1167,7 @@ function RecruiterDashboardInner() {
               asChild
               className="border-pink-500/40 text-pink-400 hover:bg-pink-500/10 text-xs"
             >
-              <a href={UNLICENSED_SCHEDULING_LINK} target="_blank" rel="noopener noreferrer" rel="noreferrer">
+              <a href={UNLICENSED_SCHEDULING_LINK} target="_blank" rel="noopener noreferrer">
                 <CalendarClock className="h-3.5 w-3.5 mr-1.5" />
                 Unlicensed Call Link
                 <ExternalLink className="h-3 w-3 ml-1 opacity-60" />
@@ -1179,7 +1179,7 @@ function RecruiterDashboardInner() {
               asChild
               className="border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10 text-xs"
             >
-              <a href={LICENSED_SCHEDULING_LINK} target="_blank" rel="noopener noreferrer" rel="noreferrer">
+              <a href={LICENSED_SCHEDULING_LINK} target="_blank" rel="noopener noreferrer">
                 <Award className="h-3.5 w-3.5 mr-1.5" />
                 Licensed Call Link
                 <ExternalLink className="h-3 w-3 ml-1 opacity-60" />
@@ -1445,7 +1445,6 @@ function RecruiterDashboardInner() {
                                 <a
                                   href={`https://instagram.com/${lead.instagram_handle.replace(/^@/, "")}`}
                                   target="_blank" rel="noopener noreferrer"
-                                  rel="noopener noreferrer"
                                   onClick={e => e.stopPropagation()}
                                   className="text-pink-400 hover:text-pink-300 shrink-0"
                                   title={`@${lead.instagram_handle.replace(/^@/, "")}`}

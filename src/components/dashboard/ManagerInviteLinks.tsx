@@ -318,7 +318,6 @@ export function ManagerInviteLinks() {
                 <a
                   href={`${baseUrl}/join?ref=${link.invite_code}`}
                   target="_blank" rel="noopener noreferrer"
-                  rel="noopener noreferrer"
                 >
                   <Button variant="ghost" size="sm">
                     <ExternalLink className="h-4 w-4" />

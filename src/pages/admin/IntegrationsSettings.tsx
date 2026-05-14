@@ -543,7 +543,6 @@ export default function IntegrationsSettings() {
             <a
               href="https://supabase.com/dashboard/project/xrzweoneiieddzxogewk/sql/new"
               target="_blank" rel="noopener noreferrer"
-              rel="noreferrer"
               className="text-sky-400 underline inline-flex items-center gap-0.5"
             >
               Supabase SQL Editor <ExternalLink className="h-2.5 w-2.5" />
@@ -602,7 +601,6 @@ export default function IntegrationsSettings() {
             <a
               href="https://supabase.com/dashboard/account/tokens"
               target="_blank" rel="noopener noreferrer"
-              rel="noreferrer"
             >
               <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
                 Get Access Token <ExternalLink className="h-2.5 w-2.5" />
@@ -611,7 +609,6 @@ export default function IntegrationsSettings() {
             <a
               href="https://github.com/samcom593-creator/rebuild-brighten-sparkle/settings/secrets/actions"
               target="_blank" rel="noopener noreferrer"
-              rel="noreferrer"
             >
               <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
                 Add GitHub Secrets <ExternalLink className="h-2.5 w-2.5" />

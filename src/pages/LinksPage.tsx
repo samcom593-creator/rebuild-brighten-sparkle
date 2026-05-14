@@ -135,7 +135,7 @@ export default function LinksPage() {
         {/* Social Links */}
         <div className="w-full space-y-3 mb-6">
           {socialLinks.map((link, i) => (
-            <motion.a key={link.label} href={link.href} target="_blank" rel="noopener noreferrer" rel="noopener noreferrer"
+            <motion.a key={link.label} href={link.href} target="_blank" rel="noopener noreferrer"
               initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * 0.1 }}
               className={`flex items-center gap-4 w-full p-4 rounded-xl bg-card border border-border transition-all duration-300 hover:-translate-y-1 ${link.hoverGlow} group`}
             >

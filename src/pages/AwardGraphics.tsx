@@ -528,7 +528,7 @@ export default function AwardGraphics() {
                       <TableCell>
                         <div className="flex gap-1">
                           {batch.top_producer_file && (
-                            <a href={getStorageUrl(batch.top_producer_file) || "#"} target="_blank" rel="noopener noreferrer" rel="noopener noreferrer">
+                            <a href={getStorageUrl(batch.top_producer_file) || "#"} target="_blank" rel="noopener noreferrer">
                               <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-primary/10"><Download className="h-3.5 w-3.5" /></Button>
                             </a>
                           )}

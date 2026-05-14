@@ -88,7 +88,7 @@ export default function ApplySuccess() {
             transition={{ delay: 0.5 }}
             className="mb-6"
           >
-            <a href={WHATSAPP_GROUP_URL} target="_blank" rel="noopener noreferrer" rel="noopener noreferrer">
+            <a href={WHATSAPP_GROUP_URL} target="_blank" rel="noopener noreferrer">
               <GradientButton size="lg" className="w-full sm:w-auto text-lg px-8 bg-[#25D366] hover:bg-[#20BD5A] border-[#25D366]">
                 <MessageCircle className="h-5 w-5 mr-2" />
                 Join the APEX Hiring Chat

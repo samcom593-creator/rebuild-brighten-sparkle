@@ -223,7 +223,7 @@ function InsuraCloudTokenSection() {
       </h3>
       <p className="text-sm text-muted-foreground mb-4">
         Paste your InsuraCloud (agentlink) Bearer token so your submitted deals sync automatically.
-        Open <a href="https://agentlink.replit.app" target="_blank" rel="noopener noreferrer" rel="noreferrer" className="underline">agentlink</a>, sign in, open DevTools → Application → Local Storage and copy the <code>access_token</code> value. This token expires every ~15 minutes.
+        Open <a href="https://agentlink.replit.app" target="_blank" rel="noopener noreferrer" className="underline">agentlink</a>, sign in, open DevTools → Application → Local Storage and copy the <code>access_token</code> value. This token expires every ~15 minutes.
       </p>
       <div className="flex gap-2">
         <div className="relative flex-1">
@@ -556,7 +556,6 @@ export function ProfileSettings() {
                 <a 
                   href={`https://instagram.com/${formData.instagramHandle}`}
                   target="_blank" rel="noopener noreferrer"
-                  rel="noopener noreferrer"
                   className="text-sm text-primary hover:underline"
                 >
                   @{formData.instagramHandle}

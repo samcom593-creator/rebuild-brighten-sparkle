@@ -13,6 +13,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format, subDays } from "date-fns";
+import { DEAL_TRUTH_STATUS_FILTER, liveDealWindowOr } from "@/lib/dealTruth";
+import { getLiveAgentCutoffIso } from "@/lib/metricTruth";
 
 export function AISummaryReport() {
   const [open, setOpen] = useState(true);
@@ -27,15 +29,12 @@ export function AISummaryReport() {
       const weekAgo = format(subDays(new Date(), 7), "yyyy-MM-dd");
       const monthAgo = format(subDays(new Date(), 30), "yyyy-MM-dd");
 
-      // Active agents count — aligned with TeamOverviewDashboard truth rule
-      // (must be not deactivated AND not inactive). The legacy
-      // status='active' column drifts; ~35 agents had status='active' but
-      // is_inactive=true, inflating this number from 23 to 58.
-      const { count: activeAgents } = await supabase
-        .from("agents")
-        .select("id", { count: "exact", head: true })
-        .eq("is_deactivated", false)
-        .eq("is_inactive", false);
+      const { data: liveDealRows } = await supabase
+        .from("deals")
+        .select("agent_id, posted_at, created_at")
+        .or(liveDealWindowOr(getLiveAgentCutoffIso()))
+        .in("status", DEAL_TRUTH_STATUS_FILTER);
+      const liveAgents = new Set((liveDealRows || []).map((row: any) => row.agent_id).filter(Boolean));
 
       // This week's production
       const { data: weekProd } = await supabase
@@ -85,7 +84,7 @@ export function AISummaryReport() {
         .or(`last_contacted_at.lt.${cutoff},last_contacted_at.is.null`);
 
       return {
-        activeAgents: activeAgents || 0,
+        activeAgents: liveAgents.size,
         weekAlp,
         weekDeals,
         weekPresentations,
@@ -123,7 +122,7 @@ export function AISummaryReport() {
   };
 
   const quickStats = stats ? [
-    { icon: Users, label: "Active Agents", value: stats.activeAgents, color: "text-blue-400" },
+    { icon: Users, label: "Live Agents", value: stats.activeAgents, color: "text-blue-400" },
     { icon: TrendingUp, label: "Week ALP", value: `$${stats.weekAlp.toLocaleString()}`, color: "text-emerald-400" },
     { icon: BarChart3, label: "Producers", value: stats.producersCount, color: "text-purple-400" },
     { icon: AlertTriangle, label: "Overdue Leads", value: stats.overdueCount, color: "text-amber-400" },

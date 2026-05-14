@@ -106,7 +106,7 @@ export default function AgentLinkSync() {
       <GlassCard className="p-4 space-y-3">
         <div className="text-sm font-semibold">1 · Grab the cookie</div>
         <ol className="text-xs text-muted-foreground list-decimal list-inside space-y-1">
-          <li>Open <a href="https://agentlink.insuracloud.ai/" target="_blank" rel="noopener noreferrer" rel="noreferrer" className="text-primary underline">agentlink.insuracloud.ai</a> (signed in)</li>
+          <li>Open <a href="https://agentlink.insuracloud.ai/" target="_blank" rel="noopener noreferrer" className="text-primary underline">agentlink.insuracloud.ai</a> (signed in)</li>
           <li>DevTools (<span className="font-mono">⌘⌥I</span>/<span className="font-mono">F12</span>) → <b>Application</b> → <b>Cookies</b> → select all → copy</li>
           <li>Or: Network tab → any request → <i>Copy as cURL</i> → grab the <span className="font-mono">Cookie:</span> header</li>
         </ol>

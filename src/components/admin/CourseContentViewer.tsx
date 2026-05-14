@@ -199,7 +199,6 @@ export function CourseContentViewer({ open, onClose }: CourseContentViewerProps)
                               <a
                                 href={module.video_url}
                                 target="_blank" rel="noopener noreferrer"
-                                rel="noopener noreferrer"
                                 className="text-primary hover:underline"
                               >
                                 <ExternalLink className="h-4 w-4" />

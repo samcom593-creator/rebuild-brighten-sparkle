@@ -122,23 +122,27 @@ export function ForecastCard() {
         <div>
           <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
             <Zap className="h-3.5 w-3.5" />
-            Month-end forecast
+            Month-to-date ALP
           </div>
           <motion.div
-            key={data.projection}
+            key={data.mtd}
             initial={{ y: -4, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             className="mt-1 text-3xl font-bold tabular-nums"
             style={{ color: tint }}
           >
-            {fmt$(data.projection)}
+            {fmt$(data.mtd)}
           </motion.div>
           <div className="mt-1 text-sm text-muted-foreground">
-            <span className="font-semibold text-foreground">{fmt$(data.mtd)}</span> MTD · day {data.elapsedCalendarDays}/{data.daysInMonth} · {data.confidence} confidence
+            {data.activeDays >= 3 ? (
+              <>Projected month-end: <span className="font-semibold text-foreground">{fmt$(data.projection)}</span> · {data.confidence} confidence</>
+            ) : (
+              <>Forecast starts after 3 posted-sales days · day {data.elapsedCalendarDays}/{data.daysInMonth}</>
+            )}
           </div>
           <p className="mt-1 text-[11px] text-muted-foreground">
             {data.activeDays < 3
-              ? "Projection is suppressed until at least 3 posted-sales days exist this month."
+              ? "Showing real MTD only. No fantasy projection from thin data."
               : sourceHint}
           </p>
         </div>

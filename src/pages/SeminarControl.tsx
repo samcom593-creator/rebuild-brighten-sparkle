@@ -95,7 +95,26 @@ const TONE_CLS: Record<"neutral" | "warn" | "success" | "danger", string> = {
 
 export default function SeminarControl() {
   usePageTitle("Seminar Control · APEX");
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isManager } = useAuth();
+
+  // Component-level guard. Admins and managers always allowed. Other users
+  // (plain agents) are admitted only when their agent row is flagged
+  // is_presenting — e.g. KJ. Defense-in-depth on top of the route's
+  // ProtectedRoute(requireAdmin allowManagers) gate.
+  const presenterQuery = useQuery({
+    queryKey: ["am-i-presenter", user?.id],
+    enabled: !!user?.id && !isAdmin && !isManager,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("agents")
+        .select("is_presenting")
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      return !!data?.is_presenting;
+    },
+  });
+  const isPresenter = presenterQuery.data === true;
+  const isAuthorized = isAdmin || isManager || isPresenter;
 
   const metricsQuery = useQuery({
     queryKey: ["seminar-metrics"],
@@ -142,11 +161,10 @@ export default function SeminarControl() {
     else {
       toast.success(value ? "Marked attended" : "Marked no-show");
       rosterQuery.refetch();
+
       metricsQuery.refetch();
     }
   }
-
-  if (metricsQuery.isLoading || rosterQuery.isLoading) return <PageLoadingSkeleton />;
 
   if (!user) {
     return (
@@ -157,6 +175,27 @@ export default function SeminarControl() {
       </div>
     );
   }
+
+  // Component-level guard: if the route was somehow reached by a plain agent
+  // who isn't flagged as a presenter, show an Unauthorized state instead of
+  // leaking seminar data.
+  if (!presenterQuery.isLoading && !isAuthorized) {
+    return (
+      <div className="p-6 max-w-xl mx-auto">
+        <Card>
+          <CardContent className="p-8 text-center space-y-3">
+            <h2 className="text-xl font-bold">Not your room</h2>
+            <p className="text-sm text-muted-foreground">
+              Seminar control is for admins, managers, and presenters. If you should have
+              access, ask Sam to flag you as a presenter on your agent profile.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (metricsQuery.isLoading || rosterQuery.isLoading || presenterQuery.isLoading) return <PageLoadingSkeleton />;
 
   const Stat = ({ icon: Icon, label, value, tone = "neutral" as const }: any) => (
     <Card className={`border ${TONE_CLS[tone as keyof typeof TONE_CLS]} backdrop-blur`}>

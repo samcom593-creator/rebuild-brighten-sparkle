@@ -81,8 +81,23 @@ const BUCKET_ORDER = [
 
 export default function ReferralPipeline() {
   usePageTitle("Referral pipeline · APEX");
-  const { isAdmin } = useAuth();
+  const { isAdmin, isManager } = useAuth();
   const qc = useQueryClient();
+
+  // Defense-in-depth: ProtectedRoute(requireAdmin allowManagers) already
+  // gates the route. If a plain agent ever lands here via a bad link, show
+  // an Unauthorized state instead of an empty list (which would leak
+  // existence of the page).
+  if (!isAdmin && !isManager) {
+    return (
+      <div className="p-6 max-w-xl mx-auto">
+        <div className="rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground">
+          The referral pipeline is for managers and admins. To see referrals you've
+          submitted, go to <a href="/dashboard/referrals/mine" className="underline">My Referrals</a>.
+        </div>
+      </div>
+    );
+  }
 
   const { data, isLoading } = useQuery({
     queryKey: ["referral-pipeline"],

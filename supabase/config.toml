@@ -604,3 +604,6 @@ verify_jwt = false
 
 [functions.applicant-checkin]
 verify_jwt = false
+
+[functions.seminar-reminder-tick]
+verify_jwt = false

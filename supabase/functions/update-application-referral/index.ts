@@ -62,7 +62,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Enforce expected state to avoid arbitrary updates
     const { data: app, error: fetchError } = await supabaseAdmin
       .from("applications")
-      .select("id,status,assigned_agent_id,notes")
+      .select("id,status,assigned_agent_id,referral_manager_id,recruiter_id,notes")
       .eq("id", data.applicationId)
       .maybeSingle();
 
@@ -88,11 +88,36 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Allow reassignment if current assignment is the admin default
-    const ADMIN_DEFAULT_ID = "7c3c5581-3544-437f-bfe2-91391afb217d";
+    // Determine "unclaimed" dynamically: an app is reassignable if it has no
+    // referral_manager_id AND no explicit recruiter_id AND its assigned_agent_id
+    // either is null or points to an agent whose user has the 'admin' role
+    // (i.e., it was caught by the default-routing trigger, not chosen by an
+    // applicant). This replaces the old hardcoded ADMIN_DEFAULT_ID check that
+    // silently failed after the canonical Sam agent id changed.
+    let isUnclaimed = false;
+    if (!app.referral_manager_id && !app.recruiter_id) {
+      if (!app.assigned_agent_id) {
+        isUnclaimed = true;
+      } else {
+        const { data: assignedAgent } = await supabaseAdmin
+          .from("agents")
+          .select("user_id")
+          .eq("id", app.assigned_agent_id)
+          .maybeSingle();
+        if (assignedAgent?.user_id) {
+          const { data: roleRow } = await supabaseAdmin
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", assignedAgent.user_id)
+            .eq("role", "admin")
+            .maybeSingle();
+          isUnclaimed = !!roleRow;
+        }
+      }
+    }
 
-    if (app.assigned_agent_id && app.assigned_agent_id !== ADMIN_DEFAULT_ID) {
-      return new Response(JSON.stringify({ error: "Referral already set" }), {
+    if (!isUnclaimed) {
+      return new Response(JSON.stringify({ error: "Referral already set", code: "ALREADY_CLAIMED" }), {
         status: 409,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });

@@ -946,6 +946,10 @@ const handler = async (req: Request): Promise<Response> => {
       assigned_agent_id: data.selectedReferralAgentId || data.recruiterId || null,
       // Track recruiter (link sharer) separately from assigned manager
       recruiter_id: data.recruiterId || null,
+      // referral_manager_id is what downstream visibility filters check ("am I
+      // the referrer for this applicant?"). Without it, dashboards that filter
+      // on referral_manager_id show nothing even when assigned_agent_id is set.
+      referral_manager_id: data.selectedReferralAgentId || data.recruiterId || null,
 
       status: "new",
       reviewed_at: null,
@@ -983,8 +987,31 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Auto-merge: if person reapplied, terminate all old open apps and assign new one to Sam
-    const SAMUEL_JAMES_ID = "7c3c5581-3544-437f-bfe2-91391afb217d";
+    // Auto-merge: if person reapplied, terminate all old open apps and assign
+    // new one to whichever Sam admin-agent is currently canonical. Resolve
+    // dynamically by email so the hardcoded UUID can never go stale.
+    let canonicalSamAgentId: string | null = null;
+    try {
+      const { data: samProfiles } = await supabaseAdmin
+        .from("profiles")
+        .select("id")
+        .in("email", ["sam.com593@gmail.com", "info@kingofsales.net"]);
+      const profileIds = (samProfiles ?? []).map((p) => p.id).filter(Boolean);
+      if (profileIds.length > 0) {
+        const { data: samAgent } = await supabaseAdmin
+          .from("agents")
+          .select("id, created_at")
+          .in("profile_id", profileIds)
+          .eq("is_deactivated", false)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        canonicalSamAgentId = samAgent?.id ?? null;
+      }
+    } catch (e) {
+      console.error("canonical Sam lookup failed", e);
+    }
+
     try {
       const { data: previousApps } = await supabaseAdmin
         .from("applications")
@@ -993,13 +1020,13 @@ const handler = async (req: Request): Promise<Response> => {
         .neq("id", inserted.id)
         .order("created_at", { ascending: false });
 
-      if (previousApps && previousApps.length > 0) {
+      if (previousApps && previousApps.length > 0 && canonicalSamAgentId) {
         const mostRecent = previousApps[0];
 
-        // Always reassign reapplicants to Sam
+        // Always reassign reapplicants to canonical Sam
         await supabaseAdmin
           .from("applications")
-          .update({ assigned_agent_id: SAMUEL_JAMES_ID })
+          .update({ assigned_agent_id: canonicalSamAgentId })
           .eq("id", inserted.id);
 
         // If previously contracted, notify Sam about rehire

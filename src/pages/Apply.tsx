@@ -302,31 +302,36 @@ export default function Apply() {
     fetchActiveManagers();
   }, []);
 
-  // Capture ?ref= referral slug from URL — look up referring agent and pre-fill
+  // Capture ?ref= referral slug from URL. RLS denies anon reads on `agents`,
+  // so we resolve via a service-role edge function instead of querying the
+  // table client-side (prior direct query returned null silently for every
+  // public visitor — credits went to no one).
   useEffect(() => {
     if (!refSlug) return;
     (async () => {
       try {
-        const { data, error } = await supabase
-          .from("agents")
-          .select("id, profile_id, profiles:profile_id(full_name)")
-          .eq("ref_slug", refSlug)
-          .maybeSingle();
+        const { data, error } = await supabase.functions.invoke("resolve-ref-slug", {
+          body: { slug: refSlug },
+        });
         if (error) {
-          console.error("[Apply] ref_slug lookup error:", error);
+          console.error("[Apply] resolve-ref-slug invoke error:", error);
           return;
         }
-        if (data) {
-          const name = (data as any)?.profiles?.full_name || "";
-          setReferrerId(data.id);
-          setReferrerName(name);
-          setSelectedReferrer(data.id);
-          toast.success(name ? `Referred by ${name} — we'll credit them.` : "Referral link detected!");
+        const payload = data as { resolved?: boolean; agent_id?: string; display_name?: string };
+        if (payload?.resolved && payload.agent_id) {
+          setReferrerId(payload.agent_id);
+          setReferrerName(payload.display_name ?? "");
+          setSelectedReferrer(payload.agent_id);
+          toast.success(
+            payload.display_name
+              ? `Referred by ${payload.display_name} — we'll credit them.`
+              : "Referral link detected!",
+          );
         } else {
           console.warn("[Apply] No agent found for ref slug:", refSlug);
         }
       } catch (err) {
-        console.error("[Apply] ref_slug fetch failed:", err);
+        console.error("[Apply] ref_slug resolve failed:", err);
       }
     })();
   }, [refSlug]);
@@ -496,7 +501,7 @@ export default function Apply() {
 
     setIsSubmitting(true);
     try {
-      await supabase.functions.invoke("update-application-referral", {
+      const { data, error } = await supabase.functions.invoke("update-application-referral", {
         body: {
           applicationId,
           selectedReferrer,
@@ -504,18 +509,27 @@ export default function Apply() {
         },
       });
 
+      // supabase.functions.invoke does NOT throw on non-2xx; surface the error
+      // payload instead of silently falling through to "success". The only
+      // benign error is "already claimed" — for that we still proceed.
+      const payloadError = (data as any)?.error;
+      const errCode = (data as any)?.code;
+      if (error || (payloadError && errCode !== "ALREADY_CLAIMED")) {
+        const msg = payloadError ?? error?.message ?? "Couldn't save your referrer choice.";
+        console.error("update-application-referral failed:", msg, { data, error });
+        toast.error(typeof msg === "string" ? msg : "Couldn't save your referrer choice.");
+        // Don't navigate — keep the user on this step so they can retry or change selection.
+        return;
+      }
+
       if (savedLicenseStatus === "licensed") {
         navigate("/apply/success/licensed");
       } else {
         navigate("/apply/success/unlicensed");
       }
-    } catch (error) {
-      console.error("Error updating referral:", error);
-      if (savedLicenseStatus === "licensed") {
-        navigate("/apply/success/licensed");
-      } else {
-        navigate("/apply/success/unlicensed");
-      }
+    } catch (err) {
+      console.error("Network error updating referral:", err);
+      toast.error("Network error. Please retry.");
     } finally {
       setIsSubmitting(false);
     }

@@ -330,7 +330,7 @@ export function TeamSnapshotCard() {
     switch (drilldownType) {
       case "alp": return "ALP Breakdown by Agent";
       case "deals": return "Deals Breakdown by Agent";
-      case "agents": return "Active Agents";
+      case "agents": return "Live Agents";
       case "closeRate": return "Close Rate by Agent";
       default: return "";
     }
@@ -417,7 +417,7 @@ export function TeamSnapshotCard() {
                 />
               </button>
 
-              {/* Active Agents - Clickable */}
+              {/* Live Agents - Clickable */}
               {(isAdmin || isManager) && (
                 <button
                   onClick={() => handleStatClick("agents")}
@@ -429,7 +429,7 @@ export function TeamSnapshotCard() {
                   <div className="flex items-center gap-2 text-violet-500 mb-2">
                     <Users className="h-5 w-5" />
                     <span className="text-xs font-medium uppercase tracking-wide">
-                      {isAdmin ? "Active Agents" : "Team Size"}
+                      {isAdmin ? "Live Agents" : "Team Live"}
                     </span>
                   </div>
                   <AnimatedCounter

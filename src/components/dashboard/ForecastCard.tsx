@@ -13,6 +13,7 @@ import {
   sumAnnualPremium,
 } from "@/lib/metricTruth";
 import { getBusinessMonthBounds, getBusinessNow } from "@/lib/dateUtils";
+import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr } from "@/lib/dealTruth";
 
 function fmt$(n: number): string {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
@@ -48,16 +49,14 @@ async function fetchForecast(): Promise<Forecast> {
   const [mtdRes, comparisonRes, syncRes] = await Promise.all([
     supabase
       .from("deals")
-      .select("annual_premium, posted_at")
-      .gte("posted_at", monthBounds.startIso)
-      .lt("posted_at", monthBounds.endIso)
-      .in("status", ["submitted", "active"]),
+      .select("annual_premium, posted_at, created_at")
+      .or(dealTruthWindowOr(monthBounds.startIso, monthBounds.endIso))
+      .in("status", DEAL_TRUTH_STATUS_FILTER),
     supabase
       .from("deals")
-      .select("annual_premium")
-      .gte("posted_at", comparisonStart.toISOString())
-      .lt("posted_at", comparisonEnd.toISOString())
-      .in("status", ["submitted", "active"]),
+      .select("annual_premium, posted_at, created_at")
+      .or(dealTruthWindowOr(comparisonStart.toISOString(), comparisonEnd.toISOString()))
+      .in("status", DEAL_TRUTH_STATUS_FILTER),
     supabase
       .from("agentlink_sync_log" as any)
       .select("finished_at, started_at")

@@ -15,7 +15,8 @@ import {
 } from "recharts";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { getMetricBounds } from "@/lib/metricTruth";
+import { LIVE_AGENT_DEAL_WINDOW_DAYS, getLiveAgentCutoffIso, getMetricBounds } from "@/lib/metricTruth";
+import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr, liveDealWindowOr } from "@/lib/dealTruth";
 
 interface ManagerAgent {
   id: string;
@@ -75,7 +76,6 @@ export function TeamOverviewDashboard() {
     queryFn: async (): Promise<TeamOverviewData> => {
       // Use the same week/month posted-deal truth as the rest of the dashboard
       // so admin overview cards stop drifting from what the board shows.
-      const VALID_STATUS = ["submitted", "active"] as const;
       const [agentsRes, presRes7, presRes30, dealsRes7, dealsRes30, deactivatedRes, applicationsRes] = await Promise.all([
         supabase
           .from("agents")
@@ -92,16 +92,14 @@ export function TeamOverviewDashboard() {
           .lte("production_date", monthEndDate),
         supabase
           .from("deals")
-          .select("agent_id, annual_premium")
-          .gte("posted_at", weekBounds.startIso)
-          .lt("posted_at", weekBounds.endIso)
-          .in("status", VALID_STATUS as unknown as string[]),
+          .select("agent_id, annual_premium, posted_at, created_at")
+          .or(dealTruthWindowOr(weekBounds.startIso, weekBounds.endIso))
+          .in("status", DEAL_TRUTH_STATUS_FILTER),
         supabase
           .from("deals")
-          .select("agent_id, annual_premium")
-          .gte("posted_at", monthBounds.startIso)
-          .lt("posted_at", monthBounds.endIso)
-          .in("status", VALID_STATUS as unknown as string[]),
+          .select("agent_id, annual_premium, posted_at, created_at")
+          .or(dealTruthWindowOr(monthBounds.startIso, monthBounds.endIso))
+          .in("status", DEAL_TRUTH_STATUS_FILTER),
         supabase
           .from("agents")
           .select("id")
@@ -166,28 +164,12 @@ export function TeamOverviewDashboard() {
       });
       const avgCloseRate = closeRateCount > 0 ? totalCloseRate / closeRateCount : 0;
 
-      // Active producer rule (Sam, 2026-04-27): >= $4k AP in last 7d OR
-      // promoted to live/evaluated/transfer in last 7d. Pull both cheap
-      // queries; daily_production is unreliable for this signal.
-      const [sevenDayDealsRes, recentReleaseRes] = await Promise.all([
-        supabase.from("deals")
-          .select("agent_id, annual_premium")
-          .gte("posted_at", weekBounds.startIso)
-          .lt("posted_at", weekBounds.endIso)
-          .in("status", ["submitted", "active"]),
-        supabase.from("agents")
-          .select("id")
-          .gte("stage_changed_at", weekBounds.startIso)
-          .in("onboarding_stage", ["live", "evaluated", "transfer"]),
-      ]);
-      const apByAgent = new Map<string, number>();
-      for (const r of (sevenDayDealsRes.data || []) as any[]) {
-        if (!r.agent_id) continue;
-        apByAgent.set(r.agent_id, (apByAgent.get(r.agent_id) || 0) + (Number(r.annual_premium) || 0));
-      }
+      const liveDealsRes = await supabase.from("deals")
+        .select("agent_id, posted_at, created_at")
+        .or(liveDealWindowOr(getLiveAgentCutoffIso()))
+        .in("status", DEAL_TRUTH_STATUS_FILTER);
       const activeProducerIds = new Set<string>();
-      for (const [id, ap] of apByAgent) if (ap >= 4000) activeProducerIds.add(id);
-      for (const r of (recentReleaseRes.data || []) as any[]) if (r.id) activeProducerIds.add(r.id);
+      for (const r of (liveDealsRes.data || []) as any[]) if (r.agent_id) activeProducerIds.add(r.agent_id);
       const activeProducers = activeProducerIds.size;
       const activationRate = totalActive > 0 ? (activeProducers / totalActive) * 100 : 0;
 
@@ -305,14 +287,14 @@ export function TeamOverviewDashboard() {
   if (!data) return null;
 
   const metrics = [
-    { label: "Active Agents", value: data.totalActive, icon: Users, color: "text-primary" },
+    { label: "Roster Agents", value: data.totalActive, icon: Users, color: "text-primary" },
     { label: "Licensed", value: data.licensed, icon: ShieldCheck, color: "text-emerald-500" },
     { label: "Unlicensed (Pipeline)", value: data.unlicensedTotal, icon: ShieldOff, color: "text-amber-500", subtitle: `${data.unlicensedAgents} hired` },
     { label: "Onboarding", value: data.onboarding, icon: GraduationCap, color: "text-blue-500" },
     { label: "Training Online", value: data.trainingOnline, icon: GraduationCap, color: "text-cyan-500" },
     { label: "Field Training", value: data.inFieldTraining, icon: Swords, color: "text-violet-500" },
     { label: "Live / Eligible", value: data.liveInField, icon: Zap, color: "text-emerald-500" },
-    { label: "Active Producers", value: data.activeProducers, icon: Activity, color: "text-primary" },
+    { label: `Live Agents (${LIVE_AGENT_DEAL_WINDOW_DAYS}d)`, value: data.activeProducers, icon: Activity, color: "text-primary" },
   ];
 
   const financialMetrics = [

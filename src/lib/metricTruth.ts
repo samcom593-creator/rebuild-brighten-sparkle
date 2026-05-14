@@ -202,10 +202,10 @@ export function countDistinctAgents<T extends { agent_id?: string | null }>(rows
   return new Set(rows.map((row) => row.agent_id).filter(Boolean)).size;
 }
 
-export function countDistinctBusinessDays<T extends { posted_at?: string | null }>(rows: T[]): number {
+export function countDistinctBusinessDays<T extends { posted_at?: string | null; created_at?: string | null }>(rows: T[]): number {
   return new Set(
     rows
-      .map((row) => row.posted_at)
+      .map((row) => row.posted_at || row.created_at)
       .filter(Boolean)
       .map((value) => getBusinessDayKey(new Date(value as string))),
   ).size;

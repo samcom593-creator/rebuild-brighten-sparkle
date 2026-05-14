@@ -38,6 +38,39 @@ Deno.serve(
       const email = auth!.email;
       if (!email) return errorResponse("User has no email on record", 400, "NO_EMAIL");
 
+      const leadPackageType = tier === "gold" ? "standard" : tier === "platinum" ? "premium" : null;
+      let agentId: string | null = null;
+      let requestId: string | null = null;
+
+      if (leadPackageType) {
+        const { data: agent, error: agentError } = await auth!.serviceClient
+          .from("agents")
+          .select("id")
+          .eq("user_id", auth!.userId)
+          .maybeSingle();
+
+        if (agentError) return errorResponse(agentError.message, 500, "AGENT_LOOKUP_FAILED");
+        if (!agent?.id) {
+          return errorResponse("No agent profile is linked to this login. Ask Sam to connect your account before buying leads.", 400, "NO_AGENT_PROFILE");
+        }
+
+        agentId = agent.id;
+        const { data: requestRow, error: requestError } = await auth!.serviceClient
+          .from("lead_purchase_requests")
+          .insert({
+            agent_id: agentId,
+            package_type: leadPackageType,
+            payment_method: "stripe",
+            status: "pending",
+            notes: `Checkout started for ${tier}`,
+          })
+          .select("id")
+          .single();
+
+        if (requestError) return errorResponse(requestError.message, 500, "LEAD_REQUEST_CREATE_FAILED");
+        requestId = requestRow.id;
+      }
+
       const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
         apiVersion: "2025-08-27.basil",
       });
@@ -56,10 +89,24 @@ Deno.serve(
         allow_promotion_codes: true,
         success_url: `${origin}${successPath}?success=true&sku=${tier}`,
         cancel_url: `${origin}${successPath}?canceled=true&sku=${tier}`,
-        metadata: { user_id: auth!.userId, tier, sku: tier },
+        metadata: {
+          user_id: auth!.userId,
+          tier,
+          sku: tier,
+          agent_id: agentId ?? "",
+          package_type: leadPackageType ?? "",
+          lead_purchase_request_id: requestId ?? "",
+        },
       });
 
-      return jsonResponse({ url: session.url });
+      if (requestId) {
+        await auth!.serviceClient
+          .from("lead_purchase_requests")
+          .update({ transaction_id: session.id })
+          .eq("id", requestId);
+      }
+
+      return jsonResponse({ url: session.url, requestId });
     }
   )
 );

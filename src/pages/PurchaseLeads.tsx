@@ -21,6 +21,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { Link } from "react-router-dom";
 
 // Package data
 const packages = [
@@ -100,6 +101,11 @@ export default function PurchaseLeads() {
   const [checkingOut, setCheckingOut] = useState<string | null>(null);
 
   const handleStripeCheckout = async (tier: string) => {
+    if (!user) {
+      toast.error("Log in first so we can attach the purchase to your agent account.");
+      return;
+    }
+
     setCheckingOut(tier);
     try {
       const { data, error } = await supabase.functions.invoke("create-lead-checkout", {
@@ -107,7 +113,7 @@ export default function PurchaseLeads() {
       });
       if (error) throw error;
       if (data?.url) {
-        window.open(data.url, "_blank");
+        window.location.href = data.url;
       } else {
         throw new Error("No checkout URL returned");
       }
@@ -180,6 +186,22 @@ export default function PurchaseLeads() {
   return (
     <div className="min-h-screen p-4 md:p-8">
       <div className="max-w-5xl mx-auto space-y-8">
+        {!user && (
+          <Card className="border-amber-500/30 bg-amber-500/10 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-semibold text-amber-200">Login required</p>
+                <p className="text-sm text-muted-foreground">
+                  Lead purchases must be attached to your agent profile before Stripe checkout starts.
+                </p>
+              </div>
+              <Button asChild>
+                <Link to="/login">Log in</Link>
+              </Button>
+            </div>
+          </Card>
+        )}
+
         {/* Header */}
         <div className="text-center space-y-4">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-sm font-medium">
@@ -341,7 +363,7 @@ export default function PurchaseLeads() {
                 <div className="pt-2">
                   <Button
                     onClick={() => handleStripeCheckout(pkg.stripeTier)}
-                    disabled={checkingOut === pkg.stripeTier}
+                    disabled={!user || checkingOut === pkg.stripeTier}
                     className="w-full gap-2 h-11 text-sm font-semibold"
                     size="lg"
                   >

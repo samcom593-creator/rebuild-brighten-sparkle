@@ -26,6 +26,7 @@ import { formatDistanceToNow, format } from "date-fns";
 import { toast } from "sonner";
 import { AgentQuickEditDialog } from "@/components/dashboard/AgentQuickEditDialog";
 import { getBusinessMonthBounds, getBusinessWeekBounds } from "@/lib/dateUtils";
+import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr, getDealTruthTimestamp } from "@/lib/dealTruth";
 
 // ─── Types ─────────────────────────────────────────────────────
 interface AgentRow {
@@ -151,15 +152,14 @@ export default function AgentManagement() {
       const [prodWeek, prodMonth, prodLast] = agentIds.length
         ? await Promise.all([
             supabase.from("deals").select("agent_id, annual_premium").in("agent_id", agentIds)
-              .gte("posted_at", weekBounds.startIso)
-              .lt("posted_at", weekBounds.endIso)
-              .in("status", ["submitted", "active"]),
+              .or(dealTruthWindowOr(weekBounds.startIso, weekBounds.endIso))
+              .in("status", DEAL_TRUTH_STATUS_FILTER),
             supabase.from("deals").select("agent_id, annual_premium").in("agent_id", agentIds)
-              .gte("posted_at", monthBounds.startIso)
-              .lt("posted_at", monthBounds.endIso)
-              .in("status", ["submitted", "active"]),
-            supabase.from("agent_lifetime_production" as any)
-              .select("agent_id, lifetime_alp, last_production_date")
+              .or(dealTruthWindowOr(monthBounds.startIso, monthBounds.endIso))
+              .in("status", DEAL_TRUTH_STATUS_FILTER),
+            supabase.from("deals")
+              .select("agent_id, annual_premium, posted_at, created_at")
+              .in("status", DEAL_TRUTH_STATUS_FILTER)
               .in("agent_id", agentIds),
           ])
         : [{ data: [] as any[] }, { data: [] as any[] }, { data: [] as any[] }];
@@ -174,9 +174,11 @@ export default function AgentManagement() {
       }
       const lifetimeMap = new Map<string, { lifetime: number; last: string | null }>();
       for (const r of (prodLast.data || []) as any[]) {
+        const stamp = getDealTruthTimestamp(r);
+        const existing = lifetimeMap.get(r.agent_id) || { lifetime: 0, last: null };
         lifetimeMap.set(r.agent_id, {
-          lifetime: Number(r.lifetime_alp || 0),
-          last: r.last_production_date || null,
+          lifetime: existing.lifetime + Number(r.annual_premium || 0),
+          last: !existing.last || (stamp && stamp > existing.last) ? stamp : existing.last,
         });
       }
 

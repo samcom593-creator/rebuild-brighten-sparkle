@@ -306,7 +306,7 @@ export default function Dashboard() {
   // SOURCES (Agent Link truth, not manual logs):
   //   - Live Agents: distinct agents with a submitted/active deal posted in
   //     the last 10d. No profile-status or onboarding-stage inflation.
-  //   - Weekly ALP: SUM(deals.annual_premium) this week by effective_date
+  //   - Weekly ALP: SUM(deals.annual_premium) this week by deal truth date
   //   - Close Rate: deals count / daily_production.presentations
   //       (presentations has no other source; deals have to be Agent Link truth)
   const { data: topMetrics } = useQuery({

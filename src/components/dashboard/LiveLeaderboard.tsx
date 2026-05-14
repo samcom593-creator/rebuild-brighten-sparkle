@@ -10,6 +10,8 @@ import { getBusinessDayBounds, getTodayPST } from "@/lib/dateUtils";
 import { AgentQuickEditDialog } from "./AgentQuickEditDialog";
 import { getClosingRateColor } from "@/lib/closingRateColors";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
+import { getCloseRate } from "@/lib/metricTruth";
+import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr } from "@/lib/dealTruth";
 
 interface LeaderboardEntry {
   rank: number;
@@ -70,10 +72,9 @@ export function LiveLeaderboard({ currentAgentId, showAISummary = true }: LiveLe
       const [dealsRes, presRes] = await Promise.all([
         supabase
           .from("deals")
-          .select("agent_id, annual_premium")
-          .gte("posted_at", dayBounds.startIso)
-          .lt("posted_at", dayBounds.endIso)
-          .in("status", ["submitted", "active"])
+          .select("agent_id, annual_premium, posted_at, created_at")
+          .or(dealTruthWindowOr(dayBounds.startIso, dayBounds.endIso))
+          .in("status", DEAL_TRUTH_STATUS_FILTER)
           .neq("agent_id", "7c3c5581-3544-437f-bfe2-91391afb217d"),
         supabase
           .from("daily_production")
@@ -152,7 +153,7 @@ export function LiveLeaderboard({ currentAgentId, showAISummary = true }: LiveLe
             avatarUrl,
             production: Number(prod.aop) || 0,
             presentations: prod.presentations || 0,
-            closingRate: Number(prod.closing_rate) || 0,
+            closingRate: Math.min(getCloseRate(prod.deals_closed, prod.presentations), 100),
             dealsToday: prod.deals_closed || 0,
             isCurrentUser: prod.agent_id === currentAgentId,
           };
@@ -231,7 +232,7 @@ export function LiveLeaderboard({ currentAgentId, showAISummary = true }: LiveLe
         </GlassCard>
         <GlassCard className="p-3 text-center">
           <p className="text-2xl font-bold">{teamStats.activeAgents}</p>
-          <p className="text-xs text-muted-foreground">Active Agents</p>
+          <p className="text-xs text-muted-foreground">Producers Today</p>
         </GlassCard>
         <GlassCard className="p-3 text-center">
           <p className="text-2xl font-bold">{teamStats.avgClosingRate.toFixed(1)}%</p>
@@ -291,7 +292,7 @@ export function LiveLeaderboard({ currentAgentId, showAISummary = true }: LiveLe
 
         {entries.length === 0 ? (
           <p className="text-center text-muted-foreground py-8">
-            No production logged today yet. Be the first!
+            No posted deals today yet.
           </p>
         ) : (
           <div className="space-y-2">

@@ -50,6 +50,7 @@ const DeletedLeadsVault = lazy(() => import("./pages/DeletedLeadsVault"));
 
 const PendingApproval = lazy(() => import("./pages/PendingApproval"));
 const AgentPortal = lazy(() => import("./pages/AgentPortal"));
+const AgentCommandDashboard = lazy(() => import("./pages/AgentCommandDashboard"));
 const OnboardingCourse = lazy(() => import("./pages/OnboardingCourse"));
 const CourseCatalog = lazy(() => import("./pages/CourseCatalog"));
 const MagicLogin = lazy(() => import("./pages/MagicLogin"));
@@ -217,8 +218,11 @@ const App = () => (
                     <Route path="/dashboard/referrals/mine" element={<ProtectedRoute><MyReferrals /></ProtectedRoute>} />
                     <Route path="/dashboard/referrals/new" element={<ProtectedRoute><ReferralSubmit /></ProtectedRoute>} />
                     <Route path="/dashboard/notifications/mine" element={<ProtectedRoute><MyNotifications /></ProtectedRoute>} />
-                    <Route path="/agent-portal" element={<AgentPortal />} />
-                    <Route path="/agent-dashboard" element={<AgentPortal />} />
+                    {/* Agents land on the new command dashboard. Legacy
+                        portal (heavy card stack) kept at /agent-portal/legacy. */}
+                    <Route path="/agent-portal" element={<AgentCommandDashboard />} />
+                    <Route path="/agent-dashboard" element={<AgentCommandDashboard />} />
+                    <Route path="/agent-portal/legacy" element={<AgentPortal />} />
                     <Route path="/onboarding-course" element={<OnboardingCourse />} />
                     <Route path="/course-catalog" element={<CourseCatalog />} />
                     <Route path="/course-progress" element={<CourseProgress />} />

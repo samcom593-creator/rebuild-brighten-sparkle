@@ -812,13 +812,25 @@ export default function DashboardCRM() {
       // Widened status filter so "new" and "reviewing" apps also show up —
       // agents were complaining their own application wasn't visible at all.
       let appQuery = supabase.from("applications")
-        .select("id, first_name, last_name, email, phone, state, license_status, license_progress, licensed_states, test_scheduled_date, status, instagram_handle, started_training, ai_score_tier, user_id, assigned_agent_id, years_experience, previous_company, desired_income, availability, referral_source, created_at")
+        .select("id, first_name, last_name, email, phone, state, license_status, license_progress, licensed_states, test_scheduled_date, status, instagram_handle, started_training, ai_score_tier, user_id, assigned_agent_id, referral_manager_id, recruiter_id, hiring_manager_user_id, years_experience, previous_company, desired_income, availability, referral_source, created_at")
         .is("terminated_at", null).neq("license_status", "licensed");
       if (!isAdmin) {
-        // OR: mine (user_id = me) OR assigned to my agent record
+        // Visibility OR — applicant is the user themselves, OR I am the
+        // assigned agent, referral manager, recruiter (any of the three agent
+        // attribution columns), OR I am the hiring manager (auth.uid). This
+        // previously only checked user_id + assigned_agent_id, so leads
+        // credited to KJ via referral_manager_id or recruiter_id were
+        // invisible on the CRM even though they showed up on other pages.
         const clauses: string[] = [];
-        if (user?.id) clauses.push(`user_id.eq.${user.id}`);
-        if (currentAgent?.id) clauses.push(`assigned_agent_id.eq.${currentAgent.id}`);
+        if (user?.id) {
+          clauses.push(`user_id.eq.${user.id}`);
+          clauses.push(`hiring_manager_user_id.eq.${user.id}`);
+        }
+        if (currentAgent?.id) {
+          clauses.push(`assigned_agent_id.eq.${currentAgent.id}`);
+          clauses.push(`referral_manager_id.eq.${currentAgent.id}`);
+          clauses.push(`recruiter_id.eq.${currentAgent.id}`);
+        }
         if (clauses.length > 0) appQuery = appQuery.or(clauses.join(","));
       }
 

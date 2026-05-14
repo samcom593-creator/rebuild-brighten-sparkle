@@ -3,6 +3,7 @@ import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 import {
   ACTIVE_PRODUCER_AP_THRESHOLD_7D,
   ACTIVE_PROMOTED_STAGES,
+  LIVE_AGENT_DEAL_WINDOW_DAYS,
   ALP_FULL_NAME,
   ALP_LABEL,
   FORECAST_MIN_ACTIVE_DAYS,
@@ -121,11 +122,10 @@ export const METRIC_REGISTRY: Record<string, MetricDefinition> = {
     dateField: "posted_at",
     timezone: BUSINESS_TIMEZONE,
     filters: [
-      `${ALP_LABEL} >= ${ACTIVE_PRODUCER_AP_THRESHOLD_7D} over 7d`,
-      `or onboarding_stage IN (${ACTIVE_PROMOTED_STAGES.join(",")})`,
+      `agent has >= 1 submitted/active deal posted in the last ${LIVE_AGENT_DEAL_WINDOW_DAYS} days`,
     ],
     freshnessMinutes: 15,
-    displayLabel: "Active Agents",
+    displayLabel: "Live Agents",
   },
   presentations: {
     key: "presentations",
@@ -139,7 +139,14 @@ export const METRIC_REGISTRY: Record<string, MetricDefinition> = {
 };
 
 export { ACTIVE_PRODUCER_AP_THRESHOLD_7D, ACTIVE_PROMOTED_STAGES, ALP_FULL_NAME, ALP_LABEL };
+export { LIVE_AGENT_DEAL_WINDOW_DAYS };
 export { BUSINESS_TIMEZONE };
+
+export function getLiveAgentCutoffIso(now: Date = getBusinessNow()): string {
+  const cutoff = new Date(now);
+  cutoff.setDate(cutoff.getDate() - LIVE_AGENT_DEAL_WINDOW_DAYS);
+  return cutoff.toISOString();
+}
 
 export function getMetricBounds(window: MetricWindow, customRange?: CustomMetricRange): MetricBounds {
   if (window === "custom" && customRange?.from && customRange.to) {

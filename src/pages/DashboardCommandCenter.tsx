@@ -81,6 +81,7 @@ import { getTodayPST, getWeekStartPST, getMonthStartPST } from "@/lib/dateUtils"
 import { toast } from "sonner";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { ControlTerminal } from "@/components/dashboard/ControlTerminal";
+import { LIVE_AGENT_DEAL_WINDOW_DAYS, getLiveAgentCutoffIso } from "@/lib/metricTruth";
 
 type TimePeriod = "day" | "week" | "month" | "custom";
 type FilterType = "all" | "producers" | "weak" | "zero" | "inactive";
@@ -95,7 +96,7 @@ const ONBOARDING_STAGES = [
 // Catalog of hideable cards on this page (key → friendly label for the restore menu)
 const HIDEABLE_CARDS: Record<string, string> = {
   "admin.stat.totalAlp": "Stat: Total ALP",
-  "admin.stat.activeAgents": "Stat: Active Agents",
+  "admin.stat.activeAgents": "Stat: Live Agents",
   "admin.stat.producers": "Stat: Producers",
   "admin.stat.needsAttention": "Stat: Needs Attention",
   "admin.stat.totalDeals": "Stat: Total Deals",
@@ -127,6 +128,7 @@ interface AgentWithStats {
   lastActivity: string | null;
   standardPaid: boolean;
   premiumPaid: boolean;
+  isLiveAgent?: boolean;
 }
 
 export default function DashboardCommandCenter() {
@@ -505,41 +507,23 @@ export default function DashboardCommandCenter() {
     return filtered.sort((a, b) => b.totalAlp - a.totalAlp);
   }, [agentsData, searchQuery, activeFilter]);
 
-  // Active-producer rule (Sam, 2026-04-27):
-  //   counts as "active" only if EITHER
-  //     (a) summed annual_premium >= $4,000 over the last 7 days
-  //         (effective_date, status in submitted/active), OR
-  //     (b) onboarding stage changed in the last 7 days into a
-  //         post-training stage (live / evaluated / transfer)
-  // Anything else does not count, even if status='active' on the agent row.
+  // Live-agent rule:
+  //   counts as live only when the agent has a submitted/active deal posted in
+  //   the last 10 days. Agent-row status and onboarding stage do not count.
   const { data: activeProducerSet } = useQuery({
-    queryKey: ["active-producer-set-v1"],
+    queryKey: ["live-agent-set-v2", LIVE_AGENT_DEAL_WINDOW_DAYS],
     staleTime: 60_000,
     refetchInterval: 60_000,
     queryFn: async () => {
-      const sevenAgo = new Date(); sevenAgo.setDate(sevenAgo.getDate() - 7);
-      const sevenStr = sevenAgo.toISOString().split("T")[0];
-      const sevenISO = sevenAgo.toISOString();
+      const dealsRes = await supabase.from("deals")
+        .select("agent_id")
+        .gte("posted_at", getLiveAgentCutoffIso())
+        .in("status", ["submitted", "active"]);
 
-      const [dealsRes, releasedRes] = await Promise.all([
-        supabase.from("deals")
-          .select("agent_id, annual_premium")
-          .gte("effective_date", sevenStr)
-          .in("status", ["submitted", "active"]),
-        supabase.from("agents")
-          .select("id, onboarding_stage, stage_changed_at")
-          .gte("stage_changed_at", sevenISO)
-          .in("onboarding_stage", ["live", "evaluated", "transfer"]),
-      ]);
-
-      const sumByAgent = new Map<string, number>();
-      for (const r of (dealsRes.data || []) as any[]) {
-        if (!r.agent_id) continue;
-        sumByAgent.set(r.agent_id, (sumByAgent.get(r.agent_id) || 0) + (Number(r.annual_premium) || 0));
-      }
       const set = new Set<string>();
-      for (const [id, ap] of sumByAgent) if (ap >= 4000) set.add(id);
-      for (const r of (releasedRes.data || []) as any[]) if (r.id) set.add(r.id);
+      for (const r of (dealsRes.data || []) as any[]) {
+        if (r.agent_id) set.add(r.agent_id);
+      }
       return set;
     },
   });
@@ -568,6 +552,14 @@ export default function DashboardCommandCenter() {
       totalDeals: agentsData.reduce((sum, a) => sum + a.totalDeals, 0),
     };
   }, [agentsData, activeProducerSet]);
+
+  const agentsForPopup = useMemo(
+    () => (agentsData || []).map((agent) => ({
+      ...agent,
+      isLiveAgent: activeProducerSet?.has(agent.id) ?? false,
+    })),
+    [agentsData, activeProducerSet],
+  );
 
   if (!isAdmin) {
     return (
@@ -653,7 +645,7 @@ export default function DashboardCommandCenter() {
             </Card>
           </HideableCard>
 
-          <HideableCard cardKey="admin.stat.activeAgents" label="Active Agents">
+          <HideableCard cardKey="admin.stat.activeAgents" label="Live Agents">
             <Card
               className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
               onClick={() => setStatPopup({ type: "activeAgents", open: true })}
@@ -664,8 +656,9 @@ export default function DashboardCommandCenter() {
                     <Users className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Active Agents</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">Live Agents</p>
                     <p className="text-2xl font-bold">{summaryStats.activeAgents}</p>
+                    <p className="text-[10px] text-muted-foreground">Deal posted in {LIVE_AGENT_DEAL_WINDOW_DAYS}d</p>
                   </div>
                 </div>
               </CardContent>
@@ -1196,7 +1189,7 @@ export default function DashboardCommandCenter() {
         type={statPopup.type}
         open={statPopup.open}
         onOpenChange={(open) => setStatPopup({ ...statPopup, open })}
-        agents={agentsData || []}
+        agents={agentsForPopup}
         timePeriod={timePeriod}
       />
     </>

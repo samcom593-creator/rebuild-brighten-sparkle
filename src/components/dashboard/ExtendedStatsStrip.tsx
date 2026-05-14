@@ -15,13 +15,13 @@ import { StatCard } from "@/components/dashboard/StatCard";
 import { supabase } from "@/integrations/supabase/client";
 import { getBusinessDayBounds, getBusinessMonthBounds, getBusinessWeekBounds, getMatchedPriorWeekBounds } from "@/lib/dateUtils";
 import {
-  ACTIVE_PRODUCER_AP_THRESHOLD_7D,
-  ACTIVE_PROMOTED_STAGES,
+  LIVE_AGENT_DEAL_WINDOW_DAYS,
   METRIC_REGISTRY,
   countDistinctAgents,
   countDistinctBusinessDays,
   formatMetricSource,
   getCloseRate,
+  getLiveAgentCutoffIso,
   projectMonthEndAlp,
   sumAnnualPremium,
 } from "@/lib/metricTruth";
@@ -116,18 +116,13 @@ export function ExtendedStatsStrip({ agentId, title = "More numbers" }: Props) {
       } | null = null;
 
       if (!agentId) {
-        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-        const [activeDealsRes, promotedRes, pipelineRes, licensedRes, contractedRes, presentationsRes] = await Promise.all([
+        const liveCutoffIso = getLiveAgentCutoffIso();
+        const [activeDealsRes, pipelineRes, licensedRes, contractedRes, presentationsRes] = await Promise.all([
           supabase
             .from("deals")
-            .select("agent_id, annual_premium")
-            .gte("posted_at", sevenDaysAgo)
+            .select("agent_id")
+            .gte("posted_at", liveCutoffIso)
             .in("status", ["submitted", "active"]),
-          supabase
-            .from("agents")
-            .select("id")
-            .gte("stage_changed_at", sevenDaysAgo)
-            .in("onboarding_stage", ACTIVE_PROMOTED_STAGES as unknown as string[]),
           supabase
             .from("applications")
             .select("id", { count: "exact", head: true })
@@ -150,16 +145,8 @@ export function ExtendedStatsStrip({ agentId, title = "More numbers" }: Props) {
             .lte("production_date", weekBounds.endIso.slice(0, 10)),
         ]);
 
-        const rollingAgentTotals = new Map<string, number>();
-        (activeDealsRes.data ?? []).forEach((row: any) => {
-          if (!row.agent_id) return;
-          rollingAgentTotals.set(row.agent_id, (rollingAgentTotals.get(row.agent_id) || 0) + Number(row.annual_premium ?? 0));
-        });
         const activeSet = new Set<string>();
-        rollingAgentTotals.forEach((alp, id) => {
-          if (alp >= ACTIVE_PRODUCER_AP_THRESHOLD_7D) activeSet.add(id);
-        });
-        (promotedRes.data ?? []).forEach((row: any) => row.id && activeSet.add(row.id));
+        (activeDealsRes.data ?? []).forEach((row: any) => row.agent_id && activeSet.add(row.agent_id));
         const presentations = (presentationsRes.data ?? []).reduce((sum, row: { presentations?: number | null }) => sum + Number(row.presentations ?? 0), 0);
 
         team = {
@@ -246,10 +233,10 @@ export function ExtendedStatsStrip({ agentId, title = "More numbers" }: Props) {
               hint={`${data.team.closeRate}% close rate · WTD`}
             />
             <StatCard
-              title="Active Agents"
+              title="Live Agents"
               value={data.team.activeAgents}
               icon={Users}
-              hint={`${data.team.producedToday} produced today`}
+              hint={`${data.team.producedToday} produced today · ${LIVE_AGENT_DEAL_WINDOW_DAYS}d window`}
             />
             <StatCard
               title="Pipeline Applications"

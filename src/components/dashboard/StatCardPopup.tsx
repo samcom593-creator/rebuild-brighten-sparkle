@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { LIVE_AGENT_DEAL_WINDOW_DAYS } from "@/lib/metricTruth";
 
 export type StatType = "totalAlp" | "activeAgents" | "producers" | "needsAttention" | "totalDeals";
 
@@ -27,6 +28,7 @@ interface AgentData {
   phone?: string | null;
   isDeactivated?: boolean;
   isInactive?: boolean;
+  isLiveAgent?: boolean;
 }
 
 interface StatCardPopupProps {
@@ -47,7 +49,7 @@ const icons = {
 
 const titles = {
   totalAlp: "ALP Contributors",
-  activeAgents: "Active Agents",
+  activeAgents: "Live Agents",
   producers: "Producers This Period",
   needsAttention: "Needs Attention",
   totalDeals: "Deals by Agent",
@@ -55,7 +57,7 @@ const titles = {
 
 const descriptions = {
   totalAlp: "Agents who contributed to this period's ALP",
-  activeAgents: "All agents marked as active in the system",
+  activeAgents: `Agents with a submitted/active deal posted in the last ${LIVE_AGENT_DEAL_WINDOW_DAYS} days`,
   producers: "Agents who sold at least one deal",
   needsAttention: "Agents under threshold with low production",
   totalDeals: "Agents ranked by deals closed this period",
@@ -76,7 +78,7 @@ export function StatCardPopup({
     const filtered = agents.filter((agent) => {
       switch (type) {
         case "totalAlp":       return agent.totalAlp > 0;
-        case "activeAgents":   return !agent.isDeactivated && !agent.isInactive;
+        case "activeAgents":   return !!agent.isLiveAgent && !agent.isDeactivated && !agent.isInactive;
         case "producers":      return agent.totalDeals > 0 && !agent.isDeactivated && !agent.isInactive;
         case "needsAttention": {
           const threshold = timePeriod === "month" ? 20000 : 5000;
@@ -285,7 +287,7 @@ export function StatCardPopup({
                       {/* Metric display */}
                       <div className="text-right hidden sm:block">
                         {type === "activeAgents" ? (
-                          <Badge variant="secondary" className="text-xs">Active</Badge>
+                          <Badge variant="secondary" className="text-xs">Live</Badge>
                         ) : type === "totalDeals" ? (
                           <>
                             <p className="font-bold text-sm">{agent.totalDeals} deals</p>

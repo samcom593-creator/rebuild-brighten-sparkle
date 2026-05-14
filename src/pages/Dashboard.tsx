@@ -71,7 +71,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { getBusinessDayBounds, getBusinessWeekBounds } from "@/lib/dateUtils";
-import { ACTIVE_PRODUCER_AP_THRESHOLD_7D, ACTIVE_PROMOTED_STAGES, getCloseRate, getPriorWeekMatchedBounds, sumAnnualPremium } from "@/lib/metricTruth";
+import { LIVE_AGENT_DEAL_WINDOW_DAYS, getCloseRate, getLiveAgentCutoffIso, getPriorWeekMatchedBounds, sumAnnualPremium } from "@/lib/metricTruth";
 
 const HIDEABLE_CARDS: Record<string, string> = {
   "dashboard.insight-cards": "Insight Cards",
@@ -303,12 +303,13 @@ export default function Dashboard() {
 
   // Fetch top-row real metrics, scoped by viewer.
   // SOURCES (Agent Link truth, not manual logs):
-  //   - Active Agents: count of distinct agent_id with a deal in last 30d (deals table)
+  //   - Live Agents: distinct agents with a submitted/active deal posted in
+  //     the last 10d. No profile-status or onboarding-stage inflation.
   //   - Weekly ALP: SUM(deals.annual_premium) this week by effective_date
   //   - Close Rate: deals count / daily_production.presentations
   //       (presentations has no other source; deals have to be Agent Link truth)
   const { data: topMetrics } = useQuery({
-    queryKey: ["dashboard-top-metrics-v2-deals", isAdmin ? "agency" : "downline", myDownlineIds.join(",")],
+    queryKey: ["dashboard-top-metrics-v3-live-agents", isAdmin ? "agency" : "downline", myDownlineIds.join(",")],
     queryFn: async () => {
       const weekBounds = getBusinessWeekBounds();
       const dayBounds = getBusinessDayBounds();
@@ -317,17 +318,12 @@ export default function Dashboard() {
       const shouldScope = !isAdmin && myDownlineIds.length > 0;
 
       const VALID_STATUS = ["submitted", "active"] as const;
-      const sevenDaysAgoIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const liveCutoffIso = getLiveAgentCutoffIso();
       let activeQ = supabase
         .from("deals")
-        .select("agent_id, annual_premium")
-        .gte("posted_at", sevenDaysAgoIso)
+        .select("agent_id")
+        .gte("posted_at", liveCutoffIso)
         .in("status", VALID_STATUS as unknown as string[]);
-      const releasedQ = supabase
-        .from("agents")
-        .select("id")
-        .gte("stage_changed_at", sevenDaysAgoIso)
-        .in("onboarding_stage", ACTIVE_PROMOTED_STAGES as unknown as string[]);
       let weekDealsQ = supabase
         .from("deals")
         .select("annual_premium, agent_id")
@@ -369,28 +365,20 @@ export default function Dashboard() {
       }
 
       // Use allSettled so one failed sub-query doesn't blank the whole header.
-      const settled = await Promise.allSettled([activeQ, releasedQ, weekDealsQ, presQ, appsQ, todayDealsQ, prevWeekQ]);
+      const settled = await Promise.allSettled([activeQ, weekDealsQ, presQ, appsQ, todayDealsQ, prevWeekQ]);
       const safe = (i: number): any => (settled[i].status === "fulfilled" ? (settled[i] as any).value : { data: [], count: 0 });
       const activeRes    = safe(0);
-      const releasedRes  = safe(1);
-      const weekDealsRes = safe(2);
-      const presRes      = safe(3);
-      const appsRes      = safe(4);
-      const todayRes     = safe(5);
-      const prevWeekRes  = safe(6);
-      const failedNames = ["active","released","weekDeals","pres","apps","today","prevWeek"]
+      const weekDealsRes = safe(1);
+      const presRes      = safe(2);
+      const appsRes      = safe(3);
+      const todayRes     = safe(4);
+      const prevWeekRes  = safe(5);
+      const failedNames = ["liveAgents","weekDeals","pres","apps","today","prevWeek"]
         .filter((_, i) => settled[i].status === "rejected");
       if (failedNames.length) console.warn("[Dashboard topMetrics] partial failure:", failedNames);
 
-      // Compose active set from the two halves of the rule.
-      const sumByAgent = new Map<string, number>();
-      for (const r of (activeRes.data || []) as any[]) {
-        if (!r.agent_id) continue;
-        sumByAgent.set(r.agent_id, (sumByAgent.get(r.agent_id) || 0) + (Number(r.annual_premium) || 0));
-      }
-      const activeAgentIds = new Set<string>();
-      for (const [id, ap] of sumByAgent) if (ap >= ACTIVE_PRODUCER_AP_THRESHOLD_7D) activeAgentIds.add(id);
-      for (const r of (releasedRes.data || []) as any[]) if (r.id) activeAgentIds.add(r.id);
+      const liveRows = (activeRes.data || []) as Array<{ agent_id?: string | null }>;
+      const activeAgentIds = new Set<string>(liveRows.map((r) => r.agent_id).filter(Boolean) as string[]);
       const weeklyALP      = sumAnnualPremium((weekDealsRes.data || []) as Array<{ annual_premium?: number | null }>);
       const todayALP       = sumAnnualPremium((todayRes.data || []) as Array<{ annual_premium?: number | null }>);
       const prevWeekALP    = sumAnnualPremium((prevWeekRes.data || []) as Array<{ annual_premium?: number | null }>);
@@ -407,6 +395,8 @@ export default function Dashboard() {
 
       return {
         activeAgents: activeAgentIds.size,
+        activeDeals: liveRows.length,
+        liveWindowDays: LIVE_AGENT_DEAL_WINDOW_DAYS,
         weeklyALP,
         todayALP,
         prevWeekALP,
@@ -426,20 +416,14 @@ export default function Dashboard() {
     refetchOnWindowFocus: true,
   });
 
-  // Agents flagged only when they've done NEITHER in the last 7 days:
-  //   - Logged numbers in daily_production
-  //   - Closed a deal (deals table, Agent Link truth)
-  // Previously this was daily_production-only, so producers who just
-  // don't self-report activity were getting wrongly flagged even when
-  // Agent Link showed them with fresh deals.
+  // Not-live agents are based on Sam's launch rule: no valid submitted/active
+  // deal posted in the last 10 days. Daily number logs do not create a live
+  // activation by themselves.
   const { data: staleAgents } = useQuery({
-    queryKey: ["dashboard-stale-agents-v2"],
+    queryKey: ["dashboard-not-live-agents-v3"],
     queryFn: async () => {
       if (!isAdmin) return [];
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      const cutoffIso = getBusinessDayBounds(sevenDaysAgo).startIso;
-      const cutoffDate = cutoffIso.slice(0, 10);
+      const cutoffIso = getLiveAgentCutoffIso();
 
       const { data: agents } = await supabase
         .from("agents")
@@ -450,14 +434,14 @@ export default function Dashboard() {
 
       if (!agents || agents.length === 0) return [];
 
-      const [prodRes, dealsRes] = await Promise.all([
-        supabase.from("daily_production").select("agent_id").gte("production_date", cutoffDate),
-        supabase.from("deals").select("agent_id").gte("posted_at", cutoffIso),
-      ]);
+      const { data: dealRows } = await supabase
+        .from("deals")
+        .select("agent_id")
+        .gte("posted_at", cutoffIso)
+        .in("status", ["submitted", "active"]);
 
       const activeIds = new Set<string>();
-      (prodRes.data  || []).forEach((p: any) => p.agent_id && activeIds.add(p.agent_id));
-      (dealsRes.data || []).forEach((d: any) => d.agent_id && activeIds.add(d.agent_id));
+      (dealRows || []).forEach((d: any) => d.agent_id && activeIds.add(d.agent_id));
 
       return agents
         .filter((a: any) => !activeIds.has(a.id))
@@ -548,36 +532,37 @@ export default function Dashboard() {
 
   return (
     <>
-      {/* Welcome */}
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold">
-            Welcome back, <span className="text-primary">{userName}</span>! 👋
-          </h2>
-          <div className="h-0.5 w-24 mt-1 bg-gradient-to-r from-primary to-emerald-400 rounded-full" />
-          <div className="flex items-center gap-3 mt-2">
-            <p className="text-sm text-muted-foreground">
-              {isAdmin ? "Here's your agency overview" : isManager ? "Here's your team performance" : "Track your progress"}
+      <section className="mb-5 overflow-hidden rounded-lg border border-primary/20 bg-[linear-gradient(135deg,hsl(222_47%_5%),hsl(222_40%_8%)_58%,hsl(168_70%_13%))] p-5 shadow-[0_18px_60px_hsl(222_47%_2%/0.35)] sm:p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-2xl">
+            <div className="mb-3 flex items-center gap-2">
+              <Badge className="border-primary/30 bg-primary/10 text-primary hover:bg-primary/10">
+                {isAdmin ? "CEO Command" : isManager ? "Manager Floor" : "Agent Desk"}
+              </Badge>
+              <StreakBanner />
+            </div>
+            <h1 className="text-2xl font-bold leading-tight text-white sm:text-4xl">
+              APEX Command Dashboard
+            </h1>
+            <p className="mt-2 max-w-xl text-sm text-slate-300">
+              Live agents are now counted only when a valid deal was posted in the last {LIVE_AGENT_DEAL_WINDOW_DAYS} days.
             </p>
-            <StreakBanner />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <HiddenCardsManager catalog={HIDEABLE_CARDS} />
+            {(isAdmin || isManager) && <AddAgentModal />}
+            <Button asChild size="sm" className="gap-2">
+              <Link to="/numbers"><Edit3 className="h-4 w-4" /> Log Numbers</Link>
+            </Button>
+            {(isAdmin || isManager) && (
+              <Button asChild size="sm" variant="secondary" className="gap-2">
+                <Link to="/dashboard/referrals"><UserPlus className="h-4 w-4" /> Referrals</Link>
+              </Button>
+            )}
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <HiddenCardsManager catalog={HIDEABLE_CARDS} />
-          {(isAdmin || isManager) && <AddAgentModal />}
-        </div>
-      </div>
-
-      {/* Focus Now — top priority card from bot_priorities */}
-      <FocusNow />
-
-      <DataFreshnessBanner autoRepair className="mb-5" />
-
-      {/* Month-end forecast */}
-      <ForecastCard />
-
-      {/* Live pulse — realtime counters */}
-      <LivePulse />
+      </section>
 
       {/* ====== AGENT-ONLY VIEW ====== */}
       {showPersonalOnly && (
@@ -593,10 +578,11 @@ export default function Dashboard() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
             <div onClick={() => setActiveDrilldown("agents")} className="cursor-pointer rounded-xl transition-all card-tilt reveal hover:ring-2 ring-primary/30">
               <StatCard
-                title={topMetrics.scope === "team" ? "My Team Agents" : "Active Agents"}
+                title={topMetrics.scope === "team" ? "Team Live Agents" : "Live Agents"}
                 value={topMetrics.activeAgents}
                 icon={Users}
                 variant="primary"
+                hint={`${topMetrics.activeDeals} valid deals · last ${topMetrics.liveWindowDays} days`}
               />
             </div>
             <div onClick={() => setActiveDrilldown("alp")} className="cursor-pointer rounded-xl transition-all card-tilt reveal hover:ring-2 ring-primary/30">
@@ -626,7 +612,7 @@ export default function Dashboard() {
                   : undefined
               }
             >
-              <StatCard title="Close Rate" value={`${topMetrics.closeRate}%`} icon={Percent} variant="success" />
+              <StatCard title="Logged Close Rate" value={`${topMetrics.closeRate}%`} icon={Percent} variant="success" />
               {topMetrics.presentationsUnderLogged && (
                 <span className="absolute top-2 right-2 inline-flex items-center rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-medium px-2 py-0.5 border border-amber-500/40">
                   Presentations under-logged
@@ -635,6 +621,31 @@ export default function Dashboard() {
             </div>
           </div>
         </>
+      )}
+
+      {(isAdmin || isManager) && (
+        <div className="mb-6 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
+          <FocusNow />
+          <DataFreshnessBanner autoRepair />
+        </div>
+      )}
+
+      {(isAdmin || isManager) && (
+        <Collapsible className="mb-6 rounded-lg border border-border/50 bg-card/40 p-3">
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" className="w-full justify-between px-2">
+              <span className="flex items-center gap-2 text-sm">
+                <Activity className="h-4 w-4 text-primary" />
+                Live intelligence
+              </span>
+              <ChevronDown className="h-4 w-4" />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-3 grid gap-3 lg:grid-cols-2">
+            <ForecastCard />
+            <LivePulse />
+          </CollapsibleContent>
+        </Collapsible>
       )}
 
       {/* Stat Card Drilldown */}
@@ -656,7 +667,7 @@ export default function Dashboard() {
           <div className="flex items-center gap-2 mb-2 flex-wrap">
             <AlertCircle className="h-4 w-4 text-destructive" />
             <span className="text-sm font-semibold text-destructive">
-              {staleAgents.length} agent{staleAgents.length === 1 ? "" : "s"} haven't logged production in 7+ days
+              {staleAgents.length} agent{staleAgents.length === 1 ? "" : "s"} have no submitted deal in {LIVE_AGENT_DEAL_WINDOW_DAYS}+ days
             </span>
             <div className="ml-auto flex items-center gap-1">
               <Link to="/dashboard/inactive-agents">

@@ -18,7 +18,7 @@ import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { getBusinessDayKey, getBusinessWeekBounds } from "@/lib/dateUtils";
-import { getCloseRate } from "@/lib/metricTruth";
+import { LIVE_AGENT_DEAL_WINDOW_DAYS, getCloseRate, getLiveAgentCutoffIso } from "@/lib/metricTruth";
 
 type DrilldownType = "agents" | "alp" | "apps" | "closerate" | null;
 
@@ -34,6 +34,7 @@ function initials(name: string) {
 export function StatCardDrilldown({ activeModal, onClose }: StatCardDrilldownProps) {
   const weekBounds = getBusinessWeekBounds();
   const weekStart = getBusinessDayKey(weekBounds.start);
+  const liveCutoffIso = getLiveAgentCutoffIso();
 
   const { data: agents } = useQuery({
     queryKey: ["drilldown-agents"],
@@ -43,12 +44,17 @@ export function StatCardDrilldown({ activeModal, onClose }: StatCardDrilldownPro
         .select("id, display_name, user_id, profile_id, status, onboarding_stage, is_deactivated")
         .eq("is_deactivated", false);
 
-      const [{ data: dealsWeek }, { data: productionWeek }] = await Promise.all([
+      const [{ data: dealsWeek }, { data: dealsLive }, { data: productionWeek }] = await Promise.all([
         supabase
           .from("deals")
           .select("agent_id, annual_premium, posted_at")
           .gte("posted_at", weekBounds.startIso)
           .lt("posted_at", weekBounds.endIso)
+          .in("status", ["submitted", "active"]),
+        supabase
+          .from("deals")
+          .select("agent_id, posted_at")
+          .gte("posted_at", liveCutoffIso)
           .in("status", ["submitted", "active"]),
         supabase
           .from("daily_production")
@@ -62,6 +68,7 @@ export function StatCardDrilldown({ activeModal, onClose }: StatCardDrilldownPro
 
       const profileMap = new Map((profiles || []).map((p: any) => [p.user_id, p]));
       const prodMap = new Map<string, { aop: number; deals: number; pres: number; lastDate: string }>();
+      const liveMap = new Map<string, string>();
 
       (dealsWeek || []).forEach((r: any) => {
         if (!r.agent_id) return;
@@ -71,6 +78,12 @@ export function StatCardDrilldown({ activeModal, onClose }: StatCardDrilldownPro
         const postedDate = String(r.posted_at || "").slice(0, 10);
         if (postedDate > existing.lastDate) existing.lastDate = postedDate;
         prodMap.set(r.agent_id, existing);
+      });
+
+      (dealsLive || []).forEach((r: any) => {
+        if (!r.agent_id) return;
+        const postedDate = String(r.posted_at || "").slice(0, 10);
+        if (postedDate > (liveMap.get(r.agent_id) || "")) liveMap.set(r.agent_id, postedDate);
       });
 
       (productionWeek || []).forEach((r: any) => {
@@ -102,6 +115,8 @@ export function StatCardDrilldown({ activeModal, onClose }: StatCardDrilldownPro
             presentations: prod.pres,
             closeRate: Math.round(getCloseRate(prod.deals, prod.pres)),
             lastActive: prod.lastDate,
+            isLive: liveMap.has(a.id),
+            lastDealDate: liveMap.get(a.id) || prod.lastDate,
           };
         }),
         applications: (appData || []).map((app: any) => ({
@@ -134,7 +149,8 @@ export function StatCardDrilldown({ activeModal, onClose }: StatCardDrilldownPro
   };
 
   const totalAlp = agents?.agents.reduce((s, a) => s + a.weeklyAlp, 0) || 0;
-  const activeAgents = agents?.agents.filter(a => a.stage === "active" || a.stage === "in_field_training").length || 0;
+  const liveAgents = agents?.agents.filter(a => a.isLive) || [];
+  const activeAgents = liveAgents.length;
   const teamCloseRate = agents?.agents.length && agents.agents.some(a => a.presentations > 0)
     ? Math.round(
         (agents.agents.reduce((s, a) => s + a.deals, 0) /
@@ -143,7 +159,7 @@ export function StatCardDrilldown({ activeModal, onClose }: StatCardDrilldownPro
     : 0;
 
   const title =
-    activeModal === "agents" ? "Active Agents" :
+    activeModal === "agents" ? "Live Agents" :
     activeModal === "alp" ? "Weekly ALP Leaders" :
     activeModal === "apps" ? "Applications This Week" :
     activeModal === "closerate" ? "Close Rate Breakdown" : "";
@@ -160,10 +176,13 @@ export function StatCardDrilldown({ activeModal, onClose }: StatCardDrilldownPro
           {activeModal === "agents" && agents && (
             <div className="space-y-2">
               <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 mb-3">
-                <p className="text-xs text-muted-foreground">Currently active</p>
+                <p className="text-xs text-muted-foreground">Deal posted in last {LIVE_AGENT_DEAL_WINDOW_DAYS} days</p>
                 <p className="text-2xl font-bold text-primary">{activeAgents}</p>
               </div>
-              {agents.agents.map((a) => (
+              {liveAgents.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-8">No live agents in the last {LIVE_AGENT_DEAL_WINDOW_DAYS} days</p>
+              )}
+              {liveAgents.map((a) => (
                 <AgentRow key={a.id} agent={a} onTask={() => createTask(a.id, a.name)} />
               ))}
             </div>
@@ -290,7 +309,9 @@ function AgentRow({ agent, onTask }: { agent: any; onTask: () => void }) {
       </Avatar>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold truncate">{agent.name}</p>
-        <p className="text-xs text-muted-foreground capitalize">{(agent.stage || "").replace(/_/g, " ")}</p>
+        <p className="text-xs text-muted-foreground">
+          {agent.lastDealDate ? `Last deal ${agent.lastDealDate}` : "No live deal"}
+        </p>
       </div>
       <RowActions agent={agent} onTask={onTask} />
     </div>

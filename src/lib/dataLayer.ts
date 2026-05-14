@@ -24,9 +24,16 @@ export type ValidDealStatus = typeof VALID_DEAL_STATUSES[number];
 /** Sam's agent_id — must always have zero deals (DB triggers + UI guards enforce). */
 export const SAM_AGENT_ID = "7c3c5581-3544-437f-bfe2-91391afb217d";
 
-/** Active-agent rule (production-active in last 7d). */
-export const ACTIVE_PRODUCER_AP_THRESHOLD_7D = 4000;
-export const ACTIVE_PRODUCER_WINDOW_DAYS = 7;
+/**
+ * Live-agent rule.
+ *
+ * Sam's launch definition: an agent is live only when they have submitted at
+ * least one valid deal in the last 10 days. Agent profile status, onboarding
+ * stage, or recent promotion do not count as a live activation by themselves.
+ */
+export const LIVE_AGENT_DEAL_WINDOW_DAYS = 10;
+export const ACTIVE_PRODUCER_WINDOW_DAYS = LIVE_AGENT_DEAL_WINDOW_DAYS;
+export const ACTIVE_PRODUCER_AP_THRESHOLD_7D = 0; // legacy alias; deal existence is the rule now.
 export const ACTIVE_PROMOTED_STAGES = ["live", "evaluated", "transfer"] as const;
 
 /** Forecast guardrails — prevent insane projections from sparse data. */

@@ -44,7 +44,11 @@ export default function ReferralSubmit() {
   usePageTitle("Submit a Referral · APEX");
   const navigate = useNavigate();
   const [submitting, setSubmitting] = useState(false);
-  const [confirmation, setConfirmation] = useState<null | { name: string; isDup: boolean }>(null);
+  const [confirmation, setConfirmation] = useState<null | {
+    name: string;
+    isDup: boolean;
+    matchingApplicationId?: string | null;
+  }>(null);
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -69,11 +73,14 @@ export default function ReferralSubmit() {
       setConfirmation({
         name: `${values.firstName} ${values.lastName}`,
         isDup: !!row?.is_duplicate,
+        matchingApplicationId: row?.matching_application_id ?? null,
       });
       toast.success(
-        row?.is_duplicate
-          ? "We already had this person — you're still logged."
-          : "Referral submitted — we'll follow up within 24 hours.",
+        row?.matching_application_id
+          ? "This person already applied — you're logged as referrer."
+          : row?.is_duplicate
+            ? "We already had this referral on file — you're still logged."
+            : "Referral submitted — we'll follow up within 24 hours.",
       );
     } catch (err: any) {
       console.error("[referral.submit]", err);
@@ -95,9 +102,11 @@ export default function ReferralSubmit() {
               </div>
               <h1 className="text-2xl font-bold">Thanks for sending {confirmation.name}</h1>
               <p className="text-sm text-muted-foreground">
-                {confirmation.isDup
-                  ? "We already had this person in the system — your name is logged in case they convert."
-                  : "We'll make first contact within 24 hours. You'll see the status update in your referrals list."}
+                {confirmation.matchingApplicationId
+                  ? "This person already submitted an application. We logged you as the referrer — if they convert, the bonus is yours."
+                  : confirmation.isDup
+                    ? "We already had this person in the system — your name is logged in case they convert."
+                    : "We'll make first contact within 24 hours. You'll see the status update in your referrals list."}
               </p>
               <div className="flex flex-wrap gap-2 justify-center pt-2">
                 <Button variant="outline" onClick={() => setConfirmation(null)}>Submit another</Button>

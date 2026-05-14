@@ -1054,15 +1054,15 @@ const handler = async (req: Request): Promise<Response> => {
         .in("email", ["sam.com593@gmail.com", "info@kingofsales.net"]);
       const profileIds = (samProfiles ?? []).map((p) => p.id).filter(Boolean);
       if (profileIds.length > 0) {
+        // Treat NULL is_deactivated as "not deactivated" to be safe with
+        // older agent rows.
         const { data: samAgent } = await supabaseAdmin
           .from("agents")
-          .select("id, created_at")
+          .select("id, created_at, is_deactivated")
           .in("profile_id", profileIds)
-          .eq("is_deactivated", false)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        canonicalSamAgentId = samAgent?.id ?? null;
+          .order("created_at", { ascending: false });
+        canonicalSamAgentId = (samAgent ?? [])
+          .find((r: any) => r.is_deactivated !== true)?.id ?? null;
       }
     } catch (e) {
       console.error("canonical Sam lookup failed", e);

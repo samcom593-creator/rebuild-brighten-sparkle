@@ -57,12 +57,18 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ resolved: false });
   }
 
+  // Match the slug. Treat NULL is_deactivated as "not deactivated" — older
+  // agent rows can have NULL there, and .eq("is_deactivated", false) would
+  // silently exclude them.
   const { data, error } = await supabase
     .from("agents")
-    .select("id, user_id, display_name, agent_code, profile_id, profiles:profile_id(full_name)")
+    .select("id, user_id, display_name, agent_code, profile_id, is_deactivated, profiles:profile_id(full_name)")
     .eq("ref_slug", slug)
-    .eq("is_deactivated", false)
     .maybeSingle();
+
+  if (data?.is_deactivated === true) {
+    return jsonResponse({ resolved: false, reason: "deactivated" });
+  }
 
   if (error) {
     console.error("resolve-ref-slug error", error);

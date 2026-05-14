@@ -218,6 +218,10 @@ export function GlobalSidebar({
     const teamItems: NavItem[] = [];
     if (isAdmin || isManager) {
       teamItems.push({ icon: Network, label: "Team Hierarchy", href: "/dashboard/hierarchy" });
+    }
+    // Agent Management is admin-only — exposing it to managers sent them to
+    // an access-denied screen.
+    if (isAdmin) {
       teamItems.push({ icon: UserCog, label: "Agent Management", href: "/dashboard/agent-management" });
       teamItems.push({ icon: UserX, label: "Inactive Agents", href: "/dashboard/inactive-agents" });
     }

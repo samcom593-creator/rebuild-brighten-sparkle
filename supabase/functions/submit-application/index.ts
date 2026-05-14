@@ -884,27 +884,83 @@ const handler = async (req: Request): Promise<Response> => {
       .maybeSingle();
 
     if (existingApp) {
-      // Update existing record timestamp and flag as duplicate
-      await supabaseAdmin.from("applications")
-        .update({ updated_at: new Date().toISOString(), is_duplicate: true })
-        .eq("id", existingApp.id);
+      // If the duplicate application has no referral attribution AND the new
+      // submission DOES carry a referrer, propagate that referrer onto the
+      // existing application so the right agent (e.g. KJ) gets credit and
+      // visibility instead of the prospect being silently re-orphaned.
+      const incomingReferrer = data.selectedReferralAgentId || data.recruiterId || null;
+      const { data: existingFull } = await supabaseAdmin
+        .from("applications")
+        .select("id, assigned_agent_id, referral_manager_id, recruiter_id")
+        .eq("id", existingApp.id)
+        .maybeSingle();
 
-      // Notify Sam about the duplicate
+      const existingHasReferrer = !!(
+        existingFull?.referral_manager_id || existingFull?.recruiter_id
+      );
+
+      const update: Record<string, unknown> = {
+        updated_at: new Date().toISOString(),
+        is_duplicate: true,
+      };
+
+      let referrerAdopted = false;
+      if (incomingReferrer && !existingHasReferrer) {
+        update.referral_manager_id = incomingReferrer;
+        if (!existingFull?.recruiter_id && data.recruiterId) {
+          update.recruiter_id = data.recruiterId;
+        }
+        // Only switch assigned_agent_id if it's currently null OR points to an
+        // admin (default routing). Don't yank a lead away from a real owner.
+        if (!existingFull?.assigned_agent_id) {
+          update.assigned_agent_id = incomingReferrer;
+        } else {
+          const { data: assignedAgent } = await supabaseAdmin
+            .from("agents")
+            .select("user_id")
+            .eq("id", existingFull.assigned_agent_id)
+            .maybeSingle();
+          if (assignedAgent?.user_id) {
+            const { data: isAdminRow } = await supabaseAdmin
+              .from("user_roles")
+              .select("role")
+              .eq("user_id", assignedAgent.user_id)
+              .eq("role", "admin")
+              .maybeSingle();
+            if (isAdminRow) update.assigned_agent_id = incomingReferrer;
+          }
+        }
+        referrerAdopted = true;
+      }
+
+      await supabaseAdmin.from("applications").update(update).eq("id", existingApp.id);
+
+      if (referrerAdopted) {
+        await supabaseAdmin.from("lead_activity").insert({
+          lead_id: existingApp.id,
+          activity_type: "referral_adopted_on_duplicate",
+          title: `Duplicate submission carried referrer ${incomingReferrer} — adopted onto existing app.`,
+          actor_name: "submit-application",
+          actor_role: "system",
+        });
+      }
+
       if (resend) {
         try {
           await resend.emails.send({
             from: "APEX Financial <notifications@apex-financial.org>",
             to: ["sam@apex-financial.org"],
-            subject: `🔄 Duplicate Application: ${data.firstName} ${data.lastName}`,
+            subject: `🔄 Duplicate Application: ${data.firstName} ${data.lastName}${referrerAdopted ? " (referrer adopted)" : ""}`,
             html: `<p><strong>${data.firstName} ${data.lastName}</strong> applied again. They're already in your pipeline since ${new Date(existingApp.created_at).toLocaleDateString()}.</p>
                    <p>Current stage: ${existingApp.license_progress || existingApp.status}</p>
-                   <p>Email: ${data.email} | Phone: ${data.phone}</p>`,
+                   <p>Email: ${data.email} | Phone: ${data.phone}</p>
+                   ${referrerAdopted ? `<p><strong>Referral credited:</strong> ${incomingReferrer}</p>` : ""}`,
           });
         } catch (e) { console.error("Duplicate notification failed:", e); }
       }
 
       return new Response(
-        JSON.stringify({ applicationId: existingApp.id, isDuplicate: true }),
+        JSON.stringify({ applicationId: existingApp.id, isDuplicate: true, referrerAdopted }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
@@ -1022,31 +1078,32 @@ const handler = async (req: Request): Promise<Response> => {
 
       if (previousApps && previousApps.length > 0 && canonicalSamAgentId) {
         const mostRecent = previousApps[0];
+        const incomingReferrer = data.selectedReferralAgentId || data.recruiterId || null;
 
-        // Always reassign reapplicants to canonical Sam
-        await supabaseAdmin
-          .from("applications")
-          .update({ assigned_agent_id: canonicalSamAgentId })
-          .eq("id", inserted.id);
+        // Only redirect to canonical Sam when the new submission has NO valid
+        // referrer. Previously this always overrode KJ/manager credit on
+        // reapplications, which silently strips ownership.
+        if (mostRecent.contracted_at && !incomingReferrer) {
+          await supabaseAdmin
+            .from("applications")
+            .update({ assigned_agent_id: canonicalSamAgentId })
+            .eq("id", inserted.id);
+        }
 
-        // If previously contracted, notify Sam about rehire
+        // If previously contracted, notify Sam (rehire path) regardless of
+        // whether ownership was redirected.
         if (mostRecent.contracted_at && resend) {
           try {
             await resend.emails.send({
               from: "APEX Financial <notifications@apex-financial.org>",
               to: ["sam@apex-financial.org"],
               subject: `🔄 Rehire Application — ${data.firstName} ${data.lastName}`,
-              html: `<p><strong>${data.firstName} ${data.lastName}</strong> previously contracted with APEX and has reapplied. Assigned directly to you. Original application: ${mostRecent.id}</p>`,
+              html: `<p><strong>${data.firstName} ${data.lastName}</strong> previously contracted with APEX and has reapplied.${incomingReferrer ? ` Referrer preserved: ${incomingReferrer}.` : " Assigned directly to you."} Original application: ${mostRecent.id}</p>`,
             });
           } catch (e) { console.error("Rehire notification failed:", e); }
         }
 
-        // Terminate all previous open (non-contracted) applications
-        const openIds = previousApps
-          .filter(a => !a.contracted_at && !inserted.id)
-          .map(a => a.id);
-
-        // Actually filter properly
+        // Terminate all previous open (non-contracted) applications.
         const idsToClose = previousApps
           .filter(a => a.id !== inserted.id)
           .map(a => a.id);

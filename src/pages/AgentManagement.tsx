@@ -123,8 +123,14 @@ export default function AgentManagement() {
           profile:profiles!agents_profile_id_fkey(full_name, email, phone, avatar_url)
         `);
 
-      if (!isAdmin && downlineIds.length > 0) {
-        agentQ = agentQ.in("id", downlineIds);
+      // Always scope non-admin reads. Empty downline must filter to nothing
+      // rather than silently dropping the scope and returning all agents.
+      if (!isAdmin) {
+        if (downlineIds.length === 0) {
+          agentQ = agentQ.in("id", ["00000000-0000-0000-0000-000000000000"]);
+        } else {
+          agentQ = agentQ.in("id", downlineIds);
+        }
       }
 
       const { data: agents } = await agentQ;

@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/command";
 import { useUIStore } from "@/shared/store/uiStore";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import {
   LayoutDashboard,
   Users,
@@ -42,25 +43,40 @@ interface ApplicationResult {
   email: string;
 }
 
-const ROUTES = [
+type RouteRole = "any" | "agent" | "manager" | "admin";
+interface RouteEntry {
+  label: string;
+  path: string;
+  icon: React.ComponentType<{ className?: string }>;
+  group: string;
+  /** Minimum role required to even SEE this in the palette. */
+  requires?: RouteRole;
+}
+
+const ROUTES: RouteEntry[] = [
   { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard, group: "Navigate" },
-  { label: "Command Center", path: "/dashboard/command", icon: Activity, group: "Navigate" },
-  { label: "Team Directory", path: "/dashboard/team", icon: Users, group: "Navigate" },
-  { label: "Hiring Pipeline", path: "/dashboard/hiring-pipeline", icon: UserPlus, group: "Navigate" },
-  { label: "Agent CRM", path: "/dashboard/crm", icon: Briefcase, group: "Navigate" },
-  { label: "Lead Center", path: "/dashboard/leads", icon: TrendingUp, group: "Navigate" },
-  { label: "Aged Leads", path: "/dashboard/aged-leads", icon: Users, group: "Navigate" },
+  { label: "Command Center", path: "/dashboard/command", icon: Activity, group: "Navigate", requires: "admin" },
+  { label: "Team Directory", path: "/dashboard/team", icon: Users, group: "Navigate", requires: "manager" },
+  { label: "Hiring Pipeline", path: "/dashboard/hiring-pipeline", icon: UserPlus, group: "Navigate", requires: "manager" },
+  { label: "Agent CRM", path: "/dashboard/crm", icon: Briefcase, group: "Navigate", requires: "manager" },
+  { label: "Lead Center", path: "/dashboard/leads", icon: TrendingUp, group: "Navigate", requires: "admin" },
+  { label: "Aged Leads", path: "/dashboard/aged-leads", icon: Users, group: "Navigate", requires: "manager" },
   { label: "Call Center", path: "/dashboard/call-center", icon: Phone, group: "Navigate" },
   { label: "Course Catalog", path: "/course-catalog", icon: GraduationCap, group: "Navigate" },
   { label: "Calendar", path: "/dashboard/calendar", icon: Calendar, group: "Navigate" },
-  { label: "Inbox", path: "/dashboard/inbox", icon: Inbox, group: "Navigate" },
-  { label: "Notifications", path: "/dashboard/notifications", icon: Bell, group: "Navigate" },
-  { label: "Content Library", path: "/dashboard/content", icon: ImageIcon, group: "Navigate" },
-  { label: "Award Graphics", path: "/dashboard/awards", icon: ImageIcon, group: "Navigate" },
+  { label: "Inbox", path: "/dashboard/inbox", icon: Inbox, group: "Navigate", requires: "admin" },
+  { label: "My Notifications", path: "/dashboard/notifications/mine", icon: Bell, group: "Navigate" },
+  { label: "Notification Hub", path: "/dashboard/notifications", icon: Bell, group: "Navigate", requires: "admin" },
+  { label: "Content Library", path: "/dashboard/content", icon: ImageIcon, group: "Navigate", requires: "manager" },
+  { label: "Award Graphics", path: "/dashboard/awards", icon: ImageIcon, group: "Navigate", requires: "admin" },
   { label: "Purchase Leads", path: "/purchase-leads", icon: ShoppingCart, group: "Navigate" },
-  { label: "Automation Hub", path: "/dashboard/automation", icon: Activity, group: "Navigate" },
-  { label: "System Health", path: "/dashboard/system-health", icon: Activity, group: "Navigate" },
-  { label: "Deleted Leads Vault", path: "/dashboard/settings/deleted-leads", icon: Trash2, group: "Navigate" },
+  { label: "Automation Hub", path: "/dashboard/automation", icon: Activity, group: "Navigate", requires: "admin" },
+  { label: "System Health", path: "/dashboard/system-health", icon: Activity, group: "Navigate", requires: "admin" },
+  { label: "Deleted Leads Vault", path: "/dashboard/settings/deleted-leads", icon: Trash2, group: "Navigate", requires: "admin" },
+  { label: "Seminar Control", path: "/dashboard/seminar-control", icon: Calendar, group: "Navigate", requires: "manager" },
+  { label: "Referral Pipeline", path: "/dashboard/referrals", icon: UserPlus, group: "Navigate", requires: "manager" },
+  { label: "Submit Referral", path: "/dashboard/referrals/new", icon: UserPlus, group: "Navigate" },
+  { label: "My Referrals", path: "/dashboard/referrals/mine", icon: UserPlus, group: "Navigate" },
   { label: "Settings", path: "/dashboard/settings", icon: SettingsIcon, group: "Navigate" },
 ];
 
@@ -68,9 +84,23 @@ export function CommandPalette() {
   const open = useUIStore((s) => s.commandPaletteOpen);
   const setOpen = useUIStore((s) => s.setCommandPaletteOpen);
   const navigate = useNavigate();
+  const { isAdmin, isManager } = useAuth();
   const [query, setQuery] = useState("");
   const [agents, setAgents] = useState<AgentResult[]>([]);
   const [applications, setApplications] = useState<ApplicationResult[]>([]);
+
+  // Only show routes the current role can actually open. Previously this
+  // exposed every admin route to every user, leading to access-denied bounces.
+  const visibleRoutes = useMemo(() => {
+    return ROUTES.filter((r) => {
+      const req = r.requires ?? "any";
+      if (req === "any") return true;
+      if (req === "agent") return true; // any authenticated user
+      if (req === "manager") return isAdmin || isManager;
+      if (req === "admin") return isAdmin;
+      return true;
+    });
+  }, [isAdmin, isManager]);
 
   // Cmd+K shortcut
   useEffect(() => {
@@ -123,10 +153,10 @@ export function CommandPalette() {
   }, [query, open]);
 
   const filteredRoutes = useMemo(() => {
-    if (!query) return ROUTES;
+    if (!query) return visibleRoutes;
     const q = query.toLowerCase();
-    return ROUTES.filter((r) => r.label.toLowerCase().includes(q));
-  }, [query]);
+    return visibleRoutes.filter((r) => r.label.toLowerCase().includes(q));
+  }, [query, visibleRoutes]);
 
   const go = (path: string) => {
     setOpen(false);

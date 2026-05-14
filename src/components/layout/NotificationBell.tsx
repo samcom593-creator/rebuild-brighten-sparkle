@@ -1,6 +1,7 @@
 import { Bell } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useUnreadNotifications } from "@/hooks/useUnreadNotifications";
+import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
 interface NotificationBellProps {
@@ -9,15 +10,19 @@ interface NotificationBellProps {
 }
 
 /**
- * Bell icon with realtime unread badge. Links to the Inbox.
+ * Bell icon with realtime unread badge. Routes to the inbox the current
+ * role can actually open — /dashboard/inbox is admin-only and used to send
+ * managers/agents into an access-denied page.
  */
 export function NotificationBell({ collapsed, className }: NotificationBellProps) {
   const count = useUnreadNotifications();
+  const { isAdmin } = useAuth();
   const display = count > 99 ? "99+" : String(count);
+  const target = isAdmin ? "/dashboard/inbox" : "/dashboard/notifications/mine";
 
   return (
     <Link
-      to="/dashboard/inbox"
+      to={target}
       aria-label={`Inbox (${count} unread)`}
       className={cn(
         "relative inline-flex items-center justify-center rounded-lg transition-colors hover:bg-accent",

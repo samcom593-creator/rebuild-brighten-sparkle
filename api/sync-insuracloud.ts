@@ -1,9 +1,13 @@
 // Vercel serverless function: sync deal to InsuraCloud
 // Uses session-based auth: login → CSRF → POST /api/deals
+//
+// IMPORTANT: credentials and user mapping MUST come from Vercel env. The old
+// hardcoded fallback to Sam's account caused every unmapped deal to land on
+// his InsuraCloud user (phantom production). Per Codex audit 2026-05-14 we
+// fail fast instead of falling back.
 const INSURACLOUD_BASE = "https://agentlink.insuracloud.ai";
-const INSURACLOUD_EMAIL = process.env.INSURACLOUD_EMAIL || "sam.com593@gmail.com";
-const INSURACLOUD_PASSWORD = process.env.INSURACLOUD_PASSWORD || "4697676068Mum@";
-const DEFAULT_USER_ID = 211; // Samuel James's InsuraCloud user ID
+const INSURACLOUD_EMAIL = process.env.INSURACLOUD_EMAIL;
+const INSURACLOUD_PASSWORD = process.env.INSURACLOUD_PASSWORD;
 
 // Map carrier names (lowercase) to InsuraCloud carrier IDs
 const CARRIER_MAP: Record<string, number> = {
@@ -113,13 +117,30 @@ export default async function handler(req: any, res: any) {
 
   if (!deal_id) return res.status(400).json({ ok: false, error: "deal_id is required" });
 
+  if (!INSURACLOUD_EMAIL || !INSURACLOUD_PASSWORD) {
+    return res.status(500).json({
+      ok: false,
+      error: "InsuraCloud credentials not configured (set INSURACLOUD_EMAIL + INSURACLOUD_PASSWORD env vars).",
+    });
+  }
+
+  // Fail fast when the deal has no agent_insuracloud_id mapping. Falling back
+  // to Sam silently corrupted production attribution for months.
+  if (!agent_insuracloud_id) {
+    return res.status(400).json({
+      ok: false,
+      error: "agent_insuracloud_id is required — refusing to fall back to default user.",
+      code: "MISSING_AGENT_MAPPING",
+    });
+  }
+
   const resolvedCarrierId = resolveCarrierId(carrier_id || carrier_name);
   const monthlyPremiumNum = parseFloat(String(monthly_premium || 0));
   const annualPremiumNum = parseFloat(String(annual_premium || 0)) || +(monthlyPremiumNum * 12).toFixed(2);
 
   const dealPayload: Record<string, unknown> = {
     externalId:        String(deal_id),
-    userId:            agent_insuracloud_id || DEFAULT_USER_ID,
+    userId:            agent_insuracloud_id,
     clientFirstName:   client_first_name || "Unknown",
     clientLastName:    client_last_name  || "Client",
     clientPhoneNumber: client_phone      || "+10000000000",

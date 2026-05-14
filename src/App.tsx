@@ -120,6 +120,7 @@ const SeminarControl = lazy(() => import("./pages/SeminarControl"));
 const ReferralSubmit = lazy(() => import("./pages/ReferralSubmit"));
 const ReferralPipeline = lazy(() => import("./pages/ReferralPipeline"));
 const MyReferrals = lazy(() => import("./pages/MyReferrals"));
+const MyNotifications = lazy(() => import("./pages/MyNotifications"));
 
 // queryClient now lives in src/shared/api/queryClient.ts (smart retry + global error logging)
 
@@ -211,6 +212,7 @@ const App = () => (
                     <Route path="/dashboard/referrals" element={<ProtectedRoute><ReferralPipeline /></ProtectedRoute>} />
                     <Route path="/dashboard/referrals/mine" element={<ProtectedRoute><MyReferrals /></ProtectedRoute>} />
                     <Route path="/dashboard/referrals/new" element={<ProtectedRoute><ReferralSubmit /></ProtectedRoute>} />
+                    <Route path="/dashboard/notifications/mine" element={<ProtectedRoute><MyNotifications /></ProtectedRoute>} />
                     <Route path="/agent-portal" element={<AgentPortal />} />
                     <Route path="/agent-dashboard" element={<AgentPortal />} />
                     <Route path="/onboarding-course" element={<OnboardingCourse />} />

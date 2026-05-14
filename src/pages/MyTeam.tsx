@@ -61,6 +61,26 @@ export default function MyTeam() {
   });
 
   if (!isManager) return <div className="p-6 text-muted-foreground">Manager access required</div>;
+  // Explicit empty state for managers with no invitees — otherwise the page
+  // was stuck showing "Loading…" forever because the query was disabled.
+  if (downlineIds.length === 0) {
+    return (
+      <div className="space-y-4 p-6">
+        <div>
+          <h1 className="text-2xl font-bold">My Team</h1>
+          <p className="text-sm text-muted-foreground">Your hierarchy only</p>
+        </div>
+        <div className="rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground">
+          You don't have any direct recruits yet.
+          <div className="mt-3">
+            <a href="/dashboard/agent-management" className="underline">Add an agent</a>
+            <span className="mx-2">·</span>
+            <a href="/dashboard/referrals/new" className="underline">Submit a referral</a>
+          </div>
+        </div>
+      </div>
+    );
+  }
   if (!teamStats) return <div className="p-6 text-muted-foreground">Loading your team...</div>;
 
   return (

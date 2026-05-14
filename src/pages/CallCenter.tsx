@@ -189,18 +189,21 @@ export default function CallCenter() {
           .select("id, first_name, last_name, email, phone, instagram_handle, notes, license_status, license_progress, test_scheduled_date, created_at, status, contacted_at, last_contacted_at, previous_company, nipr_number, licensed_states, city, state, availability, assigned_agent_id, hiring_manager_user_id, referral_manager_id, terminated_at, contracted_at, closed_at, agents!applications_assigned_agent_id_fkey(display_name)")
           .order("created_at", { ascending: sortOrder === "oldest_first" });
 
-        // Referrer filter (Sam 2026-05-04). "mine" = applicants who marked
-        // me/my agent as referrer; "no_referrer" = applicants with NO
-        // manager attribution at all (neither referral_manager_id nor
-        // assigned_agent_id). A lead that's been manually assigned to a
-        // manager is no longer "no referrer" even if the referrer column
-        // hasn't been backfilled — Sam was seeing leads with "Manager
-        // Aisha" + "No referrer" badge stuck together because the badge
-        // only checked one field.
+        // Referrer filter — "mine" matches if the agent is the referrer via
+        // ANY attribution column (assigned_agent_id / referral_manager_id /
+        // recruiter_id). Earlier this only checked referral_manager_id, so
+        // older leads where attribution was on a different column were
+        // invisible to the agent who owned them. "no_referrer" means
+        // genuinely orphaned (none of the 3 columns set).
         if (refererFilter === "mine" && agentId) {
-          appQuery = appQuery.eq("referral_manager_id", agentId);
+          appQuery = appQuery.or(
+            `assigned_agent_id.eq.${agentId},referral_manager_id.eq.${agentId},recruiter_id.eq.${agentId}`,
+          );
         } else if (refererFilter === "no_referrer") {
-          appQuery = appQuery.is("referral_manager_id", null).is("assigned_agent_id", null);
+          appQuery = appQuery
+            .is("referral_manager_id", null)
+            .is("assigned_agent_id", null)
+            .is("recruiter_id", null);
         }
 
         // Status filter for applications (source-of-truth = contact timestamps)
@@ -230,8 +233,14 @@ export default function CallCenter() {
             .is("terminated_at", null)
             .is("contracted_at", null)
             .is("closed_at", null);
-          if (agentId) {
-            appQuery = appQuery.eq("assigned_agent_id", agentId);
+          // Non-admin scope: caller sees leads where they are referrer on ANY
+          // of the 3 attribution columns. Single-column filter (the old
+          // behavior) hid hot leads from KJ/managers when attribution was on
+          // a different column.
+          if (agentId && refererFilter !== "mine" && refererFilter !== "no_referrer") {
+            appQuery = appQuery.or(
+              `assigned_agent_id.eq.${agentId},referral_manager_id.eq.${agentId},recruiter_id.eq.${agentId}`,
+            );
           }
         }
 

@@ -68,8 +68,8 @@ export default function SeminarPage() {
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      firstName: params.get("first") ?? "",
-      lastName: params.get("last") ?? "",
+      firstName: params.get("first") ?? params.get("first_name") ?? "",
+      lastName: params.get("last") ?? params.get("last_name") ?? "",
       email: params.get("email") ?? "",
       phone: params.get("phone") ?? "",
       licenseStatus: (params.get("license") as "licensed" | "unlicensed" | "unknown") || "unlicensed",

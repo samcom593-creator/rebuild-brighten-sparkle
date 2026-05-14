@@ -128,7 +128,12 @@ export default function HiringPipeline() {
         const { data: dl } = await supabase.rpc("my_downline_agent_ids" as any);
         const downlineIds = (dl ?? []).map((r: any) => r.agent_id);
         if (downlineIds.length === 0) return [];
-        query = query.in("assigned_agent_id", downlineIds);
+        // Match attribution in any of the 3 agent-id columns. PostgREST's .or()
+        // needs comma-separated `col.in.(a,b)` syntax.
+        const inList = `(${downlineIds.join(",")})`;
+        query = query.or(
+          `assigned_agent_id.in.${inList},referral_manager_id.in.${inList},recruiter_id.in.${inList}`,
+        );
       }
       const { data, error } = await query;
       if (error) throw error;

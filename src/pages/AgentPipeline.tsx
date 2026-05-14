@@ -224,9 +224,14 @@ export default function AgentPipeline() {
         const { data: teamAgents } = await supabase
           .from("agents").select("id").eq("invited_by_manager_id", agentData.id);
         const ids = [agentData.id, ...(teamAgents || []).map((a) => a.id)];
-        query = query.in("assigned_agent_id", ids);
+        const inList = `(${ids.join(",")})`;
+        query = query.or(
+          `assigned_agent_id.in.${inList},referral_manager_id.in.${inList},recruiter_id.in.${inList}`,
+        );
       } else {
-        query = query.eq("assigned_agent_id", agentData.id);
+        query = query.or(
+          `assigned_agent_id.eq.${agentData.id},referral_manager_id.eq.${agentData.id},recruiter_id.eq.${agentData.id}`,
+        );
       }
 
       const { data, error } = await query.order("created_at", { ascending: false });

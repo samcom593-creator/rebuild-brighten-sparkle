@@ -184,14 +184,20 @@ export default function DashboardApplicants() {
 
     let fetchedApps: Application[] = [];
 
-    // If admin/manager with manager filter, filter by that manager
+    // Attribution can live in any of 3 columns (assigned_agent_id,
+    // referral_manager_id, recruiter_id). Always filter with .or() so a lead
+    // credited via the referral column still shows up to the right agent.
+    const orForAgentId = (id: string) =>
+      `assigned_agent_id.eq.${id},referral_manager_id.eq.${id},recruiter_id.eq.${id}`;
+
+    // If admin/manager with manager filter, filter by that manager (any column)
     if (managerFilter && (isAdmin || isManager)) {
       const { data: filteredApps, error } = await supabase
         .from("applications")
         .select("*")
-        .eq("assigned_agent_id", managerFilter)
+        .or(orForAgentId(managerFilter))
         .order("created_at", { ascending: false });
-      
+
       if (!error && filteredApps) {
         fetchedApps = filteredApps as Application[];
       }
@@ -211,7 +217,7 @@ export default function DashboardApplicants() {
       const { data, error } = await supabase
         .from("applications")
         .select("*")
-        .eq("assigned_agent_id", agentData.id)
+        .or(orForAgentId(agentData.id))
         .order("created_at", { ascending: false });
 
       if (!error && data) {

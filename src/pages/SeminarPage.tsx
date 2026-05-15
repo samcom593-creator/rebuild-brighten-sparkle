@@ -13,6 +13,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -28,6 +29,7 @@ const schema = z.object({
   phone: z.string().min(10, "Valid phone number is required").max(20),
   licenseStatus: z.enum(["licensed", "unlicensed", "unknown"]),
   seminarSlot: z.string().min(1, "Pick a seminar date"),
+  reminderOptIn: z.boolean().refine((value) => value === true, "Confirm reminder opt-in"),
 });
 
 type FormData = z.infer<typeof schema>;
@@ -94,6 +96,7 @@ export default function SeminarPage() {
       phone: params.get("phone") ?? "",
       licenseStatus: (params.get("license") as "licensed" | "unlicensed" | "unknown") || "unlicensed",
       seminarSlot: slots[0]?.date ?? "",
+      reminderOptIn: false,
     },
   });
 
@@ -118,6 +121,7 @@ export default function SeminarPage() {
         p_utm_source: utms.utm_source,
         p_utm_medium: utms.utm_medium,
         p_utm_campaign: utms.utm_campaign,
+        p_reminder_opt_in: values.reminderOptIn,
       });
 
       if (error) throw error;
@@ -292,6 +296,27 @@ export default function SeminarPage() {
               )}
             </div>
 
+            <div className="rounded-lg border border-border/70 p-3">
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  id="reminderOptIn"
+                  checked={form.watch("reminderOptIn")}
+                  onCheckedChange={(checked) => form.setValue("reminderOptIn", checked === true, { shouldValidate: true })}
+                />
+                <div className="space-y-1">
+                  <Label htmlFor="reminderOptIn" className="text-sm leading-snug">
+                    Send me email and SMS reminders for this seminar.
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    We log the confirmation, manager alert, and Discord alert for review in the communication center.
+                  </p>
+                  {form.formState.errors.reminderOptIn && (
+                    <p className="text-xs text-destructive">{form.formState.errors.reminderOptIn.message}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <GradientButton type="submit" disabled={submitting} className="w-full">
               {submitting ? (
                 <span className="flex items-center justify-center gap-2">
@@ -303,7 +328,7 @@ export default function SeminarPage() {
             </GradientButton>
 
             <p className="text-[11px] text-muted-foreground text-center">
-              By registering you agree to SMS + email reminders for this seminar. Reply STOP to opt out.
+              Reply STOP to opt out of SMS reminders.
             </p>
           </form>
         </GlassCard>

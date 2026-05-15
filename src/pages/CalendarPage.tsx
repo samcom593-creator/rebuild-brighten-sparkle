@@ -43,6 +43,14 @@ type LeadResult = {
   status: string;
 };
 
+type PipelineEvent = {
+  id: string;
+  date: string;
+  kind: "follow_up" | "test_date" | "seminar" | "licensing" | "contracting" | "onboarding";
+  title: string;
+  subtitle: string;
+};
+
 const typeIcons: Record<string, typeof Video> = {
   video: Video,
   phone: Phone,
@@ -150,6 +158,88 @@ export default function CalendarPage() {
         .order("interview_date", { ascending: true });
       if (error) throw error;
       return (data || []) as unknown as InterviewRow[];
+    },
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+
+  const { data: pipelineEvents } = useQuery({
+    queryKey: ["calendar-pipeline-events", user?.id],
+    queryFn: async (): Promise<PipelineEvent[]> => {
+      const [{ data: apps }, { data: seminars }] = await Promise.all([
+        supabase
+          .from("applications")
+          .select("id, first_name, last_name, email, status, next_action_at, next_action_type, test_scheduled_date, exam_scheduled_at, course_purchased_at, course_started_at, licensed_at, contracted_at, start_date")
+          .is("terminated_at", null)
+          .limit(750),
+        supabase
+          .from("seminar_registrations")
+          .select("id, first_name, last_name, email, seminar_date, attended")
+          .limit(500),
+      ]);
+
+      const events: PipelineEvent[] = [];
+      for (const app of (apps ?? []) as any[]) {
+        const name = `${app.first_name ?? ""} ${app.last_name ?? ""}`.trim() || app.email || "Applicant";
+        if (app.next_action_at) {
+          events.push({
+            id: `follow-${app.id}`,
+            date: app.next_action_at,
+            kind: "follow_up",
+            title: `Follow-up: ${name}`,
+            subtitle: app.next_action_type || app.status || "Next action",
+          });
+        }
+        const testDate = app.test_scheduled_date || app.exam_scheduled_at;
+        if (testDate) {
+          events.push({
+            id: `test-${app.id}`,
+            date: testDate,
+            kind: "test_date",
+            title: `Test date: ${name}`,
+            subtitle: app.status || "Licensing",
+          });
+        }
+        if (app.course_purchased_at || app.course_started_at) {
+          events.push({
+            id: `license-${app.id}`,
+            date: app.course_started_at || app.course_purchased_at,
+            kind: "licensing",
+            title: `Licensing: ${name}`,
+            subtitle: app.course_started_at ? "Course started" : "Course purchased",
+          });
+        }
+        if (app.contracted_at) {
+          events.push({
+            id: `contract-${app.id}`,
+            date: app.contracted_at,
+            kind: "contracting",
+            title: `Contracted: ${name}`,
+            subtitle: "Contracting milestone",
+          });
+        }
+        if (app.start_date) {
+          events.push({
+            id: `start-${app.id}`,
+            date: app.start_date,
+            kind: "onboarding",
+            title: `Start date: ${name}`,
+            subtitle: "Onboarding",
+          });
+        }
+      }
+      for (const seminar of (seminars ?? []) as any[]) {
+        if (!seminar.seminar_date) continue;
+        const name = `${seminar.first_name ?? ""} ${seminar.last_name ?? ""}`.trim() || seminar.email || "Seminar registrant";
+        events.push({
+          id: `seminar-${seminar.id}`,
+          date: seminar.seminar_date,
+          kind: "seminar",
+          title: `Seminar: ${name}`,
+          subtitle: seminar.attended === true ? "Attended" : seminar.attended === false ? "Registered" : "Registered",
+        });
+      }
+      return events.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()).slice(0, 120);
     },
     enabled: !!user,
     staleTime: 60_000,
@@ -277,6 +367,7 @@ export default function CalendarPage() {
 
   const todayCount = interviews?.filter((iv) => isToday(new Date(iv.interview_date))).length || 0;
   const overdueCount = interviews?.filter((iv) => isBefore(new Date(iv.interview_date), now) && iv.status === "scheduled" && !isToday(new Date(iv.interview_date))).length || 0;
+  const upcomingPipelineEvents = (pipelineEvents ?? []).filter((event) => !isBefore(new Date(event.date), now)).slice(0, 12);
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -337,6 +428,33 @@ export default function CalendarPage() {
           </Tabs>
         )}
       </div>
+
+      <Card>
+        <CardContent className="p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <p className="font-semibold">Pipeline Dates</p>
+              <p className="text-xs text-muted-foreground">Follow-ups, test dates, seminar schedules, licensing, contracting, and onboarding events.</p>
+            </div>
+            <Badge variant="outline" className="text-[10px]">{upcomingPipelineEvents.length} upcoming</Badge>
+          </div>
+          {upcomingPipelineEvents.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">No upcoming pipeline dates found.</p>
+          ) : (
+            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+              {upcomingPipelineEvents.map((event) => (
+                <div key={event.id} className="rounded-lg border border-border/70 p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="truncate text-sm font-medium">{event.title}</p>
+                    <Badge variant="secondary" className="text-[10px] capitalize">{event.kind.replace("_", " ")}</Badge>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">{format(new Date(event.date), "EEE, MMM d")} · {event.subtitle}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Week View */}
       {viewMode === "week" ? (

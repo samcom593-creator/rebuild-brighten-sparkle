@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { CalendarClock, CheckCircle2, AlertTriangle, Trophy, GraduationCap, FileCheck2, UserPlus, Crown } from "lucide-react";
+import { CalendarClock, CheckCircle2, AlertTriangle, Trophy, GraduationCap, FileCheck2, UserPlus, Crown, Mail, MessageSquare, Bell } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -34,6 +34,10 @@ interface SeminarRow {
   seminar_date: string | null;
   registered_at: string;
   attended: boolean | null;
+  reminder_opt_in: boolean | null;
+  confirmation_email_queued_at: string | null;
+  manager_alert_queued_at: string | null;
+  discord_alert_queued_at: string | null;
   paid_after: boolean | null;
   paid_at: string | null;
   app_status: string | null;
@@ -312,6 +316,26 @@ export default function SeminarControl() {
                         </div>
                         <div className="text-xs text-muted-foreground truncate">
                           {r.email} · {r.phone} · {r.license_status ?? "?"}
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          <Badge variant="outline" className={r.reminder_opt_in ? "text-[10px] border-emerald-500/30 text-emerald-500" : "text-[10px] border-amber-500/30 text-amber-500"}>
+                            <MessageSquare className="mr-1 h-3 w-3" />
+                            {r.reminder_opt_in ? "Opted in" : "No SMS opt-in"}
+                          </Badge>
+                          <Badge variant="outline" className={r.confirmation_email_queued_at ? "text-[10px] border-emerald-500/30 text-emerald-500" : "text-[10px] border-amber-500/30 text-amber-500"}>
+                            <Mail className="mr-1 h-3 w-3" />
+                            {r.confirmation_email_queued_at ? "Email queued" : "Email missing"}
+                          </Badge>
+                          <Badge variant="outline" className={r.manager_alert_queued_at ? "text-[10px] border-emerald-500/30 text-emerald-500" : "text-[10px] border-amber-500/30 text-amber-500"}>
+                            <Bell className="mr-1 h-3 w-3" />
+                            {r.manager_alert_queued_at ? "Manager alerted" : "Manager alert missing"}
+                          </Badge>
+                          <Badge variant="outline" className={r.discord_alert_queued_at ? "text-[10px] border-emerald-500/30 text-emerald-500" : "text-[10px] border-amber-500/30 text-amber-500"}>
+                            Discord {r.discord_alert_queued_at ? "queued" : "missing"}
+                          </Badge>
+                        </div>
+                        <div className="mt-1 text-[11px] text-muted-foreground">
+                          App: {r.app_status ?? "none"} · Licensing: {r.app_license_progress ?? r.license_status ?? "unknown"} · Source: {r.source ?? "unknown"}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">

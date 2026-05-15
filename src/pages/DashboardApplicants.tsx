@@ -226,7 +226,7 @@ export default function DashboardApplicants() {
     }
 
     // Batch fetch manager names for all assigned agents
-    let nameMap = new Map<string, string>();
+    const nameMap = new Map<string, string>();
     const assignedIds = [...new Set(fetchedApps.map(a => a.assigned_agent_id).filter(Boolean))] as string[];
     if (assignedIds.length > 0) {
       const { data: assignedAgents } = await supabase

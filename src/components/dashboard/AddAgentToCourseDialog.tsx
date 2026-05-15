@@ -50,7 +50,7 @@ export function AddAgentToCourseDialog({ onSuccess }: AddAgentToCourseDialogProp
       // Get all agent user_ids to fetch profiles
       const userIds = agents.map(a => a.user_id).filter(Boolean) as string[];
       
-      let profileMap: Record<string, { full_name: string; email: string }> = {};
+      const profileMap: Record<string, { full_name: string; email: string }> = {};
       if (userIds.length > 0) {
         const { data: profiles } = await supabase
           .from("profiles")

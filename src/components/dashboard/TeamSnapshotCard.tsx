@@ -277,7 +277,7 @@ export function TeamSnapshotCard() {
       });
 
       // Sort based on drilldown type
-      let sortedAgents = Array.from(agentMap.values());
+      const sortedAgents = Array.from(agentMap.values());
       
       switch (type) {
         case "alp":

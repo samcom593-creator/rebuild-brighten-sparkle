@@ -129,7 +129,7 @@ async function fetchTeamDataFn(userId: string, isAdmin: boolean): Promise<{ memb
 
   // Get manager names
   const managerIds = [...new Set(teamAgents.map(a => a.invited_by_manager_id).filter(Boolean))];
-  let managerProfiles: Record<string, string> = {};
+  const managerProfiles: Record<string, string> = {};
 
   if (managerIds.length > 0) {
     const { data: managerAgents } = await supabase

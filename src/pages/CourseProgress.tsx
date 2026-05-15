@@ -164,7 +164,7 @@ export default function CourseProgress() {
       const agentIds = agents.map((a) => a.id);
       const managerIds = [...new Set(agents.map(a => a.invited_by_manager_id).filter(Boolean))];
 
-      let managerMap = new Map<string, string>();
+      const managerMap = new Map<string, string>();
       if (managerIds.length > 0) {
         const { data: managerAgents } = await supabase
           .from("agents")

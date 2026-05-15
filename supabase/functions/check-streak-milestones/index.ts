@@ -69,7 +69,7 @@ serve(async (req: Request) => {
 
       // Count consecutive days with deals starting from today
       let consecutiveDays = 0;
-      let checkDate = new Date(cstDate);
+      const checkDate = new Date(cstDate);
 
       for (let i = 0; i < 30; i++) {
         const dateStr = checkDate.toISOString().split("T")[0];

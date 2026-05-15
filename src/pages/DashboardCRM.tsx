@@ -676,7 +676,7 @@ export default function DashboardCRM() {
 
       const profileMapData = new Map(profilesResult.data?.map(p => [p.user_id, p]) || []);
 
-      let managerProfileMap = new Map<string, string>();
+      const managerProfileMap = new Map<string, string>();
       const managerAgentsData = managerAgentsResult.data;
       if (managerAgentsData?.length) {
         const mUserIds = managerAgentsData.map((a: any) => a.user_id).filter(Boolean);

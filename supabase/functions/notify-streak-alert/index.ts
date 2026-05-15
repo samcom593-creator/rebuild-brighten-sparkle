@@ -58,7 +58,7 @@ serve(async (req) => {
     if (recentProduction && recentProduction.length > 0) {
       // Sort by date descending and check for consecutive days
       const today = new Date().toISOString().split("T")[0];
-      let expectedDate = new Date(today);
+      const expectedDate = new Date(today);
       
       for (const day of recentProduction) {
         const dayDate = new Date(day.production_date);

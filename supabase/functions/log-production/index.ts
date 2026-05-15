@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
 
       // Also fetch profiles by user_id for agents without profile_id
       const agentsMissingProfile = (agents || []).filter((a: any) => !a.profile?.full_name && a.user_id);
-      let userIdProfileMap = new Map<string, { full_name: string; email: string }>();
+      const userIdProfileMap = new Map<string, { full_name: string; email: string }>();
       if (agentsMissingProfile.length > 0) {
         const userIds = agentsMissingProfile.map((a: any) => a.user_id);
         const { data: extraProfiles } = await supabaseAdmin

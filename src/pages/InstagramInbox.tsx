@@ -87,7 +87,7 @@ export default function InstagramInbox() {
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [user?.id]);
+  useEffect(() => { load();   }, [user?.id]);
 
   // ─── Pull conversations fresh from Instagram Graph API ──
   const syncFromInstagram = async () => {

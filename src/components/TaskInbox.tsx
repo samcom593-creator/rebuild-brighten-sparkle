@@ -123,7 +123,7 @@ export function TaskInbox() {
     return () => {
       supabase.removeChannel(channel);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const grouped = useMemo(() => {

@@ -215,7 +215,7 @@ export default function DashboardCommandCenter() {
 
       // For agents missing profile_id, fetch profiles by user_id as fallback
       const agentsMissingProfile = (agents || []).filter(a => !a.profiles && a.user_id);
-      let fallbackProfileMap = new Map<string, { full_name: string | null; email: string; phone: string | null }>();
+      const fallbackProfileMap = new Map<string, { full_name: string | null; email: string; phone: string | null }>();
       
       if (agentsMissingProfile.length > 0) {
         const userIds = agentsMissingProfile.map(a => a.user_id!);

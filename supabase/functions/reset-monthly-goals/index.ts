@@ -58,7 +58,7 @@ serve(async (req) => {
     // Upsert goals in batches
     const batchSize = 50;
     let created = 0;
-    let updated = 0;
+    const updated = 0;
 
     for (let i = 0; i < goalsToUpsert.length; i += batchSize) {
       const batch = goalsToUpsert.slice(i, i + batchSize);

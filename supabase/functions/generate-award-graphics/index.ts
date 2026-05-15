@@ -133,7 +133,7 @@ function buildPhoto({ id, cx, cy, radius, photoDataUrl, fallbackLabel, gold = tr
 }) {
   const clipId = `clip-${id}`;
   const gradId = gold ? "ringGrad" : "silverRing";
-  let defs = `<clipPath id="${clipId}"><circle cx="${cx}" cy="${cy}" r="${radius}"/></clipPath>`;
+  const defs = `<clipPath id="${clipId}"><circle cx="${cx}" cy="${cy}" r="${radius}"/></clipPath>`;
   let content = "";
 
   // Outer glow ring
@@ -342,7 +342,7 @@ async function handleMostHires(supabase: any, start: string, end: string, label:
   const [agentMap, awardProfiles] = await Promise.all([getAgentMap(supabase, agentIds), getAwardProfiles(supabase, agentIds)]);
   const winner = hiresData[0]; const ap = awardProfiles[winner.agent_id]; const ag = agentMap[winner.agent_id];
   let displayName = ap?.display_name_override || getDisplayName(ag?.name || "Unknown");
-  let hireCount = winner.total_hires;
+  const hireCount = winner.total_hires;
   let instagram = ap?.instagram_handle || ag?.instagram || null;
   if (overrides) { if (overrides.name) displayName = overrides.name; if (overrides.instagram) instagram = overrides.instagram; }
 

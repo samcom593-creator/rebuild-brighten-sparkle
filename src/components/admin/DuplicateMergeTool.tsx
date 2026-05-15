@@ -252,7 +252,7 @@ export function DuplicateMergeTool({ open, onClose, onMergeComplete }: Duplicate
         .map((a: any) => a.user_id)
         .filter(Boolean) as string[];
 
-      let fallbackProfiles: Record<string, { full_name: string | null; email: string | null; phone: string | null }> = {};
+      const fallbackProfiles: Record<string, { full_name: string | null; email: string | null; phone: string | null }> = {};
       if (fallbackUserIds.length > 0) {
         const { data: fbProfiles } = await supabase
           .from("profiles")

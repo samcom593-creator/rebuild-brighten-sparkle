@@ -102,7 +102,7 @@ export default function Leaderboard() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      let grouped = new Map<string, { primary: number; secondary: number; tertiary: number }>();
+      const grouped = new Map<string, { primary: number; secondary: number; tertiary: number }>();
       let syncAt: string | null = null;
 
       if (board === "production") {

@@ -82,7 +82,7 @@ serve(async (req) => {
     const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
 
     // Get manager profiles
-    let managerMap = new Map<string, { name: string; email: string }>();
+    const managerMap = new Map<string, { name: string; email: string }>();
     if (managerIds.length > 0) {
       const { data: managerAgents } = await supabase
         .from("agents")

@@ -21,7 +21,7 @@ const SESSION_KEY = "apex.telemetry.session";
 const FLUSH_INTERVAL_MS = 5000;
 const MAX_BATCH = 20;
 
-let queue: QueuedEvent[] = [];
+const queue: QueuedEvent[] = [];
 let flushTimer: number | undefined;
 let currentUserId: string | null = null;
 

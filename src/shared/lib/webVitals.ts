@@ -6,7 +6,7 @@ interface VitalEntry {
   rating?: "good" | "needs-improvement" | "poor";
 }
 
-let queue: VitalEntry[] = [];
+const queue: VitalEntry[] = [];
 let flushTimer: number | undefined;
 
 function flush() {

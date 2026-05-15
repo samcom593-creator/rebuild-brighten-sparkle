@@ -40,7 +40,7 @@ export function PortalLinkSender() {
 
       // Pull last sign-in in one roundtrip if possible — falls back gracefully otherwise
       const userIds = (rows ?? []).map((a: any) => a.user_id).filter(Boolean);
-      let lastLoginMap = new Map<string, string>();
+      const lastLoginMap = new Map<string, string>();
       if (userIds.length) {
         // auth.users not directly readable; skip last-login (would need admin API)
       }

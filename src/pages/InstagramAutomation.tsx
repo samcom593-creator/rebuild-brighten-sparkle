@@ -54,7 +54,7 @@ export default function InstagramAutomation() {
 
       // Fetch agent names separately
       const agentIds = (data || []).map((s: any) => s.agent_id);
-      let agentNames: Record<string, string> = {};
+      const agentNames: Record<string, string> = {};
       if (agentIds.length > 0) {
         const { data: agents } = await supabase
           .from("agents")

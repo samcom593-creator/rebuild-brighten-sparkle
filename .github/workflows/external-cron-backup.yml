@@ -28,10 +28,10 @@ on:
     - cron: '4-59/5 * * * *'   # :04, :09, :14, …
   workflow_dispatch:
 
-# Allow staggered runs to overlap slightly; do NOT cancel in-progress.
-concurrency:
-  group: external-cron-backup-${{ github.event.schedule }}
-  cancel-in-progress: false
+# Allow staggered runs to overlap freely. No concurrency group — each
+# minute's stagger should fire even if the previous stagger is still
+# mid-tick. Previously used ${{ github.event.schedule }} which is
+# undefined for workflow_dispatch and broke run dispatch.
 
 jobs:
   heartbeat:

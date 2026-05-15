@@ -1,1154 +1,839 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useMemo, useState, type ElementType } from "react";
+import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-
 import {
-  Users,
-  Phone,
-  CheckCircle,
-  Award,
-  Percent,
-  MapPin,
-  TrendingUp,
-  DollarSign,
-  UserPlus,
-  Edit3,
-  BarChart3,
-  Sparkles,
-  ChevronDown,
+  Activity,
   AlertTriangle,
-  Plus,
+  ArrowRight,
+  BarChart3,
+  Bell,
+  Briefcase,
+  CalendarDays,
+  CheckCircle2,
+  CreditCard,
+  Database,
+  DollarSign,
+  Loader2,
+  RefreshCw,
+  ShieldCheck,
+  Target,
+  Users,
+  Zap,
 } from "lucide-react";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ActivationRiskBanner } from "@/components/dashboard/ActivationRiskBanner";
-import { supabase } from "@/integrations/supabase/client";
-import { StatCard } from "@/components/dashboard/StatCard";
-import { GrowthChart } from "@/components/dashboard/GrowthChart";
-import { AnalyticsPieChart } from "@/components/dashboard/AnalyticsPieChart";
-import { ManagerTeamView } from "@/components/dashboard/ManagerTeamView";
 
-import { LeaderboardTabs } from "@/components/dashboard/LeaderboardTabs";
-import { ReferralLeaderboard } from "@/components/dashboard/ReferralLeaderboard";
-import { TeamSnapshotCard } from "@/components/dashboard/TeamSnapshotCard";
-import { TeamPerformanceBreakdown } from "@/components/dashboard/TeamPerformanceBreakdown";
-import { OnboardingPipelineCard } from "@/components/dashboard/OnboardingPipelineCard";
-import { TopProducersTodayCard } from "@/components/dashboard/TopProducersTodayCard";
-import { RecruitingQuickView } from "@/components/dashboard/RecruitingQuickView";
-import { StreakBanner } from "@/components/celebrations/StreakBanner";
-import { LivePulse } from "@/components/dashboard/LivePulse";
-import { FocusNow } from "@/components/dashboard/FocusNow";
-import { ForecastCard } from "@/components/dashboard/ForecastCard";
-import { useAuth } from "@/hooks/useAuth";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { GlassCard } from "@/components/ui/glass-card";
+import AgentCommandDashboard from "@/pages/AgentCommandDashboard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { SkeletonLoader } from "@/components/ui/skeleton-loader";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
-import { DatePeriodSelector, type DatePeriod } from "@/components/ui/date-period-selector";
-
-import { TotalApplicationsBanner } from "@/components/dashboard/TotalApplicationsBanner";
-import { EstimatedEarningsCard } from "@/components/dashboard/EstimatedEarningsCard";
-import { PortalLinkSender } from "@/components/admin/PortalLinkSender";
-import { TeamOverviewDashboard } from "@/components/dashboard/TeamOverviewDashboard";
-import { ExtendedStatsStrip } from "@/components/dashboard/ExtendedStatsStrip";
-
-import { ChurnRiskBanner } from "@/components/dashboard/ChurnRiskBanner";
-import { AchievementFeed } from "@/components/dashboard/AchievementFeed";
-import { TeamTasksWidget } from "@/components/dashboard/TeamTasksWidget";
-import { AwardFeedLive } from "@/components/dashboard/AwardFeedLive";
-import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
-import { DashboardInsightCards } from "@/components/dashboard/DashboardInsightCards";
-import { AgentPersonalDashboard } from "@/components/dashboard/AgentPersonalDashboard";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { useMyDownline } from "@/hooks/useMyDownline";
-
-import { StalledAgentsAlert } from "@/components/dashboard/StalledAgentsAlert";
-import { ReferralTrackingCard } from "@/components/dashboard/ReferralTrackingCard";
-import { StatCardDrilldown } from "@/components/dashboard/StatCardDrilldown";
-import { HideableCard } from "@/components/dashboard/HideableCard";
-import { HiddenCardsManager } from "@/components/dashboard/HiddenCardsManager";
-import { DataFreshnessBanner } from "@/components/dashboard/DataFreshnessBanner";
-import { useNavigate, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
-import { useSoundEffects } from "@/hooks/useSoundEffects";
-import { getBusinessDayBounds, getBusinessWeekBounds } from "@/lib/dateUtils";
-import { LIVE_AGENT_DEAL_WINDOW_DAYS, getCloseRate, getLiveAgentCutoffIso, getPriorWeekMatchedBounds, sumAnnualPremium } from "@/lib/metricTruth";
+import { useRolePreview, type RolePreview } from "@/hooks/useRolePreview";
+import { getBusinessDayBounds, getBusinessMonthBounds, getBusinessWeekBounds, getMatchedPriorWeekBounds } from "@/lib/dateUtils";
 import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr, liveDealWindowOr } from "@/lib/dealTruth";
+import { getCloseRate, getLiveAgentCutoffIso, LIVE_AGENT_DEAL_WINDOW_DAYS, sumAnnualPremium } from "@/lib/metricTruth";
+import { cn } from "@/lib/utils";
 
-const HIDEABLE_CARDS: Record<string, string> = {
-  "dashboard.insight-cards": "Insight Cards",
-  "dashboard.applications-banner": "Total Applications Banner",
-  "dashboard.churn-risk": "Churn Risk Banner",
-  "dashboard.team-snapshot": "Production Snapshot",
-  "dashboard.activation-risk": "Activation Risk Banner",
-  "dashboard.team-overview": "Team Overview",
-  "dashboard.performance-breakdown": "Performance Breakdown",
-  "dashboard.top-producers": "Top Producers Section",
-  "dashboard.recruiting": "Recruiting & Growth Section",
-  "dashboard.team-view": "Your Team",
-  "dashboard.achievement-feed": "Achievements & Tasks",
-};
+type IntegrationState = "ok" | "warning" | "critical" | "unavailable";
 
-interface DashboardStats {
-  totalLeads: number;
-  contacted: number;
-  closed: number;
-  licensed: number;
-  unlicensed: number;
-  closeRate: number;
-  avgWaitTime: number;
-  growthPercent: number;
-  staleLeads: number;
+interface DashboardSnapshot {
+  scopeLabel: string;
+  sourceGeneratedAt: string;
+  production: {
+    todayAlp: number;
+    todayDeals: number;
+    weekAlp: number;
+    weekDeals: number;
+    monthAlp: number;
+    monthDeals: number;
+    previousWeekAlp: number;
+    liveAgents: number;
+    presentationsWeek: number;
+    hoursWeek: number;
+    closeRate: number;
+  };
+  recruiting: {
+    applicants: number;
+    contacted: number;
+    booked: number;
+    seminarAttended: number;
+    noShow: number;
+    advanced: number;
+    icaSent: number;
+    licensed: number;
+    contracted: number;
+    activated: number;
+    firstSale: number;
+  };
+  referrals: {
+    caught: number;
+    presentations: number;
+    bookedInHome: number;
+  };
+  stripe: {
+    confirmedPurchases: number;
+    pendingRequests: number;
+    revenueCents: number;
+    lastChargeAt: string | null;
+  };
+  readyMode: {
+    available: number | null;
+    manualCounter: number | null;
+    source: string;
+    updatedAt: string | null;
+    state: IntegrationState;
+  };
+  agentLink: {
+    status: string | null;
+    lastSyncAt: string | null;
+    policiesSeen: number;
+    dealsInserted: number;
+    dealsUpdated: number;
+    error: string | null;
+    state: IntegrationState;
+  };
+  system: {
+    status: string | null;
+    checkedAt: string | null;
+    critical: number;
+    warnings: number;
+  };
 }
 
-const defaultStats: DashboardStats = {
-  totalLeads: 0,
-  contacted: 0,
-  closed: 0,
-  licensed: 0,
-  unlicensed: 0,
-  closeRate: 0,
-  avgWaitTime: 0,
-  growthPercent: 0,
-  staleLeads: 0,
-};
+interface CurrentAgent {
+  id: string;
+  display_name: string | null;
+}
 
-const emptyChartData: Array<{ label: string; leads: number; closed: number }> = [];
-const emptySourceData: Array<{ name: string; value: number; color: string }> = [];
+function money(value: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
 
-async function fetchDashboardData(
+function number(value: number): string {
+  return new Intl.NumberFormat("en-US").format(value);
+}
+
+function percent(value: number): string {
+  return `${Math.round(value)}%`;
+}
+
+function parseCount(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  const parsed = Number(String(value).replace(/,/g, ""));
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function minutesSince(iso: string | null): number | null {
+  if (!iso) return null;
+  const time = new Date(iso).getTime();
+  if (!Number.isFinite(time)) return null;
+  return Math.round((Date.now() - time) / 60_000);
+}
+
+function ageLabel(iso: string | null): string {
+  const mins = minutesSince(iso);
+  if (mins === null) return "Never";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 48) return `${hours}h ago`;
+  return `${Math.round(hours / 24)}d ago`;
+}
+
+async function getRows<T = any>(builder: any, label: string): Promise<T[]> {
+  if (!builder) return [];
+  const { data, error } = await builder;
+  if (error) {
+    console.warn(`[dashboard:${label}]`, error);
+    return [];
+  }
+  return (data ?? []) as T[];
+}
+
+async function getOne<T = any>(builder: any, label: string): Promise<T | null> {
+  if (!builder) return null;
+  const { data, error } = await builder;
+  if (error) {
+    console.warn(`[dashboard:${label}]`, error);
+    return null;
+  }
+  return (data ?? null) as T | null;
+}
+
+function applyAgentScope(builder: any, agentIds: string[] | undefined) {
+  if (!agentIds) return builder;
+  if (agentIds.length === 0) return null;
+  return builder.in("agent_id", agentIds);
+}
+
+function isAdvancedApplication(app: any): boolean {
+  return Boolean(
+    app.qualified_at ||
+    app.reviewed_at ||
+    ["reviewing", "interview", "contracting", "approved"].includes(app.status),
+  );
+}
+
+function isLicensedApplication(app: any): boolean {
+  return app.licensed_at || app.license_status === "licensed" || app.license_progress === "licensed";
+}
+
+function isContractedApplication(app: any): boolean {
+  return app.contracted_at || app.status === "approved";
+}
+
+async function loadApplications(role: RolePreview, userId: string, scopedAgentIds: string[]): Promise<any[]> {
+  const q: any = supabase;
+  if (role === "admin") {
+    return getRows(q.from("applications").select("*").is("terminated_at", null).limit(2_000), "applications-admin");
+  }
+
+  const visibleViaView = await getRows(
+    q.from("v_my_applications").select("*").is("terminated_at", null).limit(2_000),
+    "visible-applications-view",
+  );
+  if (visibleViaView.length > 0) return visibleViaView;
+  if (scopedAgentIds.length === 0) return [];
+
+  const filters = scopedAgentIds.flatMap((agentId) => [
+    `assigned_agent_id.eq.${agentId}`,
+    `recruiter_id.eq.${agentId}`,
+    `referral_manager_id.eq.${agentId}`,
+  ]);
+  filters.push(`hiring_manager_user_id.eq.${userId}`);
+
+  return getRows(
+    q.from("applications").select("*").is("terminated_at", null).or(filters.join(",")).limit(2_000),
+    "applications-scoped-fallback",
+  );
+}
+
+async function loadDashboardSnapshot(
+  role: RolePreview,
   userId: string,
-  profileName: string | null | undefined,
-  userEmail: string | undefined,
-  dateRange: { start: Date; end: Date },
-  myDirectsOnly: boolean,
-) {
-  const userName = profileName || userEmail?.split("@")[0] || "Agent";
+  scopedAgentIds: string[] | undefined,
+): Promise<DashboardSnapshot> {
+  const q: any = supabase;
+  const day = getBusinessDayBounds();
+  const week = getBusinessWeekBounds();
+  const month = getBusinessMonthBounds();
+  const priorWeek = getMatchedPriorWeekBounds();
+  const agentScope = role === "admin" ? undefined : scopedAgentIds ?? [];
+  const scopeLabel = role === "admin" ? "Agency" : role === "manager" ? "Manager downline" : "Agent";
 
-  const { data: agentData } = await supabase
-    .from("agents")
-    .select("id")
-    .eq("user_id", userId)
-    .maybeSingle();
+  const dealQuery = (windowOr: string) =>
+    applyAgentScope(
+      q.from("deals")
+        .select("agent_id, annual_premium, posted_at, created_at")
+        .or(windowOr)
+        .in("status", DEAL_TRUTH_STATUS_FILTER),
+      agentScope,
+    );
 
-  if (!agentData) {
-    return { stats: defaultStats, dailyData: emptyChartData, weeklyData: emptyChartData, monthlyData: emptyChartData, sourceData: emptySourceData, userName, currentAgentId: undefined, previousPeriodLeads: 0 };
-  }
+  const productionQuery = applyAgentScope(
+    q.from("daily_production")
+      .select("agent_id, presentations, hours_called, referrals_caught, referral_presentations, booked_inhome_referrals, production_date")
+      .gte("production_date", week.startIso.slice(0, 10))
+      .lt("production_date", day.endIso.slice(0, 10)),
+    agentScope,
+  );
 
-  let query = supabase
-    .from("applications")
-    .select("id, created_at, contacted_at, closed_at, license_status, referral_source, assigned_agent_id, terminated_at");
+  const applications = await loadApplications(role, userId, agentScope ?? []);
+  const applicationIds = new Set(applications.map((app) => app.id).filter(Boolean));
+  const applicationEmails = new Set(
+    applications
+      .map((app) => String(app.email ?? "").toLowerCase())
+      .filter(Boolean),
+  );
 
-  if (myDirectsOnly) {
-    query = query.eq("assigned_agent_id", agentData.id);
-  }
+  const interviewQuery = role === "admin" || applicationIds.size > 0
+    ? q.from("scheduled_interviews")
+        .select("*")
+        .gte("interview_date", week.startIso)
+        .limit(2_000)
+    : null;
 
-  const { data: allApplications } = await query;
+  const scopedInterviewQuery = role === "admin" || !interviewQuery
+    ? interviewQuery
+    : interviewQuery.in("application_id", Array.from(applicationIds));
 
-  if (!allApplications || allApplications.length === 0) {
-    return { stats: defaultStats, dailyData: emptyChartData, weeklyData: emptyChartData, monthlyData: emptyChartData, sourceData: emptySourceData, userName, currentAgentId: agentData.id, previousPeriodLeads: 0 };
-  }
+  const [
+    todayDeals,
+    weekDeals,
+    monthDeals,
+    priorWeekDeals,
+    liveDeals,
+    productionRows,
+    scheduledInterviews,
+    seminarRowsRaw,
+    purchaseRequests,
+    leadPurchases,
+    agentLinkRow,
+    readySettings,
+    leadCounterRows,
+    healthRow,
+  ] = await Promise.all([
+    getRows(dealQuery(dealTruthWindowOr(day.startIso, day.endIso)), "today-deals"),
+    getRows(dealQuery(dealTruthWindowOr(week.startIso, week.endIso)), "week-deals"),
+    getRows(dealQuery(dealTruthWindowOr(month.startIso, month.endIso)), "month-deals"),
+    getRows(dealQuery(dealTruthWindowOr(priorWeek.startIso, priorWeek.endIso)), "prior-week-deals"),
+    getRows(
+      applyAgentScope(
+        q.from("deals")
+          .select("agent_id, annual_premium, posted_at, created_at")
+          .or(liveDealWindowOr(getLiveAgentCutoffIso()))
+          .in("status", DEAL_TRUTH_STATUS_FILTER),
+        agentScope,
+      ),
+      "live-deals",
+    ),
+    getRows(productionQuery, "daily-production-week"),
+    getRows(scopedInterviewQuery, "scheduled-interviews"),
+    getRows(q.from("seminar_registrations").select("*").limit(2_000), "seminar-registrations"),
+    getRows(
+      applyAgentScope(
+        q.from("lead_purchase_requests").select("*").order("requested_at", { ascending: false }).limit(500),
+        agentScope,
+      ),
+      "lead-purchase-requests",
+    ),
+    getRows(
+      applyAgentScope(
+        q.from("lead_purchases").select("*").gte("charged_at", month.startIso).order("charged_at", { ascending: false }).limit(500),
+        agentScope,
+      ),
+      "lead-purchases",
+    ),
+    getOne(
+      q.from("agentlink_sync_log")
+        .select("status, started_at, finished_at, policies_seen, deals_inserted, deals_updated, error_message")
+        .order("started_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      "agentlink-sync-log",
+    ),
+    getRows(
+      q.from("system_settings")
+        .select("key, value, updated_at")
+        .in("key", ["readymode_available_leads", "readymode_inventory_count", "readymode_inventory_updated_at"])
+        .limit(10),
+      "readymode-settings",
+    ),
+    getRows(q.from("lead_counter").select("count, updated_at").limit(1), "lead-counter"),
+    getOne(
+      q.from("system_health_logs")
+        .select("overall_status, checked_at, critical_count, warning_count")
+        .order("checked_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      "system-health",
+    ),
+  ]);
 
-  // Filter by selected date range for stats
-  const applications = allApplications.filter(a => {
-    const d = new Date(a.created_at);
-    return d >= dateRange.start && d <= dateRange.end;
-  });
+  const seminarRows = role === "admin"
+    ? seminarRowsRaw
+    : seminarRowsRaw.filter((row: any) => applicationEmails.has(String(row.email ?? "").toLowerCase()));
 
-  const totalLeads = applications.length;
-  const contacted = applications.filter(a => a.contacted_at).length;
-  const closed = applications.filter(a => a.closed_at).length;
-  const licensed = applications.filter(a => a.license_status === "licensed").length;
-  const unlicensed = applications.filter(a => a.license_status !== "licensed").length;
+  const weekProduction = productionRows as Array<{
+    presentations?: number | null;
+    hours_called?: number | null;
+    referrals_caught?: number | null;
+    referral_presentations?: number | null;
+    booked_inhome_referrals?: number | null;
+  }>;
 
-  const now = new Date();
-  const staleLeads = applications.filter(a => {
-    if (a.contacted_at) return false;
-    const createdAt = new Date(a.created_at);
-    return (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60) > 48;
-  }).length;
+  const settingsMap = new Map((readySettings as any[]).map((row) => [row.key, row]));
+  const readyCount = parseCount(settingsMap.get("readymode_available_leads")?.value ?? settingsMap.get("readymode_inventory_count")?.value);
+  const readyUpdatedAt = settingsMap.get("readymode_inventory_updated_at")?.value ?? settingsMap.get("readymode_available_leads")?.updated_at ?? null;
+  const manualCounter = parseCount((leadCounterRows as any[])[0]?.count);
+  const manualCounterUpdatedAt = (leadCounterRows as any[])[0]?.updated_at ?? null;
 
-  let totalWaitTime = 0;
-  let countWithContact = 0;
-  applications
-    .filter(a => a.license_status === "licensed" && a.contacted_at)
-    .forEach(a => {
-      const created = new Date(a.created_at);
-      const contactedDate = new Date(a.contacted_at!);
-      totalWaitTime += (contactedDate.getTime() - created.getTime()) / (1000 * 60 * 60);
-      countWithContact++;
-    });
+  const syncAt = (agentLinkRow as any)?.finished_at ?? (agentLinkRow as any)?.started_at ?? null;
+  const syncAge = minutesSince(syncAt);
+  const agentLinkState: IntegrationState = !(agentLinkRow as any)
+    ? "unavailable"
+    : (agentLinkRow as any).status !== "ok"
+      ? "critical"
+      : syncAge !== null && syncAge > 6 * 60
+        ? "warning"
+        : "ok";
 
-  // Growth comparison: current period vs same-length previous period
-  const periodLength = dateRange.end.getTime() - dateRange.start.getTime();
-  const prevStart = new Date(dateRange.start.getTime() - periodLength);
-  const prevEnd = new Date(dateRange.start.getTime());
-
-  const currentPeriodLeads = applications.length;
-  const previousPeriodLeads = allApplications.filter(a => {
-    const date = new Date(a.created_at);
-    return date >= prevStart && date < prevEnd;
-  }).length;
-
-  const growthPercent = previousPeriodLeads > 0
-    ? ((currentPeriodLeads - previousPeriodLeads) / previousPeriodLeads) * 100
-    : currentPeriodLeads > 0 ? 100 : 0;
-
-  const stats: DashboardStats = {
-    totalLeads, contacted, closed, licensed, unlicensed,
-    closeRate: totalLeads > 0 ? (closed / totalLeads) * 100 : 0,
-    avgWaitTime: countWithContact > 0 ? totalWaitTime / countWithContact : 0,
-    growthPercent: Math.round(growthPercent),
-    staleLeads,
-  };
-
-  // Daily chart data
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const last7Days = Array.from({ length: 7 }, (_, i) => {
-    const date = new Date();
-    date.setDate(date.getDate() - (6 - i));
-    return date;
-  });
-  const dailyData = last7Days.map(date => {
-    const dayApps = applications.filter(a => new Date(a.created_at).toDateString() === date.toDateString());
-    return { label: dayNames[date.getDay()], leads: dayApps.length, closed: dayApps.filter(a => a.closed_at).length };
-  });
-
-  // Weekly chart data
-  const weeklyData = Array.from({ length: 4 }, (_, i) => {
-    const weekStart = new Date();
-    weekStart.setDate(weekStart.getDate() - ((3 - i) * 7 + 7));
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekEnd.getDate() + 7);
-    const weekApps = applications.filter(a => {
-      const appDate = new Date(a.created_at);
-      return appDate >= weekStart && appDate < weekEnd;
-    });
-    return { label: `Week ${i + 1}`, leads: weekApps.length, closed: weekApps.filter(a => a.closed_at).length };
-  });
-
-  // Monthly chart data
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const monthlyData = Array.from({ length: 6 }, (_, i) => {
-    const date = new Date();
-    date.setMonth(date.getMonth() - (5 - i));
-    const monthApps = applications.filter(a => {
-      const appDate = new Date(a.created_at);
-      return appDate.getMonth() === date.getMonth() && appDate.getFullYear() === date.getFullYear();
-    });
-    return { label: monthNames[date.getMonth()], leads: monthApps.length, closed: monthApps.filter(a => a.closed_at).length };
-  });
-
-  // Source data
-  const sourceMap = new Map<string, number>();
-  applications.forEach(a => {
-    const source = a.referral_source || 'Direct';
-    sourceMap.set(source, (sourceMap.get(source) || 0) + 1);
-  });
-  const colors = ["hsl(168, 84%, 42%)", "hsl(160, 84%, 39%)", "hsl(45, 93%, 58%)", "hsl(222, 47%, 40%)", "hsl(220, 15%, 50%)"];
-  const sourceData = Array.from(sourceMap.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([name, value], i) => ({ name, value, color: colors[i % colors.length] }));
+  const confirmedRequests = (purchaseRequests as any[]).filter((row) =>
+    ["confirmed", "paid", "completed", "succeeded"].includes(String(row.status ?? "").toLowerCase()),
+  );
+  const pendingRequests = (purchaseRequests as any[]).filter((row) =>
+    ["pending", "requested", "processing"].includes(String(row.status ?? "pending").toLowerCase()),
+  );
 
   return {
-    stats,
-    dailyData,
-    weeklyData,
-    monthlyData,
-    sourceData: sourceData.length > 0 ? sourceData : [{ name: "No data yet", value: 1, color: "hsl(222, 30%, 30%)" }],
-    userName,
-    currentAgentId: agentData.id,
-    previousPeriodLeads,
+    scopeLabel,
+    sourceGeneratedAt: new Date().toISOString(),
+    production: {
+      todayAlp: sumAnnualPremium(todayDeals),
+      todayDeals: todayDeals.length,
+      weekAlp: sumAnnualPremium(weekDeals),
+      weekDeals: weekDeals.length,
+      monthAlp: sumAnnualPremium(monthDeals),
+      monthDeals: monthDeals.length,
+      previousWeekAlp: sumAnnualPremium(priorWeekDeals),
+      liveAgents: new Set((liveDeals as any[]).map((row) => row.agent_id).filter(Boolean)).size,
+      presentationsWeek: weekProduction.reduce((sum, row) => sum + Number(row.presentations ?? 0), 0),
+      hoursWeek: weekProduction.reduce((sum, row) => sum + Number(row.hours_called ?? 0), 0),
+      closeRate: getCloseRate(weekDeals.length, weekProduction.reduce((sum, row) => sum + Number(row.presentations ?? 0), 0)),
+    },
+    recruiting: {
+      applicants: applications.length,
+      contacted: applications.filter((app) => app.contacted_at || app.last_contacted_at || app.first_contact_attempt_at).length,
+      booked: (scheduledInterviews as any[]).filter((row) => !["cancelled", "no_show"].includes(String(row.status ?? "").toLowerCase())).length,
+      seminarAttended: (seminarRows as any[]).filter((row) => row.attended === true).length,
+      noShow: (seminarRows as any[]).filter((row) => row.attended === false).length,
+      advanced: applications.filter(isAdvancedApplication).length,
+      icaSent: applications.filter((app) => app.status === "contracting" || app.status === "approved" || app.contracted_at).length,
+      licensed: applications.filter(isLicensedApplication).length,
+      contracted: applications.filter(isContractedApplication).length,
+      activated: applications.filter((app) => app.first_deal_at || app.start_date).length,
+      firstSale: applications.filter((app) => app.first_deal_at).length,
+    },
+    referrals: {
+      caught: weekProduction.reduce((sum, row) => sum + Number(row.referrals_caught ?? 0), 0),
+      presentations: weekProduction.reduce((sum, row) => sum + Number(row.referral_presentations ?? 0), 0),
+      bookedInHome: weekProduction.reduce((sum, row) => sum + Number(row.booked_inhome_referrals ?? 0), 0),
+    },
+    stripe: {
+      confirmedPurchases: confirmedRequests.length + (leadPurchases as any[]).length,
+      pendingRequests: pendingRequests.length,
+      revenueCents: (leadPurchases as any[]).reduce((sum, row) => sum + Number(row.amount_cents ?? 0), 0),
+      lastChargeAt: (leadPurchases as any[])[0]?.charged_at ?? null,
+    },
+    readyMode: {
+      available: readyCount,
+      manualCounter,
+      source: readyCount === null ? "ReadyMode inventory unavailable" : "system_settings.readymode_available_leads",
+      updatedAt: readyUpdatedAt || manualCounterUpdatedAt || null,
+      state: readyCount === null ? (manualCounter === null ? "unavailable" : "warning") : "ok",
+    },
+    agentLink: {
+      status: (agentLinkRow as any)?.status ?? null,
+      lastSyncAt: syncAt,
+      policiesSeen: Number((agentLinkRow as any)?.policies_seen ?? 0),
+      dealsInserted: Number((agentLinkRow as any)?.deals_inserted ?? 0),
+      dealsUpdated: Number((agentLinkRow as any)?.deals_updated ?? 0),
+      error: (agentLinkRow as any)?.error_message ?? null,
+      state: agentLinkState,
+    },
+    system: {
+      status: (healthRow as any)?.overall_status ?? null,
+      checkedAt: (healthRow as any)?.checked_at ?? null,
+      critical: Number((healthRow as any)?.critical_count ?? 0),
+      warnings: Number((healthRow as any)?.warning_count ?? 0),
+    },
   };
 }
 
-import { Shield, Settings, Send, KeyRound, ShoppingCart, Activity, AlertCircle, Flame, UserX, RefreshCw, Search } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
+function useCurrentAgent(userId: string | undefined) {
+  return useQuery({
+    queryKey: ["current-agent-for-dashboard", userId],
+    queryFn: async (): Promise<CurrentAgent | null> => {
+      if (!userId) return null;
+      const { data, error } = await supabase
+        .from("agents")
+        .select("id, display_name")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (error) {
+        console.warn("[dashboard:current-agent]", error);
+        return null;
+      }
+      return data;
+    },
+    enabled: Boolean(userId),
+    staleTime: 5 * 60_000,
+  });
+}
 
-const quickActions = [
-  { to: "/numbers", icon: Edit3, color: "primary", title: "Log Numbers", sub: "Enter today's stats" },
-  { to: "/agent-portal", icon: BarChart3, color: "violet-500", title: "Agent Dashboard", sub: "View performance" },
-  { to: "/dashboard/crm", icon: Users, color: "emerald-500", title: "CRM", sub: "Manage agents" },
-  { to: "/dashboard/applicants", icon: Sparkles, color: "amber-500", title: "Pipeline", sub: "View applicants" },
-] as const;
+function StateBadge({ state }: { state: IntegrationState }) {
+  const label = state === "ok" ? "Live" : state === "warning" ? "Review" : state === "critical" ? "Broken" : "Unavailable";
+  return (
+    <Badge
+      variant={state === "critical" ? "destructive" : state === "ok" ? "default" : "outline"}
+      className={cn(state === "warning" && "border-amber-400/50 text-amber-600")}
+    >
+      {label}
+    </Badge>
+  );
+}
 
-const adminQuickActions = [
-  { to: "/dashboard/command", icon: Shield, color: "red-500", title: "Command Center", sub: "Full admin control" },
-  { to: "/dashboard/accounts", icon: Settings, color: "indigo-500", title: "Accounts", sub: "Manage accounts" },
-] as const;
+function StatTile({
+  icon: Icon,
+  label,
+  value,
+  detail,
+  tone = "default",
+}: {
+  icon: ElementType;
+  label: string;
+  value: string;
+  detail: string;
+  tone?: "default" | "success" | "warning";
+}) {
+  return (
+    <Card className="rounded-lg">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+            <p className="mt-2 text-2xl font-bold tracking-tight">{value}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+          </div>
+          <div
+            className={cn(
+              "rounded-lg p-2",
+              tone === "success" ? "bg-emerald-500/10 text-emerald-600" : tone === "warning" ? "bg-amber-500/10 text-amber-600" : "bg-primary/10 text-primary",
+            )}
+          >
+            <Icon className="h-5 w-5" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function IntegrationCard({
+  icon: Icon,
+  title,
+  value,
+  detail,
+  state,
+  href,
+}: {
+  icon: ElementType;
+  title: string;
+  value: string;
+  detail: string;
+  state: IntegrationState;
+  href: string;
+}) {
+  return (
+    <Card className="rounded-lg">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <Icon className="h-4 w-4 text-muted-foreground" />
+              <p className="truncate text-sm font-semibold">{title}</p>
+            </div>
+            <p className="mt-3 text-xl font-bold">{value}</p>
+            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{detail}</p>
+          </div>
+          <StateBadge state={state} />
+        </div>
+        <Button asChild variant="ghost" size="sm" className="mt-3 h-8 px-0 text-xs">
+          <Link to={href}>
+            Open <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+          </Link>
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+function RecruitingGrid({ stats }: { stats: DashboardSnapshot["recruiting"] }) {
+  const rows = [
+    ["Applicants", stats.applicants],
+    ["Contacted", stats.contacted],
+    ["Booked", stats.booked],
+    ["Seminar attended", stats.seminarAttended],
+    ["No-show", stats.noShow],
+    ["Advanced", stats.advanced],
+    ["ICA sent", stats.icaSent],
+    ["Licensed", stats.licensed],
+    ["Contracted", stats.contracted],
+    ["Activated", stats.activated],
+    ["First sale", stats.firstSale],
+  ];
+
+  return (
+    <Card className="rounded-lg">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Target className="h-4 w-4 text-primary" />
+          Recruiting Pipeline
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+          {rows.map(([label, value]) => (
+            <div key={label} className="rounded-lg border border-border/70 p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+              <p className="mt-1 text-xl font-bold">{number(Number(value))}</p>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function WeekProductionCard({ snapshot }: { snapshot: DashboardSnapshot }) {
+  const hasWeekProduction = snapshot.production.weekDeals > 0 || snapshot.production.weekAlp > 0 || snapshot.production.presentationsWeek > 0;
+  const change = snapshot.production.previousWeekAlp > 0
+    ? ((snapshot.production.weekAlp - snapshot.production.previousWeekAlp) / snapshot.production.previousWeekAlp) * 100
+    : null;
+
+  return (
+    <Card className="rounded-lg">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <BarChart3 className="h-4 w-4 text-primary" />
+          Week in Agency Production
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {hasWeekProduction ? (
+          <div className="grid gap-4 md:grid-cols-4">
+            <div>
+              <p className="text-xs text-muted-foreground">ALP posted this week</p>
+              <p className="mt-1 text-3xl font-bold">{money(snapshot.production.weekAlp)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Deals posted</p>
+              <p className="mt-1 text-3xl font-bold">{number(snapshot.production.weekDeals)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Presentations logged</p>
+              <p className="mt-1 text-3xl font-bold">{number(snapshot.production.presentationsWeek)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Vs prior matched week</p>
+              <p className={cn("mt-1 text-3xl font-bold", change !== null && change < 0 ? "text-amber-600" : "text-emerald-600")}>
+                {change === null ? "N/A" : percent(change)}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed border-border p-5">
+            <div className="flex gap-3">
+              <AlertTriangle className="mt-0.5 h-5 w-5 text-amber-500" />
+              <div>
+                <p className="font-semibold">No posted production found for this scope this week.</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  This panel is no longer blank. It reads valid deals from `deals.posted_at` and presentations from `daily_production`; zero means no trusted records are visible to this role.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        <p className="mt-4 text-xs text-muted-foreground">
+          Source: deals.status in submitted/active filters, posted_at in America/Chicago business windows. Presentations remain manual `daily_production` input.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function ExecutiveDashboard({
+  role,
+  snapshot,
+  onRunSystemCheck,
+  runningSystemCheck,
+}: {
+  role: RolePreview;
+  snapshot: DashboardSnapshot;
+  onRunSystemCheck: () => Promise<void>;
+  runningSystemCheck: boolean;
+}) {
+  const title = role === "admin" ? "CEO Command Dashboard" : "Manager Command Dashboard";
+  const readyValue = snapshot.readyMode.available === null ? "Unavailable" : number(snapshot.readyMode.available);
+  const readyDetail = snapshot.readyMode.available === null
+    ? snapshot.readyMode.manualCounter === null
+      ? "No ReadyMode inventory setting is configured."
+      : `Manual lead counter ${number(snapshot.readyMode.manualCounter)} is shown only as unverified fallback.`
+    : `Updated ${ageLabel(snapshot.readyMode.updatedAt)} from ReadyMode inventory setting.`;
+
+  return (
+    <div className="space-y-6 pb-8 lg:pr-[18rem]">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline">{snapshot.scopeLabel}</Badge>
+            <Badge variant="secondary">Generated {ageLabel(snapshot.sourceGeneratedAt)}</Badge>
+          </div>
+          <h1 className="mt-3 text-3xl font-bold tracking-tight">{title}</h1>
+          <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
+            Production, recruiting, lead inventory, Stripe, and integration state now come from live tables with explicit unavailable states instead of filler values.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={onRunSystemCheck} disabled={runningSystemCheck}>
+            {runningSystemCheck ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+            Run System Check
+          </Button>
+          <Button asChild variant="outline">
+            <Link to="/numbers">
+              Log Numbers <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <StatTile icon={DollarSign} label="Today ALP" value={money(snapshot.production.todayAlp)} detail={`${number(snapshot.production.todayDeals)} posted deals today`} />
+        <StatTile icon={BarChart3} label="Week ALP" value={money(snapshot.production.weekAlp)} detail={`${number(snapshot.production.weekDeals)} deals this business week`} />
+        <StatTile icon={Activity} label={`Live agents (${LIVE_AGENT_DEAL_WINDOW_DAYS}d)`} value={number(snapshot.production.liveAgents)} detail="At least one valid posted deal in live window" />
+        <StatTile icon={CheckCircle2} label="Close rate" value={percent(snapshot.production.closeRate)} detail={`${number(snapshot.production.presentationsWeek)} presentations logged`} tone="success" />
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <IntegrationCard
+          icon={Database}
+          title="AgentLink"
+          value={snapshot.agentLink.status ?? "No sync"}
+          detail={`${number(snapshot.agentLink.policiesSeen)} policies seen · ${number(snapshot.agentLink.dealsInserted + snapshot.agentLink.dealsUpdated)} deal writes · ${ageLabel(snapshot.agentLink.lastSyncAt)}`}
+          state={snapshot.agentLink.state}
+          href="/dashboard/agentlink-sync"
+        />
+        <IntegrationCard
+          icon={Zap}
+          title="ReadyMode Inventory"
+          value={readyValue}
+          detail={readyDetail}
+          state={snapshot.readyMode.state}
+          href="/dashboard/leads"
+        />
+        <IntegrationCard
+          icon={CreditCard}
+          title="Stripe Lead Purchases"
+          value={money(snapshot.stripe.revenueCents / 100)}
+          detail={`${number(snapshot.stripe.confirmedPurchases)} confirmed · ${number(snapshot.stripe.pendingRequests)} pending · last charge ${ageLabel(snapshot.stripe.lastChargeAt)}`}
+          state={snapshot.stripe.pendingRequests > 0 ? "warning" : "ok"}
+          href="/purchase-leads"
+        />
+        <IntegrationCard
+          icon={ShieldCheck}
+          title="System Health"
+          value={snapshot.system.status ?? "No check"}
+          detail={`${number(snapshot.system.critical)} critical · ${number(snapshot.system.warnings)} warnings · checked ${ageLabel(snapshot.system.checkedAt)}`}
+          state={snapshot.system.status === "critical" ? "critical" : snapshot.system.status === "degraded" ? "warning" : snapshot.system.status ? "ok" : "unavailable"}
+          href="/dashboard/system-health"
+        />
+      </div>
+
+      <WeekProductionCard snapshot={snapshot} />
+
+      <div className="grid gap-4 xl:grid-cols-[1.3fr_0.7fr]">
+        <RecruitingGrid stats={snapshot.recruiting} />
+        <Card className="rounded-lg">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Users className="h-4 w-4 text-primary" />
+              Activity And Referrals
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <StatTile icon={Bell} label="Referrals caught" value={number(snapshot.referrals.caught)} detail={`${number(snapshot.referrals.presentations)} referral presentations`} />
+            <StatTile icon={CalendarDays} label="Booked in-home referrals" value={number(snapshot.referrals.bookedInHome)} detail="Source: weekly daily_production inputs" />
+            <StatTile icon={Briefcase} label="Month ALP" value={money(snapshot.production.monthAlp)} detail={`${number(snapshot.production.monthDeals)} posted deals MTD`} />
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <Button asChild variant="outline" className="justify-between">
+          <Link to="/dashboard/leaderboard">Leaderboard <ArrowRight className="h-4 w-4" /></Link>
+        </Button>
+        <Button asChild variant="outline" className="justify-between">
+          <Link to="/dashboard/recruit">Recruiting <ArrowRight className="h-4 w-4" /></Link>
+        </Button>
+        <Button asChild variant="outline" className="justify-between">
+          <Link to="/dashboard/seminar-control">Seminar Control <ArrowRight className="h-4 w-4" /></Link>
+        </Button>
+        <Button asChild variant="outline" className="justify-between">
+          <Link to="/dashboard/notifications">Communication Center <ArrowRight className="h-4 w-4" /></Link>
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 export default function Dashboard() {
-  const { profile, user, isManager, isAdmin, isAgent, isLoading: authLoading } = useAuth();
-  const navigate = useNavigate();
-  const isMobile = useIsMobile();
-  const { playSound } = useSoundEffects();
-  const [datePeriod, setDatePeriod] = useState<DatePeriod>("month");
-  const [activeDrilldown, setActiveDrilldown] = useState<"agents" | "alp" | "apps" | "closerate" | null>(null);
-  const [dateRange, setDateRange] = useState<{ start: Date; end: Date }>({
-    start: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-    end: new Date(),
+  const { user, isLoading } = useAuth();
+  const { effectiveRole, actualRole, isPreviewing } = useRolePreview();
+  const currentAgent = useCurrentAgent(user?.id);
+  const downline = useMyDownline();
+  const [runningSystemCheck, setRunningSystemCheck] = useState(false);
+
+  const scopedAgentIds = useMemo(() => {
+    if (effectiveRole === "admin") return undefined;
+    const ids = new Set<string>();
+    if (currentAgent.data?.id) ids.add(currentAgent.data.id);
+    if (effectiveRole === "manager") {
+      for (const id of downline.data ?? []) ids.add(id);
+    }
+    return Array.from(ids);
+  }, [currentAgent.data?.id, downline.data, effectiveRole]);
+
+  const snapshotQuery = useQuery({
+    queryKey: ["launch-dashboard-snapshot", user?.id, effectiveRole, scopedAgentIds?.join(",") ?? "agency"],
+    queryFn: () => loadDashboardSnapshot(effectiveRole, user!.id, scopedAgentIds),
+    enabled: Boolean(user?.id) && !currentAgent.isLoading && !downline.isLoading,
+    staleTime: 60_000,
+    refetchInterval: 5 * 60_000,
   });
 
-  const handleDatePeriodChange = useCallback((period: DatePeriod, range: { start: Date; end: Date }) => {
-    setDatePeriod(period);
-    setDateRange(range);
-  }, []);
+  const runSystemCheck = async () => {
+    setRunningSystemCheck(true);
+    try {
+      const { error } = await supabase.functions.invoke("system-health-check");
+      if (error) throw error;
+      toast.success("System check started");
+      await snapshotQuery.refetch();
+    } catch (error: any) {
+      toast.error(error?.message ?? "System check failed to start");
+    } finally {
+      setRunningSystemCheck(false);
+    }
+  };
 
-  const [myDirectsOnly, setMyDirectsOnly] = useState(false);
+  if (isLoading || currentAgent.isLoading || downline.isLoading) {
+    return <PageLoadingSkeleton title="Loading command dashboard" />;
+  }
 
-  // Hierarchy scope: managers see only their downline
-  const { data: myDownlineIds = [] } = useMyDownline();
+  if (!user) return null;
 
-  // Fetch top-row real metrics, scoped by viewer.
-  // SOURCES (Agent Link truth, not manual logs):
-  //   - Live Agents: distinct agents with a submitted/active deal posted in
-  //     the last 10d. No profile-status or onboarding-stage inflation.
-  //   - Weekly ALP: SUM(deals.annual_premium) this week by deal truth date
-  //   - Close Rate: deals count / daily_production.presentations
-  //       (presentations has no other source; deals have to be Agent Link truth)
-  const { data: topMetrics } = useQuery({
-    queryKey: ["dashboard-top-metrics-v3-live-agents", isAdmin ? "agency" : "downline", myDownlineIds.join(",")],
-    queryFn: async () => {
-      const weekBounds = getBusinessWeekBounds();
-      const dayBounds = getBusinessDayBounds();
-      const priorWeekBounds = getPriorWeekMatchedBounds();
+  if (effectiveRole === "agent") {
+    return (
+      <div className="space-y-4 lg:pr-[18rem]">
+        {isPreviewing && (
+          <Badge variant="outline">Previewing Agent View from {actualRole}</Badge>
+        )}
+        <AgentCommandDashboard />
+      </div>
+    );
+  }
 
-      const shouldScope = !isAdmin && myDownlineIds.length > 0;
-
-      const liveCutoffIso = getLiveAgentCutoffIso();
-      let activeQ = supabase
-        .from("deals")
-        .select("agent_id, posted_at, created_at")
-        .or(liveDealWindowOr(liveCutoffIso))
-        .in("status", DEAL_TRUTH_STATUS_FILTER);
-      let weekDealsQ = supabase
-        .from("deals")
-        .select("annual_premium, agent_id, posted_at, created_at")
-        .or(dealTruthWindowOr(weekBounds.startIso, weekBounds.endIso))
-        .in("status", DEAL_TRUTH_STATUS_FILTER);
-      let todayDealsQ = supabase
-        .from("deals")
-        .select("annual_premium, posted_at, created_at")
-        .or(dealTruthWindowOr(dayBounds.startIso, dayBounds.endIso))
-        .in("status", DEAL_TRUTH_STATUS_FILTER);
-      let prevWeekQ = supabase
-        .from("deals")
-        .select("annual_premium, posted_at, created_at")
-        .or(dealTruthWindowOr(priorWeekBounds.startIso, priorWeekBounds.endIso))
-        .in("status", DEAL_TRUTH_STATUS_FILTER);
-      if (shouldScope) {
-        todayDealsQ = todayDealsQ.in("agent_id", myDownlineIds);
-        prevWeekQ   = prevWeekQ.in("agent_id", myDownlineIds);
-      }
-      let presQ = supabase
-        .from("daily_production")
-        .select("presentations, agent_id")
-        .gte("production_date", weekBounds.startIso.slice(0, 10))
-        .lte("production_date", weekBounds.endIso.slice(0, 10));
-      let appsQ = supabase
-        .from("applications")
-        .select("id", { count: "exact", head: true })
-        .gte("created_at", weekBounds.startIso)
-        .lt("created_at", weekBounds.endIso);
-
-      if (shouldScope) {
-        activeQ     = activeQ.in("agent_id", myDownlineIds);
-        weekDealsQ  = weekDealsQ.in("agent_id", myDownlineIds);
-        presQ       = presQ.in("agent_id", myDownlineIds);
-        appsQ       = appsQ.or(`assigned_agent_id.in.(${myDownlineIds.join(",")}),hiring_manager_user_id.eq.${user?.id}`);
-      }
-
-      // Use allSettled so one failed sub-query doesn't blank the whole header.
-      const settled = await Promise.allSettled([activeQ, weekDealsQ, presQ, appsQ, todayDealsQ, prevWeekQ]);
-      const safe = (i: number): any => (settled[i].status === "fulfilled" ? (settled[i] as any).value : { data: [], count: 0 });
-      const activeRes    = safe(0);
-      const weekDealsRes = safe(1);
-      const presRes      = safe(2);
-      const appsRes      = safe(3);
-      const todayRes     = safe(4);
-      const prevWeekRes  = safe(5);
-      const failedNames = ["liveAgents","weekDeals","pres","apps","today","prevWeek"]
-        .filter((_, i) => settled[i].status === "rejected");
-      if (failedNames.length) console.warn("[Dashboard topMetrics] partial failure:", failedNames);
-
-      const liveRows = (activeRes.data || []) as Array<{ agent_id?: string | null }>;
-      const activeAgentIds = new Set<string>(liveRows.map((r) => r.agent_id).filter(Boolean) as string[]);
-      const weeklyALP      = sumAnnualPremium((weekDealsRes.data || []) as Array<{ annual_premium?: number | null }>);
-      const todayALP       = sumAnnualPremium((todayRes.data || []) as Array<{ annual_premium?: number | null }>);
-      const prevWeekALP    = sumAnnualPremium((prevWeekRes.data || []) as Array<{ annual_premium?: number | null }>);
-      const weekOverWeekPct = prevWeekALP > 0 ? Math.round(((weeklyALP - prevWeekALP) / prevWeekALP) * 100) : null;
-      const totalDeals     = (weekDealsRes.data || []).length;
-      const totalPres      = (presRes.data || []).reduce((s: number, r: any) => s + (Number(r.presentations) || 0), 0);
-      const rawCloseRate   = getCloseRate(totalDeals, totalPres);
-      // Cap the DISPLAYED rate at 100 — a 120%+ number means agents are
-      // writing deals without logging presentations, not that they're
-      // closing harder than physics allows. Keep the raw value around so
-      // the UI can warn.
-      const cappedCloseRate    = Math.min(rawCloseRate, 100);
-      const presentationsUnderLogged = totalDeals > 0 && totalDeals > totalPres;
-
-      return {
-        activeAgents: activeAgentIds.size,
-        activeDeals: liveRows.length,
-        liveWindowDays: LIVE_AGENT_DEAL_WINDOW_DAYS,
-        weeklyALP,
-        todayALP,
-        prevWeekALP,
-        weekOverWeekPct,
-        appsThisWeek: appsRes.count || 0,
-        closeRate: Math.round(cappedCloseRate * 10) / 10,
-        rawCloseRate: Math.round(rawCloseRate * 10) / 10,
-        presentationsUnderLogged,
-        totalDeals,
-        totalPres,
-        scope: shouldScope ? "team" : "agency",
-      };
-    },
-    enabled: !!user && !authLoading && (isAdmin || myDownlineIds.length > 0),
-    staleTime: 60_000,            // 1 min — keep numbers tight
-    refetchInterval: 60_000,      // 1 min polling
-    refetchOnWindowFocus: true,
-  });
-
-  // Not-live agents are based on Sam's launch rule: no valid submitted/active
-  // deal posted in the last 10 days. Daily number logs do not create a live
-  // activation by themselves.
-  const { data: staleAgents } = useQuery({
-    queryKey: ["dashboard-not-live-agents-v3"],
-    queryFn: async () => {
-      if (!isAdmin) return [];
-      const cutoffIso = getLiveAgentCutoffIso();
-
-      const { data: agents } = await supabase
-        .from("agents")
-        .select("id, display_name, profiles:profile_id(full_name)")
-        .eq("is_deactivated", false)
-        .eq("is_inactive", false)
-        .eq("status", "active");
-
-      if (!agents || agents.length === 0) return [];
-
-      const { data: dealRows } = await supabase
-        .from("deals")
-        .select("agent_id, posted_at, created_at")
-        .or(liveDealWindowOr(cutoffIso))
-        .in("status", DEAL_TRUTH_STATUS_FILTER);
-
-      const activeIds = new Set<string>();
-      (dealRows || []).forEach((d: any) => d.agent_id && activeIds.add(d.agent_id));
-
-      return agents
-        .filter((a: any) => !activeIds.has(a.id))
-        .map((a: any) => a.display_name || a.profiles?.full_name || "Agent")
-        .slice(0, 10);
-    },
-    enabled: !!user && !authLoading && isAdmin,
-    staleTime: 300000,
-  });
-
-  // Agent Link sync health — surfaces deals that came back with null/
-  // unknown status so Sam can SEE when upstream sync is missing rows
-  // instead of wondering why the totals look off.
-  const { data: agentLinkSyncIssues } = useQuery({
-    queryKey: ["agentlink-sync-issues"],
-    queryFn: async () => {
-      const VALID = ["submitted", "active", "cancelled", "lapsed", "pending"];
-      const [nullRes, unknownRes, lastSyncRes] = await Promise.all([
-        supabase.from("deals").select("id", { count: "exact", head: true }).is("status", null),
-        supabase.from("deals").select("id", { count: "exact", head: true }).not("status", "in", `(${VALID.join(",")})`),
-        supabase
-          .from("agentlink_sync_log" as any)
-          .select("finished_at, started_at")
-          .eq("status", "ok")
-          .order("finished_at", { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-      ]);
-      return {
-        nullStatus: nullRes.count || 0,
-        unknownStatus: unknownRes.count || 0,
-        lastSync: (lastSyncRes.data as any)?.finished_at || (lastSyncRes.data as any)?.started_at || null,
-      };
-    },
-    enabled: !!user && !authLoading && isAdmin,
-    staleTime: 120_000,
-    refetchInterval: 300_000,
-  });
-
-  // Fetch pending lead purchase requests count
-  const { data: pendingPurchases } = useQuery({
-    queryKey: ["dashboard-pending-purchases"],
-    queryFn: async () => {
-      const { count } = await supabase
-        .from("lead_purchase_requests" as any)
-        .select("id", { count: "exact", head: true })
-        .eq("status", "pending");
-      return count || 0;
-    },
-    enabled: !!user && !authLoading && isAdmin,
-    staleTime: 60000,
-  });
-
-  const { data } = useQuery({
-    queryKey: ["dashboard-stats", user?.id, profile?.full_name, user?.email, dateRange.start.toISOString(), dateRange.end.toISOString(), myDirectsOnly],
-    queryFn: () => fetchDashboardData(user!.id, profile?.full_name, user!.email, dateRange, myDirectsOnly),
-    enabled: !!user && !authLoading,
-    staleTime: 300_000,
-    gcTime: 600_000,
-    refetchOnWindowFocus: false,
-  });
-
-  const stats = data?.stats ?? defaultStats;
-  const dailyData = data?.dailyData ?? emptyChartData;
-  const weeklyData = data?.weeklyData ?? emptyChartData;
-  const monthlyData = data?.monthlyData ?? emptyChartData;
-  const sourceData = data?.sourceData ?? emptySourceData;
-  const userName = data?.userName ?? "";
-  const currentAgentId = data?.currentAgentId;
-  const previousPeriodLeads = data?.previousPeriodLeads ?? 0;
-
-  const licenseData = useMemo(() => [
-    { name: "Licensed", value: stats.licensed, color: "hsl(168, 84%, 42%)" },
-    { name: "Unlicensed", value: stats.unlicensed, color: "hsl(222, 47%, 40%)" },
-  ], [stats.licensed, stats.unlicensed]);
-
-  // Confetti removed — was firing on every session start with no earned trigger
-
-  // Determine what to show based on role
-  const showAgencyStats = isAdmin;
-  const showTeamStats = isManager && !isAdmin;
-  const showPersonalOnly = isAgent && !isManager && !isAdmin;
-
-  // Show skeleton while auth is loading
-  if (authLoading) {
-    return <PageLoadingSkeleton variant="dashboard" />;
+  if (snapshotQuery.isLoading || !snapshotQuery.data) {
+    return <PageLoadingSkeleton title="Loading live dashboard snapshot" />;
   }
 
   return (
     <>
-      <section className="mb-5 overflow-hidden rounded-lg border border-primary/20 bg-[linear-gradient(135deg,hsl(222_47%_5%),hsl(222_40%_8%)_58%,hsl(168_70%_13%))] p-5 shadow-[0_18px_60px_hsl(222_47%_2%/0.35)] sm:p-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-2xl">
-            <div className="mb-3 flex items-center gap-2">
-              <Badge className="border-primary/30 bg-primary/10 text-primary hover:bg-primary/10">
-                {isAdmin ? "CEO Command" : isManager ? "Manager Floor" : "Agent Desk"}
-              </Badge>
-              <StreakBanner />
-            </div>
-            <h1 className="text-2xl font-bold leading-tight text-white sm:text-4xl">
-              APEX Command Dashboard
-            </h1>
-            <p className="mt-2 max-w-xl text-sm text-slate-300">
-              Live agents are now counted only when a valid deal was posted in the last {LIVE_AGENT_DEAL_WINDOW_DAYS} days.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <HiddenCardsManager catalog={HIDEABLE_CARDS} />
-            {(isAdmin || isManager) && <AddAgentModal />}
-            <Button asChild size="sm" className="gap-2">
-              <Link to="/numbers"><Edit3 className="h-4 w-4" /> Log Numbers</Link>
-            </Button>
-            {(isAdmin || isManager) && (
-              <Button asChild size="sm" variant="secondary" className="gap-2">
-                <Link to="/dashboard/referrals"><UserPlus className="h-4 w-4" /> Referrals</Link>
-              </Button>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* ====== AGENT-ONLY VIEW ====== */}
-      {showPersonalOnly && (
-        <AgentPersonalDashboard agentId={currentAgentId} />
-      )}
-
-      {/* ====== TOP METRIC CARDS (Admin / Manager) ====== */}
-      {(isAdmin || isManager) && topMetrics && (
-        <>
-          <p className="text-xs text-muted-foreground mb-2 uppercase tracking-wide">
-            {topMetrics.scope === "team" ? "Your team" : "Full agency"}
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-            <div onClick={() => setActiveDrilldown("agents")} className="cursor-pointer rounded-xl transition-all card-tilt reveal hover:ring-2 ring-primary/30">
-              <StatCard
-                title={topMetrics.scope === "team" ? "Team Live Agents" : "Live Agents"}
-                value={topMetrics.activeAgents}
-                icon={Users}
-                variant="primary"
-                hint={`${topMetrics.activeDeals} valid deals · last ${topMetrics.liveWindowDays} days`}
-              />
-            </div>
-            <div onClick={() => setActiveDrilldown("alp")} className="cursor-pointer rounded-xl transition-all card-tilt reveal hover:ring-2 ring-primary/30">
-              <StatCard
-                title={topMetrics.scope === "team" ? "Team Weekly ALP" : "Weekly ALP"}
-                value={`$${topMetrics.weeklyALP.toLocaleString()}`}
-                icon={DollarSign}
-                variant="success"
-                hint={(() => {
-                  const today = `Today $${Math.round(topMetrics.todayALP).toLocaleString()}`;
-                  const wow = topMetrics.weekOverWeekPct !== null
-                    ? ` · ${topMetrics.weekOverWeekPct >= 0 ? "▲" : "▼"}${Math.abs(topMetrics.weekOverWeekPct)}% vs matched last week`
-                    : ` · last week $${Math.round(topMetrics.prevWeekALP).toLocaleString()}`;
-                  return today + wow;
-                })()}
-              />
-            </div>
-            <div onClick={() => setActiveDrilldown("apps")} className="cursor-pointer rounded-xl transition-all card-tilt reveal hover:ring-2 ring-primary/30">
-              <StatCard title="Applications This Week" value={topMetrics.appsThisWeek} icon={UserPlus} variant="default" />
-            </div>
-            <div
-              onClick={() => setActiveDrilldown("closerate")}
-              className="cursor-pointer rounded-xl transition-all card-tilt reveal hover:ring-2 ring-primary/30 relative"
-              title={
-                topMetrics.presentationsUnderLogged
-                  ? `${topMetrics.totalDeals} deals written but only ${topMetrics.totalPres} presentations logged. Real rate: ${topMetrics.rawCloseRate}%. Ask agents to log every presentation.`
-                  : undefined
-              }
-            >
-              <StatCard title="Logged Close Rate" value={`${topMetrics.closeRate}%`} icon={Percent} variant="success" />
-              {topMetrics.presentationsUnderLogged && (
-                <span className="absolute top-2 right-2 inline-flex items-center rounded-full bg-amber-500/20 text-amber-400 text-[10px] font-medium px-2 py-0.5 border border-amber-500/40">
-                  Presentations under-logged
-                </span>
-              )}
-            </div>
-          </div>
-        </>
-      )}
-
-      {(isAdmin || isManager) && (
-        <div className="mb-6 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
-          <FocusNow />
-          <DataFreshnessBanner autoRepair />
+      {isPreviewing && (
+        <div className="mb-4 lg:pr-[18rem]">
+          <Badge variant="outline">Previewing {effectiveRole} dashboard from {actualRole}</Badge>
         </div>
       )}
-
-      {(isAdmin || isManager) && (
-        <Collapsible className="mb-6 rounded-lg border border-border/50 bg-card/40 p-3">
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" className="w-full justify-between px-2">
-              <span className="flex items-center gap-2 text-sm">
-                <Activity className="h-4 w-4 text-primary" />
-                Live intelligence
-              </span>
-              <ChevronDown className="h-4 w-4" />
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="mt-3 grid gap-3 lg:grid-cols-2">
-            <ForecastCard />
-            <LivePulse />
-          </CollapsibleContent>
-        </Collapsible>
-      )}
-
-      {/* Stat Card Drilldown */}
-      <StatCardDrilldown activeModal={activeDrilldown} onClose={() => setActiveDrilldown(null)} />
-
-      {/* Extra numbers strip — today, pace, deal quality, deltas, team & recruiting */}
-      {(isAdmin || isManager) && <ExtendedStatsStrip title="More numbers" />}
-
-      {/* Insight Data Cards */}
-      {(isAdmin || isManager) && (
-        <HideableCard cardKey="dashboard.insight-cards" label={HIDEABLE_CARDS["dashboard.insight-cards"]}>
-          <DashboardInsightCards />
-        </HideableCard>
-      )}
-
-      {/* ====== ALERT BANNERS (Admin) ====== */}
-      {isAdmin && staleAgents && staleAgents.length > 0 && (
-        <div className="mb-4 p-3 rounded-lg border border-destructive/30 bg-destructive/5">
-          <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <AlertCircle className="h-4 w-4 text-destructive" />
-            <span className="text-sm font-semibold text-destructive">
-              {staleAgents.length} agent{staleAgents.length === 1 ? "" : "s"} have no submitted deal in {LIVE_AGENT_DEAL_WINDOW_DAYS}+ days
-            </span>
-            <div className="ml-auto flex items-center gap-1">
-              <Link to="/dashboard/inactive-agents">
-                <Button size="sm" variant="outline" className="h-7 text-xs">
-                  <UserX className="h-3 w-3 mr-1" /> Review Queue
-                </Button>
-              </Link>
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 text-xs"
-                onClick={async () => {
-                  toast.info("Running inactivity scan...");
-                  const { error } = await supabase.functions.invoke("detect-inactive-agents");
-                  if (error) { toast.error("Scan failed: " + error.message); return; }
-                  toast.success("Scan complete — check Inactive Agents queue");
-                }}
-              >
-                <RefreshCw className="h-3 w-3 mr-1" /> Run Scan
-              </Button>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground ml-6">
-            {staleAgents.slice(0, 5).join(", ")}
-            {staleAgents.length > 5 ? ` +${staleAgents.length - 5} more` : ""}
-          </p>
-        </div>
-      )}
-
-      {isAdmin && agentLinkSyncIssues && (agentLinkSyncIssues.nullStatus > 0 || agentLinkSyncIssues.unknownStatus > 0) && (
-        <Link to="/dashboard/agentlink-sync">
-          <div className="mb-4 p-3 rounded-lg border border-orange-500/30 bg-orange-500/5 cursor-pointer hover:border-orange-500/50 transition-all">
-            <div className="flex items-center gap-2 flex-wrap">
-              <AlertTriangle className="h-4 w-4 text-orange-500" />
-              <span className="text-sm font-semibold text-orange-400">
-                Agent Link sync gap: {agentLinkSyncIssues.nullStatus} null-status / {agentLinkSyncIssues.unknownStatus} unknown-status deals — totals may be light. Tap to re-sync.
-              </span>
-            </div>
-          </div>
-        </Link>
-      )}
-
-      {isAdmin && (pendingPurchases ?? 0) > 0 && (
-        <Link to="/purchase-leads">
-          <div className="mb-4 p-3 rounded-lg border border-amber-500/30 bg-amber-500/5 cursor-pointer hover:border-amber-500/50 transition-all">
-            <div className="flex items-center gap-2">
-              <ShoppingCart className="h-4 w-4 text-amber-500" />
-              <span className="text-sm font-semibold text-amber-400">{pendingPurchases} lead purchase request{(pendingPurchases ?? 0) > 1 ? "s" : ""} pending your confirmation</span>
-            </div>
-          </div>
-        </Link>
-      )}
-
-      {/* ====== ADMIN QUICK ACTIONS ROW ====== */}
-      {isAdmin && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <Button
-            variant="outline"
-            className="h-auto py-3 flex flex-col items-center gap-1 hover:border-primary/50"
-            onClick={async () => {
-              toast.info("Sending licensing blast...");
-              await supabase.functions.invoke("bulk-send-licensing");
-              toast.success("Licensing blast sent!");
-            }}
-          >
-            <Send className="h-4 w-4 text-primary" />
-            <span className="text-xs">Send Licensing Blast</span>
-          </Button>
-          <PortalLoginsDialog />
-          <Link to="/purchase-leads">
-            <Button variant="outline" className="w-full h-auto py-3 flex flex-col items-center gap-1 hover:border-primary/50">
-              <ShoppingCart className="h-4 w-4 text-primary" />
-              <span className="text-xs">Confirm Lead Purchases</span>
-            </Button>
-          </Link>
-          <Button
-            variant="outline"
-            className="h-auto py-3 flex flex-col items-center gap-1 hover:border-primary/50"
-            onClick={async () => {
-              toast.info("Running system check...");
-              await supabase.functions.invoke("system-health-check");
-              toast.success("System check complete!");
-            }}
-          >
-            <Activity className="h-4 w-4 text-primary" />
-            <span className="text-xs">Run System Check</span>
-          </Button>
-        </div>
-      )}
-
-      {/* ====== FOMO APPLICATIONS BANNER ====== */}
-      <HideableCard cardKey="dashboard.applications-banner" label={HIDEABLE_CARDS["dashboard.applications-banner"]}>
-        <TotalApplicationsBanner />
-      </HideableCard>
-
-      {/* ====== CHURN RISK BANNER ====== */}
-      {(isAdmin || isManager) && (
-        <HideableCard cardKey="dashboard.churn-risk" label={HIDEABLE_CARDS["dashboard.churn-risk"]}>
-          <ChurnRiskBanner />
-        </HideableCard>
-      )}
-
-      {/* ====== DATE PERIOD SELECTOR ====== */}
-      <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
-        <DatePeriodSelector value={datePeriod} onChange={handleDatePeriodChange} />
-        {(isAdmin || isManager) && currentAgentId && (
-          <Button
-            variant={myDirectsOnly ? "default" : "outline"}
-            size="sm"
-            className="h-8 text-xs gap-1.5"
-            onClick={() => setMyDirectsOnly(!myDirectsOnly)}
-          >
-            <Users className="h-3.5 w-3.5" />
-            {myDirectsOnly ? "My Directs" : "Full Team"}
-          </Button>
-        )}
-      </div>
-
-      {/* ====== QUICK ACTIONS ROW ====== */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 mt-4">
-        {quickActions.map((card) => (
-          <div key={card.to}>
-            <Link to={card.to} onClick={() => playSound("click")}>
-              <GlassCard className={`p-4 hover:border-${card.color}/50 hover:bg-${card.color}/5 cursor-pointer transition-all card-hover-lift group`}>
-                <card.icon className={`h-5 w-5 text-${card.color} mb-2 group-hover:scale-110 transition-transform`} />
-                <p className="font-semibold text-[13px] sm:text-sm">{card.title}</p>
-                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{card.sub}</p>
-              </GlassCard>
-            </Link>
-          </div>
-        ))}
-        {isAdmin && adminQuickActions.map((card) => (
-          <div key={card.to}>
-            <Link to={card.to} onClick={() => playSound("click")}>
-              <GlassCard className={`p-4 hover:border-${card.color}/50 hover:bg-${card.color}/5 cursor-pointer transition-all card-hover-lift group`}>
-                <card.icon className={`h-5 w-5 text-${card.color} mb-2 group-hover:scale-110 transition-transform`} />
-                <p className="font-semibold text-[13px] sm:text-sm">{card.title}</p>
-                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{card.sub}</p>
-              </GlassCard>
-            </Link>
-          </div>
-        ))}
-      </div>
-
-      {/* ====== 1. PRODUCTION SNAPSHOT (Top Priority - Role-based) ====== */}
-      <HideableCard cardKey="dashboard.team-snapshot" label={HIDEABLE_CARDS["dashboard.team-snapshot"]} className="mb-6 block">
-        <TeamSnapshotCard />
-      </HideableCard>
-
-      {/* ====== Activation Risk Banner (Admin/Manager) ====== */}
-      {(isAdmin || isManager) && (
-        <HideableCard cardKey="dashboard.activation-risk" label={HIDEABLE_CARDS["dashboard.activation-risk"]} className="mb-6 block">
-          <ActivationRiskBanner />
-        </HideableCard>
-      )}
-
-      {/* ====== TEAM OVERVIEW (Admin Only) ====== */}
-      {isAdmin && (
-        <HideableCard cardKey="dashboard.team-overview" label={HIDEABLE_CARDS["dashboard.team-overview"]} className="mb-6 block">
-          <TeamOverviewDashboard />
-        </HideableCard>
-      )}
-
-
-      {/* ====== 1.5. WEEKLY PERFORMANCE BREAKDOWN (Managers/Admins) ====== */}
-      {(isManager || isAdmin) && (
-        <HideableCard cardKey="dashboard.performance-breakdown" label={HIDEABLE_CARDS["dashboard.performance-breakdown"]} className="mb-6 block">
-          {isMobile ? (
-            <Collapsible>
-              <CollapsibleTrigger asChild>
-                <Button variant="outline" className="w-full gap-2">
-                  <BarChart3 className="h-4 w-4" />
-                  View Performance Breakdown
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-4">
-                <TeamPerformanceBreakdown />
-              </CollapsibleContent>
-            </Collapsible>
-          ) : (
-            <TeamPerformanceBreakdown />
-          )}
-        </HideableCard>
-      )}
-
-      {/* ====== 2. MAIN CONTENT LAYOUT ====== */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        {/* LEFT COLUMN: Mini Leaderboard (Production) - 2/3 width */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="flex items-center gap-2">
-            <DollarSign className="h-4 w-4 text-primary" />
-            <h3 className="text-base font-bold">Top Producers</h3>
-          </div>
-
-          {/* Sales Leaderboard - Primary focus */}
-          <LeaderboardTabs currentAgentId={currentAgentId} />
-
-          {/* Secondary Leaderboards */}
-          <div className="grid grid-cols-1 gap-4">
-            <ReferralLeaderboard />
-          </div>
-
-          {/* Estimated Earnings Card (Admin Only) */}
-          {isAdmin && currentAgentId && <EstimatedEarningsCard currentAgentId={currentAgentId} />}
-
-          {/* Admin-only: agent-selectable portal link blaster */}
-          {isAdmin && <PortalLinkSender />}
-
-        </div>
-
-        {/* RIGHT COLUMN: Recruiting Stats + Quick Actions - 1/3 width */}
-        <div className="space-y-6">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-emerald-500" />
-            <h3 className="text-base font-bold">
-              {isAdmin ? "Recruiting & Growth" : isManager ? "Team Growth" : "Your Stats"}
-            </h3>
-          </div>
-
-          {/* Top Producers Today — replaces the generic OnboardingPipelineCard.
-              OnboardingPipelineCard data is still available on /dashboard/crm. */}
-          {(isManager || isAdmin) && <TopProducersTodayCard />}
-
-          {/* Referral Tracking */}
-          {(isManager || isAdmin) && (
-            <div className="grid grid-cols-1 gap-4">
-              <ReferralTrackingCard />
-            </div>
-          )}
-
-          {/* Stalled Agents Alert */}
-          {(isManager || isAdmin) && <StalledAgentsAlert />}
-
-          {/* Recruiting Quick-View Table */}
-          {(isManager || isAdmin) && <RecruitingQuickView />}
-
-          {/* Pipeline Alert Summary */}
-          {(isManager || isAdmin) && (stats.unlicensed > 0 || stats.staleLeads > 0) && (
-            <Link to="/dashboard/crm">
-              <GlassCard className="p-4 border-amber-500/30 hover:border-amber-500/50 cursor-pointer transition-all">
-                <div className="flex items-center gap-2 mb-2">
-                  <AlertTriangle className="h-4 w-4 text-amber-500" />
-                  <h4 className="font-semibold text-sm">Pipeline Alerts</h4>
-                </div>
-                <div className="space-y-1.5">
-                  {stats.unlicensed > 0 && (
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">Unlicensed in pipeline</span>
-                      <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 text-[10px]">
-                        {stats.unlicensed}
-                      </Badge>
-                    </div>
-                  )}
-                  {stats.staleLeads > 0 && (
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">No contact 48h+</span>
-                      <Badge variant="outline" className="bg-red-500/10 text-red-400 border-red-500/30 text-[10px]">
-                        {stats.staleLeads}
-                      </Badge>
-                    </div>
-                  )}
-                </div>
-              </GlassCard>
-            </Link>
-          )}
-
-          {/* Lead Sources */}
-          <AnalyticsPieChart
-            title="Lead Sources"
-            icon={<MapPin className="h-4 w-4 text-primary" />}
-            data={sourceData}
-          />
-
-        </div>
-      </div>
-
-
-      {/* ====== 4. TEAM VIEW (Managers & Admins) ====== */}
-      {(isManager || isAdmin) && (
-        <HideableCard cardKey="dashboard.team-view" label={HIDEABLE_CARDS["dashboard.team-view"]} className="mb-6 block">
-          <div className="flex items-center gap-2 mb-4">
-            <Users className="h-4 w-4 text-primary" />
-            <h3 className="text-base font-bold">Your Team</h3>
-          </div>
-          <ManagerTeamView />
-        </HideableCard>
-      )}
-
-      {/* ====== 5. PERSONAL STATS (Agents only - NOT Admin) ====== */}
-      {showPersonalOnly && (
-        <div className="mb-6">
-          <div className="flex items-center gap-2 mb-3">
-            <Users className="h-4 w-4 text-muted-foreground" />
-            <h3 className="text-sm font-semibold text-muted-foreground">Your Recruiting Stats</h3>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <StatCard
-              title="Total Leads"
-              value={stats.totalLeads}
-              icon={Users}
-              variant="primary"
-              href="/dashboard/leads"
-              hint="View all"
-            />
-            <StatCard
-              title="Contacted"
-              value={stats.contacted}
-              icon={Phone}
-              variant="default"
-              href="/dashboard/leads?status=has_contacted"
-              hint="View contacted"
-            />
-            <StatCard
-              title="Closed"
-              value={stats.closed}
-              icon={CheckCircle}
-              variant="success"
-              href="/dashboard/leads?status=contracting_only"
-              hint="View closed"
-            />
-            <StatCard
-              title="Close Rate"
-              value={`${stats.closeRate.toFixed(1)}%`}
-              icon={Percent}
-              variant="success"
-              href="/dashboard/command"
-              hint="View producers"
-            />
-          </div>
-
-          {/* Growth Chart for agents */}
-          <div className="mt-6">
-            <GrowthChart
-              dailyData={dailyData}
-              weeklyData={weeklyData}
-              monthlyData={monthlyData}
-              currentPeriodTotal={stats.totalLeads}
-              previousPeriodTotal={previousPeriodLeads}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* ====== ACHIEVEMENT FEED + TASKS + AWARDS (Admin/Manager) ====== */}
-      {(isAdmin || isManager) && (
-        <HideableCard cardKey="dashboard.achievement-feed" label={HIDEABLE_CARDS["dashboard.achievement-feed"]} className="mb-6 block">
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <TeamTasksWidget />
-              <AwardFeedLive />
-            </div>
-            <AchievementFeed />
-          </div>
-        </HideableCard>
-      )}
+      <ExecutiveDashboard
+        role={effectiveRole}
+        snapshot={snapshotQuery.data}
+        onRunSystemCheck={runSystemCheck}
+        runningSystemCheck={runningSystemCheck}
+      />
     </>
-  );
-}
-
-function PortalLoginsDialog() {
-  const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState<"all" | "search">("all");
-  const [search, setSearch] = useState("");
-  const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
-  const [sending, setSending] = useState(false);
-
-  const { data: agents = [] } = useQuery({
-    queryKey: ["agents-for-portal-login"],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from("agents")
-        .select("id, display_name, user_id, is_deactivated, profile:profiles!agents_profile_id_fkey(full_name, email)")
-        .eq("is_deactivated", false)
-        .limit(1000);
-      return ((data || []) as any[]).map(a => ({
-        id: a.id,
-        name: (a.profile as any)?.full_name || a.display_name || "Unknown",
-        email: (a.profile as any)?.email,
-      }));
-    },
-    enabled: open,
-  });
-
-  const filtered = search
-    ? agents.filter(a => a.name.toLowerCase().includes(search.toLowerCase()) || a.email?.toLowerCase().includes(search.toLowerCase()))
-    : agents;
-
-  const handleSend = async () => {
-    setSending(true);
-    try {
-      if (mode === "all") {
-        await supabase.functions.invoke("send-bulk-portal-logins");
-        toast.success(`Portal logins sent to all ${agents.length} agents`);
-      } else {
-        if (selectedAgents.length === 0) {
-          toast.error("Pick at least one agent");
-          setSending(false);
-          return;
-        }
-        await supabase.functions.invoke("send-bulk-portal-logins", {
-          body: { agent_ids: selectedAgents },
-        });
-        toast.success(`Portal logins sent to ${selectedAgents.length} agents`);
-      }
-      setOpen(false);
-      setSelectedAgents([]);
-      setSearch("");
-    } catch (e: any) {
-      toast.error("Failed: " + (e.message || "unknown"));
-    } finally {
-      setSending(false);
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          className="h-auto py-3 flex flex-col items-center gap-1 hover:border-primary/50 w-full"
-        >
-          <KeyRound className="h-4 w-4 text-primary" />
-          <span className="text-xs">Send Portal Logins</span>
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle>Send Portal Logins</DialogTitle>
-        </DialogHeader>
-        <Tabs value={mode} onValueChange={(v) => setMode(v as any)}>
-          <TabsList className="w-full">
-            <TabsTrigger value="all" className="flex-1">Send to All ({agents.length})</TabsTrigger>
-            <TabsTrigger value="search" className="flex-1">Search & Select</TabsTrigger>
-          </TabsList>
-          <TabsContent value="all" className="space-y-4 pt-4">
-            <p className="text-sm text-muted-foreground">
-              This will email portal login credentials to every active agent ({agents.length} total).
-            </p>
-            <Button onClick={handleSend} disabled={sending} className="w-full">
-              {sending ? "Sending..." : `Send to all ${agents.length} agents`}
-            </Button>
-          </TabsContent>
-          <TabsContent value="search" className="space-y-4 pt-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by name or email..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <div className="flex-1 overflow-y-auto space-y-1 max-h-[300px]">
-              {filtered.map(a => (
-                <label
-                  key={a.id}
-                  className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/40 cursor-pointer"
-                >
-                  <Checkbox
-                    checked={selectedAgents.includes(a.id)}
-                    onCheckedChange={(checked) => {
-                      setSelectedAgents(prev => checked
-                        ? [...prev, a.id]
-                        : prev.filter(x => x !== a.id));
-                    }}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{a.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{a.email}</p>
-                  </div>
-                </label>
-              ))}
-            </div>
-            <div className="flex items-center justify-between pt-2 border-t border-border">
-              <p className="text-sm text-muted-foreground">{selectedAgents.length} selected</p>
-              <Button onClick={handleSend} disabled={sending || selectedAgents.length === 0}>
-                {sending ? "Sending..." : `Send to ${selectedAgents.length} agent${selectedAgents.length === 1 ? "" : "s"}`}
-              </Button>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </DialogContent>
-    </Dialog>
   );
 }

@@ -7,6 +7,7 @@ import { PhonePromptBanner } from "@/components/dashboard/PhonePromptBanner";
 import { AddAgentModal } from "@/components/dashboard/AddAgentModal";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
+import { RolePreviewBubbles } from "@/components/layout/RolePreviewBubbles";
 import { useAuth } from "@/hooks/useAuth";
 import { useSidebarState } from "@/hooks/useSidebarState";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
@@ -142,6 +143,7 @@ export function SidebarLayout({ children, showPhoneBanner = true }: SidebarLayou
           transition: isDesktop ? "margin-left 150ms ease-out" : "none"
         }}
       >
+        <RolePreviewBubbles />
         <div className="p-4 sm:p-6 lg:p-8">
           <PageContent showPhoneBanner={showPhoneBanner}>
             {children}

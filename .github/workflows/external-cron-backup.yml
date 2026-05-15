@@ -69,13 +69,36 @@ jobs:
               -d "{\"query\":\"SELECT $fn::text AS r;\"}" | head -c 200
             echo
           }
+          # call_edge() invokes a Supabase edge function. Used for syncs that
+          # can't be SQL functions (e.g. insuracloud-sync hits an external HTTP
+          # API and lives in supabase/functions/insuracloud-sync/index.ts).
+          call_edge() {
+            local fn=$1
+            local body=$2
+            echo "── edge:$fn ──"
+            curl -s -X POST "https://xrzweoneiieddzxogewk.supabase.co/functions/v1/$fn" \
+              -H "Authorization: Bearer $BOT_TOKEN" \
+              -H "content-type: application/json" \
+              --max-time 90 \
+              -d "$body" | head -c 300
+            echo
+          }
           # Highest priority: agent link + deal sync (operational data freshness)
           fire "public.agentlink_watchdog()" "agentlink-watchdog"
-          fire "public.agentlink_live_pull()" "agentlink-live-pull"
+          # agentlink_live_pull uses a browser session cookie that expires —
+          # tolerate timeout so the rest of the run still goes.
+          fire "public.agentlink_live_pull()" "agentlink-live-pull" || true
+          # InsuraCloud sync — uses the per-agent stored API Bearer token.
+          # This is the one that works automatically with no human cookie
+          # rotation. Added 2026-05-15 after we proved the token is valid
+          # + sync responds in under a second.
+          call_edge "insuracloud-sync" '{"full":false}'
           # Deal sync queue (stale deal pushes)
           fire "public.deal_sync_queue_promote_dead()" "deal-sync-queue-promote-dead" || true
           # Auto-assign newly-arrived applications
           fire "public.auto_assign_hiring_manager()" "auto-assign-hiring-manager"
+          # Refresh canonical sync-health view used by the dashboard banner.
+          fire "public.refresh_sync_health()" "refresh-sync-health" || true
 
       - name: Summary
         if: always()

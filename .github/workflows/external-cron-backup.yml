@@ -57,21 +57,16 @@ jobs:
           # arithmetic compared "None" -gt 600 (always falsy). Now we coerce
           # any non-numeric result to 99999 so a parse failure is treated as
           # "very stale" — the correct, loud behavior.
-          gap=$(curl -sS -X POST "$BOT_SQL" \
+          # jq parses the JSON response. If ok=false, rows is empty, or the
+          # gap field is missing/non-numeric, we emit 99999 so a stalled
+          # cron is treated as "very stale" — the loud behavior. Using jq
+          # (not Python heredoc) so the YAML parser doesn't get confused by
+          # multi-line indentation inside a pipe block.
+          response=$(curl -sS -X POST "$BOT_SQL" \
             -H "Authorization: Bearer $BOT_TOKEN" \
             -H "content-type: application/json" \
-            -d '{"query":"SELECT EXTRACT(EPOCH FROM (now()-max(start_time)))::int AS gap FROM cron.job_run_details;"}' \
-            | python3 -c '
-import json, sys
-try:
-    r = json.load(sys.stdin)
-    rows = r.get("rows") or []
-    if not r.get("ok") or not rows: raise ValueError()
-    v = rows[0].get("gap")
-    print(int(v) if isinstance(v, (int, float)) and v >= 0 else 99999)
-except Exception:
-    print(99999)
-')
+            -d '{"query":"SELECT EXTRACT(EPOCH FROM (now()-max(start_time)))::int AS gap FROM cron.job_run_details;"}' || echo '{}')
+          gap=$(printf '%s' "$response" | jq -r 'if (.ok == true) and (.rows | length > 0) and (.rows[0].gap | type == "number") then .rows[0].gap else 99999 end' 2>/dev/null || echo 99999)
           # Ensure it's actually an int — defense in depth.
           case "$gap" in
             ''|*[!0-9]*) gap=99999 ;;

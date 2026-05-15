@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { BarChart3, Sunrise, Target, User, Home, UserPlus, Briefcase, Users } from "lucide-react";
+import { BarChart3, Briefcase, Crown, Home, LayoutDashboard, Settings, Target, User, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,17 +11,25 @@ import { useAuth } from "@/hooks/useAuth";
 const agentNavItems = [
   { path: "/agent-portal",            icon: Home,       label: "Home" },
   { path: "/numbers",                 icon: BarChart3,  label: "Numbers" },
-  { path: "/dashboard/applicants",    icon: Users,      label: "Pipeline" },
-  { path: "/dashboard/referrals/new", icon: UserPlus,   label: "Refer" },
+  { path: "/dashboard/my-deals",      icon: Briefcase,  label: "Deals" },
+  { path: "/agent-pipeline",          icon: Users,      label: "Pipeline" },
   { path: "/dashboard/settings",      icon: User,       label: "Profile" },
 ];
 
 const adminNavItems = [
-  { path: "/dashboard/today",         icon: Sunrise,    label: "Today" },
+  { path: "/dashboard",               icon: LayoutDashboard, label: "Home" },
   { path: "/dashboard/recruit",       icon: Target,     label: "Recruit" },
-  { path: "/numbers",                 icon: BarChart3,  label: "Numbers" },
   { path: "/dashboard/crm",           icon: Briefcase,  label: "CRM" },
-  { path: "/dashboard/referrals",     icon: UserPlus,   label: "Referrals" },
+  { path: "/dashboard/seminar-control", icon: Crown,    label: "Seminar" },
+  { path: "/dashboard/command",       icon: Settings,   label: "Command" },
+];
+
+const managerNavItems = [
+  { path: "/dashboard",               icon: LayoutDashboard, label: "Home" },
+  { path: "/dashboard/recruit",       icon: Target,     label: "Recruit" },
+  { path: "/dashboard/crm",           icon: Briefcase,  label: "CRM" },
+  { path: "/dashboard/seminar-control", icon: Crown,    label: "Seminar" },
+  { path: "/dashboard/applicants",    icon: Users,      label: "Pipeline" },
 ];
 
 export function MobileBottomNav() {
@@ -30,7 +38,7 @@ export function MobileBottomNav() {
   const isMobile = useIsMobile();
   const { isAdmin, isManager } = useAuth();
 
-  const navItems = isAdmin || isManager ? adminNavItems : agentNavItems;
+  const navItems = isAdmin ? adminNavItems : isManager ? managerNavItems : agentNavItems;
 
   if (!isMobile) return null;
 

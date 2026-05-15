@@ -21,8 +21,28 @@
 export const VALID_DEAL_STATUSES = ["submitted", "active"] as const;
 export type ValidDealStatus = typeof VALID_DEAL_STATUSES[number];
 
-/** Sam's agent_id — must always have zero deals (DB triggers + UI guards enforce). */
-export const SAM_AGENT_ID = "7c3c5581-3544-437f-bfe2-91391afb217d";
+/**
+ * Sam's agent_ids (legacy + active). Prefer the live resolver
+ * `get_canonical_sam_agent()` Postgres function OR
+ * `samCanonical.fetchCanonicalSamAgent()` from `src/lib/samCanonical.ts`
+ * over these constants whenever possible — they're snapshot values, not
+ * the source of truth.
+ *
+ * Production has TWO Sam admin records:
+ *   - SJAMES01 / "Samuel James" / info@kingofsales.net
+ *       agent_id 7c3c5581-3544-437f-bfe2-91391afb217d  ← legacy (older)
+ *       user_id  811fc5f4-05f4-446e-a916-445ce7fd051f
+ *   - SJAMES02 / "Sam James"   / sam.com593@gmail.com
+ *       agent_id cde14d07-2366-444a-80cc-58a8f7da6f95  ← canonical (active)
+ *       user_id  71826bba-5577-4810-a226-1f6f2ad5288a
+ *
+ * Filters that exclude Sam from leaderboards / live-agent counts need to
+ * exclude BOTH agent_ids. Use `SAM_AGENT_IDS` (array) below.
+ */
+export const SAM_AGENT_ID = "7c3c5581-3544-437f-bfe2-91391afb217d"; // legacy, kept for back-compat
+export const SAM_AGENT_ID_LEGACY = "7c3c5581-3544-437f-bfe2-91391afb217d";
+export const SAM_AGENT_ID_CANONICAL = "cde14d07-2366-444a-80cc-58a8f7da6f95";
+export const SAM_AGENT_IDS = [SAM_AGENT_ID_CANONICAL, SAM_AGENT_ID_LEGACY] as const;
 
 /**
  * Live-agent rule.

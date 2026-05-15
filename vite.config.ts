@@ -75,14 +75,31 @@ export default defineConfig(({ mode }) => ({
               url.href.includes("supabase.co") && request.method !== "GET",
             handler: "NetworkOnly",
           },
-          // Static assets from our own origin — stale-while-revalidate so
-          // the page paints fast but every response triggers a background
-          // refresh on next navigation.
+          // Static assets from our own origin.
+          //
+          // Was: StaleWhileRevalidate — that strategy serves the OLD cached
+          // bundle on the FIRST visit after a deploy and only revalidates in
+          // the background, meaning the NEW UI doesn't appear until the
+          // SECOND page load. Sam reported "site looks unchanged after
+          // deploy" — this was the cause.
+          //
+          // Now: NetworkFirst with a 3-second timeout. The browser will
+          // try to fetch fresh code first; if the network is slow or
+          // offline, it falls back to the precached version. Asset URLs
+          // are content-hashed by Vite so we never serve a stale hash.
+          //
+          // For HTML navigation (the SPA shell), Workbox's default
+          // navigation handler still uses the precached index.html; the
+          // CSS/JS bundles linked from it are fetched fresh via this rule.
           {
             urlPattern: ({ sameOrigin, request }) =>
               sameOrigin && (request.destination === "script" || request.destination === "style"),
-            handler: "StaleWhileRevalidate",
-            options: { cacheName: "apex-assets" },
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "apex-assets",
+              networkTimeoutSeconds: 3,
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 7 },
+            },
           },
         ],
       },

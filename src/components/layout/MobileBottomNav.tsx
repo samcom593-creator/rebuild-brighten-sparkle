@@ -1,23 +1,27 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { BarChart3, Trophy, Sunrise, Target, User, Home, MessageSquare } from "lucide-react";
+import { BarChart3, Sunrise, Target, User, Home, UserPlus, Briefcase, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
 
+// Mobile bottom nav — 5 slots, role-aware. Per Sam (2026-05-15 10am
+// readiness): removed Awards (vanity) and Team Chat (deprecated surface)
+// from both role variants. Replaced with the operating verbs Sam wants
+// agents and managers to reach in one tap.
 const agentNavItems = [
-  { path: "/agent-portal",        icon: Home,          label: "Home" },
-  { path: "/numbers",             icon: BarChart3,     label: "Numbers" },
-  { path: "/dashboard/awards",    icon: Trophy,        label: "Awards" },
-  { path: "/dashboard/team-chat", icon: MessageSquare, label: "Chat" },
-  { path: "/dashboard/settings",  icon: User,          label: "Profile" },
+  { path: "/agent-portal",            icon: Home,       label: "Home" },
+  { path: "/numbers",                 icon: BarChart3,  label: "Numbers" },
+  { path: "/dashboard/applicants",    icon: Users,      label: "Pipeline" },
+  { path: "/dashboard/referrals/new", icon: UserPlus,   label: "Refer" },
+  { path: "/dashboard/settings",      icon: User,       label: "Profile" },
 ];
 
 const adminNavItems = [
-  { path: "/dashboard/today",     icon: Sunrise,       label: "Today" },
-  { path: "/dashboard/recruit",   icon: Target,        label: "Recruit" },
-  { path: "/numbers",             icon: BarChart3,     label: "Numbers" },
-  { path: "/dashboard/awards",    icon: Trophy,        label: "Awards" },
-  { path: "/dashboard/team-chat", icon: MessageSquare, label: "Chat" },
+  { path: "/dashboard/today",         icon: Sunrise,    label: "Today" },
+  { path: "/dashboard/recruit",       icon: Target,     label: "Recruit" },
+  { path: "/numbers",                 icon: BarChart3,  label: "Numbers" },
+  { path: "/dashboard/crm",           icon: Briefcase,  label: "CRM" },
+  { path: "/dashboard/referrals",     icon: UserPlus,   label: "Referrals" },
 ];
 
 export function MobileBottomNav() {

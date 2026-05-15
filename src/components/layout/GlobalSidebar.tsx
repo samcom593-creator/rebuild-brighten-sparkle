@@ -98,6 +98,27 @@ export function GlobalSidebar({
   const isTouch = useIsTouchDevice();
   const { playSound } = useSoundEffects();
   const [healthStatus, setHealthStatus] = useState<'healthy'|'degraded'|'critical'>('healthy');
+  const [isPresenter, setIsPresenter] = useState(false);
+
+  // Presenter detection: KJ (and any other agents.is_presenting=true) need to
+  // see "Seminar Control" in the sidebar even when they aren't manager/admin.
+  // Async query — sidebar re-renders once it lands.
+  useEffect(() => {
+    let cancelled = false;
+    if (!user?.id || isAdmin || isManager) {
+      setIsPresenter(false);
+      return () => { cancelled = true; };
+    }
+    supabase
+      .from("agents")
+      .select("is_presenting")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setIsPresenter(Boolean(data?.is_presenting));
+      });
+    return () => { cancelled = true; };
+  }, [user?.id, isAdmin, isManager]);
 
   // Poll system health status every 5 min (admin only)
   useEffect(() => {
@@ -163,30 +184,42 @@ export function GlobalSidebar({
     sections.push({ label: "DASHBOARD", items: dashboardItems });
 
     // 2. PRODUCTION — sales, deals, ALP, leaderboards, BoB
+    //    Removed from primary nav per Sam (2026-05-15 10am readiness):
+    //    Hall of Fame, My Plaques, Rewards — vanity surfaces, not money/data.
+    //    Routes still exist for deep links.
     const productionItems: NavItem[] = [
       { icon: Edit3, label: "Log Numbers", href: "/numbers", special: true },
       { icon: DollarSign, label: "My Deals", href: "/dashboard/my-deals" },
       { icon: Wallet, label: "My Commissions", href: "/dashboard/my-commissions" },
       { icon: Trophy, label: "Leaderboard", href: "/dashboard/leaderboard", special: true },
       { icon: Book, label: "Book of Business", href: "/dashboard/book-of-business" },
-      { icon: Crown, label: "Hall of Fame", href: "/dashboard/hall-of-fame" },
-      { icon: Trophy, label: "My Plaques", href: "/dashboard/my-plaques" },
-      { icon: Sparkles, label: "Rewards", href: "/dashboard/rewards" },
     ];
     sections.push({ label: "PRODUCTION", items: productionItems });
 
+    // 2b. CRM — Sam wants CRM higher than admin (core OS surface, not buried).
+    const crmItems: NavItem[] = [
+      { icon: Briefcase, label: "CRM", href: "/dashboard/crm" },
+      { icon: Headphones, label: "Call Center", href: "/dashboard/call-center" },
+    ];
+    if (isAdmin || isManager) {
+      crmItems.push({ icon: Archive, label: "Aged Leads", href: "/dashboard/aged-leads" });
+    }
+    if (isAdmin) {
+      crmItems.push({ icon: Target, label: "Lead Center", href: "/dashboard/leads" });
+    }
+    sections.push({ label: "CRM", items: crmItems });
+
     // 3. RECRUITING — applicants, pipeline, team
+    //    Removed from primary nav: Team Hierarchy, Awards, Agent Management.
+    //    Routes still exist; the surfaces had become noise on the side nav.
     const recruitingItems: NavItem[] = [
       { icon: Users, label: "Pipeline", href: isAgent && !isAdmin && !isManager ? "/agent-pipeline" : "/dashboard/applicants" },
     ];
     if (isAdmin || isManager) {
       recruitingItems.unshift({ icon: Target, label: "Recruit Command", href: "/dashboard/recruit", special: true });
       recruitingItems.push({ icon: TrendingUp, label: "Hiring Pipeline", href: "/dashboard/hiring-pipeline" });
-      recruitingItems.push({ icon: Network, label: "Team Hierarchy", href: "/dashboard/hierarchy" });
-      recruitingItems.push({ icon: Trophy, label: "Awards", href: "/dashboard/awards" });
     }
     if (isAdmin) {
-      recruitingItems.push({ icon: UserCog, label: "Agent Management", href: "/dashboard/agent-management" });
       recruitingItems.push({ icon: UserX, label: "Inactive Agents", href: "/dashboard/inactive-agents" });
     }
     if (isManager && !isAdmin) {
@@ -204,9 +237,12 @@ export function GlobalSidebar({
     }
     sections.push({ label: "REFERRALS", items: referralItems });
 
-    // 5. SEMINAR — group interview workflow
+    // 5. SEMINAR — group interview workflow.
+    // Seminar Control is shown to admins, managers, AND flagged presenters
+    // (KJ et al). The presenter check is async — sidebar reveal happens once
+    // useIsPresenter resolves.
     const seminarItems: NavItem[] = [];
-    if (isAdmin || isManager) {
+    if (isAdmin || isManager || isPresenter) {
       seminarItems.push({ icon: Crown, label: "Seminar Control", href: "/dashboard/seminar-control", special: true });
     }
     seminarItems.push({ icon: CalendarDays, label: "Calendar", href: "/dashboard/calendar" });
@@ -222,29 +258,23 @@ export function GlobalSidebar({
     }
     sections.push({ label: "TRAINING", items: trainingItems });
 
-    // 7. ADMIN — everything else lives under one drawer instead of leaking
-    // ten sections to non-admins. Settings + Purchase Leads stay visible to
-    // every authenticated user; the rest is admin-only.
+    // 7. ADMIN — operations + integrations. Trimmed per Sam (2026-05-15):
+    // removed Hall of Fame, Plaques, Awards, Team Hierarchy, Rewards,
+    // Agent Management, IG Inbox, Team Chat, Instagram Automation, Email Log
+    // from the primary nav. Routes still exist for deep links; they just
+    // don't clutter the sidebar.
     const adminItems: NavItem[] = [];
     if (isAdmin) {
       adminItems.push({ icon: Crown, label: "Command Center", href: "/dashboard/command", special: true });
-      adminItems.push({ icon: Briefcase, label: "CRM", href: "/dashboard/crm" });
-      adminItems.push({ icon: Headphones, label: "Call Center", href: "/dashboard/call-center" });
       adminItems.push({ icon: Mail, label: "Inbox", href: "/dashboard/inbox" });
-      adminItems.push({ icon: MessageSquare, label: "IG Inbox", href: "/dashboard/inbox/instagram" });
-      adminItems.push({ icon: Users, label: "Team Chat", href: "/dashboard/team-chat" });
-      adminItems.push({ icon: Archive, label: "Aged Leads", href: "/dashboard/aged-leads" });
-      adminItems.push({ icon: Target, label: "Lead Center", href: "/dashboard/leads" });
       adminItems.push({ icon: ShoppingCart, label: "Offers", href: "/dashboard/offers" });
       adminItems.push({ icon: Library, label: "Content Library", href: "/dashboard/content" });
-      adminItems.push({ icon: Sparkles, label: "Instagram Automation", href: "/dashboard/instagram-automation" });
       adminItems.push({ icon: Zap, label: "Automation Hub", href: "/dashboard/automation" });
       adminItems.push({ icon: Activity, label: "Automation Health", href: "/dashboard/automation-health" });
       adminItems.push({ icon: Shield, label: "System Health", href: "/dashboard/system-health" });
       adminItems.push({ icon: Bell, label: "Notification Hub", href: "/dashboard/notifications" });
       adminItems.push({ icon: UserCog, label: "Accounts", href: "/dashboard/accounts" });
       adminItems.push({ icon: Route, label: "Hiring Routing", href: "/dashboard/hiring-routing" });
-      adminItems.push({ icon: Mail, label: "Email Log", href: "/dashboard/email-log" });
       adminItems.push({ icon: DollarSign, label: "Comp Tiers", href: "/dashboard/comp-tiers" });
       adminItems.push({ icon: Plug, label: "Integrations", href: "/dashboard/integrations" });
       adminItems.push({ icon: Zap, label: "AgentLink Sync", href: "/dashboard/agentlink-sync", special: true });
@@ -255,7 +285,7 @@ export function GlobalSidebar({
     sections.push({ label: "ADMIN", items: adminItems });
 
     return sections;
-  }, [isAdmin, isManager, isAgent]);
+  }, [isAdmin, isManager, isAgent, isPresenter]);
 
   const handleLogout = useCallback(async () => {
     await supabase.auth.signOut();

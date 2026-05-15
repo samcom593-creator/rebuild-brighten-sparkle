@@ -92,15 +92,24 @@ jobs:
         run: supabase link --project-ref "$PROJECT_REF"
 
       - name: Deploy edge functions
-        continue-on-error: true
+        # No blanket --no-verify-jwt. Each function's auth setting is read
+        # from supabase/config.toml (where seminar-reminder-tick et al are
+        # explicitly verify_jwt=true). If ANY function fails to deploy, the
+        # job fails — workflow reporting "success" while functions were
+        # silently broken was the Sam-side bug.
         run: |
-          set +e
+          set -uo pipefail
           FAIL_COUNT=0
           OK_COUNT=0
+          FAILED_FNS=()
           if [ -n "${{ inputs.only_function }}" ]; then
             echo "→ single function: ${{ inputs.only_function }}"
-            supabase functions deploy "${{ inputs.only_function }}" \
-              --project-ref "$PROJECT_REF" --no-verify-jwt
+            if supabase functions deploy "${{ inputs.only_function }}" --project-ref "$PROJECT_REF"; then
+              OK_COUNT=1
+            else
+              FAIL_COUNT=1
+              FAILED_FNS+=("${{ inputs.only_function }}")
+            fi
           else
             echo "→ deploying ALL functions"
             shopt -s nullglob
@@ -108,29 +117,58 @@ jobs:
             for dir in */; do
               name="${dir%/}"
               [ "$name" = "_shared" ] && continue
+              [ "$name" = "tests" ]   && continue
               echo "── $name ──"
-              if supabase functions deploy "$name" --project-ref "$PROJECT_REF" --no-verify-jwt; then
+              if supabase functions deploy "$name" --project-ref "$PROJECT_REF"; then
                 OK_COUNT=$((OK_COUNT+1))
               else
                 FAIL_COUNT=$((FAIL_COUNT+1))
-                echo "::warning::function $name failed to deploy"
+                FAILED_FNS+=("$name")
+                echo "::error::function $name failed to deploy"
               fi
             done
-            echo "### Function deploys: $OK_COUNT ok, $FAIL_COUNT failed" >> $GITHUB_STEP_SUMMARY
           fi
-          exit 0
+          {
+            echo "### Function deploys"
+            echo "- ok: $OK_COUNT"
+            echo "- failed: $FAIL_COUNT"
+            if [ "$FAIL_COUNT" -gt 0 ]; then
+              echo "- failed names: ${FAILED_FNS[*]}"
+            fi
+          } >> $GITHUB_STEP_SUMMARY
+          if [ "$FAIL_COUNT" -gt 0 ]; then
+            echo "::error::$FAIL_COUNT function(s) failed to deploy: ${FAILED_FNS[*]}"
+            exit 1
+          fi
 
       - name: Apply migrations
+        # Migrations are not silently skippable. If skip_migrations input is
+        # explicitly true (manual override), we skip with a notice. If
+        # SUPABASE_DB_PASSWORD is missing the job FAILS so the green-but-
+        # didn't-actually-apply mode Sam reported is dead.
         if: ${{ !inputs.skip_migrations }}
         run: |
+          set -uo pipefail
           if [ -z "$SUPABASE_DB_PASSWORD" ]; then
-            echo "⚠ SUPABASE_DB_PASSWORD not set — skipping db push"
-            exit 0
+            echo "::error::SUPABASE_DB_PASSWORD secret missing — migrations cannot apply"
+            echo "::error::Add at: github.com/${{ github.repository }}/settings/secrets/actions → New repository secret → SUPABASE_DB_PASSWORD"
+            echo "::error::Value lives in: supabase.com → project $PROJECT_REF → Settings → Database → Connection password"
+            echo "### Migrations: FAILED — SUPABASE_DB_PASSWORD missing" >> $GITHUB_STEP_SUMMARY
+            exit 1
           fi
-          supabase db push --password "$SUPABASE_DB_PASSWORD" --include-all || {
-            echo "db push failed (may be no pending migrations)"
-            exit 0
-          }
+          if supabase db push --password "$SUPABASE_DB_PASSWORD" --include-all 2>&1 | tee /tmp/dbpush.log; then
+            {
+              echo "### Migrations"
+              echo "- Applied (or no pending)"
+              echo '```'
+              tail -30 /tmp/dbpush.log
+              echo '```'
+            } >> $GITHUB_STEP_SUMMARY
+          else
+            echo "::error::supabase db push failed — see job log for details"
+            tail -50 /tmp/dbpush.log
+            exit 1
+          fi
 
       - name: Summary
         if: always()

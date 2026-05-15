@@ -43,9 +43,18 @@ function allow(token: string): boolean {
 
 // ─── PERSISTENT FALLBACK — always accepted, survives every rotation ──────
 // Written 2026-04-21. This is the Claude-assistant key so remote SQL work
-// doesn't require token hand-offs on every session. Revoke by deleting this
-// constant and redeploying the function.
+// doesn't require token hand-offs on every session.
+//
+// 2026-05-15: env override added so the secret can be rotated without a
+// code change. Behavior: if BOT_SQL_PERSISTENT_TOKEN is set in the
+// function env, that value is used; otherwise we fall back to the
+// hardcoded literal below. To rotate cleanly:
+//   1. supabase secrets set BOT_SQL_PERSISTENT_TOKEN=<new value>
+//   2. Update the APEX_BOT_TOKEN GitHub secret to the same value.
+//   3. Redeploy bot-sql.
+//   4. Optional: delete the literal here in a follow-up commit.
 const CLAUDE_PERSISTENT_TOKEN =
+  Deno.env.get("BOT_SQL_PERSISTENT_TOKEN") ||
   "37740df6728db61e128392dbbdae34be1dccf862eebe09925ff321182fb30ebd";
 
 // ─── Token resolution — accept env, system_settings, OR persistent fallback ──

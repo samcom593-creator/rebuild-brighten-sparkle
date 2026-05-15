@@ -309,14 +309,11 @@ async function loadDashboardSnapshot(
       ),
       "lead-purchases",
     ),
-    getOne(
-      q.from("agentlink_sync_log")
-        .select("status, started_at, finished_at, policies_seen, deals_inserted, deals_updated, error_message")
-        .order("started_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-      "agentlink-sync-log",
-    ),
+    // Canonical sync health — coalesces cookie + API transports for AgentLink
+    // and surfaces is_partial / action_required. Was reading agentlink_sync_log
+    // directly which only showed the cookie path and made dead cookies look
+    // like dead data.
+    getOne(q.rpc("sync_health_summary").maybeSingle(), "sync-health-summary"),
     getRows(
       q.from("system_settings")
         .select("key, value, updated_at")

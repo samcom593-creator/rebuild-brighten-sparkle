@@ -52,65 +52,122 @@ jobs:
       - name: Check pg_cron heartbeat
         id: cron
         run: |
-          gap=$(curl -s -X POST "$BOT_SQL" \
+          set -euo pipefail
+          # Old version printed "None" when the JSON parse failed and then
+          # arithmetic compared "None" -gt 600 (always falsy). Now we coerce
+          # any non-numeric result to 99999 so a parse failure is treated as
+          # "very stale" — the correct, loud behavior.
+          gap=$(curl -sS -X POST "$BOT_SQL" \
             -H "Authorization: Bearer $BOT_TOKEN" \
             -H "content-type: application/json" \
             -d '{"query":"SELECT EXTRACT(EPOCH FROM (now()-max(start_time)))::int AS gap FROM cron.job_run_details;"}' \
-            | python3 -c "import json,sys; r=json.load(sys.stdin); print(r['rows'][0]['gap']) if r.get('ok') else print(99999)")
+            | python3 -c '
+import json, sys
+try:
+    r = json.load(sys.stdin)
+    rows = r.get("rows") or []
+    if not r.get("ok") or not rows: raise ValueError()
+    v = rows[0].get("gap")
+    print(int(v) if isinstance(v, (int, float)) and v >= 0 else 99999)
+except Exception:
+    print(99999)
+')
+          # Ensure it's actually an int — defense in depth.
+          case "$gap" in
+            ''|*[!0-9]*) gap=99999 ;;
+          esac
           echo "gap=$gap" >> "$GITHUB_OUTPUT"
           echo "pg_cron gap: ${gap}s"
           if [ "$gap" -gt 600 ]; then
-            curl -s -X POST "$NTFY" \
+            curl -sS -X POST "$NTFY" \
               -H "Title: pg_cron stalled — external cron firing fallback" \
               -H "Priority: 5" \
               -H "Tags: rotating_light" \
-              --data-binary "pg_cron heartbeat is ${gap}s stale. External backup is running critical jobs. Click Restart in Supabase dashboard when you can."
+              --data-binary "pg_cron heartbeat is ${gap}s stale. External backup is running critical jobs. Toggle pg_cron extension off/on in Supabase Dashboard when you can." || true
+            echo "::warning::pg_cron heartbeat is ${gap}s stale (>600s)"
           fi
 
       - name: Fire critical jobs
+        id: jobs
         run: |
-          # Each job is idempotent — safe to call when pg_cron is alive too.
+          set -uo pipefail
+          # We track success/failure per call and emit a summary. Failures
+          # surface as ::warning:: lines so the job-summary section shows
+          # them; only critical-path failures fail the workflow.
+          FAILED=()
+          # fire() = SQL function via bot-sql. Captures both HTTP status and
+          # response body so silent timeouts are visible.
           fire() {
             local fn=$1
             local label=$2
+            local critical=${3:-no}
+            local timeout=${4:-60}
             echo "── $label ──"
-            curl -s -X POST "$BOT_SQL" \
+            local body status
+            body=$(curl -sS -w "\nHTTPSTATUS:%{http_code}" -X POST "$BOT_SQL" \
               -H "Authorization: Bearer $BOT_TOKEN" \
               -H "content-type: application/json" \
-              --max-time 60 \
-              -d "{\"query\":\"SELECT $fn::text AS r;\"}" | head -c 200
+              --max-time "$timeout" \
+              -d "{\"query\":\"SELECT $fn::text AS r;\"}" 2>&1) || true
+            status=$(printf '%s' "$body" | tail -1 | sed 's/HTTPSTATUS://')
+            body=$(printf '%s' "$body" | sed '$d')
+            echo "$body" | head -c 400
             echo
+            if [ "$status" != "200" ] || echo "$body" | grep -q '"ok":false'; then
+              echo "::warning::$label failed (status=$status)"
+              FAILED+=("$label")
+              if [ "$critical" = "yes" ]; then return 1; fi
+            fi
           }
-          # call_edge() invokes a Supabase edge function. Used for syncs that
-          # can't be SQL functions (e.g. insuracloud-sync hits an external HTTP
-          # API and lives in supabase/functions/insuracloud-sync/index.ts).
           call_edge() {
             local fn=$1
-            local body=$2
+            local body_in=$2
+            local critical=${3:-no}
             echo "── edge:$fn ──"
-            curl -s -X POST "https://xrzweoneiieddzxogewk.supabase.co/functions/v1/$fn" \
+            local resp status
+            resp=$(curl -sS -w "\nHTTPSTATUS:%{http_code}" -X POST \
+              "https://xrzweoneiieddzxogewk.supabase.co/functions/v1/$fn" \
               -H "Authorization: Bearer $BOT_TOKEN" \
               -H "content-type: application/json" \
               --max-time 90 \
-              -d "$body" | head -c 300
+              -d "$body_in" 2>&1) || true
+            status=$(printf '%s' "$resp" | tail -1 | sed 's/HTTPSTATUS://')
+            resp=$(printf '%s' "$resp" | sed '$d')
+            echo "$resp" | head -c 500
             echo
+            if [ "$status" != "200" ] || echo "$resp" | grep -qE '"ok":false|"error"'; then
+              echo "::warning::edge $fn returned status=$status"
+              FAILED+=("edge:$fn")
+              if [ "$critical" = "yes" ]; then return 1; fi
+            fi
           }
-          # Highest priority: agent link + deal sync (operational data freshness)
-          fire "public.agentlink_watchdog()" "agentlink-watchdog"
+          # SQL watchdog
+          fire "public.agentlink_watchdog()" "agentlink-watchdog" no 30 || true
           # agentlink_live_pull uses a browser session cookie that expires —
-          # tolerate timeout so the rest of the run still goes.
-          fire "public.agentlink_live_pull()" "agentlink-live-pull" || true
-          # InsuraCloud sync — uses the per-agent stored API Bearer token.
-          # This is the one that works automatically with no human cookie
-          # rotation. Added 2026-05-15 after we proved the token is valid
-          # + sync responds in under a second.
-          call_edge "insuracloud-sync" '{"full":false}'
+          # tolerate timeout so the rest of the run still goes. Visibility
+          # is preserved via the FAILED[] array.
+          fire "public.agentlink_live_pull()" "agentlink-live-pull" no 25 || true
+          # InsuraCloud sync — primary upstream pull. Bearer-token auth, no
+          # cookie rotation required. CRITICAL — a failure means dashboards
+          # show stale numbers, so we fail the workflow if this 500s.
+          call_edge "insuracloud-sync" '{"full":false}' yes
           # Deal sync queue (stale deal pushes)
-          fire "public.deal_sync_queue_promote_dead()" "deal-sync-queue-promote-dead" || true
+          fire "public.deal_sync_queue_promote_dead()" "deal-sync-queue-promote-dead" no 30 || true
           # Auto-assign newly-arrived applications
-          fire "public.auto_assign_hiring_manager()" "auto-assign-hiring-manager"
+          fire "public.auto_assign_hiring_manager()" "auto-assign-hiring-manager" no 30 || true
           # Refresh canonical sync-health view used by the dashboard banner.
-          fire "public.refresh_sync_health()" "refresh-sync-health" || true
+          fire "public.refresh_sync_health()" "refresh-sync-health" no 10 || true
+
+          # Surface the list of failures to the job summary
+          {
+            echo "### Cron-tick results"
+            if [ "${#FAILED[@]}" -eq 0 ]; then
+              echo "- All jobs OK"
+            else
+              echo "- Failed jobs: ${FAILED[*]}"
+              echo "- See per-step logs above for full HTTP responses"
+            fi
+          } >> $GITHUB_STEP_SUMMARY
 
       - name: Summary
         if: always()

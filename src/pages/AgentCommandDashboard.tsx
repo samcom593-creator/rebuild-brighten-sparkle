@@ -145,7 +145,11 @@ async function loadSnapshot(userId: string, agentId: string): Promise<AgentSnaps
     q.from("applications").select("id, status, license_progress, license_status, contracted_at, first_deal_at, last_contacted_at").or(`assigned_agent_id.eq.${agentId},referral_manager_id.eq.${agentId},recruiter_id.eq.${agentId}`),
     q.from("seminar_registrations").select("id, attended, application_id"),
     q.from("referrals").select("status").eq("referrer_agent_id", agentId),
-    q.from("agentlink_sync_log").select("started_at, finished_at, status").order("started_at", { ascending: false }).limit(1).maybeSingle(),
+    // Read freshness from the canonical sync_health_summary() RPC rather
+    // than agentlink_sync_log directly. v_sync_health coalesces transports
+    // (cookie + API) and exposes `is_partial` + `action_required` so the
+    // banner shows the truth, not just one transport's status.
+    q.rpc("sync_health_summary"),
   ]);
   const [applicants, seminarRegs, refs, syncRow] = pipelineBatch;
 

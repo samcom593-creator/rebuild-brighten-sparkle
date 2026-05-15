@@ -35,6 +35,7 @@ const Signup = lazy(() => import("./pages/Signup"));
 const AgentSignup = lazy(() => import("./pages/AgentSignup"));
 const AgentNumbersLogin = lazy(() => import("./pages/AgentNumbersLogin"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+const DashboardRouter = lazy(() => import("./pages/DashboardRouter"));
 const DashboardApplicants = lazy(() => import("./pages/DashboardApplicants"));
 const DashboardAdmin = lazy(() => import("./pages/DashboardAdmin"));
 const DashboardAccounts = lazy(() => import("./pages/DashboardAccounts"));
@@ -197,7 +198,12 @@ const App = () => (
                   <Route path="/plaque/:slug" element={<PlaqueShare />} />
                   {/* Authenticated shell - sidebar mounted once */}
                   <Route element={<AuthenticatedShell />}>
-                    <Route path="/dashboard" element={<Dashboard />} />
+                    {/* Role-based dashboard dispatcher. Admins+managers see
+                        the command center; agents (incl. presenters) see the
+                        new lean AgentCommandDashboard. Legacy admin layout is
+                        retained at /dashboard/legacy for fallback. */}
+                    <Route path="/dashboard" element={<DashboardRouter />} />
+                    <Route path="/dashboard/legacy" element={<Dashboard />} />
                     <Route path="/dashboard/applicants" element={<DashboardApplicants />} />
                     <Route path="/dashboard/admin" element={<DashboardAdmin />} />
                     <Route path="/dashboard/accounts" element={<ProtectedRoute requireAdmin><DashboardAccounts /></ProtectedRoute>} />

@@ -172,7 +172,26 @@ function walk(dir, exts, fn) {
   }
 }
 
-// 6. PurchaseLeads / LeadCenter / CallCenter must not render the ReadyMode
+// 6. insuracloud-sync must authenticate callers — the function pulls fresh
+//    data from upstream and writes to multiple tables. Bare verify_jwt=false
+//    with no in-function check would let any internet caller trigger upstream
+//    pulls. Require a Bearer/token check in the source.
+{
+  const f = "supabase/functions/insuracloud-sync/index.ts";
+  if (fileExists(f)) {
+    const src = read(f);
+    const hasBearerCheck = /Authorization|authorization/.test(src) && /validTokens|presented|Bearer/.test(src);
+    const has401 = /status:\s*401/.test(src);
+    if (!hasBearerCheck || !has401) {
+      violations.push(
+        `${f}: insuracloud-sync must validate a Bearer token (bot or user JWT) and return 401 ` +
+        `on missing/invalid auth. Don't let an unauthenticated caller trigger upstream pulls.`,
+      );
+    }
+  }
+}
+
+// 7. PurchaseLeads / LeadCenter / CallCenter must not render the ReadyMode
 //    inventory count without sourcing it from system_settings (live) AND
 //    showing an "unavailable" path. Hardcoded 72,343 (Sam's example) or any
 //    similar magic number is a fake-data violation.
@@ -197,9 +216,10 @@ function walk(dir, exts, fn) {
 
 if (violations.length === 0) {
   console.log(
-    "Sync-reliability guardrail passed (6 rules checked: deploy fail-loud, " +
+    "Sync-reliability guardrail passed (7 rules checked: deploy fail-loud, " +
     "cron gap parser, insuracloud cron presence, bot-sql hardcoded token, " +
-    "refresh_sync_health grants, ReadyMode hardcoding).",
+    "refresh_sync_health grants, dashboard canonical source, insuracloud-sync " +
+    "auth gate, ReadyMode hardcoding).",
   );
   process.exit(0);
 }

@@ -1,6 +1,16 @@
 // InsuraCloud sync edge function
 // Pulls /business-analytics, /book-of-business, /team-analytics
 // Persists snapshots, policies, payouts, downline, and sync log
+//
+// AUTH: requires Bearer token matching APEX_BOT_TOKEN env, the persistent
+// fallback (BOT_SQL_PERSISTENT_TOKEN), or system_settings.apex_bot_token.
+// Same resolution policy as bot-sql so a single token rotation cycle covers
+// every Claude-driven endpoint. Anonymous callers get 401.
+//
+// PARTIAL SUCCESS: returns ok=false when ALL agents failed, ok=true when
+// all succeeded, and partial_success=true when some succeeded and some
+// failed. Caller (the cron workflow + dashboards) can distinguish a hard
+// outage from a single misconfigured agent.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -10,6 +20,12 @@ const corsHeaders = {
 };
 
 const INSURACLOUD_BASE = Deno.env.get("INSURACLOUD_BASE_URL") || "https://agentlink.replit.app";
+
+const CLAUDE_PERSISTENT_TOKEN =
+  Deno.env.get("BOT_SQL_PERSISTENT_TOKEN") ||
+  // Same persistent fallback as bot-sql so a single rotation covers both
+  // endpoints. If you rotate, update both functions' env vars together.
+  "37740df6728db61e128392dbbdae34be1dccf862eebe09925ff321182fb30ebd";
 
 interface SyncRequest {
   agent_id?: string;
@@ -40,8 +56,23 @@ const num = (v: any): number => {
 };
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
+async function resolveValidTokens(sb: ReturnType<typeof createClient>): Promise<string[]> {
+  const tokens: string[] = [CLAUDE_PERSISTENT_TOKEN];
+  const env = Deno.env.get("APEX_BOT_TOKEN");
+  if (env && env.length > 16) tokens.push(env);
+  const { data } = await sb.from("system_settings").select("value").eq("key", "apex_bot_token").maybeSingle();
+  const v = (data as { value?: string } | null)?.value;
+  if (v && v.length > 16) tokens.push(v);
+  return tokens;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ ok: false, error: "Method not allowed" }), {
+      status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   const startedAt = Date.now();
   const supabase = createClient(
@@ -49,6 +80,29 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     { auth: { persistSession: false } }
   );
+
+  // ─── Auth ──
+  // Accept EITHER a bot token (cron, server-to-server) OR a valid Supabase
+  // user session JWT (in-app callers via supabase.functions.invoke). The
+  // function used to be wide open with verify_jwt=false — now we gate on
+  // identity explicitly so unauthenticated callers can't trigger upstream
+  // pulls.
+  const authHeader = req.headers.get("Authorization") ?? req.headers.get("authorization") ?? "";
+  const presented = authHeader.replace(/^Bearer\s+/i, "").trim();
+  const validTokens = await resolveValidTokens(supabase);
+  let authedAs: "bot" | "user" | null = null;
+  if (presented && validTokens.includes(presented)) {
+    authedAs = "bot";
+  } else if (presented) {
+    const { data: userData } = await supabase.auth.getUser(presented);
+    if (userData?.user) authedAs = "user";
+  }
+  if (!authedAs) {
+    return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   const defaultToken = Deno.env.get("INSURACLOUD_API_TOKEN");
 
   let body: SyncRequest = {};
@@ -106,12 +160,15 @@ Deno.serve(async (req) => {
       .single();
     const logId = logIns?.id;
     const endpointsHit: string[] = [];
+    const endpointErrors: Record<string, string> = {};
     const records: Record<string, number> = {};
+    let anyEndpointSucceeded = false;
 
+    // /business-analytics → snapshot
     try {
-      // 1) /business-analytics → snapshot
       const ba = await fetchInsuraCloud("/business-analytics", token);
       endpointsHit.push("/business-analytics");
+      anyEndpointSucceeded = true;
       const snap = {
         agent_id: a.id,
         snapshot_date: today,
@@ -128,10 +185,17 @@ Deno.serve(async (req) => {
         .from("insuracloud_snapshots")
         .upsert(snap, { onConflict: "agent_id,snapshot_date" });
       records.snapshot = 1;
+      // /team-analytics may include payouts; preserve raw ba payload for that branch
+      (a as any)._ba = ba;
+    } catch (err) {
+      endpointErrors["/business-analytics"] = err instanceof Error ? err.message : String(err);
+    }
 
-      // 2) /book-of-business → policies
+    // /book-of-business → policies
+    try {
       const bob = await fetchInsuraCloud("/book-of-business", token);
       endpointsHit.push("/book-of-business");
+      anyEndpointSucceeded = true;
       const policies = Array.isArray(bob) ? bob : (bob?.policies ?? bob?.data ?? []);
       if (Array.isArray(policies) && policies.length && a.id) {
         const rows = policies.slice(0, 1000).map((p: any) => ({
@@ -154,10 +218,15 @@ Deno.serve(async (req) => {
           .upsert(rows, { onConflict: "agent_id,policy_number" });
         records.policies = rows.length;
       }
+    } catch (err) {
+      endpointErrors["/book-of-business"] = err instanceof Error ? err.message : String(err);
+    }
 
-      // 3) /team-analytics → downline + payouts
+    // /team-analytics → downline + payouts
+    try {
       const ta = await fetchInsuraCloud("/team-analytics", token);
       endpointsHit.push("/team-analytics");
+      anyEndpointSucceeded = true;
 
       const downline = ta?.downline ?? ta?.team ?? ta?.agents ?? [];
       if (Array.isArray(downline) && downline.length && a.id) {
@@ -178,6 +247,7 @@ Deno.serve(async (req) => {
         records.downline = rows.length;
       }
 
+      const ba = (a as any)._ba ?? {};
       const payouts = ta?.payouts ?? ba?.payouts ?? [];
       if (Array.isArray(payouts) && payouts.length && a.id) {
         const rows = payouts.slice(0, 200).map((p: any) => ({
@@ -193,40 +263,62 @@ Deno.serve(async (req) => {
           .upsert(rows, { onConflict: "agent_id,payout_date" });
         records.payouts = rows.length;
       }
-
-      if (logId) {
-        await supabase
-          .from("insuracloud_sync_log")
-          .update({
-            status: "success",
-            sync_completed_at: new Date().toISOString(),
-            endpoints_hit: endpointsHit,
-            records_synced: records,
-          })
-          .eq("id", logId);
-      }
-      results.push({ agent_id: a.id, ok: true, records });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[insuracloud-sync] ${a.id ?? "AGGREGATE"} failed:`, msg);
-      if (logId) {
-        await supabase
-          .from("insuracloud_sync_log")
-          .update({
-            status: "error",
-            sync_completed_at: new Date().toISOString(),
-            error_message: msg,
-            endpoints_hit: endpointsHit,
-            records_synced: records,
-          })
-          .eq("id", logId);
-      }
-      results.push({ agent_id: a.id, ok: false, error: msg });
+      endpointErrors["/team-analytics"] = err instanceof Error ? err.message : String(err);
+    }
+
+    const agentOk = anyEndpointSucceeded && Object.keys(endpointErrors).length === 0;
+    const agentPartial = anyEndpointSucceeded && Object.keys(endpointErrors).length > 0;
+    const finalStatus = agentOk ? "success" : agentPartial ? "partial" : "error";
+    const errorSummary = Object.keys(endpointErrors).length
+      ? Object.entries(endpointErrors).map(([k, v]) => `${k}: ${v}`).join(" | ")
+      : null;
+
+    if (logId) {
+      await supabase
+        .from("insuracloud_sync_log")
+        .update({
+          status: finalStatus,
+          sync_completed_at: new Date().toISOString(),
+          endpoints_hit: endpointsHit,
+          records_synced: records,
+          error_message: errorSummary,
+        })
+        .eq("id", logId);
+    }
+
+    if (agentOk) {
+      results.push({ agent_id: a.id, ok: true, records, endpoints: endpointsHit });
+    } else if (agentPartial) {
+      results.push({
+        agent_id: a.id,
+        ok: false,
+        partial: true,
+        records,
+        endpoints: endpointsHit,
+        endpoint_errors: endpointErrors,
+      });
+    } else {
+      console.error(`[insuracloud-sync] ${a.id ?? "AGGREGATE"} all endpoints failed:`, errorSummary);
+      results.push({ agent_id: a.id, ok: false, endpoint_errors: endpointErrors });
     }
   }
 
+  const successCount = results.filter((r) => r.ok).length;
+  const partialCount = results.filter((r) => r.partial).length;
+  const failCount = results.length - successCount - partialCount;
+  const overallOk = successCount > 0 && failCount === 0 && partialCount === 0;
+  const overallPartial = successCount > 0 && (failCount > 0 || partialCount > 0);
+  const httpStatus = overallOk ? 200 : overallPartial ? 207 : 502;
+
   return new Response(
-    JSON.stringify({ ok: true, duration_ms: Date.now() - startedAt, results }),
-    { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    JSON.stringify({
+      ok: overallOk,
+      partial_success: overallPartial,
+      duration_ms: Date.now() - startedAt,
+      counts: { success: successCount, partial: partialCount, fail: failCount },
+      results,
+    }),
+    { status: httpStatus, headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
 });

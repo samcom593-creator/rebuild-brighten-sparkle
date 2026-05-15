@@ -113,10 +113,11 @@ Deno.serve(async (_req) => {
 
   const { data: regs, error } = await supabase
     .from("seminar_registrations")
-    .select("id, first_name, email, seminar_date, attended")
+    .select("id, first_name, email, seminar_date, attended, reminder_opt_in")
     .gte("seminar_date", todayIso)
     .lte("seminar_date", horizonIso)
-    .is("attended", null);
+    .eq("reminder_opt_in", true)
+    .or("attended.is.null,attended.eq.false");
 
   if (error) {
     console.error("seminar-reminder-tick query error", error);

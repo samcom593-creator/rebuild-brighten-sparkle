@@ -1,21 +1,24 @@
-import { useCallback, useEffect, useState } from "react";
-import { Crown, Loader2, Medal, TrendingUp, Calendar, Clock3 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Crown, Loader2, Medal, TrendingUp, Calendar, Clock3, Target, Users, Activity, CalendarDays } from "lucide-react";
 import { formatDistanceToNowStrict } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { formatMetricSource, getMetricBounds, METRIC_REGISTRY, sumAnnualPremium } from "@/lib/metricTruth";
+import { getMetricBounds, sumAnnualPremium, type MetricBounds } from "@/lib/metricTruth";
 import { useProductionRealtime } from "@/hooks/useProductionRealtime";
 import { DEAL_TRUTH_STATUS_FILTER, dealTruthWindowOr } from "@/lib/dealTruth";
 
-type Period = "daily" | "weekly" | "monthly";
+type Period = "daily" | "weekly" | "monthly" | "custom";
+type Board = "production" | "recruiting" | "referrals" | "activity";
 type Row = {
   rank: number;
   agent_id: string;
-  deals: number;
-  alp: number;
+  primary: number;
+  secondary: number;
+  tertiary: number;
   agent_name: string | null;
   avatar_url: string | null;
 };
@@ -26,105 +29,214 @@ const RANK_ICONS: Record<number, { icon: typeof Crown; color: string }> = {
   3: { icon: Medal, color: "text-orange-400" },
 };
 
+const BOARD_META: Record<Board, { label: string; icon: typeof Crown; source: string }> = {
+  production: { label: "Production", icon: Crown, source: "deals.posted_at + valid deal statuses" },
+  recruiting: { label: "Recruiting", icon: Target, source: "applications.created_at + owner attribution" },
+  referrals: { label: "Referral", icon: Users, source: "applications.referral_manager_id" },
+  activity: { label: "Activity", icon: Activity, source: "daily_production manual activity fields" },
+};
+
 function periodToWindow(period: Period) {
-  return period === "daily" ? "day" : period === "weekly" ? "week" : "month";
+  if (period === "daily") return "day";
+  if (period === "weekly") return "week";
+  return "month";
+}
+
+function formatMoney(value: number): string {
+  return `$${value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+}
+
+function dateInputToDate(value: string): Date | undefined {
+  return value ? new Date(`${value}T12:00:00`) : undefined;
+}
+
+function getBounds(period: Period, customFrom: string, customTo: string): MetricBounds {
+  if (period === "custom") {
+    const from = dateInputToDate(customFrom);
+    const to = dateInputToDate(customTo);
+    if (from && to) return getMetricBounds("custom", { from, to });
+  }
+  return getMetricBounds(periodToWindow(period));
+}
+
+function pickOwner(row: any): string | null {
+  return row.referral_manager_id || row.recruiter_id || row.assigned_agent_id || row.agent_id || null;
 }
 
 export default function Leaderboard() {
-  const [period, setPeriod] = useState<Period>("monthly");
+  const [period, setPeriod] = useState<Period>("weekly");
+  const [board, setBoard] = useState<Board>("production");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
 
-  const load = useCallback(async (activePeriod: Period) => {
+  const bounds = useMemo(() => getBounds(period, customFrom, customTo), [period, customFrom, customTo]);
+
+  const buildRows = useCallback(async (ids: string[], grouped: Map<string, { primary: number; secondary: number; tertiary: number }>) => {
+    if (ids.length === 0) return [];
+    const { data: agents } = await supabase
+      .from("agents")
+      .select("id, display_name, profile:profiles(full_name, avatar_url)")
+      .in("id", ids);
+    const byId = new Map((agents ?? []).map((agent: any) => [agent.id, agent]));
+    return ids
+      .map((agentId) => {
+        const totals = grouped.get(agentId)!;
+        const agent = byId.get(agentId) as any;
+        return {
+          rank: 0,
+          agent_id: agentId,
+          primary: totals.primary,
+          secondary: totals.secondary,
+          tertiary: totals.tertiary,
+          agent_name: agent?.profile?.full_name ?? agent?.display_name ?? null,
+          avatar_url: agent?.profile?.avatar_url ?? null,
+        };
+      })
+      .sort((a, b) => b.primary - a.primary || b.secondary - a.secondary || b.tertiary - a.tertiary)
+      .map((row, index) => ({ ...row, rank: index + 1 }));
+  }, []);
+
+  const load = useCallback(async () => {
     setLoading(true);
     try {
-      const bounds = getMetricBounds(periodToWindow(activePeriod));
-      const [{ data: dealRows }, { data: syncRow }] = await Promise.all([
-        supabase
-          .from("deals")
-          .select("agent_id, annual_premium, posted_at, created_at")
-          .or(dealTruthWindowOr(bounds.startIso, bounds.endIso))
-          .in("status", DEAL_TRUTH_STATUS_FILTER),
-        supabase
-          .from("agentlink_sync_log" as any)
-          .select("finished_at, started_at")
-          .eq("status", "ok")
-          .order("started_at", { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-      ]);
+      let grouped = new Map<string, { primary: number; secondary: number; tertiary: number }>();
+      let syncAt: string | null = null;
 
-      const grouped = new Map<string, { deals: number; annualPremiums: Array<{ annual_premium?: number | null }> }>();
-      (dealRows ?? []).forEach((deal: any) => {
-        if (!deal.agent_id) return;
-        if (!grouped.has(deal.agent_id)) {
-          grouped.set(deal.agent_id, { deals: 0, annualPremiums: [] });
+      if (board === "production") {
+        const [{ data: dealRows }, { data: syncRow }] = await Promise.all([
+          supabase
+            .from("deals")
+            .select("agent_id, annual_premium, posted_at, created_at")
+            .or(dealTruthWindowOr(bounds.startIso, bounds.endIso))
+            .in("status", DEAL_TRUTH_STATUS_FILTER),
+          supabase
+            .from("agentlink_sync_log" as any)
+            .select("finished_at, started_at")
+            .eq("status", "ok")
+            .order("started_at", { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+        ]);
+        const premiumRows = new Map<string, Array<{ annual_premium?: number | null }>>();
+        for (const deal of (dealRows ?? []) as any[]) {
+          if (!deal.agent_id) continue;
+          if (!premiumRows.has(deal.agent_id)) premiumRows.set(deal.agent_id, []);
+          premiumRows.get(deal.agent_id)!.push({ annual_premium: deal.annual_premium });
         }
-        const row = grouped.get(deal.agent_id)!;
-        row.deals += 1;
-        row.annualPremiums.push({ annual_premium: deal.annual_premium });
-      });
-
-      const ids = Array.from(grouped.keys());
-      if (ids.length === 0) {
-        setRows([]);
-        setLastUpdatedAt((syncRow as any)?.finished_at || (syncRow as any)?.started_at || null);
-        return;
+        for (const [agentId, premiums] of premiumRows) {
+          grouped.set(agentId, { primary: sumAnnualPremium(premiums), secondary: premiums.length, tertiary: 0 });
+        }
+        syncAt = (syncRow as any)?.finished_at || (syncRow as any)?.started_at || null;
       }
 
-      const { data: agents } = await supabase
-        .from("agents")
-        .select("id, profile:profiles(full_name, avatar_url)")
-        .in("id", ids);
+      if (board === "recruiting") {
+        const { data } = await supabase
+          .from("applications")
+          .select("assigned_agent_id, referral_manager_id, recruiter_id, status, license_status, contracted_at, first_deal_at, created_at")
+          .gte("created_at", bounds.startIso)
+          .lt("created_at", bounds.endIso)
+          .is("terminated_at", null);
+        for (const app of (data ?? []) as any[]) {
+          const owner = pickOwner(app);
+          if (!owner) continue;
+          const row = grouped.get(owner) ?? { primary: 0, secondary: 0, tertiary: 0 };
+          row.primary += 1;
+          if (["reviewing", "interview", "contracting", "approved"].includes(app.status) || app.license_status === "licensed") row.secondary += 1;
+          if (app.contracted_at || app.first_deal_at) row.tertiary += 1;
+          grouped.set(owner, row);
+        }
+      }
 
-      const byId = new Map((agents ?? []).map((agent: any) => [agent.id, agent.profile]));
-      const builtRows = ids
-        .map((agentId) => {
-          const totals = grouped.get(agentId)!;
-          return {
-            rank: 0,
-            agent_id: agentId,
-            deals: totals.deals,
-            alp: sumAnnualPremium(totals.annualPremiums),
-            agent_name: (byId.get(agentId) as any)?.full_name ?? null,
-            avatar_url: (byId.get(agentId) as any)?.avatar_url ?? null,
-          };
-        })
-        .sort((a, b) => b.alp - a.alp || b.deals - a.deals)
-        .map((row, index) => ({ ...row, rank: index + 1 }));
+      if (board === "referrals") {
+        const { data } = await supabase
+          .from("applications")
+          .select("referral_manager_id, license_status, contracted_at, first_deal_at, created_at")
+          .not("referral_manager_id", "is", null)
+          .gte("created_at", bounds.startIso)
+          .lt("created_at", bounds.endIso)
+          .is("terminated_at", null);
+        for (const app of (data ?? []) as any[]) {
+          const owner = app.referral_manager_id;
+          if (!owner) continue;
+          const row = grouped.get(owner) ?? { primary: 0, secondary: 0, tertiary: 0 };
+          row.primary += 1;
+          if (app.license_status === "licensed") row.secondary += 1;
+          if (app.contracted_at || app.first_deal_at) row.tertiary += 1;
+          grouped.set(owner, row);
+        }
+      }
 
+      if (board === "activity") {
+        const { data } = await supabase
+          .from("daily_production")
+          .select("agent_id, presentations, hours_called, referrals_caught, referral_presentations, booked_inhome_referrals, production_date")
+          .gte("production_date", bounds.startIso.slice(0, 10))
+          .lt("production_date", bounds.endIso.slice(0, 10));
+        for (const activity of (data ?? []) as any[]) {
+          const owner = activity.agent_id;
+          if (!owner) continue;
+          const row = grouped.get(owner) ?? { primary: 0, secondary: 0, tertiary: 0 };
+          const presentations = Number(activity.presentations ?? 0);
+          const referrals = Number(activity.referrals_caught ?? 0) + Number(activity.referral_presentations ?? 0) + Number(activity.booked_inhome_referrals ?? 0);
+          const hours = Number(activity.hours_called ?? 0);
+          row.primary += presentations + referrals + hours;
+          row.secondary += presentations;
+          row.tertiary += referrals;
+          grouped.set(owner, row);
+        }
+      }
+
+      const builtRows = await buildRows(Array.from(grouped.keys()), grouped);
       setRows(builtRows);
-      setLastUpdatedAt((syncRow as any)?.finished_at || (syncRow as any)?.started_at || null);
+      setLastUpdatedAt(syncAt ?? new Date().toISOString());
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [board, bounds.endIso, bounds.startIso, buildRows]);
 
   useEffect(() => {
-    load(period);
-  }, [period, load]);
+    load();
+  }, [load]);
 
   useProductionRealtime(() => {
-    load(period);
+    load();
   }, 300);
 
-  const sourceHint = formatMetricSource(METRIC_REGISTRY.leaderboards, lastUpdatedAt);
+  const meta = BOARD_META[board];
+  const PrimaryIcon = meta.icon;
+
+  const sourceHint = `${meta.label} leaderboard · ${meta.source} · America/Chicago business window`;
+
+  function primaryValue(row: Row): string {
+    if (board === "production") return formatMoney(row.primary);
+    if (board === "activity") return row.primary.toLocaleString(undefined, { maximumFractionDigits: 1 });
+    return row.primary.toLocaleString();
+  }
+
+  function subValue(row: Row): string {
+    if (board === "production") return `${row.secondary} deal${row.secondary === 1 ? "" : "s"}`;
+    if (board === "recruiting") return `${row.secondary} advanced · ${row.tertiary} contracted/first sale`;
+    if (board === "referrals") return `${row.secondary} licensed · ${row.tertiary} contracted/first sale`;
+    return `${row.secondary} presentations · ${row.tertiary} referral actions`;
+  }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-4 p-4 md:p-6">
-      <div className="flex items-center gap-3">
+    <div className="mx-auto max-w-6xl space-y-4 p-4 md:p-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center">
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-500/30 to-yellow-500/20">
-          <Crown className="h-6 w-6 text-amber-300" />
+          <PrimaryIcon className="h-6 w-6 text-amber-300" />
         </div>
         <div className="flex-1">
           <h1 className="apex-headline text-3xl font-bold">Leaderboard</h1>
           <p className="text-sm text-muted-foreground">
-            Live rankings from posted deals in Chicago time. Day, week, and month all use the same truth layer.
+            Production, recruiting, referral, and activity rankings from live platform tables.
           </p>
         </div>
         {lastUpdatedAt && (
-          <Badge variant="outline" className="gap-1.5">
+          <Badge variant="outline" className="w-fit gap-1.5">
             <Calendar className="h-3 w-3" />
             {formatDistanceToNowStrict(new Date(lastUpdatedAt), { addSuffix: true })}
           </Badge>
@@ -133,22 +245,44 @@ export default function Leaderboard() {
 
       <p className="text-xs text-muted-foreground">{sourceHint}</p>
 
-      <Tabs value={period} onValueChange={(value) => setPeriod(value as Period)}>
-        <TabsList className="grid w-full grid-cols-3 md:w-auto">
-          <TabsTrigger value="daily">Daily</TabsTrigger>
-          <TabsTrigger value="weekly">Weekly</TabsTrigger>
-          <TabsTrigger value="monthly">Monthly</TabsTrigger>
-        </TabsList>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <Tabs value={board} onValueChange={(value) => setBoard(value as Board)}>
+          <TabsList className="grid grid-cols-4">
+            <TabsTrigger value="production">Production</TabsTrigger>
+            <TabsTrigger value="recruiting">Recruiting</TabsTrigger>
+            <TabsTrigger value="referrals">Referral</TabsTrigger>
+            <TabsTrigger value="activity">Activity</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <div className="flex flex-wrap items-center gap-2">
+          <Tabs value={period} onValueChange={(value) => setPeriod(value as Period)}>
+            <TabsList>
+              <TabsTrigger value="daily">Daily</TabsTrigger>
+              <TabsTrigger value="weekly">Weekly</TabsTrigger>
+              <TabsTrigger value="monthly">Monthly</TabsTrigger>
+              <TabsTrigger value="custom">Custom</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          {period === "custom" && (
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4 text-muted-foreground" />
+              <Input type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} className="h-9 w-[150px]" />
+              <Input type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} className="h-9 w-[150px]" />
+            </div>
+          )}
+        </div>
+      </div>
 
-        {(["daily", "weekly", "monthly"] as Period[]).map((tab) => (
-          <TabsContent key={tab} value={tab} className="mt-4">
+      <Tabs value={board} onValueChange={(value) => setBoard(value as Board)}>
+        {(["production", "recruiting", "referrals", "activity"] as Board[]).map((tab) => (
+          <TabsContent key={tab} value={tab} className="mt-0">
             {loading ? (
               <div className="flex items-center justify-center py-12 text-muted-foreground">
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading…
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading...
               </div>
             ) : rows.length === 0 ? (
               <GlassCard className="p-12 text-center text-muted-foreground">
-                No {tab} leaderboard data yet. The leaderboard will populate as soon as posted deals land in the truth layer.
+                No {BOARD_META[tab].label.toLowerCase()} leaderboard data in this window. This is a true empty state from live tables.
               </GlassCard>
             ) : (
               <GlassCard className="overflow-hidden p-0">
@@ -179,17 +313,13 @@ export default function Leaderboard() {
                         )}
                         <div className="min-w-0 flex-1">
                           <div className="truncate font-semibold">{row.agent_name ?? "Unknown agent"}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {row.deals} deal{row.deals === 1 ? "" : "s"}
-                          </div>
+                          <div className="text-xs text-muted-foreground">{subValue(row)}</div>
                         </div>
                         <div className="text-right">
-                          <div className="font-bold tabular-nums text-emerald-400">
-                            ${row.alp.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </div>
+                          <div className="font-bold tabular-nums text-emerald-400">{primaryValue(row)}</div>
                           <div className="mt-0.5 flex items-center justify-end gap-1 text-xs text-muted-foreground">
                             <Clock3 className="h-3 w-3" />
-                            posted deals truth
+                            {BOARD_META[tab].label}
                           </div>
                         </div>
                       </div>

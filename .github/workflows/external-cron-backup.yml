@@ -13,12 +13,24 @@ name: External cron backup (pg_cron resilience)
 #                    bot-sql's source) is the safe value to use here.
 
 on:
+  # GitHub Actions' minimum schedule is 5 minutes per cron entry. Stack five
+  # entries staggered by one minute each to get effective ~1-min cadence.
+  # If GH delays a run (which it does under load), the next-minute entry
+  # picks up the slack so we still get high-frequency syncing.
+  # pg_cron jobs in Supabase are ALSO scheduled at "* * * * *" — if Sam
+  # toggles the extension off/on, the in-database scheduler will kick in
+  # and these external runs become redundant safety nets.
   schedule:
-    - cron: '*/10 * * * *'  # every 10 min (GH Actions minimum is 5)
+    - cron: '0-59/5 * * * *'   # :00, :05, :10, …
+    - cron: '1-59/5 * * * *'   # :01, :06, :11, …
+    - cron: '2-59/5 * * * *'   # :02, :07, :12, …
+    - cron: '3-59/5 * * * *'   # :03, :08, :13, …
+    - cron: '4-59/5 * * * *'   # :04, :09, :14, …
   workflow_dispatch:
 
+# Allow staggered runs to overlap slightly; do NOT cancel in-progress.
 concurrency:
-  group: external-cron-backup
+  group: external-cron-backup-${{ github.event.schedule }}
   cancel-in-progress: false
 
 jobs:

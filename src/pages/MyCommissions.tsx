@@ -5,6 +5,7 @@ import { Wallet, Loader2, AlertCircle } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
 
 type LedgerRow = {
   id: string;
@@ -20,6 +21,7 @@ type LedgerRow = {
   carrier_name?: string;
   client_name?: string;
   product?: string;
+  source?: "ledger" | "estimate";
 };
 
 export default function MyCommissions() {
@@ -33,7 +35,7 @@ export default function MyCommissions() {
     (async () => {
       if (!user?.id) { if (!cancelled) { setAgentId(null); setLoading(false); } return; }
       const { data: agent } = await supabase.from("agents")
-        .select("id").eq("user_id", user.id)
+        .select("id, contract_percentage").eq("user_id", user.id)
         .order("created_at", { ascending: false }).limit(1).maybeSingle();
       if (cancelled) return;
       if (!agent?.id) { setAgentId(null); setLoading(false); return; }
@@ -47,7 +49,7 @@ export default function MyCommissions() {
         .eq("agent_id", agent.id)
         .order("created_at", { ascending: false });
 
-      const mapped: LedgerRow[] = (ledger as any[] ?? []).map(r => ({
+      let mapped: LedgerRow[] = (ledger as any[] ?? []).map(r => ({
         id: r.id,
         deal_id: r.deal_id,
         annual_premium: Number(r.annual_premium),
@@ -61,7 +63,37 @@ export default function MyCommissions() {
         carrier_name: r.deal?.carrier?.name,
         client_name: r.deal ? `${r.deal.client_first_name ?? ""} ${r.deal.client_last_name ?? ""}`.trim() : undefined,
         product: r.deal?.product_sold,
+        source: "ledger",
       }));
+
+      if (mapped.length === 0) {
+        const { data: deals } = await supabase
+          .from("deals")
+          .select("id, annual_premium, product_sold, client_first_name, client_last_name, posted_at, created_at, status")
+          .eq("agent_id", agent.id)
+          .in("status", DEAL_TRUTH_STATUS_FILTER)
+          .order("posted_at", { ascending: false, nullsFirst: false })
+          .limit(250);
+        const ratePct = Number(agent.contract_percentage ?? 65);
+        mapped = ((deals as any[]) ?? []).map((deal) => {
+          const annualPremium = Number(deal.annual_premium ?? 0);
+          return {
+            id: `estimate-${deal.id}`,
+            deal_id: deal.id,
+            annual_premium: annualPremium,
+            rate_pct: ratePct,
+            rate_source: "agent contract percentage estimate",
+            amount: annualPremium * (ratePct / 100),
+            status: "pending",
+            expected_paid_date: null,
+            actual_paid_date: null,
+            created_at: deal.posted_at ?? deal.created_at,
+            client_name: `${deal.client_first_name ?? ""} ${deal.client_last_name ?? ""}`.trim(),
+            product: deal.product_sold,
+            source: "estimate",
+          } satisfies LedgerRow;
+        });
+      }
       setRows(mapped);
       setLoading(false);
     })();
@@ -74,6 +106,7 @@ export default function MyCommissions() {
   const totalPending = pending.reduce((a, r) => a + r.amount, 0);
   const totalPaid    = paid.reduce((a, r) => a + r.amount, 0);
   const totalClawed  = clawed.reduce((a, r) => a + r.amount, 0);
+  const estimatedRows = rows.filter(r => r.source === "estimate").length;
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto page-enter">
@@ -84,7 +117,9 @@ export default function MyCommissions() {
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">My Commissions</h1>
           <p className="text-muted-foreground text-sm">
-            Live ledger — every deal's commission computed from your contract rate. Pulled from Supabase.
+            {estimatedRows > 0
+              ? "Estimated from valid AgentLink/APEX deals until the commission ledger is populated."
+              : "Live ledger — every deal's commission computed from your contract rate. Pulled from Supabase."}
           </p>
         </div>
       </div>
@@ -101,10 +136,19 @@ export default function MyCommissions() {
       ) : rows.length === 0 ? (
         <GlassCard className="p-8 text-center">
           <Wallet className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">Awaiting first payout — commissions will appear here the moment a deal goes active.</p>
+          <p className="text-sm text-muted-foreground">No valid AgentLink/APEX deals or commission ledger rows are visible for this account.</p>
         </GlassCard>
       ) : (
         <>
+          {estimatedRows > 0 && (
+            <GlassCard className="border-amber-500/30 bg-amber-500/10 p-4">
+              <div className="flex items-center gap-2 text-sm text-amber-200">
+                <AlertCircle className="h-4 w-4" />
+                Showing estimated commissions from deal premium and contract percentage. Actual payout dates require `commission_ledger`.
+              </div>
+            </GlassCard>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <GlassCard className="p-4">
               <div className="text-xs text-muted-foreground">Pending</div>
@@ -155,6 +199,9 @@ export default function MyCommissions() {
                         r.status === "voided"      && "border-muted-foreground/40 text-muted-foreground")}>
                         {r.status}
                       </Badge>
+                      {r.source === "estimate" && (
+                        <Badge variant="outline" className="ml-1 border-amber-500/40 text-amber-400">estimate</Badge>
+                      )}
                     </td>
                     <td className="px-3 py-1.5 text-xs text-muted-foreground">{r.expected_paid_date ?? "—"}</td>
                   </tr>

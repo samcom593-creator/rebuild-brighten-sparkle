@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import { Book, Search, RefreshCw, AlertTriangle } from "lucide-react";
+import { Book, Search, RefreshCw, AlertTriangle, Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
 interface DealRow {
@@ -63,18 +65,59 @@ function pipelineLabel(deal: DealRow): string {
 }
 
 export default function BookOfBusiness() {
+  const { user, isAdmin, isManager } = useAuth();
   const [deals, setDeals]       = useState<DealRow[]>([]);
   const [loading, setLoading]   = useState(true);
+  const [agentScopeIds, setAgentScopeIds] = useState<string[] | null>(null);
+  const [selectedDeal, setSelectedDeal] = useState<DealRow | null>(null);
   const [search, setSearch]     = useState("");
   const [sourceFilter, setSource] = useState<"all" | "apex" | "agent_link">("all");
   const [stageFilter, setStage]   = useState<string>("all");
   const [sortKey, setSortKey]     = useState<SortKey>("posted_at");
   const [sortDir, setSortDir]     = useState<SortDir>("desc");
 
-  const load = async () => {
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!user?.id) {
+        setAgentScopeIds([]);
+        return;
+      }
+      if (isAdmin) {
+        setAgentScopeIds(null);
+        return;
+      }
+      const { data: agent } = await supabase
+        .from("agents")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (cancelled) return;
+      if (!agent?.id) {
+        setAgentScopeIds([]);
+        return;
+      }
+      const ids = new Set<string>([agent.id]);
+      if (isManager) {
+        const { data: downline } = await supabase.rpc("my_downline_agent_ids" as any);
+        for (const row of ((downline as any[]) ?? [])) {
+          if (row.agent_id) ids.add(row.agent_id);
+        }
+      }
+      setAgentScopeIds(Array.from(ids));
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id, isAdmin, isManager]);
+
+  const load = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await supabase
+      if (!isAdmin && agentScopeIds !== null && agentScopeIds.length === 0) {
+        setDeals([]);
+        return;
+      }
+
+      let query = supabase
         .from("deals")
         .select(`
           id, agent_id, client_first_name, client_last_name, policy_number,
@@ -86,6 +129,12 @@ export default function BookOfBusiness() {
         .neq("status", "draft")
         .order("created_at", { ascending: false })
         .limit(500);
+
+      if (!isAdmin && agentScopeIds !== null) {
+        query = query.in("agent_id", agentScopeIds);
+      }
+
+      const { data } = await query;
 
       const rows = (data ?? []) as DealRow[];
 
@@ -115,17 +164,20 @@ export default function BookOfBusiness() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [agentScopeIds, isAdmin]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    if (isAdmin || agentScopeIds !== null) load();
+  }, [agentScopeIds, isAdmin, load]);
 
   // Realtime subscription
   useEffect(() => {
+    if (!isAdmin && agentScopeIds === null) return;
     const ch = supabase.channel(`bob-${Math.random()}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "deals" }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, []);
+  }, [agentScopeIds, isAdmin, load]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -184,7 +236,12 @@ export default function BookOfBusiness() {
       {/* Header */}
       <div className="flex flex-wrap items-center gap-3">
         <Book className="h-6 w-6 text-primary" />
-        <h1 className="text-2xl md:text-3xl font-bold">Book of Business</h1>
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold">Book of Business</h1>
+          <p className="text-xs text-muted-foreground">
+            {isAdmin ? "Admin view: all visible policy records." : isManager ? "Manager view: your downline policy records." : "Agent view: your policy records."}
+          </p>
+        </div>
         <Button variant="outline" size="sm" onClick={load} className="ml-auto">
           <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", loading && "animate-spin")} />
           Refresh
@@ -297,7 +354,14 @@ export default function BookOfBusiness() {
                 filtered.map(d => (
                   <tr key={d.id} className="border-t border-border/30 hover:bg-muted/20">
                     <td className="px-3 py-2 font-medium">
-                      {d.client_first_name} {d.client_last_name}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDeal(d)}
+                        className="inline-flex items-center gap-1.5 text-left text-primary hover:underline"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        {d.client_first_name} {d.client_last_name}
+                      </button>
                     </td>
                     <td className="px-3 py-2 text-muted-foreground">{d.agent_name}</td>
                     <td className="px-3 py-2 text-xs font-mono text-muted-foreground">{d.policy_number}</td>
@@ -345,6 +409,39 @@ export default function BookOfBusiness() {
           </table>
         </div>
       </GlassCard>
+
+      <Dialog open={Boolean(selectedDeal)} onOpenChange={(open) => !open && setSelectedDeal(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedDeal?.client_first_name} {selectedDeal?.client_last_name}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedDeal && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[
+                ["Agent", selectedDeal.agent_name],
+                ["Policy", selectedDeal.policy_number],
+                ["Carrier", selectedDeal.carrier_name || "Unknown"],
+                ["Product", selectedDeal.product_sold],
+                ["Monthly premium", selectedDeal.monthly_premium ? fmt$(Number(selectedDeal.monthly_premium)) : "Unavailable"],
+                ["Annual premium", selectedDeal.annual_premium ? fmt$(Number(selectedDeal.annual_premium)) : "Unavailable"],
+                ["Effective", selectedDeal.effective_date ? format(new Date(selectedDeal.effective_date), "MMM d, yyyy") : "Unavailable"],
+                ["Posted", selectedDeal.posted_at ? format(new Date(selectedDeal.posted_at), "MMM d, yyyy") : "Unavailable"],
+                ["Stage", pipelineLabel(selectedDeal)],
+                ["Source", sourceKey(selectedDeal.source) === "apex" ? "APEX" : "AgentLink"],
+                ["External ID", selectedDeal.external_deal_id || "Unavailable"],
+                ["Insuracloud sync", selectedDeal.insuracloud_sync_error || selectedDeal.synced_to_insuracloud_at || "No sync issue logged"],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-lg border border-border/70 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+                  <p className="mt-1 break-words text-sm font-medium">{value}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

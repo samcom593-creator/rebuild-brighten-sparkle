@@ -10,13 +10,18 @@ const corsHeaders = {
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
+  const stripeSecret = Deno.env.get("STRIPE_SECRET_KEY");
+  const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
+  if (!stripeSecret || !webhookSecret) {
+    return new Response("Stripe webhook is not configured", { status: 500, headers: corsHeaders });
+  }
+
+  const stripe = new Stripe(stripeSecret, {
     apiVersion: "2024-04-10",
     httpClient: Stripe.createFetchHttpClient(),
   });
 
   const sig = req.headers.get("stripe-signature");
-  const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
   const rawBody = await req.text();
 
   let event: Stripe.Event;
@@ -39,6 +44,7 @@ serve(async (req) => {
     const requestId = metadata.lead_purchase_request_id || metadata.lead_purchase_id;
     let agentId = metadata.agent_id;
     const packageType = metadata.package_type || "front_page";
+    const amountCents = session.amount_total ?? session.amount_received ?? session.amount ?? null;
 
     if (requestId) {
       await supabase
@@ -48,14 +54,14 @@ serve(async (req) => {
           confirmed_at: new Date().toISOString(),
           transaction_id: session.payment_intent || session.id,
           payment_method: "stripe",
-          amount_paid: session.amount_total ? session.amount_total / 100 : null,
+          amount_paid: amountCents ? amountCents / 100 : null,
         })
         .eq("id", requestId);
     } else if (agentId) {
       await supabase.from("lead_purchase_requests").insert({
         agent_id: agentId,
         package_type: packageType,
-        amount_paid: session.amount_total ? session.amount_total / 100 : null,
+        amount_paid: amountCents ? amountCents / 100 : null,
         transaction_id: session.payment_intent || session.id,
         payment_method: "stripe",
         status: "confirmed",
@@ -70,6 +76,7 @@ serve(async (req) => {
     const customerEmail =
       session.customer_email ||
       session.customer_details?.email ||
+      session.receipt_email ||
       null;
     const customerName =
       session.customer_details?.name ||
@@ -78,10 +85,17 @@ serve(async (req) => {
     if (!agentId && customerEmail) {
       const { data: profile } = await supabase
         .from("profiles")
-        .select("id")
+        .select("id, user_id")
         .eq("email", customerEmail)
         .maybeSingle();
-      if (profile?.id) {
+      if (profile?.user_id) {
+        const { data: agent } = await supabase
+          .from("agents")
+          .select("id")
+          .eq("user_id", profile.user_id)
+          .maybeSingle();
+        if (agent?.id) agentId = agent.id;
+      } else if (profile?.id) {
         const { data: agent } = await supabase
           .from("agents")
           .select("id")
@@ -94,11 +108,11 @@ serve(async (req) => {
     // Always upsert into lead_purchases (canonical charge ledger). Idempotent
     // on stripe_charge_id so retried webhooks don't double-insert.
     const chargeKey = session.payment_intent || session.id;
-    if (chargeKey) {
+    if (chargeKey && amountCents !== null) {
       await supabase.from("lead_purchases").upsert(
         {
           stripe_charge_id: chargeKey,
-          amount_cents: session.amount_total ?? null,
+          amount_cents: amountCents,
           currency: session.currency || "usd",
           customer_id: session.customer || null,
           customer_email: customerEmail,
@@ -127,7 +141,7 @@ serve(async (req) => {
           "mark_application_paid",
           {
             p_email: customerEmail,
-            p_amount_cents: session.amount_total ?? null,
+            p_amount_cents: amountCents,
             p_stripe_customer_id: typeof session.customer === "string" ? session.customer : null,
             p_stripe_checkout_session_id: session.id,
             p_paid_at: new Date().toISOString(),
@@ -151,11 +165,11 @@ serve(async (req) => {
         source: "stripe_webhook_lead_purchase",
         event_type: "stripe_payment",
         severity: "info",
-        subject: `💸 $${(session.amount_total ?? 0) / 100} from ${customerName || customerEmail || "unknown"}`,
+        subject: `Stripe $${(amountCents ?? 0) / 100} from ${customerName || customerEmail || "unknown"}`,
         body: JSON.stringify({
           email: customerEmail,
           name: customerName,
-          amount_cents: session.amount_total,
+          amount_cents: amountCents,
           mode: session.mode,
           session_id: session.id,
           subscription_id: session.subscription,

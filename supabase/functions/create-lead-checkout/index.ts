@@ -6,10 +6,10 @@ import { parseBody, v } from "../_shared/validate.ts";
 // Sam 2026-04-27: extended from 2 → 7 SKUs (full catalog from
 // sam_full_offer_catalog.md). `mode` is subscription for recurring SKUs,
 // payment for one-time. Body accepts `tier` (legacy) or `sku` (new).
-type SkuConfig = { priceId: string; mode: "subscription" | "payment" };
+type SkuConfig = { priceId: string; mode: "subscription" | "payment"; expectedAmountCents?: number; leadPackageType?: "standard" | "premium" };
 const SKU_MAP: Record<string, SkuConfig> = {
-  gold:               { priceId: "price_1TKmDqC3Khd8IPVmNDSHuNu7", mode: "subscription" },
-  platinum:           { priceId: "price_1TKmLhC3Khd8IPVmoAMmtBuM", mode: "subscription" },
+  gold:               { priceId: "price_1TKmDqC3Khd8IPVmNDSHuNu7", mode: "subscription", expectedAmountCents: 25_000, leadPackageType: "standard" },
+  platinum:           { priceId: "price_1TKmLhC3Khd8IPVmoAMmtBuM", mode: "subscription", expectedAmountCents: 50_000, leadPackageType: "premium" },
   auto_dm:            { priceId: "price_1TQkuQC3Khd8IPVmp8orL6ZF", mode: "subscription" },
   social_growth:      { priceId: "price_1TQkuRC3Khd8IPVmA4ewp2Kc", mode: "subscription" },
   fitness_reset:      { priceId: "price_1TQlfnC3Khd8IPVmbCUj02rt", mode: "payment"      },
@@ -38,7 +38,7 @@ Deno.serve(
       const email = auth!.email;
       if (!email) return errorResponse("User has no email on record", 400, "NO_EMAIL");
 
-      const leadPackageType = tier === "gold" ? "standard" : tier === "platinum" ? "premium" : null;
+      const leadPackageType = config.leadPackageType ?? null;
       let agentId: string | null = null;
       let requestId: string | null = null;
 
@@ -62,7 +62,7 @@ Deno.serve(
             package_type: leadPackageType,
             payment_method: "stripe",
             status: "pending",
-            notes: `Checkout started for ${tier}`,
+            notes: `Checkout started for ${tier}${config.expectedAmountCents ? ` ($${config.expectedAmountCents / 100})` : ""}`,
           })
           .select("id")
           .single();
@@ -71,7 +71,10 @@ Deno.serve(
         requestId = requestRow.id;
       }
 
-      const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
+      const stripeSecret = Deno.env.get("STRIPE_SECRET_KEY");
+      if (!stripeSecret) return errorResponse("Stripe secret key is not configured", 500, "STRIPE_SECRET_MISSING");
+
+      const stripe = new Stripe(stripeSecret, {
         apiVersion: "2025-08-27.basil",
       });
 
@@ -96,6 +99,7 @@ Deno.serve(
           agent_id: agentId ?? "",
           package_type: leadPackageType ?? "",
           lead_purchase_request_id: requestId ?? "",
+          expected_amount_cents: config.expectedAmountCents ? String(config.expectedAmountCents) : "",
         },
       });
 

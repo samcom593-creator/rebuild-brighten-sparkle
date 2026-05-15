@@ -10,6 +10,7 @@ import {
   X,
   DollarSign,
   Flame,
+  AlertTriangle,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { LeadPaymentTracker } from "@/components/dashboard/LeadPaymentTracker";
@@ -22,6 +23,8 @@ import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
+
+type InventorySource = "readymode" | "manual" | "unavailable";
 
 // Package data
 const packages = [
@@ -54,6 +57,12 @@ const packages = [
     stripeTier: "platinum",
   },
 ];
+
+function parseInventoryCount(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  const parsed = Number(String(value).replace(/,/g, ""));
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
 
 function getNextSundayMidnightCST(): Date {
   const now = new Date();
@@ -93,9 +102,13 @@ function useCountdown(targetDate: Date) {
 }
 
 export default function PurchaseLeads() {
-  const { user, isAdmin, profile } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { playSound } = useSoundEffects();
-  const [leadCount, setLeadCount] = useState(800);
+  const [readyModeCount, setReadyModeCount] = useState<number | null>(null);
+  const [manualLeadCount, setManualLeadCount] = useState<number | null>(null);
+  const [inventorySource, setInventorySource] = useState<InventorySource>("unavailable");
+  const [inventoryUpdatedAt, setInventoryUpdatedAt] = useState<string | null>(null);
+  const [inventoryLoading, setInventoryLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
   const [checkingOut, setCheckingOut] = useState<string | null>(null);
@@ -130,10 +143,10 @@ export default function PurchaseLeads() {
   const countdown = useCountdown(nextSunday);
 
   useEffect(() => {
-    fetchLeadCount();
+    fetchLeadInventory();
     const params = new URLSearchParams(window.location.search);
     if (params.get("success") === "true") {
-      toast.success("🎉 Subscription activated! Your leads will start flowing.");
+      toast.success("Stripe checkout complete. Access updates after the payment webhook confirms.");
       playSound("celebrate");
       window.history.replaceState({}, "", window.location.pathname);
     } else if (params.get("canceled") === "true") {
@@ -142,17 +155,31 @@ export default function PurchaseLeads() {
     }
   }, []);
 
-  const fetchLeadCount = async () => {
-    const { data } = await supabase
+  const fetchLeadInventory = async () => {
+    setInventoryLoading(true);
+    const { data: settings } = await supabase
+      .from("system_settings" as any)
+      .select("key, value, updated_at")
+      .in("key", ["readymode_available_leads", "readymode_inventory_count", "readymode_inventory_updated_at"]);
+    const settingRows = (settings as any[]) ?? [];
+    const byKey = new Map(settingRows.map((row) => [row.key, row]));
+    const readyCount = parseInventoryCount(byKey.get("readymode_available_leads")?.value ?? byKey.get("readymode_inventory_count")?.value);
+
+    const { data: manual } = await supabase
       .from("lead_counter")
-      .select("count")
+      .select("count, updated_at")
       .limit(1)
       .maybeSingle();
-    
-    if (data) {
-      setLeadCount(data.count);
-      setEditValue(String(data.count));
-    }
+
+    const manualCount = parseInventoryCount(manual?.count);
+    const readyUpdatedAt = byKey.get("readymode_inventory_updated_at")?.value ?? byKey.get("readymode_available_leads")?.updated_at ?? null;
+
+    setReadyModeCount(readyCount);
+    setManualLeadCount(manualCount);
+    setInventoryUpdatedAt(readyUpdatedAt || manual?.updated_at || null);
+    setInventorySource(readyCount !== null ? "readymode" : manualCount !== null ? "manual" : "unavailable");
+    setEditValue(manualCount !== null ? String(manualCount) : "");
+    setInventoryLoading(false);
   };
 
   const handleSaveCount = async () => {
@@ -176,12 +203,28 @@ export default function PurchaseLeads() {
       toast.error("Failed to update lead count");
       playSound("error");
     } else {
-      setLeadCount(newCount);
+      setManualLeadCount(newCount);
+      setInventorySource(readyModeCount !== null ? "readymode" : "manual");
+      setInventoryUpdatedAt(new Date().toISOString());
       setIsEditing(false);
-      toast.success("Lead count updated!");
+      toast.success("Manual lead counter updated");
       playSound("success");
     }
   };
+
+  const inventoryDisplay = inventoryLoading
+    ? "Loading"
+    : readyModeCount !== null
+      ? `${readyModeCount.toLocaleString()}`
+      : manualLeadCount !== null
+        ? `${manualLeadCount.toLocaleString()}+`
+        : "Unavailable";
+
+  const inventoryStatusCopy = inventorySource === "readymode"
+    ? `ReadyMode inventory${inventoryUpdatedAt ? ` · updated ${new Date(inventoryUpdatedAt).toLocaleString()}` : ""}`
+    : inventorySource === "manual"
+      ? "Manual fallback only. ReadyMode live inventory is not configured yet."
+      : "ReadyMode inventory and manual fallback are unavailable.";
 
   return (
     <div className="min-h-screen p-4 md:p-8">
@@ -226,7 +269,7 @@ export default function PurchaseLeads() {
                   <Users className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Available Leads</p>
+                  <p className="text-sm text-muted-foreground">ReadyMode Available Leads</p>
                   {isEditing ? (
                     <div className="flex items-center gap-2 mt-1">
                       <Input
@@ -245,15 +288,15 @@ export default function PurchaseLeads() {
                   ) : (
                     <div className="flex items-center gap-2">
                       <span className="text-3xl font-bold text-primary">
-                        {leadCount.toLocaleString()}+
+                        {inventoryDisplay}
                       </span>
-                      {isAdmin && (
+                      {isAdmin && inventorySource !== "readymode" && (
                         <Button
                           size="icon"
                           variant="ghost"
                           className="h-6 w-6 text-muted-foreground hover:text-primary"
                           onClick={() => {
-                            setEditValue(String(leadCount));
+                            setEditValue(String(manualLeadCount ?? ""));
                             setIsEditing(true);
                           }}
                         >
@@ -262,9 +305,19 @@ export default function PurchaseLeads() {
                       )}
                     </div>
                   )}
+                  <p className={cn(
+                    "mt-1 flex items-center gap-1 text-xs",
+                    inventorySource === "readymode" ? "text-emerald-500" : inventorySource === "manual" ? "text-amber-500" : "text-destructive"
+                  )}>
+                    {inventorySource !== "readymode" && <AlertTriangle className="h-3 w-3" />}
+                    {inventoryStatusCopy}
+                  </p>
                 </div>
               </div>
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <div className={cn(
+                "w-2 h-2 rounded-full",
+                inventorySource === "readymode" ? "bg-green-500 animate-pulse" : inventorySource === "manual" ? "bg-amber-500" : "bg-red-500"
+              )} />
             </div>
           </Card>
 

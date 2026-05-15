@@ -177,7 +177,7 @@ export function LeadPaymentTracker() {
           <div className="grid grid-cols-[1fr_100px_100px] gap-2 px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider border-b border-border/50">
             <span>Agent</span>
             <span className="text-center">$250</span>
-            <span className="text-center">$1,000</span>
+            <span className="text-center">$500</span>
           </div>
 
           {agents.map((agent, i) => (

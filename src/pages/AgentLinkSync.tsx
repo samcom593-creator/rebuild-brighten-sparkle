@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link2, Loader2, CheckCircle2, AlertCircle, Download, Eye, EyeOff, Save, Zap, History } from "lucide-react";
+import { Link2, Loader2, CheckCircle2, AlertCircle, Download, Eye, EyeOff, Save, Zap, History, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -19,6 +19,16 @@ type SyncLog = {
   deals_updated: number | null;
   error_message: string | null;
 };
+
+function ageLabel(iso: string | null | undefined): string {
+  if (!iso) return "Never";
+  const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60_000);
+  if (!Number.isFinite(minutes) || minutes < 0) return "Unknown";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return `${hours}h ago`;
+  return `${Math.round(hours / 24)}d ago`;
+}
 
 export default function AgentLinkSync() {
   const { user } = useAuth();
@@ -84,6 +94,12 @@ export default function AgentLinkSync() {
     } finally { setLoading(false); }
   };
 
+  const latest = logs[0];
+  const latestAt = latest?.finished_at ?? latest?.started_at ?? null;
+  const latestAgeMinutes = latestAt ? Math.round((Date.now() - new Date(latestAt).getTime()) / 60_000) : null;
+  const isStale = latestAgeMinutes === null || latestAgeMinutes > 360 || latest?.status !== "ok";
+  const writes = Number(latest?.deals_inserted ?? 0) + Number(latest?.deals_updated ?? 0);
+
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto space-y-4">
       <div className="flex items-center gap-3">
@@ -102,6 +118,29 @@ export default function AgentLinkSync() {
             : <Badge variant="outline" className="border-rose-500/40 text-rose-300">Not configured</Badge>}
         </div>
       </div>
+
+      <GlassCard className={`p-4 ${isStale ? "border-amber-500/30 bg-amber-500/10" : "border-emerald-500/30 bg-emerald-500/5"}`}>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            {isStale ? <AlertCircle className="mt-0.5 h-5 w-5 text-amber-400" /> : <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-400" />}
+            <div>
+              <p className="text-sm font-semibold">
+                {isStale ? "AgentLink data needs review" : "AgentLink is fresh"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Last successful state: {latest?.status ?? "no run"} · {ageLabel(latestAt)} · {latest?.policies_seen ?? 0} policies seen · {writes} deal writes.
+              </p>
+              {latest?.error_message && (
+                <p className="mt-1 text-xs text-rose-300">{latest.error_message}</p>
+              )}
+            </div>
+          </div>
+          <Badge variant={isStale ? "outline" : "default"} className="w-fit">
+            <Clock className="mr-1 h-3 w-3" />
+            Source of truth
+          </Badge>
+        </div>
+      </GlassCard>
 
       <GlassCard className="p-4 space-y-3">
         <div className="text-sm font-semibold">1 · Grab the cookie</div>

@@ -435,8 +435,16 @@ export default function AgentCommandDashboard() {
             <Button asChild size="sm" variant="secondary">
               <Link to="/apex-daily-numbers"><Phone className="h-4 w-4 mr-1" /> Log numbers</Link>
             </Button>
+            {/* Deals canonical-surface: AgentLink. ApexLink reads via
+                insuracloud-sync every 1 min (pg_cron + GH cron). */}
             <Button asChild size="sm" variant="secondary">
-              <Link to="/dashboard/my-deals"><DollarSign className="h-4 w-4 mr-1" /> Submit deal</Link>
+              <a
+                href="https://agentlink.insuracloud.ai/deals/new"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <DollarSign className="h-4 w-4 mr-1" /> Submit deal in AgentLink
+              </a>
             </Button>
             <Button asChild size="sm">
               <Link to="/dashboard/referrals/new"><UserPlus className="h-4 w-4 mr-1" /> Refer someone</Link>

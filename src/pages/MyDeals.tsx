@@ -6,8 +6,9 @@ import { DealEntryForm } from "@/components/deals/DealEntryForm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DollarSign, Plus, CheckCircle2, AlertTriangle, Clock } from "lucide-react";
-import { format } from "date-fns";
+import { DollarSign, Plus, CheckCircle2, AlertTriangle, Clock, ExternalLink, Zap } from "lucide-react";
+import { format, formatDistanceToNowStrict } from "date-fns";
+import { AGENTLINK_LINKS, AGENTLINK_TAGLINE } from "@/lib/agentlink";
 
 function SyncStatus({ deal }: { deal: any }) {
   if (deal.synced_to_insuracloud_at) {
@@ -70,6 +71,13 @@ export default function MyDeals() {
     enabled: !!agentId,
   });
 
+  // Find the most recently-synced deal so we can show a "data freshness" line.
+  const latestSync = (deals as any[]).reduce<string | null>((acc, d) => {
+    const t = d.synced_to_insuracloud_at || d.created_at;
+    if (!t) return acc;
+    return !acc || t > acc ? t : acc;
+  }, null);
+
   return (
     <div className="space-y-6 p-4 md:p-6 page-enter max-w-5xl">
       <div className="flex items-center justify-between gap-3">
@@ -79,15 +87,52 @@ export default function MyDeals() {
           </div>
           <div>
             <h1 className="text-2xl font-bold">My Deals</h1>
-            <p className="text-sm text-muted-foreground">Log policies you've sold — they roll into your daily production automatically</p>
+            <p className="text-sm text-muted-foreground">
+              Source: <span className="font-medium text-foreground">AgentLink</span> · syncs in under a minute
+              {latestSync && <> · last sync {formatDistanceToNowStrict(new Date(latestSync), { addSuffix: true })}</>}
+            </p>
           </div>
         </div>
-        <Button onClick={() => setShowForm(s => !s)} variant={showForm ? "outline" : "default"}>
-          <Plus className="h-4 w-4 mr-2" /> {showForm ? "Hide form" : "New deal"}
+        <Button asChild>
+          <a href={AGENTLINK_LINKS.newDeal} target="_blank" rel="noopener noreferrer">
+            <Zap className="h-4 w-4 mr-2" /> Submit in AgentLink <ExternalLink className="h-3 w-3 ml-1.5 opacity-70" />
+          </a>
         </Button>
       </div>
 
-      {showForm && <DealEntryForm onSaved={() => { setShowForm(false); refetch(); }} />}
+      {/* Canonical-source banner — explains where deals actually live and
+          why ApexLink is a viewer/operating-system over AgentLink. */}
+      <Card className="border-primary/30 bg-primary/5">
+        <CardContent className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <Zap className="h-5 w-5 text-primary mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold">AgentLink is the source of truth for deals.</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{AGENTLINK_TAGLINE}</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button asChild size="sm" variant="default">
+              <a href={AGENTLINK_LINKS.newDeal} target="_blank" rel="noopener noreferrer">
+                Submit a deal <ExternalLink className="h-3 w-3 ml-1.5" />
+              </a>
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setShowForm((s) => !s)}>
+              {showForm ? "Hide backup form" : "Backup form"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {showForm && (
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            Use the form below only if AgentLink is down. Anything entered here syncs forward; AgentLink is still
+            the canonical book.
+          </p>
+          <DealEntryForm onSaved={() => { setShowForm(false); refetch(); }} />
+        </div>
+      )}
 
       <Card>
         <CardHeader>

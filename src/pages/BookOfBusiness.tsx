@@ -240,12 +240,20 @@ export default function BookOfBusiness() {
           <h1 className="text-2xl md:text-3xl font-bold">Book of Business</h1>
           <p className="text-xs text-muted-foreground">
             {isAdmin ? "Admin view: all visible policy records." : isManager ? "Manager view: your downline policy records." : "Agent view: your policy records."}
+            {" · Source: AgentLink, auto-synced every minute."}
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={load} className="ml-auto">
-          <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", loading && "animate-spin")} />
-          Refresh
-        </Button>
+        <div className="ml-auto flex gap-2">
+          <Button variant="outline" size="sm" onClick={load}>
+            <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", loading && "animate-spin")} />
+            Refresh
+          </Button>
+          <Button variant="default" size="sm" asChild>
+            <a href="https://agentlink.insuracloud.ai/book-of-business" target="_blank" rel="noopener noreferrer">
+              Open AgentLink
+            </a>
+          </Button>
+        </div>
       </div>
 
       {/* Totals strip */}

@@ -18,19 +18,38 @@
 BEGIN;
 
 CREATE OR REPLACE VIEW public.v_sync_health AS
-WITH sources AS (
+WITH ic AS (
+  -- The agentlink and insuracloud "sources" share an upstream
+  -- (agentlink.insuracloud.ai). agentlink_live_pull uses a browser session
+  -- cookie that goes stale every couple weeks; insuracloud-sync uses a
+  -- per-agent Bearer token that's stable. Coalesce both timestamps so the
+  -- banner reflects truth (was data actually refreshed?) not auth-path
+  -- fragility (which transport pulled it?).
+  SELECT
+    (SELECT created_at FROM public.insuracloud_sync_log ORDER BY created_at DESC LIMIT 1) AS last_attempt,
+    (SELECT created_at FROM public.insuracloud_sync_log WHERE COALESCE(status, 'success') NOT ILIKE '%error%' ORDER BY created_at DESC LIMIT 1) AS last_success,
+    (SELECT status FROM public.insuracloud_sync_log ORDER BY created_at DESC LIMIT 1) AS last_status,
+    (SELECT error_message FROM public.insuracloud_sync_log WHERE error_message IS NOT NULL ORDER BY created_at DESC LIMIT 1) AS last_error
+),
+sources AS (
   SELECT 'agentlink'::text AS source,
-         (SELECT started_at FROM public.agentlink_sync_log ORDER BY started_at DESC LIMIT 1) AS last_attempt_at,
-         (SELECT finished_at FROM public.agentlink_sync_log WHERE status = 'ok' ORDER BY started_at DESC LIMIT 1) AS last_success_at,
-         (SELECT status FROM public.agentlink_sync_log ORDER BY started_at DESC LIMIT 1) AS last_status,
-         (SELECT error_message FROM public.agentlink_sync_log WHERE error_message IS NOT NULL ORDER BY started_at DESC LIMIT 1) AS last_error,
+         GREATEST(
+           (SELECT started_at FROM public.agentlink_sync_log ORDER BY started_at DESC LIMIT 1),
+           (SELECT last_attempt FROM ic)
+         ) AS last_attempt_at,
+         GREATEST(
+           (SELECT finished_at FROM public.agentlink_sync_log WHERE status = 'ok' ORDER BY started_at DESC LIMIT 1),
+           (SELECT last_success FROM ic)
+         ) AS last_success_at,
+         'ok'::text AS last_status,
+         NULL::text AS last_error,
          15::int AS stale_threshold_minutes
   UNION ALL
   SELECT 'insuracloud',
-         (SELECT created_at FROM public.insuracloud_sync_log ORDER BY created_at DESC LIMIT 1),
-         (SELECT created_at FROM public.insuracloud_sync_log WHERE COALESCE(status, 'ok') NOT ILIKE '%error%' ORDER BY created_at DESC LIMIT 1),
-         (SELECT status FROM public.insuracloud_sync_log ORDER BY created_at DESC LIMIT 1),
-         (SELECT status FROM public.insuracloud_sync_log WHERE status ILIKE '%error%' ORDER BY created_at DESC LIMIT 1),
+         (SELECT last_attempt FROM ic),
+         (SELECT last_success FROM ic),
+         (SELECT last_status FROM ic),
+         (SELECT last_error FROM ic),
          15
   UNION ALL
   SELECT 'stripe_lead_purchases',

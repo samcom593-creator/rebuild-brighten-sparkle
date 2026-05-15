@@ -402,7 +402,9 @@ export default function AgentCommandDashboard() {
 
   const s = snap.data!;
   const agent = s.agentRow;
-  const displayName = agent?.display_name || user.email?.split("@")[0] || "Agent";
+  // Greet by first name only — "Hey Sam James" reads stiff vs "Hey Sam".
+  const fullName = agent?.display_name || user.email?.split("@")[0] || "Agent";
+  const displayName = fullName.trim().split(/\s+/)[0] || fullName;
   const stage = agent?.onboarding_stage ?? "—";
   const license = agent?.license_status ?? "—";
   const presenting = agent?.is_presenting === true;

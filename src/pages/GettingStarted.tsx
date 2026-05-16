@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -265,15 +266,13 @@ export default function GettingStarted() {
 
   return (
     <div className="space-y-6 p-4 md:p-6 page-enter">
-      <div className="flex items-center gap-3">
-        <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/20 to-emerald-500/20 border border-primary/30">
-          <Rocket className="h-6 w-6 text-primary" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold">Getting Started Tracker</h1>
-          <p className="text-sm text-muted-foreground">Post-signup onboarding progress for every agent</p>
-        </div>
-      </div>
+      <PageHeader
+        accent="emerald"
+        eyebrow="Onboarding · Getting Started"
+        eyebrowIcon={<Rocket className="h-3 w-3" />}
+        title="Getting Started Tracker"
+        subtitle="Post-signup onboarding progress for every agent — from signed-up through field-training and into producing."
+      />
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
         {(["signed_up", "onboarding", "licensing", "contracting", "field_training", "producing"] as Stage[]).map(

@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { PageHeader } from "@/components/ui/page-header";
 import {
   Table,
   TableBody,
@@ -608,33 +609,23 @@ export default function LeadCenter() {
 
   return (
     <div className="space-y-6 p-4 md:p-6 page-enter">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/30">
-            <Target className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Lead Center</h1>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span>Manage all leads and assignments</span>
-              <span className="w-1 h-1 rounded-full bg-border" />
-              <span className="flex items-center gap-1 text-emerald-500 font-medium">
-                <Target className="h-3 w-3" />
-                Avg {avgLeadsPerDay} leads/day
-              </span>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleExport} disabled={loading}>
-            <Download className="h-4 w-4 mr-2" /> Export
-          </Button>
-          <Button variant="outline" size="sm" onClick={fetchLeads} disabled={loading}>
-            <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} /> Refresh
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        accent="rose"
+        eyebrow="CRM · Leads"
+        eyebrowIcon={<Target className="h-3 w-3" />}
+        title="Lead Center"
+        subtitle={`Manage all leads and assignments · Avg ${avgLeadsPerDay} leads/day`}
+        actions={
+          <>
+            <Button variant="outline" size="sm" onClick={handleExport} disabled={loading}>
+              <Download className="h-4 w-4 mr-2" /> Export
+            </Button>
+            <Button variant="outline" size="sm" onClick={fetchLeads} disabled={loading}>
+              <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} /> Refresh
+            </Button>
+          </>
+        }
+      />
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">

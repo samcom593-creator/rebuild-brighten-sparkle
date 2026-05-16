@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -239,21 +240,19 @@ export default function InactiveAgents() {
 
   return (
     <div className="space-y-6 p-4 md:p-6 page-enter">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-gradient-to-br from-red-500/20 to-amber-500/20 border border-red-500/30">
-            <UserX className="h-6 w-6 text-red-400" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">Inactive Agent Recovery</h1>
-            <p className="text-sm text-muted-foreground">Find, re-engage, or re-route agents who've gone quiet</p>
-          </div>
-        </div>
-        <Button onClick={runScan} disabled={scanning}>
-          <RefreshCw className={scanning ? "h-4 w-4 mr-1.5 animate-spin" : "h-4 w-4 mr-1.5"} />
-          {scanning ? "Scanning..." : "Run Inactivity Scan"}
-        </Button>
-      </div>
+      <PageHeader
+        accent="rose"
+        eyebrow="Admin · Recovery"
+        eyebrowIcon={<UserX className="h-3 w-3" />}
+        title="Inactive Agent Recovery"
+        subtitle="Find, re-engage, or re-route agents who've gone quiet. Severity color-coded by how long since last activity."
+        actions={
+          <Button onClick={runScan} disabled={scanning}>
+            <RefreshCw className={scanning ? "h-4 w-4 mr-1.5 animate-spin" : "h-4 w-4 mr-1.5"} />
+            {scanning ? "Scanning..." : "Run Inactivity Scan"}
+          </Button>
+        }
+      />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <button

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/hooks/use-toast";
@@ -239,28 +240,23 @@ export default function AwardGraphics() {
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-600/20 flex items-center justify-center ring-1 ring-amber-500/20">
-            <Crown className="h-6 w-6 text-amber-500" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Award Graphics</h1>
-            <p className="text-muted-foreground text-sm">Generate Instagram-ready award graphics from live data</p>
-          </div>
-        </div>
-        <Button
-          variant={showProfiles ? "default" : "outline"}
-          onClick={() => setShowProfiles(!showProfiles)}
-          className={cn("gap-2 transition-all", showProfiles && "bg-primary")}
-        >
-          <User className="h-4 w-4" />
-          Agent Profiles
-          <ChevronRight className={cn("h-3.5 w-3.5 transition-transform", showProfiles && "rotate-90")} />
-        </Button>
-      </div>
-
+      <PageHeader
+        accent="amber"
+        eyebrow="Marketing · Graphics"
+        eyebrowIcon={<Crown className="h-3 w-3" />}
+        title="Award Graphics"
+        subtitle="Generate Instagram-ready award graphics from live leaderboard data."
+        actions={
+          <Button
+            variant={showProfiles ? "default" : "outline"}
+            onClick={() => setShowProfiles(!showProfiles)}
+            className={cn("gap-2 transition-all", showProfiles && "bg-primary")}
+          >
+            <User className="h-4 w-4" />
+            Agent Profiles
+          </Button>
+        }
+      />
       {/* Agent Profiles Panel */}
       <AnimatePresence>
         {showProfiles && (

@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { GlassCard } from "@/components/ui/glass-card";
+import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -197,26 +198,23 @@ export default function PrelicensingManager() {
 
   return (
     <div className="p-4 md:p-6 space-y-4 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <GraduationCap className="h-6 w-6 text-primary" /> Pre-Licensing
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {apps.length} agent{apps.length === 1 ? "" : "s"} in the pipeline — track, nudge, advance
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            <RefreshCw className="h-4 w-4 mr-1" /> Refresh
-          </Button>
-          <Button variant="outline" size="sm" onClick={exportCSV} disabled={filtered.length === 0}>
-            <Download className="h-4 w-4 mr-1" /> Export CSV
-          </Button>
-        </div>
-      </div>
-
+      <PageHeader
+        accent="purple"
+        eyebrow="Recruiting · Licensing"
+        eyebrowIcon={<GraduationCap className="h-3 w-3" />}
+        title="Pre-Licensing"
+        subtitle={`${apps.length} agent${apps.length === 1 ? "" : "s"} in the pipeline — track, nudge, advance.`}
+        actions={
+          <>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              <RefreshCw className="h-4 w-4 mr-1" /> Refresh
+            </Button>
+            <Button variant="outline" size="sm" onClick={exportCSV} disabled={filtered.length === 0}>
+              <Download className="h-4 w-4 mr-1" /> Export CSV
+            </Button>
+          </>
+        }
+      />
       {/* Stage buckets — click to filter */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
         <button

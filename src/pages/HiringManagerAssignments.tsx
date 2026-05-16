@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PageHeader } from "@/components/ui/page-header";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -190,16 +191,14 @@ export default function HiringManagerAssignments() {
 
   return (
     <div className="space-y-6 p-4 md:p-6 page-enter max-w-6xl mx-auto">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/30">
-            <UserCog className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">Hiring Manager Routing</h1>
-            <p className="text-sm text-muted-foreground">Assign who handles each type of incoming hire</p>
-          </div>
-        </div>
+      <PageHeader
+        accent="cyan"
+        eyebrow="Admin · Routing"
+        eyebrowIcon={<UserCog className="h-3 w-3" />}
+        title="Hiring Manager Routing"
+        subtitle="Assign who handles each type of incoming hire — by licensed/unlicensed, state, lead source, or carrier."
+      />
+      <div className="flex items-center justify-end flex-wrap gap-3">
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button>

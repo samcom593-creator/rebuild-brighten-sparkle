@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
 import {
   Select,
   SelectContent,
@@ -157,28 +158,24 @@ export default function EmailDeliveryLog() {
 
   return (
     <div className="space-y-6 p-4 md:p-6 page-enter">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/30">
-            <Mail className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">Email Delivery Log</h1>
-            <p className="text-sm text-muted-foreground">
-              Every outbound email across the platform
-            </p>
-          </div>
-        </div>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() =>
-            queryClient.invalidateQueries({ queryKey: ["email-delivery-log"] })
-          }
-        >
-          <RefreshCw className="h-4 w-4 mr-1.5" /> Refresh
-        </Button>
-      </div>
+      <PageHeader
+        accent="blue"
+        eyebrow="Admin · Notifications"
+        eyebrowIcon={<Mail className="h-3 w-3" />}
+        title="Email Delivery Log"
+        subtitle="Every outbound email across the platform — recipient, template, status, error."
+        actions={
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              queryClient.invalidateQueries({ queryKey: ["email-delivery-log"] })
+            }
+          >
+            <RefreshCw className="h-4 w-4 mr-1.5" /> Refresh
+          </Button>
+        }
+      />
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <button

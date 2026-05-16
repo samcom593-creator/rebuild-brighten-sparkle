@@ -172,6 +172,40 @@ function walk(dir, exts, fn) {
   }
 }
 
+// 5b. api/sync-insuracloud.ts must not push placeholder client data. If it
+//     ships with the old `clientPhone || "+10000000000"` or
+//     `clientDateOfBirth || "1980-01-01"` defaults, the next deal with
+//     missing fields lands in InsuraCloud as a corrupted carrier record.
+{
+  const f = "api/sync-insuracloud.ts";
+  if (fileExists(f)) {
+    const src = read(f);
+    const banned = [
+      { rx: /clientPhoneNumber:[^,]*\|\|\s*["']\+10000000000["']/, label: "phone placeholder" },
+      { rx: /clientDateOfBirth:[^,]*\|\|\s*["']1980-01-01["']/,    label: "DOB placeholder"  },
+      { rx: /clientFirstName:[^,]*\|\|\s*["']Unknown["']/,         label: "first-name placeholder" },
+      { rx: /clientLastName:[^,]*\|\|\s*["']Client["']/,           label: "last-name placeholder"  },
+      { rx: /productSold:[^,]*\|\|\s*["']Life Insurance["']/,      label: "product placeholder"    },
+    ];
+    for (const { rx, label } of banned) {
+      if (rx.test(src)) {
+        violations.push(
+          `${f}: contains a ${label} that lets a deal with missing data ship a fake client record ` +
+          `to InsuraCloud. Validate the field and return 422 instead of substituting a default.`,
+        );
+      }
+    }
+    // Also require an explicit 422 / INCOMPLETE_CLIENT_DATA path so removal
+    // of the defaults can't be quietly swapped back to silent omission.
+    if (!/INCOMPLETE_CLIENT_DATA|MISSING_DOB|MISSING_PHONE/.test(src)) {
+      violations.push(
+        `${f}: missing the explicit incomplete-client-data validation. Reject missing required ` +
+        `fields with a 422 and a code like INCOMPLETE_CLIENT_DATA so callers see the problem.`,
+      );
+    }
+  }
+}
+
 // 6. insuracloud-sync must authenticate callers — the function pulls fresh
 //    data from upstream and writes to multiple tables. Bare verify_jwt=false
 //    with no in-function check would let any internet caller trigger upstream
@@ -216,10 +250,10 @@ function walk(dir, exts, fn) {
 
 if (violations.length === 0) {
   console.log(
-    "Sync-reliability guardrail passed (7 rules checked: deploy fail-loud, " +
+    "Sync-reliability guardrail passed (8 rules checked: deploy fail-loud, " +
     "cron gap parser, insuracloud cron presence, bot-sql hardcoded token, " +
     "refresh_sync_health grants, dashboard canonical source, insuracloud-sync " +
-    "auth gate, ReadyMode hardcoding).",
+    "auth gate, insuracloud placeholder client data, ReadyMode hardcoding).",
   );
   process.exit(0);
 }

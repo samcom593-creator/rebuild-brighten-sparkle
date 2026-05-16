@@ -134,6 +134,41 @@ export default async function handler(req: any, res: any) {
     });
   }
 
+  // Block fake/placeholder defaults. A deal landing in InsuraCloud with
+  // DOB 1980-01-01 or phone +10000000000 isn't "incomplete data," it's
+  // a corrupted carrier record. Each missing required field is its own
+  // explicit 422 with a code the caller can react to.
+  const missingFields: { field: string; code: string }[] = [];
+  if (!client_first_name) missingFields.push({ field: "client_first_name", code: "MISSING_FIRST_NAME" });
+  if (!client_last_name)  missingFields.push({ field: "client_last_name",  code: "MISSING_LAST_NAME"  });
+  if (!client_phone)      missingFields.push({ field: "client_phone",      code: "MISSING_PHONE"      });
+  if (!client_dob)        missingFields.push({ field: "client_dob",        code: "MISSING_DOB"        });
+  if (!product_sold)      missingFields.push({ field: "product_sold",      code: "MISSING_PRODUCT"    });
+
+  // Light-touch shape validation on phone and DOB so the obvious garbage
+  // ("none", "n/a", "0", "test") is rejected at the boundary, not after a
+  // record is created upstream.
+  if (client_phone && typeof client_phone === "string") {
+    const digits = client_phone.replace(/\D/g, "");
+    if (digits.length < 10 || /^0+$/.test(digits)) {
+      missingFields.push({ field: "client_phone", code: "INVALID_PHONE" });
+    }
+  }
+  if (client_dob && typeof client_dob === "string") {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(client_dob) || client_dob === "1980-01-01") {
+      missingFields.push({ field: "client_dob", code: "INVALID_DOB" });
+    }
+  }
+
+  if (missingFields.length) {
+    return res.status(422).json({
+      ok: false,
+      error: "Refusing to push deal with placeholder client data — fill required fields first.",
+      code: "INCOMPLETE_CLIENT_DATA",
+      missing: missingFields,
+    });
+  }
+
   const resolvedCarrierId = resolveCarrierId(carrier_id || carrier_name);
   const monthlyPremiumNum = parseFloat(String(monthly_premium || 0));
   const annualPremiumNum = parseFloat(String(annual_premium || 0)) || +(monthlyPremiumNum * 12).toFixed(2);
@@ -141,15 +176,20 @@ export default async function handler(req: any, res: any) {
   const dealPayload: Record<string, unknown> = {
     externalId:        String(deal_id),
     userId:            agent_insuracloud_id,
-    clientFirstName:   client_first_name || "Unknown",
-    clientLastName:    client_last_name  || "Client",
-    clientPhoneNumber: client_phone      || "+10000000000",
-    clientDateOfBirth: client_dob        || "1980-01-01",
-    productSold:       product_sold      || "Life Insurance",
+    clientFirstName:   client_first_name,
+    clientLastName:    client_last_name,
+    clientPhoneNumber: client_phone,
+    clientDateOfBirth: client_dob,
+    productSold:       product_sold,
+    // policy_number falls back to deal_id-based identifier — that's a
+    // routing identifier on our side, not a placeholder client value, so
+    // it's safe to synthesize from real data when not yet known.
     policyNumber:      policy_number     || `POL-${deal_id}`,
     monthlyPremium:    monthlyPremiumNum,
     annualPremium:     annualPremiumNum,
     faceAmount:        parseFloat(String(face_amount || 0)),
+    // effective_date defaults to today — that's the real meaning of
+    // "effective immediately," not a placeholder.
     effectiveDate:     effective_date    || new Date().toISOString().split("T")[0],
   };
 

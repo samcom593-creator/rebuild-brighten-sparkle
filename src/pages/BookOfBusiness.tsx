@@ -31,10 +31,18 @@ interface DealRow {
   source: string | null;
   status: string | null;
   carrier_id: string | null;
+  pipeline_client_id?: number | null;
   created_at: string;
   agent_name?: string;
   carrier_name?: string;
 }
+
+// Full client profile loaded on demand from agentlink_clients via
+// pipeline_client_id. Shows the banking / financial / health fields the
+// agent needs to actually service the policy.
+type ClientFullRow = Record<string, unknown> & {
+  insuracloud_pipeline_client_id?: number;
+};
 
 type SortKey = "created_at" | "monthly_premium" | "annual_premium" | "effective_date" | "posted_at" | "client";
 type SortDir = "asc" | "desc";
@@ -124,7 +132,7 @@ export default function BookOfBusiness() {
           product_sold, monthly_premium, annual_premium, effective_date,
           posted_at, pipeline_stage, policy_status_standard, status_updated_at,
           synced_to_insuracloud_at, external_deal_id, insuracloud_sync_error,
-          source, status, carrier_id, created_at
+          source, status, carrier_id, pipeline_client_id, created_at
         `)
         .neq("status", "draft")
         .order("created_at", { ascending: false })
@@ -418,38 +426,177 @@ export default function BookOfBusiness() {
         </div>
       </GlassCard>
 
-      <Dialog open={Boolean(selectedDeal)} onOpenChange={(open) => !open && setSelectedDeal(null)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>
-              {selectedDeal?.client_first_name} {selectedDeal?.client_last_name}
-            </DialogTitle>
-          </DialogHeader>
-          {selectedDeal && (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {[
-                ["Agent", selectedDeal.agent_name],
-                ["Policy", selectedDeal.policy_number],
-                ["Carrier", selectedDeal.carrier_name || "Unknown"],
-                ["Product", selectedDeal.product_sold],
-                ["Monthly premium", selectedDeal.monthly_premium ? fmt$(Number(selectedDeal.monthly_premium)) : "Unavailable"],
-                ["Annual premium", selectedDeal.annual_premium ? fmt$(Number(selectedDeal.annual_premium)) : "Unavailable"],
-                ["Effective", selectedDeal.effective_date ? format(new Date(selectedDeal.effective_date), "MMM d, yyyy") : "Unavailable"],
-                ["Posted", selectedDeal.posted_at ? format(new Date(selectedDeal.posted_at), "MMM d, yyyy") : "Unavailable"],
-                ["Stage", pipelineLabel(selectedDeal)],
-                ["Source", sourceKey(selectedDeal.source) === "apex" ? "APEX" : "AgentLink"],
-                ["External ID", selectedDeal.external_deal_id || "Unavailable"],
-                ["Insuracloud sync", selectedDeal.insuracloud_sync_error || selectedDeal.synced_to_insuracloud_at || "No sync issue logged"],
-              ].map(([label, value]) => (
-                <div key={label} className="rounded-lg border border-border/70 p-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-                  <p className="mt-1 break-words text-sm font-medium">{value}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      <DealDetailDialog deal={selectedDeal} onClose={() => setSelectedDeal(null)} />
     </div>
+  );
+}
+
+// ─── Rich detail dialog: deal + full client profile from agentlink_clients ──
+function DealDetailDialog({ deal, onClose }: { deal: DealRow | null; onClose: () => void }) {
+  const { isAdmin } = useAuth();
+  const [client, setClient] = useState<ClientFullRow | null>(null);
+  const [clientLoading, setClientLoading] = useState(false);
+
+  useEffect(() => {
+    if (!deal?.pipeline_client_id) { setClient(null); return; }
+    setClientLoading(true);
+    (async () => {
+      const { data } = await supabase
+        .from("agentlink_clients" as any)
+        .select("*")
+        .eq("insuracloud_pipeline_client_id", deal.pipeline_client_id)
+        .maybeSingle();
+      setClient((data as ClientFullRow | null) ?? null);
+      setClientLoading(false);
+    })();
+  }, [deal?.pipeline_client_id]);
+
+  if (!deal) return null;
+
+  const Row = ({ label, value }: { label: string; value: unknown }) => {
+    if (value === null || value === undefined || value === "" || value === false) return null;
+    return (
+      <div className="rounded-md border border-border/50 p-2.5 bg-card/30">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+        <p className="mt-0.5 break-words text-xs font-medium">{String(value)}</p>
+      </div>
+    );
+  };
+  const Section = ({ title, children, accent }: { title: string; children: React.ReactNode; accent?: string }) => (
+    <div className="space-y-2">
+      <h3 className={cn("text-[11px] font-semibold uppercase tracking-wider", accent ?? "text-muted-foreground")}>{title}</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">{children}</div>
+    </div>
+  );
+  const fmtMoney = (n: unknown) => {
+    const v = Number(n ?? 0);
+    return v ? `$${v.toLocaleString("en-US", { maximumFractionDigits: 0 })}` : null;
+  };
+
+  return (
+    <Dialog open={Boolean(deal)} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-xl">
+            {deal.client_first_name} {deal.client_last_name}
+          </DialogTitle>
+          <div className="flex items-center gap-2 mt-1 text-xs">
+            <Badge className={cn("border", STAGE_COLORS[pipelineLabel(deal)] ?? "bg-muted text-muted-foreground border-border")}>
+              {pipelineLabel(deal)}
+            </Badge>
+            <span className="text-muted-foreground">{deal.policy_number || "—"}</span>
+            <span className="text-muted-foreground">·</span>
+            <span className="text-muted-foreground">{deal.carrier_name || "Unknown"}</span>
+          </div>
+        </DialogHeader>
+
+        <div className="space-y-5 mt-2">
+          <Section title="Deal · Policy">
+            <Row label="Agent" value={deal.agent_name} />
+            <Row label="Policy Number" value={deal.policy_number} />
+            <Row label="Carrier" value={deal.carrier_name} />
+            <Row label="Product" value={deal.product_sold} />
+            <Row label="Monthly Premium" value={deal.monthly_premium ? fmt$(Number(deal.monthly_premium)) : null} />
+            <Row label="Annual Premium" value={deal.annual_premium ? fmt$(Number(deal.annual_premium)) : null} />
+            <Row label="Face Amount" value={fmtMoney((client as any)?.face_amount)} />
+            <Row label="Effective Date" value={deal.effective_date ? format(new Date(deal.effective_date), "MMM d, yyyy") : null} />
+            <Row label="Posted Date" value={deal.posted_at ? format(new Date(deal.posted_at), "MMM d, yyyy") : null} />
+            <Row label="Source" value={sourceKey(deal.source) === "apex" ? "APEX" : "AgentLink"} />
+            <Row label="External ID" value={deal.external_deal_id} />
+            <Row label="Sync Status" value={deal.insuracloud_sync_error || deal.synced_to_insuracloud_at || "OK"} />
+          </Section>
+
+          {clientLoading && (
+            <p className="text-xs text-muted-foreground italic">Loading full client profile…</p>
+          )}
+
+          {client && (
+            <>
+              <Section title="Contact · Address" accent="text-blue-400">
+                <Row label="Phone" value={client.phone} />
+                <Row label="Phone Type" value={client.phone_type} />
+                <Row label="Email" value={client.email} />
+                <Row label="Preferred Contact" value={client.preferred_contact_method} />
+                <Row label="Best Time to Call" value={client.best_time_to_call} />
+                <Row label="Timezone" value={client.client_timezone} />
+                <Row label="Address" value={client.street_address} />
+                <Row label="City / State / Zip" value={`${client.city ?? ""} ${client.state ?? ""} ${client.zip_code ?? ""}`.trim() || null} />
+                <Row label="DNC" value={client.do_not_call ? "DO NOT CALL" : null} />
+                <Row label="DNE" value={client.do_not_email ? "DO NOT EMAIL" : null} />
+                <Row label="DNT" value={client.do_not_text ? "DO NOT TEXT" : null} />
+              </Section>
+
+              <Section title="Health · Personal" accent="text-rose-400">
+                <Row label="DOB" value={client.date_of_birth ? format(new Date(String(client.date_of_birth)), "MMM d, yyyy") : null} />
+                <Row label="SSN last 4" value={client.ssn_last4 ? `***-**-${client.ssn_last4}` : null} />
+                <Row label="Born In" value={client.born_location} />
+                <Row label="Smoker" value={client.is_smoker ? "Yes" : null} />
+                <Row label="Height" value={client.height} />
+                <Row label="Weight" value={client.weight} />
+                <Row label="Medical Notes" value={client.medical_notes} />
+                <Row label="Physician" value={client.physician_name} />
+                <Row label="Physician Phone" value={client.physician_phone} />
+                <Row label="Physician Address" value={client.physician_address} />
+                <Row label="Occupation" value={client.employer_occupation} />
+                <Row label="Employment Status" value={client.employment_status} />
+              </Section>
+
+              {isAdmin && (client.bank_name || client.bank_account_number) && (
+                <Section title="Banking · Admin only" accent="text-amber-400">
+                  <Row label="Bank Name" value={client.bank_name} />
+                  <Row label="Account Type" value={client.bank_account_type} />
+                  <Row label="Account Number" value={client.bank_account_number} />
+                  <Row label="Routing Number" value={client.bank_routing_number} />
+                </Section>
+              )}
+
+              <Section title="Financial Profile" accent="text-emerald-400">
+                <Row label="Total Monthly Income" value={fmtMoney(client.total_monthly_income)} />
+                <Row label="Total Monthly Expenses" value={fmtMoney(client.total_monthly_expenses)} />
+                <Row label="Monthly Surplus" value={fmtMoney(client.monthly_surplus)} />
+                <Row label="Earned Income" value={fmtMoney(client.earned_income)} />
+                <Row label="Pension Income" value={fmtMoney(client.pension_income)} />
+                <Row label="Social Security" value={fmtMoney(client.social_security_income)} />
+                <Row label="Qualified Accounts" value={fmtMoney(client.qualified_accounts)} />
+                <Row label="Non-Qualified Accounts" value={fmtMoney(client.non_qualified_accounts)} />
+                <Row label="Total Investable" value={fmtMoney(client.total_investable)} />
+                <Row label="Retirement Age Goal" value={client.retirement_age_goal} />
+                <Row label="Legacy Estate" value={fmtMoney(client.legacy_estate)} />
+              </Section>
+
+              {(client.beneficiary_first_name || client.beneficiary_count) && (
+                <Section title="Beneficiary" accent="text-purple-400">
+                  <Row label="First Name" value={client.beneficiary_first_name} />
+                  <Row label="Last Name" value={client.beneficiary_last_name} />
+                  <Row label="Phone" value={client.beneficiary_number} />
+                  <Row label="Total Beneficiaries" value={client.beneficiary_count} />
+                </Section>
+              )}
+
+              <Section title="Activity · Engagement" accent="text-cyan-400">
+                <Row label="Stage Changed" value={client.stage_changed_at ? format(new Date(String(client.stage_changed_at)), "MMM d, yyyy") : null} />
+                <Row label="Last Contact" value={client.last_contact_date ? format(new Date(String(client.last_contact_date)), "MMM d, yyyy") : null} />
+                <Row label="Next Action Date" value={client.next_action_date ? format(new Date(String(client.next_action_date)), "MMM d, yyyy") : null} />
+                <Row label="Next Action Notes" value={client.next_action_notes} />
+                <Row label="Callback Date" value={client.callback_date ? format(new Date(String(client.callback_date)), "MMM d, yyyy") : null} />
+                <Row label="Callback Time" value={client.callback_time} />
+                <Row label="Client Health Score" value={client.client_health_score} />
+                <Row label="Objectives" value={client.objectives} />
+                <Row label="Communication Notes" value={client.communication_notes} />
+                <Row label="Reminder Notes" value={client.reminder_notes} />
+                <Row label="Lead Source" value={client.lead_vendor_name} />
+                <Row label="Lead Product" value={client.lead_product_name} />
+              </Section>
+            </>
+          )}
+
+          {!client && !clientLoading && !deal.pipeline_client_id && (
+            <p className="text-xs text-muted-foreground italic">
+              No upstream pipeline client linked. Full servicing profile unavailable for this deal.
+            </p>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

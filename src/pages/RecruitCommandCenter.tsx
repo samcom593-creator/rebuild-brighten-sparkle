@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -171,18 +172,18 @@ export default function RecruitCommandCenter() {
 
   return (
     <div className="p-4 md:p-6 max-w-[1400px] mx-auto space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary/30 to-rose-500/20 flex items-center justify-center">
-          <Target className="h-6 w-6 text-primary" />
-        </div>
-        <div>
-          <h1 className="apex-headline text-3xl md:text-4xl font-bold">Recruit Command</h1>
-          <p className="text-sm text-muted-foreground">Live applicant queue · close the gap to today's target</p>
-        </div>
-        <Button onClick={load} variant="outline" size="sm" className="ml-auto gap-1.5">
-          <RefreshCw className="h-3.5 w-3.5" /> Refresh
-        </Button>
-      </div>
+      <PageHeader
+        accent="rose"
+        eyebrow="Recruiting · Command"
+        eyebrowIcon={<Target className="h-3 w-3" />}
+        title="Recruit Command"
+        subtitle="Live applicant queue · close the gap to today's target. Hot/Cold scoring, call/text/email in one click."
+        actions={
+          <Button onClick={load} variant="outline" size="sm" className="gap-1.5">
+            <RefreshCw className="h-3.5 w-3.5" /> Refresh
+          </Button>
+        }
+      />
 
       {/* Today's target + progress */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

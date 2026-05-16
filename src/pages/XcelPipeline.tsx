@@ -11,6 +11,7 @@ import {
   Phone, Mail, RefreshCw, Search, Users, Calendar,
 } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { PageHeader } from "@/components/ui/page-header";
 import { cn } from "@/lib/utils";
 
 interface Row {
@@ -76,20 +77,19 @@ export default function XcelPipeline() {
 
   return (
     <div className="container mx-auto p-4 md:p-6 space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <GraduationCap className="h-6 w-6 text-primary" /> Xcel Pipeline
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Every paid prelicensing student. State derived from XCEL last-login. Sync runs daily.
-          </p>
-        </div>
-        <Button onClick={() => refetch()} variant="outline" size="sm" disabled={isFetching}>
-          <RefreshCw className={cn("h-4 w-4 mr-1.5", isFetching && "animate-spin")} />
-          Refresh
-        </Button>
-      </div>
+      <PageHeader
+        accent="purple"
+        eyebrow="Recruiting · Pre-Licensing"
+        eyebrowIcon={<GraduationCap className="h-3 w-3" />}
+        title="Xcel Pipeline"
+        subtitle="Every paid pre-licensing student. State derived from XCEL last-login. Sync runs daily."
+        actions={
+          <Button onClick={() => refetch()} variant="outline" size="sm" disabled={isFetching}>
+            <RefreshCw className={cn("h-4 w-4 mr-1.5", isFetching && "animate-spin")} />
+            Refresh
+          </Button>
+        }
+      />
 
       {/* State chips */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">

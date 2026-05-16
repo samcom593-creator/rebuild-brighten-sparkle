@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useMyDownline } from "@/hooks/useMyDownline";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -303,20 +304,14 @@ export default function AgentManagement() {
 
   return (
     <div className="p-4 md:p-6 space-y-5 page-enter">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/20 to-emerald-500/10 border border-primary/30">
-            <Users className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">Agent Management</h1>
-            <p className="text-sm text-muted-foreground">
-              {isAdmin ? "All agents in your agency" : "Your downline"}
-            </p>
-          </div>
-        </div>
-
+      <PageHeader
+        accent="primary"
+        eyebrow="Admin · People"
+        eyebrowIcon={<Users className="h-3 w-3" />}
+        title="Agent Management"
+        subtitle={isAdmin ? "All agents in your agency · roles, contact, license state, downline" : "Your downline · roles, contact, license state"}
+      />
+      <div className="flex items-center justify-end flex-wrap gap-3">
         <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
           {[
             { k: "board", icon: LayoutGrid, label: "Board" },

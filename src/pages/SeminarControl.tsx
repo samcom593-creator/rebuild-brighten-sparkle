@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -217,25 +218,21 @@ export default function SeminarControl() {
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-primary">
-            <Crown className="h-5 w-5" />
-            <span className="text-xs uppercase tracking-wider">Seminar control</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Group interview pipeline</h1>
-          {metrics?.next_seminar_date && (
-            <p className="text-sm text-muted-foreground mt-1">
-              Next seminar: <span className="font-medium text-foreground">
-                {format(new Date(metrics.next_seminar_date), "EEE, MMM d")}
-              </span>
-            </p>
-          )}
-        </div>
-        <Badge variant="outline" className="text-xs">
-          As of {metrics?.as_of ? format(new Date(metrics.as_of), "p") : ""}
-        </Badge>
-      </motion.div>
+      <PageHeader
+        accent="amber"
+        eyebrow="Seminar Control"
+        eyebrowIcon={<Crown className="h-3 w-3" />}
+        title="Group interview pipeline"
+        subtitle={metrics?.next_seminar_date
+          ? `Next seminar: ${format(new Date(metrics.next_seminar_date), "EEE, MMM d")}`
+          : "Track every applicant through the group interview workflow."
+        }
+        actions={
+          <Badge variant="outline" className="text-xs">
+            As of {metrics?.as_of ? format(new Date(metrics.as_of), "p") : ""}
+          </Badge>
+        }
+      />
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <Stat icon={CalendarClock} label="Upcoming" value={metrics?.upcoming_total} />

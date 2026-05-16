@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { PageHeader } from "@/components/ui/page-header";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -424,23 +425,24 @@ export default function InboxPage() {
   };
 
   return (
-    <div className="space-y-4 page-enter">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <div>
-          <div className="mb-1 text-xs uppercase tracking-widest text-muted-foreground" style={{ fontFamily: "Syne" }}>
-            APEX Financial
-          </div>
-          <h1 className="text-2xl font-bold" style={{ fontFamily: "Syne" }}>Inbox</h1>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={exportCSV} disabled={filtered.length === 0}>
-            <Download className="mr-2 h-4 w-4" /> Export
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => fetchMessages()} disabled={loading}>
-            <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} /> Refresh
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-4 page-enter p-4 md:p-6">
+      <PageHeader
+        accent="blue"
+        eyebrow="Admin · Inbox"
+        eyebrowIcon={<Mail className="h-3 w-3" />}
+        title="Inbox"
+        subtitle="Every push, SMS, auto-SMS, and email response from your team and clients in one stream."
+        actions={
+          <>
+            <Button variant="outline" size="sm" onClick={exportCSV} disabled={filtered.length === 0}>
+              <Download className="mr-2 h-4 w-4" /> Export
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => fetchMessages()} disabled={loading}>
+              <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} /> Refresh
+            </Button>
+          </>
+        }
+      />
 
       {/* Clickable stat cards */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">

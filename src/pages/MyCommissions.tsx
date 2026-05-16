@@ -6,6 +6,7 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { DEAL_TRUTH_STATUS_FILTER } from "@/lib/dealTruth";
+import { PageHeader } from "@/components/ui/page-header";
 
 type LedgerRow = {
   id: string;
@@ -110,19 +111,17 @@ export default function MyCommissions() {
 
   return (
     <div className="p-4 md:p-6 space-y-6 max-w-6xl mx-auto page-enter">
-      <div className="flex items-center gap-3">
-        <div className="p-2 rounded-xl bg-primary/10">
-          <Wallet className="h-5 w-5 text-primary" />
-        </div>
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">My Commissions</h1>
-          <p className="text-muted-foreground text-sm">
-            {estimatedRows > 0
-              ? "Estimated from valid AgentLink/APEX deals until the commission ledger is populated."
-              : "Live ledger — every deal's commission computed from your contract rate. Pulled from Supabase."}
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        accent="emerald"
+        eyebrow="Production · Earnings"
+        eyebrowIcon={<Wallet className="h-3 w-3" />}
+        title="My Commissions"
+        subtitle={
+          estimatedRows > 0
+            ? "Estimated from valid AgentLink/APEX deals until the commission ledger is populated."
+            : "Live ledger — every deal's commission computed from your contract rate. Pulled from Supabase."
+        }
+      />
 
       {loading ? (
         <div className="flex items-center justify-center py-12 text-muted-foreground">

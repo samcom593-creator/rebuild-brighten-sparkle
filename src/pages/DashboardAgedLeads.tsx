@@ -464,15 +464,6 @@ export default function DashboardAgedLeads() {
     return dupeIds;
   }, [leads]);
 
-  // Block agents (non-admin, non-manager) — placed after all hooks
-  if (!authLoading && user && !canAccess) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">Admin or Manager access required</p>
-      </div>
-    );
-  }
-
   const filteredLeads = useMemo(() => leads.filter(lead => {
     const q = searchTerm.toLowerCase();
     const matchesSearch =
@@ -491,6 +482,17 @@ export default function DashboardAgedLeads() {
 
   // Reset page when filters change
   useEffect(() => { setCurrentPage(1); }, [searchTerm, statusFilter, licenseFilter, sourceFilter]);
+
+  // Block agents (non-admin, non-manager). All hooks above must run on
+  // every render — moving this gate later in the function caused a
+  // hook-order mismatch when role state flipped mid-session.
+  if (!authLoading && user && !canAccess) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">Admin or Manager access required</p>
+      </div>
+    );
+  }
 
   const totalPages = Math.max(1, Math.ceil(filteredLeads.length / PAGE_SIZE));
   const paginatedLeads = filteredLeads.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);

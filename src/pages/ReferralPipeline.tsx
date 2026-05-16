@@ -85,23 +85,17 @@ export default function ReferralPipeline() {
   const qc = useQueryClient();
 
   // Defense-in-depth: ProtectedRoute(requireAdmin allowManagers) already
-  // gates the route. If a plain agent ever lands here via a bad link, show
-  // an Unauthorized state instead of an empty list (which would leak
-  // existence of the page).
-  if (!isAdmin && !isManager) {
-    return (
-      <div className="p-6 max-w-xl mx-auto">
-        <div className="rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground">
-          The referral pipeline is for managers and admins. To see referrals you've
-          submitted, go to <a href="/dashboard/referrals/mine" className="underline">My Referrals</a>.
-        </div>
-      </div>
-    );
-  }
+  // gates the route. If a plain agent ever lands here via a bad link, we
+  // render an Unauthorized state below — AFTER all hooks have been called.
+  // Previously the unauth early-return came BEFORE useQuery/useMutation and
+  // caused React's "Rendered fewer hooks than expected" crash whenever
+  // role context flipped mid-session.
+  const isAuthorized = isAdmin || isManager;
 
   const { data, isLoading } = useQuery({
     queryKey: ["referral-pipeline"],
     refetchInterval: 60_000,
+    enabled: isAuthorized,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("v_referral_pipeline" as any)
@@ -137,6 +131,17 @@ export default function ReferralPipeline() {
     }
     return BUCKET_ORDER.map((b) => [b, map.get(b) ?? []] as const).filter(([, rows]) => rows.length > 0);
   }, [data]);
+
+  if (!isAuthorized) {
+    return (
+      <div className="p-6 max-w-xl mx-auto">
+        <div className="rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground">
+          The referral pipeline is for managers and admins. To see referrals you've
+          submitted, go to <a href="/dashboard/referrals/mine" className="underline">My Referrals</a>.
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) return <PageLoadingSkeleton />;
 

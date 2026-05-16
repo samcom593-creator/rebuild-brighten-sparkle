@@ -27,6 +27,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageLoadingSkeleton } from "@/components/ui/page-loading-skeleton";
+import { PageHeader } from "@/components/ui/page-header";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyDownline } from "@/hooks/useMyDownline";
@@ -665,29 +666,28 @@ function ExecutiveDashboard({
 
   return (
     <div className="space-y-6 pb-8 lg:pr-[18rem]">
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline">{snapshot.scopeLabel}</Badge>
-            <Badge variant="secondary">Generated {ageLabel(snapshot.sourceGeneratedAt)}</Badge>
-          </div>
-          <h1 className="mt-3 text-3xl font-bold tracking-tight">{title}</h1>
-          <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-            Production, recruiting, lead inventory, Stripe, and integration state now come from live tables with explicit unavailable states instead of filler values.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button onClick={onRunSystemCheck} disabled={runningSystemCheck}>
-            {runningSystemCheck ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-            Run System Check
-          </Button>
-          <Button asChild variant="outline">
-            <Link to="/numbers">
-              Log Numbers <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        accent="primary"
+        eyebrow={role === "admin" ? "CEO · Command" : "Manager · Command"}
+        eyebrowIcon={<ShieldCheck className="h-3 w-3" />}
+        title={title}
+        subtitle="Production, recruiting, lead inventory, Stripe, and integration state — every number sourced from live tables, with explicit unavailable states instead of filler."
+        actions={
+          <>
+            <Badge variant="outline" className="text-xs">{snapshot.scopeLabel}</Badge>
+            <Badge variant="secondary" className="text-xs">Generated {ageLabel(snapshot.sourceGeneratedAt)}</Badge>
+            <Button onClick={onRunSystemCheck} disabled={runningSystemCheck} size="sm">
+              {runningSystemCheck ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+              Run System Check
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <Link to="/numbers">
+                Log Numbers <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          </>
+        }
+      />
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatTile icon={DollarSign} label="Today ALP" value={money(snapshot.production.todayAlp)} detail={`${number(snapshot.production.todayDeals)} posted deals today`} />

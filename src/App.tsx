@@ -237,7 +237,8 @@ const App = () => (
                     <Route path="/dashboard/call-center" element={<CallCenter />} />
                      <Route path="/dashboard/leads" element={<ProtectedRoute requireAdmin><LeadCenter /></ProtectedRoute>} />
                      <Route path="/dashboard/recruiter" element={<RecruiterDashboard />} />
-                     <Route path="/agent-pipeline" element={<AgentPipeline />} />
+                     <Route path="/agent-pipeline" element={<ProtectedRoute><AgentPipeline /></ProtectedRoute>} />
+                     <Route path="/dashboard/agent-pipeline" element={<ProtectedRoute><AgentPipeline /></ProtectedRoute>} />
                      <Route path="/dashboard/calendar" element={<CalendarPage />} />
                      <Route path="/dashboard/notifications" element={<ProtectedRoute requireAdmin><NotificationHub /></ProtectedRoute>} />
                      <Route path="/dashboard/planner" element={<ProtectedRoute requireAdmin><AdminCalendar /></ProtectedRoute>} />

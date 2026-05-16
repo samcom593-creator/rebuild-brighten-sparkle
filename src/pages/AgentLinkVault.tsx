@@ -15,7 +15,6 @@ import {
   FileText,
   ScrollText,
   Briefcase,
-  AlertTriangle,
   Search,
   RefreshCw,
 } from "lucide-react";
@@ -426,23 +425,13 @@ function VaultPanel() {
 }
 
 // ─── Main page ────────────────────────────────────────────────────────────
+// Route is gated by <ProtectedRoute requireAdmin> in App.tsx, so we skip
+// an in-component admin-check screen — if you're here, you're authorized.
+// RLS on every underlying table is the real server-side guarantee.
 export default function AgentLinkVault() {
   usePageTitle("AgentLink Vault · APEX");
-  const { isAdmin, isLoading: authLoading } = useAuth();
+  const { isLoading: authLoading } = useAuth();
   if (authLoading) return <PageLoadingSkeleton />;
-  if (!isAdmin) {
-    return (
-      <div className="p-6 max-w-xl mx-auto">
-        <Card>
-          <CardContent className="p-6 text-center text-sm text-muted-foreground">
-            <AlertTriangle className="h-5 w-5 mx-auto mb-2 text-amber-500" />
-            AgentLink Vault is admin-only. The book of business contains sensitive PII
-            (SSN ciphertext, contract numbers, full client records) — RLS enforces this on the server too.
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
   return (
     <div className="p-4 sm:p-6 space-y-4">
       <div className="flex items-start justify-between gap-3 flex-wrap">

@@ -99,6 +99,7 @@ const TeamChat = lazy(() => import("./pages/TeamChat"));
 const BulkDeals = lazy(() => import("./pages/BulkDeals"));
 const AgentLinkSync = lazy(() => import("./pages/AgentLinkSync"));
 const AgentLinkVault = lazy(() => import("./pages/AgentLinkVault"));
+const ClientPipeline = lazy(() => import("./pages/ClientPipeline"));
 const Setup = lazy(() => import("./pages/admin/Setup"));
 const Join = lazy(() => import("./pages/Join"));
 const AgentDetail = lazy(() => import("./pages/AgentDetail"));
@@ -237,8 +238,13 @@ const App = () => (
                     <Route path="/dashboard/call-center" element={<CallCenter />} />
                      <Route path="/dashboard/leads" element={<ProtectedRoute requireAdmin><LeadCenter /></ProtectedRoute>} />
                      <Route path="/dashboard/recruiter" element={<RecruiterDashboard />} />
-                     <Route path="/agent-pipeline" element={<ProtectedRoute><AgentPipeline /></ProtectedRoute>} />
-                     <Route path="/dashboard/agent-pipeline" element={<ProtectedRoute><AgentPipeline /></ProtectedRoute>} />
+                     {/* Recruit pipeline — applicants/license/contracting flow. Was /agent-pipeline. */}
+                     <Route path="/recruit-pipeline" element={<ProtectedRoute><AgentPipeline /></ProtectedRoute>} />
+                     <Route path="/dashboard/recruit-pipeline" element={<ProtectedRoute><AgentPipeline /></ProtectedRoute>} />
+                     {/* Agent Pipeline — client/policy servicing book of business. */}
+                     <Route path="/agent-pipeline" element={<ProtectedRoute><ClientPipeline /></ProtectedRoute>} />
+                     <Route path="/dashboard/agent-pipeline" element={<ProtectedRoute><ClientPipeline /></ProtectedRoute>} />
+                     <Route path="/dashboard/client-pipeline" element={<ProtectedRoute><ClientPipeline /></ProtectedRoute>} />
                      <Route path="/dashboard/calendar" element={<CalendarPage />} />
                      <Route path="/dashboard/notifications" element={<ProtectedRoute requireAdmin><NotificationHub /></ProtectedRoute>} />
                      <Route path="/dashboard/planner" element={<ProtectedRoute requireAdmin><AdminCalendar /></ProtectedRoute>} />

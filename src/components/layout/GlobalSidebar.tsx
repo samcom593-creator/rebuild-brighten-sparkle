@@ -45,6 +45,7 @@ import {
   Sunrise,
   GraduationCap,
   Database,
+  Flame,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -190,6 +191,9 @@ export function GlobalSidebar({
     //    Routes still exist for deep links.
     const productionItems: NavItem[] = [
       { icon: Edit3, label: "Log Numbers", href: "/numbers", special: true },
+      // Agent Pipeline = client/policy servicing book of business — separate
+      // from Recruit Pipeline (applicants/licensing) which lives under RECRUITING.
+      { icon: Flame, label: "Agent Pipeline", href: "/dashboard/agent-pipeline", special: true },
       { icon: DollarSign, label: "My Deals", href: "/dashboard/my-deals" },
       { icon: Wallet, label: "My Commissions", href: "/dashboard/my-commissions" },
       { icon: Trophy, label: "Leaderboard", href: "/dashboard/leaderboard", special: true },
@@ -214,7 +218,9 @@ export function GlobalSidebar({
     //    Removed from primary nav: Team Hierarchy, Awards, Agent Management.
     //    Routes still exist; the surfaces had become noise on the side nav.
     const recruitingItems: NavItem[] = [
-      { icon: Users, label: "Pipeline", href: isAgent && !isAdmin && !isManager ? "/agent-pipeline" : "/dashboard/applicants" },
+      // Recruit Pipeline = applicants/licensing/contracting/onboarding flow,
+      // distinct from Agent Pipeline (clients/policies) which lives in PRODUCTION.
+      { icon: Users, label: "Recruit Pipeline", href: isAdmin || isManager ? "/dashboard/applicants" : "/recruit-pipeline" },
     ];
     if (isAdmin || isManager) {
       recruitingItems.unshift({ icon: Target, label: "Recruit Command", href: "/dashboard/recruit", special: true });

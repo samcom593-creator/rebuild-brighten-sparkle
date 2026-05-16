@@ -3,6 +3,7 @@ import { Loader2, Upload, CheckCircle2, AlertCircle, DollarSign } from "lucide-r
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { GlassCard } from "@/components/ui/glass-card";
+import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -203,15 +204,13 @@ export default function BulkDeals() {
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-4">
-      <div className="flex items-center gap-3">
-        <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary/30 to-violet-500/20 flex items-center justify-center">
-          <Upload className="h-6 w-6 text-primary" />
-        </div>
-        <div>
-          <h1 className="apex-headline text-3xl font-bold">Bulk Deal Import</h1>
-          <p className="text-sm text-muted-foreground">Paste deal text, click Insert. Upserts by policy number.</p>
-        </div>
-      </div>
+      <PageHeader
+        accent="emerald"
+        eyebrow="Admin · Import"
+        eyebrowIcon={<Upload className="h-3 w-3" />}
+        title="Bulk Deal Import"
+        subtitle="Paste raw deal text, click Insert. Upserts by policy number — duplicates are merged automatically."
+      />
 
       <GlassCard className="p-4 space-y-3">
         <label className="text-sm font-medium">Paste raw deal text</label>

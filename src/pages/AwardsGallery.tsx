@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -208,26 +209,31 @@ export default function AwardsGallery() {
 
   return (
     <div className="space-y-4 p-4 md:p-6 max-w-[1400px] mx-auto">
-      <div className="flex flex-wrap items-center gap-3">
-        <Trophy className="h-6 w-6 text-amber-400" />
-        <h1 className="text-2xl md:text-3xl font-bold">Awards Gallery</h1>
-        {isAdmin && (
-          <div className="ml-auto flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" className="gap-1.5" onClick={renderAll} disabled={rendering}>
-              {rendering ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-              Render All
-            </Button>
-            <Button size="sm" variant="outline" className="gap-1.5" onClick={requestPhotos} disabled={requestingPhotos}>
-              {requestingPhotos ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
-              Request Photos
-            </Button>
-            <Button size="sm" variant="outline" className="gap-1.5" onClick={emailAllToMe} disabled={emailing}>
-              {emailing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
-              Email Digest
-            </Button>
-          </div>
-        )}
-      </div>
+      <PageHeader
+        accent="amber"
+        eyebrow="Production · Awards"
+        eyebrowIcon={<Trophy className="h-3 w-3" />}
+        title="Awards Gallery"
+        subtitle="Every plaque earned across the agency. Filter by agent, milestone, or year."
+        actions={
+          isAdmin && (
+            <>
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={renderAll} disabled={rendering}>
+                {rendering ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                Render All
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={requestPhotos} disabled={requestingPhotos}>
+                {requestingPhotos ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
+                Request Photos
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={emailAllToMe} disabled={emailing}>
+                {emailing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
+                Email Digest
+              </Button>
+            </>
+          )
+        }
+      />
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <GlassCard className="p-3">

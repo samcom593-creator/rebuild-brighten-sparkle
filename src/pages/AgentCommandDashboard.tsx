@@ -110,7 +110,7 @@ interface AgentSnapshot {
   syncStale: boolean;
 }
 
-async function loadSnapshot(userId: string, agentId: string): Promise<AgentSnapshot> {
+async function loadSnapshot(userId: string, agentId: string, isAdmin: boolean): Promise<AgentSnapshot> {
   const day = getBusinessDayBounds();
   const week = getBusinessWeekBounds();
   const month = getBusinessMonthBounds();
@@ -121,14 +121,19 @@ async function loadSnapshot(userId: string, agentId: string): Promise<AgentSnaps
   // Split the 16 queries into smaller Promise.all batches to dodge TS2589
   // "type instantiation excessively deep" on Supabase builder type unions.
   const q: any = supabase; // narrow to any once, makes the tuple type tractable
+  // Scope deal queries to a single agent for normal users; for admin, drop
+  // the agent filter so the deal counters show the whole agency. Per-agent
+  // cards (applications, referrals, agent profile row) stay agent-scoped
+  // either way — they describe Sam's own pipeline, not the agency's.
+  const scopeAgent = (b: any) => (isAdmin ? b : b.eq("agent_id", agentId));
   const dealsBatch = await Promise.all([
     q.from("agents").select("display_name, agent_code, onboarding_stage, license_status, is_presenting, manager_id, profile_id").eq("id", agentId).maybeSingle(),
-    q.from("deals").select("annual_premium, posted_at, created_at").eq("agent_id", agentId).or(dealTruthWindowOr(day.startIso, day.endIso)).in("status", DEAL_TRUTH_STATUS_FILTER),
-    q.from("deals").select("annual_premium, posted_at, created_at").eq("agent_id", agentId).or(dealTruthWindowOr(week.startIso, week.endIso)).in("status", DEAL_TRUTH_STATUS_FILTER),
-    q.from("deals").select("annual_premium, posted_at, created_at").eq("agent_id", agentId).or(dealTruthWindowOr(month.startIso, month.endIso)).in("status", DEAL_TRUTH_STATUS_FILTER),
-    q.from("deals").select("annual_premium, posted_at, created_at").eq("agent_id", agentId).or(liveDealWindowOr(tenAgo)).in("status", DEAL_TRUTH_STATUS_FILTER),
-    q.from("deals").select("annual_premium").eq("agent_id", agentId).gte("posted_at", thirtyAgoIso).in("status", DEAL_TRUTH_STATUS_FILTER),
-    q.from("deals").select("annual_premium").eq("agent_id", agentId).gte("posted_at", sixtyAgoIso).lt("posted_at", thirtyAgoIso).in("status", DEAL_TRUTH_STATUS_FILTER),
+    scopeAgent(q.from("deals").select("annual_premium, posted_at, created_at")).or(dealTruthWindowOr(day.startIso, day.endIso)).in("status", DEAL_TRUTH_STATUS_FILTER),
+    scopeAgent(q.from("deals").select("annual_premium, posted_at, created_at")).or(dealTruthWindowOr(week.startIso, week.endIso)).in("status", DEAL_TRUTH_STATUS_FILTER),
+    scopeAgent(q.from("deals").select("annual_premium, posted_at, created_at")).or(dealTruthWindowOr(month.startIso, month.endIso)).in("status", DEAL_TRUTH_STATUS_FILTER),
+    scopeAgent(q.from("deals").select("annual_premium, posted_at, created_at")).or(liveDealWindowOr(tenAgo)).in("status", DEAL_TRUTH_STATUS_FILTER),
+    scopeAgent(q.from("deals").select("annual_premium")).gte("posted_at", thirtyAgoIso).in("status", DEAL_TRUTH_STATUS_FILTER),
+    scopeAgent(q.from("deals").select("annual_premium")).gte("posted_at", sixtyAgoIso).lt("posted_at", thirtyAgoIso).in("status", DEAL_TRUTH_STATUS_FILTER),
   ]);
   const [agentRow, todayDeals, weekDeals, monthDeals, last10dDeals, last30dDeals, prev30dDeals] = dealsBatch;
 
@@ -354,7 +359,7 @@ function Stat({
 
 export default function AgentCommandDashboard() {
   usePageTitle("Command Dashboard · APEX Agent");
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isAdmin, isLoading: authLoading } = useAuth();
 
   const myAgentId = useQuery({
     queryKey: ["am-i-agent", user?.id],
@@ -370,10 +375,10 @@ export default function AgentCommandDashboard() {
   });
 
   const snap = useQuery<AgentSnapshot>({
-    queryKey: ["agent-command-snapshot", myAgentId.data],
+    queryKey: ["agent-command-snapshot", myAgentId.data, isAdmin],
     enabled: !!user?.id && !!myAgentId.data,
     refetchInterval: 60_000,
-    queryFn: () => loadSnapshot(user!.id, myAgentId.data!),
+    queryFn: () => loadSnapshot(user!.id, myAgentId.data!, isAdmin),
   });
 
   const closeRate = useMemo(() => {

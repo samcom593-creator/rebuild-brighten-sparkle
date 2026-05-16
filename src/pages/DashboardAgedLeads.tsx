@@ -25,6 +25,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { GlassCard } from "@/components/ui/glass-card";
+import { PageHeader } from "@/components/ui/page-header";
 // Table imports removed - using card grid layout
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -642,20 +643,15 @@ export default function DashboardAgedLeads() {
   }
 
   return (
-    <div className="space-y-5 page-enter">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-primary/10">
-            <Archive className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Aged Leads</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Follow up on past applicants &amp; first-contact leads
-            </p>
-          </div>
-        </div>
+    <div className="space-y-5 page-enter p-4 md:p-6">
+      <PageHeader
+        accent="rose"
+        eyebrow="CRM · Aged Leads"
+        eyebrowIcon={<Archive className="h-3 w-3" />}
+        title="Aged Leads"
+        subtitle="Follow up on past applicants and first-contact leads who never crossed the line. Call mode batches dial sessions."
+      />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-4">
         <div className="flex gap-2">
           {(licensedLeads > 0 || unlicensedLeads > 0) && (
             <div className="relative">

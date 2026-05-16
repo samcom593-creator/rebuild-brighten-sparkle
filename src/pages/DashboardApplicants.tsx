@@ -38,6 +38,7 @@ import { useSoundEffects } from "@/hooks/useSoundEffects";
 import { GlassCard } from "@/components/ui/glass-card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -934,24 +935,15 @@ export default function DashboardApplicants() {
 
   return (
     <>
-      {/* Header */}
-      <div className="mb-5">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-primary/10">
-              <Users className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">Applicants</h1>
-              <p className="text-muted-foreground text-sm">
-                Manage and track your assigned applicants
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {/* My Directs Toggle */}
-            {(isAdmin || isManager) && agentId && (
-              <Button
+      <PageHeader
+        accent="cyan"
+        eyebrow="Recruiting · Applicants"
+        eyebrowIcon={<Users className="h-3 w-3" />}
+        title="Applicants"
+        subtitle="Manage and track every applicant in your recruiting funnel — assigned, referred, or recruited."
+        actions={
+          (isAdmin || isManager) && agentId
+            ? <Button
                 variant={myDirectsOnly ? "default" : "outline"}
                 size="sm"
                 className="h-8 text-xs gap-1.5"
@@ -960,7 +952,13 @@ export default function DashboardApplicants() {
                 <Users className="h-3.5 w-3.5" />
                 {myDirectsOnly ? "My Directs" : "Full Team"}
               </Button>
-            )}
+            : null
+        }
+      />
+      <div className="mb-5">
+        <div className="flex items-center justify-end flex-wrap gap-3">
+          <div className="flex items-center gap-2">
+            {/* (header buttons relocated to PageHeader actions; this row keeps the toolbar below) */}
           {/* View Toggle */}
           <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
             <Button
